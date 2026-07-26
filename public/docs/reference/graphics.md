@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-14 source file(s), 1001 public symbol(s), 78 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+14 source file(s), 1074 public symbol(s), 78 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -26,37 +26,53 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt`
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Interaction Nets examples](../interaction_nets_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| `fun rect(x: Number, y: Number, w: Number, h: Number)` |  |
-| `inline fun fline(block: FLine.() -> Unit): FLine` | Preferred builder for `FLine` geometry in sketches and examples. |
-| `operator fun Vec3.rangeTo(other: Vec3): FLine` | A single straight segment written as a range: `vec(0, 0)..vec(1, 1)`. Composes with `+=` for chaining, e.g. `f += vec(2, 0)..vec(3, 3)`. |
-| `operator fun Vec2.rangeTo(other: Vec2): FLine` | 2D overload of the segment range operator. |
-| `inline fun FLine.moveTo(v: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a `moveTo` and immediately style the resulting node: `moveTo(v) { color = RED }`. |
-| `inline fun FLine.lineTo(v: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a `lineTo` and immediately style the resulting node. |
-| `inline fun FLine.cubicTo(c1: Vec3, c2: Vec3, to: Vec3, style: FLine.Node.() -> Unit): FLine` | Add a cubic and immediately style the resulting node. |
-| `fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1))` | Color to show when the pointer hovers over this FLine in an interactive SVG output. When null no hover color change is applied. |
-| `fun FLine.rect(x: Number, y: Number, w: Number, h: Number): FLine` | Append a closed rectangle path to this line. |
-| `fun FLine.rect(rect: Rect): FLine` | Append a closed rectangle path for `rect` to this line. |
-| `fun Rect.toFLine(color: Vec4 = vec(1.0, 1.0, 1.0, 1.0), filled: Boolean = false, stroked: Boolean = true, thickness: Double? = if (stroked) 1.0 else null): FLine` | Convert this rectangle into a styled `FLine`. |
-| `fun List<FLine>.fitInto(frame: Rect, padding: Double = 0.0, preserveAspect: Boolean = true): List<FLine>` | Scale and translate these lines so their 2D bounds fit inside `frame`. |
-| `fun arrow(x0: Double, y0: Double, x1: Double, y1: Double, color: Vec4 = vec(1.0, 1.0, 1.0, 1.0), thickness: Double = 2.0, headLength: Double = Double.NaN, headWidth: Double = Double.NaN, startHead: Boolean = false, endHead: Boolean = true): FLine` | Build an arrow with a real arrowhead instead of relying on point sprites. |
-| `fun arrow(from: Vec2, to: Vec2, color: Vec4 = vec(1.0, 1.0, 1.0, 1.0), thickness: Double = 2.0, headLength: Double = Double.NaN, headWidth: Double = Double.NaN, startHead: Boolean = false, endHead: Boolean = true): FLine` | Build an arrow with configurable arrowheads. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rect</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nf">fline</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Preferred builder for `FLine` geometry in sketches and examples. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Vec3</span><span class="p">.</span><span class="nf">rangeTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | A single straight segment written as a range: `vec(0, 0)..vec(1, 1)`. Composes with `+=` for chaining, e.g. `f += vec(2, 0)..vec(3, 3)`. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Vec2</span><span class="p">.</span><span class="nf">rangeTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | 2D overload of the segment range operator. |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">moveTo</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Add a `moveTo` and immediately style the resulting node: `moveTo(v) { color = RED }`. |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Add a `lineTo` and immediately style the resulting node. |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">cubicTo</span><span class="p">(</span><span class="n">c1</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">c2</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">style</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Add a cubic and immediately style the resulting node. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">seg</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">pointed</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">rect</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Append a closed rectangle path to this line. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">rect</span><span class="p">(</span><span class="n">rect</span><span class="p">:</span> <span class="nc">Rect</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Append a closed rectangle path for `rect` to this line. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Rect</span><span class="p">.</span><span class="nf">toFLine</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="n">if</span> <span class="p">(</span><span class="n">stroked</span><span class="p">)</span> <span class="mf">1.0</span> <span class="n">else</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Convert this rectangle into a styled `FLine`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">fitInto</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">Rect</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">preserveAspect</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Scale and translate these lines so their 2D bounds fit inside `frame`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">arrow</span><span class="p">(</span><span class="n">x0</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y0</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">x1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">headLength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="n">headWidth</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="n">startHead</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">endHead</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Build an arrow with a real arrowhead instead of relying on point sprites. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">arrow</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">headLength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="n">headWidth</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="n">startHead</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">endHead</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Build an arrow with configurable arrowheads. |
+
+### Top-level values { #standarddrawing-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">thicken</span><span class="p">:</span> <span class="nc">Stroke</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">pointed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">onClick</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">FLineIntersection</span><span class="p">)</span> <span class="p">-</span></code> | Callback invoked when this FLine is clicked in an interactive output. |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">hoverColor</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span></code> | Color to show when the pointer hovers over this FLine in an interactive SVG output. When null no hover color change is applied. |
 
 ### FLineIntersection { #standarddrawing-kt-flineintersection }
 
-`data class FLineIntersection(val closestVertexIndex: Int, val position: Vec3)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FLineIntersection</span><span class="p">(</span><span class="k">val</span> <span class="n">closestVertexIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
 
 Hit information passed to `FLine.onClick` from the interactive line renderers.
 
 | Declaration | Summary |
 | --- | --- |
-| `val closestVertexIndex: Int` |  |
-| `val position: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">closestVertexIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ## ArchitecturalGeometry.kt { #architecturalgeometry-kt }
 
@@ -88,285 +104,259 @@ these entry points need the native Ceres library present.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun geometryModel(block: GeometryModelScope.() -> Unit): GeometryModel` |  |
-| `fun GeometryModel.session(backend: CeresSolverBackend = FfmCeresBackend(), baselinePrior: Double = 1e-6, metricCapacity: Int = 128, policy: InteractionPolicy = InteractionPolicy(preserveWeight = baselinePrior, releaseWeight = baselinePrior, metricCapacity = metricCapacity)): GeometrySolveSession` |  |
-| `fun liveGeometry(backend: CeresSolverBackend = FfmCeresBackend(), policy: InteractionPolicy = InteractionPolicy(), block: GeometryModelScope.() -> Unit): LiveGeometryProgram` |  |
-| `operator fun PointRef.plus(other: PointRef): PointExpr` |  |
-| `operator fun PointRef.plus(other: PointExpr): PointExpr` |  |
-| `operator fun PointRef.minus(other: PointRef): PointExpr` |  |
-| `operator fun PointRef.minus(other: PointExpr): PointExpr` |  |
-| `operator fun PointRef.times(scale: Number): PointExpr` |  |
-| `operator fun Number.times(point: PointRef): PointExpr` |  |
-| `operator fun Number.times(expr: PointExpr): PointExpr` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">geometryModel</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">GeometryModelScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometryModel</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">GeometryModel</span><span class="p">.</span><span class="nf">session</span><span class="p">(</span><span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span> <span class="o">=</span> <span class="nc">FfmCeresBackend</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">baselinePrior</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">metricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span> <span class="o">=</span> <span class="nc">InteractionPolicy</span><span class="p">(</span><span class="n">preserveWeight</span> <span class="o">=</span> <span class="n">baselinePrior</span><span class="p">,</span> <span class="n">releaseWeight</span> <span class="o">=</span> <span class="n">baselinePrior</span><span class="p">,</span> <span class="n">metricCapacity</span> <span class="o">=</span> <span class="n">metricCapacity</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometrySolveSession</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">liveGeometry</span><span class="p">(</span><span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span> <span class="o">=</span> <span class="nc">FfmCeresBackend</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span> <span class="o">=</span> <span class="nc">InteractionPolicy</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryModelScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">LiveGeometryProgram</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">plus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">minus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
 
 ### Top-level values { #architecturalgeometry-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val PointRef.expr: PointExpr` |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">PointRef</span><span class="p">.</span><span class="n">expr</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
 
 ### PointRef { #architecturalgeometry-kt-pointref }
 
-`class PointRef internal constructor(val id: PointId, val name: String?)`
+<code class="highlight"><span class="k">class</span> <span class="nc">PointRef</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val index: Int` |  |
-| `override fun equals(other: Any?): Boolean` |  |
-| `override fun hashCode(): Int` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### LineRef { #architecturalgeometry-kt-lineref }
 
-`data class LineRef(val a: PointRef, val b: PointRef, val name: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LineRef</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 ### PlaneRef { #architecturalgeometry-kt-planeref }
 
-`data class PlaneRef(val a: PointRef, val b: PointRef, val c: PointRef, val name: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlaneRef</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 ### PanelRef { #architecturalgeometry-kt-panelref }
 
-`data class PanelRef(val a: PointRef, val b: PointRef, val c: PointRef, val d: PointRef, val name: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PanelRef</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointRef>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span></code> |  |
 
 ### PointExpr { #architecturalgeometry-kt-pointexpr }
 
-`class PointExpr internal constructor(internal val terms: Map<PointRef, Double>, internal val constant: Vec3 = Vec3(0.0, 0.0, 0.0))`
+<code class="highlight"><span class="k">class</span> <span class="nc">PointExpr</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">terms</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">constant</span><span class="p">:</span> <span class="nc">Vec3</span> <span class="o">=</span> <span class="nc">Vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `operator fun plus(other: PointExpr): PointExpr` |  |
-| `operator fun plus(other: PointRef): PointExpr` |  |
-| `operator fun minus(other: PointExpr): PointExpr` |  |
-| `operator fun minus(other: PointRef): PointExpr` |  |
-| `operator fun unaryMinus(): PointExpr` |  |
-| `operator fun times(scale: Number): PointExpr` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">minus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">unaryMinus</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">times</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### DotExpr { #architecturalgeometry-kt-dotexpr }
 
-`class DotExpr internal constructor(val a: LineRef, val b: LineRef, val normalized: Boolean = true)`
+<code class="highlight"><span class="k">class</span> <span class="nc">DotExpr</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: LineRef` |  |
-| `val b: LineRef` |  |
-| `val normalized: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">LineRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">LineRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### GeometryTrace { #architecturalgeometry-kt-geometrytrace }
 
-`class GeometryTrace internal constructor(val target: PointRef, val expression: PointExpr)`
+<code class="highlight"><span class="k">class</span> <span class="nc">GeometryTrace</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">expression</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val target: PointRef` |  |
-| `val expression: PointExpr` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">expression</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
 
 ### PointBinding { #architecturalgeometry-kt-pointbinding }
 
-`class PointBinding internal constructor(val point: PointRef, val reader: () -> Vec3, val writer: (Vec3) -> Unit, val dragTolerance: Double, val dragWeight: Double?, internal val sourceIdentity: Int? = null)`
+<code class="highlight"><span class="k">class</span> <span class="nc">PointBinding</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">writer</span><span class="p">:</span> <span class="p">(</span><span class="nc">Vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">,</span> <span class="k">val</span> <span class="n">dragTolerance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">sourceIdentity</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val point: PointRef` |  |
-| `val reader: () -> Vec3` |  |
-| `val writer: (Vec3) -> Unit` |  |
-| `val dragTolerance: Double` |  |
-| `val dragWeight: Double?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reader</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">writer</span><span class="p">:</span> <span class="p">(</span><span class="nc">Vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
 
 ### GeometryModel { #architecturalgeometry-kt-geometrymodel }
 
-`class GeometryModel internal constructor(val pointNames: List<String?>, private val initialValues: DoubleArray, val program: CeresProgram, internal val traces: List<GeometryTrace>, internal val bindings: List<PointBinding>)`
+<code class="highlight"><span class="k">class</span> <span class="nc">GeometryModel</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">pointNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">initialValues</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">traces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GeometryTrace</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">bindings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointBinding</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointNames: List<String?>` |  |
-| `val program: CeresProgram` |  |
-| `val pointCount: Int` |  |
-| `fun initialPointCloud(): PointCloud` |  |
-| `fun mutablePoints(): MutablePointCloud` |  |
-| `fun openSession(backend: CeresSolverBackend = FfmCeresBackend(), baselinePrior: Double = 1e-6, metricCapacity: Int = 128, policy: InteractionPolicy = InteractionPolicy(preserveWeight = baselinePrior, releaseWeight = baselinePrior, metricCapacity = metricCapacity)): GeometrySolveSession` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">initialPointCloud</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mutablePoints</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">MutablePointCloud</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">openSession</span><span class="p">(</span><span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span> <span class="o">=</span> <span class="nc">FfmCeresBackend</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">baselinePrior</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">metricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span> <span class="o">=</span> <span class="nc">InteractionPolicy</span><span class="p">(</span><span class="n">preserveWeight</span> <span class="o">=</span> <span class="n">baselinePrior</span><span class="p">,</span> <span class="n">releaseWeight</span> <span class="o">=</span> <span class="n">baselinePrior</span><span class="p">,</span> <span class="n">metricCapacity</span> <span class="o">=</span> <span class="n">metricCapacity</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometrySolveSession</span></code> |  |
 
 ### GeometryModelScope { #architecturalgeometry-kt-geometrymodelscope }
 
-`class GeometryModelScope`
+<code class="highlight"><span class="k">class</span> <span class="nc">GeometryModelScope</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun point(name: String, x: Double, y: Double, z: Double): PointRef` |  |
-| `fun point(name: String, value: Vector3fc): PointRef` |  |
-| `fun point(value: Vector3fc, name: String? = null): PointRef` |  |
-| `val Vector3fc.c: PointRef` |  |
-| `val Vector3f.point: PointRef` |  |
-| `fun point(name: String, reader: () -> Vec3, writer: (Vec3) -> Unit = {}, dragTolerance: Double = 1e-5, dragWeight: Double? = null): PointRef` |  |
-| `fun bindPoint(name: String? = null, reader: () -> Vec3, writer: (Vec3) -> Unit = {}, dragTolerance: Double = 1e-5, dragWeight: Double? = null, sourceIdentity: Int? = null): PointRef` |  |
-| `fun bindPoint(name: String? = null, value: Vector3f, dragTolerance: Double = 1e-5, dragWeight: Double? = null): PointRef` |  |
-| `fun point(x: Double, y: Double, z: Double, name: String? = null): PointRef` |  |
-| `fun line(a: PointRef, b: PointRef, name: String? = null): LineRef` |  |
-| `fun line(a: Vector3fc, b: Vector3fc, name: String? = null): LineRef` |  |
-| `fun line(a: PointRef, b: Vector3fc, name: String? = null): LineRef` |  |
-| `fun line(a: Vector3fc, b: PointRef, name: String? = null): LineRef` |  |
-| `infix fun PointRef.lineTo(other: PointRef): LineRef` |  |
-| `infix fun PointRef.lineTo(other: Vector3fc): LineRef` |  |
-| `infix fun Vector3fc.lineTo(other: PointRef): LineRef` |  |
-| `infix fun Vector3fc.lineTo(other: Vector3fc): LineRef` |  |
-| `fun plane(a: PointRef, b: PointRef, c: PointRef, name: String? = null): PlaneRef` |  |
-| `fun plane(a: Vector3fc, b: Vector3fc, c: Vector3fc, name: String? = null): PlaneRef` |  |
-| `fun plane(a: PointRef, b: Vector3fc, c: Vector3fc, name: String? = null): PlaneRef` |  |
-| `fun plane(a: Vector3fc, b: PointRef, c: Vector3fc, name: String? = null): PlaneRef` |  |
-| `fun plane(a: Vector3fc, b: Vector3fc, c: PointRef, name: String? = null): PlaneRef` |  |
-| `fun panel(a: PointRef, b: PointRef, c: PointRef, d: PointRef, name: String? = null): PanelRef` |  |
-| `fun panel(a: Vector3fc, b: Vector3fc, c: Vector3fc, d: Vector3fc, name: String? = null): PanelRef` |  |
-| `fun constraints(block: ConstraintScope.() -> Unit)` |  |
-| `fun defaultInteractionPriors(weight: Double = 1e-6)` |  |
-| `fun noDefaultInteractionPriors()` |  |
-| `fun build(): GeometryModel` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Vector3fc</span><span class="p">.</span><span class="n">c</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Vector3f</span><span class="p">.</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">reader</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">writer</span><span class="p">:</span> <span class="p">(</span><span class="nc">Vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">,</span> <span class="n">dragTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">bindPoint</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">reader</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">writer</span><span class="p">:</span> <span class="p">(</span><span class="nc">Vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">,</span> <span class="n">dragTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">sourceIdentity</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">bindPoint</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="p">,</span> <span class="n">dragTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">line</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+3 overloads · also PointRef</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">Vector3fc</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">plane</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PlaneRef</span></code><span class="sig-overloads">+4 overloads · also PointRef</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">panel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PanelRef</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">constraints</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">ConstraintScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">defaultInteractionPriors</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">noDefaultInteractionPriors</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">GeometryModel</span></code> |  |
 
 ### ConstraintScope { #architecturalgeometry-kt-constraintscope }
 
-`class ConstraintScope internal constructor(private val model: GeometryModelScope)`
+<code class="highlight"><span class="k">class</span> <span class="nc">ConstraintScope</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">model</span><span class="p">:</span> <span class="nc">GeometryModelScope</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun add(constraint: GeometryConstraint)` |  |
-| `val Vector3fc.c: PointRef` |  |
-| `val Vector3f.point: PointRef` |  |
-| `fun point(value: Vector3fc, name: String? = null): PointRef` |  |
-| `fun line(a: PointRef, b: PointRef, name: String? = null): LineRef` |  |
-| `fun line(a: Vector3fc, b: Vector3fc, name: String? = null): LineRef` |  |
-| `fun line(a: PointRef, b: Vector3fc, name: String? = null): LineRef` |  |
-| `fun line(a: Vector3fc, b: PointRef, name: String? = null): LineRef` |  |
-| `infix fun PointRef.lineTo(other: PointRef): LineRef` |  |
-| `infix fun PointRef.lineTo(other: Vector3fc): LineRef` |  |
-| `infix fun Vector3fc.lineTo(other: PointRef): LineRef` |  |
-| `infix fun Vector3fc.lineTo(other: Vector3fc): LineRef` |  |
-| `infix fun LineRef.dot(other: LineRef): DotExpr` |  |
-| `fun DotExpr.raw(): DotExpr` |  |
-| `operator fun PointRef.plus(other: PointRef): PointExpr` |  |
-| `operator fun PointRef.plus(other: PointExpr): PointExpr` |  |
-| `operator fun PointRef.minus(other: PointRef): PointExpr` |  |
-| `operator fun PointRef.minus(other: PointExpr): PointExpr` |  |
-| `operator fun PointRef.times(scale: Number): PointExpr` |  |
-| `operator fun Number.times(point: PointRef): PointExpr` |  |
-| `operator fun Number.times(expr: PointExpr): PointExpr` |  |
-| `infix fun DotExpr.ceq(target: Number)` |  |
-| `infix fun PointRef.ceq(other: PointRef)` |  |
-| `infix fun PointRef.ceq(other: Vector3fc)` |  |
-| `infix fun Vector3fc.ceq(other: PointRef)` |  |
-| `infix fun PointExpr.ceq(other: PointRef)` |  |
-| `infix fun PointExpr.ceq(other: Vector3fc)` |  |
-| `infix fun PointRef.ceq(other: PointExpr)` |  |
-| `fun weakAll(weight: Double = 1e-6)` |  |
-| `fun noNegativeZAll(weight: Double = 1.0)` |  |
-| `fun Iterable<PointRef>.planar(weight: Double = 1.0)` |  |
-| `fun PanelRef.planar(weight: Double = 1.0)` |  |
-| `fun PanelRef.area(target: Double, weight: Double = 1.0)` |  |
-| `fun PointRef.on(plane: PlaneRef, offset: Double = 0.0, weight: Double = 1.0)` |  |
-| `fun PointRef.inside(halfspace: PlaneRef, minSignedDistance: Double = 0.0, weight: Double = 1.0)` |  |
-| `fun PointRef.lock(axes: AxisSet = AxisSet.XYZ, weight: Double = 1e6)` |  |
-| `fun lock(points: Iterable<PointRef>, axes: AxisSet = AxisSet.XYZ, weight: Double = 1e6)` |  |
-| `fun PointRef.weak(axes: AxisSet = AxisSet.XYZ, weight: Double = 1e-6)` |  |
-| `fun LineRef.length(distance: Double, weight: Double = 1.0)` |  |
-| `fun LineRef.minLength(distance: Double, weight: Double = 1.0)` |  |
-| `fun LineRef.maxLength(distance: Double, weight: Double = 1.0)` |  |
-| `fun LineRef.sameLengthAs(other: LineRef, weight: Double = 1.0)` |  |
-| `fun LineRef.sameVectorAs(other: LineRef, weight: Double = 1.0)` |  |
-| `fun LineRef.parallelTo(other: LineRef, weight: Double = 1.0)` |  |
-| `fun LineRef.angleCosTo(other: LineRef, targetCos: Double, weight: Double = 1.0)` |  |
-| `fun LineRef.angleRadiansTo(other: LineRef, radians: Double, weight: Double = 1.0)` |  |
-| `fun LineRef.perpendicularTo(other: LineRef, weight: Double = 1.0)` |  |
-| `fun LineRef.direction(direction: Vec3, weight: Double = 1.0)` |  |
-| `fun LineRef.toward(point: PointRef, weight: Double = 1.0)` |  |
-| `fun LineRef.vanishesAt(point: PointRef, weight: Double = 1.0)` |  |
-| `fun PlaneRef.normal(direction: Vec3, targetCos: Double = 1.0, weight: Double = 1.0)` |  |
-| `fun dihedral(edge: LineRef, sideA: PointRef, sideB: PointRef, targetCos: Double, weight: Double = 1.0)` |  |
-| `fun mirror(point: PointRef, mirror: PointRef, across: PlaneRef, weight: Double = 1.0)` |  |
-| `fun same(points: Iterable<PointRef>, axes: AxisSet, weight: Double = 1.0)` |  |
-| `fun sameXYZ(a: PointRef, b: PointRef, weight: Double = 1.0)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">add</span><span class="p">(</span><span class="n">constraint</span><span class="p">:</span> <span class="nc">GeometryConstraint</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Vector3fc</span><span class="p">.</span><span class="n">c</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Vector3f</span><span class="p">.</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">line</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+3 overloads · also PointRef</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">Vector3fc</span><span class="p">.</span><span class="nf">lineTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span><span class="p">:</span> <span class="nc">LineRef</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">dot</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">DotExpr</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">DotExpr</span><span class="p">.</span><span class="nf">raw</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DotExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">plus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">minus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">expr</span><span class="p">:</span> <span class="nc">PointExpr</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointExpr</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">DotExpr</span><span class="p">.</span><span class="nf">ceq</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">ceq</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span></code><span class="sig-overloads">+2 overloads · also PointRef, PointExpr</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">Vector3fc</span><span class="p">.</span><span class="nf">ceq</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PointExpr</span><span class="p">.</span><span class="nf">ceq</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Vector3fc</span><span class="p">)</span></code><span class="sig-overloads">+1 overload · also PointRef</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">weakAll</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">noNegativeZAll</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">planar</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PanelRef</span><span class="p">.</span><span class="nf">planar</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PanelRef</span><span class="p">.</span><span class="nf">area</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">on</span><span class="p">(</span><span class="n">plane</span><span class="p">:</span> <span class="nc">PlaneRef</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">inside</span><span class="p">(</span><span class="n">halfspace</span><span class="p">:</span> <span class="nc">PlaneRef</span><span class="p">,</span> <span class="n">minSignedDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">lock</span><span class="p">(</span><span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span> <span class="o">=</span> <span class="nc">AxisSet</span><span class="p">.</span><span class="nc">XYZ</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lock</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span> <span class="o">=</span> <span class="nc">AxisSet</span><span class="p">.</span><span class="nc">XYZ</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointRef</span><span class="p">.</span><span class="nf">weak</span><span class="p">(</span><span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span> <span class="o">=</span> <span class="nc">AxisSet</span><span class="p">.</span><span class="nc">XYZ</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">length</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">minLength</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">maxLength</span><span class="p">(</span><span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">sameLengthAs</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">sameVectorAs</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">parallelTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">angleCosTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">angleRadiansTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">radians</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">perpendicularTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">direction</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">toward</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">LineRef</span><span class="p">.</span><span class="nf">vanishesAt</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PlaneRef</span><span class="p">.</span><span class="nf">normal</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">dihedral</span><span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">LineRef</span><span class="p">,</span> <span class="n">sideA</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">sideB</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mirror</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">mirror</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">across</span><span class="p">:</span> <span class="nc">PlaneRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">same</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sameXYZ</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
 
 ### GeometrySolveSession { #architecturalgeometry-kt-geometrysolvesession }
 
-`class GeometrySolveSession internal constructor(model: GeometryModel, backend: CeresSolverBackend, val policy: InteractionPolicy) : AutoCloseable`
+<code class="highlight"><span class="k">class</span> <span class="nc">GeometrySolveSession</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">GeometryModel</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span><span class="p">,</span> <span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val policy: InteractionPolicy` |  |
-| `var model: GeometryModel` |  |
-| `val points: MutablePointCloud` |  |
-| `val priors: MutablePriorWeights` |  |
-| `val report: MutableSolveReport` |  |
-| `val quickOptions: SolveOptions` |  |
-| `val metricOptions: SolveOptions` |  |
-| `fun solve(options: SolveOptions = quickOptions): Boolean` |  |
-| `fun solve(maxIterations: Int, metrics: Boolean = false): Boolean` |  |
-| `fun set(point: PointRef, value: Vec3)` |  |
-| `fun set(point: PointRef, x: Double, y: Double, z: Double)` |  |
-| `fun get(point: PointRef): Vec3` |  |
-| `fun drag(point: PointRef, policy: InteractionPolicy = this.policy): DragHandle` |  |
-| `fun drag(point: PointRef, target: Vec3, strength: Double = policy.dragWeight, options: SolveOptions = quickOptions): Boolean` |  |
-| `fun release(point: PointRef, weight: Double = policy.releaseWeight, options: SolveOptions = metricOptions): Boolean` |  |
-| `fun pin(point: PointRef, weight: Double = policy.pinnedWeight)` |  |
-| `fun unpin(point: PointRef, weight: Double = policy.preserveWeight)` |  |
-| `fun isPinned(point: PointRef): Boolean` |  |
-| `fun resetPriors(weight: Double = policy.preserveWeight)` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">model</span><span class="p">:</span> <span class="nc">GeometryModel</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">MutablePointCloud</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">priors</span><span class="p">:</span> <span class="nc">MutablePriorWeights</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">report</span><span class="p">:</span> <span class="nc">MutableSolveReport</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">quickOptions</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metricOptions</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">quickOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">drag</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span> <span class="o">=</span> <span class="kc">this</span><span class="p">.</span><span class="n">policy</span><span class="p">)</span><span class="p">:</span> <span class="nc">DragHandle</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">drag</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">dragWeight</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">quickOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">releaseWeight</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">metricOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pin</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">pinnedWeight</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">unpin</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">preserveWeight</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isPinned</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resetPriors</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">preserveWeight</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### DragHandle { #architecturalgeometry-kt-draghandle }
 
-`class DragHandle internal constructor(private val session: GeometrySolveSession, val point: PointRef, val policy: InteractionPolicy) : AutoCloseable`
+<code class="highlight"><span class="k">class</span> <span class="nc">DragHandle</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">GeometrySolveSession</span><span class="p">,</span> <span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val point: PointRef` |  |
-| `val policy: InteractionPolicy` |  |
-| `fun to(target: Vec3, solve: Boolean = true): Boolean` |  |
-| `fun to(x: Double, y: Double, z: Double, solve: Boolean = true): Boolean` |  |
-| `fun settle(options: SolveOptions = policy.dragOptions): Boolean` |  |
-| `fun release(options: SolveOptions = policy.releaseOptions): Boolean` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointRef</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">to</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">solve</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">to</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">solve</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">settle</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">dragOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">release</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">releaseOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### LivePointMove { #architecturalgeometry-kt-livepointmove }
 
-`class LivePointMove internal constructor(val binding: PointBinding, val previous: Vec3, val read: Vec3, val distance: Double, val explicit: Boolean)`
+<code class="highlight"><span class="k">class</span> <span class="nc">LivePointMove</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">binding</span><span class="p">:</span> <span class="nc">PointBinding</span><span class="p">,</span> <span class="k">val</span> <span class="n">previous</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">read</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">explicit</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val binding: PointBinding` |  |
-| `val previous: Vec3` |  |
-| `val read: Vec3` |  |
-| `val distance: Double` |  |
-| `val explicit: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">binding</span><span class="p">:</span> <span class="nc">PointBinding</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">previous</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">read</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">explicit</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### LiveGeometryStep { #architecturalgeometry-kt-livegeometrystep }
 
-`class LiveGeometryStep internal constructor(val ok: Boolean, val rebuilt: Boolean, val moved: List<LivePointMove>, val pointCount: Int, val programHash: UInt, val report: MutableSolveReport)`
+<code class="highlight"><span class="k">class</span> <span class="nc">LiveGeometryStep</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">rebuilt</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">moved</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LivePointMove</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">programHash</span><span class="p">:</span> <span class="nc">UInt</span><span class="p">,</span> <span class="k">val</span> <span class="n">report</span><span class="p">:</span> <span class="nc">MutableSolveReport</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val ok: Boolean` |  |
-| `val rebuilt: Boolean` |  |
-| `val moved: List<LivePointMove>` |  |
-| `val pointCount: Int` |  |
-| `val programHash: UInt` |  |
-| `val report: MutableSolveReport` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rebuilt</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">moved</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">LivePointMove</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">programHash</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">report</span><span class="p">:</span> <span class="nc">MutableSolveReport</span></code> |  |
 
 ### LiveGeometryProgram { #architecturalgeometry-kt-livegeometryprogram }
 
-`class LiveGeometryProgram(private val backend: CeresSolverBackend = FfmCeresBackend(), private val policy: InteractionPolicy = InteractionPolicy(), private val block: GeometryModelScope.() -> Unit) : AutoCloseable`
+<code class="highlight"><span class="k">class</span> <span class="nf">LiveGeometryProgram</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span> <span class="o">=</span> <span class="nc">FfmCeresBackend</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">policy</span><span class="p">:</span> <span class="nc">InteractionPolicy</span> <span class="o">=</span> <span class="nc">InteractionPolicy</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GeometryModelScope</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val currentSession: GeometrySolveSession?` |  |
-| `fun step(options: SolveOptions? = null, dragged: Iterable<PointRef> = emptyList(), draggedVectors: Iterable<Vector3f> = emptyList()): LiveGeometryStep` |  |
-| `fun step(dragged: PointRef, vararg moreDragged: PointRef, options: SolveOptions? = null): LiveGeometryStep` |  |
-| `fun step(dragged: Vector3f, vararg moreDragged: Vector3f, options: SolveOptions? = null): LiveGeometryStep` |  |
-| `fun polishLocked(locked: Iterable<PointRef> = emptyList(), lockedVectors: Iterable<Vector3f> = emptyList(), weight: Double = policy.pinnedWeight, options: SolveOptions = policy.settleOptions): LiveGeometryStep` |  |
-| `fun polishLocked(locked: PointRef, vararg moreLocked: PointRef, weight: Double = policy.pinnedWeight, options: SolveOptions = policy.settleOptions): LiveGeometryStep` |  |
-| `fun polishLocked(locked: Vector3f, vararg moreLocked: Vector3f, weight: Double = policy.pinnedWeight, options: SolveOptions = policy.settleOptions): LiveGeometryStep` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">currentSession</span><span class="p">:</span> <span class="nc">GeometrySolveSession</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dragged</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">draggedVectors</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">Vector3f</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">LiveGeometryStep</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dragged</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">moreDragged</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">LiveGeometryStep</span></code><span class="sig-overloads">+1 overload · also Vector3f</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">polishLocked</span><span class="p">(</span><span class="n">locked</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">PointRef</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">lockedVectors</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">Vector3f</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">pinnedWeight</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">settleOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">LiveGeometryStep</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">polishLocked</span><span class="p">(</span><span class="n">locked</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">moreLocked</span><span class="p">:</span> <span class="nc">PointRef</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">pinnedWeight</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="n">policy</span><span class="p">.</span><span class="n">settleOptions</span><span class="p">)</span><span class="p">:</span> <span class="nc">LiveGeometryStep</span></code><span class="sig-overloads">+1 overload · also Vector3f</span> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ## CeresGeometry.kt { #ceresgeometry-kt }
 
@@ -392,519 +382,519 @@ may only be used alone and only where a constraint allows it.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun buildCeresProgram(block: CeresProgramBuilder.() -> Unit): CeresProgram` |  |
-| `fun metricMap(groupCosts: DoubleArray): SolveMetrics` |  |
-| `fun fnv1a64BitDoubles(values: DoubleArray): UInt` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">buildCeresProgram</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">CeresProgramBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">CeresProgram</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">metricMap</span><span class="p">(</span><span class="n">groupCosts</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">SolveMetrics</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fnv1a64BitDoubles</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
 
 ### PointId { #ceresgeometry-kt-pointid }
 
-`value class PointId(val value: Int)`
+<code class="highlight"><span class="k">value</span> <span class="k">class</span> <span class="nf">PointId</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 ### Vec3 { #ceresgeometry-kt-vec3 }
 
-`data class Vec3(val x: Double, val y: Double, val z: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Vec3</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 ### Axis { #ceresgeometry-kt-axis }
 
-`enum class Axis`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Axis</span></code>
 
 Constants: `X`, `Y`, `Z`.
 
 ### AxisSet { #ceresgeometry-kt-axisset }
 
-`enum class AxisSet`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AxisSet</span></code>
 
 Constants: `X`, `Y`, `Z`, `XY`, `XZ`, `YZ`, `XYZ`.
 
 ### CeresFeature { #ceresgeometry-kt-ceresfeature }
 
-`enum class CeresFeature`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CeresFeature</span></code>
 
 Constants: `LegacyWasmBytecode`, `DotProduct`, `VectorDotProduct`, `NativeGeometry`.
 
 ### CeresOpcode { #ceresgeometry-kt-ceresopcode }
 
-`enum class CeresOpcode(val code: Int, val metricName: String)`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">CeresOpcode</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, `SameXZ`, `SameYZ`, `PerpendicularAtOrigin`, `LockX`, `LockY`, `LockZ`, `LockXY`, `LockXZ`, `LockYZ`, `Prior3`, `PriorX`, `PriorY`, `PriorZ`, `MinDistance`, `EqualDistance`, `MaxDistance`, `NoNegativeZ`, `DotAtOrigin`, `VectorDot`, `PointOnPlane`, `LineParallel`, `LineAngle`, `DihedralAngle`, `EqualEdgeVector`, `MirrorAcrossPlane`, `PanelArea`, `PointInHalfspace`, `LineDirection`, `PlaneNormalDirection`, `LineTowardPoint`.
 
 ### GeometryConstraint { #ceresgeometry-kt-geometryconstraint }
 
-`sealed interface GeometryConstraint`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val weight: Double` |  |
-| `val requiredFeature: CeresFeature` |  |
-| `fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requiredFeature</span><span class="p">:</span> <span class="nc">CeresFeature</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Planar { #ceresgeometry-kt-planar }
 
-`data class Planar(val points: List<PointId>, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Planar</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointId>` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Colinear { #ceresgeometry-kt-colinear }
 
-`data class Colinear(val lineA: PointId, val lineB: PointId, val points: List<PointId>, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Colinear</span><span class="p">(</span><span class="k">val</span> <span class="n">lineA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">lineB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val lineA: PointId` |  |
-| `val lineB: PointId` |  |
-| `val points: List<PointId>` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceEquals { #ceresgeometry-kt-distanceequals }
 
-`data class DistanceEquals(val a: PointId, val b: PointId, val distance: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DistanceEquals</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val distance: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceAtLeast { #ceresgeometry-kt-distanceatleast }
 
-`data class DistanceAtLeast(val a: PointId, val b: PointId, val minimum: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DistanceAtLeast</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val minimum: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceAtMost { #ceresgeometry-kt-distanceatmost }
 
-`data class DistanceAtMost(val a: PointId, val b: PointId, val maximum: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DistanceAtMost</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val maximum: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### EqualDistance { #ceresgeometry-kt-equaldistance }
 
-`data class EqualDistance(val a: PointId, val b: PointId, val c: PointId, val d: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EqualDistance</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val c: PointId` |  |
-| `val d: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### SameCoordinate { #ceresgeometry-kt-samecoordinate }
 
-`data class SameCoordinate(val points: List<PointId>, val axes: AxisSet, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SameCoordinate</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointId>` |  |
-| `val axes: AxisSet` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Perpendicular { #ceresgeometry-kt-perpendicular }
 
-`data class Perpendicular(val origin: PointId, val a: PointId, val b: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Perpendicular</span><span class="p">(</span><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val origin: PointId` |  |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LockPosition { #ceresgeometry-kt-lockposition }
 
-`data class LockPosition(val points: List<PointId>, val axes: AxisSet, override val weight: Double = 1e6) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LockPosition</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e6</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointId>` |  |
-| `val axes: AxisSet` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### WeakPosition { #ceresgeometry-kt-weakposition }
 
-`data class WeakPosition(val points: List<PointId>, val axes: AxisSet = AxisSet.XYZ, override val weight: Double = 1e-6) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WeakPosition</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span> <span class="o">=</span> <span class="nc">AxisSet</span><span class="p">.</span><span class="nc">XYZ</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointId>` |  |
-| `val axes: AxisSet` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### NoNegativeZ { #ceresgeometry-kt-nonegativez }
 
-`data class NoNegativeZ(val points: List<PointId>, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NoNegativeZ</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: List<PointId>` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DotAtOrigin { #ceresgeometry-kt-dotatorigin }
 
-`data class DotAtOrigin(val origin: PointId, val a: PointId, val b: PointId, val target: Double = 0.0, val normalized: Boolean = true, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DotAtOrigin</span><span class="p">(</span><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val origin: PointId` |  |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val target: Double` |  |
-| `val normalized: Boolean` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### VectorDot { #ceresgeometry-kt-vectordot }
 
-`data class VectorDot(val a0: PointId, val a1: PointId, val b0: PointId, val b1: PointId, val target: Double = 0.0, val normalized: Boolean = true, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VectorDot</span><span class="p">(</span><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a0: PointId` |  |
-| `val a1: PointId` |  |
-| `val b0: PointId` |  |
-| `val b1: PointId` |  |
-| `val target: Double` |  |
-| `val normalized: Boolean` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PointOnPlane { #ceresgeometry-kt-pointonplane }
 
-`data class PointOnPlane(val point: PointId, val planeA: PointId, val planeB: PointId, val planeC: PointId, val offset: Double = 0.0, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PointOnPlane</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val point: PointId` |  |
-| `val planeA: PointId` |  |
-| `val planeB: PointId` |  |
-| `val planeC: PointId` |  |
-| `val offset: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineParallel { #ceresgeometry-kt-lineparallel }
 
-`data class LineParallel(val a0: PointId, val a1: PointId, val b0: PointId, val b1: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LineParallel</span><span class="p">(</span><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a0: PointId` |  |
-| `val a1: PointId` |  |
-| `val b0: PointId` |  |
-| `val b1: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineAngle { #ceresgeometry-kt-lineangle }
 
-`data class LineAngle(val a0: PointId, val a1: PointId, val b0: PointId, val b1: PointId, val targetCos: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LineAngle</span><span class="p">(</span><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a0: PointId` |  |
-| `val a1: PointId` |  |
-| `val b0: PointId` |  |
-| `val b1: PointId` |  |
-| `val targetCos: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DihedralAngle { #ceresgeometry-kt-dihedralangle }
 
-`data class DihedralAngle(val edgeA: PointId, val edgeB: PointId, val sideA: PointId, val sideB: PointId, val targetCos: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DihedralAngle</span><span class="p">(</span><span class="k">val</span> <span class="n">edgeA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">sideA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">sideB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val edgeA: PointId` |  |
-| `val edgeB: PointId` |  |
-| `val sideA: PointId` |  |
-| `val sideB: PointId` |  |
-| `val targetCos: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sideA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sideB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### EqualEdgeVector { #ceresgeometry-kt-equaledgevector }
 
-`data class EqualEdgeVector(val a: PointId, val b: PointId, val c: PointId, val d: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EqualEdgeVector</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val c: PointId` |  |
-| `val d: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### MirrorAcrossPlane { #ceresgeometry-kt-mirroracrossplane }
 
-`data class MirrorAcrossPlane(val point: PointId, val mirror: PointId, val planeA: PointId, val planeB: PointId, val planeC: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MirrorAcrossPlane</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">mirror</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val point: PointId` |  |
-| `val mirror: PointId` |  |
-| `val planeA: PointId` |  |
-| `val planeB: PointId` |  |
-| `val planeC: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">mirror</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PanelArea { #ceresgeometry-kt-panelarea }
 
-`data class PanelArea(val a: PointId, val b: PointId, val c: PointId, val d: PointId, val targetArea: Double, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PanelArea</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetArea</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val c: PointId` |  |
-| `val d: PointId` |  |
-| `val targetArea: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetArea</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PointInHalfspace { #ceresgeometry-kt-pointinhalfspace }
 
-`data class PointInHalfspace(val point: PointId, val planeA: PointId, val planeB: PointId, val planeC: PointId, val minSignedDistance: Double = 0.0, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PointInHalfspace</span><span class="p">(</span><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">minSignedDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val point: PointId` |  |
-| `val planeA: PointId` |  |
-| `val planeB: PointId` |  |
-| `val planeC: PointId` |  |
-| `val minSignedDistance: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minSignedDistance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineDirection { #ceresgeometry-kt-linedirection }
 
-`data class LineDirection(val a: PointId, val b: PointId, val direction: Vec3, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LineDirection</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val direction: Vec3` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PlaneNormalDirection { #ceresgeometry-kt-planenormaldirection }
 
-`data class PlaneNormalDirection(val a: PointId, val b: PointId, val c: PointId, val normal: Vec3, val targetCos: Double = 1.0, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlaneNormalDirection</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val c: PointId` |  |
-| `val normal: Vec3` |  |
-| `val targetCos: Double` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineTowardPoint { #ceresgeometry-kt-linetowardpoint }
 
-`data class LineTowardPoint(val a: PointId, val b: PointId, val target: PointId, override val weight: Double = 1.0) : GeometryConstraint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LineTowardPoint</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GeometryConstraint</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val a: PointId` |  |
-| `val b: PointId` |  |
-| `val target: PointId` |  |
-| `override val weight: Double` |  |
-| `override val requiredFeature` |  |
-| `override fun encodeLegacy(out: MutableList<Double>)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### CeresProgramBuilder { #ceresgeometry-kt-ceresprogrambuilder }
 
-`class CeresProgramBuilder`
+<code class="highlight"><span class="k">class</span> <span class="nc">CeresProgramBuilder</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun add(constraint: GeometryConstraint): CeresProgramBuilder` |  |
-| `fun planar(vararg points: Int, weight: Double = 1.0)` |  |
-| `fun colinear(lineA: Int, lineB: Int, vararg points: Int, weight: Double = 1.0)` |  |
-| `fun colinear(points: List<Int>, weight: Double = 1.0): CeresProgramBuilder` |  |
-| `fun distance(a: Int, b: Int, distance: Double, weight: Double = 1.0)` |  |
-| `fun minDistance(a: Int, b: Int, minimum: Double, weight: Double = 1.0)` |  |
-| `fun maxDistance(a: Int, b: Int, maximum: Double, weight: Double = 1.0)` |  |
-| `fun equalDistance(a: Int, b: Int, c: Int, d: Int, weight: Double = 1.0)` |  |
-| `fun same(points: List<Int>, axes: AxisSet, weight: Double = 1.0)` |  |
-| `fun perpendicular(origin: Int, a: Int, b: Int, weight: Double = 1.0)` |  |
-| `fun dotAtOrigin(origin: Int, a: Int, b: Int, target: Double = 0.0, normalized: Boolean = true, weight: Double = 1.0)` |  |
-| `fun vectorDot(a0: Int, a1: Int, b0: Int, b1: Int, target: Double = 0.0, normalized: Boolean = true, weight: Double = 1.0)` |  |
-| `fun pointOnPlane(point: Int, planeA: Int, planeB: Int, planeC: Int, offset: Double = 0.0, weight: Double = 1.0)` |  |
-| `fun lineParallel(a0: Int, a1: Int, b0: Int, b1: Int, weight: Double = 1.0)` |  |
-| `fun lineAngle(a0: Int, a1: Int, b0: Int, b1: Int, targetCos: Double, weight: Double = 1.0)` |  |
-| `fun dihedralAngle(edgeA: Int, edgeB: Int, sideA: Int, sideB: Int, targetCos: Double, weight: Double = 1.0)` |  |
-| `fun equalEdgeVector(a: Int, b: Int, c: Int, d: Int, weight: Double = 1.0)` |  |
-| `fun mirrorAcrossPlane(point: Int, mirror: Int, planeA: Int, planeB: Int, planeC: Int, weight: Double = 1.0)` |  |
-| `fun panelArea(a: Int, b: Int, c: Int, d: Int, targetArea: Double, weight: Double = 1.0)` |  |
-| `fun pointInHalfspace(point: Int, planeA: Int, planeB: Int, planeC: Int, minSignedDistance: Double = 0.0, weight: Double = 1.0)` |  |
-| `fun lineDirection(a: Int, b: Int, direction: Vec3, weight: Double = 1.0)` |  |
-| `fun planeNormalDirection(a: Int, b: Int, c: Int, normal: Vec3, targetCos: Double = 1.0, weight: Double = 1.0)` |  |
-| `fun lineTowardPoint(a: Int, b: Int, target: Int, weight: Double = 1.0)` |  |
-| `fun lock(points: List<Int>, axes: AxisSet, weight: Double = 1e6)` |  |
-| `fun weak(points: List<Int>, axes: AxisSet = AxisSet.XYZ, weight: Double = 1e-6)` |  |
-| `fun weakAll(weight: Double = 1e-6)` |  |
-| `fun noNegativeZ(points: List<Int>, weight: Double = 1.0)` |  |
-| `fun noNegativeZAll(weight: Double = 1.0)` |  |
-| `fun build(): CeresProgram` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">add</span><span class="p">(</span><span class="n">constraint</span><span class="p">:</span> <span class="nc">GeometryConstraint</span><span class="p">)</span><span class="p">:</span> <span class="nc">CeresProgramBuilder</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">planar</span><span class="p">(</span><span class="k">vararg</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">colinear</span><span class="p">(</span><span class="n">lineA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">lineB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">colinear</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">CeresProgramBuilder</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">distance</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">minDistance</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">maxDistance</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">equalDistance</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">same</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">perpendicular</span><span class="p">(</span><span class="n">origin</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">dotAtOrigin</span><span class="p">(</span><span class="n">origin</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vectorDot</span><span class="p">(</span><span class="n">a0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointOnPlane</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lineParallel</span><span class="p">(</span><span class="n">a0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lineAngle</span><span class="p">(</span><span class="n">a0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">dihedralAngle</span><span class="p">(</span><span class="n">edgeA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">edgeB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">sideA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">sideB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">equalEdgeVector</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mirrorAcrossPlane</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">mirror</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">panelArea</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">targetArea</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointInHalfspace</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeA</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">minSignedDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lineDirection</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">planeNormalDirection</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lineTowardPoint</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">lock</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">weak</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span> <span class="o">=</span> <span class="nc">AxisSet</span><span class="p">.</span><span class="nc">XYZ</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">weakAll</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">noNegativeZ</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">noNegativeZAll</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CeresProgram</span></code> |  |
 
 ### CeresProgram { #ceresgeometry-kt-ceresprogram }
 
-`data class CeresProgram(val constraints: List<GeometryConstraint>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CeresProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GeometryConstraint</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val requiredFeatures: Set<CeresFeature>` |  |
-| `fun encodeLegacyBytecode(): DoubleArray` |  |
-| `fun legacyHash(): UInt` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requiredFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">encodeLegacyBytecode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">legacyHash</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
 
 ### PointCloud { #ceresgeometry-kt-pointcloud }
 
-`data class PointCloud(val values: DoubleArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PointCloud</span><span class="p">(</span><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `operator fun get(index: Int): Vec3` |  |
-| `fun withPoint(index: Int, value: Vec3): PointCloud` |  |
-| `fun copyValues(): DoubleArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withPoint</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### DynamicPriorWeights { #ceresgeometry-kt-dynamicpriorweights }
 
-`data class DynamicPriorWeights(val values: DoubleArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynamicPriorWeights</span><span class="p">(</span><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `fun copyValues(): DoubleArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyValues</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### SolveOptions { #ceresgeometry-kt-solveoptions }
 
-`data class SolveOptions(val maxIterations: Int = 8, val metrics: Boolean = false, val metricGroupCapacity: Int = 64)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricGroupCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val maxIterations: Int` |  |
-| `val metrics: Boolean` |  |
-| `val metricGroupCapacity: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metricGroupCapacity</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### SolveRequest { #ceresgeometry-kt-solverequest }
 
-`data class SolveRequest(val points: PointCloud, val program: CeresProgram, val dynamicPriorWeights: DynamicPriorWeights? = null, val options: SolveOptions = SolveOptions())`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">dynamicPriorWeights</span><span class="p">:</span> <span class="nc">DynamicPriorWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nc">SolveOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: PointCloud` |  |
-| `val program: CeresProgram` |  |
-| `val dynamicPriorWeights: DynamicPriorWeights?` |  |
-| `val options: SolveOptions` |  |
-| `val legacyBytecode: DoubleArray by lazy` |  |
-| `val legacyHash: UInt by lazy` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dynamicPriorWeights</span><span class="p">:</span> <span class="nc">DynamicPriorWeights</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">legacyBytecode</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="k">by</span> <span class="n">lazy</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">legacyHash</span><span class="p">:</span> <span class="nc">UInt</span> <span class="k">by</span> <span class="n">lazy</span></code> |  |
 
 ### SolveMetrics { #ceresgeometry-kt-solvemetrics }
 
-`data class SolveMetrics(val totalCost: Double?, val byOpcode: Map<CeresOpcode, Double>, val rawByOpcode: Map<Int, Double>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveMetrics</span><span class="p">(</span><span class="k">val</span> <span class="n">totalCost</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">byOpcode</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">CeresOpcode</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">rawByOpcode</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val totalCost: Double?` |  |
-| `val byOpcode: Map<CeresOpcode, Double>` |  |
-| `val rawByOpcode: Map<Int, Double>` |  |
-| `fun top(limit: Int = 5): List<Pair<String, Double>>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">totalCost</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">byOpcode</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">CeresOpcode</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rawByOpcode</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">top</span><span class="p">(</span><span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
 
 ### SolveResult { #ceresgeometry-kt-solveresult }
 
-`data class SolveResult(val ok: Boolean, val points: PointCloud, val metrics: SolveMetrics? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">SolveMetrics</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val ok: Boolean` |  |
-| `val points: PointCloud` |  |
-| `val metrics: SolveMetrics?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">SolveMetrics</span><span class="o">?</span></code> |  |
 
 ### CompiledCeresSolver { #ceresgeometry-kt-compiledceressolver }
 
-`interface CompiledCeresSolver : AutoCloseable`
+<code class="highlight"><span class="k">interface</span> <span class="nc">CompiledCeresSolver</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `val programHash: UInt` |  |
-| `val supportedFeatures: Set<CeresFeature>` |  |
-| `fun solve(points: PointCloud, dynamicPriorWeights: DynamicPriorWeights? = null, options: SolveOptions = SolveOptions()): SolveResult` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">programHash</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">supportedFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">dynamicPriorWeights</span><span class="p">:</span> <span class="nc">DynamicPriorWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nc">SolveOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">SolveResult</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### CeresSolverBackend { #ceresgeometry-kt-ceressolverbackend }
 
-`interface CeresSolverBackend`
+<code class="highlight"><span class="k">interface</span> <span class="nc">CeresSolverBackend</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val supportedFeatures: Set<CeresFeature>` |  |
-| `fun compile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">supportedFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code> |  |
 
 ### CachedCeresSolvers { #ceresgeometry-kt-cachedceressolvers }
 
-`class CachedCeresSolvers(private val backend: CeresSolverBackend, private val maxEntries: Int = 32) : AutoCloseable`
+<code class="highlight"><span class="k">class</span> <span class="nf">CachedCeresSolvers</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">maxEntries</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoCloseable</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun solve(request: SolveRequest): SolveResult` |  |
-| `fun getOrCompile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">SolveRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">SolveResult</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">getOrCompile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ## InteractiveSolving.kt { #interactivesolving-kt }
 
@@ -928,76 +918,76 @@ asks for.
 
 ### InteractionPolicy { #interactivesolving-kt-interactionpolicy }
 
-`data class InteractionPolicy(val preserveWeight: Double = 1e-2, val dragWeight: Double = 1e3, val releaseWeight: Double = preserveWeight, val pinnedWeight: Double = 1e8, val dragIterations: Int = 8, val settleIterations: Int = 24, val metricCapacity: Int = 128, val metricsDuringDrag: Boolean = false, val metricsOnRelease: Boolean = true)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InteractionPolicy</span><span class="p">(</span><span class="k">val</span> <span class="n">preserveWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">2</span><span class="p">,</span> <span class="k">val</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e3</span><span class="p">,</span> <span class="k">val</span> <span class="n">releaseWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">preserveWeight</span><span class="p">,</span> <span class="k">val</span> <span class="n">pinnedWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e8</span><span class="p">,</span> <span class="k">val</span> <span class="n">dragIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">settleIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricsDuringDrag</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricsOnRelease</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val preserveWeight: Double` |  |
-| `val dragWeight: Double` |  |
-| `val releaseWeight: Double` |  |
-| `val pinnedWeight: Double` |  |
-| `val dragIterations: Int` |  |
-| `val settleIterations: Int` |  |
-| `val metricCapacity: Int` |  |
-| `val metricsDuringDrag: Boolean` |  |
-| `val metricsOnRelease: Boolean` |  |
-| `val dragOptions: SolveOptions` |  |
-| `val releaseOptions: SolveOptions` |  |
-| `val settleOptions: SolveOptions` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">preserveWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">releaseWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pinnedWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">settleIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metricCapacity</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metricsDuringDrag</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metricsOnRelease</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dragOptions</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">releaseOptions</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">settleOptions</span><span class="p">:</span> <span class="nc">SolveOptions</span></code> |  |
 
 ### MutablePointCloud { #interactivesolving-kt-mutablepointcloud }
 
-`class MutablePointCloud(val values: DoubleArray, val names: List<String?> = List(values.size / 3) { null })`
+<code class="highlight"><span class="k">class</span> <span class="nf">MutablePointCloud</span><span class="p">(</span><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">List</span><span class="p">(</span><span class="n">values</span><span class="p">.</span><span class="n">size</span> <span class="p">/</span> <span class="mi">3</span><span class="p">)</span> <span class="p">{</span> <span class="kc">null</span> <span class="p">}</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val values: DoubleArray` |  |
-| `val names: List<String?>` |  |
-| `val pointCount: Int` |  |
-| `fun x(point: PointId): Double` |  |
-| `fun y(point: PointId): Double` |  |
-| `fun z(point: PointId): Double` |  |
-| `fun get(point: PointId): Vec3` |  |
-| `fun set(point: PointId, x: Double, y: Double, z: Double)` |  |
-| `fun set(point: PointId, value: Vec3)` |  |
-| `fun copyPoint(from: PointId, into: DoubleArray, offset: Int)` |  |
-| `fun setPointFrom(point: PointId, source: DoubleArray, offset: Int)` |  |
-| `fun copyFrom(points: PointCloud)` |  |
-| `fun snapshot(): PointCloud` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">names</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">x</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">y</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">z</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyPoint</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">setPointFrom</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyFrom</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">snapshot</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
 
 ### MutablePriorWeights { #interactivesolving-kt-mutablepriorweights }
 
-`class MutablePriorWeights private constructor(val values: DoubleArray)`
+<code class="highlight"><span class="k">class</span> <span class="nc">MutablePriorWeights</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `fun fill(weight: Double)` |  |
-| `fun set(point: PointId, x: Double, y: Double, z: Double)` |  |
-| `fun set(point: PointId, weight: Double)` |  |
-| `fun asImmutable(): DynamicPriorWeights` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fill</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">PointId</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asImmutable</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynamicPriorWeights</span></code> |  |
 
 ### MutableSolveReport { #interactivesolving-kt-mutablesolvereport }
 
-`class MutableSolveReport(groupCapacity: Int = 64)`
+<code class="highlight"><span class="k">class</span> <span class="nf">MutableSolveReport</span><span class="p">(</span><span class="n">groupCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var ok: Boolean` |  |
-| `var totalCost: Double` |  |
-| `var groupCount: Int` |  |
-| `val groupCosts: DoubleArray` |  |
-| `fun cost(opcode: CeresOpcode): Double` |  |
-| `fun top(limit: Int = 5): List<Pair<String, Double>>` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">totalCost</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">groupCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">groupCosts</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">cost</span><span class="p">(</span><span class="n">opcode</span><span class="p">:</span> <span class="nc">CeresOpcode</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">top</span><span class="p">(</span><span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
 
 ### ReusableCompiledCeresSolver { #interactivesolving-kt-reusablecompiledceressolver }
 
-`interface ReusableCompiledCeresSolver : CompiledCeresSolver`
+<code class="highlight"><span class="k">interface</span> <span class="nc">ReusableCompiledCeresSolver</span> <span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val reusableMetricCapacity: Int` |  |
-| `fun solveInPlace(points: MutablePointCloud, dynamicPriorWeights: MutablePriorWeights? = null, options: SolveOptions = SolveOptions(), report: MutableSolveReport? = null): Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reusableMetricCapacity</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">solveInPlace</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">MutablePointCloud</span><span class="p">,</span> <span class="n">dynamicPriorWeights</span><span class="p">:</span> <span class="nc">MutablePriorWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nc">SolveOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="nc">MutableSolveReport</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ## colors.kt { #colors-kt }
 
@@ -1024,20 +1014,20 @@ the highest-contrast candidate it found when it cannot reach the target.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun rgb(r: Number, g: Number, b: Number, a: Number = 1f): Vec4` |  |
-| `fun rgba(r: Number, g: Number, b: Number, a: Number = 1f): Vec4` |  |
-| `fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4` |  |
-| `fun hsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4` |  |
-| `fun hsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4` |  |
-| `fun okhsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4` |  |
-| `fun okhsv(h: Number, s: Number, v: Number, a: Number = 1f): Vec4` |  |
-| `fun hueSetHsl(count: Int, saturation: Number, lightness: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun hueSetOkhsl(count: Int, saturation: Number, lightness: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun hueSetOkhsv(count: Int, saturation: Number, value: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun hslSet(count: Int, saturation: Number, lightness: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun okhslSet(count: Int, saturation: Number, lightness: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun okhsvSet(count: Int, saturation: Number, value: Number, alpha: Number = 1f, startHue: Number = 0f): List<Vec4>` |  |
-| `fun paletteForBackground(background: Vec4, count: Int, saturation: Number = 0.72f, lightness: Number = 0.62f, alpha: Number = 1f, startHue: Number = 0f, minContrast: Number = 3f, maxLightnessShift: Number = 0.30f, lightnessSteps: Int = 24): List<Vec4>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rgb</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rgba</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rgb255</span><span class="p">(</span><span class="n">r</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">g</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">255f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hsl</span><span class="p">(</span><span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">l</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hsla</span><span class="p">(</span><span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">l</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">okhsl</span><span class="p">(</span><span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">l</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">okhsv</span><span class="p">(</span><span class="n">h</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hueSetHsl</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">lightness</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hueSetOkhsl</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">lightness</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hueSetOkhsv</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hslSet</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">lightness</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">okhslSet</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">lightness</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">okhsvSet</span><span class="p">(</span><span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">paletteForBackground</span><span class="p">(</span><span class="n">background</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">saturation</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.72f</span><span class="p">,</span> <span class="n">lightness</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.62f</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">startHue</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">minContrast</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">3f</span><span class="p">,</span> <span class="n">maxLightnessShift</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.30f</span><span class="p">,</span> <span class="n">lightnessSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
 
 ## contours.kt { #contours-kt }
 
@@ -1063,21 +1053,21 @@ is O(m^2) in the number of segments, so very high grid resolutions get expensive
 
 | Declaration | Summary |
 | --- | --- |
-| `fun pointEdgeScalarField2D(points: List<Vec2>, edges: List<Pair<Int, Int>>, pointRadius: Double, edgeRadius: Double, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` | Build a live scalar field from a graph of 2D points plus edges between them. |
-| `fun pointEdgeScalarField2D(points: List<Vec2>, edges: List<Pair<Int, Int>>, radius: Double, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
-| `fun pointEdgeScalarField2D(line: FLine, pointRadius: Double, edgeRadius: Double, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
-| `fun pointEdgeScalarField2D(line: FLine, radius: Double, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): ScalarField2D` |  |
-| `fun generateIsoContours(field: ScalarField2D, xMin: Double, xMax: Double, yMin: Double, yMax: Double, nx: Int, ny: Int, iso: Double): List<List<Vec2>>` | Generate iso-contours for a scalar field using marching squares. |
-| `fun generateIsoContoursWithStep(field: ScalarField2D, xMin: Double, xMax: Double, yMin: Double, yMax: Double, spatialStep: Double, value: Double): List<List<Vec2>>` | Convenience overload taking approximate spatial resolution instead of nx, ny. |
-| `fun generateIsoContours(line: FLine, pointRadius: Double, edgeRadius: Double, spatialStep: Double, iso: Double = 0.0, padding: Double? = null, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): List<List<Vec2>>` | Convenience overload that turns a 2D `FLine` into a point/edge scalar field, expands its bounds by the effective tube radius, and extracts contours. |
-| `fun generateIsoContours(line: FLine, radius: Double, spatialStep: Double, iso: Double = 0.0, padding: Double? = null, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null): List<List<Vec2>>` |  |
-| `fun smoothIsoContours(contours: List<List<Vec2>>, xMin: Double, xMax: Double, yMin: Double, yMax: Double, tension: Float = 1f, boundaryEpsilon: Double = 1e-6): List<FLine>` | Smooth marching-squares polylines into cubic curves. |
-| `fun generateSmoothIsoContours(line: FLine, pointRadius: Double, edgeRadius: Double, spatialStep: Double, iso: Double = 0.0, padding: Double? = null, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null, tension: Float = 1f, boundaryEpsilon: Double = spatialStep * 0.75): List<FLine>` |  |
-| `fun generateSmoothIsoContours(line: FLine, radius: Double, spatialStep: Double, iso: Double = 0.0, padding: Double? = null, samplesPerCubic: Int = 24, pointWeights: List<Double>? = null, edgeWeights: List<Double>? = null, tension: Float = 1f, boundaryEpsilon: Double = spatialStep * 0.75): List<FLine>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointEdgeScalarField2D</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">pointRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">edgeRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ScalarField2D</span></code> | Build a live scalar field from a graph of 2D points plus edges between them. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointEdgeScalarField2D</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ScalarField2D</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointEdgeScalarField2D</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">pointRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">edgeRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ScalarField2D</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointEdgeScalarField2D</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ScalarField2D</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateIsoContours</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">ScalarField2D</span><span class="p">,</span> <span class="n">xMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">xMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">nx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ny</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Generate iso-contours for a scalar field using marching squares. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateIsoContoursWithStep</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="nc">ScalarField2D</span><span class="p">,</span> <span class="n">xMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">xMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Convenience overload taking approximate spatial resolution instead of nx, ny. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">pointRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">edgeRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Convenience overload that turns a 2D `FLine` into a point/edge scalar field, expands its bounds by the effective tube radius, and extracts contours. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">smoothIsoContours</span><span class="p">(</span><span class="n">contours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">xMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">xMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Smooth marching-squares polylines into cubic curves. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateSmoothIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">pointRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">edgeRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">spatialStep</span> <span class="o">&#42;</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateSmoothIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">spatialStep</span> <span class="o">&#42;</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
 
 ### ScalarField2D { #contours-kt-scalarfield2d }
 
-`typealias ScalarField2D = (Double, Double) -> Double`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">ScalarField2D</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code>
 
 ## fline_graph_connectivity.kt { #fline-graph-connectivity-kt }
 
@@ -1101,35 +1091,35 @@ so the search, spanning-tree and analysis functions there apply directly to a dr
 
 | Declaration | Summary |
 | --- | --- |
-| `fun flineGraph(lines: Iterable<FLine>, epsilon: Number = 1e-4f, cubicFlatness: Number = epsilon, maxCubicSubdivisions: Int = 12): FLineGraph` | Linearize `lines` into a graph by adaptively flattening curves and welding vertices whose distance is <= `epsilon`. |
-| `fun Iterable<FLine>.toFLineGraph(epsilon: Number = 1e-4f, cubicFlatness: Number = epsilon, maxCubicSubdivisions: Int = 12): FLineGraph` | Convenience extension for `flineGraph`. |
-| `fun FLine.toFLineGraph(epsilon: Number = 1e-4f, cubicFlatness: Number = epsilon, maxCubicSubdivisions: Int = 12): FLineGraph` | Convenience extension for a single `FLine`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">flineGraph</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">cubicFlatness</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">maxCubicSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLineGraph</span></code> | Linearize `lines` into a graph by adaptively flattening curves and welding vertices whose distance is <= `epsilon`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">toFLineGraph</span><span class="p">(</span><span class="n">epsilon</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">cubicFlatness</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">maxCubicSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLineGraph</span></code> | Convenience extension for `flineGraph`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">toFLineGraph</span><span class="p">(</span><span class="n">epsilon</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">cubicFlatness</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">maxCubicSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLineGraph</span></code> | Convenience extension for a single `FLine`. |
 
 ### FLineGraphSource { #fline-graph-connectivity-kt-flinegraphsource }
 
-`data class FLineGraphSource(val lineIndex: Int, val instruction: Float, val position: Vec3)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FLineGraphSource</span><span class="p">(</span><span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">instruction</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
 
 A sampled source point that contributed to a welded [`FLineGraph`](graphics.md#fline-graph-connectivity-kt-flinegraph) vertex.
 
 | Declaration | Summary |
 | --- | --- |
-| `val lineIndex: Int` |  |
-| `val instruction: Float` |  |
-| `val position: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">instruction</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ### FLineGraph { #fline-graph-connectivity-kt-flinegraph }
 
-`data class FLineGraph(val vertices: List<Vec3>, val graph: PointGraph, val vertexSources: List<List<FLineGraphSource>>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FLineGraph</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="k">val</span> <span class="n">vertexSources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLineGraphSource</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Graph view of one or more `FLine`s.
 
 | Declaration | Summary |
 | --- | --- |
-| `val vertices: List<Vec3>` |  |
-| `val graph: PointGraph` |  |
-| `val vertexSources: List<List<FLineGraphSource>>` |  |
-| `val edges: List<GraphEdge>` |  |
-| `val pointCount: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexSources</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLineGraphSource</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ## graph_connectivity.kt { #graph-connectivity-kt }
 
@@ -1171,160 +1161,160 @@ Live rendered examples: `public/docs/graph_connectivity_examples.md`.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun pointGraphEdgeVisitState(graph: PointGraph, initiallyVisited: Collection<GraphEdge> = emptyList()): GraphEdgeVisitState` | Build a [`GraphEdgeVisitState`](graphics.md#graph-connectivity-kt-graphedgevisitstate) from a [`PointGraph`](graphics.md#graph-connectivity-kt-pointgraph). |
-| `fun PointGraph.edgeVisitState(initiallyVisited: Collection<GraphEdge> = emptyList()): GraphEdgeVisitState` | Convenience extension for `pointGraphEdgeVisitState`. |
-| `fun graphBfsPath(graph: PointGraph, start: Int, goal: Int, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | Find an unweighted shortest path from `start` to `goal` using breadth-first search. |
-| `fun graphDfsPath(graph: PointGraph, start: Int, goal: Int, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | Find a depth-first path from `start` to `goal`. |
-| `fun graphAStarPath(graph: PointGraph, start: Int, goal: Int, heuristic: (Int, Int) -> Double = { _, _ -> 0.0 }, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | Find a weighted path from `start` to `goal` using A*. |
-| `fun vec2AStarPath(graph: PointGraph, points: List<Vec2>, start: Int, goal: Int, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | A* path helper using Euclidean distance on 2D points as the heuristic. |
-| `fun vec3AStarPath(graph: PointGraph, points: List<Vec3>, start: Int, goal: Int, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | A* path helper using Euclidean distance on 3D points as the heuristic. |
-| `fun graphGreedyClosestUnvisitedPaths(graph: PointGraph, anchor: Int, edgeState: GraphEdgeVisitState = graph.edgeVisitState()): GraphPathSetResult` | Build a set of paths from `anchor` by repeatedly choosing the closest reachable point that is incident to at least one unvisited edge. |
-| `fun graphDiameterPath(graph: PointGraph, allowedEdges: Set<GraphEdge>? = null): GraphPath?` | Compute a weighted graph diameter path (the shortest path between the farthest pair of nodes). |
-| `fun graphDiameterPathDecomposition(graph: PointGraph, edgeState: GraphEdgeVisitState = graph.edgeVisitState()): GraphPathSetResult` | Iteratively removes diameter paths from the unvisited edge set until all reachable edges are consumed, producing a long-to-short path decomposition. |
-| `fun graphAnchoredGreedyThenDiameterCover(graph: PointGraph, anchor: Int, edgeState: GraphEdgeVisitState = graph.edgeVisitState()): GraphPathSetResult` | Build an anchored cover by combining: 1) Greedy closest-unvisited anchored paths 2) Diameter decomposition for any disconnected leftovers |
-| `fun vec2KnnGraph(points: List<Vec2>, k: Int, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a K-Nearest Neighbors graph for 2D points. |
-| `fun vec3KnnGraph(points: List<Vec3>, k: Int, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a K-Nearest Neighbors graph for 3D points. |
-| `fun vec2OrthantGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute an Orthant Neighborhood Graph for 2D points. |
-| `fun vec3OrthantGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute an Orthant Neighborhood Graph for 3D points. |
-| `fun vec2RelativeNeighborhoodGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Relative Neighborhood Graph (RNG) for 2D points. |
-| `fun vec3RelativeNeighborhoodGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Relative Neighborhood Graph (RNG) for 3D points. |
-| `fun vec2GabrielGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Gabriel Graph for 2D points. |
-| `fun vec3GabrielGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Gabriel Graph for 3D points. |
-| `fun vec2BetaSkeleton(points: List<Vec2>, beta: Double = 1.0, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Beta-Skeleton for 2D points. |
-| `fun vec3BetaSkeleton(points: List<Vec3>, beta: Double = 1.0, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Beta-Skeleton for 3D points. |
-| `fun vec2MinimumSpanningTree(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a KNN-constrained minimum spanning tree for 2D points. |
-| `fun vec3MinimumSpanningTree(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a KNN-constrained minimum spanning tree for 3D points. |
-| `fun vec2MaximumDiameterGraph(points: List<Vec2>, maxDiameter: Double, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Maximum Diameter Graph for 2D points. |
-| `fun vec3MaximumDiameterGraph(points: List<Vec3>, maxDiameter: Double, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Maximum Diameter Graph for 3D points. |
-| `fun vec2NearestNeighborGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Nearest Neighbor Graph (1-NN) for 2D points. |
-| `fun vec3NearestNeighborGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Nearest Neighbor Graph (1-NN) for 3D points. |
-| `fun vec2UrquhartGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute an Urquhart Graph for 2D points. |
-| `fun vec3UrquhartGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute an Urquhart Graph for 3D points. |
-| `fun vec2DelaunayGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a full Delaunay triangulation for 2D points using JTS. |
-| `fun vec2VoronoiDiagram(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): VoronoiDiagram` | Compute a Voronoi diagram for 2D points using JTS. |
-| `fun vec2VoronoiDualGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute the dual graph of a Voronoi diagram (equivalent to Delaunay triangulation). |
-| `fun vec2MaximumCutGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Maximum Cut approximation graph for 2D points. |
-| `fun vec3MaximumCutGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Maximum Cut approximation graph for 3D points. |
-| `fun vec2CompleteGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Complete Euclidean Graph for 2D points. |
-| `fun vec3CompleteGraph(points: List<Vec3>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a Complete Euclidean Graph for 3D points. |
-| `fun vec2ConvexHull(points: List<Vec2>): ConvexHull2D` | Compute the convex hull of 2D points using JTS. |
-| `fun vec2ConvexHullGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute a graph connecting convex hull points in order. |
-| `fun vec2DelaunayTriangles(points: List<Vec2>): List<Triple<Int, Int, Int>>` | Compute triangles from Delaunay triangulation. |
-| `fun vec2HullProjectionGraph(points: List<Vec2>, options: GraphConnectivityOptions = GraphConnectivityOptions()): PointGraph` | Compute the nearest point on the convex hull for each interior point. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointGraphEdgeVisitState</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">initiallyVisited</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> | Build a [`GraphEdgeVisitState`](graphics.md#graph-connectivity-kt-graphedgevisitstate) from a [`PointGraph`](graphics.md#graph-connectivity-kt-pointgraph). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointGraph</span><span class="p">.</span><span class="nf">edgeVisitState</span><span class="p">(</span><span class="n">initiallyVisited</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> | Convenience extension for `pointGraphEdgeVisitState`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphBfsPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">goal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | Find an unweighted shortest path from `start` to `goal` using breadth-first search. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphDfsPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">goal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | Find a depth-first path from `start` to `goal`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphAStarPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">goal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">heuristic</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">{</span> <span class="n">&#95;</span><span class="p">,</span> <span class="n">&#95;</span> <span class="o">-&gt;</span> <span class="mf">0.0</span> <span class="p">}</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | Find a weighted path from `start` to `goal` using A*. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2AStarPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">goal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | A* path helper using Euclidean distance on 2D points as the heuristic. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3AStarPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">goal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | A* path helper using Euclidean distance on 3D points as the heuristic. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphGreedyClosestUnvisitedPaths</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">anchor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">edgeState</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="nf">edgeVisitState</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPathSetResult</span></code> | Build a set of paths from `anchor` by repeatedly choosing the closest reachable point that is incident to at least one unvisited edge. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphDiameterPath</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">allowedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPath</span><span class="o">?</span></code> | Compute a weighted graph diameter path (the shortest path between the farthest pair of nodes). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphDiameterPathDecomposition</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">edgeState</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="nf">edgeVisitState</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPathSetResult</span></code> | Iteratively removes diameter paths from the unvisited edge set until all reachable edges are consumed, producing a long-to-short path decomposition. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graphAnchoredGreedyThenDiameterCover</span><span class="p">(</span><span class="n">graph</span><span class="p">:</span> <span class="nc">PointGraph</span><span class="p">,</span> <span class="n">anchor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">edgeState</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="nf">edgeVisitState</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphPathSetResult</span></code> | Build an anchored cover by combining: 1) Greedy closest-unvisited anchored paths 2) Diameter decomposition for any disconnected leftovers |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2KnnGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a K-Nearest Neighbors graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3KnnGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a K-Nearest Neighbors graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2OrthantGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute an Orthant Neighborhood Graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3OrthantGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute an Orthant Neighborhood Graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2RelativeNeighborhoodGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Relative Neighborhood Graph (RNG) for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3RelativeNeighborhoodGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Relative Neighborhood Graph (RNG) for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2GabrielGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Gabriel Graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3GabrielGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Gabriel Graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2BetaSkeleton</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Beta-Skeleton for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3BetaSkeleton</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">beta</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Beta-Skeleton for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2MinimumSpanningTree</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a KNN-constrained minimum spanning tree for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3MinimumSpanningTree</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a KNN-constrained minimum spanning tree for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2MaximumDiameterGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">maxDiameter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Maximum Diameter Graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3MaximumDiameterGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">maxDiameter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Maximum Diameter Graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2NearestNeighborGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Nearest Neighbor Graph (1-NN) for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3NearestNeighborGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Nearest Neighbor Graph (1-NN) for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2UrquhartGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute an Urquhart Graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3UrquhartGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute an Urquhart Graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2DelaunayGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a full Delaunay triangulation for 2D points using JTS. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2VoronoiDiagram</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiDiagram</span></code> | Compute a Voronoi diagram for 2D points using JTS. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2VoronoiDualGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute the dual graph of a Voronoi diagram (equivalent to Delaunay triangulation). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2MaximumCutGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Maximum Cut approximation graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3MaximumCutGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Maximum Cut approximation graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2CompleteGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Complete Euclidean Graph for 2D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3CompleteGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a Complete Euclidean Graph for 3D points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2ConvexHull</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ConvexHull2D</span></code> | Compute the convex hull of 2D points using JTS. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2ConvexHullGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute a graph connecting convex hull points in order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2DelaunayTriangles</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Compute triangles from Delaunay triangulation. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2HullProjectionGraph</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">GraphConnectivityOptions</span> <span class="o">=</span> <span class="nc">GraphConnectivityOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Compute the nearest point on the convex hull for each interior point. |
 
 ### GraphEdge { #graph-connectivity-kt-graphedge }
 
-`data class GraphEdge(val i: Int, val j: Int, val weight: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GraphEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 Represents an edge between two points in a graph.
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun equals(other: Any?): Boolean` |  |
-| `override fun hashCode(): Int` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### PointGraph { #graph-connectivity-kt-pointgraph }
 
-`data class PointGraph(val edges: List<GraphEdge>, val pointCount: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PointGraph</span><span class="p">(</span><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 Represents a graph computed from a set of points.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun neighbors(pointIndex: Int): List<Int>` | Get all neighbors of a point. |
-| `fun neighbors1(pointIndex: Int): List<Int>` |  |
-| `fun degree(pointIndex: Int): Int` | Get the degree (number of neighbors) of a point. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">neighbors</span><span class="p">(</span><span class="n">pointIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> | Get all neighbors of a point. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">neighbors1</span><span class="p">(</span><span class="n">pointIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">degree</span><span class="p">(</span><span class="n">pointIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Get the degree (number of neighbors) of a point. |
 
 ### GraphConnectivityOptions { #graph-connectivity-kt-graphconnectivityoptions }
 
-`data class GraphConnectivityOptions(val allowDuplicatePoints: Boolean = true, val customDistanceMetric: ((Int, Int, List<*>) -> Double)? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GraphConnectivityOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">allowDuplicatePoints</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">customDistanceMetric</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 Options for graph connectivity algorithms.
 
 | Declaration | Summary |
 | --- | --- |
-| `val allowDuplicatePoints: Boolean` |  |
-| `val customDistanceMetric: ((Int, Int, List<*>) -> Double)?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">allowDuplicatePoints</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">customDistanceMetric</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="o">?</span></code> |  |
 
 ### GraphPath { #graph-connectivity-kt-graphpath }
 
-`data class GraphPath(val nodes: List<Int>, val edges: List<GraphEdge>, val totalWeight: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GraphPath</span><span class="p">(</span><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">totalWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 Represents a path through a [`PointGraph`](graphics.md#graph-connectivity-kt-pointgraph).
 
 | Declaration | Summary |
 | --- | --- |
-| `val nodes: List<Int>` |  |
-| `val edges: List<GraphEdge>` |  |
-| `val totalWeight: Double` |  |
-| `val start: Int` |  |
-| `val end: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">totalWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### GraphEdgeVisitState { #graph-connectivity-kt-graphedgevisitstate }
 
-`data class GraphEdgeVisitState(val pointCount: Int, val visitedEdges: Set<GraphEdge>, val unvisitedEdges: Set<GraphEdge>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GraphEdgeVisitState</span><span class="p">(</span><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">visitedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">unvisitedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Tracks visited and unvisited edges for path cover generation.
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `val visitedEdges: Set<GraphEdge>` |  |
-| `val unvisitedEdges: Set<GraphEdge>` |  |
-| `val allEdges: Set<GraphEdge>` |  |
-| `fun isVisited(edge: GraphEdge): Boolean` |  |
-| `fun isUnvisited(edge: GraphEdge): Boolean` |  |
-| `fun markVisited(edges: Iterable<GraphEdge>): GraphEdgeVisitState` |  |
-| `fun markVisited(edge: GraphEdge): GraphEdgeVisitState` |  |
-| `fun markUnvisited(edges: Iterable<GraphEdge>): GraphEdgeVisitState` |  |
-| `fun markUnvisited(edge: GraphEdge): GraphEdgeVisitState` |  |
-| `fun visitedGraph(): PointGraph` |  |
-| `fun unvisitedGraph(): PointGraph` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">visitedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">unvisitedEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">allEdges</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isVisited</span><span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">GraphEdge</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isUnvisited</span><span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">GraphEdge</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">markVisited</span><span class="p">(</span><span class="n">edges</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">markVisited</span><span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">GraphEdge</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">markUnvisited</span><span class="p">(</span><span class="n">edges</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">GraphEdge</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">markUnvisited</span><span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">GraphEdge</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visitedGraph</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">unvisitedGraph</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> |  |
 
 ### GraphPathSetResult { #graph-connectivity-kt-graphpathsetresult }
 
-`data class GraphPathSetResult(val paths: List<GraphPath>, val edgeState: GraphEdgeVisitState)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GraphPathSetResult</span><span class="p">(</span><span class="k">val</span> <span class="n">paths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphPath</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeState</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span><span class="p">)</span></code>
 
 Result containing a list of paths and the updated edge-visit state.
 
 | Declaration | Summary |
 | --- | --- |
-| `val paths: List<GraphPath>` |  |
-| `val edgeState: GraphEdgeVisitState` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">paths</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GraphPath</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeState</span><span class="p">:</span> <span class="nc">GraphEdgeVisitState</span></code> |  |
 
 ### VoronoiCell { #graph-connectivity-kt-voronoicell }
 
-`data class VoronoiCell(val siteIndex: Int, val vertices: List<Vec2>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiCell</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Represents a Voronoi cell in the Voronoi diagram.
 
 | Declaration | Summary |
 | --- | --- |
-| `val siteIndex: Int` |  |
-| `val vertices: List<Vec2>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> |  |
 
 ### VoronoiDiagram { #graph-connectivity-kt-voronoidiagram }
 
-`data class VoronoiDiagram(val cells: List<VoronoiCell>, val pointCount: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiDiagram</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 Represents a Voronoi diagram computed from a set of points.
 
 | Declaration | Summary |
 | --- | --- |
-| `val cells: List<VoronoiCell>` |  |
-| `val pointCount: Int` |  |
-| `fun cellForSite(siteIndex: Int): VoronoiCell?` | Get the Voronoi cell for a specific site point. |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">cellForSite</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiCell</span><span class="o">?</span></code> | Get the Voronoi cell for a specific site point. |
 
 ### ConvexHull2D { #graph-connectivity-kt-convexhull2d }
 
-`data class ConvexHull2D(val hullPoints: List<Vec2>, val hullIndices: List<Int>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ConvexHull2D</span><span class="p">(</span><span class="k">val</span> <span class="n">hullPoints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">hullIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Represents a convex hull of a point set.
 
 | Declaration | Summary |
 | --- | --- |
-| `val hullPoints: List<Vec2>` |  |
-| `val hullIndices: List<Int>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hullPoints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hullIndices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
 
 ## keyframer.kt { #keyframer-kt }
 
@@ -1357,125 +1347,121 @@ Keys render themselves as HTML for box output ([`KeyDiff`](graphics.md#keyframer
 
 | Declaration | Summary |
 | --- | --- |
-| `fun stackSLString(value: String)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stackSLString</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
 
 ### Top-level values { #keyframer-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val KeyframeScope.Key.h: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">KeyframeScope</span><span class="p">.</span><span class="nc">Key</span><span class="p">.</span><span class="n">h</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### NumKind { #keyframer-kt-numkind }
 
-`enum class NumKind`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">NumKind</span></code>
 
 Constants: `BYTE`, `SHORT`, `INT`, `LONG`, `FLOAT`, `DOUBLE`.
 
 ### KValue { #keyframer-kt-kvalue }
 
-`sealed interface KValue`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">KValue</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `data class Num(val kind: NumKind, val value: Double) : KValue` |  |
-| `data class Vec2(val x: Float, val y: Float) : KValue` |  |
-| `data class Vec3(val x: Float, val y: Float, val z: Float) : KValue` |  |
-| `data class Vec4(val x: Float, val y: Float, val z: Float, val w: Float) : KValue` |  |
-| `data class Quat(val x: Float, val y: Float, val z: Float, val w: Float) : KValue` |  |
-| `data class DualQuat(val realX: Float, val realY: Float, val realZ: Float, val realW: Float, val dualX: Float, val dualY: Float, val dualZ: Float, val dualW: Float) : KValue` |  |
-| `data class CameraPoseValue(val realX: Float, val realY: Float, val realZ: Float, val realW: Float, val dualX: Float, val dualY: Float, val dualZ: Float, val dualW: Float, val focusDistance: Float) : KValue` |  |
-| `data class StackSL(val value: String) : KValue` |  |
-| `data class Str(val value: String) : KValue` |  |
-| `data class SourceBlock(val boxId: String, val source: String) : KValue` |  |
-| `fun toAny(): Any` |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Num</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">NumKind</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Vec2</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Vec3</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Vec4</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Quat</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DualQuat</span><span class="p">(</span><span class="k">val</span> <span class="n">realX</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realY</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realZ</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realW</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualX</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualY</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualZ</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualW</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CameraPoseValue</span><span class="p">(</span><span class="k">val</span> <span class="n">realX</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realY</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realZ</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">realW</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualX</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualY</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualZ</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">dualW</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">focusDistance</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackSL</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Str</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceBlock</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toAny</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code> |  |
 
 ### KeyDTO { #keyframer-kt-keydto }
 
-`data class KeyDTO(val schemaVersion: Int = 0, val values: Map<String, KValue>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KeyDTO</span><span class="p">(</span><span class="k">val</span> <span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KValue</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val schemaVersion: Int` |  |
-| `val values: Map<String, KValue>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">KValue</span><span class="p">&gt;</span></code> |  |
 
 ### KeyVersionInfo { #keyframer-kt-keyversioninfo }
 
-`data class KeyVersionInfo(val index: Int, val timestamp: String, val note: String? = null, val file: String)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KeyVersionInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">timestamp</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val index: Int` |  |
-| `val timestamp: String` |  |
-| `val note: String?` |  |
-| `val file: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">timestamp</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">file</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### StackSLString { #keyframer-kt-stackslstring }
 
-`data class StackSLString(val value: String)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackSLString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### KeyframeScope { #keyframer-kt-keyframescope }
 
-`class KeyframeScope(val schemaVersion: Int = 0)`
+<code class="highlight"><span class="k">class</span> <span class="nf">KeyframeScope</span><span class="p">(</span><span class="k">val</span> <span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val targets` |  |
-| `val remap` |  |
-| `inner class Key(val values: MutableMap<String, Any?>) : ToHTML` |  |
-| `fun target(name: String, structure: Structure)` |  |
-| `fun target(name: String, structure: () -> Structure?)` |  |
-| `fun target(module: ModulePointer, name: String)` |  |
-| `fun target(module: ComputeModulePointer, name: String)` |  |
-| `fun target(module: MeshModulePointer, name: String)` |  |
-| `fun stackAuto(module: ModulePointer, name: String, keyName: String = name)` |  |
-| `fun stackAuto(module: ComputeModulePointer, name: String, keyName: String = name)` |  |
-| `fun stackAuto(module: MeshModulePointer, name: String, keyName: String = name)` |  |
-| `fun camera(camera: Camera, keyName: String = "camera")` |  |
-| `fun findByName(name : String) : ((Function0<*>) -> Unit)?` |  |
-| `fun missingKey(name: String, value: Any?)` |  |
-| `fun missingKey(name: String, value: () -> Any?)` |  |
-| `fun missingKey(schemaVersion: Int, name: String, value: Any?)` |  |
-| `fun missingKey(schemaVersion: Int, name: String, value: () -> Any?)` |  |
-| `fun capture()` |  |
-| `fun interpolate(a: Key, b: Key, t: Double): Key` |  |
-| `fun saveKey(path: Path, key: Key, note: String? = null)` |  |
-| `fun loadKey(path: Path, version: Int? = null): Key` |  |
-| `fun loadLatestKey(path: Path): Key` |  |
-| `fun loadKeyVersion(path: Path, version: Int): Key` |  |
-| `fun keyVersions(path: Path): List<KeyVersionInfo>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targets</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">remap</span></code> |  |
+| <code class="highlight"><span class="k">inner</span> <span class="k">class</span> <span class="nf">Key</span><span class="p">(</span><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">target</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">structure</span><span class="p">:</span> <span class="nc">Structure</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">target</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">structure</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Structure</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">target</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code><span class="sig-overloads">+2 overloads · also ModulePointer, MeshModulePointer</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stackAuto</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">keyName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span><span class="p">)</span></code><span class="sig-overloads">+2 overloads · also ModulePointer, MeshModulePointer</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">camera</span><span class="p">(</span><span class="n">camera</span><span class="p">:</span> <span class="nc">Camera</span><span class="p">,</span> <span class="n">keyName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;camera&quot;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">findByName</span><span class="p">(</span><span class="n">name</span> <span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Function0</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">missingKey</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">missingKey</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">missingKey</span><span class="p">(</span><span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">missingKey</span><span class="p">(</span><span class="n">schemaVersion</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">capture</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">interpolate</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Key</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Key</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Key</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">saveKey</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nc">Key</span><span class="p">,</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadKey</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">version</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Key</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadLatestKey</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">Key</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadKeyVersion</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">version</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Key</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">keyVersions</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyVersionInfo</span><span class="p">&gt;</span></code> |  |
 
 ### KeyDiffKind { #keyframer-kt-keydiffkind }
 
-`enum class KeyDiffKind`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">KeyDiffKind</span></code>
 
 Constants: `ADDED`, `REMOVED`, `CHANGED`.
 
 ### KeyDiffEntry { #keyframer-kt-keydiffentry }
 
-`data class KeyDiffEntry(val name: String, val kind: KeyDiffKind, val left: Any?, val right: Any?)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KeyDiffEntry</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">KeyDiffKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val name: String` |  |
-| `val kind: KeyDiffKind` |  |
-| `val left: Any?` |  |
-| `val right: Any?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">KeyDiffKind</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
 
 ### KeyDiff { #keyframer-kt-keydiff }
 
-`data class KeyDiff(val leftName: String, val rightName: String, val entries: List<KeyDiffEntry>) : ToHTML`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KeyDiff</span><span class="p">(</span><span class="k">val</span> <span class="n">leftName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">rightName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyDiffEntry</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val leftName: String` |  |
-| `val rightName: String` |  |
-| `val entries: List<KeyDiffEntry>` |  |
-| `override fun toString(): String` |  |
-| `override fun toHTML(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">leftName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rightName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">entries</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">KeyDiffEntry</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## modelling.kt { #modelling-kt }
 
@@ -1507,133 +1493,133 @@ plant against the controller and prints a trace.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun ControlOutput.params(useNominalParams: Boolean = false): DoubleArray` |  |
-| `fun ControlOutput.namedAppliedParams(parameterNames: List<String>): Map<String, Double>` |  |
-| `fun ControlOutput.namedNominalParams(parameterNames: List<String>): Map<String, Double>` |  |
-| `fun main()` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ControlOutput</span><span class="p">.</span><span class="nf">params</span><span class="p">(</span><span class="n">useNominalParams</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ControlOutput</span><span class="p">.</span><span class="nf">namedAppliedParams</span><span class="p">(</span><span class="n">parameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ControlOutput</span><span class="p">.</span><span class="nf">namedNominalParams</span><span class="p">(</span><span class="n">parameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### FeatureExtractor { #modelling-kt-featureextractor }
 
-`interface FeatureExtractor`
+<code class="highlight"><span class="k">interface</span> <span class="nc">FeatureExtractor</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val featureCount: Int` |  |
-| `fun errorFromSamples(samples: DoubleArray): DoubleArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">featureCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">errorFromSamples</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### UniformQuantileFeatureExtractor { #modelling-kt-uniformquantilefeatureextractor }
 
-`class UniformQuantileFeatureExtractor(private val targetQuantiles: DoubleArray = doubleArrayOf(0.1, 0.3, 0.5, 0.7, 0.9)) : FeatureExtractor`
+<code class="highlight"><span class="k">class</span> <span class="nf">UniformQuantileFeatureExtractor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">targetQuantiles</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FeatureExtractor</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override val featureCount: Int` |  |
-| `override fun errorFromSamples(samples: DoubleArray): DoubleArray` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">featureCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">errorFromSamples</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### ControllerConfig { #modelling-kt-controllerconfig }
 
-`data class ControllerConfig(val parameterNames: List<String> = listOf("offset", "logContrast", "logGamma", "cubic", "skew"), val paramMin: DoubleArray = doubleArrayOf(-0.35, -1.2, -1.1, -1.2, -1.2), val paramMax: DoubleArray = doubleArrayOf(+0.35, +1.2, +1.1, +1.2, +1.2), val initialParams: DoubleArray = DoubleArray(5), val maxStep: DoubleArray = doubleArrayOf(0.0030, 0.0100, 0.0080, 0.0100, 0.0100), val ditherAmplitude: DoubleArray = doubleArrayOf(0.0035, 0.0100, 0.0080, 0.0100, 0.0100), val ditherOmega: DoubleArray = doubleArrayOf(0.070, 0.111, 0.091, 0.133, 0.053), val ditherPhase: DoubleArray = doubleArrayOf(0.0, 1.4, 2.2, 0.7, 2.8), val forgetting: Double = 0.997, val initialCovariance: Double = 20.0, val gainBase: Double = 0.45, val tikhonov: Double = 0.18, val emaAlpha: Double = 0.10, val clipPenalty: Double = 0.25, val observationDelayFrames: Int = 3, val covarianceConfidenceScale: Double = 0.06, val residualConfidenceScale: Double = 2.0, val minConfidence: Double = 0.05, val boundarySoftZone: Double = 0.15)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ControllerConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">parameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;offset&quot;</span><span class="p">,</span> <span class="s">&quot;logContrast&quot;</span><span class="p">,</span> <span class="s">&quot;logGamma&quot;</span><span class="p">,</span> <span class="s">&quot;cubic&quot;</span><span class="p">,</span> <span class="s">&quot;skew&quot;</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">paramMin</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="p">-</span><span class="mf">0.35</span><span class="p">,</span> <span class="p">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="p">-</span><span class="mf">1.1</span><span class="p">,</span> <span class="p">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="p">-</span><span class="mf">1.2</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">paramMax</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="p">+</span><span class="mf">0.35</span><span class="p">,</span> <span class="p">+</span><span class="mf">1.2</span><span class="p">,</span> <span class="p">+</span><span class="mf">1.1</span><span class="p">,</span> <span class="p">+</span><span class="mf">1.2</span><span class="p">,</span> <span class="p">+</span><span class="mf">1.2</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialParams</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nc">DoubleArray</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxStep</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="mf">0.0030</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">,</span> <span class="mf">0.0080</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">ditherAmplitude</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="mf">0.0035</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">,</span> <span class="mf">0.0080</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">,</span> <span class="mf">0.0100</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">ditherOmega</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="mf">0.070</span><span class="p">,</span> <span class="mf">0.111</span><span class="p">,</span> <span class="mf">0.091</span><span class="p">,</span> <span class="mf">0.133</span><span class="p">,</span> <span class="mf">0.053</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">ditherPhase</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="nf">doubleArrayOf</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">2.2</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">2.8</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">forgetting</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.997</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialCovariance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">gainBase</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">,</span> <span class="k">val</span> <span class="n">tikhonov</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.18</span><span class="p">,</span> <span class="k">val</span> <span class="n">emaAlpha</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.10</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipPenalty</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="k">val</span> <span class="n">observationDelayFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">covarianceConfidenceScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualConfidenceScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">minConfidence</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundarySoftZone</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val parameterNames: List<String>` |  |
-| `val paramMin: DoubleArray` |  |
-| `val paramMax: DoubleArray` |  |
-| `val initialParams: DoubleArray` |  |
-| `val maxStep: DoubleArray` |  |
-| `val ditherAmplitude: DoubleArray` |  |
-| `val ditherOmega: DoubleArray` |  |
-| `val ditherPhase: DoubleArray` |  |
-| `val forgetting: Double` |  |
-| `val initialCovariance: Double` |  |
-| `val gainBase: Double` |  |
-| `val tikhonov: Double` |  |
-| `val emaAlpha: Double` |  |
-| `val clipPenalty: Double` |  |
-| `val observationDelayFrames: Int` |  |
-| `val covarianceConfidenceScale: Double` |  |
-| `val residualConfidenceScale: Double` |  |
-| `val minConfidence: Double` |  |
-| `val boundarySoftZone: Double` |  |
-| `val parameterCount: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">paramMin</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">paramMax</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialParams</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxStep</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ditherAmplitude</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ditherOmega</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ditherPhase</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">forgetting</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialCovariance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gainBase</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tikhonov</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">emaAlpha</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipPenalty</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">observationDelayFrames</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">covarianceConfidenceScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">residualConfidenceScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minConfidence</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundarySoftZone</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameterCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### ControllerDiagnostics { #modelling-kt-controllerdiagnostics }
 
-`data class ControllerDiagnostics(val pushIndex: Int, val learnedFromCommandIndex: Int, val rawFeatureError: DoubleArray, val filteredFeatureError: DoubleArray, val objective: Double, val clipRate: Double, val confidence: Double, val residualRatio: Double, val averageVariance: Double, val pairedAppliedParams: DoubleArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ControllerDiagnostics</span><span class="p">(</span><span class="k">val</span> <span class="n">pushIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">learnedFromCommandIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rawFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">filteredFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">confidence</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualRatio</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">averageVariance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pairedAppliedParams</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val pushIndex: Int` |  |
-| `val learnedFromCommandIndex: Int` |  |
-| `val rawFeatureError: DoubleArray` |  |
-| `val filteredFeatureError: DoubleArray` |  |
-| `val objective: Double` |  |
-| `val clipRate: Double` |  |
-| `val confidence: Double` |  |
-| `val residualRatio: Double` |  |
-| `val averageVariance: Double` |  |
-| `val pairedAppliedParams: DoubleArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pushIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">learnedFromCommandIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rawFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">filteredFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">confidence</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">residualRatio</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">averageVariance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pairedAppliedParams</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### ControlOutput { #modelling-kt-controloutput }
 
-`data class ControlOutput(val nominalParams: DoubleArray, val appliedParams: DoubleArray, val diagnostics: ControllerDiagnostics)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ControlOutput</span><span class="p">(</span><span class="k">val</span> <span class="n">nominalParams</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">appliedParams</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">ControllerDiagnostics</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val nominalParams: DoubleArray` |  |
-| `val appliedParams: DoubleArray` |  |
-| `val diagnostics: ControllerDiagnostics` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nominalParams</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">appliedParams</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">ControllerDiagnostics</span></code> |  |
 
 ### ScalarSampleBatch { #modelling-kt-scalarsamplebatch }
 
-`data class ScalarSampleBatch(val samples: DoubleArray, val clipRate: Double = 0.0)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ScalarSampleBatch</span><span class="p">(</span><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val samples: DoubleArray` |  |
-| `val clipRate: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### AdaptiveDistributionController { #modelling-kt-adaptivedistributioncontroller }
 
-`class AdaptiveDistributionController(private val config: ControllerConfig, private val featureExtractor: FeatureExtractor)`
+<code class="highlight"><span class="k">class</span> <span class="nf">AdaptiveDistributionController</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ControllerConfig</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">featureExtractor</span><span class="p">:</span> <span class="nc">FeatureExtractor</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun currentNominalParams(): DoubleArray` |  |
-| `val parameterNames: List<String>` |  |
-| `val parameterCount: Int` |  |
-| `fun pushSamples(samples: DoubleArray, clipRate: Double = 0.0): ControlOutput` |  |
-| `fun pushFeatureError(rawFeatureError: DoubleArray, clipRate: Double = 0.0): ControlOutput` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">currentNominalParams</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameterNames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameterCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pushSamples</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pushFeatureError</span><span class="p">(</span><span class="n">rawFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span></code> |  |
 
 ### AdaptiveDistributionControllerBank { #modelling-kt-adaptivedistributioncontrollerbank }
 
-`class AdaptiveDistributionControllerBank<K>(private val factory: () -> AdaptiveDistributionController)`
+<code class="highlight"><span class="k">class</span> <span class="nc">AdaptiveDistributionControllerBank</span><span class="p">&lt;</span><span class="nc">K</span><span class="p">&gt;</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">factory</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">AdaptiveDistributionController</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun get(sceneKey: K): AdaptiveDistributionController` |  |
-| `fun pushSamples(sceneKey: K, samples: DoubleArray, clipRate: Double = 0.0): ControlOutput` |  |
-| `fun pushFeatureError(sceneKey: K, rawFeatureError: DoubleArray, clipRate: Double = 0.0): ControlOutput` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">sceneKey</span><span class="p">:</span> <span class="nc">K</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pushSamples</span><span class="p">(</span><span class="n">sceneKey</span><span class="p">:</span> <span class="nc">K</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pushFeatureError</span><span class="p">(</span><span class="n">sceneKey</span><span class="p">:</span> <span class="nc">K</span><span class="p">,</span> <span class="n">rawFeatureError</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">clipRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span></code> |  |
 
 ### AdaptiveDistributionLoop { #modelling-kt-adaptivedistributionloop }
 
-`class AdaptiveDistributionLoop(val controller: AdaptiveDistributionController, private val observe: () -> ScalarSampleBatch?, private val apply: (ControlOutput) -> Unit, private val onUpdate: ((ScalarSampleBatch, ControlOutput) -> Unit)? = null)`
+<code class="highlight"><span class="k">class</span> <span class="nf">AdaptiveDistributionLoop</span><span class="p">(</span><span class="k">val</span> <span class="n">controller</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">observe</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">ScalarSampleBatch</span><span class="o">?</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="nc">ControlOutput</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">onUpdate</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">ScalarSampleBatch</span><span class="p">,</span> <span class="nc">ControlOutput</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val controller: AdaptiveDistributionController` |  |
-| `var tickCount: Int` |  |
-| `var lastBatch: ScalarSampleBatch?` |  |
-| `var lastOutput: ControlOutput?` |  |
-| `fun tick(): ControlOutput?` |  |
-| `fun installRunloopHook(key: String, runloop: Runloop = Runloop.runLoop): AdaptiveDistributionLoop` |  |
-| `fun removeRunloopHook(key: String, runloop: Runloop = Runloop.runLoop): AdaptiveDistributionLoop` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">controller</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">tickCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastBatch</span><span class="p">:</span> <span class="nc">ScalarSampleBatch</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastOutput</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">installRunloopHook</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveDistributionLoop</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">removeRunloopHook</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveDistributionLoop</span></code> |  |
 
 ## quantilewarp.kt { #quantilewarp-kt }
 
 Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the
 measured quantiles of recent samples onto the quantiles of a chosen target distribution —
-`TargetDistributions.UnitNormal` by default, or any `QuantileFunction`.
+`TargetDistributions.UnitNormal` by default, or any [`QuantileFunction`](graphics.md#quantilewarp-kt-quantilefunction).
 
 `AdaptiveQuantileWarp.update` takes a batch of samples, merges it with the last
 `historyFrames` batches, and returns a [`QuantileWarpState`](graphics.md#quantilewarp-kt-quantilewarpstate): the knot pairs, an
@@ -1659,97 +1645,106 @@ continuous snapshot reads.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Box.fieldProbeQuantileWarp(probe: ShaderFieldProbe, warp: AdaptiveQuantileWarp = AdaptiveQuantileWarp(), config: ShaderProbeQuantileWarpConfig = ShaderProbeQuantileWarpConfig(), install: Boolean = true, runloop: Runloop = Runloop.runLoop, apply: (warp: QuantileWarpState, batch: FieldProbeScalarBatch) -> Unit): ShaderFieldQuantileWarpController` |  |
-| `fun inverseStandardNormalCdf(p: Double): Double` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">fieldProbeQuantileWarp</span><span class="p">(</span><span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span><span class="p">,</span> <span class="n">warp</span><span class="p">:</span> <span class="nc">AdaptiveQuantileWarp</span> <span class="o">=</span> <span class="nc">AdaptiveQuantileWarp</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeQuantileWarpConfig</span> <span class="o">=</span> <span class="nc">ShaderProbeQuantileWarpConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="n">warp</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldQuantileWarpController</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">inverseStandardNormalCdf</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### Top-level values { #quantilewarp-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `const val FIELD_QUANTILE_WARP_INCLUDE_NAME` |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FIELD&#95;QUANTILE&#95;WARP&#95;INCLUDE&#95;NAME</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;fieldProbeQuantileWarpController</span><span class="p">:</span> <span class="nc">ShaderFieldQuantileWarpController</span><span class="o">?</span></code> |  |
+
+### QuantileFunction { #quantilewarp-kt-quantilefunction }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">QuantileFunction</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">quantile</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### TargetDistributions { #quantilewarp-kt-targetdistributions }
 
-`object TargetDistributions`
+<code class="highlight"><span class="k">object</span> <span class="nc">TargetDistributions</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val Uniform01` |  |
-| `val UnitNormal` |  |
-| `fun uniform(min: Double, max: Double)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Uniform01</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">UnitNormal</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">uniform</span><span class="p">(</span><span class="n">min</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
 
 ### QuantileWarpConfig { #quantilewarp-kt-quantilewarpconfig }
 
-`data class QuantileWarpConfig(val probabilities: DoubleArray = defaultQuantileWarpProbabilities.copyOf(), val historyFrames: Int = 8, val smoothingAlpha: Double = 0.20, val epsilonRelative: Double = 1.0e-5, val epsilonAbsolute: Double = 1.0e-6)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">QuantileWarpConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">defaultQuantileWarpProbabilities</span><span class="p">.</span><span class="nf">copyOf</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">historyFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">smoothingAlpha</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.20</span><span class="p">,</span> <span class="k">val</span> <span class="n">epsilonRelative</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="k">val</span> <span class="n">epsilonAbsolute</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val probabilities: DoubleArray` |  |
-| `val historyFrames: Int` |  |
-| `val smoothingAlpha: Double` |  |
-| `val epsilonRelative: Double` |  |
-| `val epsilonAbsolute: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">historyFrames</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">smoothingAlpha</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">epsilonRelative</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">epsilonAbsolute</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### QuantileWarpState { #quantilewarp-kt-quantilewarpstate }
 
-`class QuantileWarpState(probabilities: DoubleArray, inputKnots: DoubleArray, targetKnots: DoubleArray, val historySampleCount: Int)`
+<code class="highlight"><span class="k">class</span> <span class="nf">QuantileWarpState</span><span class="p">(</span><span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">inputKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">targetKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">historySampleCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val historySampleCount: Int` |  |
-| `val probabilities: DoubleArray` |  |
-| `val inputKnots: DoubleArray` |  |
-| `val targetKnots: DoubleArray` |  |
-| `val packedPushConstants: FloatArray` |  |
-| `fun evaluate(x: Double): Double` |  |
-| `fun xLo(): Vector4f` |  |
-| `fun xHi(): Vector4f` |  |
-| `fun yLo(): Vector4f` |  |
-| `fun yHi(): Vector4f` |  |
-| `fun applyToPushConstants(setVec4: (name: String, value: Vector4f) -> Unit, xLoName: String = "warpXLo", xHiName: String = "warpXHi", yLoName: String = "warpYLo", yHiName: String = "warpYHi")` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">historySampleCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">inputKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">targetKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">packedPushConstants</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">xLo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">xHi</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">yLo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">yHi</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vector4f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">applyToPushConstants</span><span class="p">(</span><span class="n">setVec4</span><span class="p">:</span> <span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Vector4f</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">,</span> <span class="n">xLoName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;warpXLo&quot;</span><span class="p">,</span> <span class="n">xHiName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;warpXHi&quot;</span><span class="p">,</span> <span class="n">yLoName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;warpYLo&quot;</span><span class="p">,</span> <span class="n">yHiName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;warpYHi&quot;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### AdaptiveQuantileWarp { #quantilewarp-kt-adaptivequantilewarp }
 
-`class AdaptiveQuantileWarp(private val config: QuantileWarpConfig = QuantileWarpConfig(), target: QuantileFunction = TargetDistributions.UnitNormal)`
+<code class="highlight"><span class="k">class</span> <span class="nf">AdaptiveQuantileWarp</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">QuantileWarpConfig</span> <span class="o">=</span> <span class="nc">QuantileWarpConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">QuantileFunction</span> <span class="o">=</span> <span class="nc">TargetDistributions</span><span class="p">.</span><span class="nc">UnitNormal</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun currentStateOrNull(): QuantileWarpState?` |  |
-| `fun reset(seed: QuantileWarpState? = null): AdaptiveQuantileWarp` |  |
-| `fun update(samples: DoubleArray): QuantileWarpState` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">currentStateOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">AdaptiveQuantileWarp</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">update</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">QuantileWarpState</span></code> |  |
 
 ### ShaderProbeQuantileWarpConfig { #quantilewarp-kt-shaderprobequantilewarpconfig }
 
-`data class ShaderProbeQuantileWarpConfig(val minSamples: Int = 128, val clipLower: Double? = null, val clipUpper: Double? = null, val clipEpsilon: Double = 1.0e-6, val displayChannel: String? = "warp", val closeDisplayOnStop: Boolean = false, val clearDisplayOnStop: Boolean = false, val runloopKeySuffix: String = "shaderFieldQuantileWarp")`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShaderProbeQuantileWarpConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">minSamples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipLower</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipUpper</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">displayChannel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;warp&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">closeDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">clearDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">runloopKeySuffix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;shaderFieldQuantileWarp&quot;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val minSamples: Int` |  |
-| `val clipLower: Double?` |  |
-| `val clipUpper: Double?` |  |
-| `val clipEpsilon: Double` |  |
-| `val displayChannel: String?` |  |
-| `val closeDisplayOnStop: Boolean` |  |
-| `val clearDisplayOnStop: Boolean` |  |
-| `val runloopKeySuffix: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minSamples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipLower</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipUpper</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipEpsilon</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">displayChannel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">closeDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clearDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">runloopKeySuffix</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### ShaderFieldQuantileWarpController { #quantilewarp-kt-shaderfieldquantilewarpcontroller }
 
-`class ShaderFieldQuantileWarpController(val box: Box, val probe: ShaderFieldProbe, val warp: AdaptiveQuantileWarp, val config: ShaderProbeQuantileWarpConfig, private val apply: (warp: QuantileWarpState, batch: FieldProbeScalarBatch) -> Unit)`
+<code class="highlight"><span class="k">class</span> <span class="nf">ShaderFieldQuantileWarpController</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span><span class="p">,</span> <span class="k">val</span> <span class="n">warp</span><span class="p">:</span> <span class="nc">AdaptiveQuantileWarp</span><span class="p">,</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeQuantileWarpConfig</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="n">warp</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val box: Box` |  |
-| `val probe: ShaderFieldProbe` |  |
-| `val warp: AdaptiveQuantileWarp` |  |
-| `val config: ShaderProbeQuantileWarpConfig` |  |
-| `var tickCount: Int` |  |
-| `var lastBatch: FieldProbeScalarBatch?` |  |
-| `var lastWarp: QuantileWarpState?` |  |
-| `fun tick(): QuantileWarpState?` |  |
-| `fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldQuantileWarpController` |  |
-| `fun stop(runloop: Runloop = Runloop.runLoop, closeDisplay: Boolean = config.closeDisplayOnStop, clearDisplay: Boolean = config.clearDisplayOnStop): ShaderFieldQuantileWarpController` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">warp</span><span class="p">:</span> <span class="nc">AdaptiveQuantileWarp</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeQuantileWarpConfig</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">tickCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastBatch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastWarp</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldQuantileWarpController</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">closeDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">closeDisplayOnStop</span><span class="p">,</span> <span class="n">clearDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">clearDisplayOnStop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldQuantileWarpController</span></code> |  |
 
 ## shaders.kt { #shaders-kt }
 
@@ -1782,146 +1777,202 @@ generation-guarded async reload all key off it.
 
 `src/jvmMain/kotlin/afield/stdlib/shaders.kt`
 
-**Used in:** [Field Probes — instrumenting shaders](../field_probes.md)
+**Used in:** [How Box Code Runs](../box_code_pipeline.md), [afield.four Graphics](../afield_four_graphics.md), [Field Probes — instrumenting shaders](../field_probes.md)
 
 ### Top-level functions { #shaders-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| `fun stackAutoShaderSource(module: ModulePointer, name: String): String` |  |
-| `fun stackAutoShaderSource(module: ComputeModulePointer, name: String): String` |  |
-| `fun stackAutoShaderSource(module: MeshModulePointer, name: String): String` |  |
-| `fun stackAutoShaderSource(module: ModulePointer, name: String, source: String)` |  |
-| `fun stackAutoShaderSource(module: ComputeModulePointer, name: String, source: String)` |  |
-| `fun stackAutoShaderSource(module: MeshModulePointer, name: String, source: String)` |  |
-| `fun registerShaderIncludeRoot(root: String, resolver: ShaderIncludeRootResolver)` |  |
-| `fun unregisterShaderIncludeRoot(root: String): ShaderIncludeRootResolver?` |  |
-| `fun listShaderIncludeRoots(): Set<String>` |  |
-| `fun shaderCachedUrlIncludeRootResolver(root: String, baseUrl: String, cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(cacheDirectory = defaultShaderIncludeCacheDirectory().resolve(normalizeShaderIncludeRootName(root)))): ShaderIncludeRootResolver` |  |
-| `fun shaderLygiaIncludeRootResolver(cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz"))): ShaderIncludeRootResolver` |  |
-| `fun shaderLygiaIncludeRootResolver(cacheDirectory: Path): ShaderIncludeRootResolver` |  |
-| `fun shaderLygiaIncludeRootResolver(cacheDirectory: String): ShaderIncludeRootResolver` |  |
-| `fun registerLygiaIncludeRoot(cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz")))` |  |
-| `fun registerLygiaIncludeRoot(cacheDirectory: Path)` |  |
-| `fun registerLygiaIncludeRoot(cacheDirectory: String)` |  |
-| `fun shaderFilesystemIncludeRootResolver(directory: Path): ShaderIncludeRootResolver` |  |
-| `fun shaderFilesystemIncludeRootResolver(directory: String): ShaderIncludeRootResolver` |  |
-| `fun registerShaderFilesystemIncludeRoot(root: String, directory: Path)` |  |
-| `fun registerShaderFilesystemIncludeRoot(root: String, directory: String)` |  |
-| `fun Box.fieldProbeHere(samples: Int = afield.four.util.FIELD_PROBE_DEFAULT_SAMPLES, binding: Int = afield.four.util.FIELD_PROBE_DEFAULT_BINDING, descriptorSet: Int = afield.four.util.FIELD_PROBE_DEFAULT_SET, enabled: Boolean = true, ordinalRange: UIntRange? = null): ShaderFieldProbe` |  |
-| `fun Box.fieldStatsHere(channels: Int = 1, sketchSize: Int = 256, maxPartials: Int = 65_536, descriptorSet: Int = 0, partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING, resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING, stateSlots: Int = 8): ShaderFieldStats` |  |
-| `fun Box._fieldStatsHere(channels: Int = 1, sketchSize: Int = 256, maxPartials: Int = 65_536, descriptorSet: Int = 0, partialBinding: Int = FIELD_STATS_DEFAULT_PARTIAL_BINDING, resultBinding: Int = FIELD_STATS_DEFAULT_RESULT_BINDING, stateSlots: Int = 8): ShaderFieldStats` |  |
-| `fun Box.macro_fieldStatsHere(args: List<String>): Insert` |  |
-| `fun Box.useFieldStats(stats: ShaderFieldStats): ShaderFieldStats` |  |
-| `fun Box.fieldProbeAutoControl(probe: ShaderFieldProbe = ensureFieldProbe(), controller: AdaptiveDistributionController = AdaptiveDistributionController(ControllerConfig(), UniformQuantileFeatureExtractor()), config: ShaderProbeAutoControlConfig = ShaderProbeAutoControlConfig(), install: Boolean = true, runloop: Runloop = Runloop.runLoop, apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit): ShaderFieldAutoController` |  |
-| `fun Box.moduleHere(p: Parameters): ModulePointer` | Macro placeholder expanded to a graphics `ModulePointer` for the current box. |
-| `fun Box.computeModuleHere(p: Parameters): ComputeModulePointer` |  |
-| `fun Box.meshModuleHere(p: Parameters): MeshModulePointer` |  |
-| `fun Box.rayTracingModuleHere(p: Parameters): RayTracingModulePointer` |  |
-| `fun Box.moduleHere(p: Parameters.() -> Unit): ModulePointer` |  |
-| `fun Box.computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer` |  |
-| `fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer` |  |
-| `fun Box.rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer` |  |
-| `fun Box.shadertoyHere(p: Parameters): ModulePointer` |  |
-| `fun Box.shadertoyHere(p: Parameters.() -> Unit): ModulePointer` |  |
-| `fun numberFromErrorMessage(m: String): Int?` |  |
-| `fun preprocess(inside: Box, code: String, kind: ShaderKind): String` |  |
-| `fun normalizePreambleText(preamble: String): String` |  |
-| `fun applyInsertToPreamble(box: Box, e: Insert)` |  |
-| `fun reloadShader(box: Box): Boolean` |  |
-| `fun Box.attachShader(module: ModulePointer, overwriteProperties: Boolean = false): ModulePointer` |  |
-| `fun reloadComputeShader(box: Box): Boolean` |  |
-| `fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean = false): ComputeModulePointer` |  |
-| `fun reloadMeshShader(box: Box): Boolean` |  |
-| `fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = false): MeshModulePointer` |  |
-| `fun reloadRayTracingShader(box: Box): Boolean` |  |
-| `fun Box.attachShader(module: RayTracingModulePointer, overwriteProperties: Boolean = false): RayTracingModulePointer` |  |
-| `fun Box.macro_moduleHere(args: List<String>): Insert?` |  |
-| `fun Box.macro_moduleHereWithDefaultShaders(args: List<String>, vertex: String = defaultVertexShader, fragment: String = defaultFragmentShader, resolvesToCall: String = "_moduleHere"): Insert?` |  |
-| `fun Box.macro_shadertoyHere(args: List<String>): Insert?` |  |
-| `fun insertForShader(vi: Introspection, fi: Introspection, resolvesToCall: String = "_moduleHere", args: List<String>, box: Box? = null): Insert` |  |
-| `fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer` |  |
-| `fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer` |  |
-| `fun Box._shadertoyHere(p: Parameters.() -> Unit): ModulePointer` |  |
-| `fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer` |  |
-| `fun fromViews(views: List<HasImageView>, name: String = "", sampler: TextureSampler? = null): Pair<HasImageViewArray, TextureSampler>` |  |
-| `fun fromViews(provider: HasImageViewArray, name: String = "", sampler: TextureSampler? = null): Pair<HasImageViewArray, TextureSampler>` |  |
-| `fun Box.macro_computeModuleHere(args: List<String>): Insert` |  |
-| `fun Box._computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer` |  |
-| `fun Box._computeModuleHere(p: Parameters): ComputeModulePointer` |  |
-| `fun Box.macro_meshModuleHere(args: List<String>): Insert` |  |
-| `fun Box._meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer` |  |
-| `fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer` |  |
-| `fun Box.macro_rayTracingModuleHere(args: List<String>): Insert` |  |
-| `fun Box._rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer` |  |
-| `fun Box._rayTracingModuleHere(p: Parameters = parameters {}): RayTracingModulePointer` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stackAutoShaderSource</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code><span class="sig-overloads">+2 overloads · also ModulePointer, MeshModulePointer</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stackAutoShaderSource</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code><span class="sig-overloads">+2 overloads · also ModulePointer, MeshModulePointer</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerShaderIncludeRoot</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">resolver</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">unregisterShaderIncludeRoot</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">listShaderIncludeRoots</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">shaderCachedUrlIncludeRootResolver</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">baseUrl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cacheOptions</span><span class="p">:</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span> <span class="o">=</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span><span class="p">(</span><span class="n">cacheDirectory</span> <span class="o">=</span> <span class="nf">defaultShaderIncludeCacheDirectory</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="nf">normalizeShaderIncludeRootName</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">shaderLygiaIncludeRootResolver</span><span class="p">(</span><span class="n">cacheOptions</span><span class="p">:</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span> <span class="o">=</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span><span class="p">(</span><span class="n">cacheDirectory</span> <span class="o">=</span> <span class="nf">defaultShaderIncludeCacheDirectory</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="s">&quot;lygia.xyz&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">shaderLygiaIncludeRootResolver</span><span class="p">(</span><span class="n">cacheDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span></code><span class="sig-overloads">+1 overload · also Path</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerLygiaIncludeRoot</span><span class="p">(</span><span class="n">cacheOptions</span><span class="p">:</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span> <span class="o">=</span> <span class="nc">ShaderRemoteIncludeCacheOptions</span><span class="p">(</span><span class="n">cacheDirectory</span> <span class="o">=</span> <span class="nf">defaultShaderIncludeCacheDirectory</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="s">&quot;lygia.xyz&quot;</span><span class="p">)</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerLygiaIncludeRoot</span><span class="p">(</span><span class="n">cacheDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code><span class="sig-overloads">+1 overload · also Path</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">shaderFilesystemIncludeRootResolver</span><span class="p">(</span><span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeRootResolver</span></code><span class="sig-overloads">+1 overload · also Path</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerShaderFilesystemIncludeRoot</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code><span class="sig-overloads">+1 overload · also Path</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">fieldProbeHere</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">FIELD&#95;PROBE&#95;DEFAULT&#95;SAMPLES</span><span class="p">,</span> <span class="n">binding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">FIELD&#95;PROBE&#95;DEFAULT&#95;BINDING</span><span class="p">,</span> <span class="n">descriptorSet</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">FIELD&#95;PROBE&#95;DEFAULT&#95;SET</span><span class="p">,</span> <span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">ordinalRange</span><span class="p">:</span> <span class="nc">UIntRange</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">fieldStatsHere</span><span class="p">(</span><span class="n">channels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sketchSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">maxPartials</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">65</span><span class="n">&#95;536</span><span class="p">,</span> <span class="n">descriptorSet</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">partialBinding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">FIELD&#95;STATS&#95;DEFAULT&#95;PARTIAL&#95;BINDING</span><span class="p">,</span> <span class="n">resultBinding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">FIELD&#95;STATS&#95;DEFAULT&#95;RESULT&#95;BINDING</span><span class="p">,</span> <span class="n">stateSlots</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldStats</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;fieldStatsHere</span><span class="p">(</span><span class="n">channels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sketchSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">maxPartials</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">65</span><span class="n">&#95;536</span><span class="p">,</span> <span class="n">descriptorSet</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">partialBinding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">FIELD&#95;STATS&#95;DEFAULT&#95;PARTIAL&#95;BINDING</span><span class="p">,</span> <span class="n">resultBinding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">FIELD&#95;STATS&#95;DEFAULT&#95;RESULT&#95;BINDING</span><span class="p">,</span> <span class="n">stateSlots</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldStats</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;fieldStatsHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">useFieldStats</span><span class="p">(</span><span class="n">stats</span><span class="p">:</span> <span class="nc">ShaderFieldStats</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldStats</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">fieldProbeAutoControl</span><span class="p">(</span><span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span> <span class="o">=</span> <span class="nf">ensureFieldProbe</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">controller</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span> <span class="o">=</span> <span class="nc">AdaptiveDistributionController</span><span class="p">(</span><span class="nc">ControllerConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="nc">UniformQuantileFeatureExtractor</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeAutoControlConfig</span> <span class="o">=</span> <span class="nc">ShaderProbeAutoControlConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> | Macro placeholder expanded to a graphics `ModulePointer` for the current box. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">computeModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">meshModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rayTracingModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">computeModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">meshModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rayTracingModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">shadertoyHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">shadertoyHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">numberFromErrorMessage</span><span class="p">(</span><span class="n">m</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">preprocess</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">ShaderKind</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">normalizePreambleText</span><span class="p">(</span><span class="n">preamble</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">applyInsertToPreamble</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">e</span><span class="p">:</span> <span class="nc">Insert</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reloadShader</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">attachShader</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="p">,</span> <span class="n">overwriteProperties</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reloadComputeShader</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">attachShader</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="p">,</span> <span class="n">overwriteProperties</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reloadMeshShader</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">attachShader</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">MeshModulePointer</span><span class="p">,</span> <span class="n">overwriteProperties</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reloadRayTracingShader</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">attachShader</span><span class="p">(</span><span class="n">module</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span><span class="p">,</span> <span class="n">overwriteProperties</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;moduleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;moduleHereWithDefaultShaders</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">defaultVertexShader</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">defaultFragmentShader</span><span class="p">,</span> <span class="n">resolvesToCall</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#95;moduleHere&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;shadertoyHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">insertForShader</span><span class="p">(</span><span class="n">vi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">fi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">resolvesToCall</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#95;moduleHere&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span> <span class="o">=</span> <span class="n">parameters</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;shadertoyHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;shadertoyHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span> <span class="o">=</span> <span class="n">parameters</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fromViews</span><span class="p">(</span><span class="n">views</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">HasImageView</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">sampler</span><span class="p">:</span> <span class="nc">TextureSampler</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">HasImageViewArray</span><span class="p">,</span> <span class="nc">TextureSampler</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fromViews</span><span class="p">(</span><span class="n">provider</span><span class="p">:</span> <span class="nc">HasImageViewArray</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">sampler</span><span class="p">:</span> <span class="nc">TextureSampler</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">HasImageViewArray</span><span class="p">,</span> <span class="nc">TextureSampler</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;computeModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;computeModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;computeModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">)</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;meshModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;meshModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;meshModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span> <span class="o">=</span> <span class="n">parameters</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">MeshModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;rayTracingModuleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;rayTracingModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;rayTracingModuleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span> <span class="o">=</span> <span class="n">parameters</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span></code> |  |
 
 ### Top-level values { #shaders-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val defaultVertexShader` |  |
-| `val defaultFragmentShader` |  |
-| `val shadertoyVertexShader` |  |
-| `val shadertoyFragmentShader` |  |
-| `val defaultRaygenShader` |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex&#95;fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">task</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">fragment&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">task&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">mesh&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;vertex</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;task</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;mesh</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">compute</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">compute&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;compute</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">raygen</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">miss</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">closesthit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">anyhit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">intersection</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">callable</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">raygen&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">miss&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">closesthit&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">anyhit&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">intersection&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">callable&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;raygen</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;miss</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;closesthit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;anyhit</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;intersection</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;callable</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;shader</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;computeShader</span><span class="p">:</span> <span class="nc">ComputeModulePointer</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;rayTracingShader</span><span class="p">:</span> <span class="nc">RayTracingModulePointer</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">meshShader</span><span class="p">:</span> <span class="nc">MeshModulePointer</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;meshShader</span><span class="p">:</span> <span class="nc">MeshModulePointer</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;fieldProbe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;fieldProbeAutoController</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;fieldStatsBinding</span><span class="p">:</span> <span class="nc">ShaderFieldStatsBinding</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">vertex</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">fragment</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">vertex&#95;fragment</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">compute</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">task</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">mesh</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">raygen</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">miss</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">closesthit</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">anyhit</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">intersection</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Once</span><span class="p">.</span><span class="n">callable</span> <span class="k">by</span> <span class="nc">Onceing</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">shaderTemplate</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">stackAutoShaderSources</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultVertexShader</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultFragmentShader</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">shadertoyVertexShader</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">shadertoyFragmentShader</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">customTextureResolver</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Box</span><span class="p">,</span> <span class="nc">String</span><span class="p">)</span> <span class="p">-</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultRaygenShader</span></code> |  |
 
 ### ShaderIncludeRootRequest { #shaders-kt-shaderincluderootrequest }
 
-`data class ShaderIncludeRootRequest(val root: String, val includePath: String, val requestedPath: String, val requestingSourcePath: String?, val includeType: ShaderIncludeType, val includeDepth: Long)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShaderIncludeRootRequest</span><span class="p">(</span><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">includePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">requestedPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">requestingSourcePath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">includeType</span><span class="p">:</span> <span class="nc">ShaderIncludeType</span><span class="p">,</span> <span class="k">val</span> <span class="n">includeDepth</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val root: String` |  |
-| `val includePath: String` |  |
-| `val requestedPath: String` |  |
-| `val requestingSourcePath: String?` |  |
-| `val includeType: ShaderIncludeType` |  |
-| `val includeDepth: Long` |  |
-| `fun resolve(request: ShaderIncludeRootRequest): ShaderIncludeResolution?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">includePath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requestedPath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requestingSourcePath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">includeType</span><span class="p">:</span> <span class="nc">ShaderIncludeType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">includeDepth</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+
+### ShaderIncludeRootResolver { #shaders-kt-shaderincluderootresolver }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">ShaderIncludeRootResolver</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="nc">ShaderIncludeRootRequest</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderIncludeResolution</span><span class="o">?</span></code> |  |
 
 ### ShaderRemoteIncludeCacheOptions { #shaders-kt-shaderremoteincludecacheoptions }
 
-`data class ShaderRemoteIncludeCacheOptions(val cacheDirectory: Path, val connectTimeoutMillis: Int = 5_000, val readTimeoutMillis: Int = 5_000)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShaderRemoteIncludeCacheOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">cacheDirectory</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="k">val</span> <span class="n">connectTimeoutMillis</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">5</span><span class="n">&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">readTimeoutMillis</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">5</span><span class="n">&#95;000</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val cacheDirectory: Path` |  |
-| `val connectTimeoutMillis: Int` |  |
-| `val readTimeoutMillis: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cacheDirectory</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">connectTimeoutMillis</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">readTimeoutMillis</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### ShaderProbeAutoControlConfig { #shaders-kt-shaderprobeautocontrolconfig }
 
-`data class ShaderProbeAutoControlConfig(val minSamples: Int = 128, val clipLower: Double? = 0.0, val clipUpper: Double? = 1.0, val clipEpsilon: Double = 1.0e-6, val useNominalParams: Boolean = false, val displayChannel: String? = "auto", val closeDisplayOnStop: Boolean = false, val clearDisplayOnStop: Boolean = false, val runloopKeySuffix: String = "shaderFieldAuto")`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShaderProbeAutoControlConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">minSamples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipLower</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipUpper</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">useNominalParams</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">displayChannel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;auto&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">closeDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">clearDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">runloopKeySuffix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;shaderFieldAuto&quot;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val minSamples: Int` |  |
-| `val clipLower: Double?` |  |
-| `val clipUpper: Double?` |  |
-| `val clipEpsilon: Double` |  |
-| `val useNominalParams: Boolean` |  |
-| `val displayChannel: String?` |  |
-| `val closeDisplayOnStop: Boolean` |  |
-| `val clearDisplayOnStop: Boolean` |  |
-| `val runloopKeySuffix: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minSamples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipLower</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipUpper</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipEpsilon</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">useNominalParams</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">displayChannel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">closeDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clearDisplayOnStop</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">runloopKeySuffix</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### ShaderFieldAutoController { #shaders-kt-shaderfieldautocontroller }
 
-`class ShaderFieldAutoController(val box: Box, val probe: ShaderFieldProbe, val controller: AdaptiveDistributionController, val config: ShaderProbeAutoControlConfig, private val apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit)`
+<code class="highlight"><span class="k">class</span> <span class="nf">ShaderFieldAutoController</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span><span class="p">,</span> <span class="k">val</span> <span class="n">controller</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span><span class="p">,</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeAutoControlConfig</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="n">params</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val box: Box` |  |
-| `val probe: ShaderFieldProbe` |  |
-| `val controller: AdaptiveDistributionController` |  |
-| `val config: ShaderProbeAutoControlConfig` |  |
-| `var tickCount: Int` |  |
-| `var lastBatch: FieldProbeScalarBatch?` |  |
-| `var lastOutput: ControlOutput?` |  |
-| `fun tick(): ControlOutput?` |  |
-| `fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldAutoController` |  |
-| `fun stop(runloop: Runloop = Runloop.runLoop, closeDisplay: Boolean = config.closeDisplayOnStop, clearDisplay: Boolean = config.clearDisplayOnStop): ShaderFieldAutoController` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">controller</span><span class="p">:</span> <span class="nc">AdaptiveDistributionController</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeAutoControlConfig</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">tickCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastBatch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastOutput</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ControlOutput</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">closeDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">closeDisplayOnStop</span><span class="p">,</span> <span class="n">clearDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">clearDisplayOnStop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span></code> |  |
 
 ## stacksl.kt { #stacksl-kt }
 
@@ -1940,41 +1991,42 @@ plot of the four output channels with per-channel min/median/max; `StackSLSweep.
 
 `src/jvmMain/kotlin/afield/stdlib/stacksl.kt`
 
-**Used in:** [StackSL cheatsheet](../stacksl_cheatsheet.md)
+**Used in:** [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md)
 
 ### Top-level functions { #stacksl-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Box.stackSLPrefix(): String` | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. The language, its compiler and its diagnostics live in `afield.stacksl`; this file is the Kotlin surface a box calls. |
-| `fun Box.compileStackSL(source: String = stackSL ?: "", prefix: String = stackSLPrefix(), entrypoint: String = "main", sampleTextures: List<String> = listOf("source"), tolerant: Boolean = false, declareSamplers: Boolean = true, externalizeConstants: Boolean = false): StackSLCompileResult` |  |
-| `fun Box.stackSLToGlsl(source: String = stackSL ?: "", prefix: String = stackSLPrefix(), entrypoint: String = "main", sampleTextures: List<String> = listOf("source"), tolerant: Boolean = false, declareSamplers: Boolean = true, externalizeConstants: Boolean = false): String` |  |
-| `fun slEval(source: String, input: Vector4fc, renderer: Renderer = fromContext()): Vec4` |  |
-| `fun slGlsl(source: String, prefix: String = "stacksl", entrypoint: String = "main", sampleTextures: List<String> = listOf("source"), tolerant: Boolean = false, declareSamplers: Boolean = true, externalizeConstants: Boolean = false): String` |  |
-| `fun slSweep(source: String, range: Pair<Vector4fc, Vector4fc>, samples: Int = 100, renderer: Renderer = fromContext()): StackSLSweep` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">stackSLPrefix</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">compileStackSL</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">stackSL</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">stackSLPrefix</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">sampleTextures</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">,</span> <span class="n">tolerant</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">declareSamplers</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">externalizeConstants</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLCompileResult</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">stackSLToGlsl</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">stackSL</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">stackSLPrefix</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">sampleTextures</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">,</span> <span class="n">tolerant</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">declareSamplers</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">externalizeConstants</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">slEval</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">input</span><span class="p">:</span> <span class="nc">Vector4fc</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">slGlsl</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;stacksl&quot;</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">sampleTextures</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">listOf</span><span class="p">(</span><span class="s">&quot;source&quot;</span><span class="p">)</span><span class="p">,</span> <span class="n">tolerant</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">declareSamplers</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">externalizeConstants</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">slSweep</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">range</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Vector4fc</span><span class="p">,</span> <span class="nc">Vector4fc</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">renderer</span><span class="p">:</span> <span class="nc">Renderer</span> <span class="o">=</span> <span class="nf">fromContext</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLSweep</span></code> |  |
 
 ### Top-level values { #stacksl-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val StackSLSweep.h: String` |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">stackSL</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">StackSLSweep</span><span class="p">.</span><span class="n">h</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### StackSLSweep { #stacksl-kt-stackslsweep }
 
-`data class StackSLSweep(val source: String, val start: Vec4, val end: Vec4, val inputs: List<Vec4>, val values: List<Vec4>) : ToHTML`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackSLSweep</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Vec4</span><span class="p">,</span> <span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val source: String` |  |
-| `val start: Vec4` |  |
-| `val end: Vec4` |  |
-| `val inputs: List<Vec4>` |  |
-| `val values: List<Vec4>` |  |
-| `val size: Int` |  |
-| `operator fun get(index: Int): Vec4` |  |
-| `fun channel(channel: Int): List<Float>` |  |
-| `override fun toHTML(): String` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec4</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">channel</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## voronoi.kt { #voronoi-kt }
 
@@ -1996,164 +2048,164 @@ boundary loops over exact symbolic patch topology.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun voronoi3d(l: List<Vec3>): VoronoiLattice` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">voronoi3d</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> |  |
 
 ### Aabb3 { #voronoi-kt-aabb3 }
 
-`data class Aabb3(val min: Vec3, val max: Vec3)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Aabb3</span><span class="p">(</span><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val min: Vec3` |  |
-| `val max: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ### Plane3 { #voronoi-kt-plane3 }
 
-`data class Plane3(val normal: Vec3, val d: Float)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Plane3</span><span class="p">(</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val normal: Vec3` |  |
-| `val d: Float` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
 
 ### VoronoiFace { #voronoi-kt-voronoiface }
 
-`data class VoronoiFace(val neighborSite: Int?, val plane: Plane3, val polygon: List<Vec3>, val isClip: Boolean, val truncated: Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiFace</span><span class="p">(</span><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val neighborSite: Int?` |  |
-| `val plane: Plane3` |  |
-| `val polygon: List<Vec3>` |  |
-| `val isClip: Boolean` |  |
-| `val truncated: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### VoronoiCell3 { #voronoi-kt-voronoicell3 }
 
-`data class VoronoiCell3(val siteIndex: Int, val site: Vec3, val faces: List<VoronoiFace>, val bounded: Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiCell3</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val siteIndex: Int` |  |
-| `val site: Vec3` |  |
-| `val faces: List<VoronoiFace>` |  |
-| `val bounded: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### VoronoiLattice { #voronoi-kt-voronoilattice }
 
-`data class VoronoiLattice(val cells: List<VoronoiCell3>, val clipBounds: Aabb3)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiLattice</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val cells: List<VoronoiCell3>` |  |
-| `val clipBounds: Aabb3` |  |
-| `operator fun get(siteIndex: Int): VoronoiCell3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiCell3</span></code> |  |
 
 ### Voronoi3d { #voronoi-kt-voronoi3d }
 
-`object Voronoi3d`
+<code class="highlight"><span class="k">object</span> <span class="nc">Voronoi3d</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun build(points: List<Vec3>, tolerance: Float = 1e-4f, clipPadding: Float = 8f): VoronoiLattice` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> |  |
 
 ### WeightedSite3 { #voronoi-kt-weightedsite3 }
 
-`data class WeightedSite3(val position: Vec3, val weight: Float)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WeightedSite3</span><span class="p">(</span><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val position: Vec3` |  |
-| `val weight: Float` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
 
 ### SupportSurface3 { #voronoi-kt-supportsurface3 }
 
-`sealed interface SupportSurface3`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">SupportSurface3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val samplePoint: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ### SupportSphere3 { #voronoi-kt-supportsphere3 }
 
-`data class SupportSphere3(val center: Vec3, val radius: Float) : SupportSurface3`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SupportSphere3</span><span class="p">(</span><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SupportSurface3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val center: Vec3` |  |
-| `val radius: Float` |  |
-| `override val samplePoint: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ### SupportPlane3 { #voronoi-kt-supportplane3 }
 
-`data class SupportPlane3(val normal: Vec3, val d: Float) : SupportSurface3`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SupportPlane3</span><span class="p">(</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SupportSurface3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val normal: Vec3` |  |
-| `val d: Float` |  |
-| `override val samplePoint: Vec3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 
 ### CircularDirichletPatch3 { #voronoi-kt-circulardirichletpatch3 }
 
-`sealed interface CircularDirichletPatch3`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">CircularDirichletPatch3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val siteIndex: Int` |  |
-| `val neighborSite: Int` |  |
-| `val support: SupportSurface3` |  |
-| `val truncated: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSurface3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### SpherePatch3 { #voronoi-kt-spherepatch3 }
 
-`data class SpherePatch3(override val siteIndex: Int, override val neighborSite: Int, override val support: SupportSphere3, val boundary: List<Vec3>, override val truncated: Boolean) : CircularDirichletPatch3`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpherePatch3</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSphere3</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CircularDirichletPatch3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override val siteIndex: Int` |  |
-| `override val neighborSite: Int` |  |
-| `override val support: SupportSphere3` |  |
-| `val boundary: List<Vec3>` |  |
-| `override val truncated: Boolean` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSphere3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### PlanePatch3 { #voronoi-kt-planepatch3 }
 
-`data class PlanePatch3(override val siteIndex: Int, override val neighborSite: Int, override val support: SupportPlane3, val polygon: List<Vec3>, override val truncated: Boolean) : CircularDirichletPatch3`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlanePatch3</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportPlane3</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CircularDirichletPatch3</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override val siteIndex: Int` |  |
-| `override val neighborSite: Int` |  |
-| `override val support: SupportPlane3` |  |
-| `val polygon: List<Vec3>` |  |
-| `override val truncated: Boolean` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportPlane3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### CircularDirichletCell3 { #voronoi-kt-circulardirichletcell3 }
 
-`data class CircularDirichletCell3(val siteIndex: Int, val patches: List<CircularDirichletPatch3>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CircularDirichletCell3</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patches</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletPatch3</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val siteIndex: Int` |  |
-| `val patches: List<CircularDirichletPatch3>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patches</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletPatch3</span><span class="p">&gt;</span></code> |  |
 
 ### CircularDirichletDiagram3 { #voronoi-kt-circulardirichletdiagram3 }
 
-`data class CircularDirichletDiagram3(val cells: List<CircularDirichletCell3>, val clipBounds: Aabb3)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CircularDirichletDiagram3</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletCell3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val cells: List<CircularDirichletCell3>` |  |
-| `val clipBounds: Aabb3` |  |
-| `operator fun get(siteIndex: Int): CircularDirichletCell3` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletCell3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletCell3</span></code> |  |
 
 ### CircularDirichlet3d { #voronoi-kt-circulardirichlet3d }
 
-`object CircularDirichlet3d`
+<code class="highlight"><span class="k">object</span> <span class="nc">CircularDirichlet3d</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun build(sites: List<WeightedSite3>, tolerance: Float = 1e-4f, clipPadding: Float = 8f, sphereSubdivisions: Int = 3, planeSteps: Int = 56): CircularDirichletDiagram3` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">sites</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WeightedSite3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">,</span> <span class="n">sphereSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">planeSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">56</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletDiagram3</span></code> |  |
 
 </div>

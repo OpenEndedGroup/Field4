@@ -37,210 +37,210 @@ row count, the embedding row count and the manifest's `num_chunks` / `embedding_
 
 | Declaration | Summary |
 | --- | --- |
-| `fun loadFramesSig(file: File, options: FramesSigLoadOptions = FramesSigLoadOptions()): FramesSigDocument` |  |
-| `fun loadFramesSig(path: String, options: FramesSigLoadOptions = FramesSigLoadOptions()): FramesSigDocument` |  |
-| `fun loadSound2Vec(dir: File, options: Sound2VecLoadOptions = Sound2VecLoadOptions()): Sound2VecDataset` |  |
-| `fun loadSound2Vec(path: String, options: Sound2VecLoadOptions = Sound2VecLoadOptions()): Sound2VecDataset` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadFramesSig</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FramesSigLoadOptions</span> <span class="o">=</span> <span class="nc">FramesSigLoadOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigDocument</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadFramesSig</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FramesSigLoadOptions</span> <span class="o">=</span> <span class="nc">FramesSigLoadOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigDocument</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadSound2Vec</span><span class="p">(</span><span class="n">dir</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Sound2VecLoadOptions</span> <span class="o">=</span> <span class="nc">Sound2VecLoadOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecDataset</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadSound2Vec</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Sound2VecLoadOptions</span> <span class="o">=</span> <span class="nc">Sound2VecLoadOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecDataset</span></code> |  |
 
 ### FramesSigLoadOptions { #essentiaanalysis-kt-framessigloadoptions }
 
-`data class FramesSigLoadOptions(val minimumCodePointLimit: Int = 4_000_000, val codePointLimitPadding: Int = 1_000_000, val defaultSmallVectorWidth: Int = 16)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigLoadOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">minimumCodePointLimit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="n">&#95;000&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">codePointLimitPadding</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="n">&#95;000&#95;000</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultSmallVectorWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val minimumCodePointLimit: Int` |  |
-| `val codePointLimitPadding: Int` |  |
-| `val defaultSmallVectorWidth: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimumCodePointLimit</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">codePointLimitPadding</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultSmallVectorWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### FramesSigMetadata { #essentiaanalysis-kt-framessigmetadata }
 
-`data class FramesSigMetadata(val raw: Map<String, Any?>, val version: Map<String, String>, val fileName: String?, val codec: String?, val sampleRate: Int?, val numberChannels: Int?, val bitRate: Int?, val audioLengthSeconds: Double?, val analysisLengthSeconds: Double?, val analysisStartTimeSeconds: Double, val replayGain: Double?)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigMetadata</span><span class="p">(</span><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">codec</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">numberChannels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">bitRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">audioLengthSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">analysisLengthSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">analysisStartTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">replayGain</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val raw: Map<String, Any?>` |  |
-| `val version: Map<String, String>` |  |
-| `val fileName: String?` |  |
-| `val codec: String?` |  |
-| `val sampleRate: Int?` |  |
-| `val numberChannels: Int?` |  |
-| `val bitRate: Int?` |  |
-| `val audioLengthSeconds: Double?` |  |
-| `val analysisLengthSeconds: Double?` |  |
-| `val analysisStartTimeSeconds: Double` |  |
-| `val replayGain: Double?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">version</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">codec</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numberChannels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bitRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">audioLengthSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">analysisLengthSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">analysisStartTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">replayGain</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
 
 ### FramesSigProduct { #essentiaanalysis-kt-framessigproduct }
 
-`sealed interface FramesSigProduct`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">FramesSigProduct</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val path: String` |  |
-| `val frameCount: Int` |  |
-| `fun sampleAt(timeSeconds: Double, metadata: FramesSigMetadata): FramesSigTimedSample` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sampleAt</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">FramesSigMetadata</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigTimedSample</span></code> |  |
 
 ### FramesSigFloatProduct { #essentiaanalysis-kt-framessigfloatproduct }
 
-`data class FramesSigFloatProduct(override val path: String, val values: FloatArray) : FramesSigProduct`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigFloatProduct</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FramesSigProduct</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override val path: String` |  |
-| `val values: FloatArray` |  |
-| `override val frameCount: Int` |  |
-| `override fun sampleAt(timeSeconds: Double, metadata: FramesSigMetadata): FramesSigTimedSample` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">sampleAt</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">FramesSigMetadata</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigTimedSample</span></code> |  |
 
 ### FramesSigFloatVectorProduct { #essentiaanalysis-kt-framessigfloatvectorproduct }
 
-`data class FramesSigFloatVectorProduct(override val path: String, val values: List<FloatArray>) : FramesSigProduct`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigFloatVectorProduct</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FramesSigProduct</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override val path: String` |  |
-| `val values: List<FloatArray>` |  |
-| `override val frameCount: Int` |  |
-| `val vectorWidth: Int` |  |
-| `override fun sampleAt(timeSeconds: Double, metadata: FramesSigMetadata): FramesSigTimedSample` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vectorWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">sampleAt</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">FramesSigMetadata</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigTimedSample</span></code> |  |
 
 ### FramesSigTimedSample { #essentiaanalysis-kt-framessigtimedsample }
 
-`data class FramesSigTimedSample(val path: String, val index: Int, val timeSeconds: Double, val values: FloatArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigTimedSample</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val path: String` |  |
-| `val index: Int` |  |
-| `val timeSeconds: Double` |  |
-| `val values: FloatArray` |  |
-| `val value: Float?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
 
 ### FramesSigProductInfo { #essentiaanalysis-kt-framessigproductinfo }
 
-`data class FramesSigProductInfo(val path: String, val frameCount: Int, val vectorWidth: Int, val startTimeSeconds: Double, val endTimeSeconds: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigProductInfo</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">vectorWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">startTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">endTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val path: String` |  |
-| `val frameCount: Int` |  |
-| `val vectorWidth: Int` |  |
-| `val startTimeSeconds: Double` |  |
-| `val endTimeSeconds: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">frameCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vectorWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">startTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">endTimeSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### FramesSigDocument { #essentiaanalysis-kt-framessigdocument }
 
-`data class FramesSigDocument(val source: File, val metadata: FramesSigMetadata, val raw: Map<String, Any?>, val scalarProducts: Map<String, Double>, val floatProducts: Map<String, FramesSigFloatProduct>, val floatVectorProducts: Map<String, FramesSigFloatVectorProduct>, val loadOptions: FramesSigLoadOptions)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FramesSigDocument</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">val</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">FramesSigMetadata</span><span class="p">,</span> <span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">scalarProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">floatProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FramesSigFloatProduct</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">floatVectorProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FramesSigFloatVectorProduct</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">loadOptions</span><span class="p">:</span> <span class="nc">FramesSigLoadOptions</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val source: File` |  |
-| `val metadata: FramesSigMetadata` |  |
-| `val raw: Map<String, Any?>` |  |
-| `val scalarProducts: Map<String, Double>` |  |
-| `val floatProducts: Map<String, FramesSigFloatProduct>` |  |
-| `val floatVectorProducts: Map<String, FramesSigFloatVectorProduct>` |  |
-| `val loadOptions: FramesSigLoadOptions` |  |
-| `fun product(path: String): FramesSigProduct?` |  |
-| `fun sampleAt(path: String, timeSeconds: Double): FramesSigTimedSample?` |  |
-| `fun floatValueAt(path: String, timeSeconds: Double): Float?` |  |
-| `fun floatVectorAt(path: String, timeSeconds: Double): FloatArray?` |  |
-| `fun available(): List<FramesSigProductInfo>` |  |
-| `fun availableArrays(maxVectorWidth: Int = loadOptions.defaultSmallVectorWidth): List<FramesSigProductInfo>` |  |
-| `fun availableAll(maxVectorWidth: Int = loadOptions.defaultSmallVectorWidth): List<FramesSigProductInfo>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">File</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">FramesSigMetadata</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scalarProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">floatProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FramesSigFloatProduct</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">floatVectorProducts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FramesSigFloatVectorProduct</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">loadOptions</span><span class="p">:</span> <span class="nc">FramesSigLoadOptions</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">product</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigProduct</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sampleAt</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FramesSigTimedSample</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">floatValueAt</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">floatVectorAt</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">available</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FramesSigProductInfo</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">availableArrays</span><span class="p">(</span><span class="n">maxVectorWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">loadOptions</span><span class="p">.</span><span class="n">defaultSmallVectorWidth</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FramesSigProductInfo</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">availableAll</span><span class="p">(</span><span class="n">maxVectorWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">loadOptions</span><span class="p">.</span><span class="n">defaultSmallVectorWidth</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FramesSigProductInfo</span><span class="p">&gt;</span></code> |  |
 
 ### Sound2VecLoadOptions { #essentiaanalysis-kt-sound2vecloadoptions }
 
-`data class Sound2VecLoadOptions(val requireManifest: Boolean = false, val requireRowAlignment: Boolean = true)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sound2VecLoadOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">requireManifest</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">requireRowAlignment</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val requireManifest: Boolean` |  |
-| `val requireRowAlignment: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requireManifest</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requireRowAlignment</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### Sound2VecManifest { #essentiaanalysis-kt-sound2vecmanifest }
 
-`data class Sound2VecManifest(val raw: Map<String, String>, val modelId: String?, val device: String?, val sampleRate: Int?, val clipSeconds: Double?, val hopSeconds: Double?, val minSeconds: Double?, val numFiles: Int?, val numChunks: Int?, val embeddingDim: Int?, val l2Normalized: Boolean?)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sound2VecManifest</span><span class="p">(</span><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">modelId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">device</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">hopSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">minSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">numFiles</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">numChunks</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">embeddingDim</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">l2Normalized</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val raw: Map<String, String>` |  |
-| `val modelId: String?` |  |
-| `val device: String?` |  |
-| `val sampleRate: Int?` |  |
-| `val clipSeconds: Double?` |  |
-| `val hopSeconds: Double?` |  |
-| `val minSeconds: Double?` |  |
-| `val numFiles: Int?` |  |
-| `val numChunks: Int?` |  |
-| `val embeddingDim: Int?` |  |
-| `val l2Normalized: Boolean?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">modelId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">device</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hopSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numFiles</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numChunks</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">embeddingDim</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">l2Normalized</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code> |  |
 
 ### Sound2VecClip { #essentiaanalysis-kt-sound2vecclip }
 
-`data class Sound2VecClip(val rowIndex: Int, val chunkId: Int, val filePath: String, val relPath: String, val fileName: String, val chunkIndex: Int, val startSec: Double, val endSec: Double, val durationSec: Double, val sampleRate: Int, val numSamples: Int, val tsne2dX: Float?, val tsne2dY: Float?, val tsne3dX: Float?, val tsne3dY: Float?, val tsne3dZ: Float?, val embedding: FloatArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sound2VecClip</span><span class="p">(</span><span class="k">val</span> <span class="n">rowIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">chunkId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">relPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">chunkIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">durationSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">numSamples</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tsne2dX</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">tsne2dY</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">tsne3dX</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">tsne3dY</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">tsne3dZ</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">embedding</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val rowIndex: Int` |  |
-| `val chunkId: Int` |  |
-| `val filePath: String` |  |
-| `val relPath: String` |  |
-| `val fileName: String` |  |
-| `val chunkIndex: Int` |  |
-| `val startSec: Double` |  |
-| `val endSec: Double` |  |
-| `val durationSec: Double` |  |
-| `val sampleRate: Int` |  |
-| `val numSamples: Int` |  |
-| `val tsne2dX: Float?` |  |
-| `val tsne2dY: Float?` |  |
-| `val tsne3dX: Float?` |  |
-| `val tsne3dY: Float?` |  |
-| `val tsne3dZ: Float?` |  |
-| `val embedding: FloatArray` |  |
-| `val middleSec: Double` |  |
-| `fun contains(timeSeconds: Double): Boolean` |  |
-| `fun tsne2dOrNull(): FloatArray?` |  |
-| `fun tsne3dOrNull(): FloatArray?` |  |
-| `fun tsne2dVecOrNull(): Vec2?` |  |
-| `fun tsne3dVecOrNull(): Vec3?` |  |
-| `fun audioSubclip(): Sound2VecAudioSubclip` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rowIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">chunkId</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">relPath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">chunkIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">durationSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numSamples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tsne2dX</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tsne2dY</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tsne3dX</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tsne3dY</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tsne3dZ</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">embedding</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">middleSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">contains</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne2dOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne3dOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne2dVecOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne3dVecOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">audioSubclip</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecAudioSubclip</span></code> |  |
 
 ### Sound2VecAudioSubclip { #essentiaanalysis-kt-sound2vecaudiosubclip }
 
-`data class Sound2VecAudioSubclip(val chunkId: Int, val chunkIndex: Int, val filePath: String, val relPath: String, val fileName: String, val startSec: Double, val endSec: Double, val durationSec: Double, val sampleRate: Int, val numSamples: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sound2VecAudioSubclip</span><span class="p">(</span><span class="k">val</span> <span class="n">chunkId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">chunkIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">relPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">durationSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">numSamples</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val chunkId: Int` |  |
-| `val chunkIndex: Int` |  |
-| `val filePath: String` |  |
-| `val relPath: String` |  |
-| `val fileName: String` |  |
-| `val startSec: Double` |  |
-| `val endSec: Double` |  |
-| `val durationSec: Double` |  |
-| `val sampleRate: Int` |  |
-| `val numSamples: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">chunkId</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">chunkIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">relPath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fileName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">durationSec</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numSamples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### Sound2VecDataset { #essentiaanalysis-kt-sound2vecdataset }
 
-`data class Sound2VecDataset(val sourceDir: File, val manifest: Sound2VecManifest?, val clips: List<Sound2VecClip>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Sound2VecDataset</span><span class="p">(</span><span class="k">val</span> <span class="n">sourceDir</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">Sound2VecManifest</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">clips</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecClip</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val sourceDir: File` |  |
-| `val manifest: Sound2VecManifest?` |  |
-| `val clips: List<Sound2VecClip>` |  |
-| `val embeddingDim: Int` |  |
-| `fun clipByChunkId(chunkId: Int): Sound2VecClip?` |  |
-| `fun clipsForAudio(filePath: String): List<Sound2VecClip>` |  |
-| `fun clipAt(filePath: String, timeSeconds: Double): Sound2VecClip?` |  |
-| `fun clipsOverlapping(filePath: String, startSec: Double, endSec: Double): List<Sound2VecClip>` |  |
-| `fun tsne2dPoints(): List<Vec2>` |  |
-| `fun tsne3dPoints(): List<Vec3>` |  |
-| `fun subclipAt(filePath: String, timeSeconds: Double): Sound2VecAudioSubclip?` |  |
-| `fun subclipsOverlapping(filePath: String, startSec: Double, endSec: Double): List<Sound2VecAudioSubclip>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sourceDir</span><span class="p">:</span> <span class="nc">File</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">manifest</span><span class="p">:</span> <span class="nc">Sound2VecManifest</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clips</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecClip</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">embeddingDim</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clipByChunkId</span><span class="p">(</span><span class="n">chunkId</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecClip</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clipsForAudio</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecClip</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clipAt</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecClip</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clipsOverlapping</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecClip</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne2dPoints</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tsne3dPoints</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">subclipAt</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sound2VecAudioSubclip</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">subclipsOverlapping</span><span class="p">(</span><span class="n">filePath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">endSec</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Sound2VecAudioSubclip</span><span class="p">&gt;</span></code> |  |
 
 ## osc.kt { #osc-kt }
 
@@ -265,64 +265,64 @@ print. [`OscServer`](audio.md#osc-kt-oscserver) also has `debug` on by default, 
 
 | Declaration | Summary |
 | --- | --- |
-| `fun osc(port: Int = 9000): OscServer` | Get (and cache) an OSC server listening on `port`. |
-| `fun oscClient(host: String = "127.0.0.1", port: Int = 9000): OscClient` | Get (and cache) an OSC client targeting `host`:`port`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">osc</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code> | Get (and cache) an OSC server listening on `port`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">oscClient</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code> | Get (and cache) an OSC client targeting `host`:`port`. |
 
 ### OscServer { #osc-kt-oscserver }
 
-`class OscServer(localPort: Int = 9000, autoStart: Boolean = true) : Closeable`
+<code class="highlight"><span class="k">class</span> <span class="nf">OscServer</span><span class="p">(</span><span class="n">localPort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoStart</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>
 
 Thin wrapper around JavaOSC's OSCPortIn that queues callbacks onto the main runloop.
 
 | Declaration | Summary |
 | --- | --- |
-| `data class Message(val address: String, val arguments: List<Any?>, val event: OSCMessageEvent)` |  |
-| `var debug` |  |
-| `val isListening: Boolean` |  |
-| `fun startListening()` |  |
-| `fun stopListening()` |  |
-| `fun on(pattern: String, handler: (Message) -> Generator<Message, *>)` |  |
-| `fun remove(pattern: String)` |  |
-| `suspend fun run()` |  |
-| `fun tick()` | Manual single tick; call from your main loop if you do not use `run`. |
-| `fun stopRunLoop()` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Message</span><span class="p">(</span><span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">event</span><span class="p">:</span> <span class="nc">OSCMessageEvent</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">debug</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isListening</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">startListening</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stopListening</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">on</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Generator</span><span class="p">&lt;</span><span class="nc">Message</span><span class="p">,</span> <span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span></code> | Manual single tick; call from your main loop if you do not use `run`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stopRunLoop</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### OscClient { #osc-kt-oscclient }
 
-`class OscClient(remoteHost: String = "127.0.0.1", remotePort: Int = 9000, autoConnect: Boolean = false) : Closeable`
+<code class="highlight"><span class="k">class</span> <span class="nf">OscClient</span><span class="p">(</span><span class="n">remoteHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">remotePort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoConnect</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>
 
 Thin wrapper around JavaOSC's OSCPortOut for sending messages.
 
 | Declaration | Summary |
 | --- | --- |
-| `var debug` |  |
-| `val isConnected: Boolean` |  |
-| `fun connect()` |  |
-| `fun disconnect()` |  |
-| `fun send(address: String, arguments: List<Any?> = emptyList())` |  |
-| `fun send(address: String, vararg arguments: Any?)` | Convenience vararg sender; converts arguments to a list and delegates to `send`. |
-| `fun send(message: OSCMessage)` | Send a pre-built OSC message. |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">debug</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isConnected</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">connect</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">disconnect</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> | Convenience vararg sender; converts arguments to a list and delegates to `send`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">OSCMessage</span><span class="p">)</span></code> | Send a pre-built OSC message. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### OscServers { #osc-kt-oscservers }
 
-`object OscServers`
+<code class="highlight"><span class="k">object</span> <span class="nc">OscServers</span></code>
 
 Cached per-port servers that are automatically driven on the main runloop.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun get(port: Int = 9000): OscServer` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code> |  |
 
 ### OscClients { #osc-kt-oscclients }
 
-`object OscClients`
+<code class="highlight"><span class="k">object</span> <span class="nc">OscClients</span></code>
 
 Cached per-host+port clients that open on first use and remain available across edits.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun get(host: String = "127.0.0.1", port: Int = 9000): OscClient` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code> |  |
 
 </div>

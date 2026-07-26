@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-4 source file(s), 225 public symbol(s), 13 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+4 source file(s), 227 public symbol(s), 13 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -136,401 +136,407 @@ In other words: treat this as a graph chemistry for live coding.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun fragment(block: FragmentBuilder.() -> Unit): NetFragment` |  |
-| `fun net(block: NetBuilder.() -> Unit): Net` |  |
-| `fun rules(block: RuleBook.() -> Unit): RuleBook` |  |
-| `fun Net.writeSvg(path: String, width: Int = 900, height: Int = 700)` |  |
-| `fun Box.showInteractionNet(net: Net, channel: String = "interaction-net", summaryChannel: String? = "$channel-summary", title: String = "Interaction net", w: Double = 920.0, h: Double = 560.0, fitToSize: Boolean = true): List<FLine>` |  |
-| `fun Box.showInteractionSummary(channel: String = "interaction-net-summary", vararg cards: String)` |  |
-| `fun Box.showInteractionOverview(graphicLines: List<FLine>, cards: List<String>, channel: String = "interaction-net-overview", graphicTitle: String = "Comparison", graphicWidth: Double = 1040.0, graphicHeight: Double = 340.0): String` |  |
-| `fun interactionSummaryGrid(vararg cards: String): String` |  |
-| `fun ReductionStep.summaryHtml(title: String = "Reduction step"): String` |  |
-| `fun main()` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fragment</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">FragmentBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">NetFragment</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">net</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">NetBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rules</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">RuleBook</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">RuleBook</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Net</span><span class="p">.</span><span class="nf">writeSvg</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">900</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">700</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showInteractionNet</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;interaction-net&quot;</span><span class="p">,</span> <span class="n">summaryChannel</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;$channel-summary&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Interaction net&quot;</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">920.0</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">560.0</span><span class="p">,</span> <span class="n">fitToSize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showInteractionSummary</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;interaction-net-summary&quot;</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">cards</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showInteractionOverview</span><span class="p">(</span><span class="n">graphicLines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cards</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;interaction-net-overview&quot;</span><span class="p">,</span> <span class="n">graphicTitle</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Comparison&quot;</span><span class="p">,</span> <span class="n">graphicWidth</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1040.0</span><span class="p">,</span> <span class="n">graphicHeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">340.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">interactionSummaryGrid</span><span class="p">(</span><span class="k">vararg</span> <span class="n">cards</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ReductionStep</span><span class="p">.</span><span class="nf">summaryHtml</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Reduction step&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### LayoutConfig { #interactionnets-kt-layoutconfig }
 
-`data class LayoutConfig(val repulsion: Double = 2500.0, val springLength: Double = 90.0, val springStrength: Double = 0.015, val damping: Double = 0.82, val timeStep: Double = 1.0, val jitter: Double = 8.0, val clampStep: Double = 20.0)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LayoutConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">repulsion</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2500.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">springLength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">90.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">springStrength</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.015</span><span class="p">,</span> <span class="k">val</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.82</span><span class="p">,</span> <span class="k">val</span> <span class="n">timeStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">jitter</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">clampStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">20.0</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val repulsion: Double` |  |
-| `val springLength: Double` |  |
-| `val springStrength: Double` |  |
-| `val damping: Double` |  |
-| `val timeStep: Double` |  |
-| `val jitter: Double` |  |
-| `val clampStep: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">repulsion</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">springLength</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">springStrength</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">timeStep</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">jitter</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clampStep</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### NodeState { #interactionnets-kt-nodestate }
 
-`data class NodeState(var energy: Double = 1.0, var phase: Double = 0.0, var hue: Double = 0.0, var age: Double = 0.0, val scalars: MutableMap<String, Double> = linkedMapOf())`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NodeState</span><span class="p">(</span><span class="k">var</span> <span class="n">energy</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">hue</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">age</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">scalars</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">linkedMapOf</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var energy: Double` |  |
-| `var phase: Double` |  |
-| `var hue: Double` |  |
-| `var age: Double` |  |
-| `val scalars: MutableMap<String, Double>` |  |
-| `fun copyDeep(): NodeState` |  |
-| `fun evolved(energyScale: Double = 1.0, energyBias: Double = 0.0, phaseShift: Double = 0.0, hueShift: Double = 0.0, ageDelta: Double = 0.0): NodeState` |  |
-| `fun split(parts: Int, branch: Int, attenuation: Double = 1.0, hueSpread: Double = 0.0, phaseSpread: Double = 0.0, ageDelta: Double = 0.0): NodeState` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">energy</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">hue</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">age</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scalars</span><span class="p">:</span> <span class="nc">MutableMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyDeep</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">evolved</span><span class="p">(</span><span class="n">energyScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">energyBias</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">phaseShift</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">hueShift</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ageDelta</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">split</span><span class="p">(</span><span class="n">parts</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">branch</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">attenuation</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">hueSpread</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">phaseSpread</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ageDelta</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
 
 ### PortKind { #interactionnets-kt-portkind }
 
-`enum class PortKind`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">PortKind</span></code>
 
 Constants: `PRINCIPAL`, `AUXILIARY`.
 
 ### AgentType { #interactionnets-kt-agenttype }
 
-`data class AgentType(val name: String, val auxPorts: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AgentType</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">auxPorts</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val arity: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">arity</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### Port { #interactionnets-kt-port }
 
-`class Port internal constructor(val node: Node, val index: Int, val kind: PortKind)`
+<code class="highlight"><span class="k">class</span> <span class="nc">Port</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">PortKind</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val node: Node` |  |
-| `val index: Int` |  |
-| `val kind: PortKind` |  |
-| `val id: String` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">PortKind</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### Node { #interactionnets-kt-node }
 
-`class Node internal constructor(val id: String, val type: AgentType, val state: NodeState = NodeState())`
+<code class="highlight"><span class="k">class</span> <span class="nc">Node</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val id: String` |  |
-| `val type: AgentType` |  |
-| `val state: NodeState` |  |
-| `val ports: List<Port>` |  |
-| `val principal: Port` |  |
-| `fun aux(i: Int): Port` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ports</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">principal</span><span class="p">:</span> <span class="nc">Port</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">aux</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### Edge { #interactionnets-kt-edge }
 
-`data class Edge(val a: Port, val b: Port)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Edge</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Port</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun other(p: Port): Port` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">other</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span></code> |  |
 
 ### ActivePair { #interactionnets-kt-activepair }
 
-`data class ActivePair(val left: Node, val right: Node)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ActivePair</span><span class="p">(</span><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun canonicalKey(): Pair<String, String>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">canonicalKey</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
 
 ### Net { #interactionnets-kt-net }
 
-`class Net internal constructor(internal val ids: IdSource = IdSource())`
+<code class="highlight"><span class="k">class</span> <span class="nc">Net</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">ids</span><span class="p">:</span> <span class="nc">IdSource</span> <span class="o">=</span> <span class="nc">IdSource</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val nodes: Collection<Node>` |  |
-| `val edges: Collection<Edge>` |  |
-| `fun node(id: String): Node` |  |
-| `fun positionOf(node: Node): Vec2` |  |
-| `fun velocityOf(node: Node): Vec2` |  |
-| `fun setPosition(node: Node, p: Vec2)` |  |
-| `fun setVelocity(node: Node, velocity: Vec2)` |  |
-| `fun create(type: AgentType, id: String = ids.next(type.name.lowercase()), state: NodeState = NodeState()): Node` |  |
-| `fun remove(node: Node)` |  |
-| `fun connected(port: Port): Port?` |  |
-| `fun connect(a: Port, b: Port)` |  |
-| `fun disconnect(a: Port, b: Port)` |  |
-| `fun activePairs(): List<ActivePair>` |  |
-| `fun incrementAges(dt: Double = 1.0)` |  |
-| `fun relax(iterations: Int = 1, config: LayoutConfig = LayoutConfig())` |  |
-| `fun totalEnergy(): Double` |  |
-| `fun averageAge(): Double` |  |
-| `fun toFLines(velocityScale: Double = 18.0): List<FLine>` |  |
-| `fun summaryHtml(title: String = "Interaction net", maxNodes: Int = 8): String` |  |
-| `fun toSvg(width: Int = 900, height: Int = 700, padding: Double = 40.0): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Node</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Edge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">positionOf</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">velocityOf</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">setPosition</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">setVelocity</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">create</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">ids</span><span class="p">.</span><span class="nf">next</span><span class="p">(</span><span class="n">type</span><span class="p">.</span><span class="n">name</span><span class="p">.</span><span class="nf">lowercase</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">connected</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">connect</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Port</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">disconnect</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Port</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">activePairs</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ActivePair</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">incrementAges</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">relax</span><span class="p">(</span><span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">LayoutConfig</span> <span class="o">=</span> <span class="nc">LayoutConfig</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">totalEnergy</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">averageAge</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toFLines</span><span class="p">(</span><span class="n">velocityScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">18.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">summaryHtml</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Interaction net&quot;</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toSvg</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">900</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">700</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### NodeRef { #interactionnets-kt-noderef }
 
-`class NodeRef internal constructor(val name: String)`
+<code class="highlight"><span class="k">class</span> <span class="nc">NodeRef</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### PortRef { #interactionnets-kt-portref }
 
-`data class PortRef(val node: NodeRef, val portIndex: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PortRef</span><span class="p">(</span><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">,</span> <span class="k">val</span> <span class="n">portIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 ### NetFragment { #interactionnets-kt-netfragment }
 
-`class NetFragment internal constructor(internal val nodeSpecs: LinkedHashMap<NodeRef, NodeSpec> = LinkedHashMap(), internal val pendingInternalConnections: MutableList<Pair<PortRef, PortRef>> = mutableListOf(), internal val publishedPorts: LinkedHashMap<String, PortRef> = LinkedHashMap())`
+<code class="highlight"><span class="k">class</span> <span class="nc">NetFragment</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">nodeSpecs</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">NodeRef</span><span class="p">,</span> <span class="nc">NodeSpec</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">LinkedHashMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">pendingInternalConnections</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">PortRef</span><span class="p">,</span> <span class="nc">PortRef</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">mutableListOf</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">publishedPorts</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">PortRef</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">LinkedHashMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun export(name: String, port: PortRef)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">export</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">)</span></code> |  |
 
 ### FragmentBuilder { #interactionnets-kt-fragmentbuilder }
 
-`class FragmentBuilder`
+<code class="highlight"><span class="k">class</span> <span class="nc">FragmentBuilder</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun node(name: String, type: AgentType, at: Vec2 = Vec2(), state: NodeState = NodeState(), impulse: Vec2 = Vec2()): NodeRef` |  |
-| `fun principal(ref: NodeRef): PortRef` |  |
-| `fun aux(ref: NodeRef, i: Int): PortRef` |  |
-| `infix fun PortRef.to(other: PortRef)` |  |
-| `fun expose(name: String, port: PortRef)` |  |
-| `fun build(): NetFragment` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">principal</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">PortRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">aux</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PortRef</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PortRef</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">expose</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">NetFragment</span></code> |  |
 
 ### FragmentEmbed { #interactionnets-kt-fragmentembed }
 
-`class FragmentEmbed internal constructor(private val nodeMap: Map<NodeRef, Node>)`
+<code class="highlight"><span class="k">class</span> <span class="nc">FragmentEmbed</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">nodeMap</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">NodeRef</span><span class="p">,</span> <span class="nc">Node</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `operator fun get(ref: NodeRef): Node` |  |
-| `val nodes: Collection<Node>` |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">Node</span><span class="p">&gt;</span></code> |  |
 
 ### NetBuilder { #interactionnets-kt-netbuilder }
 
-`class NetBuilder(private val net: Net)`
+<code class="highlight"><span class="k">class</span> <span class="nf">NetBuilder</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun node(type: AgentType, id: String? = null, at: Vec2 = Vec2(), state: NodeState = NodeState(), impulse: Vec2 = Vec2()): Node` |  |
-| `infix fun Port.to(other: Port)` |  |
-| `fun connect(a: Port, b: Port)` |  |
-| `fun embed(fragment: NetFragment, at: Vec2 = Vec2()): EmbeddedPorts` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">Port</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">connect</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Port</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Port</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">embed</span><span class="p">(</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">NetFragment</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">EmbeddedPorts</span></code> |  |
 
 ### EmbeddedPorts { #interactionnets-kt-embeddedports }
 
-`class EmbeddedPorts internal constructor(private val exported: Map<String, Port>)`
+<code class="highlight"><span class="k">class</span> <span class="nc">EmbeddedPorts</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">exported</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Port</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `operator fun get(name: String): Port` |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span></code> |  |
 
 ### PairSignature { #interactionnets-kt-pairsignature }
 
-`data class PairSignature(val left: AgentType, val right: AgentType)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PairSignature</span><span class="p">(</span><span class="k">val</span> <span class="n">left</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="k">val</span> <span class="n">right</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun matches(a: Node, b: Node): Boolean` |  |
-| `fun bind(a: Node, b: Node): SignatureBinding?` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">matches</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">bind</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">SignatureBinding</span><span class="o">?</span></code> |  |
 
 ### SignatureBinding { #interactionnets-kt-signaturebinding }
 
-`data class SignatureBinding(val first: Node, val second: Node, val swapped: Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SignatureBinding</span><span class="p">(</span><span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">swapped</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 ### RuleMatch { #interactionnets-kt-rulematch }
 
-`data class RuleMatch(val rule: RewriteRule, val binding: SignatureBinding)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RuleMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">RewriteRule</span><span class="p">,</span> <span class="k">val</span> <span class="n">binding</span><span class="p">:</span> <span class="nc">SignatureBinding</span><span class="p">)</span></code>
 
 ### PairContext { #interactionnets-kt-paircontext }
 
-`data class PairContext(val first: Node, val second: Node, val firstAuxPeers: List<Port?>, val secondAuxPeers: List<Port?>, val center: Vec2, val radius: Double, val firstVelocity: Vec2, val secondVelocity: Vec2, val axis: Vec2, val normal: Vec2)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PairContext</span><span class="p">(</span><span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="k">val</span> <span class="n">firstAuxPeers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">secondAuxPeers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">firstVelocity</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">secondVelocity</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val first: Node` |  |
-| `val second: Node` |  |
-| `val firstAuxPeers: List<Port?>` |  |
-| `val secondAuxPeers: List<Port?>` |  |
-| `val center: Vec2` |  |
-| `val radius: Double` |  |
-| `val firstVelocity: Vec2` |  |
-| `val secondVelocity: Vec2` |  |
-| `val axis: Vec2` |  |
-| `val normal: Vec2` |  |
-| `fun auxPeer(nodeOrdinal: Int, auxIndex: Int): Port?` |  |
-| `fun state(nodeOrdinal: Int): NodeState` |  |
-| `fun stateCopy(nodeOrdinal: Int): NodeState` |  |
-| `fun velocity(nodeOrdinal: Int): Vec2` |  |
-| `fun blendedState(weightToFirst: Double = 0.5): NodeState` |  |
-| `val pairEnergy: Double` |  |
-| `fun branchImpulse(branch: Int, branches: Int = 2, amount: Double = radius * 0.35): Vec2` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">first</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">second</span><span class="p">:</span> <span class="nc">Node</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">firstAuxPeers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">secondAuxPeers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Port</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">firstVelocity</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">secondVelocity</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">auxPeer</span><span class="p">(</span><span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">auxIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Port</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">state</span><span class="p">(</span><span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stateCopy</span><span class="p">(</span><span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">velocity</span><span class="p">(</span><span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">blendedState</span><span class="p">(</span><span class="n">weightToFirst</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeState</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pairEnergy</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">branchImpulse</span><span class="p">(</span><span class="n">branch</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">branches</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">amount</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">radius</span> <span class="o">&#42;</span> <span class="mf">0.35</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
 
 ### RewriteEvent { #interactionnets-kt-rewriteevent }
 
-`data class RewriteEvent(val kind: String, val at: Vec2, val magnitude: Double = 1.0, val data: Map<String, Double> = emptyMap())`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RewriteEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">magnitude</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val kind: String` |  |
-| `val at: Vec2` |  |
-| `val magnitude: Double` |  |
-| `val data: Map<String, Double>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">magnitude</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
 
 ### ReductionStep { #interactionnets-kt-reductionstep }
 
-`data class ReductionStep(val ruleName: String, val context: PairContext, val swapped: Boolean, val removedNodeIds: List<String>, val createdNodeIds: List<String>, val events: List<RewriteEvent>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ReductionStep</span><span class="p">(</span><span class="k">val</span> <span class="n">ruleName</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">PairContext</span><span class="p">,</span> <span class="k">val</span> <span class="n">swapped</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">removedNodeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">createdNodeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RewriteEvent</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val ruleName: String` |  |
-| `val context: PairContext` |  |
-| `val swapped: Boolean` |  |
-| `val removedNodeIds: List<String>` |  |
-| `val createdNodeIds: List<String>` |  |
-| `val events: List<RewriteEvent>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ruleName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">PairContext</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">swapped</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">removedNodeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">createdNodeIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RewriteEvent</span><span class="p">&gt;</span></code> |  |
 
 ### RewriteBuilder { #interactionnets-kt-rewritebuilder }
 
-`class RewriteBuilder internal constructor(private val ctx: PairContext)`
+<code class="highlight"><span class="k">class</span> <span class="nc">RewriteBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">PairContext</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun node(name: String, type: AgentType, at: Vec2 = Vec2(), state: NodeState = NodeState(), impulse: Vec2 = Vec2()): NodeRef` |  |
-| `fun principal(ref: NodeRef): PortRef` |  |
-| `fun aux(ref: NodeRef, i: Int): PortRef` |  |
-| `infix fun PortRef.to(other: PortRef)` |  |
-| `fun reconnect(newPort: PortRef, oldPeer: Port?)` |  |
-| `fun reconnect(newPort: PortRef, nodeOrdinal: Int, auxIndex: Int)` |  |
-| `fun passthrough(a: Port?, b: Port?)` |  |
-| `fun emit(kind: String, magnitude: Double = ctx.pairEnergy, at: Vec2 = ctx.center, data: Map<String, Double> = emptyMap())` |  |
-| `fun build(): RewriteResult` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">principal</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">PortRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">aux</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PortRef</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">PortRef</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reconnect</span><span class="p">(</span><span class="n">newPort</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">,</span> <span class="n">oldPeer</span><span class="p">:</span> <span class="nc">Port</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reconnect</span><span class="p">(</span><span class="n">newPort</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">,</span> <span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">auxIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">passthrough</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Port</span><span class="o">?</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Port</span><span class="o">?</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">emit</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">magnitude</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">.</span><span class="n">pairEnergy</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">.</span><span class="n">center</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RewriteResult</span></code> |  |
 
 ### RewriteResult { #interactionnets-kt-rewriteresult }
 
-`class RewriteResult internal constructor(internal val fragment: NetFragment = NetFragment(), internal val reconnections: MutableList<Pair<PortRef, Port>> = mutableListOf(), internal val passthroughs: MutableList<Pair<Port, Port>> = mutableListOf(), internal val events: MutableList<RewriteEvent> = mutableListOf())`
+<code class="highlight"><span class="k">class</span> <span class="nc">RewriteResult</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">fragment</span><span class="p">:</span> <span class="nc">NetFragment</span> <span class="o">=</span> <span class="nc">NetFragment</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">reconnections</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">PortRef</span><span class="p">,</span> <span class="nc">Port</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">mutableListOf</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">passthroughs</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Port</span><span class="p">,</span> <span class="nc">Port</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">mutableListOf</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">RewriteEvent</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">mutableListOf</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 ### RewriteRule { #interactionnets-kt-rewriterule }
 
-`class RewriteRule(val name: String, val signature: PairSignature, val rewrite: (PairContext) -> RewriteResult)`
+<code class="highlight"><span class="k">class</span> <span class="nf">RewriteRule</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">signature</span><span class="p">:</span> <span class="nc">PairSignature</span><span class="p">,</span> <span class="k">val</span> <span class="n">rewrite</span><span class="p">:</span> <span class="p">(</span><span class="nc">PairContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">RewriteResult</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val name: String` |  |
-| `val signature: PairSignature` |  |
-| `val rewrite: (PairContext) -> RewriteResult` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">signature</span><span class="p">:</span> <span class="nc">PairSignature</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rewrite</span><span class="p">:</span> <span class="p">(</span><span class="nc">PairContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">RewriteResult</span></code> |  |
 
 ### AutoEndpoint { #interactionnets-kt-autoendpoint }
 
-`sealed interface AutoEndpoint`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">AutoEndpoint</span></code>
 
 ### InternalEndpoint { #interactionnets-kt-internalendpoint }
 
-`data class InternalEndpoint(val ref: PortRef) : AutoEndpoint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InternalEndpoint</span><span class="p">(</span><span class="k">val</span> <span class="n">ref</span><span class="p">:</span> <span class="nc">PortRef</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoEndpoint</span></code>
 
 ### ExternalEndpoint { #interactionnets-kt-externalendpoint }
 
-`data class ExternalEndpoint(val nodeOrdinal: Int, val auxIndex: Int) : AutoEndpoint`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ExternalEndpoint</span><span class="p">(</span><span class="k">val</span> <span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">auxIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="p">:</span> <span class="nc">AutoEndpoint</span></code>
 
 ### AutoRuleBuilder { #interactionnets-kt-autorulebuilder }
 
-`class AutoRuleBuilder internal constructor(private val ctx: PairContext)`
+<code class="highlight"><span class="k">class</span> <span class="nc">AutoRuleBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">PairContext</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun node(name: String, type: AgentType, at: Vec2 = Vec2(), state: NodeState = NodeState(), impulse: Vec2 = Vec2()): NodeRef` |  |
-| `fun principal(ref: NodeRef): InternalEndpoint` |  |
-| `fun aux(ref: NodeRef, i: Int): InternalEndpoint` |  |
-| `fun ext(nodeOrdinal: Int, auxIndex: Int): ExternalEndpoint` |  |
-| `infix fun InternalEndpoint.to(other: InternalEndpoint)` |  |
-| `infix fun InternalEndpoint.to(other: ExternalEndpoint)` |  |
-| `infix fun ExternalEndpoint.to(other: InternalEndpoint)` |  |
-| `infix fun ExternalEndpoint.to(other: ExternalEndpoint)` |  |
-| `fun emit(kind: String, magnitude: Double = ctx.pairEnergy, at: Vec2 = ctx.center, data: Map<String, Double> = emptyMap())` |  |
-| `fun build(): RewriteResult` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">node</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">NodeState</span> <span class="o">=</span> <span class="nc">NodeState</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">impulse</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">NodeRef</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">principal</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">)</span><span class="p">:</span> <span class="nc">InternalEndpoint</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">aux</span><span class="p">(</span><span class="n">ref</span><span class="p">:</span> <span class="nc">NodeRef</span><span class="p">,</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">InternalEndpoint</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">ext</span><span class="p">(</span><span class="n">nodeOrdinal</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">auxIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ExternalEndpoint</span></code> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">InternalEndpoint</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">InternalEndpoint</span><span class="p">)</span></code><span class="sig-overloads">+1 overload · also ExternalEndpoint</span> |  |
+| <code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nc">ExternalEndpoint</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">InternalEndpoint</span><span class="p">)</span></code><span class="sig-overloads">+1 overload · also ExternalEndpoint</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">emit</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">magnitude</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">.</span><span class="n">pairEnergy</span><span class="p">,</span> <span class="n">at</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="n">ctx</span><span class="p">.</span><span class="n">center</span><span class="p">,</span> <span class="k">data</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RewriteResult</span></code> |  |
 
 ### RuleBook { #interactionnets-kt-rulebook }
 
-`class RuleBook`
+<code class="highlight"><span class="k">class</span> <span class="nc">RuleBook</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun rule(name: String, left: AgentType, right: AgentType, rewrite: RewriteBuilder.(PairContext) -> Unit)` |  |
-| `fun autoRule(name: String, left: AgentType, right: AgentType, rewrite: AutoRuleBuilder.(PairContext) -> Unit)` |  |
-| `fun find(a: Node, b: Node): RewriteRule?` |  |
-| `fun findMatch(a: Node, b: Node): RuleMatch?` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rule</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">left</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">rewrite</span><span class="p">:</span> <span class="nc">RewriteBuilder</span><span class="p">.</span><span class="p">(</span><span class="nc">PairContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">autoRule</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">left</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">right</span><span class="p">:</span> <span class="nc">AgentType</span><span class="p">,</span> <span class="n">rewrite</span><span class="p">:</span> <span class="nc">AutoRuleBuilder</span><span class="p">.</span><span class="p">(</span><span class="nc">PairContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">find</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">RewriteRule</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">findMatch</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Node</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Node</span><span class="p">)</span><span class="p">:</span> <span class="nc">RuleMatch</span><span class="o">?</span></code> |  |
 
 ### ActivationOrder { #interactionnets-kt-activationorder }
 
-`enum class ActivationOrder`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">ActivationOrder</span></code>
 
 Constants: `FIRST_FOUND`, `LEFTMOST_BY_ID`, `RIGHTMOST_BY_ID`, `RANDOM`, `HIGHEST_PAIR_ENERGY`, `LOWEST_PAIR_ENERGY`.
 
 ### PairCandidate { #interactionnets-kt-paircandidate }
 
-`data class PairCandidate(val pair: ActivePair, val match: RuleMatch, val context: PairContext)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PairCandidate</span><span class="p">(</span><span class="k">val</span> <span class="n">pair</span><span class="p">:</span> <span class="nc">ActivePair</span><span class="p">,</span> <span class="k">val</span> <span class="n">match</span><span class="p">:</span> <span class="nc">RuleMatch</span><span class="p">,</span> <span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">PairContext</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val rule: RewriteRule` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">RewriteRule</span></code> |  |
+
+### PairSelector { #interactionnets-kt-pairselector }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">PairSelector</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">select</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">,</span> <span class="n">candidates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PairCandidate</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PairCandidate</span><span class="o">?</span></code> |  |
 
 ### PairSelectors { #interactionnets-kt-pairselectors }
 
-`object PairSelectors`
+<code class="highlight"><span class="k">object</span> <span class="nc">PairSelectors</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val firstFound` |  |
-| `val leftmostById` |  |
-| `val rightmostById` |  |
-| `val highestPairEnergy` |  |
-| `val lowestPairEnergy` |  |
-| `fun random(random: Random = Random.Default): PairSelector` |  |
-| `fun nearest(point: Vec2): PairSelector` |  |
-| `fun from(order: ActivationOrder): PairSelector` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">firstFound</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">leftmostById</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rightmostById</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">highestPairEnergy</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lowestPairEnergy</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">random</span><span class="p">(</span><span class="n">random</span><span class="p">:</span> <span class="nc">Random</span> <span class="o">=</span> <span class="nc">Random</span><span class="p">.</span><span class="nc">Default</span><span class="p">)</span><span class="p">:</span> <span class="nc">PairSelector</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nearest</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">PairSelector</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">from</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">ActivationOrder</span><span class="p">)</span><span class="p">:</span> <span class="nc">PairSelector</span></code> |  |
 
 ### Reducer { #interactionnets-kt-reducer }
 
-`class Reducer(private val rules: RuleBook, private val selector: PairSelector = PairSelectors.firstFound, private val layout: LayoutConfig = LayoutConfig())`
+<code class="highlight"><span class="k">class</span> <span class="nf">Reducer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">RuleBook</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">PairSelector</span> <span class="o">=</span> <span class="nc">PairSelectors</span><span class="p">.</span><span class="n">firstFound</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">layout</span><span class="p">:</span> <span class="nc">LayoutConfig</span> <span class="o">=</span> <span class="nc">LayoutConfig</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun step(net: Net): Boolean` |  |
-| `fun stepDetailed(net: Net): ReductionStep?` |  |
-| `fun reduce(net: Net, maxSteps: Int = Int.MAX_VALUE, onStep: ((Int, Net) -> Unit)? = null): Int` |  |
-| `fun reduceDetailed(net: Net, maxSteps: Int = Int.MAX_VALUE, onStep: ((Int, Net, ReductionStep) -> Unit)? = null): Int` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stepDetailed</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">)</span><span class="p">:</span> <span class="nc">ReductionStep</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reduce</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">onStep</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Net</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reduceDetailed</span><span class="p">(</span><span class="n">net</span><span class="p">:</span> <span class="nc">Net</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">,</span> <span class="n">onStep</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Net</span><span class="p">,</span> <span class="nc">ReductionStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### IdSource { #interactionnets-kt-idsource }
 
-`class IdSource(private var counter: Int = 0)`
+<code class="highlight"><span class="k">class</span> <span class="nf">IdSource</span><span class="p">(</span><span class="k">private</span> <span class="k">var</span> <span class="n">counter</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun next(prefix: String): String` |  |
-| `fun peekCounter(): Int` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">next</span><span class="p">(</span><span class="n">prefix</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">peekCounter</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### Types { #interactionnets-kt-types }
 
-`object Types`
+<code class="highlight"><span class="k">object</span> <span class="nc">Types</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun agent(name: String, auxPorts: Int): AgentType` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">agent</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">auxPorts</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgentType</span></code> |  |
 
 ### Lambda { #interactionnets-kt-lambda }
 
-`object Lambda`
+<code class="highlight"><span class="k">object</span> <span class="nc">Lambda</span></code>
 
 This bundle is intentionally pragmatic rather than dogmatic.
 
 | Declaration | Summary |
 | --- | --- |
-| `val APP` |  |
-| `val LAM` |  |
-| `val DUP` |  |
-| `val ERASE` |  |
-| `val VAR` |  |
-| `val ROOT` |  |
-| `val CONST` |  |
-| `fun rules(): RuleBook` |  |
-| `fun betaBridgeDemo(): Net` | A minimal APP/LAM bridge demo. |
-| `fun duplicatedConstantDemo(): Net` | A tiny nonlinear sketch: the lambda body is demanded twice through DUP. This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do. |
-| `fun eraseApplicationDemo(): Net` | Erase an application tree to demonstrate explicit garbage collection. |
+| <code class="highlight"><span class="k">val</span> <span class="nc">APP</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">LAM</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">DUP</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">ERASE</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">VAR</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">ROOT</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">CONST</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rules</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RuleBook</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">betaBridgeDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | A minimal APP/LAM bridge demo. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">duplicatedConstantDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | A tiny nonlinear sketch: the lambda body is demanded twice through DUP. This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">eraseApplicationDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | Erase an application tree to demonstrate explicit garbage collection. |
 
 ## LazyValueVisualizer.kt { #lazyvaluevisualizer-kt }
 
@@ -557,39 +563,39 @@ content.
 
 | Declaration | Summary |
 | --- | --- |
-| `inline fun <reified T : Any> registerH2Value(noinline adapter: (T) -> H2ValueSnapshot)` |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerH2Value</span><span class="p">(</span><span class="k">noinline</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">H2ValueSnapshot</span><span class="p">)</span></code> |  |
 
 ### Top-level values { #lazyvaluevisualizer-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val Any?.h2: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h2</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### H2ValueSnapshot { #lazyvaluevisualizer-kt-h2valuesnapshot }
 
-`data class H2ValueSnapshot(val value: Any?, val summary: String? = null, val title: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">H2ValueSnapshot</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val value: Any?` |  |
-| `val summary: String?` |  |
-| `val title: String?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
 
 ### H2ValueRegistry { #lazyvaluevisualizer-kt-h2valueregistry }
 
-`object H2ValueRegistry`
+<code class="highlight"><span class="k">object</span> <span class="nc">H2ValueRegistry</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun <T : Any> register(clazz: Class<T>, adapter: (T) -> H2ValueSnapshot)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">register</span><span class="p">(</span><span class="n">clazz</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">adapter</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">H2ValueSnapshot</span><span class="p">)</span></code> |  |
 
 ### LazyValueVisualizer { #lazyvaluevisualizer-kt-lazyvaluevisualizer }
 
-`object LazyValueVisualizer`
+<code class="highlight"><span class="k">object</span> <span class="nc">LazyValueVisualizer</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun visualize(value: Any?, appendable: Boolean = false): String` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visualize</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">appendable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## ValueVisualizer.kt { #valuevisualizer-kt }
 
@@ -615,44 +621,44 @@ only ever rendered if someone asks for it.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Box.viz(channel: String = "viz", value: Any?)` | Extension function to visualize a value in a Box's display output |
-| `inline fun <reified T : Any> registerValuePrinter(noinline printer: (T) -> String)` | Register a custom printer for a type |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">viz</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viz&quot;</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code> | Extension function to visualize a value in a Box's display output |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerValuePrinter</span><span class="p">(</span><span class="k">noinline</span> <span class="n">printer</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span></code> | Register a custom printer for a type |
 
 ### Top-level values { #valuevisualizer-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val Any?.h : String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h</span> <span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### ToHTML { #valuevisualizer-kt-tohtml }
 
-`interface ToHTML`
+<code class="highlight"><span class="k">interface</span> <span class="nc">ToHTML</span></code>
 
 Interface for objects that can provide their own HTML representation
 
 | Declaration | Summary |
 | --- | --- |
-| `fun toHTML(): String` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### ValuePrinterRegistry { #valuevisualizer-kt-valueprinterregistry }
 
-`object ValuePrinterRegistry`
+<code class="highlight"><span class="k">object</span> <span class="nc">ValuePrinterRegistry</span></code>
 
 Registry for custom value printers
 
 | Declaration | Summary |
 | --- | --- |
-| `fun <T : Any> register(clazz: Class<T>, printer: (T) -> String)` | Register a custom printer for a specific type |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">register</span><span class="p">(</span><span class="n">clazz</span><span class="p">:</span> <span class="nc">Class</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">printer</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span></code> | Register a custom printer for a specific type |
 
 ### ValueVisualizer { #valuevisualizer-kt-valuevisualizer }
 
-`object ValueVisualizer`
+<code class="highlight"><span class="k">object</span> <span class="nc">ValueVisualizer</span></code>
 
 Render a Kotlin value as a compact, escaped HTML fragment for Field output areas.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun visualize(value: Any?, appendable: Boolean = false): String` | Visualize any value and return compact HTML representation |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visualize</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">appendable</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Visualize any value and return compact HTML representation |
 
 ## plotly.kt { #plotly-kt }
 
@@ -677,28 +683,27 @@ without it the fragment logs to the console and draws nothing.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun linePlot(vararg data: List<Number>): Plot` |  |
-| `fun linePlot(vararg data: List<Vec2>): Plot` |  |
-| `fun scatter(vararg data: List<Vec2>): Plot` |  |
-| `fun scatterSized(vararg data: List<Vec3>): Plot` |  |
-| `fun violin(vararg data: List<Number>): Plot` |  |
-| `fun Box.showSignals(vararg series: Pair<String, List<Number>>, x: List<Number>? = null, channel: String = "output", title: String? = null, xTitle: String? = null, yTitle: String? = null, marks: List<Pair<String, Number>> = emptyList(), markColor: String = "#ffe066", normalize: Boolean = false): Plot` | Put one or more named signals on the screen as a dark-mode Plotly line plot, and return the `Plot`. |
-| `fun Plot.darkMode(): Plot` |  |
-| `fun Plot.toHtml(): String` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">linePlot</span><span class="p">(</span><span class="k">vararg</span> <span class="k">data</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code><span class="sig-overloads">+1 overload · also List&lt;Vec2&gt;</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">scatter</span><span class="p">(</span><span class="k">vararg</span> <span class="k">data</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">scatterSized</span><span class="p">(</span><span class="k">vararg</span> <span class="k">data</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">violin</span><span class="p">(</span><span class="k">vararg</span> <span class="k">data</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showSignals</span><span class="p">(</span><span class="k">vararg</span> <span class="n">series</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Number</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;output&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">xTitle</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">yTitle</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">marks</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Number</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">markColor</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;#ffe066&quot;</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> | Put one or more named signals on the screen as a dark-mode Plotly line plot, and return the `Plot`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Plot</span><span class="p">.</span><span class="nf">darkMode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Plot</span><span class="p">.</span><span class="nf">toHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### Top-level values { #plotly-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val signalPalette: List<String>` | Cyan/orange-led dark-mode palette for signal traces (leads cyan, then orange). |
+| <code class="highlight"><span class="k">val</span> <span class="n">signalPalette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Cyan/orange-led dark-mode palette for signal traces (leads cyan, then orange). |
 
 ### PlotlyIntegration { #plotly-kt-plotlyintegration }
 
-`public class PlotlyIntegration : PlotlyRenderer`
+<code class="highlight"><span class="k">public</span> <span class="k">class</span> <span class="nc">PlotlyIntegration</span> <span class="p">:</span> <span class="nc">PlotlyRenderer</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun FlowContent.renderPlot(plot: Plot, plotId: String, config: PlotlyConfig): Plot` |  |
-| `fun renderFragment(fragment: PlotlyFragment): String` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nc">FlowContent</span><span class="p">.</span><span class="nf">renderPlot</span><span class="p">(</span><span class="n">plot</span><span class="p">:</span> <span class="nc">Plot</span><span class="p">,</span> <span class="n">plotId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">PlotlyConfig</span><span class="p">)</span><span class="p">:</span> <span class="nc">Plot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderFragment</span><span class="p">(</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">PlotlyFragment</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 </div>

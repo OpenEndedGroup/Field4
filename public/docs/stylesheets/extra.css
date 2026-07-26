@@ -288,6 +288,41 @@ code {
     max-width: 52rem;
 }
 
+/* The signature is emitted as pre-highlighted Pygments spans, so the theme's code
+   palette already differentiates keyword / type / parameter / literal. The skin's
+   blanket bold-and-tint for a term would flatten all of that back out.
+
+   Only the `code` element is reset, never the spans inside it: a `color` on the
+   spans — even `inherit` — outranks `.highlight .k` and silently undoes every
+   colour this was added to produce. */
+.md-typeset .codebase-reference table:has(td code) td:first-child code.highlight {
+    color: rgba(255, 255, 255, 0.72);
+    font-weight: 400;
+}
+
+.md-typeset .codebase-reference table:has(td code) td:first-child code.highlight span {
+    font-weight: 400;
+}
+
+.md-typeset .codebase-reference code.highlight {
+    background: transparent;
+    font-size: 0.74rem;
+    line-height: 1.5;
+}
+
+/* `+5 overloads · also Number, Any` — the coalesced-family marker. Reads as an
+   aside to the signature it trails, never as part of it. */
+.md-typeset .codebase-reference .sig-overloads {
+    display: inline-block;
+    margin-left: 0.5em;
+    color: rgba(255, 255, 255, 0.42);
+    font-family: var(--md-code-font-family, monospace);
+    font-size: 0.58rem;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
 /* One `##` per source file: give the file boundaries room to read as sections. */
 .md-typeset .codebase-reference h2 {
     margin-top: 2.6em;

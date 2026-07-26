@@ -468,6 +468,20 @@ object KotlinSourceIndex {
 
     private val visibilityTokens = setOf("public", "private", "internal", "protected")
 
+    /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
+    private val FUN_INTERFACE = Regex("""^interface\b""")
+
+    /**
+     * The name part of a property declaration's text, with any delegate or initialiser removed.
+     *
+     * `by` is cut *before* `:` because a delegated property need have no type annotation at all
+     * (`var FLine.color by Delegation<Vector4f> { vec(1, 1, 1, 1) }`), in which case there is no `:`
+     * to stop at and the whole delegate expression would otherwise be taken for the name — which
+     * fails to parse and drops the declaration from the index entirely.
+     */
+    private fun propertyNameHead(remainder: String): String =
+        remainder.substringBefore(" by ").substringBefore(":").substringBefore("=").trim()
+
     /**
      * Line-based scan of one Kotlin source file for its top-level and one-level-nested declarations.
      *
@@ -608,11 +622,18 @@ object KotlinSourceIndex {
         }
         if (idx >= tokens.size) return null
 
-        val keyword = tokens[idx]
-        val remainder = s.substringAfter(keyword, "").trimStart()
+        var keyword = tokens[idx]
+        var remainder = s.substringAfter(keyword, "").trimStart()
+
+        // `fun interface Foo` declares a SAM interface, not a function. Skipping it hid a whole
+        // class of public API (FnMetric, TuioListener, QuantileFunction…) from the index.
+        if (keyword == "fun" && FUN_INTERFACE.containsMatchIn(remainder)) {
+            keyword = "interface"
+            remainder = remainder.removePrefix("interface").trimStart()
+        }
+
         val rawName = when (keyword) {
             "fun" -> {
-                if (remainder.startsWith("interface")) return null
                 val head = remainder.substringBefore("(").trim()
                 parseQualifiedName(head)
             }
@@ -621,7 +642,7 @@ object KotlinSourceIndex {
                     .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
             }
             "val", "var" -> {
-                val head = remainder.substringBefore(":").substringBefore("=").trim()
+                val head = propertyNameHead(remainder)
                 parseQualifiedName(head)
             }
             "typealias" -> {

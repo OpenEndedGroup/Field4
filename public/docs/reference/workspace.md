@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-2 source file(s), 76 public symbol(s), 5 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+2 source file(s), 77 public symbol(s), 5 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -29,10 +29,10 @@ on the calling box.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun <T> Box.prop(name: String)` |  |
-| `fun <T> Box.rootProp(name: String)` |  |
-| `fun Box.macro_prop(contents: List<String>): Insert?` |  |
-| `fun Box.macro_root_prop(contents: List<String>): Insert?` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">prop</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rootProp</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;root&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> |  |
 
 ## stdlib.kt { #stdlib-kt }
 
@@ -65,124 +65,123 @@ connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, 
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Any?.isTrue(): Boolean` |  |
-| `fun Set<Box>.named(s: String, ignoreDeleted: Boolean = true)` |  |
-| `fun Box.named(s: String, ignoreDeleted: Boolean = true)` |  |
-| `fun Box.inBrowser(code: String)` |  |
-| `operator fun Box.plusAssign(child: Box)` |  |
-| `operator fun Box.minusAssign(child: Box)` |  |
-| `inline operator fun <T> IntRange.invoke(to: (Int) -> T): List<T>` |  |
-| `inline operator fun <T> Int.invoke(to: (Int) -> T): List<T>` |  |
-| `inline infix fun <T> Int.alphas(to: (Double) -> T): List<T>` |  |
-| `fun Int.alphas(): SizedIterable<Double>` |  |
-| `operator fun String.times(ln: Int): String` |  |
-| `fun Box.begin(strand: String = "default")` |  |
-| `fun Box.end()` |  |
-| `fun frameLogStart(path: String? = null, waitAfterPresent: Boolean = Options.framePresentationLogWaitAfterPresent, append: Boolean = false): String` |  |
-| `fun frameLogStop()` |  |
-| `fun frameLogMark(message: String)` |  |
-| `fun frameLogLine(message: String)` |  |
-| `fun start(a: suspend Frames.() -> Unit): Frames` | Starts a new `Frames` scope and runs `a` inside it. |
-| `fun start(a: suspend () -> Unit): Frames` | Thin wrapper around `frames` that starts a frame-based animation from a plain suspend lambda (no `Frames` receiver). The body is responsible for advancing frames if it needs multi-frame behavior. |
-| `fun animate(block: suspend Frames.() -> Unit): Frames` | Creates an animation loop from a lambda. The lambda will be executed every frame when this function is launched. |
-| `operator fun Matrix4f.set(n: Int, v: Float)` |  |
-| `fun mat4(base: Matrix4f? = null, t: Vector3f? = null, r: Quaternionf? = null, s: Vector3f? = null): Matrix4f` |  |
-| `fun mat3(base: Matrix3f? = null, t: Vector3f? = null, r: Quaternionf? = null, s: Vector3f? = null): Matrix3f` |  |
-| `fun FloatBuffer.add(x: Float, y: Float): FloatBuffer` |  |
-| `fun FloatBuffer.add(a: Vector2f): FloatBuffer` |  |
-| `fun FloatBuffer.add(a: Vector3f): FloatBuffer` |  |
-| `fun FloatBuffer.add(a: Vector4f): FloatBuffer` |  |
-| `fun FloatBuffer.add(x: Float, y: Float, z: Float): FloatBuffer` | Appends three float components and returns this buffer for chaining. |
-| `fun FloatBuffer.add(vararg x: Number): FloatBuffer` |  |
-| `fun IntBuffer.add(vararg x: Number): IntBuffer` | ugh! this collides with IntBuffer.put(index, data) |
-| `inline fun Box.aside(name: String = "", block: () -> Unit)` |  |
-| `inline fun <T> Box.cell(block: () -> T)` |  |
-| `fun fa(vararg f: Number): FloatArray` |  |
-| `fun ia(vararg f: Number): IntArray` |  |
-| `fun highlightSyntax(input: String): String` |  |
-| `fun Box.__m(s: String, onCreation: Marker.() -> Unit = {})` |  |
-| `operator fun <T> List<T>.get(range: IntRange)` |  |
-| `fun ByteBuffer.putf16(value: Float): ByteBuffer` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="nf">isTrue</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">named</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">ignoreDeleted</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">named</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">ignoreDeleted</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">inBrowser</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">plusAssign</span><span class="p">(</span><span class="n">child</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">minusAssign</span><span class="p">(</span><span class="n">child</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">IntRange</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">to</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">invoke</span><span class="p">(</span><span class="n">to</span><span class="p">:</span> <span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">infix</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">alphas</span><span class="p">(</span><span class="n">to</span><span class="p">:</span> <span class="p">(</span><span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Int</span><span class="p">.</span><span class="nf">alphas</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SizedIterable</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">String</span><span class="p">.</span><span class="nf">times</span><span class="p">(</span><span class="n">ln</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">begin</span><span class="p">(</span><span class="n">strand</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;default&quot;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">end</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">frameLogStart</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">waitAfterPresent</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="nc">Options</span><span class="p">.</span><span class="n">framePresentationLogWaitAfterPresent</span><span class="p">,</span> <span class="n">append</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">frameLogStop</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">frameLogMark</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">frameLogLine</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">Frames</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code> | Starts a new `Frames` scope and runs `a` inside it. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="k">suspend</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code> | Thin wrapper around `frames` that starts a frame-based animation from a plain suspend lambda (no `Frames` receiver). The body is responsible for advancing frames if it needs multi-frame behavior. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">animate</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="k">suspend</span> <span class="nc">Frames</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code> | Creates an animation loop from a lambda. The lambda will be executed every frame when this function is launched. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nc">Matrix4f</span><span class="p">.</span><span class="nf">set</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mat4</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Matrix4f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Quaternionf</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix4f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mat3</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Matrix3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">r</span><span class="p">:</span> <span class="nc">Quaternionf</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Vector3f</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix3f</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatBuffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatBuffer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatBuffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Vector2f</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatBuffer</span></code><span class="sig-overloads">+2 overloads · also Vector3f, Vector4f</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatBuffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatBuffer</span></code> | Appends three float components and returns this buffer for chaining. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatBuffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="k">vararg</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatBuffer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">IntBuffer</span><span class="p">.</span><span class="nf">add</span><span class="p">(</span><span class="k">vararg</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntBuffer</span></code> | ugh! this collides with IntBuffer.put(index, data) |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">aside</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">cell</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fa</span><span class="p">(</span><span class="k">vararg</span> <span class="n">f</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">ia</span><span class="p">(</span><span class="k">vararg</span> <span class="n">f</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">highlightSyntax</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;&#95;m</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">onCreation</span><span class="p">:</span> <span class="nc">Marker</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">range</span><span class="p">:</span> <span class="nc">IntRange</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ByteBuffer</span><span class="p">.</span><span class="nf">putf16</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteBuffer</span></code> |  |
 
 ### Top-level values { #stdlib-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `val Number.f` |  |
-| `val Number.i` |  |
-| `val Long.i` |  |
-| `val Number.l` |  |
-| `val Number.d` |  |
-| `val String.h: String` |  |
-| `val String.ss: String` |  |
-| `val <T> List<T>.m: MutableList<T>` |  |
-| `val <T> List<T>.s: Set<T>` |  |
-| `val String.r: Regex` |  |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">&#95;currentlyExecutingFragment</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">f</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">i</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Long</span><span class="p">.</span><span class="n">i</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">l</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">Number</span><span class="p">.</span><span class="n">d</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">h</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">ss</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="n">m</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="n">s</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">r</span><span class="p">:</span> <span class="nc">Regex</span></code> |  |
 
 ### HasMatrix4f { #stdlib-kt-hasmatrix4f }
 
-`interface HasMatrix4f`
+<code class="highlight"><span class="k">interface</span> <span class="nc">HasMatrix4f</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val m: Matrix4f` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">m</span><span class="p">:</span> <span class="nc">Matrix4f</span></code> |  |
 
 ### Delegation { #stdlib-kt-delegation }
 
-`class Delegation<T>(var onGet: ((HasProperties, currentValue: T) -> Unit)? = null, var hook: ((inside: HasProperties, currentValue: T, incomingValue: T) -> T)? = null, val defaultValue: (() -> T)? = null)`
+<code class="highlight"><span class="k">class</span> <span class="nc">Delegation</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">var</span> <span class="n">onGet</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">HasProperties</span><span class="p">,</span> <span class="n">currentValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">hook</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">HasProperties</span><span class="p">,</span> <span class="n">currentValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">,</span> <span class="n">incomingValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var onGet: ((HasProperties, currentValue: T) -> Unit)?` |  |
-| `var hook: ((inside: HasProperties, currentValue: T, incomingValue: T) -> T)?` |  |
-| `val defaultValue: (() -> T)?` |  |
-| `operator fun getValue(f: HasProperties, property: KProperty<*>): T` |  |
-| `operator fun setValue(f: HasProperties, property: KProperty<*>, v: T)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">onGet</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">HasProperties</span><span class="p">,</span> <span class="n">currentValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">hook</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">inside</span><span class="p">:</span> <span class="nc">HasProperties</span><span class="p">,</span> <span class="n">currentValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">,</span> <span class="n">incomingValue</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">HasProperties</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">setValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">HasProperties</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code> |  |
 
 ### MissingInheritedPropertyException { #stdlib-kt-missinginheritedpropertyexception }
 
-`class MissingInheritedPropertyException(message: String) : IllegalStateException(message)`
+<code class="highlight"><span class="k">class</span> <span class="nf">MissingInheritedPropertyException</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">IllegalStateException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>
 
 ### Inheritance { #stdlib-kt-inheritance }
 
-`class Inheritance<T>(val defaultValue: T? = null)`
+<code class="highlight"><span class="k">class</span> <span class="nc">Inheritance</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `operator fun getValue(f: Box, property: KProperty<*>): T` |  |
-| `operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T)` |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">setValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">HasHierarchy</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code> |  |
 
 ### InheritanceFromContext { #stdlib-kt-inheritancefromcontext }
 
-`class InheritanceFromContext<T>(val defaultValue: T? = null)`
+<code class="highlight"><span class="k">class</span> <span class="nc">InheritanceFromContext</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="nc">T</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `operator fun getValue(f: Box, property: KProperty<*>): T` |  |
-| `operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T)` |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">setValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">HasHierarchy</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code> |  |
 
 ### Marker { #stdlib-kt-marker }
 
-`data class Marker(val name: String, val box: Box) : HasProperties, HasHierarchy`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Marker</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span> <span class="p">:</span> <span class="nc">HasProperties</span><span class="p">,</span> <span class="nc">HasHierarchy</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val properties` |  |
-| `override fun setPropertyRaw(name: String, value: Any, doResync: Boolean)` |  |
-| `override fun getPropertyRaw(name: String, default: Any?): Any?` |  |
-| `override var children: MutableSet<Box>` |  |
-| `override var parents: MutableSet<Box>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">properties</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setPropertyRaw</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">doResync</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">getPropertyRaw</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">var</span> <span class="n">children</span><span class="p">:</span> <span class="nc">MutableSet</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">var</span> <span class="n">parents</span><span class="p">:</span> <span class="nc">MutableSet</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span></code> |  |
 
 ### Vec2h { #stdlib-kt-vec2h }
 
-`typealias Vec2h = afield.four.util.Vec2h`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">Vec2h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec2h</span></code>
 
 ### Vec3h { #stdlib-kt-vec3h }
 
-`typealias Vec3h = afield.four.util.Vec3h`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">Vec3h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec3h</span></code>
 
 ### Vec4h { #stdlib-kt-vec4h }
 
-`typealias Vec4h = afield.four.util.Vec4h`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">Vec4h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec4h</span></code>
 
 </div>

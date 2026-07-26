@@ -166,7 +166,7 @@ object StdlibReferenceGenerator {
             val inCategory = documents.filter { it.category == category }.sortedBy { it.relativePath }
             pages["${slug(category)}.md"] = renderCategoryPage(category, inCategory, typeAnchors, evidence)
         }
-        pages["index.md"] = renderIndexPage(categories, documents, evidence)
+        pages["index.md"] = renderIndexPage(categories, documents, typeAnchors, evidence)
 
         pages.forEach { (name, text) -> File(outRoot, name).writeText(text) }
 
@@ -523,7 +523,43 @@ object StdlibReferenceGenerator {
         s = s.trimEnd().trimEnd(':').trimEnd()
         // A trailing comma survives when a parameter list is cut short by the line budget.
         if (s.endsWith(",")) s = s.dropLast(1)
-        return s.trim()
+        return declegate(s.trim())
+    }
+
+    /** Property delegates whose single type argument *is* the property's type. */
+    private val PROPERTY_DELEGATES = setOf("Delegation", "Inheritance", "InheritanceFromContext")
+
+    /**
+     * Rewrites `var FLine.color by Delegation<Vector4f> { … }` as `var FLine.color: Vector4f`.
+     *
+     * Which delegate stores a box property is an implementation detail; the caller writes
+     * `line.color = …` and needs the *type*. For the delegates in [PROPERTY_DELEGATES] the single
+     * type argument is exactly that type, so this loses nothing and drops a lot of noise. A property
+     * that already states its type, or that uses any other delegate, is left alone.
+     */
+    private fun declegate(signature: String): String {
+        val byIndex = signature.indexOf(" by ")
+        if (byIndex < 0) return signature
+        val head = signature.substring(0, byIndex)
+        if (':' in head) return signature
+        val delegate = signature.substring(byIndex + 4).trimStart()
+        val open = delegate.indexOf('<')
+        if (open <= 0) return signature
+        if (delegate.substring(0, open) !in PROPERTY_DELEGATES) return signature
+        var depth = 0
+        for (i in open until delegate.length) {
+            when (delegate[i]) {
+                '<' -> depth++
+                '>' -> {
+                    depth--
+                    if (depth == 0) {
+                        val type = delegate.substring(open + 1, i).trim()
+                        return if (type.isEmpty()) signature else "$head: $type"
+                    }
+                }
+            }
+        }
+        return signature
     }
 
     /**
@@ -543,6 +579,125 @@ object StdlibReferenceGenerator {
             out += s
         }
         return out.joinToString(" ").replace(Regex("\\s+"), " ").trim()
+    }
+
+    // ── overload coalescing ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * One table row: a canonical declaration, plus the sibling overloads it stands in for.
+     *
+     * @param alsoAccepts alternative parameter types the collapsed overloads accept, first seen first
+     * @param extraOverloads how many further overloads this row speaks for (0 when it is alone)
+     */
+    private data class Row(
+        val symbol: Symbol,
+        val summary: String,
+        val alsoAccepts: List<String> = emptyList(),
+        val extraOverloads: Int = 0,
+    )
+
+    /**
+     * Collapses an overload family that only exists to walk Kotlin's numeric tower into one row.
+     *
+     * Field's signal API is written three times over — once taking `Fn`, once `Number`, once `Any` —
+     * and again for `Domain` vs `ClosedRange<*>`. Six near-identical 20-parameter signatures for
+     * `pulseTrain` tell the reader nothing the first one did not, and they were the tallest rows on
+     * the page.
+     *
+     * Two declarations join a family only when **everything except the parameter types matches**:
+     * same name, same parameter *names* in the same order, same return type. That is deliberately
+     * strict — real overloads differ in arity or in what they name their parameters, so they stay
+     * separate rows.
+     *
+     * The family is **not** collapsed when its members carry two different KDoc summaries: that means
+     * someone documented them apart, so they are not interchangeable after all.
+     *
+     * The canonical member is the one with the most defaulted parameters, then the longest signature,
+     * then source order — a total order, so the output is stable for the drift guard.
+     *
+     * Most-defaults rather than most-general-types, which is the tempting rule: `List<Fn>.sequence`
+     * takes `overlap: Number = 0.0` in one overload and a mandatory `overlap: Fn` in the other, and
+     * showing the `Fn` one would tell the reader that `overlap` is required when it is not. A wrong
+     * default is a worse error than a narrow type, and the badge names the other types anyway. Where
+     * the general overload *is* also the fullest — `pulseTrain`, and most of this corpus — this picks
+     * it regardless.
+     */
+    private fun coalesce(symbols: List<Symbol>): List<Row> {
+        val groups = LinkedHashMap<String, MutableList<Symbol>>()
+        symbols.forEachIndexed { index, symbol ->
+            // Only functions overload; anything unparseable gets a unique key and stays alone.
+            val key = if (symbol.kind == "fun") overloadKey(symbol.signature) else null
+            groups.getOrPut(key?.let { "$it@${symbol.owner}" } ?: "unique#$index") { mutableListOf() } += symbol
+        }
+        return groups.values.map { family ->
+            val summaries = family.map { it.summary }.filter { it.isNotBlank() }.distinct()
+            if (family.size == 1 || summaries.size > 1) {
+                return@map family.map { Row(it, it.summary) }
+            }
+            val canonical = family.withIndex().maxWithOrNull(
+                compareBy({ defaultedParameterCount(it.value.signature) }, { it.value.signature.length }, { -it.index })
+            )!!.value
+            val canonicalTypes = parameterTypes(canonical.signature)
+            val alternatives = LinkedHashSet<String>()
+            family.filter { it !== canonical }.forEach { other ->
+                parameterTypes(other.signature).forEachIndexed { position, type ->
+                    if (type.isNotBlank() && canonicalTypes.getOrNull(position) != type) alternatives += type
+                }
+            }
+            listOf(
+                Row(
+                    symbol = canonical,
+                    summary = summaries.firstOrNull().orEmpty(),
+                    alsoAccepts = alternatives.toList(),
+                    extraOverloads = family.size - 1,
+                )
+            )
+        }.flatten()
+    }
+
+    /** Identity of an overload family: name, parameter names in order, return type. Types erased. */
+    private fun overloadKey(signature: String): String? {
+        val (head, params, tail) = splitSignature(signature) ?: return null
+        val names = params.map { it.substringBefore(':').substringBefore('=').trim() }
+        if (names.any { it.isEmpty() }) return null
+        return "${head.trim()}(${names.joinToString(",")})$tail"
+    }
+
+    private fun defaultedParameterCount(signature: String): Int =
+        splitSignature(signature)?.second?.count { '=' in it } ?: 0
+
+    private fun parameterTypes(signature: String): List<String> =
+        splitSignature(signature)?.second?.map {
+            if (':' in it) it.substringAfter(':').substringBefore('=').trim() else ""
+        } ?: emptyList()
+
+    /**
+     * A signature split into everything before the parameter list, the top-level parameters, and
+     * everything after — respecting nesting, so `(Fn) -> Double` and `Map<String, Int>` survive.
+     */
+    private fun splitSignature(signature: String): Triple<String, List<String>, String>? {
+        val open = signature.indexOf('(')
+        if (open < 0) return null
+        val params = mutableListOf<String>()
+        val current = StringBuilder()
+        var depth = 0
+        for (i in open until signature.length) {
+            val ch = signature[i]
+            when (ch) {
+                '(', '[', '<' -> { depth++; if (depth > 1) current.append(ch) }
+                ')', ']', '>' -> {
+                    depth--
+                    if (depth == 0) {
+                        if (current.isNotBlank()) params += current.toString()
+                        return Triple(signature.substring(0, open), params, signature.substring(i + 1))
+                    }
+                    current.append(ch)
+                }
+                ',' -> if (depth == 1) { params += current.toString(); current.setLength(0) } else current.append(ch)
+                else -> current.append(ch)
+            }
+        }
+        return null
     }
 
     // ── cross-references ────────────────────────────────────────────────────────────────────────
@@ -701,7 +856,7 @@ object StdlibReferenceGenerator {
         doc.types.forEach { type ->
             appendLine("### ${type.symbol.simpleName} { #${typeAnchor(doc, type.symbol)} }")
             appendLine()
-            appendLine("`${escapeCode(type.symbol.signature)}`")
+            appendLine(highlightSignature(type.symbol.signature))
             appendLine()
             if (type.symbol.summary.isNotBlank()) {
                 appendLine(linkify(type.symbol.summary, typeAnchors))
@@ -718,9 +873,12 @@ object StdlibReferenceGenerator {
     private fun renderTable(symbols: List<Symbol>, typeAnchors: Map<String, String>): String = buildString {
         appendLine("| Declaration | Summary |")
         appendLine("| --- | --- |")
-        symbols.forEach { symbol ->
-            val signature = symbol.signature.ifBlank { symbol.simpleName }
-            appendLine("| `${escapeCode(signature)}` | ${escapeCell(linkify(symbol.summary, typeAnchors))} |")
+        coalesce(symbols).forEach { row ->
+            val signature = row.symbol.signature.ifBlank { row.symbol.simpleName }
+            appendLine(
+                "| ${highlightSignature(signature)}${overloadBadge(row)} | " +
+                    "${escapeCell(linkify(row.summary, typeAnchors))} |"
+            )
         }
         appendLine()
     }
@@ -728,6 +886,7 @@ object StdlibReferenceGenerator {
     private fun renderIndexPage(
         categories: List<String>,
         documents: List<SourceDocument>,
+        typeAnchors: Map<String, String>,
         evidence: Map<String, List<Pair<String, Int>>>,
     ): String = buildString {
         appendLine(BANNER)
@@ -776,11 +935,18 @@ object StdlibReferenceGenerator {
         appendLine("| --- | --- | --- | --- | --- | --- |")
         documents.sortedBy { it.fileName.lowercase() }.forEach { doc ->
             val link = "[${doc.fileName}](${slug(doc.category)}.md#${fileAnchor(doc)})"
-            val gist = doc.overview?.let { firstSentence(it) }.orEmpty()
+            // linkify before stripLinks: `linkify` is what turns a KDoc `[Symbol]` into either a link
+            // or inline code, and without it the raw brackets reach the page. `stripLinks` then flattens
+            // the resolved ones, because this column is a one-line gist sitting between two columns
+            // that are already all links.
+            val gist = doc.overview
+                ?.let { firstSentence(it) }
+                ?.let { stripLinks(linkify(it, typeAnchors)) }
+                .orEmpty()
             val examples = evidenceLinks(doc, evidence).orEmpty()
             appendLine(
                 "| $link | ${doc.category} | ${doc.symbolCount()} | ${doc.documentedCount()} | " +
-                    "${escapeCell(stripLinks(gist))} | $examples |"
+                    "${escapeCell(gist)} | $examples |"
             )
         }
         appendLine()
@@ -819,6 +985,151 @@ object StdlibReferenceGenerator {
         appendLine(
             "To search rather than browse, see [The Semantic Index](../semantic_index.md)."
         )
+    }
+
+    // ── signature highlighting ──────────────────────────────────────────────────────────────────
+
+    /**
+     * Kotlin keywords a signature can contain. Deliberately not the whole language — a signature has
+     * no statements — so anything unrecognised falls through to the name rules below.
+     */
+    private val SIGNATURE_KEYWORDS = setOf(
+        "fun", "val", "var", "class", "interface", "object", "typealias", "enum", "data", "sealed",
+        "annotation", "value", "companion", "inner", "abstract", "open", "final", "override",
+        "inline", "noinline", "crossinline", "suspend", "tailrec", "operator", "infix", "external",
+        "const", "lateinit", "vararg", "reified", "out", "in", "where", "by", "init", "constructor",
+        "public", "private", "internal", "protected", "expect", "actual",
+    )
+
+    /** Literal keywords Pygments colours as constants rather than as keywords. */
+    private val SIGNATURE_CONSTANTS = setOf("true", "false", "null", "this", "super", "it")
+
+    /**
+     * Renders a signature as pre-highlighted HTML using **Pygments' own class names**, wrapped in a
+     * `.highlight` container.
+     *
+     * The docs theme already ships a Pygments stylesheet mapping `k`/`nf`/`nc`/`n`/`o`/`p`/`mf`/`s`
+     * to its `--md-code-hl-*-color` palette, so borrowing those class names colours these signatures
+     * with the same palette as every fenced code block on the site and needs no stylesheet of its
+     * own. Doing it here rather than with a fenced block is what keeps a signature inside a table
+     * cell, where a fence cannot go.
+     *
+     * Hand-written rather than delegated to a real lexer because the output has to be **byte-stable**
+     * for the drift guard, and because a signature is a small enough grammar to tokenise exactly:
+     * keyword, declaration name, type (capitalised), parameter name, literal, operator, punctuation.
+     */
+    private fun highlightSignature(signature: String): String {
+        val out = StringBuilder("<code class=\"highlight\">")
+        var i = 0
+        var sawDeclarationName = false
+        var depth = 0
+        while (i < signature.length) {
+            val ch = signature[i]
+            when {
+                ch.isWhitespace() -> { out.append(' '); i++ }
+
+                ch == '`' -> {
+                    val end = signature.indexOf('`', i + 1)
+                    val stop = if (end < 0) signature.length - 1 else end
+                    out.span("n", signature.substring(i, stop + 1))
+                    i = stop + 1
+                }
+
+                ch == '"' -> {
+                    var j = i + 1
+                    while (j < signature.length && (signature[j] != '"' || signature[j - 1] == '\\')) j++
+                    val stop = minOf(j, signature.length - 1)
+                    out.span("s", signature.substring(i, stop + 1))
+                    i = stop + 1
+                }
+
+                ch.isDigit() -> {
+                    var j = i
+                    while (j < signature.length && (signature[j].isLetterOrDigit() || signature[j] == '.')) j++
+                    val text = signature.substring(i, j)
+                    out.span(if ('.' in text) "mf" else "mi", text)
+                    i = j
+                }
+
+                ch.isLetter() || ch == '_' -> {
+                    var j = i
+                    while (j < signature.length && (signature[j].isLetterOrDigit() || signature[j] == '_')) j++
+                    val word = signature.substring(i, j)
+                    val followedByCall = signature.getOrNull(j) == '('
+                    val cls = when {
+                        word in SIGNATURE_KEYWORDS -> "k"
+                        word in SIGNATURE_CONSTANTS -> "kc"
+                        // The declaration's own name: the first call-shaped identifier at top level.
+                        !sawDeclarationName && depth == 0 && followedByCall -> { sawDeclarationName = true; "nf" }
+                        word.first().isUpperCase() -> "nc"
+                        followedByCall -> "nf"
+                        else -> "n"
+                    }
+                    out.span(cls, word)
+                    i = j
+                }
+
+                else -> {
+                    if (ch == '(' || ch == '[') depth++
+                    if (ch == ')' || ch == ']') depth--
+                    // `->`, `?`, `*`, `=` read as operators; brackets and separators as punctuation.
+                    val isArrow = signature.startsWith("->", i)
+                    when {
+                        isArrow -> { out.span("o", "->"); i += 2 }
+                        ch == '=' || ch == '?' || ch == '*' || ch == '!' || ch == '&' || ch == '|' ->
+                            { out.span("o", ch.toString()); i++ }
+                        else -> { out.span("p", ch.toString()); i++ }
+                    }
+                }
+            }
+        }
+        out.append("</code>")
+        return out.toString()
+    }
+
+    private fun StringBuilder.span(cls: String, text: String) {
+        append("<span class=\"").append(cls).append("\">").append(htmlInTableCell(text)).append("</span>")
+    }
+
+    /**
+     * Escapes text for raw HTML that sits inside a markdown table cell.
+     *
+     * Both layers bite: `<`/`>`/`&` are HTML, and `|` would end the cell while `*`, `_`, `` ` ``,
+     * `[` and `]` are markdown inline syntax that the parser still applies around inline HTML —
+     * `Map<*, *>` would otherwise come out italicised. Numeric entities render identically and dodge
+     * both.
+     */
+    private fun htmlInTableCell(text: String): String {
+        val out = StringBuilder(text.length)
+        for (ch in text) {
+            when (ch) {
+                '&' -> out.append("&amp;")
+                '<' -> out.append("&lt;")
+                '>' -> out.append("&gt;")
+                '"' -> out.append("&quot;")
+                '|' -> out.append("&#124;")
+                '*' -> out.append("&#42;")
+                '_' -> out.append("&#95;")
+                '`' -> out.append("&#96;")
+                '[' -> out.append("&#91;")
+                ']' -> out.append("&#93;")
+                '\\' -> out.append("&#92;")
+                else -> out.append(ch)
+            }
+        }
+        return out.toString()
+    }
+
+    /** The `+N overloads · also …` badge that stands in for a coalesced family. */
+    private fun overloadBadge(row: Row): String {
+        if (row.extraOverloads == 0) return ""
+        val plural = if (row.extraOverloads == 1) "overload" else "overloads"
+        val also = row.alsoAccepts
+            .takeIf { it.isNotEmpty() }
+            ?.joinToString(", ") { htmlInTableCell(it) }
+            ?.let { " · also $it" }
+            .orEmpty()
+        return "<span class=\"sig-overloads\">+${row.extraOverloads} $plural$also</span>"
     }
 
     // ── small helpers ───────────────────────────────────────────────────────────────────────────

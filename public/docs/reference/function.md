@@ -4,13 +4,13 @@
 
 The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. Build them, compose them, fit them, mutate them, and rewrite their graphs with user-authored patterns.
 
-10 source file(s), 339 public symbol(s), 84 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 345 public symbol(s), 87 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## FnMetric.kt { #fnmetric-kt }
 
-The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface`
+The objective shared by both halves of the function-search family: [`FnMetric`](function.md#fnmetric-kt-fnmetric), a `fun interface`
 scoring a candidate signal against a target on one even sample grid (lower is better), plus a
 companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`,
 `correlation` — and the `fromResidual` / `window` builders behind them.
@@ -28,7 +28,17 @@ hand-written lambda — must ignore indices where either side is non-finite and 
 
 | Declaration | Summary |
 | --- | --- |
-| `fun FnMetric.lossAgainst(target: Functions.Fn, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 128): (Functions.Fn) -> Double` | Builds a loss closure (lower is better) that scores a candidate `Fn` against `target` under this metric, sampling both on an even grid of `samples` points across `domain` with the fitters' NaN-safe `outside = NaN` convention. The target is sampled once and reused, so the returned closure is cheap to call in the finite-difference inner loop. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FnMetric</span><span class="p">.</span><span class="nf">lossAgainst</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> | Builds a loss closure (lower is better) that scores a candidate `Fn` against `target` under this metric, sampling both on an even grid of `samples` points across `domain` with the fitters' NaN-safe `outside = NaN` convention. The target is sampled once and reused, so the returned closure is cheap to call in the finite-difference inner loop. |
+
+### FnMetric { #fnmetric-kt-fnmetric }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">FnMetric</span></code>
+
+A pluggable distance metric between a target signal and a candidate, evaluated on a shared even sample grid. **Lower is better**; `0.0` means the candidate matches the target at every sampled point. This is the objective the differentiable fitters (`fitGradient`, `fitBest`, `fitHybrid`) descend, and it generalises the RMSE they used to hard-code.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">distance</span><span class="p">(</span><span class="n">xs</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">candidate</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | The scalar distance of `candidate` from `target` over the grid `xs`. Lower is better; returns `Double.POSITIVE_INFINITY` when the two share no jointly-finite sample. |
 
 ## FunctionEvolve.kt { #functionevolve-kt }
 
@@ -58,83 +68,93 @@ loop, and both are deterministic: traversal is stable and every draw comes from 
 
 | Declaration | Summary |
 | --- | --- |
-| `fun evolve(seed: Functions.Fn, iterations: Int = 64, lambda: Int = 6, rngSeed: Long = 0L, mutations: List<Pair<String, FnMutation>> = FnMutations.defaults(), onIteration: ((iteration: Int, total: Int) -> Unit)? = null, fitness: (Functions.Fn) -> Double): FnEvolveRun` | A bounded (µ+λ) hill-climb over `Fn` graphs. |
-| `fun matchFitness(target: Functions.Fn, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 128, complexityWeight: Double = 0.0, metric: FnMetric = FnMetric.rmse): (Functions.Fn) -> Double` | A ready-made fitness: how closely a candidate matches `target` on a shared time-base, minus an optional complexity penalty from `graphMetrics`. Higher is better. |
-| `fun Functions.Fn.behaviour(domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 32, normalize: Boolean = false): FnBehaviour` | Characterizes what `this` *does* over `domain` into an [`FnBehaviour`](function.md#functionevolve-kt-fnbehaviour) descriptor. |
-| `fun noveltyFitness(archive: List<FnBehaviour>, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 32, neighbours: Int = 3, validityWeight: Double = 0.25, normalize: Boolean = false): (Functions.Fn) -> Double` | A fitness that rewards *behavioural novelty* relative to an `archive` of already-seen behaviours, plus a small `validityWeight` bonus for evaluating to finite values. |
-| `fun evolveVariety(seed: Functions.Fn, count: Int = 6, iterations: Int = 48, lambda: Int = 6, rngSeed: Long = 0L, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 32, neighbours: Int = 3, validityWeight: Double = 0.25, normalize: Boolean = false, mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()): FnVarietyRun` | Evolves a *diverse set* of `Fn` graphs instead of a single best match. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">evolve</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">lambda</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">mutations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FnMutation</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">FnMutations</span><span class="p">.</span><span class="nf">defaults</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">onIteration</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">fitness</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnEvolveRun</span></code> | A bounded (µ+λ) hill-climb over `Fn` graphs. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">matchFitness</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">complexityWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">FnMetric</span> <span class="o">=</span> <span class="nc">FnMetric</span><span class="p">.</span><span class="n">rmse</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> | A ready-made fitness: how closely a candidate matches `target` on a shared time-base, minus an optional complexity penalty from `graphMetrics`. Higher is better. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">behaviour</span><span class="p">(</span><span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnBehaviour</span></code> | Characterizes what `this` *does* over `domain` into an [`FnBehaviour`](function.md#functionevolve-kt-fnbehaviour) descriptor. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">noveltyFitness</span><span class="p">(</span><span class="n">archive</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnBehaviour</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">neighbours</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">validityWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> | A fitness that rewards *behavioural novelty* relative to an `archive` of already-seen behaviours, plus a small `validityWeight` bonus for evaluating to finite values. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">evolveVariety</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">48</span><span class="p">,</span> <span class="n">lambda</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">neighbours</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">validityWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">normalize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">mutations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FnMutation</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">FnMutations</span><span class="p">.</span><span class="nf">defaults</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnVarietyRun</span></code> | Evolves a *diverse set* of `Fn` graphs instead of a single best match. |
+
+### FnMutation { #functionevolve-kt-fnmutation }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">FnMutation</span></code>
+
+Seeded mutation operators and a bounded, deterministic search harness.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">mutate</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
 
 ### FnMutations { #functionevolve-kt-fnmutations }
 
-`object FnMutations`
+<code class="highlight"><span class="k">object</span> <span class="nc">FnMutations</span></code>
 
 Library of seeded structural mutations, each expressed over existing graph primitives.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun jitterNumbers(scale: Double = 0.2): FnMutation` | Perturb every numeric leaf by a bounded multiplicative jitter. |
-| `fun nudgeNumbers(amount: Double = 0.1): FnMutation` | Additively nudge every numeric leaf by a bounded amount. |
-| `fun substituteOp(): FnMutation` | Transmute one random node to another op in the same family (oscillator, noise, …). |
-| `fun pruneSubtree(): FnMutation` | Replace one random non-root subtree with zero (parsimony pressure). |
-| `fun duplicateSubtree(): FnMutation` | Replace one random subtree with `subtree + subtree`, growing structure. |
-| `fun graftSubtree(donor: Functions.Fn): FnMutation` | Graft a copy of `donor` onto one random non-root site (structural crossover). |
-| `fun defaults(): List<Pair<String, FnMutation>>` | A reasonable default palette for `evolve` when the caller has no donor material. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">jitterNumbers</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Perturb every numeric leaf by a bounded multiplicative jitter. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nudgeNumbers</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Additively nudge every numeric leaf by a bounded amount. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">substituteOp</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Transmute one random node to another op in the same family (oscillator, noise, …). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pruneSubtree</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Replace one random non-root subtree with zero (parsimony pressure). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">duplicateSubtree</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Replace one random subtree with `subtree + subtree`, growing structure. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">graftSubtree</span><span class="p">(</span><span class="n">donor</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnMutation</span></code> | Graft a copy of `donor` onto one random non-root site (structural crossover). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">defaults</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FnMutation</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | A reasonable default palette for `evolve` when the caller has no donor material. |
 
 ### FnEvolveStep { #functionevolve-kt-fnevolvestep }
 
-`data class FnEvolveStep(val iteration: Int, val mutation: String, val score: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnEvolveStep</span><span class="p">(</span><span class="k">val</span> <span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">mutation</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">score</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 One accepted improvement during a run.
 
 | Declaration | Summary |
 | --- | --- |
-| `val iteration: Int` |  |
-| `val mutation: String` |  |
-| `val score: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">mutation</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">score</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### FnEvolveRun { #functionevolve-kt-fnevolverun }
 
-`data class FnEvolveRun(val best: Functions.Fn, val bestScore: Double, val initialScore: Double, val steps: List<FnEvolveStep>, val iterations: Int, val evaluations: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnEvolveRun</span><span class="p">(</span><span class="k">val</span> <span class="n">best</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">bestScore</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialScore</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnEvolveStep</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">evaluations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 Result and provenance of an `evolve` run, mirroring [`FnGraphRewriteRun`](function.md#functiongraphrules-kt-fngraphrewriterun)'s shape.
 
 | Declaration | Summary |
 | --- | --- |
-| `val best: Functions.Fn` |  |
-| `val bestScore: Double` |  |
-| `val initialScore: Double` |  |
-| `val steps: List<FnEvolveStep>` |  |
-| `val iterations: Int` |  |
-| `val evaluations: Int` |  |
-| `val improved: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">best</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bestScore</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialScore</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnEvolveStep</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">evaluations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">improved</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### FnBehaviour { #functionevolve-kt-fnbehaviour }
 
-`data class FnBehaviour(val samples: DoubleArray, val domain: Functions.Domain, val finiteFraction: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnBehaviour</span><span class="p">(</span><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">finiteFraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 A fixed-length behavioural descriptor: what an `Fn` *does*, not how it is built.
 
 | Declaration | Summary |
 | --- | --- |
-| `val samples: DoubleArray` |  |
-| `val domain: Functions.Domain` |  |
-| `val finiteFraction: Double` |  |
-| `fun distanceTo(other: FnBehaviour): Double` | Root-mean-square difference between two equal-length descriptors. |
-| `override fun equals(other: Any?): Boolean` |  |
-| `override fun hashCode(): Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finiteFraction</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">distanceTo</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">FnBehaviour</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Root-mean-square difference between two equal-length descriptors. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### FnVarietyRun { #functionevolve-kt-fnvarietyrun }
 
-`data class FnVarietyRun(val results: List<Functions.Fn>, val behaviours: List<FnBehaviour>, val runs: List<FnEvolveRun>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnVarietyRun</span><span class="p">(</span><span class="k">val</span> <span class="n">results</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">behaviours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnBehaviour</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnEvolveRun</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Result and provenance of an `evolveVariety` run.
 
 | Declaration | Summary |
 | --- | --- |
-| `val results: List<Functions.Fn>` |  |
-| `val behaviours: List<FnBehaviour>` |  |
-| `val runs: List<FnEvolveRun>` |  |
-| `val meanPairwiseDistance: Double` | Mean pairwise behavioural distance across `behaviours` — the spread of the set. |
+| <code class="highlight"><span class="k">val</span> <span class="n">results</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">behaviours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnBehaviour</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnEvolveRun</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">meanPairwiseDistance</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean pairwise behavioural distance across `behaviours` — the spread of the set. |
 
 ## FunctionFit.kt { #functionfit-kt }
 
@@ -167,87 +187,87 @@ which is what makes a fitted gesture reproducible in live art — the same disci
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Functions.Fn.extractParameters(): DoubleArray` | Reads the numeric leaves of `this` into a θ-vector in stable post-order-DFS order. |
-| `fun Functions.Fn.parameterCount(): Int` | The number of tunable numeric leaves in `this` graph — the dimensionality of θ. |
-| `fun Functions.Fn.applyParameters(theta: DoubleArray): Functions.Fn` | Rebuilds `this` graph with its numeric leaves replaced, left-to-right, by `theta`. |
-| `fun rmseLossAgainst(target: Functions.Fn, domain: Functions.Domain = Functions.Domain.DEFAULT, samples: Int = 128): (Functions.Fn) -> Double` | An RMSE loss (lower is better) of a candidate against `target` over an even grid across `domain`. Kept as a named convenience; equivalent to `FnMetric.rmse.lossAgainst(...)`, which is the general seam the fitters now use for any `FnMetric`. |
-| `fun fitGradient(target: Functions.Fn, seed: Functions.Fn, domain: ClosedRange<Double> = Functions.Domain.DEFAULT, iterations: Int = 200, lr: Double = 0.05, beta1: Double = 0.9, beta2: Double = 0.999, epsilon: Double = 1e-8, fdStep: Double = 1e-4, samples: Int = 128, metric: FnMetric = FnMetric.rmse, rngSeed: Long = 0L, initJitter: Double = 0.0, onIteration: ((iteration: Int, total: Int) -> Unit)? = null): FnFitRun` | Fits the numeric leaves of `seed` to `target` by Adam descent on the RMSE loss. |
-| `fun fitBest(target: Functions.Fn, seed: Functions.Fn, domain: ClosedRange<Double> = target.domain.takeIf { it.isFinite } ?: Functions.Domain.DEFAULT, restarts: Int = 12, iterations: Int = 300, lr: Double = 0.05, beta1: Double = 0.9, beta2: Double = 0.999, epsilon: Double = 1e-8, fdStep: Double = 1e-4, samples: Int = 128, metric: FnMetric = FnMetric.rmse, restartJitter: Double = 0.6, rngSeed: Long = 0L): FnFitRun` | Robust fit by multiple jittered restarts — the recommended entry point when the seed's numbers might be far from the target's. |
-| `fun fitHybrid(target: Functions.Fn, seed: Functions.Fn, domain: ClosedRange<Double> = Functions.Domain.DEFAULT, evolveIterations: Int = 64, evolveLambda: Int = 6, fitIterations: Int = 200, lr: Double = 0.05, beta1: Double = 0.9, beta2: Double = 0.999, epsilon: Double = 1e-8, fdStep: Double = 1e-4, samples: Int = 128, complexityWeight: Double = 0.0, metric: FnMetric = FnMetric.rmse, rngSeed: Long = 0L, mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()): FnHybridRun` | Structure-then-numbers fitting: run `evolve` to discover a graph *shape* that roughly matches `target`, then hand its numeric leaves to `fitGradient` for a precise polish. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">extractParameters</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Reads the numeric leaves of `this` into a θ-vector in stable post-order-DFS order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">parameterCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | The number of tunable numeric leaves in `this` graph — the dimensionality of θ. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">applyParameters</span><span class="p">(</span><span class="n">theta</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | Rebuilds `this` graph with its numeric leaves replaced, left-to-right, by `theta`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rmseLossAgainst</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> | An RMSE loss (lower is better) of a candidate against `target` over an even grid across `domain`. Kept as a named convenience; equivalent to `FnMetric.rmse.lossAgainst(...)`, which is the general seam the fitters now use for any [`FnMetric`](function.md#fnmetric-kt-fnmetric). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fitGradient</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">ClosedRange</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">beta1</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">beta2</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.999</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">8</span><span class="p">,</span> <span class="n">fdStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">FnMetric</span> <span class="o">=</span> <span class="nc">FnMetric</span><span class="p">.</span><span class="n">rmse</span><span class="p">,</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">initJitter</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">onIteration</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">total</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnFitRun</span></code> | Fits the numeric leaves of `seed` to `target` by Adam descent on the RMSE loss. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fitBest</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">ClosedRange</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">target</span><span class="p">.</span><span class="n">domain</span><span class="p">.</span><span class="n">takeIf</span> <span class="p">{</span> <span class="kc">it</span><span class="p">.</span><span class="n">isFinite</span> <span class="p">}</span> <span class="o">?</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">restarts</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">beta1</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">beta2</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.999</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">8</span><span class="p">,</span> <span class="n">fdStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">FnMetric</span> <span class="o">=</span> <span class="nc">FnMetric</span><span class="p">.</span><span class="n">rmse</span><span class="p">,</span> <span class="n">restartJitter</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">,</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnFitRun</span></code> | Robust fit by multiple jittered restarts — the recommended entry point when the seed's numbers might be far from the target's. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fitHybrid</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">ClosedRange</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="n">evolveIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">evolveLambda</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">fitIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">beta1</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span> <span class="n">beta2</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.999</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">8</span><span class="p">,</span> <span class="n">fdStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">complexityWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">FnMetric</span> <span class="o">=</span> <span class="nc">FnMetric</span><span class="p">.</span><span class="n">rmse</span><span class="p">,</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">0L</span><span class="p">,</span> <span class="n">mutations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">FnMutation</span><span class="p">&gt;</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">FnMutations</span><span class="p">.</span><span class="nf">defaults</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnHybridRun</span></code> | Structure-then-numbers fitting: run `evolve` to discover a graph *shape* that roughly matches `target`, then hand its numeric leaves to `fitGradient` for a precise polish. |
 
 ### FnFitStep { #functionfit-kt-fnfitstep }
 
-`data class FnFitStep(val iteration: Int, val loss: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnFitStep</span><span class="p">(</span><span class="k">val</span> <span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 One descent step's record: the loss (the metric distance) after applying the step.
 
 | Declaration | Summary |
 | --- | --- |
-| `val iteration: Int` |  |
-| `val loss: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iteration</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### FnFitConfig { #functionfit-kt-fnfitconfig }
 
-`data class FnFitConfig(val iterations: Int, val learningRate: Double, val beta1: Double, val beta2: Double, val epsilon: Double, val fdStep: Double, val samples: Int, val domain: Functions.Domain, val rngSeed: Long, val initJitter: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnFitConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">beta1</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">beta2</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">fdStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">initJitter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 Immutable configuration + seed for a `fitGradient` run, kept for provenance.
 
 | Declaration | Summary |
 | --- | --- |
-| `val iterations: Int` |  |
-| `val learningRate: Double` |  |
-| `val beta1: Double` |  |
-| `val beta2: Double` |  |
-| `val epsilon: Double` |  |
-| `val fdStep: Double` |  |
-| `val samples: Int` |  |
-| `val domain: Functions.Domain` |  |
-| `val rngSeed: Long` |  |
-| `val initJitter: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">learningRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">beta1</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">beta2</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fdStep</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rngSeed</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initJitter</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### FnFitRun { #functionfit-kt-fnfitrun }
 
-`data class FnFitRun(val fitted: Functions.Fn, val parameters: DoubleArray, val initialParameters: DoubleArray, val steps: List<FnFitStep>, val losses: List<Double>, val initialError: Double, val finalError: Double, val iterations: Int, val evaluations: Int, val config: FnFitConfig)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnFitRun</span><span class="p">(</span><span class="k">val</span> <span class="n">fitted</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialParameters</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnFitStep</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">losses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialError</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalError</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">evaluations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">FnFitConfig</span><span class="p">)</span></code>
 
 Result and provenance of a `fitGradient` run, mirroring the shape of [`FnEvolveRun`](function.md#functionevolve-kt-fnevolverun).
 
 | Declaration | Summary |
 | --- | --- |
-| `val fitted: Functions.Fn` |  |
-| `val parameters: DoubleArray` |  |
-| `val initialParameters: DoubleArray` |  |
-| `val steps: List<FnFitStep>` |  |
-| `val losses: List<Double>` |  |
-| `val initialError: Double` |  |
-| `val finalError: Double` |  |
-| `val iterations: Int` |  |
-| `val evaluations: Int` |  |
-| `val config: FnFitConfig` |  |
-| `val improved: Boolean` | True when the fit ended strictly closer to the target than it started. |
-| `override fun equals(other: Any?): Boolean` |  |
-| `override fun hashCode(): Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fitted</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialParameters</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnFitStep</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">losses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">evaluations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">FnFitConfig</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">improved</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when the fit ended strictly closer to the target than it started. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### FnHybridRun { #functionfit-kt-fnhybridrun }
 
-`data class FnHybridRun(val evolveRun: FnEvolveRun, val fitRun: FnFitRun)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnHybridRun</span><span class="p">(</span><span class="k">val</span> <span class="n">evolveRun</span><span class="p">:</span> <span class="nc">FnEvolveRun</span><span class="p">,</span> <span class="k">val</span> <span class="n">fitRun</span><span class="p">:</span> <span class="nc">FnFitRun</span><span class="p">)</span></code>
 
 Result and provenance of a `fitHybrid` run: the structural search then the polish.
 
 | Declaration | Summary |
 | --- | --- |
-| `val evolveRun: FnEvolveRun` |  |
-| `val fitRun: FnFitRun` |  |
-| `val best: Functions.Fn` | The final polished graph. |
-| `val seedError: Double` | RMSE at the very start (seed), after evolve, and after the gradient polish. |
-| `val evolvedError: Double` |  |
-| `val finalError: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">evolveRun</span><span class="p">:</span> <span class="nc">FnEvolveRun</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fitRun</span><span class="p">:</span> <span class="nc">FnFitRun</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">best</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | The final polished graph. |
+| <code class="highlight"><span class="k">val</span> <span class="n">seedError</span><span class="p">:</span> <span class="nc">Double</span></code> | RMSE at the very start (seed), after evolve, and after the gradient polish. |
+| <code class="highlight"><span class="k">val</span> <span class="n">evolvedError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ## FunctionGraph.kt { #functiongraph-kt }
 
 The data model and the copy engine underneath Field's graph-rewritable notion of a function:
 [`FnGraphNode`](function.md#functiongraph-kt-fngraphnode) / [`FnGraphEdge`](function.md#functiongraph-kt-fngraphedge) (an op name, role-tagged children, scalar metadata and an
 optional rebuild recipe) plus `Functions.Fn.deepCopy` and `Functions.Fn.rewriteGraph`, a
-bottom-up copy that offers every occurrence to an `FnGraphEdit`. Every other file in this
+bottom-up copy that offers every occurrence to an [`FnGraphEdit`](function.md#functiongraph-kt-fngraphedit). Every other file in this
 family runs on that single traversal, as do the edit primitives declared here —
 `Functions.Fn.mapGraphNumbers`, `Functions.Fn.replaceOps`, `Functions.Fn.pruneWhere`,
 `Functions.Fn.graftWhere`, `Functions.Fn.duplicateWhere`, `Functions.Fn.slideCopy`. The
@@ -268,119 +288,127 @@ points default it to false so each occurrence can be edited independently.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Functions.Fn.graphNode(): FnGraphNode` |  |
-| `fun Functions.Fn.deepCopy(preserveSharing: Boolean = true, edit: FnGraphEdit = FnGraphEdit { _, copy -> copy }): Functions.Fn` |  |
-| `fun Functions.Fn.rewriteGraph(preserveSharing: Boolean = false, edit: FnGraphEdit): Functions.Fn` |  |
-| `fun Functions.Fn.mapGraphNumbers(preserveSharing: Boolean = false, transform: (value: Double, context: FnGraphCopyContext, key: String) -> Double): Functions.Fn` |  |
-| `fun Functions.Fn.replaceOps(replacements: Map<String, String>, preserveSharing: Boolean = false): Functions.Fn` |  |
-| `fun Functions.Fn.replaceOp(from: String, to: String, preserveSharing: Boolean = false): Functions.Fn` |  |
-| `fun Functions.Fn.pruneWhere(preserveSharing: Boolean = false, replacement: (FnGraphCopyContext) -> Functions.Fn = { Functions.zero(it.domain) }, predicate: (FnGraphCopyContext) -> Boolean): Functions.Fn` |  |
-| `fun Functions.Fn.graftWhere(graft: Functions.Fn, preserveSharing: Boolean = false, predicate: (FnGraphCopyContext) -> Boolean): Functions.Fn` |  |
-| `fun Functions.Fn.duplicateWhere(preserveSharing: Boolean = false, duplicate: (Functions.Fn) -> Functions.Fn, merge: (original: Functions.Fn, duplicated: Functions.Fn) -> Functions.Fn, predicate: (FnGraphCopyContext) -> Boolean): Functions.Fn` |  |
-| `fun Functions.Fn.slideCopy(amount: Number, preserveSharing: Boolean = true): Functions.Fn` |  |
-| `fun Functions.Fn.graphSnapshot(maxDepth: Int = 32): FnGraphSnapshot` |  |
-| `fun Functions.Fn.graphText(maxDepth: Int = 12): String` |  |
-| `fun Functions.Fn.graphSvg(width: Int = 960, nodeWidth: Double = 168.0, nodeHeight: Double = 54.0, xGap: Double = 215.0, yGap: Double = 84.0, maxDepth: Int = 10, sparklines: Boolean = true): String` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphNode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphNode</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">deepCopy</span><span class="p">(</span><span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">edit</span><span class="p">:</span> <span class="nc">FnGraphEdit</span> <span class="o">=</span> <span class="nc">FnGraphEdit</span> <span class="p">{</span> <span class="n">&#95;</span><span class="p">,</span> <span class="n">copy</span> <span class="o">-&gt;</span> <span class="n">copy</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteGraph</span><span class="p">(</span><span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">edit</span><span class="p">:</span> <span class="nc">FnGraphEdit</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">mapGraphNumbers</span><span class="p">(</span><span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">transform</span><span class="p">:</span> <span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">replaceOps</span><span class="p">(</span><span class="n">replacements</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">replaceOp</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">pruneWhere</span><span class="p">(</span><span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span> <span class="o">=</span> <span class="p">{</span> <span class="nc">Functions</span><span class="p">.</span><span class="nf">zero</span><span class="p">(</span><span class="kc">it</span><span class="p">.</span><span class="n">domain</span><span class="p">)</span> <span class="p">}</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graftWhere</span><span class="p">(</span><span class="n">graft</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">duplicateWhere</span><span class="p">(</span><span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">duplicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">merge</span><span class="p">:</span> <span class="p">(</span><span class="n">original</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">duplicated</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">slideCopy</span><span class="p">(</span><span class="n">amount</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphSnapshot</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphSnapshot</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphText</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphSvg</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">960</span><span class="p">,</span> <span class="n">nodeWidth</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">168.0</span><span class="p">,</span> <span class="n">nodeHeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">54.0</span><span class="p">,</span> <span class="n">xGap</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">215.0</span><span class="p">,</span> <span class="n">yGap</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">84.0</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">sparklines</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FnGraphEdge { #functiongraph-kt-fngraphedge }
 
-`data class FnGraphEdge(val role: String, val fn: Functions.Fn)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span></code>
 
 Structural metadata for `Functions.Fn`.
 
 | Declaration | Summary |
 | --- | --- |
-| `val role: String` |  |
-| `val fn: Functions.Fn` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
 
 ### FnGraphRebuilder { #functiongraph-kt-fngraphrebuilder }
 
-`typealias FnGraphRebuilder = (List<Functions.Fn>) -> Functions.Fn`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">FnGraphRebuilder</span> <span class="o">=</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>
 
 ### FnGraphNode { #functiongraph-kt-fngraphnode }
 
-`data class FnGraphNode(val op: String, val label: String = op, val children: List<FnGraphEdge> = emptyList(), val numbers: Map<String, Double> = emptyMap(), val strings: Map<String, String> = emptyMap(), val booleans: Map<String, Boolean> = emptyMap(), val longs: Map<String, Long> = emptyMap(), val tags: Set<String> = emptySet(), val rebuild: FnGraphRebuilder? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphNode</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">op</span><span class="p">,</span> <span class="k">val</span> <span class="n">children</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphEdge</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">booleans</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">longs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">rebuild</span><span class="p">:</span> <span class="nc">FnGraphRebuilder</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val op: String` |  |
-| `val label: String` |  |
-| `val children: List<FnGraphEdge>` |  |
-| `val numbers: Map<String, Double>` |  |
-| `val strings: Map<String, String>` |  |
-| `val booleans: Map<String, Boolean>` |  |
-| `val longs: Map<String, Long>` |  |
-| `val tags: Set<String>` |  |
-| `val rebuild: FnGraphRebuilder?` |  |
-| `fun child(role: String): Functions.Fn?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">children</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">booleans</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">longs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rebuild</span><span class="p">:</span> <span class="nc">FnGraphRebuilder</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">child</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="o">?</span></code> |  |
 
 ### FnGraphPathElement { #functiongraph-kt-fngraphpathelement }
 
-`data class FnGraphPathElement(val node: FnGraphNode, val role: String?, val index: Int, val name: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphPathElement</span><span class="p">(</span><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FnGraphNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val node: FnGraphNode` |  |
-| `val role: String?` |  |
-| `val index: Int` |  |
-| `val name: String?` |  |
-| `val op: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FnGraphNode</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FnGraphCopyContext { #functiongraph-kt-fngraphcopycontext }
 
-`data class FnGraphCopyContext(val original: Functions.Fn, val node: FnGraphNode, val path: List<Int>, val depth: Int, val role: String? = null, val parent: FnGraphNode? = null, val ancestors: List<FnGraphPathElement> = emptyList())`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphCopyContext</span><span class="p">(</span><span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FnGraphNode</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">FnGraphNode</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">ancestors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphPathElement</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val original: Functions.Fn` |  |
-| `val node: FnGraphNode` |  |
-| `val path: List<Int>` |  |
-| `val depth: Int` |  |
-| `val role: String?` |  |
-| `val parent: FnGraphNode?` |  |
-| `val ancestors: List<FnGraphPathElement>` |  |
-| `val op: String` |  |
-| `val name: String?` |  |
-| `val domain: Functions.Domain` |  |
-| `val parentOp: String?` |  |
-| `val occurrence: List<FnGraphPathElement>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">FnGraphNode</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">FnGraphNode</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ancestors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphPathElement</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parentOp</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">occurrence</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphPathElement</span><span class="p">&gt;</span></code> |  |
+
+### FnGraphEdit { #functiongraph-kt-fngraphedit }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">FnGraphEdit</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">edit</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="o">?</span></code> |  |
 
 ### FnGraphSnapshotNode { #functiongraph-kt-fngraphsnapshotnode }
 
-`data class FnGraphSnapshotNode(val id: Int, val op: String, val label: String, val name: String?, val domain: Functions.Domain, val numbers: Map<String, Double>, val strings: Map<String, String>, val booleans: Map<String, Boolean>, val longs: Map<String, Long>, val tags: Set<String>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphSnapshotNode</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">booleans</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">longs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val id: Int` |  |
-| `val op: String` |  |
-| `val label: String` |  |
-| `val name: String?` |  |
-| `val domain: Functions.Domain` |  |
-| `val numbers: Map<String, Double>` |  |
-| `val strings: Map<String, String>` |  |
-| `val booleans: Map<String, Boolean>` |  |
-| `val longs: Map<String, Long>` |  |
-| `val tags: Set<String>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">booleans</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">longs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tags</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
 
 ### FnGraphSnapshotEdge { #functiongraph-kt-fngraphsnapshotedge }
 
-`data class FnGraphSnapshotEdge(val from: Int, val to: Int, val role: String)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphSnapshotEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val from: Int` |  |
-| `val to: Int` |  |
-| `val role: String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">to</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FnGraphSnapshot { #functiongraph-kt-fngraphsnapshot }
 
-`data class FnGraphSnapshot(val nodes: List<FnGraphSnapshotNode>, val edges: List<FnGraphSnapshotEdge>, val root: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphSnapshot</span><span class="p">(</span><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSnapshotNode</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSnapshotEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val nodes: List<FnGraphSnapshotNode>` |  |
-| `val edges: List<FnGraphSnapshotEdge>` |  |
-| `val root: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSnapshotNode</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSnapshotEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">root</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ## FunctionGraphBrowser.kt { #functiongraphbrowser-kt }
 
@@ -409,82 +437,82 @@ NaN-safe (out-of-domain and throwing evaluations become `NaN` and are simply lef
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Functions.Fn.graphTrace(sampleDomain: Functions.Domain? = null, samples: Int = 512, maxDepth: Int = 12, maxNodes: Int = 32, sensitivitySteps: Int = 0, sensitivitySpan: Double = 1.0): FnGraphTrace` | Samples every visible graph occurrence on one root time-base. |
-| `fun Functions.Fn.graphRewriteTrace(rules: List<FnGraphRule>, sampleDomain: Functions.Domain? = null, samples: Int = 512): FnRewriteTrace` | Samples the signal before and after each rule, applied cumulatively, so a rewrite can be watched step by step on one time-base. Works with pattern rules (`fnRule`) and programmatic [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule)s alike. |
-| `fun Functions.Fn.graphRewriteTrace(spec: String, sampleDomain: Functions.Domain? = null, samples: Int = 512): FnRewriteTrace` | String-DSL convenience: one stage per meaningful rule line, applied cumulatively with `Functions.Fn.rewrite`. |
-| `fun Functions.Fn.graphBrowseHtml(sampleDomain: Functions.Domain? = null, samples: Int = 512, heightPx: Int = 520, title: String = name ?: "Fn graph", maxDepth: Int = 12, maxNodes: Int = 32, sensitivitySteps: Int = 9): String` | Interactive occurrence browser with final, local, muted, and contextual-effect traces. |
-| `fun Functions.Fn.browseGraph(channel: String = "graph", sampleDomain: Functions.Domain? = null, samples: Int = 512, heightPx: Int = 520, title: String = name ?: "Fn graph", maxDepth: Int = 12, maxNodes: Int = 32): Functions.Fn` |  |
-| `fun Functions.Fn.graphBrowseHtml(sampleDomain: ClosedRange<*>, samples: Int = 512, heightPx: Int = 520, title: String = name ?: "Fn graph", maxDepth: Int = 12, maxNodes: Int = 32): String` |  |
-| `fun Functions.Fn.browseGraph(sampleDomain: ClosedRange<*>, channel: String = "graph", samples: Int = 512, heightPx: Int = 520, title: String = name ?: "Fn graph", maxDepth: Int = 12, maxNodes: Int = 32): Functions.Fn` |  |
-| `fun FnRewriteTrace.rewriteBrowseHtml(heightPx: Int = 460, title: String = "Fn rewrite"): String` | Steppable before/after/delta lanes for a rewrite, all on the shared time-base. |
-| `fun Functions.Fn.browseRewrite(spec: String, channel: String = "rewrite", sampleDomain: Functions.Domain? = null, samples: Int = 512, heightPx: Int = 460, title: String = name?.let { "rewrite $it" } ?: "Fn rewrite"): Functions.Fn` | Compute and display before/after rewrite lanes for a plain-DSL `spec` in the current box. |
-| `fun Functions.Fn.browseRewrite(rules: List<FnGraphRule>, channel: String = "rewrite", sampleDomain: Functions.Domain? = null, samples: Int = 512, heightPx: Int = 460, title: String = name?.let { "rewrite $it" } ?: "Fn rewrite"): Functions.Fn` | Display before/after rewrite lanes for programmatic `rules` in the current box. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphTrace</span><span class="p">(</span><span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">sensitivitySteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">sensitivitySpan</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphTrace</span></code> | Samples every visible graph occurrence on one root time-base. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphRewriteTrace</span><span class="p">(</span><span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRule</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewriteTrace</span></code> | Samples the signal before and after each rule, applied cumulatively, so a rewrite can be watched step by step on one time-base. Works with pattern rules (`fnRule`) and programmatic [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule)s alike. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphRewriteTrace</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewriteTrace</span></code> | String-DSL convenience: one stage per meaningful rule line, applied cumulatively with `Functions.Fn.rewrite`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphBrowseHtml</span><span class="p">(</span><span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">520</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn graph&quot;</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">sensitivitySteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Interactive occurrence browser with final, local, muted, and contextual-effect traces. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">browseGraph</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;graph&quot;</span><span class="p">,</span> <span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">520</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn graph&quot;</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphBrowseHtml</span><span class="p">(</span><span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">ClosedRange</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">520</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn graph&quot;</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">browseGraph</span><span class="p">(</span><span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">ClosedRange</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;graph&quot;</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">520</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn graph&quot;</span><span class="p">,</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">maxNodes</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FnRewriteTrace</span><span class="p">.</span><span class="nf">rewriteBrowseHtml</span><span class="p">(</span><span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Fn rewrite&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Steppable before/after/delta lanes for a rewrite, all on the shared time-base. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">browseRewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;rewrite&quot;</span><span class="p">,</span> <span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span><span class="o">?</span><span class="p">.</span><span class="n">let</span> <span class="p">{</span> <span class="s">&quot;rewrite $it&quot;</span> <span class="p">}</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn rewrite&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | Compute and display before/after rewrite lanes for a plain-DSL `spec` in the current box. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">browseRewrite</span><span class="p">(</span><span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRule</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;rewrite&quot;</span><span class="p">,</span> <span class="n">sampleDomain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">512</span><span class="p">,</span> <span class="n">heightPx</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">name</span><span class="o">?</span><span class="p">.</span><span class="n">let</span> <span class="p">{</span> <span class="s">&quot;rewrite $it&quot;</span> <span class="p">}</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Fn rewrite&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | Display before/after rewrite lanes for programmatic `rules` in the current box. |
 
 ### FnGraphSweepPoint { #functiongraphbrowser-kt-fngraphsweeppoint }
 
-`data class FnGraphSweepPoint(val value: Double, val samples: DoubleArray)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphSweepPoint</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
 
 One swept value of a numeric node and the final signal it produces.
 
 | Declaration | Summary |
 | --- | --- |
-| `val value: Double` |  |
-| `val samples: DoubleArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 
 ### FnGraphTraceNode { #functiongraphbrowser-kt-fngraphtracenode }
 
-`data class FnGraphTraceNode(val path: List<Int>, val role: String?, val op: String, val name: String?, val domain: Functions.Domain, val local: DoubleArray, val muted: DoubleArray, val effect: DoubleArray, val numeric: Boolean = false, val value: Double? = null, val sensitivity: List<FnGraphSweepPoint> = emptyList())`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphTraceNode</span><span class="p">(</span><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">local</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">muted</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">effect</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">sensitivity</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSweepPoint</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val path: List<Int>` |  |
-| `val role: String?` |  |
-| `val op: String` |  |
-| `val name: String?` |  |
-| `val domain: Functions.Domain` |  |
-| `val local: DoubleArray` |  |
-| `val muted: DoubleArray` |  |
-| `val effect: DoubleArray` |  |
-| `val numeric: Boolean` |  |
-| `val value: Double?` |  |
-| `val sensitivity: List<FnGraphSweepPoint>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">local</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">muted</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">effect</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numeric</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sensitivity</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphSweepPoint</span><span class="p">&gt;</span></code> |  |
 
 ### FnGraphTrace { #functiongraphbrowser-kt-fngraphtrace }
 
-`data class FnGraphTrace(val domain: Functions.Domain, val xs: DoubleArray, val final: DoubleArray, val nodes: List<FnGraphTraceNode>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphTrace</span><span class="p">(</span><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">xs</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="k">final</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphTraceNode</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val domain: Functions.Domain` |  |
-| `val xs: DoubleArray` |  |
-| `val final: DoubleArray` |  |
-| `val nodes: List<FnGraphTraceNode>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">xs</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">final</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphTraceNode</span><span class="p">&gt;</span></code> |  |
 
 ### FnRewriteStage { #functiongraphbrowser-kt-fnrewritestage }
 
-`data class FnRewriteStage(val label: String, val before: DoubleArray, val after: DoubleArray, val delta: DoubleArray, val changed: Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteStage</span><span class="p">(</span><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">before</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">after</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">delta</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 One rewrite step: the signal before and after applying a single rule, on the shared axis.
 
 | Declaration | Summary |
 | --- | --- |
-| `val label: String` |  |
-| `val before: DoubleArray` |  |
-| `val after: DoubleArray` |  |
-| `val delta: DoubleArray` |  |
-| `val changed: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">before</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">after</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">delta</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### FnRewriteTrace { #functiongraphbrowser-kt-fnrewritetrace }
 
-`data class FnRewriteTrace(val domain: Functions.Domain, val xs: DoubleArray, val original: DoubleArray, val finalSamples: DoubleArray, val stages: List<FnRewriteStage>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteTrace</span><span class="p">(</span><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span><span class="p">,</span> <span class="k">val</span> <span class="n">xs</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalSamples</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteStage</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val domain: Functions.Domain` |  |
-| `val xs: DoubleArray` |  |
-| `val original: DoubleArray` |  |
-| `val finalSamples: DoubleArray` |  |
-| `val stages: List<FnRewriteStage>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">xs</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">original</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalSamples</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stages</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteStage</span><span class="p">&gt;</span></code> |  |
 
 ## FunctionGraphRules.kt { #functiongraphrules-kt }
 
@@ -514,30 +542,30 @@ explicit; `FnGraphRuleMode.ALL_MATCHES` chains every matching rule on the same c
 
 | Declaration | Summary |
 | --- | --- |
-| `fun Functions.Fn.graphMatches(maxDepth: Int = 64, predicate: (FnGraphCopyContext) -> Boolean): List<FnGraphMatch>` | Finds occurrence-sensitive matches without copying or evaluating the function. |
-| `fun Functions.Fn.firstGraphMatch(maxDepth: Int = 64, predicate: (FnGraphCopyContext) -> Boolean): FnGraphMatch?` | Returns the first occurrence-sensitive match in depth-first order. |
-| `fun Functions.Fn.graphMetrics(maxDepth: Int = 64, nodeCost: (FnGraphNode) -> Double = { 1.0 }): FnGraphMetrics` | Measures both unique DAG nodes and path-sensitive occurrences. |
-| `fun Functions.Fn.graphSignature(maxDepth: Int = 64): String` | A deterministic structural signature for convergence checks and regression tests. Evaluator closures and rebuild lambdas are intentionally excluded. |
-| `fun Functions.Fn.rewriteWithRules(rules: List<FnGraphRule>, preserveSharing: Boolean = false, mode: FnGraphRuleMode = FnGraphRuleMode.FIRST_MATCH): FnGraphRewriteRun` | Applies one bottom-up pass of named rules and records every effective edit. |
-| `fun Functions.Fn.rewriteWithRules(vararg rules: FnGraphRule, preserveSharing: Boolean = false, mode: FnGraphRuleMode = FnGraphRuleMode.FIRST_MATCH): FnGraphRewriteRun` | Vararg convenience for a single bottom-up rule pass. |
-| `fun Functions.Fn.rewriteUntilStable(rules: List<FnGraphRule>, maxPasses: Int = 16, preserveSharing: Boolean = false, mode: FnGraphRuleMode = FnGraphRuleMode.FIRST_MATCH): FnGraphRewriteRun` | Repeats bottom-up rule passes until structure is stable, cycles, or reaches `maxPasses`. This is intentionally bounded: experimental rewrite systems should fail visibly, not hide a non-terminating rule set inside an animation loop. |
-| `fun Functions.Fn.rewriteUntilStable(vararg rules: FnGraphRule, maxPasses: Int = 16, preserveSharing: Boolean = false, mode: FnGraphRuleMode = FnGraphRuleMode.FIRST_MATCH): FnGraphRewriteRun` | Vararg convenience for bounded fixed-point rewriting. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphMatches</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphMatch</span><span class="p">&gt;</span></code> | Finds occurrence-sensitive matches without copying or evaluating the function. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">firstGraphMatch</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">predicate</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphMatch</span><span class="o">?</span></code> | Returns the first occurrence-sensitive match in depth-first order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphMetrics</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="n">nodeCost</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphNode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">{</span> <span class="mf">1.0</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphMetrics</span></code> | Measures both unique DAG nodes and path-sensitive occurrences. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">graphSignature</span><span class="p">(</span><span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A deterministic structural signature for convergence checks and regression tests. Evaluator closures and rebuild lambdas are intentionally excluded. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteWithRules</span><span class="p">(</span><span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRule</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">FnGraphRuleMode</span> <span class="o">=</span> <span class="nc">FnGraphRuleMode</span><span class="p">.</span><span class="nc">FIRST&#95;MATCH</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRewriteRun</span></code> | Applies one bottom-up pass of named rules and records every effective edit. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteWithRules</span><span class="p">(</span><span class="k">vararg</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">FnGraphRule</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">FnGraphRuleMode</span> <span class="o">=</span> <span class="nc">FnGraphRuleMode</span><span class="p">.</span><span class="nc">FIRST&#95;MATCH</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRewriteRun</span></code> | Vararg convenience for a single bottom-up rule pass. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteUntilStable</span><span class="p">(</span><span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRule</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">maxPasses</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">FnGraphRuleMode</span> <span class="o">=</span> <span class="nc">FnGraphRuleMode</span><span class="p">.</span><span class="nc">FIRST&#95;MATCH</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRewriteRun</span></code> | Repeats bottom-up rule passes until structure is stable, cycles, or reaches `maxPasses`. This is intentionally bounded: experimental rewrite systems should fail visibly, not hide a non-terminating rule set inside an animation loop. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteUntilStable</span><span class="p">(</span><span class="k">vararg</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">FnGraphRule</span><span class="p">,</span> <span class="n">maxPasses</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">FnGraphRuleMode</span> <span class="o">=</span> <span class="nc">FnGraphRuleMode</span><span class="p">.</span><span class="nc">FIRST&#95;MATCH</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRewriteRun</span></code> | Vararg convenience for bounded fixed-point rewriting. |
 
 ### FnGraphRule { #functiongraphrules-kt-fngraphrule }
 
-`data class FnGraphRule(val name: String, val matches: (FnGraphCopyContext) -> Boolean, val replace: (context: FnGraphCopyContext, copy: Functions.Fn) -> Functions.Fn)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphRule</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">matches</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">replace</span><span class="p">:</span> <span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span></code>
 
 A named, programmatic rewrite rule over one occurrence in an `Functions.Fn` graph.
 
 | Declaration | Summary |
 | --- | --- |
-| `val name: String` |  |
-| `val matches: (FnGraphCopyContext) -> Boolean` |  |
-| `val replace: (context: FnGraphCopyContext, copy: Functions.Fn) -> Functions.Fn` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">matches</span><span class="p">:</span> <span class="p">(</span><span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">replace</span><span class="p">:</span> <span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">,</span> <span class="n">copy</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
 
 ### FnGraphRuleMode { #functiongraphrules-kt-fngraphrulemode }
 
-`enum class FnGraphRuleMode`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FnGraphRuleMode</span></code>
 
 Whether one rewrite pass uses the first matching rule or chains every matching rule.
 
@@ -545,7 +573,7 @@ Constants: `FIRST_MATCH`, `ALL_MATCHES`.
 
 ### FnGraphRewriteStop { #functiongraphrules-kt-fngraphrewritestop }
 
-`enum class FnGraphRewriteStop`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FnGraphRewriteStop</span></code>
 
 Why a bounded graph-rewrite run stopped.
 
@@ -553,62 +581,62 @@ Constants: `ONE_PASS`, `STABLE`, `CYCLE`, `MAX_PASSES`.
 
 ### FnGraphRewriteEvent { #functiongraphrules-kt-fngraphrewriteevent }
 
-`data class FnGraphRewriteEvent(val pass: Int, val rule: String, val path: List<Int>, val role: String?, val beforeOp: String, val afterOp: String, val beforeName: String?, val afterName: String?)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphRewriteEvent</span><span class="p">(</span><span class="k">val</span> <span class="n">pass</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">beforeOp</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">afterOp</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">beforeName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">afterName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>
 
 One effective rule application. Paths are child indices from the graph root.
 
 | Declaration | Summary |
 | --- | --- |
-| `val pass: Int` |  |
-| `val rule: String` |  |
-| `val path: List<Int>` |  |
-| `val role: String?` |  |
-| `val beforeOp: String` |  |
-| `val afterOp: String` |  |
-| `val beforeName: String?` |  |
-| `val afterName: String?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pass</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">beforeOp</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">afterOp</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">beforeName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">afterName</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
 
 ### FnGraphRewriteRun { #functiongraphrules-kt-fngraphrewriterun }
 
-`data class FnGraphRewriteRun(val function: Functions.Fn, val events: List<FnGraphRewriteEvent>, val passes: Int, val stop: FnGraphRewriteStop)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphRewriteRun</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRewriteEvent</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">passes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">stop</span><span class="p">:</span> <span class="nc">FnGraphRewriteStop</span><span class="p">)</span></code>
 
 Result and provenance from `Functions.Fn.rewriteWithRules` or `Functions.Fn.rewriteUntilStable`.
 
 | Declaration | Summary |
 | --- | --- |
-| `val function: Functions.Fn` |  |
-| `val events: List<FnGraphRewriteEvent>` |  |
-| `val passes: Int` |  |
-| `val stop: FnGraphRewriteStop` |  |
-| `val stable: Boolean` |  |
-| `val changed: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">events</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphRewriteEvent</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">passes</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stop</span><span class="p">:</span> <span class="nc">FnGraphRewriteStop</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">stable</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### FnGraphMatch { #functiongraphrules-kt-fngraphmatch }
 
-`data class FnGraphMatch(val function: Functions.Fn, val context: FnGraphCopyContext)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphMatch</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">)</span></code>
 
 A matched graph occurrence. Shared nodes may appear more than once through different `context` paths.
 
 | Declaration | Summary |
 | --- | --- |
-| `val function: Functions.Fn` |  |
-| `val context: FnGraphCopyContext` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span></code> |  |
 
 ### FnGraphMetrics { #functiongraphrules-kt-fngraphmetrics }
 
-`data class FnGraphMetrics(val uniqueNodes: Int, val occurrences: Int, val edges: Int, val maxDepth: Int, val opaqueNodes: Int, val rebuildableNodes: Int, val cost: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnGraphMetrics</span><span class="p">(</span><span class="k">val</span> <span class="n">uniqueNodes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">occurrences</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">opaqueNodes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rebuildableNodes</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 Small structural measurements suitable for diagnostics and optimizer cost functions.
 
 | Declaration | Summary |
 | --- | --- |
-| `val uniqueNodes: Int` |  |
-| `val occurrences: Int` |  |
-| `val edges: Int` |  |
-| `val maxDepth: Int` |  |
-| `val opaqueNodes: Int` |  |
-| `val rebuildableNodes: Int` |  |
-| `val cost: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">uniqueNodes</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">occurrences</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxDepth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">opaqueNodes</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rebuildableNodes</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cost</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ## FunctionOps.kt { #functionops-kt }
 
@@ -627,23 +655,23 @@ that mirror never drifts.
 
 ### OpRegistry { #functionops-kt-opregistry }
 
-`object OpRegistry`
+<code class="highlight"><span class="k">object</span> <span class="nc">OpRegistry</span></code>
 
 Single source of truth for the `Fn` graph op vocabulary and `op=` transmutation.
 
 | Declaration | Summary |
 | --- | --- |
-| `data class OpSpec(val canonical: String, val family: String, val aliases: Set<String> = emptySet(), val build: (OpSource) -> Functions.Fn?)` | A transmutation target: how to rebuild `canonical` from an arbitrary matched node. |
-| `class OpSource internal constructor(val self: Functions.Fn)` | Read-only view of the node being transmuted: children by role, plus scalar metadata. |
-| `val knownOps: Set<String>` | Every op string the stdlib actually emits (from `node(...)`/`graphFn(...)`), so validation and selectors never treat a real op as unknown even when it is not a transmutation target. Kept in sync with `Functions.kt` by `FunctionsGraphRewriteTest`. |
-| `val transmutableOps: List<String>` | Canonical op names that `op=` can rebuild to, grouped by family, for docs and diagnostics. |
-| `fun knows(name: String): Boolean` |  |
-| `fun isTransmutable(name: String): Boolean` |  |
-| `fun canonical(name: String): String?` |  |
-| `fun family(name: String): String?` | The family of a transmutable op (e.g. "oscillator", "noise", "transform"). |
-| `fun opsInFamily(family: String): List<String>` | Canonical transmutable ops in `family`, useful for within-family mutation. |
-| `fun rebuild(fn: Functions.Fn, targetOp: String): Functions.Fn?` | Rebuild `fn` as `targetOp`, or null if the target is not a viable transmutation of this node. |
-| `fun transmutableHint(): String` | One-line description of the transmutation vocabulary, for validator hints. |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">OpSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">canonical</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">family</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">aliases</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptySet</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">build</span><span class="p">:</span> <span class="p">(</span><span class="nc">OpSource</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="o">?</span><span class="p">)</span></code> | A transmutation target: how to rebuild `canonical` from an arbitrary matched node. |
+| <code class="highlight"><span class="k">class</span> <span class="nc">OpSource</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">self</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span></code> | Read-only view of the node being transmuted: children by role, plus scalar metadata. |
+| <code class="highlight"><span class="k">val</span> <span class="n">knownOps</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Every op string the stdlib actually emits (from `node(...)`/`graphFn(...)`), so validation and selectors never treat a real op as unknown even when it is not a transmutation target. Kept in sync with `Functions.kt` by `FunctionsGraphRewriteTest`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">transmutableOps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Canonical op names that `op=` can rebuild to, grouped by family, for docs and diagnostics. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">knows</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isTransmutable</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">canonical</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">family</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The family of a transmutable op (e.g. "oscillator", "noise", "transform"). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">opsInFamily</span><span class="p">(</span><span class="n">family</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Canonical transmutable ops in `family`, useful for within-family mutation. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rebuild</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">targetOp</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="o">?</span></code> | Rebuild `fn` as `targetOp`, or null if the target is not a viable transmutation of this node. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">transmutableHint</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | One-line description of the transmutation vocabulary, for validator hints. |
 
 ## FunctionRewriteDsl.kt { #functionrewritedsl-kt }
 
@@ -671,125 +699,125 @@ FunctionRewritePattern.kt is the separate structural pattern-to-template surface
 
 | Declaration | Summary |
 | --- | --- |
-| `fun compileFnRewrite(spec: String): FnRewriteProgram` |  |
-| `fun Functions.Fn.rewrite(spec: String, options: FnRewriteOptions = FnRewriteOptions()): Functions.Fn` |  |
-| `fun Functions.Fn.previewRewrite(spec: String, options: FnRewriteOptions = FnRewriteOptions()): FnRewritePreview` | Compiles and applies `spec`, retaining diagnostics, match paths, and effective-change information. |
-| `fun Functions.Fn.rewriteChecked(spec: String, options: FnRewriteOptions = FnRewriteOptions()): Functions.Fn` | Rejects malformed specs before applying any valid rules that happen to remain. |
-| `fun Functions.Fn.rewrite(spec: String, preserveSharing: Boolean): Functions.Fn` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">compileFnRewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewriteProgram</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">previewRewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewritePreview</span></code> | Compiles and applies `spec`, retaining diagnostics, match paths, and effective-change information. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteChecked</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">FnRewriteOptions</span> <span class="o">=</span> <span class="nc">FnRewriteOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | Rejects malformed specs before applying any valid rules that happen to remain. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewrite</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
 
 ### FnRewriteNumberContext { #functionrewritedsl-kt-fnrewritenumbercontext }
 
-`data class FnRewriteNumberContext(val expression: String, val current: Double, val graph: FnGraphCopyContext)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteNumberContext</span><span class="p">(</span><span class="k">val</span> <span class="n">expression</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">graph</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">)</span></code>
 
 Tiny string layer over the graph-copy API.
 
 | Declaration | Summary |
 | --- | --- |
-| `val expression: String` |  |
-| `val current: Double` |  |
-| `val graph: FnGraphCopyContext` |  |
-| `val value: Double` |  |
-| `val it: Double` |  |
-| `val op: String` |  |
-| `val role: String?` |  |
-| `val parameter: String?` |  |
-| `val parentOp: String?` |  |
-| `val depth: Int` |  |
-| `val path: List<Int>` |  |
-| `val ancestors: List<FnGraphPathElement>` |  |
-| `val occurrence: List<FnGraphPathElement>` |  |
-| `val name: String?` |  |
-| `val domain: Functions.Domain` |  |
-| `val numbers: Map<String, Double>` |  |
-| `val strings: Map<String, String>` |  |
-| `val booleans: Map<String, Boolean>` |  |
-| `val longs: Map<String, Long>` |  |
-| `fun number(key: String): Double?` |  |
-| `fun string(key: String): String?` |  |
-| `fun boolean(key: String): Boolean?` |  |
-| `fun long(key: String): Long?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">expression</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">graph</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="kc">it</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parameter</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">parentOp</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ancestors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphPathElement</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">occurrence</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnGraphPathElement</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">domain</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Domain</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">strings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">booleans</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Boolean</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">longs</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Long</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">number</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">string</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">boolean</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">long</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span></code> |  |
 
 ### FnRewriteOptions { #functionrewritedsl-kt-fnrewriteoptions }
 
-`data class FnRewriteOptions(val kotlinNumber: ((expression: String, current: Double, context: FnGraphCopyContext) -> Double?)? = null, val preserveSharing: Boolean = false, val kotlinNumberContext: ((FnRewriteNumberContext) -> Double?)? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">kotlinNumber</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">kotlinNumberContext</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">FnRewriteNumberContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val kotlinNumber: ((expression: String, current: Double, context: FnGraphCopyContext) -> Double?)?` |  |
-| `val preserveSharing: Boolean` |  |
-| `val kotlinNumberContext: ((FnRewriteNumberContext) -> Double?)?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kotlinNumber</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">current</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nc">FnGraphCopyContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kotlinNumberContext</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">FnRewriteNumberContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span><span class="p">)</span><span class="o">?</span></code> |  |
 
 ### FnRewriteSeverity { #functionrewritedsl-kt-fnrewriteseverity }
 
-`enum class FnRewriteSeverity`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FnRewriteSeverity</span></code>
 
 Constants: `ERROR`, `WARNING`.
 
 ### FnRewriteDiagnostic { #functionrewritedsl-kt-fnrewritediagnostic }
 
-`data class FnRewriteDiagnostic(val severity: FnRewriteSeverity, val line: Int, val column: Int, val message: String, val hint: String? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteDiagnostic</span><span class="p">(</span><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">FnRewriteSeverity</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">hint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val severity: FnRewriteSeverity` |  |
-| `val line: Int` |  |
-| `val column: Int` |  |
-| `val message: String` |  |
-| `val hint: String?` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">severity</span><span class="p">:</span> <span class="nc">FnRewriteSeverity</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">column</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FnRewriteRuleSpec { #functionrewritedsl-kt-fnrewriterulespec }
 
-`data class FnRewriteRuleSpec(val line: Int, val selector: String, val actions: List<String>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteRuleSpec</span><span class="p">(</span><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">actions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val line: Int` |  |
-| `val selector: String` |  |
-| `val actions: List<String>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">actions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
 
 ### FnRewriteProgram { #functionrewritedsl-kt-fnrewriteprogram }
 
-`data class FnRewriteProgram(val source: String, val rules: List<FnRewriteRuleSpec>, val diagnostics: List<FnRewriteDiagnostic>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteRuleSpec</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteDiagnostic</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val source: String` |  |
-| `val rules: List<FnRewriteRuleSpec>` |  |
-| `val diagnostics: List<FnRewriteDiagnostic>` |  |
-| `val valid: Boolean` |  |
-| `fun diagnosticText(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteRuleSpec</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">diagnostics</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteDiagnostic</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">diagnosticText</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FnRewriteApplication { #functionrewritedsl-kt-fnrewriteapplication }
 
-`data class FnRewriteApplication(val rule: Int, val line: Int, val selector: String, val actions: List<String>, val path: List<Int>, val role: String?, val beforeOp: String, val afterOp: String, val changed: Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewriteApplication</span><span class="p">(</span><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">actions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">beforeOp</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">afterOp</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val rule: Int` |  |
-| `val line: Int` |  |
-| `val selector: String` |  |
-| `val actions: List<String>` |  |
-| `val path: List<Int>` |  |
-| `val role: String?` |  |
-| `val beforeOp: String` |  |
-| `val afterOp: String` |  |
-| `val changed: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">selector</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">actions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">role</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">beforeOp</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">afterOp</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">changed</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### FnRewritePreview { #functionrewritedsl-kt-fnrewritepreview }
 
-`data class FnRewritePreview(val function: Functions.Fn, val program: FnRewriteProgram, val applications: List<FnRewriteApplication>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FnRewritePreview</span><span class="p">(</span><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FnRewriteProgram</span><span class="p">,</span> <span class="k">val</span> <span class="n">applications</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteApplication</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val function: Functions.Fn` |  |
-| `val program: FnRewriteProgram` |  |
-| `val applications: List<FnRewriteApplication>` |  |
-| `val matchedRules: Int` |  |
-| `val matchCount: Int` |  |
-| `val changeCount: Int` |  |
-| `val unmatchedRules: List<FnRewriteRuleSpec>` |  |
-| `fun summary(): String` | Compact deterministic report suitable for logs, chat, and agent transcripts. |
+| <code class="highlight"><span class="k">val</span> <span class="n">function</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">FnRewriteProgram</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">applications</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteApplication</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">matchedRules</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">matchCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">changeCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">unmatchedRules</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnRewriteRuleSpec</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Compact deterministic report suitable for logs, chat, and agent transcripts. |
 
 ## FunctionRewriteKotlin.kt { #functionrewritekotlin-kt }
 
@@ -818,35 +846,35 @@ unapplied and the compiler-free `rewrite(...)` path is unaffected.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun fnRewriteNumberExpression(source: String, box: Box? = Box.context.get()): SourceBackedFnRewriteNumberExpression` |  |
-| `fun fnRewriteNumber(block: FnRewriteNumberContext.() -> Number?): SourceBackedFnRewriteNumberExpression` |  |
-| `fun Functions.Fn.rewriteKotlin(spec: String, preserveSharing: Boolean = false, box: Box? = Box.context.get()): Functions.Fn` |  |
-| `fun Functions.Fn.previewRewriteKotlin(spec: String, preserveSharing: Boolean = false, box: Box? = Box.context.get()): FnRewritePreview` |  |
-| `fun Functions.Fn.rewriteKotlinChecked(spec: String, preserveSharing: Boolean = false, box: Box? = Box.context.get()): Functions.Fn` |  |
-| `fun Box.rewriteFn(fn: Functions.Fn, spec: String, preserveSharing: Boolean = false): Functions.Fn` |  |
-| `fun Box.previewRewriteFn(fn: Functions.Fn, spec: String, preserveSharing: Boolean = false): FnRewritePreview` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fnRewriteNumberExpression</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Box</span><span class="p">.</span><span class="n">context</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedFnRewriteNumberExpression</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fnRewriteNumber</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">FnRewriteNumberContext</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Number</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedFnRewriteNumberExpression</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteKotlin</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Box</span><span class="p">.</span><span class="n">context</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">previewRewriteKotlin</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Box</span><span class="p">.</span><span class="n">context</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewritePreview</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewriteKotlinChecked</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="nc">Box</span><span class="p">.</span><span class="n">context</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rewriteFn</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">previewRewriteFn</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnRewritePreview</span></code> |  |
 
 ### SourceBackedFnRewriteNumberExpression { #functionrewritekotlin-kt-sourcebackedfnrewritenumberexpression }
 
-`class SourceBackedFnRewriteNumberExpression(val boxId: String, val source: String, private val block: ((FnRewriteNumberContext) -> Any?)? = null) : (FnRewriteNumberContext) -> Double?`
+<code class="highlight"><span class="k">class</span> <span class="nf">SourceBackedFnRewriteNumberExpression</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">FnRewriteNumberContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="p">(</span><span class="nc">FnRewriteNumberContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span></code>
 
 Source-backed Kotlin evaluator for `@{...}` fragments inside the Fn rewrite DSL.
 
 | Declaration | Summary |
 | --- | --- |
-| `val boxId: String` |  |
-| `val source: String` |  |
-| `override fun invoke(context: FnRewriteNumberContext): Double?` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">FnRewriteNumberContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### SourceBackedFnRewriteNumberEvaluator { #functionrewritekotlin-kt-sourcebackedfnrewritenumberevaluator }
 
-`class SourceBackedFnRewriteNumberEvaluator(val boxId: String) : (FnRewriteNumberContext) -> Double?`
+<code class="highlight"><span class="k">class</span> <span class="nf">SourceBackedFnRewriteNumberEvaluator</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="p">(</span><span class="nc">FnRewriteNumberContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="o">?</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val boxId: String` |  |
-| `override fun invoke(context: FnRewriteNumberContext): Double?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">invoke</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="nc">FnRewriteNumberContext</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
 
 ## FunctionRewritePattern.kt { #functionrewritepattern-kt }
 
@@ -874,34 +902,34 @@ Kotlin builder over [`FnPatternMatch`](function.md#functionrewritepattern-kt-fnp
 
 | Declaration | Summary |
 | --- | --- |
-| `fun fnRule(spec: String): FnGraphRule` | Compile `"lhs => rhs"` into a traced [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule) usable with the existing rewrite runners. |
-| `fun fnRule(name: String, lhs: String, build: Functions.(FnPatternMatch) -> Functions.Fn): FnGraphRule` | Compile a pattern LHS with a Kotlin builder RHS. This is the fully general surface: the pattern captures structure, the builder writes the replacement in ordinary Kotlin over the whole [`Functions`](math.md#functions-kt-functions) stdlib. |
-| `fun Functions.Fn.rewritePatterns(vararg specs: String, maxPasses: Int = 16, preserveSharing: Boolean = false): FnGraphRewriteRun` | Convenience: rewrite to a fixed point with a set of pattern rules. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fnRule</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRule</span></code> | Compile `"lhs => rhs"` into a traced [`FnGraphRule`](function.md#functiongraphrules-kt-fngraphrule) usable with the existing rewrite runners. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fnRule</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">lhs</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">build</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="p">(</span><span class="nc">FnPatternMatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRule</span></code> | Compile a pattern LHS with a Kotlin builder RHS. This is the fully general surface: the pattern captures structure, the builder writes the replacement in ordinary Kotlin over the whole [`Functions`](math.md#functions-kt-functions) stdlib. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">rewritePatterns</span><span class="p">(</span><span class="k">vararg</span> <span class="n">specs</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">maxPasses</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">preserveSharing</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnGraphRewriteRun</span></code> | Convenience: rewrite to a fixed point with a set of pattern rules. |
 
 ### FnPattern { #functionrewritepattern-kt-fnpattern }
 
-`sealed interface FnPattern`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">FnPattern</span></code>
 
 Structural pattern → template rewriting: the term-rewriting surface on top of the graph copier.
 
 | Declaration | Summary |
 | --- | --- |
-| `data class Var(val name: String) : FnPattern` | `?name` — binds (or, if already bound, must structurally re-match) a subtree. |
-| `data object Wild : FnPattern` | `_` — matches anything without binding. |
-| `data class Num(val value: Double) : FnPattern` | A numeric literal — matches a `numbers["value"]` node (const/param). |
-| `data class Op(val op: String, val children: List<FnPattern>, val constrained: Boolean) : FnPattern` | `op` (children unconstrained) or `op(child, …)` (leading children must match). |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Var</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnPattern</span></code> | `?name` — binds (or, if already bound, must structurally re-match) a subtree. |
+| <code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">Wild</span> <span class="p">:</span> <span class="nc">FnPattern</span></code> | `_` — matches anything without binding. |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Num</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnPattern</span></code> | A numeric literal — matches a `numbers["value"]` node (const/param). |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Op</span><span class="p">(</span><span class="k">val</span> <span class="n">op</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">children</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnPattern</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">constrained</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FnPattern</span></code> | `op` (children unconstrained) or `op(child, …)` (leading children must match). |
 
 ### FnPatternMatch { #functionrewritepattern-kt-fnpatternmatch }
 
-`class FnPatternMatch internal constructor(val matched: Functions.Fn, private val bindings: Map<String, Functions.Fn>)`
+<code class="highlight"><span class="k">class</span> <span class="nc">FnPatternMatch</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">matched</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">bindings</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 The result of matching a pattern: metavariable bindings plus the matched node.
 
 | Declaration | Summary |
 | --- | --- |
-| `val matched: Functions.Fn` |  |
-| `fun sub(name: String): Functions.Fn` | The subtree bound to `?name`. |
-| `fun value(name: String): Double?` | The numeric value of `?name`, if it bound a numeric node. |
-| `fun has(name: String): Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">matched</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sub</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> | The subtree bound to `?name`. |
+| <code class="highlight"><span class="k">fun</span> <span class="k">value</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | The numeric value of `?name`, if it bound a numeric node. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">has</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 </div>

@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-15 source file(s), 587 public symbol(s), 63 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+15 source file(s), 589 public symbol(s), 63 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -31,48 +31,44 @@ will error without one.
 
 | Declaration | Summary |
 | --- | --- |
-| `const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY` |  |
-| `val files: FieldFileManager` |  |
-| `val fileManager: FieldFileManager` |  |
-| `val String.file: File` |  |
-| `val String.path: Path` |  |
-| `val String.absolutePath: String` |  |
-| `val String.abslutePath: String` |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">FILE&#95;MANAGER&#95;ACCESS&#95;HISTORY&#95;PROPERTY</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">files</span><span class="p">:</span> <span class="nc">FieldFileManager</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fileManager</span><span class="p">:</span> <span class="nc">FieldFileManager</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">absolutePath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">String</span><span class="p">.</span><span class="n">abslutePath</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### FieldFileManager { #filemanager-kt-fieldfilemanager }
 
-`class FieldFileManager internal constructor(private val session: SessionInformation)`
+<code class="highlight"><span class="k">class</span> <span class="nc">FieldFileManager</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">session</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val documentDirectory: Path` |  |
-| `val documentFilesDirectory: Path` |  |
-| `val projectFilesDirectories: List<Path>` |  |
-| `fun file(spec: String): File` |  |
-| `fun path(spec: String): Path` |  |
-| `fun absolutePath(spec: String): String` |  |
-| `fun clearCache()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">documentDirectory</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">documentFilesDirectory</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">projectFilesDirectories</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Path</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">file</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">path</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Path</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">absolutePath</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clearCache</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### FileManager { #filemanager-kt-filemanager }
 
-`object FileManager`
+<code class="highlight"><span class="k">object</span> <span class="nc">FileManager</span></code>
 
 File-related utilities for the active AField session.
 
 | Declaration | Summary |
 | --- | --- |
-| `var maxAccessHistoryEntries: Int` |  |
-| `fun current(): FieldFileManager` |  |
-| `fun forSession(session: SessionInformation): FieldFileManager` |  |
-| `operator fun set(name: String, directory: String)` |  |
-| `operator fun set(name: String, directory: File)` |  |
-| `operator fun set(name: String, directory: Path)` |  |
-| `operator fun get(name: String): Path?` |  |
-| `fun add(name: String, directory: String, create: Boolean = false): Path` |  |
-| `fun add(name: String, directory: File, create: Boolean = false): Path` |  |
-| `fun add(name: String, directory: Path, create: Boolean = false): Path` |  |
-| `fun remove(name: String): Boolean` |  |
-| `fun clearCache()` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxAccessHistoryEntries</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">current</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldFileManager</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">forSession</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="nc">SessionInformation</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldFileManager</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">set</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code><span class="sig-overloads">+2 overloads · also File, Path</span> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Path</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">add</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">create</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Path</span></code><span class="sig-overloads">+2 overloads · also File, Path</span> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clearCache</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ## JSONLineServer.kt { #jsonlineserver-kt }
 
@@ -95,52 +91,52 @@ an uncached server is stopped when the run ends.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun jsonl(port: Int = 7777, bindHost: String = "0.0.0.0", backlog: Int = 4): JSONLineServer` |  |
-| `fun registerJSONLineServerReturnValue()` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">jsonl</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">7777</span><span class="p">,</span> <span class="n">bindHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">backlog</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">JSONLineServer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerJSONLineServerReturnValue</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### JSONLineServer { #jsonlineserver-kt-jsonlineserver }
 
-`class JSONLineServer private constructor(localPort: Int, val bindHost: String = "0.0.0.0", val backlog: Int = 4, autoStart: Boolean = true, private val cacheKey: JSONLineServerKey? = null) : Closeable`
+<code class="highlight"><span class="k">class</span> <span class="nc">JSONLineServer</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="n">localPort</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bindHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">backlog</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">autoStart</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">cacheKey</span><span class="p">:</span> <span class="nc">JSONLineServerKey</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>
 
 Small TCP server for newline-delimited JSON streams.
 
 | Declaration | Summary |
 | --- | --- |
-| `val bindHost: String` |  |
-| `val backlog: Int` |  |
-| `val requestedPort: Int` |  |
-| `var port: Int` |  |
-| `var running: Boolean` |  |
-| `var latestReceivedAtMillis: Long` |  |
-| `var latestConnectedAtMillis: Long` |  |
-| `var latestDisconnectedAtMillis: Long` |  |
-| `val output: JSONObject` |  |
-| `val latest: JSONObject?` |  |
-| `val outputText: String?` |  |
-| `val latestLine: String?` |  |
-| `val latestRawLine: String?` |  |
-| `val latestRemoteAddress: String?` |  |
-| `val latestConnectionRemoteAddress: String?` |  |
-| `val latestDisconnectedRemoteAddress: String?` |  |
-| `val lastError: String?` |  |
-| `val lineCount: Long` |  |
-| `val invalidLineCount: Long` |  |
-| `val connectionCount: Long` |  |
-| `val activeConnectionCount: Long` |  |
-| `fun hasOutput(): Boolean` |  |
-| `fun start(): JSONLineServer` |  |
-| `fun stop()` |  |
-| `override fun close()` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bindHost</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">backlog</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">requestedPort</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">latestReceivedAtMillis</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">latestConnectedAtMillis</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">latestDisconnectedAtMillis</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">output</span><span class="p">:</span> <span class="nc">JSONObject</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latest</span><span class="p">:</span> <span class="nc">JSONObject</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">outputText</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestLine</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestRawLine</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestRemoteAddress</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestConnectionRemoteAddress</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestDisconnectedRemoteAddress</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lastError</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineCount</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">invalidLineCount</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">connectionCount</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">activeConnectionCount</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hasOutput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">JSONLineServer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### JSONLineServers { #jsonlineserver-kt-jsonlineservers }
 
-`object JSONLineServers`
+<code class="highlight"><span class="k">object</span> <span class="nc">JSONLineServers</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun get(port: Int = 7777, bindHost: String = "0.0.0.0", backlog: Int = 4): JSONLineServer` |  |
-| `fun remove(server: JSONLineServer)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">7777</span><span class="p">,</span> <span class="n">bindHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">backlog</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">JSONLineServer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">server</span><span class="p">:</span> <span class="nc">JSONLineServer</span><span class="p">)</span></code> |  |
 
 ## JSONProcess.kt { #jsonprocess-kt }
 
@@ -163,26 +159,26 @@ failure to start are recorded in `JSONProcess.lastError` and logged rather than 
 
 | Declaration | Summary |
 | --- | --- |
-| `fun registerJSONProcessReturnValue()` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerJSONProcessReturnValue</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### JSONProcess { #jsonprocess-kt-jsonprocess }
 
-`class JSONProcess(workingDirectory: String? = null, vararg command: String, val env: Map<String, String> = emptyMap())`
+<code class="highlight"><span class="k">class</span> <span class="nf">JSONProcess</span><span class="p">(</span><span class="n">workingDirectory</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">command</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">env</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val env: Map<String, String>` |  |
-| `val command: List<String>` |  |
-| `var running: Boolean` |  |
-| `var exitCode: Int?` |  |
-| `val output: JSONObject` |  |
-| `val outputText: String?` |  |
-| `val latestStdoutLine: String?` |  |
-| `val latestStderrLine: String?` |  |
-| `val lastError: String?` |  |
-| `fun hasOutput(): Boolean` |  |
-| `override fun toString(): String` |  |
-| `fun stop()` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">env</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">command</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">running</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">exitCode</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">output</span><span class="p">:</span> <span class="nc">JSONObject</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">outputText</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestStdoutLine</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">latestStderrLine</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lastError</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hasOutput</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ## SemanticSearchManager.kt { #semanticsearchmanager-kt }
 
@@ -205,59 +201,59 @@ state kept here is `SemanticSearchManager.lastResult`.
 
 ### SemanticSearchResult { #semanticsearchmanager-kt-semanticsearchresult }
 
-`data class SemanticSearchResult(val success: Boolean, val message: String, val hits: List<SemanticSearchHit>, val status: SemanticRetrievalStatus)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SemanticSearchResult</span><span class="p">(</span><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">hits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SemanticSearchHit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">status</span><span class="p">:</span> <span class="nc">SemanticRetrievalStatus</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val success: Boolean` |  |
-| `val message: String` |  |
-| `val hits: List<SemanticSearchHit>` |  |
-| `val status: SemanticRetrievalStatus` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">success</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SemanticSearchHit</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">status</span><span class="p">:</span> <span class="nc">SemanticRetrievalStatus</span></code> |  |
 
 ### SemanticSearchHit { #semanticsearchmanager-kt-semanticsearchhit }
 
-`data class SemanticSearchHit(val title: String, val symbol: String, val kind: String, val corpus: String, val path: String, val line: Int, val endLine: Int, val score: Double, val id: String, val scale: String, val documentName: String = "", val boxName: String = "", val boxId: String = "", val property: String = "", val language: String = "", val capsule: String = "", val sourcePreview: String = "")`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SemanticSearchHit</span><span class="p">(</span><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">symbol</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">corpus</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">endLine</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">score</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">language</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">capsule</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourcePreview</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val title: String` |  |
-| `val symbol: String` |  |
-| `val kind: String` |  |
-| `val corpus: String` |  |
-| `val path: String` |  |
-| `val line: Int` |  |
-| `val endLine: Int` |  |
-| `val score: Double` |  |
-| `val id: String` |  |
-| `val scale: String` |  |
-| `val documentName: String` |  |
-| `val boxName: String` |  |
-| `val boxId: String` |  |
-| `val property: String` |  |
-| `val language: String` |  |
-| `val capsule: String` |  |
-| `val sourcePreview: String` |  |
-| `val location: String` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">symbol</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">corpus</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">path</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">endLine</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">score</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boxName</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">language</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">capsule</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sourcePreview</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">location</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### SemanticSearchManager { #semanticsearchmanager-kt-semanticsearchmanager }
 
-`class SemanticSearchManager`
+<code class="highlight"><span class="k">class</span> <span class="nc">SemanticSearchManager</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var lastResult: SemanticSearchResult?` |  |
-| `fun status(): SemanticRetrievalStatus` |  |
-| `fun settings(): SemanticRetrievalSettingsStatus` |  |
-| `fun enable(enabled: Boolean = true): SemanticRetrievalSettingsStatus` |  |
-| `fun saveSettings(enabled: Boolean? = null, presetId: String? = null, modelPath: String? = null, tokenizerPath: String? = null, dimension: Int? = null, maxTokens: Int? = null, queryPrefix: String? = null, documentPrefix: String? = null): SemanticRetrievalSettingsStatus` |  |
-| `fun downloadPreset(presetId: String = settings().config.presetId): SemanticRetrievalSettingsStatus` |  |
-| `fun rebuild(): SemanticRetrievalBuildResult` |  |
-| `fun deleteIndex(): SemanticRetrievalSettingsStatus` |  |
-| `fun deleteModels(): SemanticRetrievalSettingsStatus` |  |
-| `fun find(query: String, k: Int = 10, corpus: String = "", corpora: List<String> = emptyList(), pathPrefix: String = "", kinds: List<String> = emptyList(), documentName: String = "", boxId: String = "", property: String = "", rebuildIfEmpty: Boolean = true, includeCapsule: Boolean = false, includeSource: Boolean = false): SemanticSearchResult` |  |
-| `fun findTopK(query: String, k: Int = 10, corpus: String = "", corpora: List<String> = emptyList(), pathPrefix: String = "", kinds: List<String> = emptyList(), documentName: String = "", boxId: String = "", property: String = "", includeCapsule: Boolean = false, includeSource: Boolean = false): List<SemanticSearchHit>` |  |
-| `fun findWorkspaceTopK(query: String, k: Int = 10, documentName: String = "", boxId: String = "", property: String = "", includeSource: Boolean = false): List<SemanticSearchHit>` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastResult</span><span class="p">:</span> <span class="nc">SemanticSearchResult</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">status</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">settings</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">enable</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">saveSettings</span><span class="p">(</span><span class="n">enabled</span><span class="p">:</span> <span class="nc">Boolean</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">presetId</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">modelPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">tokenizerPath</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">dimension</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">maxTokens</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">queryPrefix</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">documentPrefix</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">downloadPreset</span><span class="p">(</span><span class="n">presetId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nf">settings</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="n">config</span><span class="p">.</span><span class="n">presetId</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rebuild</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalBuildResult</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">deleteIndex</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">deleteModels</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticRetrievalSettingsStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">find</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">corpus</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">corpora</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">pathPrefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">kinds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">rebuildIfEmpty</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">includeCapsule</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">includeSource</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">SemanticSearchResult</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">findTopK</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">corpus</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">corpora</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">pathPrefix</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">kinds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">includeCapsule</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">includeSource</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SemanticSearchHit</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">findWorkspaceTopK</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">documentName</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">includeSource</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SemanticSearchHit</span><span class="p">&gt;</span></code> |  |
 
 ## booleannetworks.kt { #booleannetworks-kt }
 
@@ -285,62 +281,62 @@ plain text. Ready-made networks: `toggleNetwork`, `threeNodeNetwork`,
 
 | Declaration | Summary |
 | --- | --- |
-| `fun BooleanNetwork.trajectory(initial: BooleanArray, steps: Int): List<BooleanArray>` | Advance `initial` forward by exactly `steps` synchronous updates. |
-| `fun BooleanNetwork.trajectoryUntilCycle(initial: BooleanArray, maxSteps: Int = 1024): List<BooleanArray>` | Follow the trajectory from `initial` until a state repeats or `maxSteps` is exceeded. |
-| `fun Attractor.repeatedCycle(steps: Int): List<BooleanArray>` | Repeat the attractor cycle to exactly `steps` states, preserving the original phase order. |
-| `fun BooleanNetwork.findAttractors(): List<Attractor>` | Enumerate every attractor and its basin of attraction by exhaustive traversal of the state-transition graph. |
-| `fun BooleanNetwork.drawUnrolled(trajectory: List<BooleanArray>, cellSize: Double = 24.0): List<FLine>` | Render the time evolution of a Boolean network as a spacetime grid. |
-| `fun BooleanNetwork.drawNetworkGraph(radius: Double = 120.0, nodeR: Double = 14.0): List<FLine>` | Render the wiring diagram of the network as a directed graph. |
-| `fun BooleanNetwork.drawStateTransitionGraph(radius: Double = 200.0): List<FLine>` | Render the full state-transition graph for small networks (`size <= 6`). |
-| `fun BooleanNetwork.drawAttractorBasins(attractors: List<Attractor>, samplesPerAttractor: Int = 6, cellSize: Double = 16.0): List<FLine>` | Render each attractor's basin as a stack of transient spacetime sketches. |
-| `fun drawRhythmGrid(steps: List<BooleanArray>, cellW: Double = 24.0, cellH: Double = 18.0, stepGap: Double = 5.0, laneGap: Double = 5.0, accentEvery: Int = 4): List<FLine>` | Render a step-by-step rhythm grid from a list of Boolean lane states. |
-| `fun BooleanNetwork.notateHtml(): String` | Generate an HTML table of nodes, input wiring, and update rules. |
-| `fun BooleanNetwork.notateAttractorsHtml(attractors: List<Attractor>): String` | Generate an HTML summary of attractor type, cycle states, and basin sizes. |
-| `fun BooleanNetwork.printAttractors()` | Print a plain-text attractor summary to stdout. |
-| `fun toggleNetwork(): BooleanNetwork` | A 2-node network with one period-4 cycle through all four states. |
-| `fun threeNodeNetwork(): BooleanNetwork` | A 3-node network with a single period-5 limit cycle. |
-| `fun segmentPolarityNetwork(): BooleanNetwork` | Simplified 4-node segment-polarity network inspired by Drosophila. |
-| `fun kauffmanNetwork(n: Int = 5, k: Int = 2, seed: Long = 42L): BooleanNetwork` | A random N-K Kauffman network. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">trajectory</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span></code> | Advance `initial` forward by exactly `steps` synchronous updates. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">trajectoryUntilCycle</span><span class="p">(</span><span class="n">initial</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">,</span> <span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1024</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span></code> | Follow the trajectory from `initial` until a state repeats or `maxSteps` is exceeded. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Attractor</span><span class="p">.</span><span class="nf">repeatedCycle</span><span class="p">(</span><span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span></code> | Repeat the attractor cycle to exactly `steps` states, preserving the original phase order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">findAttractors</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Attractor</span><span class="p">&gt;</span></code> | Enumerate every attractor and its basin of attraction by exhaustive traversal of the state-transition graph. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">drawUnrolled</span><span class="p">(</span><span class="n">trajectory</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cellSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">24.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render the time evolution of a Boolean network as a spacetime grid. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">drawNetworkGraph</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">120.0</span><span class="p">,</span> <span class="n">nodeR</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">14.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render the wiring diagram of the network as a directed graph. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">drawStateTransitionGraph</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">200.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render the full state-transition graph for small networks (`size <= 6`). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">drawAttractorBasins</span><span class="p">(</span><span class="n">attractors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Attractor</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">samplesPerAttractor</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">cellSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">16.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render each attractor's basin as a stack of transient spacetime sketches. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">drawRhythmGrid</span><span class="p">(</span><span class="n">steps</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">cellW</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">24.0</span><span class="p">,</span> <span class="n">cellH</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">18.0</span><span class="p">,</span> <span class="n">stepGap</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">laneGap</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">5.0</span><span class="p">,</span> <span class="n">accentEvery</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render a step-by-step rhythm grid from a list of Boolean lane states. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">notateHtml</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Generate an HTML table of nodes, input wiring, and update rules. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">notateAttractorsHtml</span><span class="p">(</span><span class="n">attractors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Attractor</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Generate an HTML summary of attractor type, cycle states, and basin sizes. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BooleanNetwork</span><span class="p">.</span><span class="nf">printAttractors</span><span class="p">(</span><span class="p">)</span></code> | Print a plain-text attractor summary to stdout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toggleNetwork</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetwork</span></code> | A 2-node network with one period-4 cycle through all four states. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">threeNodeNetwork</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetwork</span></code> | A 3-node network with a single period-5 limit cycle. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">segmentPolarityNetwork</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetwork</span></code> | Simplified 4-node segment-polarity network inspired by Drosophila. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">kauffmanNetwork</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">42L</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanNetwork</span></code> | A random N-K Kauffman network. |
 
 ### BoolNode { #booleannetworks-kt-boolnode }
 
-`data class BoolNode(val name: String, val rule: String, val inputs: List<Int>, val update: (BooleanArray) -> Boolean)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">BoolNode</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">update</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
 A single node in a Boolean network.
 
 | Declaration | Summary |
 | --- | --- |
-| `val name: String` |  |
-| `val rule: String` |  |
-| `val inputs: List<Int>` |  |
-| `val update: (BooleanArray) -> Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">inputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">update</span><span class="p">:</span> <span class="p">(</span><span class="nc">BooleanArray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span></code> |  |
 
 ### BooleanNetwork { #booleannetworks-kt-booleannetwork }
 
-`class BooleanNetwork(val nodes: List<BoolNode>)`
+<code class="highlight"><span class="k">class</span> <span class="nf">BooleanNetwork</span><span class="p">(</span><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BoolNode</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 A synchronous Boolean network with `size` binary-state nodes.
 
 | Declaration | Summary |
 | --- | --- |
-| `val size: Int` | Number of nodes. |
-| `fun stateToInt(state: BooleanArray): Int` | Pack a state array to an integer (node `i` maps to bit `i`, LSB-first). |
-| `fun intToState(n: Int): BooleanArray` | Unpack an integer to a state array (bit `i` maps to node `i`). |
-| `fun step(state: BooleanArray): BooleanArray` | Compute the synchronous successor state: apply all update functions once. |
-| `fun stateString(state: BooleanArray): String` | Return a compact binary string with the highest-indexed node first. |
-| `fun stateTable(state: BooleanArray): String` | Format the current state as a readable node-by-node table. |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code> | Number of nodes. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stateToInt</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Pack a state array to an integer (node `i` maps to bit `i`, LSB-first). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">intToState</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanArray</span></code> | Unpack an integer to a state array (bit `i` maps to node `i`). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanArray</span></code> | Compute the synchronous successor state: apply all update functions once. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stateString</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Return a compact binary string with the highest-indexed node first. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stateTable</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">BooleanArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Format the current state as a readable node-by-node table. |
 
 ### Attractor { #booleannetworks-kt-attractor }
 
-`data class Attractor(val period: Int, val cycle: List<BooleanArray>, val basin: Set<Int>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Attractor</span><span class="p">(</span><span class="k">val</span> <span class="n">period</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycle</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">basin</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 An attractor of the Boolean network: the minimal invariant set(s) reached after transients die out.
 
 | Declaration | Summary |
 | --- | --- |
-| `val period: Int` |  |
-| `val cycle: List<BooleanArray>` |  |
-| `val basin: Set<Int>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">period</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cycle</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">BooleanArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">basin</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
 
 ## clustering.kt { #clustering-kt }
 
@@ -367,137 +363,137 @@ return `FLine`s in a map keyed `"cluster-points"`, `"cluster-points-halo"`,
 
 | Declaration | Summary |
 | --- | --- |
-| `fun floatAgglomerative(values: List<Float>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` |  |
-| `fun vec2Agglomerative(points: List<Vec2>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` |  |
-| `fun vec3Agglomerative(points: List<Vec3>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` |  |
-| `fun vec4Agglomerative(points: List<Vec4>, linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD): AgglomerativeClustering` |  |
-| `fun floatKMedoids(values: List<Float>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Float>` |  |
-| `fun vec2KMedoids(points: List<Vec2>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec2>` |  |
-| `fun vec3KMedoids(points: List<Vec3>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec3>` |  |
-| `fun vec4KMedoids(points: List<Vec4>, k: Int, options: KMedoidsOptions = KMedoidsOptions()): KMedoidsResult<Vec4>` |  |
-| `fun floatKMedians(values: List<Float>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Float>` |  |
-| `fun vec2KMedians(points: List<Vec2>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec2>` |  |
-| `fun vec3KMedians(points: List<Vec3>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec3>` |  |
-| `fun vec4KMedians(points: List<Vec4>, k: Int, options: KMediansOptions = KMediansOptions()): KMediansResult<Vec4>` |  |
-| `fun visualizeVec3ClusterLayers3D(points: List<Vec3>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
-| `fun visualizeVec2ClusterLayers3D(points: List<Vec2>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
-| `fun visualizeFloatClusterLayers3D(values: List<Float>, layers: List<ClusterLayer>, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
-| `fun AgglomerativeClustering.visualizeVec3(points: List<Vec3>, kValues: IntProgression = 2..6, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
-| `fun AgglomerativeClustering.visualizeVec2(points: List<Vec2>, kValues: IntProgression = 2..6, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
-| `fun AgglomerativeClustering.visualizeFloat(values: List<Float>, kValues: IntProgression = 2..6, options: ClusterLayerVizOptions = ClusterLayerVizOptions()): Map<String, List<FLine>>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">floatAgglomerative</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span> <span class="o">=</span> <span class="nc">AgglomerativeLinkage</span><span class="p">.</span><span class="nc">WARD</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgglomerativeClustering</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2Agglomerative</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span> <span class="o">=</span> <span class="nc">AgglomerativeLinkage</span><span class="p">.</span><span class="nc">WARD</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgglomerativeClustering</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3Agglomerative</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span> <span class="o">=</span> <span class="nc">AgglomerativeLinkage</span><span class="p">.</span><span class="nc">WARD</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgglomerativeClustering</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec4Agglomerative</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span> <span class="o">=</span> <span class="nc">AgglomerativeLinkage</span><span class="p">.</span><span class="nc">WARD</span><span class="p">)</span><span class="p">:</span> <span class="nc">AgglomerativeClustering</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">floatKMedoids</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span> <span class="o">=</span> <span class="nc">KMedoidsOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2KMedoids</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span> <span class="o">=</span> <span class="nc">KMedoidsOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3KMedoids</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span> <span class="o">=</span> <span class="nc">KMedoidsOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec4KMedoids</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span> <span class="o">=</span> <span class="nc">KMedoidsOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">floatKMedians</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span> <span class="o">=</span> <span class="nc">KMediansOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMediansResult</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2KMedians</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span> <span class="o">=</span> <span class="nc">KMediansOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMediansResult</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3KMedians</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span> <span class="o">=</span> <span class="nc">KMediansOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMediansResult</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec4KMedians</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span> <span class="o">=</span> <span class="nc">KMediansOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">KMediansResult</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visualizeVec3ClusterLayers3D</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClusterLayer</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visualizeVec2ClusterLayers3D</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClusterLayer</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">visualizeFloatClusterLayers3D</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">layers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClusterLayer</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">AgglomerativeClustering</span><span class="p">.</span><span class="nf">visualizeVec3</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">kValues</span><span class="p">:</span> <span class="nc">IntProgression</span> <span class="o">=</span> <span class="mf">2..6</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">AgglomerativeClustering</span><span class="p">.</span><span class="nf">visualizeVec2</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">kValues</span><span class="p">:</span> <span class="nc">IntProgression</span> <span class="o">=</span> <span class="mf">2..6</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">AgglomerativeClustering</span><span class="p">.</span><span class="nf">visualizeFloat</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">kValues</span><span class="p">:</span> <span class="nc">IntProgression</span> <span class="o">=</span> <span class="mf">2..6</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">ClusterLayerVizOptions</span> <span class="o">=</span> <span class="nc">ClusterLayerVizOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
 
 ### AgglomerativeLinkage { #clustering-kt-agglomerativelinkage }
 
-`enum class AgglomerativeLinkage`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">AgglomerativeLinkage</span></code>
 
 Constants: `SINGLE`, `COMPLETE`, `AVERAGE`, `WEIGHTED_AVERAGE`, `CENTROID`, `MEDIAN`, `WARD`.
 
 ### MedoidDistance { #clustering-kt-medoiddistance }
 
-`enum class MedoidDistance`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">MedoidDistance</span></code>
 
 Constants: `EUCLIDEAN`, `MANHATTAN`.
 
 ### KMedoidsOptions { #clustering-kt-kmedoidsoptions }
 
-`data class KMedoidsOptions(val maxIter: Int = 3, val neighborRatio: Double = 0.0125, val runs: Int = 4, val distance: MedoidDistance = MedoidDistance.MANHATTAN)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KMedoidsOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIter</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">neighborRatio</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0125</span><span class="p">,</span> <span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">MedoidDistance</span> <span class="o">=</span> <span class="nc">MedoidDistance</span><span class="p">.</span><span class="nc">MANHATTAN</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val maxIter: Int` |  |
-| `val neighborRatio: Double` |  |
-| `val runs: Int` |  |
-| `val distance: MedoidDistance` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIter</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborRatio</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">MedoidDistance</span></code> |  |
 
 ### KMediansOptions { #clustering-kt-kmediansoptions }
 
-`data class KMediansOptions(val maxIterations: Int = 100, val tolerance: Double = 1e-4, val runs: Int = 6, val randomSeed: Long? = null)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KMediansOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="k">val</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4</span><span class="p">,</span> <span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val maxIterations: Int` |  |
-| `val tolerance: Double` |  |
-| `val runs: Int` |  |
-| `val randomSeed: Long?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span></code> |  |
 
 ### ClusterLayer { #clustering-kt-clusterlayer }
 
-`class ClusterLayer(val name: String, labels: IntArray)`
+<code class="highlight"><span class="k">class</span> <span class="nf">ClusterLayer</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val name: String` |  |
-| `val labels: IntArray` |  |
-| `val sampleCount: Int` |  |
-| `val clusterCount: Int` |  |
-| `fun indices(cluster: Int): IntArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clusterCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">indices</span><span class="p">(</span><span class="n">cluster</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
 
 ### AgglomerativeClustering { #clustering-kt-agglomerativeclustering }
 
-`class AgglomerativeClustering internal constructor(val linkage: AgglomerativeLinkage, rawModel: HierarchicalClustering)`
+<code class="highlight"><span class="k">class</span> <span class="nc">AgglomerativeClustering</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span><span class="p">,</span> <span class="n">rawModel</span><span class="p">:</span> <span class="nc">HierarchicalClustering</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val linkage: AgglomerativeLinkage` |  |
-| `val sampleCount: Int` |  |
-| `val tree: Array<IntArray>` |  |
-| `val heights: DoubleArray` |  |
-| `fun partition(k: Int, name: String = "k=$k"): ClusterLayer` |  |
-| `fun partitionByHeight(height: Double, name: String = "h=$height"): ClusterLayer` |  |
-| `fun layers(kValues: Iterable<Int>): List<ClusterLayer>` |  |
-| `fun defaultLayers(maxK: Int = 6): List<ClusterLayer>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">linkage</span><span class="p">:</span> <span class="nc">AgglomerativeLinkage</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tree</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">heights</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">partition</span><span class="p">(</span><span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;k=$k&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClusterLayer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">partitionByHeight</span><span class="p">(</span><span class="n">height</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;h=$height&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClusterLayer</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">layers</span><span class="p">(</span><span class="n">kValues</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClusterLayer</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">defaultLayers</span><span class="p">(</span><span class="n">maxK</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClusterLayer</span><span class="p">&gt;</span></code> |  |
 
 ### KMedoidsResult { #clustering-kt-kmedoidsresult }
 
-`data class KMedoidsResult<T>(val labels: IntArray, val medoids: List<T>, val medoidIndices: IntArray, val distortion: Double, val clusterSizes: IntArray, val options: KMedoidsOptions)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoids</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoidIndices</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">distortion</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val labels: IntArray` |  |
-| `val medoids: List<T>` |  |
-| `val medoidIndices: IntArray` |  |
-| `val distortion: Double` |  |
-| `val clusterSizes: IntArray` |  |
-| `val options: KMedoidsOptions` |  |
-| `val k: Int` |  |
-| `fun asLayer(name: String = "kmedoids(k=$k)"): ClusterLayer` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">medoids</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">medoidIndices</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distortion</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asLayer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;kmedoids(k=$k)&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClusterLayer</span></code> |  |
 
 ### KMediansResult { #clustering-kt-kmediansresult }
 
-`data class KMediansResult<T>(val labels: IntArray, val centers: List<T>, val objective: Double, val iterations: Int, val converged: Boolean, val clusterSizes: IntArray, val options: KMediansOptions)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">KMediansResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">centers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val labels: IntArray` |  |
-| `val centers: List<T>` |  |
-| `val objective: Double` |  |
-| `val iterations: Int` |  |
-| `val converged: Boolean` |  |
-| `val clusterSizes: IntArray` |  |
-| `val options: KMediansOptions` |  |
-| `val k: Int` |  |
-| `fun asLayer(name: String = "kmedians(k=$k)"): ClusterLayer` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">centers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMediansOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asLayer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;kmedians(k=$k)&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">ClusterLayer</span></code> |  |
 
 ### ClusterLayerVizOptions { #clustering-kt-clusterlayervizoptions }
 
-`data class ClusterLayerVizOptions(val layerSpacing: Float = 0.7f, val clusterOffset: Float = 0.0f, val pointSize: Double = 0.1, val pointHaloSize: Double = 0.3, val centerPointSize: Double = 0.14, val centerHaloSize: Double = 22.0, val linkThickness: Double = 0.85, val pointAlpha: Float = 0.92f, val haloAlpha: Float = 0.14f, val centerAlpha: Float = 0.98f, val linkAlpha: Float = 0.16f, val drawLinks: Boolean = true, val drawCenters: Boolean = true, val drawGuides: Boolean = true)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ClusterLayerVizOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">layerSpacing</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.7f</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusterOffset</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.0f</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointHaloSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span> <span class="k">val</span> <span class="n">centerPointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.14</span><span class="p">,</span> <span class="k">val</span> <span class="n">centerHaloSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">22.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linkThickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.85</span><span class="p">,</span> <span class="k">val</span> <span class="n">pointAlpha</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.92f</span><span class="p">,</span> <span class="k">val</span> <span class="n">haloAlpha</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.14f</span><span class="p">,</span> <span class="k">val</span> <span class="n">centerAlpha</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.98f</span><span class="p">,</span> <span class="k">val</span> <span class="n">linkAlpha</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.16f</span><span class="p">,</span> <span class="k">val</span> <span class="n">drawLinks</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">drawCenters</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">drawGuides</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val layerSpacing: Float` |  |
-| `val clusterOffset: Float` |  |
-| `val pointSize: Double` |  |
-| `val pointHaloSize: Double` |  |
-| `val centerPointSize: Double` |  |
-| `val centerHaloSize: Double` |  |
-| `val linkThickness: Double` |  |
-| `val pointAlpha: Float` |  |
-| `val haloAlpha: Float` |  |
-| `val centerAlpha: Float` |  |
-| `val linkAlpha: Float` |  |
-| `val drawLinks: Boolean` |  |
-| `val drawCenters: Boolean` |  |
-| `val drawGuides: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">layerSpacing</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">clusterOffset</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointHaloSize</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">centerPointSize</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">centerHaloSize</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">linkThickness</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">haloAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">centerAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">linkAlpha</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">drawLinks</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">drawCenters</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">drawGuides</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ## dynamic_graph_systems.kt { #dynamic-graph-systems-kt }
 
@@ -525,313 +521,313 @@ together. Pure Kotlin, single-threaded, no external dependency.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun dynamicGraphSnapshot(dynamicEdges: Collection<DynamicGraphEdge>, pointCount: Int, minWeight: Double = 0.0): PointGraph` |  |
-| `fun stepDynamicGraph(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash, system: DynamicGraphSystem)` |  |
-| `fun stepDynamicGraphWithLinearDecay(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash, system: DynamicGraphSystem, weightDecayPerSecond: Double)` |  |
-| `fun stepDynamicGraphWithExponentialDecay(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash, system: DynamicGraphSystem, lambda: Double)` |  |
-| `fun exampleDynamicMorphogenesisStep(state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash, edgeSystem: DynamicGraphSystem, dt: Float = 1f / 60f)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">dynamicGraphSnapshot</span><span class="p">(</span><span class="n">dynamicEdges</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">DynamicGraphEdge</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">minWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stepDynamicGraph</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">,</span> <span class="n">system</span><span class="p">:</span> <span class="nc">DynamicGraphSystem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stepDynamicGraphWithLinearDecay</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">,</span> <span class="n">system</span><span class="p">:</span> <span class="nc">DynamicGraphSystem</span><span class="p">,</span> <span class="n">weightDecayPerSecond</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stepDynamicGraphWithExponentialDecay</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">,</span> <span class="n">system</span><span class="p">:</span> <span class="nc">DynamicGraphSystem</span><span class="p">,</span> <span class="n">lambda</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">exampleDynamicMorphogenesisStep</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">,</span> <span class="n">edgeSystem</span><span class="p">:</span> <span class="nc">DynamicGraphSystem</span><span class="p">,</span> <span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span> <span class="p">/</span> <span class="mi">60f</span><span class="p">)</span></code> |  |
 
 ### DynamicPointState { #dynamic-graph-systems-kt-dynamicpointstate }
 
-`data class DynamicPointState(val points: MutableList<Vec3>, val labels: List<Vec4>? = null, var time: Float = 0f)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynamicPointState</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">var</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span></code>
 
 Dynamic point state for time-varying graph systems.
 
 | Declaration | Summary |
 | --- | --- |
-| `val points: MutableList<Vec3>` |  |
-| `val labels: List<Vec4>?` |  |
-| `var time: Float` |  |
-| `val pointCount: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### DynamicGraphEdge { #dynamic-graph-systems-kt-dynamicgraphedge }
 
-`data class DynamicGraphEdge(val i: Int, val j: Int, var weight: Double, var age: Float = 0f, var ttl: Float = 0f, var flags: Int = 0)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynamicGraphEdge</span><span class="p">(</span><span class="k">val</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">age</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="k">var</span> <span class="n">flags</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span></code>
 
 Edge with dynamic state. This is separate from GraphEdge so the original static graph API stays clean.
 
 | Declaration | Summary |
 | --- | --- |
-| `val i: Int` |  |
-| `val j: Int` |  |
-| `var weight: Double` |  |
-| `var age: Float` |  |
-| `var ttl: Float` |  |
-| `var flags: Int` |  |
-| `fun toGraphEdge(): GraphEdge` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">i</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">j</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">age</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">flags</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toGraphEdge</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">GraphEdge</span></code> |  |
 
 ### DynamicEdgeList { #dynamic-graph-systems-kt-dynamicedgelist }
 
-`class DynamicEdgeList(val pointCount: Int, val undirected: Boolean = true)`
+<code class="highlight"><span class="k">class</span> <span class="nf">DynamicEdgeList</span><span class="p">(</span><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">undirected</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 Evolving edge store. Undirected by default to match GraphEdge equality semantics.
 
 | Declaration | Summary |
 | --- | --- |
-| `val pointCount: Int` |  |
-| `val undirected: Boolean` |  |
-| `fun values(): Collection<DynamicGraphEdge>` |  |
-| `fun get(a: Int, b: Int): DynamicGraphEdge?` |  |
-| `fun getOrCreate(a: Int, b: Int, initialWeight: Double = 0.0, ttl: Float = 0f): DynamicGraphEdge` |  |
-| `fun reinforce(a: Int, b: Int, addWeight: Double, ttl: Float, maxWeight: Double)` |  |
-| `fun clear()` |  |
-| `fun decayLinear(dt: Float, weightDecayPerSecond: Double)` |  |
-| `fun decayExponential(dt: Float, lambda: Double)` |  |
-| `fun toPointGraph(minWeight: Double = 0.0): PointGraph` | Snapshot into your existing static PointGraph type. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">undirected</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">values</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">DynamicGraphEdge</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynamicGraphEdge</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">getOrCreate</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">initialWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span><span class="p">:</span> <span class="nc">DynamicGraphEdge</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reinforce</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">addWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clear</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">decayLinear</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">weightDecayPerSecond</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">decayExponential</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">lambda</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toPointGraph</span><span class="p">(</span><span class="n">minWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">PointGraph</span></code> | Snapshot into your existing static PointGraph type. |
 
 ### Vec3SpatialHash { #dynamic-graph-systems-kt-vec3spatialhash }
 
-`class Vec3SpatialHash(var cellSize: Double)`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3SpatialHash</span><span class="p">(</span><span class="k">var</span> <span class="n">cellSize</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 Spatial hash for dynamic local-neighborhood queries. This is the best fit here because the point cloud is expected to move each frame.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun rebuild(points: List<Vec3>)` |  |
-| `fun radiusNeighbors(i: Int, radius: Double): List<Neighbor>` |  |
-| `fun kNearest(i: Int, k: Int, maxRadius: Double = Double.POSITIVE_INFINITY): List<Neighbor>` |  |
-| `fun sample(center: Vec3, radius: Double): List<Neighbor>` | Direct sample query for off-point field evaluation. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rebuild</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">radiusNeighbors</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Neighbor</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">kNearest</span><span class="p">(</span><span class="n">i</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">maxRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Neighbor</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Neighbor</span><span class="p">&gt;</span></code> | Direct sample query for off-point field evaluation. |
 
 ### Neighbor { #dynamic-graph-systems-kt-neighbor }
 
-`data class Neighbor(val index: Int, val distanceSquared: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Neighbor</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">distanceSquared</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 ### DynamicGraphSystem { #dynamic-graph-systems-kt-dynamicgraphsystem }
 
-`interface DynamicGraphSystem`
+<code class="highlight"><span class="k">interface</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3BreathingAnisotropicKnnSystem { #dynamic-graph-systems-kt-vec3breathinganisotropicknnsystem }
 
-`class Vec3BreathingAnisotropicKnnSystem(var k: Int, var ttl: Float, var reinforce: Double, var maxWeight: Double, var mutualOnly: Boolean = true, var queryRadius: Double = Double.POSITIVE_INFINITY) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3BreathingAnisotropicKnnSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">mutualOnly</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">var</span> <span class="n">queryRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var k: Int` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var mutualOnly: Boolean` |  |
-| `var queryRadius: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">mutualOnly</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">queryRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3FlowlineAdvectionGraphSystem { #dynamic-graph-systems-kt-vec3flowlineadvectiongraphsystem }
 
-`class Vec3FlowlineAdvectionGraphSystem(var influenceRadius: Double, var stepLength: Double, var ttl: Float, var reinforce: Double, var maxWeight: Double, var swirlMix: Double = 0.45) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3FlowlineAdvectionGraphSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">influenceRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">stepLength</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">swirlMix</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var influenceRadius: Double` |  |
-| `var stepLength: Double` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var swirlMix: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">influenceRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">stepLength</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">swirlMix</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3LocalTangentTriangulationSystem { #dynamic-graph-systems-kt-vec3localtangenttriangulationsystem }
 
-`class Vec3LocalTangentTriangulationSystem(var neighborhoodK: Int, var ttl: Float, var reinforce: Double, var maxWeight: Double, var maxNeighborRadius: Double = Double.POSITIVE_INFINITY) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3LocalTangentTriangulationSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var neighborhoodK: Int` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var maxNeighborRadius: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3PersistentProximityHysteresisSystem { #dynamic-graph-systems-kt-vec3persistentproximityhysteresissystem }
 
-`class Vec3PersistentProximityHysteresisSystem(var rEnter: Double, var rExit: Double, var ttl: Float, var reinforce: Double, var maxWeight: Double, var labelBias: Double = 0.0) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3PersistentProximityHysteresisSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">rEnter</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">rExit</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">labelBias</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var rEnter: Double` |  |
-| `var rExit: Double` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var labelBias: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">rEnter</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">rExit</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">labelBias</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3SignalRoutingGraphSystem { #dynamic-graph-systems-kt-vec3signalroutinggraphsystem }
 
-`class Vec3SignalRoutingGraphSystem(var neighborhoodK: Int, var ttl: Float, var reinforce: Double, var maxWeight: Double, var routeCount: Int = 1, var maxNeighborRadius: Double = Double.POSITIVE_INFINITY) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3SignalRoutingGraphSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">routeCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var neighborhoodK: Int` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var routeCount: Int` |  |
-| `var maxNeighborRadius: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">routeCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### Vec3AlphaEventHypergraphCollapseSystem { #dynamic-graph-systems-kt-vec3alphaeventhypergraphcollapsesystem }
 
-`class Vec3AlphaEventHypergraphCollapseSystem(var neighborhoodK: Int, var alphaRadius: Double, var ttl: Float, var reinforce: Double, var maxWeight: Double, var maxNeighborRadius: Double = Double.POSITIVE_INFINITY, var minArea: Double = 1e-5) : DynamicGraphSystem`
+<code class="highlight"><span class="k">class</span> <span class="nf">Vec3AlphaEventHypergraphCollapseSystem</span><span class="p">(</span><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">alphaRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">POSITIVE&#95;INFINITY</span><span class="p">,</span> <span class="k">var</span> <span class="n">minArea</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicGraphSystem</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var neighborhoodK: Int` |  |
-| `var alphaRadius: Double` |  |
-| `var ttl: Float` |  |
-| `var reinforce: Double` |  |
-| `var maxWeight: Double` |  |
-| `var maxNeighborRadius: Double` |  |
-| `var minArea: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">neighborhoodK</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">alphaRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">ttl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">reinforce</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxNeighborRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">minArea</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### DynamicPointKinetics { #dynamic-graph-systems-kt-dynamicpointkinetics }
 
-`data class DynamicPointKinetics(val velocity: MutableList<Vec3>, val resource: MutableList<Double>, val alive: MutableList<Boolean>)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">DynamicPointKinetics</span><span class="p">(</span><span class="k">val</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">resource</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">alive</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Boolean</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val velocity: MutableList<Vec3>` |  |
-| `val resource: MutableList<Double>` |  |
-| `val alive: MutableList<Boolean>` |  |
-| `fun ensureSize(n: Int)` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">velocity</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">resource</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">alive</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Boolean</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">ensureSize</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
 
 ### DynamicPointProcess { #dynamic-graph-systems-kt-dynamicpointprocess }
 
-`interface DynamicPointProcess`
+<code class="highlight"><span class="k">interface</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### SpringMotionProcess { #dynamic-graph-systems-kt-springmotionprocess }
 
-`class SpringMotionProcess(var springK: Double = 1.0, var damping: Double = 0.15, var restLengthScale: Double = 1.0, var maxSpeed: Double = 0.25, var edgeWeightFloor: Double = 1e-6) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">SpringMotionProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">springK</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">,</span> <span class="k">var</span> <span class="n">restLengthScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="k">var</span> <span class="n">edgeWeightFloor</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var springK: Double` |  |
-| `var damping: Double` |  |
-| `var restLengthScale: Double` |  |
-| `var maxSpeed: Double` |  |
-| `var edgeWeightFloor: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">springK</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">restLengthScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">edgeWeightFloor</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### DirectedEdgeAdvectionProcess { #dynamic-graph-systems-kt-directededgeadvectionprocess }
 
-`class DirectedEdgeAdvectionProcess(var gain: Double = 0.2, var damping: Double = 0.1, var maxSpeed: Double = 0.3) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">DirectedEdgeAdvectionProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var gain: Double` |  |
-| `var damping: Double` |  |
-| `var maxSpeed: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### DirectedTipGrowthProcess { #dynamic-graph-systems-kt-directedtipgrowthprocess }
 
-`class DirectedTipGrowthProcess(var coherenceThreshold: Double = 1.25, var spawnDistance: Double = 0.05, var cooldownWeight: Double = 0.25, var childEdgeWeight: Double = 1.0, var childEdgeTtl: Float = 2.0f, var maxWeight: Double = 8.0, var inheritResourceFactor: Double = 0.5, var localDensityRadius: Double = 0.10, var localDensityMax: Int = 8) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">DirectedTipGrowthProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">coherenceThreshold</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.25</span><span class="p">,</span> <span class="k">var</span> <span class="n">spawnDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="k">var</span> <span class="n">cooldownWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="k">var</span> <span class="n">childEdgeWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">childEdgeTtl</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">2.0f</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">8.0</span><span class="p">,</span> <span class="k">var</span> <span class="n">inheritResourceFactor</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="k">var</span> <span class="n">localDensityRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.10</span><span class="p">,</span> <span class="k">var</span> <span class="n">localDensityMax</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var coherenceThreshold: Double` |  |
-| `var spawnDistance: Double` |  |
-| `var cooldownWeight: Double` |  |
-| `var childEdgeWeight: Double` |  |
-| `var childEdgeTtl: Float` |  |
-| `var maxWeight: Double` |  |
-| `var inheritResourceFactor: Double` |  |
-| `var localDensityRadius: Double` |  |
-| `var localDensityMax: Int` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">coherenceThreshold</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">spawnDistance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">cooldownWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">childEdgeWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">childEdgeTtl</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">inheritResourceFactor</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">localDensityRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">localDensityMax</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### MergeClosePointsProcess { #dynamic-graph-systems-kt-mergeclosepointsprocess }
 
-`class MergeClosePointsProcess(var mergeDistance: Double = 0.025, var minCombinedWeight: Double = 1.5, var blend: Double = 0.5) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">MergeClosePointsProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">mergeDistance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.025</span><span class="p">,</span> <span class="k">var</span> <span class="n">minCombinedWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.5</span><span class="p">,</span> <span class="k">var</span> <span class="n">blend</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var mergeDistance: Double` |  |
-| `var minCombinedWeight: Double` |  |
-| `var blend: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">mergeDistance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">minCombinedWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">blend</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### SignalDiffusionAndChemotaxisProcess { #dynamic-graph-systems-kt-signaldiffusionandchemotaxisprocess }
 
-`class SignalDiffusionAndChemotaxisProcess(var diffusionRate: Double = 0.35, var chemoGain: Double = 0.2, var downhill: Boolean = false, var damping: Double = 0.08, var maxSpeed: Double = 0.25) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">SignalDiffusionAndChemotaxisProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">diffusionRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.35</span><span class="p">,</span> <span class="k">var</span> <span class="n">chemoGain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="k">var</span> <span class="n">downhill</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.08</span><span class="p">,</span> <span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var diffusionRate: Double` |  |
-| `var chemoGain: Double` |  |
-| `var downhill: Boolean` |  |
-| `var damping: Double` |  |
-| `var maxSpeed: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">diffusionRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">chemoGain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">downhill</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">maxSpeed</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### AddNearLowDensityProcess { #dynamic-graph-systems-kt-addnearlowdensityprocess }
 
-`class AddNearLowDensityProcess(var probeRadius: Double = 0.10, var attemptsPerStep: Int = 1, var offsetScale: Double = 0.06) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">AddNearLowDensityProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">probeRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.10</span><span class="p">,</span> <span class="k">var</span> <span class="n">attemptsPerStep</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">var</span> <span class="n">offsetScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var probeRadius: Double` |  |
-| `var attemptsPerStep: Int` |  |
-| `var offsetScale: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">probeRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">attemptsPerStep</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">offsetScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### AddNearHighDensityProcess { #dynamic-graph-systems-kt-addnearhighdensityprocess }
 
-`class AddNearHighDensityProcess(var probeRadius: Double = 0.10, var minNeighbors: Int = 8, var attemptsPerStep: Int = 1, var jitterScale: Double = 0.02) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">AddNearHighDensityProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">probeRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.10</span><span class="p">,</span> <span class="k">var</span> <span class="n">minNeighbors</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">var</span> <span class="n">attemptsPerStep</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">var</span> <span class="n">jitterScale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.02</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var probeRadius: Double` |  |
-| `var minNeighbors: Int` |  |
-| `var attemptsPerStep: Int` |  |
-| `var jitterScale: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">probeRadius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">minNeighbors</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">attemptsPerStep</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">jitterScale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### RelaxToMidpointProcess { #dynamic-graph-systems-kt-relaxtomidpointprocess }
 
-`class RelaxToMidpointProcess(var gain: Double = 0.12, var degreeFloor: Int = 1) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">RelaxToMidpointProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.12</span><span class="p">,</span> <span class="k">var</span> <span class="n">degreeFloor</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var gain: Double` |  |
-| `var degreeFloor: Int` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">gain</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">degreeFloor</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### PruneIsolatedPointsProcess { #dynamic-graph-systems-kt-pruneisolatedpointsprocess }
 
-`class PruneIsolatedPointsProcess(var minDegree: Int = 1, var minResource: Double = -Double.MAX_VALUE) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">PruneIsolatedPointsProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">minDegree</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">var</span> <span class="n">minResource</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">-</span><span class="nc">Double</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var minDegree: Int` |  |
-| `var minResource: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">minDegree</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">minResource</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### JitterProcess { #dynamic-graph-systems-kt-jitterprocess }
 
-`class JitterProcess(var amplitude: Double = 0.005) : DynamicPointProcess`
+<code class="highlight"><span class="k">class</span> <span class="nf">JitterProcess</span><span class="p">(</span><span class="k">var</span> <span class="n">amplitude</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.005</span><span class="p">)</span> <span class="p">:</span> <span class="nc">DynamicPointProcess</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var amplitude: Double` |  |
-| `override fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">amplitude</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ### DynamicProcessPipeline { #dynamic-graph-systems-kt-dynamicprocesspipeline }
 
-`class DynamicProcessPipeline(var processes: List<DynamicPointProcess>)`
+<code class="highlight"><span class="k">class</span> <span class="nf">DynamicProcessPipeline</span><span class="p">(</span><span class="k">var</span> <span class="n">processes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DynamicPointProcess</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `var processes: List<DynamicPointProcess>` |  |
-| `fun step(dt: Float, state: DynamicPointState, kinetics: DynamicPointKinetics, edges: DynamicEdgeList, spatialHash: Vec3SpatialHash)` |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">processes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DynamicPointProcess</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">DynamicPointState</span><span class="p">,</span> <span class="n">kinetics</span><span class="p">:</span> <span class="nc">DynamicPointKinetics</span><span class="p">,</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">DynamicEdgeList</span><span class="p">,</span> <span class="n">spatialHash</span><span class="p">:</span> <span class="nc">Vec3SpatialHash</span><span class="p">)</span></code> |  |
 
 ## growing.kt { #growing-kt }
 
@@ -855,28 +851,28 @@ the optional `flipProb` noise. `main` is a runnable 10-node demo.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun main()` | Small demo: start from K4 (tetrahedron), run a few steps, print size/state stats. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code> | Small demo: start from K4 (tetrahedron), run a few steps, print size/state stats. |
 
 ### GrowingGraph { #growing-kt-growinggraph }
 
-`class GrowingGraph(initialNodeCount: Int, rule: Int = 2182, flipProb: Double = 0.0, seed: Long = 1L)`
+<code class="highlight"><span class="k">class</span> <span class="nf">GrowingGraph</span><span class="p">(</span><span class="n">initialNodeCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2182</span><span class="p">,</span> <span class="n">flipProb</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">)</span></code>
 
 Self-contained Kotlin port of the "GrowingGraph" algorithm: - 3-regular graph: each node has exactly 3 neighbors - Binary state per node (0/1) - Two-phase grow(): Phase 0: compute next state + "dividing" flag from local neighborhood Phase 1: apply local rewrite (division) that adds 2 nodes and rewires edges
 
 | Declaration | Summary |
 | --- | --- |
-| `var nodeCount: Int` |  |
-| `var rule: Int` |  |
-| `var flipProb: Double` |  |
-| `data class GrowDelta(val newNodeStart: Int, val newNodeCount: Int, val newEdgeStart: Int, val newEdgeCount: Int)` |  |
-| `val newEdgeU: IntArray` |  |
-| `val newEdgeV: IntArray` |  |
-| `fun setNeighbors(node: Int, a: Int, b: Int, c: Int)` | Set neighbor list for a node (must be exactly 3 neighbors). |
-| `fun neighborAt(node: Int, slot: Int): Int` | Get the neighbor at slot 0..2 for a node. |
-| `fun stateOf(node: Int): Int` | Get state (0/1). |
-| `fun setState(node: Int, s: Int)` | Set state (0/1). |
-| `fun randomizeStates(p: Double)` | Randomize initial states with probability p of being 1. |
-| `fun grow(): GrowDelta` | One step. Alternates between: - Phase 0: compute next states + dividing flags from current graph - Phase 1: apply division rewrites for nodes with dividing=1 |
+| <code class="highlight"><span class="k">var</span> <span class="n">nodeCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">rule</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">flipProb</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">GrowDelta</span><span class="p">(</span><span class="k">val</span> <span class="n">newNodeStart</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">newNodeCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">newEdgeStart</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">newEdgeCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">newEdgeU</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">newEdgeV</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">setNeighbors</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | Set neighbor list for a node (must be exactly 3 neighbors). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">neighborAt</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Get the neighbor at slot 0..2 for a node. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stateOf</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Get state (0/1). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">setState</span><span class="p">(</span><span class="n">node</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | Set state (0/1). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">randomizeStates</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> | Randomize initial states with probability p of being 1. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">grow</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">GrowDelta</span></code> | One step. Alternates between: - Phase 0: compute next states + dividing flags from current graph - Phase 1: apply division rewrites for nodes with dividing=1 |
 
 ## jsonparsing.kt { #jsonparsing-kt }
 
@@ -900,55 +896,55 @@ objects are not supported.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun registerJsonParsingMacros()` |  |
-| `fun parseJson(src: String): JValue` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">registerJsonParsingMacros</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">parseJson</span><span class="p">(</span><span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">JValue</span></code> |  |
 
 ### JValue { #jsonparsing-kt-jvalue }
 
-`sealed interface JValue`
+<code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">JValue</span></code>
 
 ### JObject { #jsonparsing-kt-jobject }
 
-`data class JObject(val fields: Map<String, JValue>) : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">JObject</span><span class="p">(</span><span class="k">val</span> <span class="n">fields</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">JValue</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JArray { #jsonparsing-kt-jarray }
 
-`data class JArray(val items: List<JValue>) : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">JArray</span><span class="p">(</span><span class="k">val</span> <span class="n">items</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">JValue</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JString { #jsonparsing-kt-jstring }
 
-`data class JString(val value: String) : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">JString</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JNumber { #jsonparsing-kt-jnumber }
 
-`data class JNumber(val raw: String) : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">JNumber</span><span class="p">(</span><span class="k">val</span> <span class="n">raw</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JBool { #jsonparsing-kt-jbool }
 
-`data class JBool(val value: Boolean) : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">JBool</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JNull { #jsonparsing-kt-jnull }
 
-`data object JNull : JValue`
+<code class="highlight"><span class="k">data</span> <span class="k">object</span> <span class="nc">JNull</span> <span class="p">:</span> <span class="nc">JValue</span></code>
 
 ### JsonParseException { #jsonparsing-kt-jsonparseexception }
 
-`class JsonParseException(message: String) : RuntimeException(message)`
+<code class="highlight"><span class="k">class</span> <span class="nf">JsonParseException</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></code>
 
 ### JsonSchemaGen { #jsonparsing-kt-jsonschemagen }
 
-`object JsonSchemaGen`
+<code class="highlight"><span class="k">object</span> <span class="nc">JsonSchemaGen</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun generateSource(className: String, schemaText: String): String` |  |
-| `sealed interface SchemaNode` |  |
-| `data class Field(val name: String, val schema: SchemaNode)` |  |
-| `enum class TokKind` |  |
-| `data class Tok(val kind: TokKind, val text: String, val pos: Int)` |  |
-| `class SchemaTokenizer(private val src: String)` |  |
-| `class SchemaParser(schemaText: String)` |  |
-| `val helperBlock` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">generateSource</span><span class="p">(</span><span class="n">className</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">schemaText</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">SchemaNode</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Field</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">schema</span><span class="p">:</span> <span class="nc">SchemaNode</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TokKind</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Tok</span><span class="p">(</span><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">TokKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">pos</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">class</span> <span class="nf">SchemaTokenizer</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">src</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">class</span> <span class="nf">SchemaParser</span><span class="p">(</span><span class="n">schemaText</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">helperBlock</span></code> |  |
 
 ## numpy.kt { #numpy-kt }
 
@@ -970,76 +966,76 @@ dtype kind (`NpyKind.OTHER`) throws. Element and byte counts must fit in an `Int
 
 | Declaration | Summary |
 | --- | --- |
-| `fun npy(path: String): NpyArray` |  |
-| `fun npy(file: File): NpyArray` |  |
-| `fun npz(path: String): LinkedHashMap<String, NpyArray>` |  |
-| `fun npz(file: File): LinkedHashMap<String, NpyArray>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">npy</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">NpyArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">npy</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">NpyArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">npz</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">NpyArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">npz</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">NpyArray</span><span class="p">&gt;</span></code> |  |
 
 ### NpyLinearOrder { #numpy-kt-npylinearorder }
 
-`enum class NpyLinearOrder`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">NpyLinearOrder</span></code>
 
 Constants: `C`, `STORAGE`.
 
 ### NpyByteOrder { #numpy-kt-npybyteorder }
 
-`enum class NpyByteOrder`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">NpyByteOrder</span></code>
 
 Constants: `LITTLE_ENDIAN`, `BIG_ENDIAN`, `NATIVE`, `NOT_APPLICABLE`.
 
 ### NpyKind { #numpy-kt-npykind }
 
-`enum class NpyKind`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">NpyKind</span></code>
 
 Constants: `BOOL`, `SIGNED_INT`, `UNSIGNED_INT`, `FLOAT`, `COMPLEX`, `OTHER`.
 
 ### NpyDType { #numpy-kt-npydtype }
 
-`data class NpyDType(val descriptor: String, val byteOrder: NpyByteOrder, val kind: NpyKind, val itemSize: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">NpyDType</span><span class="p">(</span><span class="k">val</span> <span class="n">descriptor</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">byteOrder</span><span class="p">:</span> <span class="nc">NpyByteOrder</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">NpyKind</span><span class="p">,</span> <span class="k">val</span> <span class="n">itemSize</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val descriptor: String` |  |
-| `val byteOrder: NpyByteOrder` |  |
-| `val kind: NpyKind` |  |
-| `val itemSize: Int` |  |
-| `val isNumeric: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">descriptor</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">byteOrder</span><span class="p">:</span> <span class="nc">NpyByteOrder</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">NpyKind</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">itemSize</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isNumeric</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### NpyArray { #numpy-kt-npyarray }
 
-`class NpyArray internal constructor(shape: IntArray, val dtype: NpyDType, val fortranOrder: Boolean, private val rawBytes: ByteArray)`
+<code class="highlight"><span class="k">class</span> <span class="nc">NpyArray</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="n">shape</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">dtype</span><span class="p">:</span> <span class="nc">NpyDType</span><span class="p">,</span> <span class="k">val</span> <span class="n">fortranOrder</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">rawBytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val dtype: NpyDType` |  |
-| `val fortranOrder: Boolean` |  |
-| `val shape: List<Int>` |  |
-| `val rank: Int` |  |
-| `val elementCount: Int` |  |
-| `val nbytes: Int` |  |
-| `fun copyBytes(): ByteArray` |  |
-| `fun linearIndex(vararg indices: Int): Int` |  |
-| `fun linearIndex(indices: IntArray, order: NpyLinearOrder = NpyLinearOrder.STORAGE): Int` |  |
-| `fun getDouble(vararg indices: Int): Double` |  |
-| `fun getDouble(indices: IntArray, order: NpyLinearOrder = NpyLinearOrder.STORAGE): Double` |  |
-| `fun asBooleanArray(order: NpyLinearOrder = NpyLinearOrder.C): BooleanArray` |  |
-| `fun asLongArray(order: NpyLinearOrder = NpyLinearOrder.C): LongArray` |  |
-| `fun asULongArray(order: NpyLinearOrder = NpyLinearOrder.C): ULongArray` |  |
-| `fun asDoubleArray(order: NpyLinearOrder = NpyLinearOrder.C): DoubleArray` |  |
-| `fun asFloatArray(order: NpyLinearOrder = NpyLinearOrder.C): FloatArray` |  |
-| `fun asComplexDoublePairs(order: NpyLinearOrder = NpyLinearOrder.C): DoubleArray` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dtype</span><span class="p">:</span> <span class="nc">NpyDType</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fortranOrder</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rank</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">elementCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nbytes</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">linearIndex</span><span class="p">(</span><span class="k">vararg</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">linearIndex</span><span class="p">(</span><span class="n">indices</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">STORAGE</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">getDouble</span><span class="p">(</span><span class="k">vararg</span> <span class="n">indices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">getDouble</span><span class="p">(</span><span class="n">indices</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">STORAGE</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asBooleanArray</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">BooleanArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asLongArray</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">LongArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asULongArray</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">ULongArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asDoubleArray</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asFloatArray</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asComplexDoublePairs</span><span class="p">(</span><span class="n">order</span><span class="p">:</span> <span class="nc">NpyLinearOrder</span> <span class="o">=</span> <span class="nc">NpyLinearOrder</span><span class="p">.</span><span class="nc">C</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### NumpyIO { #numpy-kt-numpyio }
 
-`object NumpyIO`
+<code class="highlight"><span class="k">object</span> <span class="nc">NumpyIO</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `fun readNpy(path: String): NpyArray` |  |
-| `fun readNpy(file: File): NpyArray` |  |
-| `fun readNpz(path: String): LinkedHashMap<String, NpyArray>` |  |
-| `fun readNpz(file: File): LinkedHashMap<String, NpyArray>` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">readNpy</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">NpyArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">readNpy</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">NpyArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">readNpz</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">NpyArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">readNpz</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span><span class="p">:</span> <span class="nc">LinkedHashMap</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">NpyArray</span><span class="p">&gt;</span></code> |  |
 
 ## saved.kt { #saved-kt }
 
@@ -1061,19 +1057,19 @@ failure to read, write or serialize is rethrown as a `SerializationException` na
 
 | Declaration | Summary |
 | --- | --- |
-| `inline fun <reified T> toJSONFile(file: File, value: T)` |  |
-| `inline fun <reified T> fromJSONFile(file: File, defaultValue: () -> T): T` |  |
-| `inline fun <reified T> saved(noinline defaultValue: () -> T): SavedJsonValue<T>` |  |
-| `inline fun <reified T> saved(): SavedJsonValue<T>` |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nf">toJSONFile</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nf">fromJSONFile</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nf">saved</span><span class="p">(</span><span class="k">noinline</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SavedJsonValue</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span><span class="p">&gt;</span> <span class="nf">saved</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SavedJsonValue</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
 
 ### SavedJsonValue { #saved-kt-savedjsonvalue }
 
-`class SavedJsonValue<T>(private val serializer: KSerializer<T>, private val defaultValue: () -> T) : ReadWriteProperty<Any?, T>`
+<code class="highlight"><span class="k">class</span> <span class="nc">SavedJsonValue</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">serializer</span><span class="p">:</span> <span class="nc">KSerializer</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">defaultValue</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ReadWriteProperty</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="nc">T</span><span class="p">&gt;</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun getValue(thisRef: Any?, property: KProperty<*>): T` |  |
-| `override fun setValue(thisRef: Any?, property: KProperty<*>, value: T)` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">thisRef</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setValue</span><span class="p">(</span><span class="n">thisRef</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">T</span><span class="p">)</span></code> |  |
 
 ## smile_neighbors.kt { #smile-neighbors-kt }
 
@@ -1097,67 +1093,67 @@ duplicate points.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun vec2NN(points: List<Vec2>, mode: VecNNMode = VecNNMode.APPROXIMATE, options: VecNNBuildOptions = VecNNBuildOptions()): Vec2NNIndex` | Builds a 2D nearest-neighbor index from a non-empty list of finite points. |
-| `fun vec3NN(points: List<Vec3>, mode: VecNNMode = VecNNMode.APPROXIMATE, options: VecNNBuildOptions = VecNNBuildOptions()): Vec3NNIndex` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec2NN</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">VecNNMode</span> <span class="o">=</span> <span class="nc">VecNNMode</span><span class="p">.</span><span class="nc">APPROXIMATE</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">VecNNBuildOptions</span> <span class="o">=</span> <span class="nc">VecNNBuildOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec2NNIndex</span></code> | Builds a 2D nearest-neighbor index from a non-empty list of finite points. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">vec3NN</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">VecNNMode</span> <span class="o">=</span> <span class="nc">VecNNMode</span><span class="p">.</span><span class="nc">APPROXIMATE</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">VecNNBuildOptions</span> <span class="o">=</span> <span class="nc">VecNNBuildOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3NNIndex</span></code> |  |
 
 ### VecNNMode { #smile-neighbors-kt-vecnnmode }
 
-`enum class VecNNMode`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">VecNNMode</span></code>
 
 Constants: `APPROXIMATE`, `EXACT`.
 
 ### VecNNBuildOptions { #smile-neighbors-kt-vecnnbuildoptions }
 
-`data class VecNNBuildOptions(val lshBucketWidth: Double = 1.0, val lshProjectionCount: Int = 8, val lshUniversalHashSize: Int = 9973, val allowDuplicatePoints: Boolean = true)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VecNNBuildOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">lshBucketWidth</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">lshProjectionCount</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">lshUniversalHashSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9973</span><span class="p">,</span> <span class="k">val</span> <span class="n">allowDuplicatePoints</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val lshBucketWidth: Double` |  |
-| `val lshProjectionCount: Int` |  |
-| `val lshUniversalHashSize: Int` |  |
-| `val allowDuplicatePoints: Boolean` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lshBucketWidth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lshProjectionCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lshUniversalHashSize</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">allowDuplicatePoints</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### VecNeighbor2 { #smile-neighbors-kt-vecneighbor2 }
 
-`data class VecNeighbor2(val index: Int, val point: Vec2, val distance: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VecNeighbor2</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val index: Int` |  |
-| `val point: Vec2` |  |
-| `val distance: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### VecNeighbor3 { #smile-neighbors-kt-vecneighbor3 }
 
-`data class VecNeighbor3(val index: Int, val point: Vec3, val distance: Double)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VecNeighbor3</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val index: Int` |  |
-| `val point: Vec3` |  |
-| `val distance: Double` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">point</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ### Vec2NNIndex { #smile-neighbors-kt-vec2nnindex }
 
-`class Vec2NNIndex internal constructor(private val points: List<Vec2>, private val mode: VecNNMode, private val exactIndex: KDTree<Int>?, private val approxIndex: LSH<Int>?)`
+<code class="highlight"><span class="k">class</span> <span class="nc">Vec2NNIndex</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">VecNNMode</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">exactIndex</span><span class="p">:</span> <span class="nc">KDTree</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">approxIndex</span><span class="p">:</span> <span class="nc">LSH</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val size: Int` |  |
-| `fun nearest(query: Vec2): VecNeighbor2` |  |
-| `fun kNearest(query: Vec2, k: Int): List<VecNeighbor2>` |  |
-| `fun withinRadius(query: Vec2, radius: Double): List<VecNeighbor2>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nearest</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">VecNeighbor2</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">kNearest</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VecNeighbor2</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withinRadius</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VecNeighbor2</span><span class="p">&gt;</span></code> |  |
 
 ### Vec3NNIndex { #smile-neighbors-kt-vec3nnindex }
 
-`class Vec3NNIndex internal constructor(private val points: List<Vec3>, private val mode: VecNNMode, private val exactIndex: KDTree<Int>?, private val approxIndex: LSH<Int>?)`
+<code class="highlight"><span class="k">class</span> <span class="nc">Vec3NNIndex</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">VecNNMode</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">exactIndex</span><span class="p">:</span> <span class="nc">KDTree</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">approxIndex</span><span class="p">:</span> <span class="nc">LSH</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="o">?</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val size: Int` |  |
-| `fun nearest(query: Vec3): VecNeighbor3` |  |
-| `fun kNearest(query: Vec3, k: Int): List<VecNeighbor3>` |  |
-| `fun withinRadius(query: Vec3, radius: Double): List<VecNeighbor3>` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">nearest</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span><span class="p">:</span> <span class="nc">VecNeighbor3</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">kNearest</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VecNeighbor3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withinRadius</span><span class="p">(</span><span class="n">query</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VecNeighbor3</span><span class="p">&gt;</span></code> |  |
 
 ## sorting_networks.kt { #sorting-networks-kt }
 
@@ -1181,40 +1177,40 @@ search is CPU-bound (each validity check is `O(2^n × |comparators|)`) and repor
 
 ### SortingComparator { #sorting-networks-kt-sortingcomparator }
 
-`data class SortingComparator(val lo: Int, val hi: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SortingComparator</span><span class="p">(</span><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 A single compare-and-swap unit on wires `lo` and `hi`.
 
 | Declaration | Summary |
 | --- | --- |
-| `override fun toString()` |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ### SortingNetwork { #sorting-networks-kt-sortingnetwork }
 
-`class SortingNetwork(val n: Int, val comparators: List<SortingComparator>)`
+<code class="highlight"><span class="k">class</span> <span class="nf">SortingNetwork</span><span class="p">(</span><span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">comparators</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">SortingComparator</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 A sorting network on `n` wires.
 
 | Declaration | Summary |
 | --- | --- |
-| `fun sort(input: IntArray): IntArray` | Apply this network to `input` and return the sorted result. |
-| `fun layerTrace(input: IntArray): List<IntArray>` | Apply this network layer-by-layer and return a snapshot after each layer. |
-| `fun isSorting(): Boolean` | Check whether this network correctly sorts all possible inputs (0-1 principle). |
-| `fun layers(): List<List<SortingComparator>>` | Assign each comparator to its earliest valid parallel layer. |
-| `fun depth(): Int` | Minimum parallel depth (number of non-overlapping layers). |
-| `fun notation(): String` | Encode this network as a compact, human-readable string. |
-| `fun asciiDiagram(): String` | Render the network as a human-readable ASCII-art diagram. |
-| `fun toFLines(wireSpacing: Double = 40.0, layerSpacing: Double = 60.0, margin: Double = 40.0, wireColor: Vec4 = vec(0.55, 0.55, 0.55, 0.75), dotRadius: Double = 2.0): List<FLine>` | Render this sorting network as a list of `FLine`s suitable for `Box.lines(...)`. |
-| `override fun toString(): String` |  |
-| `override fun equals(other: Any?): Boolean` |  |
-| `override fun hashCode(): Int` |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sort</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> | Apply this network to `input` and return the sorted result. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">layerTrace</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span></code> | Apply this network layer-by-layer and return a snapshot after each layer. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isSorting</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Check whether this network correctly sorts all possible inputs (0-1 principle). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">layers</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">SortingComparator</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Assign each comparator to its earliest valid parallel layer. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">depth</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Minimum parallel depth (number of non-overlapping layers). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">notation</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Encode this network as a compact, human-readable string. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">asciiDiagram</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Render the network as a human-readable ASCII-art diagram. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toFLines</span><span class="p">(</span><span class="n">wireSpacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span> <span class="n">layerSpacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">60.0</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">40.0</span><span class="p">,</span> <span class="n">wireColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">,</span> <span class="n">dotRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Render this sorting network as a list of `FLine`s suitable for `Box.lines(...)`. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ## tuio.kt { #tuio-kt }
 
 A minimal TUIO receiver. [`TuioReceiver`](data.md#tuio-kt-tuioreceiver) opens a UDP OSC port (3333 by default) through JavaOSC
 and listens on `/tuio/2Dcur` and `/tuio/2Dobj` only — no blobs, no 2.5D or 3D profiles. It keeps
 the live cursor and object sets, deduces additions and removals by diffing successive ALIVE
-messages, and on each FSEQ message hands your `TuioListener` one `TuioReceiver.Frame` holding
+messages, and on each FSEQ message hands your [`TuioListener`](data.md#tuio-kt-tuiolistener) one `TuioReceiver.Frame` holding
 both the full state and the per-frame added / updated / removed lists.
 
 Call `TuioReceiver.start` to bind and `TuioReceiver.close` (or `stop()`) to release the port;
@@ -1228,22 +1224,30 @@ messages are skipped rather than reported. `main` is a demo that prints frame de
 
 | Declaration | Summary |
 | --- | --- |
-| `fun main()` | Tiny demo: prints frame deltas. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="p">)</span></code> | Tiny demo: prints frame deltas. |
+
+### TuioListener { #tuio-kt-tuiolistener }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">TuioListener</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">onFrame</span><span class="p">(</span><span class="n">frame</span><span class="p">:</span> <span class="nc">TuioReceiver</span><span class="p">.</span><span class="nc">Frame</span><span class="p">)</span></code> |  |
 
 ### TuioReceiver { #tuio-kt-tuioreceiver }
 
-`class TuioReceiver(private val localPort: Int = 3333, private val listener: TuioListener = TuioListener {}) : Closeable`
+<code class="highlight"><span class="k">class</span> <span class="nf">TuioReceiver</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">localPort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3333</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">listener</span><span class="p">:</span> <span class="nc">TuioListener</span> <span class="o">=</span> <span class="nc">TuioListener</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>
 
 Minimal TUIO/UDP receiver for: - /tuio/2Dcur (cursors) - /tuio/2Dobj (fiducials/objects)
 
 | Declaration | Summary |
 | --- | --- |
-| `data class TuioCursor(val sessionId: Long, val x: Float, val y: Float, val xVel: Float, val yVel: Float, val motionAccel: Float)` |  |
-| `data class TuioObject(val sessionId: Long, val classId: Long, val x: Float, val y: Float, val angle: Float, val xVel: Float, val yVel: Float, val aVel: Float, val motionAccel: Float, val rotationAccel: Float)` |  |
-| `data class Frame(val fseq: Int, val source: String?, val cursors: Collection<TuioCursor>, val objects: Collection<TuioObject>, val cursorAdded: List<TuioCursor>, val cursorUpdated: List<TuioCursor>, val cursorRemoved: List<TuioCursor>, val objectAdded: List<TuioObject>, val objectUpdated: List<TuioObject>, val objectRemoved: List<TuioObject>)` |  |
-| `fun start()` |  |
-| `fun stop()` |  |
-| `override fun close()` |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TuioCursor</span><span class="p">(</span><span class="k">val</span> <span class="n">sessionId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">xVel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">yVel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">motionAccel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TuioObject</span><span class="p">(</span><span class="k">val</span> <span class="n">sessionId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">classId</span><span class="p">:</span> <span class="nc">Long</span><span class="p">,</span> <span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">angle</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">xVel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">yVel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">aVel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">motionAccel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">rotationAccel</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Frame</span><span class="p">(</span><span class="k">val</span> <span class="n">fseq</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">cursors</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">TuioCursor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objects</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">TuioObject</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cursorAdded</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioCursor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cursorUpdated</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioCursor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cursorRemoved</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioCursor</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objectAdded</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioObject</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objectUpdated</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioObject</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">objectRemoved</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TuioObject</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">start</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
 ## wfc.kt { #wfc-kt }
 
@@ -1266,165 +1270,165 @@ Notes:
 
 | Declaration | Summary |
 | --- | --- |
-| `fun BufferedImage.sliceIntoUniqueTiles(tileWidth: Int, tileHeight: Int): PngTileSet` |  |
-| `fun loadPngTiles(file: File, tileWidth: Int, tileHeight: Int): PngTileSet` |  |
-| `fun BufferedImage.sliceIntoOverlappingPatterns(patternWidth: Int, patternHeight: Int, wrapX: Boolean = true, wrapY: Boolean = true): PngOverlappingTileSet` |  |
-| `fun loadPngOverlappingPatterns(file: File, patternWidth: Int, patternHeight: Int, wrapX: Boolean = true, wrapY: Boolean = true): PngOverlappingTileSet` |  |
-| `fun savePng(image: BufferedImage, file: File)` |  |
-| `fun FloatArray.sliceIntoUniqueTiles2D(width: Int, height: Int, tileWidth: Int, tileHeight: Int): FloatTileSet` |  |
-| `fun FloatArray.sliceIntoOverlappingPatterns2D(width: Int, height: Int, patternWidth: Int, patternHeight: Int, wrapX: Boolean = true, wrapY: Boolean = true): FloatOverlappingTileSet` |  |
-| `fun main(args: Array<String>)` | Tiny CLI demo: java -jar app.jar input.png output.png tileW tileH outTilesW outTilesH `seed` |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BufferedImage</span><span class="p">.</span><span class="nf">sliceIntoUniqueTiles</span><span class="p">(</span><span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadPngTiles</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">BufferedImage</span><span class="p">.</span><span class="nf">sliceIntoOverlappingPatterns</span><span class="p">(</span><span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngOverlappingTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">loadPngOverlappingPatterns</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngOverlappingTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">savePng</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nc">BufferedImage</span><span class="p">,</span> <span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatArray</span><span class="p">.</span><span class="nf">sliceIntoUniqueTiles2D</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatArray</span><span class="p">.</span><span class="nf">sliceIntoOverlappingPatterns2D</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatOverlappingTileSet</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code> | Tiny CLI demo: java -jar app.jar input.png output.png tileW tileH outTilesW outTilesH `seed` |
 
 ### Top-level values { #wfc-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| `const val WFC_NORTH: Int` |  |
-| `const val WFC_EAST: Int` |  |
-| `const val WFC_SOUTH: Int` |  |
-| `const val WFC_WEST: Int` |  |
-| `val WFC_VON_NEUMANN_NEIGHBORHOOD: WfcNeighborhood` |  |
-| `val WFC_MOORE_NEIGHBORHOOD: WfcNeighborhood` |  |
-| `val WFC_VON_NEUMANN_NEIGHBOURHOOD: WfcNeighbourhood` |  |
-| `val WFC_MOORE_NEIGHBOURHOOD: WfcNeighbourhood` |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;NORTH</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;EAST</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;SOUTH</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;WEST</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">WFC&#95;VON&#95;NEUMANN&#95;NEIGHBORHOOD</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">WFC&#95;MOORE&#95;NEIGHBORHOOD</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">WFC&#95;VON&#95;NEUMANN&#95;NEIGHBOURHOOD</span><span class="p">:</span> <span class="nc">WfcNeighbourhood</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="nc">WFC&#95;MOORE&#95;NEIGHBOURHOOD</span><span class="p">:</span> <span class="nc">WfcNeighbourhood</span></code> |  |
 
 ### WfcOffset { #wfc-kt-wfcoffset }
 
-`data class WfcOffset(val dx: Int, val dy: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WfcOffset</span><span class="p">(</span><span class="k">val</span> <span class="n">dx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">dy</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 ### WfcNeighborhood { #wfc-kt-wfcneighborhood }
 
-`class WfcNeighborhood(offsets: Iterable<WfcOffset>)`
+<code class="highlight"><span class="k">class</span> <span class="nf">WfcNeighborhood</span><span class="p">(</span><span class="n">offsets</span><span class="p">:</span> <span class="nc">Iterable</span><span class="p">&lt;</span><span class="nc">WfcOffset</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 Symmetric set of relative cell offsets used for learning and propagation.
 
 | Declaration | Summary |
 | --- | --- |
-| `val directionCount: Int` |  |
-| `val offsets: List<WfcOffset>` |  |
-| `fun offset(direction: Int): WfcOffset` |  |
-| `fun opposite(direction: Int): Int` |  |
-| `fun directionOf(dx: Int, dy: Int): Int` |  |
-| `override fun toString(): String` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">directionCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">offsets</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WfcOffset</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">offset</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcOffset</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">opposite</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">directionOf</span><span class="p">(</span><span class="n">dx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dy</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ### WfcNeighbourhood { #wfc-kt-wfcneighbourhood }
 
-`typealias WfcNeighbourhood = WfcNeighborhood`
+<code class="highlight"><span class="k">typealias</span> <span class="nc">WfcNeighbourhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span></code>
 
 ### WfcRules { #wfc-kt-wfcrules }
 
-`class WfcRules private constructor(val tileCount: Int, val weights: DoubleArray, val neighborhood: WfcNeighborhood, /** allowed[direction][tile] is a bitset of tile IDs allowed in that direction from tile. */ val allowed: Array<Array<LongArray>>)`
+<code class="highlight"><span class="k">class</span> <span class="nc">WfcRules</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="n">allowed</span><span class="p">&#91;</span><span class="n">direction</span><span class="p">&#93;</span><span class="p">&#91;</span><span class="n">tile</span><span class="p">&#93;</span> <span class="n">is</span> <span class="n">a</span> <span class="n">bitset</span> <span class="n">of</span> <span class="n">tile</span> <span class="nc">IDs</span> <span class="n">allowed</span> <span class="k">in</span> <span class="n">that</span> <span class="n">direction</span> <span class="n">from</span> <span class="n">tile</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">allowed</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">Array</span><span class="p">&lt;</span><span class="nc">LongArray</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>
 
 The learned model: tile weights plus directional adjacency masks.
 
 | Declaration | Summary |
 | --- | --- |
-| `val tileCount: Int` |  |
-| `val weights: DoubleArray` |  |
-| `val neighborhood: WfcNeighborhood` |  |
-| `val allowed: Array<Array<LongArray>>` | allowed`direction` is a bitset of tile IDs allowed in that direction from tile. |
-| `val wordCount: Int` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">allowed</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">Array</span><span class="p">&lt;</span><span class="nc">LongArray</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | allowed`direction` is a bitset of tile IDs allowed in that direction from tile. |
+| <code class="highlight"><span class="k">val</span> <span class="n">wordCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 
 ### WfcStatus { #wfc-kt-wfcstatus }
 
-`enum class WfcStatus`
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">WfcStatus</span></code>
 
 Constants: `Running`, `Solved`, `Contradiction`.
 
 ### WfcObservation { #wfc-kt-wfcobservation }
 
-`data class WfcObservation(val x: Int, val y: Int, val tile: Int)`
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WfcObservation</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 ### WfcSolver { #wfc-kt-wfcsolver }
 
-`class WfcSolver(val width: Int, val height: Int, val rules: WfcRules, seed: Long = 1L, private val noise: Double = 1e-6)`
+<code class="highlight"><span class="k">class</span> <span class="nf">WfcSolver</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">WfcRules</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">noise</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
-| `val width: Int` |  |
-| `val height: Int` |  |
-| `val rules: WfcRules` |  |
-| `var status: WfcStatus` |  |
-| `var lastObservation: WfcObservation?` |  |
-| `fun reset()` |  |
-| `fun possibilitiesAt(x: Int, y: Int, out: IntArray): Int` |  |
-| `fun possibilityCountAt(x: Int, y: Int): Int` |  |
-| `fun resolvedTileAt(x: Int, y: Int): Int` |  |
-| `fun forceTile(x: Int, y: Int, tile: Int): Boolean` |  |
-| `fun step(): WfcStatus` | One visualizable WFC iteration: observe one cell, then fully propagate constraints. |
-| `fun run(maxSteps: Int = Int.MAX_VALUE): WfcStatus` |  |
-| `fun resolvedTileGridOrNull(): IntArray?` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">status</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastObservation</span><span class="p">:</span> <span class="nc">WfcObservation</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">possibilitiesAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">out</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">possibilityCountAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedTileAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">forceTile</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> | One visualizable WFC iteration: observe one cell, then fully propagate constraints. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedTileGridOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span></code> |  |
 
 ### PngTileSet { #wfc-kt-pngtileset }
 
-`class PngTileSet(val tileWidth: Int, val tileHeight: Int, val tiles: Array<IntArray>, val sampleIds: IntArray, val sampleWidthInTiles: Int, val sampleHeightInTiles: Int)`
+<code class="highlight"><span class="k">class</span> <span class="nf">PngTileSet</span><span class="p">(</span><span class="k">val</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 A fixed-size tile atlas extracted from a PNG. Pixels are ARGB ints.
 
 | Declaration | Summary |
 | --- | --- |
-| `val tileWidth: Int` |  |
-| `val tileHeight: Int` |  |
-| `val tiles: Array<IntArray>` |  |
-| `val sampleIds: IntArray` |  |
-| `val sampleWidthInTiles: Int` |  |
-| `val sampleHeightInTiles: Int` |  |
-| `val tileCount: Int` |  |
-| `fun toRules(wrapX: Boolean = false, wrapY: Boolean = false, neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
-| `fun render(tileIds: IntArray, outWidthInTiles: Int, outHeightInTiles: Int): BufferedImage` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toRules</span><span class="p">(</span><span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">tileIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">BufferedImage</span></code> |  |
 
 ### PngOverlappingTileSet { #wfc-kt-pngoverlappingtileset }
 
-`class PngOverlappingTileSet(val patternWidth: Int, val patternHeight: Int, val patterns: Array<IntArray>, val sampleIds: IntArray, val sampleWidthInPatterns: Int, val sampleHeightInPatterns: Int)`
+<code class="highlight"><span class="k">class</span> <span class="nf">PngOverlappingTileSet</span><span class="p">(</span><span class="k">val</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleWidthInPatterns</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleHeightInPatterns</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 Overlapping WFC patterns extracted from a PNG. Each solver cell is a pattern anchor.
 
 | Declaration | Summary |
 | --- | --- |
-| `val patternWidth: Int` |  |
-| `val patternHeight: Int` |  |
-| `val patterns: Array<IntArray>` |  |
-| `val sampleIds: IntArray` |  |
-| `val sampleWidthInPatterns: Int` |  |
-| `val sampleHeightInPatterns: Int` |  |
-| `val tileCount: Int` |  |
-| `fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
-| `fun render(patternIds: IntArray, outWidth: Int, outHeight: Int, originX: Int = 0, originY: Int = 0): BufferedImage` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleWidthInPatterns</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleHeightInPatterns</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toRules</span><span class="p">(</span><span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">patternIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">BufferedImage</span></code> |  |
 
 ### FloatTileSet { #wfc-kt-floattileset }
 
-`class FloatTileSet(val tileWidth: Int, val tileHeight: Int, val tiles: Array<FloatArray>, val sampleIds: IntArray, val sampleWidthInTiles: Int, val sampleHeightInTiles: Int)`
+<code class="highlight"><span class="k">class</span> <span class="nf">FloatTileSet</span><span class="p">(</span><span class="k">val</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 A fixed-size tile atlas extracted from a row-major 2D FloatArray.
 
 | Declaration | Summary |
 | --- | --- |
-| `val tileWidth: Int` |  |
-| `val tileHeight: Int` |  |
-| `val tiles: Array<FloatArray>` |  |
-| `val sampleIds: IntArray` |  |
-| `val sampleWidthInTiles: Int` |  |
-| `val sampleHeightInTiles: Int` |  |
-| `val tileCount: Int` |  |
-| `fun toRules(wrapX: Boolean = false, wrapY: Boolean = false, neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
-| `fun render(tileIds: IntArray, outWidthInTiles: Int, outHeightInTiles: Int): FloatArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toRules</span><span class="p">(</span><span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">tileIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
 
 ### FloatOverlappingTileSet { #wfc-kt-floatoverlappingtileset }
 
-`class FloatOverlappingTileSet(val patternWidth: Int, val patternHeight: Int, val patterns: Array<FloatArray>, val sampleIds: IntArray, val sampleWidthInPatterns: Int, val sampleHeightInPatterns: Int)`
+<code class="highlight"><span class="k">class</span> <span class="nf">FloatOverlappingTileSet</span><span class="p">(</span><span class="k">val</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleWidthInPatterns</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleHeightInPatterns</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
 
 Overlapping WFC patterns extracted from a row-major 2D FloatArray.
 
 | Declaration | Summary |
 | --- | --- |
-| `val patternWidth: Int` |  |
-| `val patternHeight: Int` |  |
-| `val patterns: Array<FloatArray>` |  |
-| `val sampleIds: IntArray` |  |
-| `val sampleWidthInPatterns: Int` |  |
-| `val sampleHeightInPatterns: Int` |  |
-| `val tileCount: Int` |  |
-| `fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules` |  |
-| `fun render(patternIds: IntArray, outWidth: Int, outHeight: Int, originX: Int = 0, originY: Int = 0): FloatArray` |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">FloatArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleIds</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleWidthInPatterns</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleHeightInPatterns</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toRules</span><span class="p">(</span><span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">patternIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
 
 </div>
