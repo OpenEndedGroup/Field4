@@ -467,17 +467,29 @@ fun houghLines(
     val kept = ArrayList<HoughLine>()
     for (c in cand) {
         if (kept.size >= maxLines) break
-        if (kept.any { angularClose(it.theta, c.theta, minSeparationTheta) && abs(it.rho - c.rho) < minSeparationRho }) continue
+        if (kept.any { sameLine(it, c, minSeparationTheta, minSeparationRho) }) continue
         kept.add(c)
     }
     return kept
 }
 
-/** Angular proximity on the `[0, π)` circle (so 0.01 and π-0.01 are close). */
-private fun angularClose(a: Double, b: Double, tol: Double): Boolean {
-    var d = abs(a - b) % PI
-    if (d > PI / 2) d = PI - d
-    return d < tol
+/**
+ * Do two accumulator peaks describe the same line?
+ *
+ * The subtlety that bites everyone: `theta` lives on `[0, π)`, and the parametrisation is
+ * antipodal — `(theta, rho)` and `(theta + π, -rho)` are the *same* line. So a near-vertical line
+ * produces peaks at both `theta ≈ 0, rho ≈ +d` and `theta ≈ π⁻, rho ≈ -d`, and a naive
+ * `|rho_a - rho_b|` comparison treats them as two different lines and reports the vertical twice.
+ * This compares `rho` with the sign that matches how the thetas wrapped.
+ */
+private fun sameLine(a: HoughLine, b: HoughLine, dTheta: Double, dRho: Double): Boolean {
+    val direct = abs(a.theta - b.theta)
+    val wrapped = PI - direct
+    return when {
+        direct < dTheta -> abs(a.rho - b.rho) < dRho
+        wrapped < dTheta -> abs(a.rho + b.rho) < dRho   // theta wrapped by pi -> rho flips sign
+        else -> false
+    }
 }
 
 /**

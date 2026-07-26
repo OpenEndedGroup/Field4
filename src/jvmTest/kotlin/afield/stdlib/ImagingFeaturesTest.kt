@@ -218,6 +218,17 @@ class ImagingFeaturesTest {
     }
 
     @Test
+    fun houghReportsANearVerticalLineOnceNotTwice() {
+        // theta lives on [0, pi) and (theta, rho) == (theta + pi, -rho), so a vertical line peaks
+        // at BOTH theta ~ 0 (rho = +150) and theta ~ pi (rho = -150). It must be deduplicated.
+        val img = Img.zeros(200, 200, 1)
+        for (y in 10 until 190) img.set(150, y, 0, 1f)
+        val lines = houghLines(img, thetaSteps = 360, threshold = 100, maxLines = 6)
+        assertEquals(1, lines.size, "the single vertical line was reported ${lines.size} times: $lines")
+        assertEquals(150.0, abs(lines[0].rho), 2.0)
+    }
+
+    @Test
     fun houghCirclesRecoversADrawnRing() {
         val img = Img.zeros(80, 80, 1)
         val cx = 40.0; val cy = 38.0; val r = 20.0
