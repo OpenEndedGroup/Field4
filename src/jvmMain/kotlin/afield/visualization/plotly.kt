@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Visualization")
+
 package afield
 
 import afield.stdlib.Vec2

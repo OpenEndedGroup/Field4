@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Function")
+
 package afield.stdlib
 
 /**
