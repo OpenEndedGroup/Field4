@@ -184,11 +184,10 @@ object VisionGeometryPreviewGallery {
             expectDegenerate = 2 * 32,
             check = { mesh ->
                 for (i in 0 until mesh.vertexCount) {
-                    val r = Math.sqrt(
-                        (mesh.positionX(i).toDouble() * mesh.positionX(i)) +
-                            (mesh.positionY(i).toDouble() * mesh.positionY(i)) +
-                            ((mesh.positionZ(i) + 1.2).toDouble() * (mesh.positionZ(i) + 1.2)),
-                    )
+                    val x = mesh.positionX(i).toDouble()
+                    val y = mesh.positionY(i).toDouble()
+                    val z = mesh.positionZ(i) + 1.2
+                    val r = kotlin.math.sqrt(x * x + y * y + z * z)
                     require(abs(r - 0.2) < 1e-5) { "sphere vertex $i is $r from the centre, expected 0.2" }
                 }
             },
