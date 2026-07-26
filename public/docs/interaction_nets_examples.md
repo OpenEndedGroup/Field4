@@ -1,5 +1,7 @@
 # Interaction Nets examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interactionnets.kt`](reference/visualization.md#interactionnets-kt). Start from [what's already in the box](reference/index.md).*
+
 These are the four scenarios covered by the interaction-net smoke suite. The examples show reducer steps as ordinary Field output: before geometry, rewrite summary, and after geometry.
 
 ## Beta bridge with swapped pair orientation

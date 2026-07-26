@@ -1,5 +1,7 @@
 # Neighbors & graph connectivity to FLine examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`graph_connectivity.kt`](reference/graphics.md#graph-connectivity-kt), [`smile_neighbors.kt`](reference/data.md#smile-neighbors-kt). Start from [what's already in the box](reference/index.md).*
+
 One point cloud can be read at three scales: which points are *near* a query,
 which points are *connected* into a structure, and how you *route* through that
 structure. All three become far clearer once they are drawn. In data work they

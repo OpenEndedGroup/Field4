@@ -264,6 +264,48 @@ code {
         max-width: 72rem;
     }
 }
+
+/* Generated codebase reference (public/docs/reference/*.md).
+   Same shape as the StackSL cheatsheet — a wide, dense, two-column signature
+   table — but the first column holds full Kotlin signatures, so it needs a
+   monospace-friendly wrap rather than the default table's ellipsis-free
+   overflow. */
+.md-typeset .codebase-reference table {
+    font-size: 0.62rem;
+    display: table;
+    width: 100%;
+}
+
+.md-typeset .codebase-reference th,
+.md-typeset .codebase-reference td {
+    vertical-align: top;
+}
+
+.md-typeset .codebase-reference td {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+/* The declaration column carries the weight; give it half the width and stop
+   long generic parameter lists from squeezing the summary to nothing. */
+.md-typeset .codebase-reference td:first-child {
+    width: 46%;
+}
+
+.md-typeset .codebase-reference td:first-child code {
+    white-space: pre-wrap;
+}
+
+.md-typeset .codebase-reference h2 {
+    margin-top: 2.2em;
+}
+
+@media screen and (min-width: 76.234375em) {
+    .md-grid:has(.codebase-reference) {
+        max-width: 74rem;
+    }
+}
+
 .md-typeset pre > code {
     background: var(--mono-panel) !important;
     /* border-right: 0.5px solid white !important; */

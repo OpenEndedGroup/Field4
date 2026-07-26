@@ -22,7 +22,17 @@ nav:
   - How Box Code Runs: box_code_pipeline.md
   - Building & Testing: building_and_testing.md
   - Reference:
+    - What's Already in the Box: reference/index.md
+    - Codebase Reference:
+      - Math: reference/math.md
+      - Data: reference/data.md
+      - Graphics: reference/graphics.md
+      - Function: reference/function.md
+      - Visualization: reference/visualization.md
+      - Audio: reference/audio.md
+      - Workspace: reference/workspace.md
     - Linear Algebra: linear_algebra.md
+    - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
     - Visualizers & Controls: visualizers.md
     - Querying Object Graphs: graph_query.md

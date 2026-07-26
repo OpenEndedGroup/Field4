@@ -1,5 +1,7 @@
 # Visualizers, Displays, and Little Instruments
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
+
 Field has a surprisingly rich vocabulary for showing values, not just computing them.
 
 Some visuals live **inline in the editor** next to a line of code. Some live in **output areas** under a box. Some turn output areas into **inspectors** or **little control panels**. And some helpers, like `.h` and `.h2`, are really about turning arbitrary Kotlin values into usefully formatted things that are easy to read.

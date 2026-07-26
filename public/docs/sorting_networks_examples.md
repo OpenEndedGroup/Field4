@@ -1,5 +1,7 @@
 # Sorting networks to FLine examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`sorting_networks.kt`](reference/data.md#sorting-networks-kt). Start from [what's already in the box](reference/index.md).*
+
 Sorting networks make an algorithm hold still. The compare-and-swap plan is fixed ahead of time; the data is what moves. That makes them good material for pictures: topology first, then disorder collapse, then search over the topology itself.
 
 ## Topology: bubble drag versus odd-even-merge economy

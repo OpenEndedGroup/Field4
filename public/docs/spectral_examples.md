@@ -1,5 +1,7 @@
 # Spectral examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`spectral.kt`](reference/math.md#spectral-kt). Start from [what's already in the box](reference/index.md).*
+
 The [timeseries toolkit](timeseries_examples.md) works in the time domain: it smooths, gates, and
 flags a stream sample by sample. Sometimes the question is not *what is the signal doing now* but
 *what is it made of* — which frequencies carry the energy, how bright the timbre is, where a chirp

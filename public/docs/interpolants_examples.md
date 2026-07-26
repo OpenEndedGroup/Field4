@@ -1,5 +1,7 @@
 # Values over time: interpolants & keyframes
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`interpolants.kt`](reference/math.md#interpolants-kt), [`keyframer.kt`](reference/graphics.md#keyframer-kt). Start from [what's already in the box](reference/index.md).*
+
 Some values are supposed to *move*: a control that eases to a target instead of
 snapping, a whole parameter state morphing from one saved look to another, a
 relationship between two signals drifting as they play. This page collects the

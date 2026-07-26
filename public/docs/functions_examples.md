@@ -1,5 +1,7 @@
 # Functions to FLine examples (Field graphics)
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
+
 The examples here turn `Functions` stacks into drawable FLines: ordinary one-dimensional graphs first, then two-dimensional parametric curves.
 
 A function stack is often easier to design by eye than by algebra alone. In creative coding it gives you a quick route from signal to ornament. In data work it makes transforms and envelopes visible. In music it turns oscillation, modulation, and shaping into something you can draw.
