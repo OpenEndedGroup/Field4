@@ -15,6 +15,14 @@ graphics/audio dependencies and developer tooling.
 
 - macOS, Linux, or Windows
 - A shell that can run the Gradle wrapper
+- **Git LFS, installed before you clone.** `libs/kotlin-compiler-embeddable-*.jar`
+  (~180MB) is stored with LFS. Clone without it and Git silently leaves a 134-byte
+  text pointer in the jar's place; the build then fails partway through
+  `:compileKotlinJvm` with `zip END header not found`, which does not obviously
+  point back here. Install it (`apt install git-lfs`, `brew install git-lfs`, or
+  the Windows Git installer's LFS option) and run `git lfs install` once per
+  machine. If you have already cloned without it, you do not need to re-clone —
+  install Git LFS and run `git lfs pull`.
 - Internet access on the first build so Gradle can download toolchains and
   dependencies
 - A browser that can accept the local development HTTPS certificate

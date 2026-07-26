@@ -68,6 +68,150 @@ choose_sidecar_port() {
     printf '%s' "$START_PORT"
 }
 
+ensure_lfs_content() {
+    # Files marked `filter=lfs` only become real content when Git LFS is installed at clone time;
+    # without it Git leaves a ~130-byte text pointer in place. Nothing notices until Gradle tries to
+    # read one, which surfaces ~2 minutes into :compileKotlinJvm as "zip END header not found" — a
+    # message that gives no hint that the clone is the problem. Check up front, before provisioning
+    # hundreds of megabytes of JDKs for a build that cannot succeed.
+    [ -f .gitattributes ] || return 0
+    LFS_STUBS=""
+    for pattern in $( awk '/filter=lfs/ { print $1 }' .gitattributes ); do
+        for candidate in $pattern; do
+            [ -f "$candidate" ] || continue
+            if head -c 40 "$candidate" 2>/dev/null | grep -q "git-lfs.github.com"; then
+                LFS_STUBS="$LFS_STUBS  $candidate
+"
+            fi
+        done
+    done
+    [ -n "$LFS_STUBS" ] || return 0
+    echo "field: this clone is missing its Git LFS content — the following are pointer files, not real content:" >&2
+    printf '%s' "$LFS_STUBS" >&2
+    echo "field: install Git LFS, then run 'git lfs install' and 'git lfs pull' (see Requirements in README.md)" >&2
+    return 1
+}
+
+ensure_gradle_jvm() {
+    # gradlew's JVM-wrapper preamble provisions Corretto into ~/.field4/gradle-jvm on first contact,
+    # and it is not safe to run two copies of it at once: it `rm -rf`s the target directory and
+    # downloads to a single fixed temp path, so concurrent gradlew processes delete each other's
+    # half-extracted JDK (tar then fails with "Cannot mkdir: No such file or directory" on every
+    # entry). This script starts exactly such a pair — the backgrounded sidecar gradlew below and the
+    # foreground build gradlew — so on a fresh clone the two race and the build dies. Provision once,
+    # serially, before either of them runs. Nothing to do once a previous run has left a .flag behind;
+    # that is the same up-to-date marker gradlew itself checks, so warm runs pay nothing.
+    for flag in "$HOME"/.field4/gradle-jvm/*/.flag; do
+        [ -e "$flag" ] && return 0
+    done
+    echo "field: provisioning the build JVM (first run downloads a JDK; this happens once)…" >&2
+    if ! ./gradlew --version; then
+        echo "field: could not provision the build JVM — see the errors above" >&2
+        return 1
+    fi
+}
+
+# Gradle only picks up the provisioned toolchain when it is named on the command line (see the note in
+# ensure_graalvm_toolchain), so record the flag here and have every gradlew invocation pass it. Stays
+# empty when provisioning is skipped, in which case the calls below fall back to plain gradlew.
+FIELD_TOOLCHAIN_ARG=""
+
+note_toolchain() {
+    # $1 is a .../bin/java; Gradle wants the JDK home, which is that path minus the /bin/java tail
+    # (on macOS this correctly keeps the .../Contents/Home prefix).
+    FIELD_TOOLCHAIN_ARG="-Dorg.gradle.java.installations.paths=${1%/bin/java}"
+}
+
+ensure_graalvm_toolchain() {
+    # build.gradle.kts compiles against a GraalVM Community toolchain (vendor = GRAAL_VM) because the
+    # polyglot/Truffle JS+WASM runtime and the JVMCI-related JVM args depend on it. Gradle can in
+    # principle auto-provision that via the foojay resolver, but it asks only for "languageVersion 25"
+    # and foojay hands back the *newest* matching build — currently graalvm-community-jdk-25i1-25.0.3
+    # (java_version 25.1.3), whose download link is broken upstream: /redirect 301s to the GitHub
+    # releases *listing page*, so Gradle saves 500KB of HTML and dies with "Cannot expand TAR"...
+    # and caches that HTML, so every subsequent run fails identically. Revving Gradle does not help;
+    # the bad data is in foojay. Fetch the exact pinned build straight from the official release
+    # instead. That also keeps the toolchain matching the org.graalvm.polyglot:*:$graalvmVersion
+    # artifacts, which the floating foojay pick silently did not. Note the JDK cannot simply be
+    # dropped into ~/.gradle/jdks: that is Gradle's *provisioning cache*, and it only trusts JDKs it
+    # unpacked there itself, so a hand-placed tree is ignored. It has to be pointed at explicitly with
+    # org.gradle.java.installations.paths, which every gradlew call below therefore passes (GRADLE_OPTS
+    # does *not* carry this property through — only the command line does). That one flag serves the
+    # root build and the sidecar's jvmToolchain(25) alike, with neither consulting foojay at all.
+    if [ "${AFIELD_SKIP_TOOLCHAIN_PROVISION:-0}" = "1" ]; then
+        return 0
+    fi
+    GRAAL_VERSION="$(sed -n 's/^val graalvmVersion = "\([^"]*\)".*/\1/p' build.gradle.kts | head -1)"
+    if [ -z "$GRAAL_VERSION" ]; then
+        echo "field: could not read graalvmVersion from build.gradle.kts" >&2
+        return 1
+    fi
+
+    JDKS_DIR="$HOME/.field4/toolchains"
+    for probe in "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/bin/java \
+                 "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/Contents/Home/bin/java; do
+        [ -x "$probe" ] && { note_toolchain "$probe"; return 0; }
+    done
+
+    case "$( uname -s )" in
+        Darwin) GRAAL_OS=macos ;;
+        Linux)  GRAAL_OS=linux ;;
+        *)      echo "field: no GraalVM build known for $( uname -s ); install JDK $GRAAL_VERSION manually" >&2
+                return 1 ;;
+    esac
+    case "$( uname -m )" in
+        x86_64|amd64)  GRAAL_ARCH=x64 ;;
+        arm64|aarch64) GRAAL_ARCH=aarch64 ;;
+        *)             echo "field: no GraalVM build known for $( uname -m ); install JDK $GRAAL_VERSION manually" >&2
+                       return 1 ;;
+    esac
+    GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_VERSION}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
+
+    echo "field: provisioning the GraalVM $GRAAL_VERSION toolchain (~320MB; this happens once)…" >&2
+    mkdir -p "$JDKS_DIR"
+    # Stage into a private directory and move the finished JDK into place, so an interrupted or
+    # corrupt download never leaves a half-extracted tree for the probe above to accept next run.
+    GRAAL_TMP="$JDKS_DIR/.field-graalvm-staging-$$"
+    rm -rf "$GRAAL_TMP"
+    mkdir -p "$GRAAL_TMP"
+    if ! curl -fL --progress-bar --output "$GRAAL_TMP/graalvm.tar.gz" "$GRAAL_URL"; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: could not download $GRAAL_URL" >&2
+        return 1
+    fi
+    # The failure that motivates this whole function is an HTML page saved under a .tar.gz name, so
+    # check that what arrived is actually an intact gzip stream before trusting it.
+    if ! gzip -t "$GRAAL_TMP/graalvm.tar.gz" 2>/dev/null; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: $GRAAL_URL did not return a valid archive (an error page?) — install JDK $GRAAL_VERSION manually" >&2
+        return 1
+    fi
+    if ! tar -xzf "$GRAAL_TMP/graalvm.tar.gz" -C "$GRAAL_TMP"; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: could not unpack the GraalVM toolchain" >&2
+        return 1
+    fi
+    rm -f "$GRAAL_TMP/graalvm.tar.gz"
+    GRAAL_UNPACKED=""
+    for entry in "$GRAAL_TMP"/*/; do
+        [ -d "$entry" ] && GRAAL_UNPACKED="${entry%/}"
+    done
+    if [ -z "$GRAAL_UNPACKED" ]; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: the GraalVM archive did not contain a JDK directory" >&2
+        return 1
+    fi
+    mv "$GRAAL_UNPACKED" "$JDKS_DIR/$( basename "$GRAAL_UNPACKED" )"
+    rm -rf "$GRAAL_TMP"
+
+    for probe in "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/bin/java \
+                 "$JDKS_DIR"/graalvm-community-*"$GRAAL_VERSION"*/Contents/Home/bin/java; do
+        [ -x "$probe" ] && { note_toolchain "$probe"; return 0; }
+    done
+    echo "field: provisioned GraalVM $GRAAL_VERSION but found no bin/java under $JDKS_DIR" >&2
+    return 1
+}
+
 ensure_semantic_sidecar() {
     if [ "$AFIELD_CODE_USE_SEMANTIC_SIDECAR" = "off" ] || [ "$AFIELD_CODE_USE_SEMANTIC_SIDECAR" = "false" ]; then
         return
@@ -99,7 +243,11 @@ ensure_semantic_sidecar() {
     mkdir -p "$LOG_DIR"
     echo "Starting code-use semantic sidecar at $URL for $DIR"
     echo "Sidecar log: $LOG_FILE"
-    nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
+    if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then
+        nohup ./gradlew "$FIELD_TOOLCHAIN_ARG" -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
+    else
+        nohup ./gradlew -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
+    fi
 }
 
 build_field() {
@@ -114,7 +262,13 @@ build_field() {
         return 0
     fi
     echo "field: building (JVM + JS; the first run compiles everything and can take a few minutes)…" >&2
-    if ! ./gradlew jvmJar dumpFieldLaunch; then
+    BUILD_OK=0
+    if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then
+        ./gradlew "$FIELD_TOOLCHAIN_ARG" jvmJar dumpFieldLaunch || BUILD_OK=1
+    else
+        ./gradlew jvmJar dumpFieldLaunch || BUILD_OK=1
+    fi
+    if [ "$BUILD_OK" != "0" ]; then
         echo "field: BUILD FAILED — fix the errors above, then re-run ./field.sh" >&2
         return 1
     fi
@@ -146,6 +300,9 @@ launch_electron_when_ready() {
 }
 
 run_field() {
+    ensure_lfs_content || exit 1
+    ensure_gradle_jvm || exit 1
+    ensure_graalvm_toolchain || exit 1
     ensure_semantic_sidecar
     build_field || exit 1
 
