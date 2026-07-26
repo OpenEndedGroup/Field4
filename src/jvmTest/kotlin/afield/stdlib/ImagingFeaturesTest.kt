@@ -64,6 +64,34 @@ class ImagingFeaturesTest {
     }
 
     @Test
+    fun cannyAutoAdaptsToALowContrastImageWhereAFixedPairFindsNothing() {
+        // The same square at 4% contrast: a threshold pair tuned for a unit step sees nothing,
+        // but the auto variant derives its thresholds from this image's own gradients.
+        val faint = square(64, 64, 16, 16, 47, 47).map { 0.30f + it * 0.04f }
+        val fixed = faint.canny(0.05, 0.15).data.count { it > 0.5f }
+        val auto = faint.cannyAuto(0.90, 0.4)
+        val onAuto = auto.data.count { it > 0.5f }
+        assertEquals(0, fixed, "a fixed threshold pair should find nothing at 4% contrast")
+        assertTrue(onAuto in 80..260, "cannyAuto should recover the ~124 px outline, got $onAuto")
+        // ... and it must be the right outline, not noise.
+        for (y in 0 until 64) for (x in 0 until 64) {
+            if (auto.at(x, y) <= 0.5f) continue
+            val d = minOf(
+                if (x in 16..47) minOf(abs(y - 16), abs(y - 47)) else Int.MAX_VALUE,
+                if (y in 16..47) minOf(abs(x - 16), abs(x - 47)) else Int.MAX_VALUE,
+                maxOf(abs(x - 16), abs(y - 16)),
+                maxOf(abs(x - 47), abs(y - 47))
+            )
+            assertTrue(d <= 3, "cannyAuto edge pixel at ($x, $y) is $d px off the true boundary")
+        }
+    }
+
+    @Test
+    fun cannyAutoFindsNothingInAFlatImage() {
+        assertEquals(0, Img.filled(32, 32, 1, 0.5f).cannyAuto().data.count { it > 0.5f })
+    }
+
+    @Test
     fun cannyFindsNothingInAFlatImage() {
         val flat = Img.filled(32, 32, 1, 0.5f)
         assertEquals(0, flat.canny(0.05, 0.15).data.count { it > 0.5f })

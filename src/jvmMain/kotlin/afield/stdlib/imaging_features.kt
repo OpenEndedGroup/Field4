@@ -63,6 +63,32 @@ fun Img.canny(low: Double = 0.08, high: Double = 0.20, sigma: Double = 1.0): Img
 }
 
 /**
+ * [canny] with the thresholds chosen from the image instead of guessed.
+ *
+ * A fixed `(low, high)` pair that works on a bright synthetic test card finds almost nothing in a
+ * dark, softly-lit photograph — which is the single most common way Canny "doesn't work". This
+ * variant computes the non-maximum-suppressed gradient magnitudes, takes the [highPercentile] of
+ * the **non-zero** ones as the strong threshold, and sets the weak threshold to [lowRatio] times
+ * it (Canny's own recommended 1:2–1:3 ratio).
+ *
+ * @param highPercentile fraction of surviving ridge pixels to treat as strong seeds' cut-off
+ *   (0.9 keeps roughly the top 10% as seeds)
+ */
+fun Img.cannyAuto(highPercentile: Double = 0.90, lowRatio: Double = 0.4, sigma: Double = 1.0): Img {
+    require(highPercentile in 0.5..0.999) { "highPercentile must be in 0.5..0.999, got $highPercentile" }
+    require(lowRatio in 0.05..0.95) { "lowRatio must be in 0.05..0.95, got $lowRatio" }
+    val g = (if (channels == 1) this else luma()).let { if (sigma > 0.0) it.gaussianBlur(sigma) else it }
+    val grad = g.sobel()
+    val nms = nonMaximumSuppression(grad.magnitude(), grad)
+    val nonZero = nms.data.filter { it > 1e-6f }.sorted()
+    if (nonZero.isEmpty()) return zerosLike(1)
+    val high = nonZero[((nonZero.size - 1) * highPercentile).toInt().coerceIn(0, nonZero.size - 1)]
+    val low = (high * lowRatio).toFloat()
+    if (high <= low) return hysteresis(nms, low, low * 1.001f + 1e-9f)
+    return hysteresis(nms, low, high)
+}
+
+/**
  * Thin a gradient-magnitude image to ridge crests: a pixel survives only if its magnitude is >=
  * both neighbours sampled along the gradient direction (quantised to the nearest of the four
  * 45-degree axes). Exposed because it is useful on its own, on any gradient field.
