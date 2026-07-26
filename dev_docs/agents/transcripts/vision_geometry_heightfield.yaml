@@ -63,12 +63,17 @@ operations:
                   }
 
                   // vertex() handed back an index for each of those; stitch them into quads. The
-                  // lattice is (n+1) wide, so a cell's four corners are a, a+1, a+stride+1, a+stride.
+                  // lattice is (n+1) wide, so a cell's four corners are a, a+stride, a+stride+1, a+1.
+                  //
+                  // The order matters as much as the membership. This sheet lies in XZ with its
+                  // normal on +y, and only this diagonal winds counter-clockwise seen from above.
+                  // Take the corners the other way round and the head — which culls back faces —
+                  // shows you the underside of your landscape, which is to say nothing at all.
                   val stride = n + 1
                   for (row in 0 until n) {
                       for (col in 0 until n) {
                           val a = base + row * stride + col
-                          quad(a, a + 1, a + stride + 1, a + stride)
+                          quad(a, a + stride, a + stride + 1, a + 1)
                       }
                   }
 

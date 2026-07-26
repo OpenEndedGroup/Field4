@@ -243,7 +243,10 @@ object VisionMetalKotlinJs {
                 for (ring in 0 until nRing) {
                     for (seg in 0 until nSeg) {
                         val a = base + ring * stride + seg
-                        quad(a, a + stride, a + stride + 1, a + 1)
+                        // Around the ring first, then down: that is the order whose right-hand rule
+                        // agrees with the outward normal written above. The other diagonal winds the
+                        // sphere inside-out, which the head then culls into a hollow shell.
+                        quad(a, a + 1, a + stride + 1, a + stride)
                     }
                 }
                 return this
@@ -295,7 +298,9 @@ object VisionMetalKotlinJs {
                 for (i in 0 until points.size - 1) {
                     for (side in 0 until nSides) {
                         val a = base + i * stride + side
-                        quad(a, a + stride, a + stride + 1, a + 1)
+                        // Around the cross-section first, then along the spine — the winding that
+                        // agrees with the outward radial normal set above.
+                        quad(a, a + 1, a + stride + 1, a + stride)
                     }
                 }
                 return this
