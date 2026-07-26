@@ -266,13 +266,17 @@ code {
 }
 
 /* Generated codebase reference (public/docs/reference/*.md).
-   These are two-column tables of `signature` + summary, so they already pick up
-   the site's code-table skin above (header hidden, signature as the term, prose
-   underneath). Only three things differ here: the terms are full Kotlin
-   signatures rather than single words and must wrap instead of overflowing; the
-   summary column should run the full width under them rather than being capped
-   at the narrower `body` measure; and a reference page earns a wider grid than
-   a prose page. */
+   The seven per-category pages are two-column tables of `signature` + summary,
+   so they pick up the site's code-table skin below (header hidden, signature as
+   the term, prose underneath). Only three things differ here: the terms are full
+   Kotlin signatures rather than single words and must wrap instead of
+   overflowing; the summary column should run the full width under them rather
+   than being capped at the narrower `body` measure; and a reference page earns a
+   wider grid than a prose page.
+
+   `reference/index.md` is different — its two summary tables are five and six
+   columns wide, so they fall to the wide-table opt-out further down rather than
+   to the skin. */
 .md-typeset .codebase-reference table:has(td code) td:first-child,
 .md-typeset .codebase-reference table:has(td code) td:first-child code {
     overflow-wrap: anywhere;
@@ -559,6 +563,120 @@ code {
 @media screen and (min-width: 76.234375em) {
     .md-grid:has(.md-typeset table:not(.highlighttable) td code) {
         max-width: 64rem;
+    }
+}
+
+/* ── wide tables opt out of the code-table skin ───────────────────────────
+   The skin above is a term/meta/body grid: it assigns grid areas to the first
+   three cells only. Any table with a fourth column leaves cells 4..n at
+   `grid-area: auto`, so they auto-place into the implicit grid, blow the row
+   far past the content measure, and push the later columns off-screen — while
+   the `max-content` term column collapses to one character per line.
+
+   A table wide enough to need four columns is a data table, not a term list,
+   so hand it back to normal table layout. Keyed off `td:nth-child(4)` rather
+   than a class so it protects any future page, not just the reference.
+
+   The `:not(.highlighttable)` in every selector is not redundant: it matches the
+   skin's own class count so that these rules, coming later in the file, actually
+   win the cascade over the skin's per-column `nth-child` rules. Without it the
+   skin's right-aligned, small-caps `td:nth-child(2)` leaks through. */
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) {
+    display: table;
+    table-layout: auto;
+    border: 1px solid var(--mono-border) !important;
+    background: var(--mono-panel) !important;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) thead {
+    display: table-header-group;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tbody {
+    display: table-row-group;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr {
+    display: table-row;
+}
+
+/* The skin draws each row's rule with a grid-placed ::after; cells own it here. */
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) tr::after {
+    content: none;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th,
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td,
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(2),
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:nth-child(3) {
+    display: table-cell;
+    grid-area: auto;
+    justify-self: auto;
+    max-width: none;
+    padding: 0.42rem 0.6rem !important;
+    border-bottom: 1px solid var(--mono-border) !important;
+    color: rgba(255, 255, 255, 0.72);
+    font-size: 0.66rem;
+    font-weight: normal;
+    line-height: 1.46;
+    text-align: left;
+    vertical-align: top;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th {
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 0.61rem;
+    white-space: nowrap;
+}
+
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child {
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.7rem;
+}
+
+/* Auto table layout hands the first column whatever the prose columns leave —
+   about 100px here, which breaks every filename mid-word. Keeping the column's
+   words unbreakable makes its min-content width the longest identifier, which
+   auto layout then honours. A fixed `min-width` would do it too, but it would
+   over-allocate on tables whose first column holds a short label. */
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) th:first-child,
+.md-typeset table:not(.highlighttable):has(td code):has(td:nth-child(4)) td:first-child {
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+/* The skin indents the term list to hang off the prose and turns off scrolling,
+   since a term list reflows. A wide table does not reflow, so give the wrapper
+   its scrollbar back — otherwise the table stretches the whole page sideways on
+   a narrow viewport — and drop the hanging indent.
+
+   Note the inner selector is a plain descendant, `table:not(...) td:nth-child(4)`,
+   not the `table:has(...)` used above: `:has()` may not be nested inside
+   `:has()`, and a rule that tries to is dropped whole. */
+.md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)) {
+    margin-left: 0;
+    overflow-x: auto;
+}
+
+.md-typeset .md-typeset__table:has(table:not(.highlighttable) td:nth-child(4)) {
+    display: inline-block;
+    min-width: 100%;
+    margin-left: 0;
+}
+
+/* Six columns do not fit the 34rem prose measure, and the reading rail's layout
+   means the `.md-grid` max-width rules above cannot widen it — `.md-content__inner`
+   caps at `--field-reading-width` regardless. So let a wide table (and only a
+   wide table) spend the slack the reading rail leaves either side of the prose:
+   the measure is centred in the 52rem content column, so there is
+   `(52rem - reading)/2` free per side. Prose still wraps at the reading measure.
+   Scoped to the same breakpoint that establishes that geometry. */
+@media screen and (min-width: 76.234375em) {
+    .md-typeset .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)) {
+        --field-wide-table-bleed: calc((52rem - var(--field-reading-width)) / 2);
+
+        width: calc(100% + 2 * var(--field-wide-table-bleed));
+        margin-inline: calc(-1 * var(--field-wide-table-bleed));
     }
 }
 
