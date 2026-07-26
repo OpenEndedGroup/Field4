@@ -142,7 +142,7 @@ object KotlinInTheHeadEvidence {
     private fun emit(dir: File, name: String, kotlin: String, result: KotlinToJsCompiler.Result) {
         File(dir, "$name.kt").writeText(kotlin)
         File(dir, "$name.js").writeText(result.js!!)
-        println("---- $name : ${kotlin.length} chars Kotlin -> ${result.js!!.length} chars JS (mode=${result.mode}) ----")
+        println("---- $name : ${kotlin.length} chars Kotlin -> ${result.js.length} chars JS (mode=${result.mode}) ----")
         println(result.js)
         println("---- end $name ----")
     }

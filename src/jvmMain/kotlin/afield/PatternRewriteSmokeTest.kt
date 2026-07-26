@@ -809,7 +809,7 @@ object PatternRewriteSmokeTest {
     /** Fail-closed: a strategy referencing an unknown rule name rewrites NOTHING, with a diagnostic. */
     private fun testStrategyUnknownRuleFailsClosed() {
         val res = expand("rule(\"fg\") { x: Expr -> from { f(x) }; to { g(x) } }\nstrategy { once(\"nope\") }\nf(a)")
-        require(res.diagnostic != null && "unknown rule name" in res.diagnostic!!) {
+        require(res.diagnostic != null && "unknown rule name" in res.diagnostic) {
             "an unknown rule name must be reported: ${res.diagnostic}"
         }
         require("f(a)" in res.text && "g(a)" !in res.text) { "fail-closed must not rewrite anything: ${res.text}" }

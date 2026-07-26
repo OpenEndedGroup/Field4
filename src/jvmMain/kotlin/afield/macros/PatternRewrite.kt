@@ -709,7 +709,7 @@ object PatternRewrite {
                     "choice" -> Strat.Choice(args.map { parseStrat(it, ruleNames, onDiagnostic) })
                     // A call whose callee is itself a rule name is a stray `name()` — accept it as a
                     // bare reference only if the callee resolves to a known rule; otherwise reject.
-                    else -> ref(e.calleeExpression as? KtExpression) { Strat.RuleRef(it) }
+                    else -> ref(e.calleeExpression) { Strat.RuleRef(it) }
                 }
             }
 
