@@ -425,6 +425,66 @@ class ImagingCoreTest {
         assertEquals(src.mean(), lp.residual.mean(), 0.05f)
     }
 
+    // ==========================================================================================
+    // Presentation helpers (montage / stacking) — cheap, but they run in every live box
+    // ==========================================================================================
+
+    @Test
+    fun montageLaysPanelsOutOnAGridAndKeepsTheirPixels() {
+        val a = Img.filled(40, 30, 1, 0.9f)
+        val b = Img.filled(40, 30, 1, 0.2f)
+        val c = Img.filled(20, 30, 1, 0.5f)
+        val m = montage(listOf("a" to a, "b" to b, "c" to c), columns = 2, cellSide = 64, gap = 4)
+        assertEquals(3, m.channels, "montage returns RGB")
+        // 2 columns of 40px cells + 3 gaps; 2 rows of (30 + a 22px caption band) + 3 gaps.
+        val captionH = 7 * 2 + 8
+        assertEquals(2 * 40 + 3 * 4, m.width)
+        assertEquals(2 * (30 + captionH) + 3 * 4, m.height)
+        // The tiles' pixels survive verbatim at their cell origins — the caption pass is pure
+        // float writes through a bitmap font, with no 8-bit round-trip anywhere.
+        assertEquals(0.9f, m.at(4 + 5, 4 + 5, 0), 1e-6f, "panel a pixel")
+        assertEquals(0.2f, m.at(4 + 40 + 4 + 5, 4 + 5, 0), 1e-6f, "panel b pixel")
+        // Captions are burned in, so pixels in the caption band differ from the background.
+        val band = m.crop(0, 4 + 30, m.width, captionH)
+        assertTrue(band.max() > 0.08f + 1e-3f, "no caption text was drawn into the montage")
+    }
+
+    @Test
+    fun withLabelBurnsTextWithNoAwt() {
+        // The built-in 5x7 bitmap font must actually mark pixels — and only where the text is.
+        val blank = Img.filled(120, 24, 3, 0f)
+        val labelled = blank.withLabel("Hello 123", x = 2, y = 4, scale = 2)
+        assertTrue(labelled.max() > 0.5f, "withLabel drew nothing")
+        // The glyph band is 7*2 = 14 px tall starting at y = 4; below it must stay black.
+        for (y in 19 until 24) for (x in 0 until 120) {
+            assertEquals(0f, labelled.at(x, y, 0), 1e-6f, "text bled outside its band at ($x, $y)")
+        }
+        // Unmapped characters degrade rather than throw, and typographic ones fold to ASCII.
+        assertTrue(blank.withLabel("240×180 — σ · ∞", scale = 1).max() > 0.5f)
+    }
+
+    @Test
+    fun montageNormalisesASignedPanelForDisplay() {
+        val signed = Img.generate(20, 20) { x, _ -> x - 10f }   // range -10..9
+        val m = montage(listOf("signed" to signed), columns = 1, cellSide = 64)
+        assertTrue(m.max() <= 1f + 1e-5f, "montage emitted out-of-range samples: ${m.max()}")
+        assertTrue(m.min() >= 0f - 1e-5f, "montage emitted negative samples: ${m.min()}")
+    }
+
+    @Test
+    fun hstackAndVstackConcatenateWithGaps() {
+        val a = Img.filled(10, 8, 1, 1f)
+        val b = Img.filled(6, 8, 1, 0.5f)
+        val h = hstack(a, b, gap = 3, background = 0f)
+        assertEquals(19, h.width)
+        assertEquals(8, h.height)
+        assertEquals(1f, h.at(0, 0, 0), 1e-5f)
+        assertEquals(0f, h.at(11, 0, 0), 1e-5f, "the gap should carry the background")
+        assertEquals(0.5f, h.at(13, 0, 0), 1e-5f)
+        val v = vstack(a, a, gap = 2, background = 0f)
+        assertEquals(18, v.height)
+    }
+
     @Test
     fun pyrDownIsAntiAliasedNotABareDecimation() {
         // A 1-pixel checkerboard decimated without a blur aliases to a constant; with the blur

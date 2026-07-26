@@ -47,7 +47,7 @@ expect:
  * on a square's 4 corners, the right blob count, flow arrows pointing the right way) and the run
  * fails if any of them breaks. It writes NO committed assets during the test. Pass an output dir
  * as `args[0]` (or set `IMAGING_GALLERY_DIR`) to regenerate the committed docs captures under
- * `dev_docs/assets/imaging_gallery/`.
+ * `public/docs/assets/imaging_gallery/`.
  *
  * Adding a panel: append one [Panel] to [PANELS]. Everything else — layout, captions, the
  * painted-fraction guard, the PNG write — is shared.

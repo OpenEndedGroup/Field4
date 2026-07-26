@@ -328,7 +328,275 @@ fun Box.showImg(img: Img, channel: String = "main", maxSide: Int = 900, caption:
 }
 
 /**
- * Show several images side by side with captions in one output — the fastest way to see a whole
+ * Lay several captioned images out on a uniform grid and return the montage as one [Img].
+ *
+ * The captions are drawn **into the raster**, not emitted alongside it, so the montage stays
+ * self-describing wherever it ends up — a box output, a docs screenshot, a file. Tiles are scaled
+ * to fit [cellSide] on their long edge, centred in their cell and top-aligned; anything outside
+ * `0..1` (a gradient, a Laplacian) is normalised for display.
+ *
+ * Captions are drawn with a built-in 5x7 bitmap font, **not AWT** — see [drawLabels] for why that
+ * matters inside a live Field box. A montage is display output, not analysis input; keep the float
+ * [Img]s you built it from rather than feeding a montage back into a filter chain.
+ *
+ * @param columns tiles per row
+ * @param cellSide the longest edge a tile is allowed to occupy
+ */
+fun montage(
+    panels: List<Pair<String, Img>>,
+    columns: Int = 2,
+    cellSide: Int = 320,
+    gap: Int = 10,
+    background: Float = 0.08f
+): Img {
+    require(panels.isNotEmpty()) { "montage needs at least one panel" }
+    require(columns >= 1) { "columns must be >= 1, got $columns" }
+    val textScale = 2
+    val captionH = GLYPH_HEIGHT * textScale + 8
+    val scaled = panels.map { (label, img) ->
+        val s = min(1.0, cellSide.toDouble() / max(img.width, img.height))
+        val small = if (s >= 1.0) img else img.scaleBy(s)
+        val lo = small.min()
+        val hi = small.max()
+        label to (if (lo < -1e-4f || hi > 1f + 1e-4f) small.normalized().toRGB() else small.toRGB())
+    }
+    val cols = min(columns, scaled.size)
+    val cellW = scaled.maxOf { it.second.width }
+    val cellH = scaled.maxOf { it.second.height }
+    val rows = scaled.chunked(cols)
+    val w = cols * cellW + gap * (cols + 1)
+    val h = rows.size * (cellH + captionH) + gap * (rows.size + 1)
+
+    val out = Img.filled(w, h, 3, background)
+    var y0 = gap
+    val captions = ArrayList<Triple<String, Int, Int>>()
+    for (row in rows) {
+        row.forEachIndexed { col, (label, img) ->
+            val cellX = gap + col * (cellW + gap)
+            val x0 = cellX + (cellW - img.width) / 2
+            for (y in 0 until img.height) for (x in 0 until img.width) for (c in 0 until 3) {
+                out.data[out.index(x0 + x, y0 + y, c)] = img.data[img.index(x, y, c)]
+            }
+            captions.add(Triple(label, cellX, y0 + cellH + 4))
+        }
+        y0 += cellH + captionH + gap
+    }
+    return drawLabels(out, captions, cellW, textScale)
+}
+
+// ----------------------------------------------------------------------------------------------
+// A tiny built-in bitmap font, so captions can be burned in with NO AWT.
+//
+// Why not `Graphics2D.drawString`? Because this code runs inside a live Field box, and Field's
+// `Server.main` deliberately does *not* initialise the AWT toolkit (the eager-init block there is
+// commented out on purpose). On macOS, touching the AWT font manager pulls in AppKit, which
+// competes with GLFW for the main run loop. A stdlib call that every box might make must not be
+// able to take the process down, so text here is drawn from a table, not from a font engine.
+//
+// The classic public-domain 5x7 LCD font, ASCII 0x20..0x7E: five bytes per glyph, one byte per
+// column, bit 0 = top row.
+// ----------------------------------------------------------------------------------------------
+
+private val FONT_5X7: IntArray = intArrayOf(
+    0x00, 0x00, 0x00, 0x00, 0x00, // space
+    0x00, 0x00, 0x5F, 0x00, 0x00, // !
+    0x00, 0x07, 0x00, 0x07, 0x00, // "
+    0x14, 0x7F, 0x14, 0x7F, 0x14, // #
+    0x24, 0x2A, 0x7F, 0x2A, 0x12, // $
+    0x23, 0x13, 0x08, 0x64, 0x62, // %
+    0x36, 0x49, 0x55, 0x22, 0x50, // &
+    0x00, 0x05, 0x03, 0x00, 0x00, // '
+    0x00, 0x1C, 0x22, 0x41, 0x00, // (
+    0x00, 0x41, 0x22, 0x1C, 0x00, // )
+    0x14, 0x08, 0x3E, 0x08, 0x14, // *
+    0x08, 0x08, 0x3E, 0x08, 0x08, // +
+    0x00, 0x50, 0x30, 0x00, 0x00, // ,
+    0x08, 0x08, 0x08, 0x08, 0x08, // -
+    0x00, 0x60, 0x60, 0x00, 0x00, // .
+    0x20, 0x10, 0x08, 0x04, 0x02, // /
+    0x3E, 0x51, 0x49, 0x45, 0x3E, // 0
+    0x00, 0x42, 0x7F, 0x40, 0x00, // 1
+    0x42, 0x61, 0x51, 0x49, 0x46, // 2
+    0x21, 0x41, 0x45, 0x4B, 0x31, // 3
+    0x18, 0x14, 0x12, 0x7F, 0x10, // 4
+    0x27, 0x45, 0x45, 0x45, 0x39, // 5
+    0x3C, 0x4A, 0x49, 0x49, 0x30, // 6
+    0x01, 0x71, 0x09, 0x05, 0x03, // 7
+    0x36, 0x49, 0x49, 0x49, 0x36, // 8
+    0x06, 0x49, 0x49, 0x29, 0x1E, // 9
+    0x00, 0x36, 0x36, 0x00, 0x00, // :
+    0x00, 0x56, 0x36, 0x00, 0x00, // ;
+    0x00, 0x08, 0x14, 0x22, 0x41, // <
+    0x14, 0x14, 0x14, 0x14, 0x14, // =
+    0x41, 0x22, 0x14, 0x08, 0x00, // >
+    0x02, 0x01, 0x51, 0x09, 0x06, // ?
+    0x32, 0x49, 0x79, 0x41, 0x3E, // @
+    0x7E, 0x11, 0x11, 0x11, 0x7E, // A
+    0x7F, 0x49, 0x49, 0x49, 0x36, // B
+    0x3E, 0x41, 0x41, 0x41, 0x22, // C
+    0x7F, 0x41, 0x41, 0x22, 0x1C, // D
+    0x7F, 0x49, 0x49, 0x49, 0x41, // E
+    0x7F, 0x09, 0x09, 0x01, 0x01, // F
+    0x3E, 0x41, 0x41, 0x51, 0x32, // G
+    0x7F, 0x08, 0x08, 0x08, 0x7F, // H
+    0x00, 0x41, 0x7F, 0x41, 0x00, // I
+    0x20, 0x40, 0x41, 0x3F, 0x01, // J
+    0x7F, 0x08, 0x14, 0x22, 0x41, // K
+    0x7F, 0x40, 0x40, 0x40, 0x40, // L
+    0x7F, 0x02, 0x04, 0x02, 0x7F, // M
+    0x7F, 0x04, 0x08, 0x10, 0x7F, // N
+    0x3E, 0x41, 0x41, 0x41, 0x3E, // O
+    0x7F, 0x09, 0x09, 0x09, 0x06, // P
+    0x3E, 0x41, 0x51, 0x21, 0x5E, // Q
+    0x7F, 0x09, 0x19, 0x29, 0x46, // R
+    0x46, 0x49, 0x49, 0x49, 0x31, // S
+    0x01, 0x01, 0x7F, 0x01, 0x01, // T
+    0x3F, 0x40, 0x40, 0x40, 0x3F, // U
+    0x1F, 0x20, 0x40, 0x20, 0x1F, // V
+    0x7F, 0x20, 0x18, 0x20, 0x7F, // W
+    0x63, 0x14, 0x08, 0x14, 0x63, // X
+    0x03, 0x04, 0x78, 0x04, 0x03, // Y
+    0x61, 0x51, 0x49, 0x45, 0x43, // Z
+    0x00, 0x00, 0x7F, 0x41, 0x41, // [
+    0x02, 0x04, 0x08, 0x10, 0x20, // backslash
+    0x41, 0x41, 0x7F, 0x00, 0x00, // ]
+    0x04, 0x02, 0x01, 0x02, 0x04, // ^
+    0x40, 0x40, 0x40, 0x40, 0x40, // _
+    0x00, 0x01, 0x02, 0x04, 0x00, // `
+    0x20, 0x54, 0x54, 0x54, 0x78, // a
+    0x7F, 0x48, 0x44, 0x44, 0x38, // b
+    0x38, 0x44, 0x44, 0x44, 0x20, // c
+    0x38, 0x44, 0x44, 0x48, 0x7F, // d
+    0x38, 0x54, 0x54, 0x54, 0x18, // e
+    0x08, 0x7E, 0x09, 0x01, 0x02, // f
+    0x08, 0x14, 0x54, 0x54, 0x3C, // g
+    0x7F, 0x08, 0x04, 0x04, 0x78, // h
+    0x00, 0x44, 0x7D, 0x40, 0x00, // i
+    0x20, 0x40, 0x44, 0x3D, 0x00, // j
+    0x00, 0x7F, 0x10, 0x28, 0x44, // k
+    0x00, 0x41, 0x7F, 0x40, 0x00, // l
+    0x7C, 0x04, 0x18, 0x04, 0x78, // m
+    0x7C, 0x08, 0x04, 0x04, 0x78, // n
+    0x38, 0x44, 0x44, 0x44, 0x38, // o
+    0x7C, 0x14, 0x14, 0x14, 0x08, // p
+    0x08, 0x14, 0x14, 0x18, 0x7C, // q
+    0x7C, 0x08, 0x04, 0x04, 0x08, // r
+    0x48, 0x54, 0x54, 0x54, 0x20, // s
+    0x04, 0x3F, 0x44, 0x40, 0x20, // t
+    0x3C, 0x40, 0x40, 0x20, 0x7C, // u
+    0x1C, 0x20, 0x40, 0x20, 0x1C, // v
+    0x3C, 0x40, 0x30, 0x40, 0x3C, // w
+    0x44, 0x28, 0x10, 0x28, 0x44, // x
+    0x0C, 0x50, 0x50, 0x50, 0x3C, // y
+    0x44, 0x64, 0x54, 0x4C, 0x44, // z
+    0x00, 0x08, 0x36, 0x41, 0x00, // {
+    0x00, 0x00, 0x7F, 0x00, 0x00, // |
+    0x00, 0x41, 0x36, 0x08, 0x00, // }
+    0x08, 0x08, 0x2A, 0x1C, 0x08  // ~
+)
+
+/** Glyph advance in source pixels (5 columns + 1 space), before [textScale]. */
+private const val GLYPH_ADVANCE = 6
+
+/** Glyph height in source pixels, before [textScale]. */
+private const val GLYPH_HEIGHT = 7
+
+/**
+ * Fold a string down to the printable ASCII the built-in font covers, mapping the typographic
+ * characters that show up in real captions (en/em dashes, middle dot, multiplication sign,
+ * ellipsis, curly quotes) onto sensible ASCII rather than dropping them.
+ */
+private fun toFontAscii(s: String): String {
+    val b = StringBuilder(s.length)
+    for (ch in s) {
+        when (ch) {
+            '–', '—', '−' -> b.append('-')       // en dash, em dash, minus
+            '·', '•' -> b.append('.')                  // middle dot, bullet
+            '×' -> b.append('x')                            // multiplication sign
+            '…' -> b.append("...")                          // ellipsis
+            '‘', '’' -> b.append('\'')
+            '“', '”' -> b.append('"')
+            '°' -> b.append('o')
+            'π' -> b.append("pi")
+            'θ' -> b.append("th")
+            'σ' -> b.append("sigma")
+            else -> b.append(if (ch.code in 0x20..0x7E) ch else '?')
+        }
+    }
+    return b.toString()
+}
+
+/** Rendered width of [s] in pixels at [scale], in the built-in font. */
+private fun textWidth(s: String, scale: Int): Int = toFontAscii(s).length * GLYPH_ADVANCE * scale
+
+/**
+ * Burn text labels into an [Img] using the built-in bitmap font — **no AWT, no font manager, no
+ * AppKit**. `(text, x, yTop)` triples in image coordinates; text longer than [maxWidth] is
+ * ellipsised. Mutates and returns [img].
+ */
+private fun drawLabels(
+    img: Img,
+    labels: List<Triple<String, Int, Int>>,
+    maxWidth: Int,
+    scale: Int = 1,
+    r: Float = 0.60f,
+    g: Float = 0.62f,
+    b: Float = 0.68f
+): Img {
+    val advance = GLYPH_ADVANCE * scale
+    for ((raw, x0, yTop) in labels) {
+        var s = toFontAscii(raw)
+        if (s.length * advance > maxWidth) {
+            val fits = max(1, maxWidth / advance - 3)
+            s = s.take(fits) + "..."
+        }
+        var penX = x0
+        for (ch in s) {
+            val gi = (ch.code - 0x20) * 5
+            if (gi >= 0 && gi + 4 < FONT_5X7.size) {
+                for (col in 0 until 5) {
+                    val bits = FONT_5X7[gi + col]
+                    for (row in 0 until GLYPH_HEIGHT) {
+                        if ((bits shr row) and 1 == 0) continue
+                        for (sy in 0 until scale) for (sx in 0 until scale) {
+                            val px = penX + col * scale + sx
+                            val py = yTop + row * scale + sy
+                            if (px < 0 || py < 0 || px >= img.width || py >= img.height) continue
+                            val i = img.index(px, py, 0)
+                            if (img.channels >= 3) {
+                                img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b
+                            } else {
+                                img.data[i] = (r + g + b) / 3f
+                            }
+                        }
+                    }
+                }
+            }
+            penX += advance
+        }
+    }
+    return img
+}
+
+/**
+ * Draw a caption into an [Img] at `(x, y)` with the built-in AWT-free bitmap font — useful on its
+ * own for labelling a frame before you write it out.
+ *
+ * @param scale integer pixel scale; 1 gives a 5x7 glyph, 2 gives 10x14
+ */
+fun Img.withLabel(
+    text: String,
+    x: Int = 4,
+    y: Int = 4,
+    scale: Int = 2,
+    color: Color4 = Color4(0.85, 0.87, 0.92)
+): Img = drawLabels(
+    copy(), listOf(Triple(text, x, y)), width - x, scale,
+    color.r.toFloat(), color.g.toFloat(), color.b.toFloat()
+)
+
+/**
+ * Show several images side by side with their captions burned in — the fastest way to see a whole
  * pipeline (source / blurred / gradient / edges) at a glance.
  *
  * @param columns images per row
@@ -340,16 +608,5 @@ fun Box.showImgGrid(
     cellSide: Int = 320
 ) {
     require(panels.isNotEmpty()) { "showImgGrid needs at least one panel" }
-    require(columns >= 1) { "columns must be >= 1, got $columns" }
-    val rows = panels.toList().chunked(columns)
-    val rowImgs = rows.map { row ->
-        hstack(*row.map { (_, img) ->
-            val s = min(1.0, cellSide.toDouble() / max(img.width, img.height))
-            val small = if (s >= 1.0) img else img.scaleBy(s)
-            val lo = small.min(); val hi = small.max()
-            if (lo < -1e-4f || hi > 1f + 1e-4f) small.normalized().toRGB() else small.toRGB()
-        }.toTypedArray())
-    }
-    display(channel, panels.joinToString(" · ") { it.first })
-    display(channel, vstack(*rowImgs.toTypedArray()).toPngBytes())
+    display(channel, montage(panels.toList(), columns, cellSide).toPngBytes())
 }
