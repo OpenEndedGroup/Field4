@@ -17,6 +17,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /*
 FIELD_TEST
@@ -154,14 +155,23 @@ object ImagingGallery {
     }
 
     /**
-     * A smooth, well-textured field — the source Lucas–Kanade and the pyramids like. The spatial
-     * frequencies are per-pixel and deliberately did NOT scale with the image, so a 10x larger
-     * frame carries 10x more cycles rather than the same picture enlarged. An enlarged picture
-     * would make the pyramid levels trivially easy and the flow panel dishonest.
+     * A smooth, well-textured field — the source Lucas–Kanade and the pyramids like.
+     *
+     * **Multi-octave on purpose.** The original was a single fine octave (period ~30 px), which was
+     * fine at 200x200 and silently fatal at 2000x2000: a coarse-to-fine tracker halves the image
+     * four times, by which point a 30 px period has aliased away to nothing and there is no
+     * structure left at the coarse levels to lock onto. Measured, not theorised — that version
+     * tracked 0 of 125 seeds. Real images carry structure at every scale, so this sums coarse
+     * octaves (period ~300 px, which survives to the top of the pyramid) with the fine detail that
+     * sharpens the final refinement.
      */
     private fun textured(w: Int = 2000, h: Int = 2000): Img = Img.generate(w, h) { x, y ->
-        (0.5 + 0.24 * sin(x * 0.21) * cos(y * 0.17) +
-            0.16 * sin((x + y) * 0.11) + 0.08 * cos((x - 2.0 * y) * 0.07)).toFloat().coerceIn(0f, 1f)
+        (0.5 +
+            0.20 * sin(x * 0.021) * cos(y * 0.017) +   // coarse: survives 4 halvings
+            0.14 * sin((x + y) * 0.011) +              // coarse
+            0.10 * sin(x * 0.21) * cos(y * 0.17) +     // fine: sharpens the last refinement
+            0.06 * cos((x - 2.0 * y) * 0.07)           // fine
+            ).toFloat().coerceIn(0f, 1f)
     }
 
     /** A checkerboard "document" seen flat, for the perspective-rectification panel. */
@@ -218,7 +228,7 @@ object ImagingGallery {
             val mag = grad.magnitude()
             // A unit-ish step: the bar's edges must show up clearly.
             check(mag.max() > 0.3f) { "gradient magnitude peaked at only ${mag.max()}" }
-            check(mag.at(120, 120) < 0.02f) { "flat ground has a gradient of ${mag.at(120, 120)}" }
+            check(mag.at(1200, 1200) < 0.02f) { "flat ground has a gradient of ${mag.at(1200, 1200)}" }
             Figure(
                 listOf(
                     Tile("source", src),
@@ -238,9 +248,13 @@ object ImagingGallery {
             val edges = src.canny(0.05, 0.11, sigma = 1.2)
             val nOn = edges.data.count { it > 0.5f }
             val nRaw = raw.data.count { it > 0.5f }
-            check(nOn in 200..1400) { "expected a thin edge map, got $nOn pixels" }
+            // "Thin" means edge pixels scale with PERIMETER, not area — so the bound is expressed
+            // against sqrt(pixelCount) and holds at any image size. An absolute count would have to
+            // be retuned every time the source grows, which is exactly the bug this replaced.
+            val thinness = nOn / sqrt(src.pixelCount.toDouble())
+            check(thinness in 0.5..8.0) { "expected a thin edge map, got $nOn px (thinness $thinness)" }
             check(nOn < nRaw) { "Canny ($nOn) should be thinner than a raw threshold ($nRaw)" }
-            val flines = edges.toContourFLines(minPerimeter = 12, simplifyTolerance = 1.2)
+            val flines = edges.toContourFLines(minPerimeter = 120, simplifyTolerance = 12.0)
             Figure(
                 listOf(
                     Tile("source", src),
@@ -253,11 +267,15 @@ object ImagingGallery {
         },
 
         Panel("04-corners", "Corners — Harris, Shi–Tomasi and FAST on a square with known corners") {
-            val src = squareImg(160, 160, 40, 40, 119, 119)
-            val harris = src.harrisCorners(threshold = 0.05, minDistance = 12, maxCount = 20)
-            val shi = src.shiTomasiCorners(threshold = 0.05, minDistance = 12, maxCount = 20)
-            val fast = src.fastCorners(threshold = 0.2, minDistance = 12, maxCount = 20)
-            val truth = listOf(40.0 to 40.0, 119.0 to 40.0, 40.0 to 119.0, 119.0 to 119.0)
+            val src = squareImg(1600, 1600, 400, 400, 1199, 1199)
+            // minDistance is a separation in pixels, so it scales with the image; the accuracy
+            // bounds below do NOT — corner localisation is a per-pixel property and stays sub-5px
+            // however large the picture gets. That distinction is the whole trick to scaling a
+            // test: scale the lengths, hold the accuracies.
+            val harris = src.harrisCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
+            val shi = src.shiTomasiCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
+            val fast = src.fastCorners(threshold = 0.2, minDistance = 120, maxCount = 20)
+            val truth = listOf(400.0 to 400.0, 1199.0 to 400.0, 400.0 to 1199.0, 1199.0 to 1199.0)
             check(harris.size == 4) { "Harris found ${harris.size} corners, expected 4" }
             check(shi.size == 4) { "Shi-Tomasi found ${shi.size} corners, expected 4" }
             for ((ex, ey) in truth) {
@@ -272,11 +290,11 @@ object ImagingGallery {
                     Tile("shiTomasiResponse (viridis)", src.shiTomasiResponse().normalized().colormap("viridis")),
                     Tile(
                         "harrisCorners -> ${harris.size}", src,
-                        listOf(Overlay(afield.stdlib.cornersToFLines(harris, 7.0), ORANGE, 2f))
+                        listOf(Overlay(afield.stdlib.cornersToFLines(harris, 70.0), ORANGE, 2f))
                     ),
                     Tile(
                         "fastCorners -> ${fast.size}", src,
-                        listOf(Overlay(afield.stdlib.cornersToFLines(fast, 7.0, box = true), GREEN, 2f))
+                        listOf(Overlay(afield.stdlib.cornersToFLines(fast, 70.0, box = true), GREEN, 2f))
                     )
                 ),
                 "4/4 Harris corners within ${"%.2f".format(worst)} px of the true square corners"
@@ -298,15 +316,15 @@ object ImagingGallery {
                 val x = (600 + 220 * cos(a)).toInt(); val y = (1500 + 220 * sin(a)).toInt()
                 if (x in 0..1999 && y in 0..1999) src.set(x, y, 0, 1f)
             }
-            val lines = houghLines(src, thetaSteps = 360, threshold = 100, maxLines = 5)
+            val lines = houghLines(src, thetaSteps = 360, threshold = 1000, maxLines = 5)
             check(lines.size >= 3) { "expected >= 3 Hough lines, got ${lines.size}" }
-            check(lines.any { abs(it.theta - PI / 2) < 0.05 && abs(it.rho - 40.0) < 2.0 }) {
-                "horizontal line (rho=40, theta=pi/2) not recovered: $lines"
+            check(lines.any { abs(it.theta - PI / 2) < 0.05 && abs(it.rho - 400.0) < 5.0 }) {
+                "horizontal line (rho=400, theta=pi/2) not recovered: $lines"
             }
-            check(lines.any { it.theta < 0.05 && abs(it.rho - 150.0) < 2.0 }) {
-                "vertical line (rho=150, theta=0) not recovered: $lines"
+            check(lines.any { it.theta < 0.05 && abs(it.rho - 1500.0) < 5.0 }) {
+                "vertical line (rho=1500, theta=0) not recovered: $lines"
             }
-            val flines = afield.stdlib.linesToFLines(lines, 200, 200)
+            val flines = afield.stdlib.linesToFLines(lines, 2000, 2000)
             Figure(
                 listOf(
                     Tile("edge mask (3 lines + a decoy ring)", src),
@@ -321,13 +339,13 @@ object ImagingGallery {
             val mask = noisy.thresholdOtsu()
             val cleaned = mask.open(2, StructuringElement.DISC).close(2, StructuringElement.DISC)
             val cc = cleaned.connectedComponents(8)
-            val big = cc.filterByArea(80)
+            val big = cc.filterByArea(8000)
             check(big.size in 3..8) { "expected ~4 large blobs after cleaning, got ${big.size}: ${big.map { it.area }}" }
             val dt = cleaned.distanceTransform()
             // The disc in the test card has radius 30; its distance-transform peak must be ~30.
-            val discPeak = dt.crop(26, 30, 60, 60).max()
-            check(discPeak > 20f) { "distance transform peaked at only $discPeak inside the r=30 disc" }
-            val contours = cleaned.toContourFLines(minPerimeter = 24, simplifyTolerance = 1.5)
+            val discPeak = dt.crop(260, 300, 600, 600).max()
+            check(discPeak > 200f) { "distance transform peaked at only $discPeak inside the r=300 disc" }
+            val contours = cleaned.toContourFLines(minPerimeter = 240, simplifyTolerance = 15.0)
             Figure(
                 listOf(
                     Tile("noisy source", noisy),
@@ -340,21 +358,21 @@ object ImagingGallery {
                         listOf(Overlay(contours, PINK, 1.6f))
                     )
                 ),
-                "${cc.count} components (${big.size} with area >= 80), distance-transform peak ${"%.1f".format(discPeak)}"
+                "${cc.count} components (${big.size} with area >= 8000), distance-transform peak ${"%.1f".format(discPeak)}"
             )
         },
 
         Panel("07-pyramids", "Multiscale — Gaussian pyramid and an invertible Laplacian pyramid") {
-            val src = textured(192, 192)
-            val gp = src.gaussianPyramid(levels = 5, minSize = 12)
-            val lp = src.laplacianPyramid(levels = 4, minSize = 12)
+            val src = textured(1920, 1920)
+            val gp = src.gaussianPyramid(levels = 5, minSize = 120)
+            val lp = src.laplacianPyramid(levels = 4, minSize = 120)
             val back = lp.reconstruct()
             var worst = 0f
             for (i in src.data.indices) worst = maxOf(worst, abs(src.data[i] - back.data[i]))
             check(worst < 1e-4f) { "Laplacian pyramid round-trip error $worst" }
             // Display zoom only: each level is pixel-replicated up to ~the base size so the
             // coarsening reads as blockiness instead of as a 12x12 speck. Real sizes in captions.
-            fun zoomFor(im: Img) = maxOf(1, 192 / maxOf(im.width, im.height))
+            fun zoomFor(im: Img) = maxOf(1, 1920 / maxOf(im.width, im.height))
             val tiles = ArrayList<Tile>()
             gp.levels.forEachIndexed { i, l ->
                 tiles.add(Tile("gaussian L$i — ${l.width}x${l.height}" + zoomNote(zoomFor(l)), l, zoom = zoomFor(l)))
@@ -374,19 +392,19 @@ object ImagingGallery {
         },
 
         Panel("08-warps", "Geometry — affine warps, and a homography rectifying a perspective view") {
-            val doc = document(200, 140)
-            val h = Homography(doubleArrayOf(1.0, 0.16, 18.0, 0.09, 1.0, 14.0, 0.0016, 0.0013, 1.0))
-            val projected = doc.warpPerspective(h, 260, 200, border = Border.ZERO)
-            val quad = listOf(Vec2(0f, 0f), Vec2(199f, 0f), Vec2(199f, 139f), Vec2(0f, 139f)).map { h.apply(it) }
-            val rectified = projected.warpQuadToRect(quad, 200, 140)
-            val err = doc.crop(12, 12, 176, 116).meanAbsDiff(rectified.crop(12, 12, 176, 116))
+            val doc = document(2000, 1400)
+            val h = Homography(doubleArrayOf(1.0, 0.16, 180.0, 0.09, 1.0, 140.0, 0.00016, 0.00013, 1.0))
+            val projected = doc.warpPerspective(h, 2600, 2000, border = Border.ZERO)
+            val quad = listOf(Vec2(0f, 0f), Vec2(1999f, 0f), Vec2(1999f, 1399f), Vec2(0f, 1399f)).map { h.apply(it) }
+            val rectified = projected.warpQuadToRect(quad, 2000, 1400)
+            val err = doc.crop(120, 120, 1760, 1160).meanAbsDiff(rectified.crop(120, 120, 1760, 1160))
             check(err < 0.10) { "rectification error $err is too large" }
             val quadLine = afield.stdlib.contourToFLine(quad, closed = true)
             Figure(
                 listOf(
                     Tile("source document", doc),
                     Tile("rotate(0.35 rad)", doc.rotate(0.35, border = Border.CLAMP)),
-                    Tile("warpAffine(shear + scale)", doc.warpAffine(Affine2D(1.0, 0.22, 0.3, 0.9, 0.0, 0.0), 240, 180, border = Border.ZERO)),
+                    Tile("warpAffine(shear + scale)", doc.warpAffine(Affine2D(1.0, 0.22, 0.3, 0.9, 0.0, 0.0), 2400, 1800, border = Border.ZERO)),
                     Tile("projected through a homography", projected, listOf(Overlay(listOf(quadLine), ORANGE, 2f))),
                     Tile("warpQuadToRect (err ${"%.3f".format(err)})", rectified)
                 ),
@@ -395,14 +413,14 @@ object ImagingGallery {
         },
 
         Panel("09-flow", "Motion — Lucas–Kanade flow and the homography RANSAC fits to it") {
-            val a = textured(200, 200)
-            val planted = Affine2D.rotationAbout(0.05, 100.0, 100.0).compose(Affine2D.translation(5.0, -3.0))
+            val a = textured(2000, 2000)
+            val planted = Affine2D.rotationAbout(0.05, 1000.0, 1000.0).compose(Affine2D.translation(50.0, -30.0))
             val b = a.warpAffine(planted, border = Border.CLAMP)
-            val seeds = a.goodFeaturesToTrack(maxCount = 220, minDistance = 9)
-                .filter { it.x in 24.0..176.0 && it.y in 24.0..176.0 }
+            val seeds = a.goodFeaturesToTrack(maxCount = 220, minDistance = 90)
+                .filter { it.x in 240.0..1760.0 && it.y in 240.0..1760.0 }
                 .map { it.toVec2() }
             check(seeds.size >= 30) { "expected >= 30 seeds, got ${seeds.size}" }
-            val flow = opticalFlowLK(a, b, seeds, windowRadius = 8, levels = 3)
+            val flow = opticalFlowLK(a, b, seeds, windowRadius = 8, levels = 5)
             check(flow.tracked().size >= seeds.size / 2) { "only ${flow.tracked().size}/${seeds.size} tracked" }
             val fit = findHomographyRansac(flow.sourcePoints(), flow.targetPoints(), threshold = 1.5, iterations = 1200, seed = 3L)
             // Every arrow must agree with the planted motion at its own location.
@@ -413,20 +431,20 @@ object ImagingGallery {
             }
             check(worstArrow < 3.0) { "an LK arrow disagrees with the planted motion by $worstArrow px" }
             var worstFit = 0.0
-            for (gx in 40..160 step 40) for (gy in 40..160 step 40) {
+            for (gx in 400..1600 step 400) for (gy in 400..1600 step 400) {
                 val (fx, fy) = fit.homography.apply(gx.toDouble(), gy.toDouble())
                 val (tx, ty) = planted.apply(gx.toDouble(), gy.toDouble())
                 worstFit = maxOf(worstFit, hypot(fx - tx, fy - ty))
             }
             check(worstFit < 2.0) { "RANSAC's homography is off by up to $worstFit px" }
-            val arrows = flow.toFLines(scale = 6.0, minMagnitude = 0.2, headSize = 4.0)
+            val arrows = flow.toFLines(scale = 6.0, minMagnitude = 2.0, headSize = 40.0)
             val seedDots = afield.stdlib.cornersToFLines(
-                seeds.map { afield.stdlib.Corner(it.x.toDouble(), it.y.toDouble(), 1.0) }, 2.5
+                seeds.map { afield.stdlib.Corner(it.x.toDouble(), it.y.toDouble(), 1.0) }, 25.0
             )
             Figure(
                 listOf(
                     Tile("frame A", a, listOf(Overlay(seedDots, DIM, 1f))),
-                    Tile("frame B (rotate 0.05 + shift 5,-3)", b),
+                    Tile("frame B (rotate 0.05 + shift 50,-30)", b),
                     Tile("|A - B|", afield.stdlib.frameDifference(a, b).normalized().colormap("inferno")),
                     Tile(
                         "LK flow x6 — ${flow.tracked().size} tracks", a,
@@ -450,8 +468,13 @@ object ImagingGallery {
             }
             val hsv = rgb.rgbToHsv()
             // Blurring in linear light vs in sRGB gives measurably different results.
-            val naive = rgb.gaussianBlur(4.0)
-            val correct = rgb.toLinear().gaussianBlur(4.0).toSrgb()
+            // sigma scales WITH the picture here, unlike the pixel-scale radii elsewhere: this
+            // source's pattern is defined in normalised coordinates, so it is the same image
+            // enlarged, and a 4 px blur on a 10x larger copy barely touches it (the sRGB-vs-linear
+            // difference collapsed to 3.7e-5, below this panel's own threshold). Blurring the same
+            // FRACTION of the picture keeps it the same demonstration.
+            val naive = rgb.gaussianBlur(40.0)
+            val correct = rgb.toLinear().gaussianBlur(40.0).toSrgb()
             val delta = naive.meanAbsDiff(correct)
             check(delta > 0.002) { "sRGB and linear-light blurs are suspiciously identical ($delta)" }
             val roundTrip = hsv.hsvToRgb().meanAbsDiff(rgb)
