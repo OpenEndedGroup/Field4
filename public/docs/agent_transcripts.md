@@ -84,6 +84,12 @@ geometry in the headset from shipping it over the wire: a swept tube whose spine
 script and an explicit request for the head's built-in cube in one `visionMetal(...)` call.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_metal_cube/metadata.edn)
 
+**vision_geometry_desk_preview** — The one on this list that needs **no headset at all**: both boxes
+build a Live Metal `geometry { … }` for real — compiled to JavaScript and executed — and draw the
+resulting mesh into their own output. The second is the same mesh wound backwards, so you can see what
+an inside-out mesh looks like and how the preview tells you.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
+
 ## Graphics scenes
 
 These are self-contained scenes that build their own `Window` + `Renderer` and, when run, open a

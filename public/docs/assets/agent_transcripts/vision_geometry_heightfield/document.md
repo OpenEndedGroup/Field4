@@ -25,7 +25,7 @@ From `code`
 {{ visionmetal uniforms=spin,light }}
 
 ```edn [field-box id="agent_vision_geometry_heightfield" role="properties"]
-{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 100.0 420.0 270.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 63 "characters" 2360 "sha256" "51db5f4dd11a14801341a3ce3e07d51562da3220f4f5f5000e7e69e80ad7cecb"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
+{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 100.0 420.0 270.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 68 "characters" 2721 "sha256" "6b9c18101e3d822d3ee40369424a0a23f53f33ee553303a708d1980398a150f4"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_heightfield" name="code" path="agent_vision_geometry_heightfield_code_.kt"]
@@ -74,12 +74,17 @@ onStart {
         }
 
         // vertex() handed back an index for each of those; stitch them into quads. The
-        // lattice is (n+1) wide, so a cell's four corners are a, a+1, a+stride+1, a+stride.
+        // lattice is (n+1) wide, so a cell's four corners are a, a+stride, a+stride+1, a+1.
+        //
+        // The order matters as much as the membership. This sheet lies in XZ with its
+        // normal on +y, and only this diagonal winds counter-clockwise seen from above.
+        // Take the corners the other way round and the head — which culls back faces —
+        // shows you the underside of your landscape, which is to say nothing at all.
         val stride = n + 1
         for (row in 0 until n) {
             for (col in 0 until n) {
                 val a = base + row * stride + col
-                quad(a, a + 1, a + stride + 1, a + stride)
+                quad(a, a + stride, a + stride + 1, a + 1)
             }
         }
 
