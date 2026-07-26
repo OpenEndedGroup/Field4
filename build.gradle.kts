@@ -1009,6 +1009,18 @@ tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
     jvmArgs(vectorizationJvmArgs)
 }
 
+tasks.register<JavaExec>("generateCodebaseReference") {
+    group = "documentation"
+    description = "Regenerates the committed codebase reference (public/docs/reference/) from the KDoc in afield.stdlib and afield.visualization. Pass -Pout=<dir> to write elsewhere; with no output dir the generator drift-checks the committed pages instead."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.StdlibReferenceGenerator")
+    val out = (project.findProperty("out") as String?) ?: "public/docs/reference"
+    args(file(out).absolutePath)
+}
+
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
     group = "verification"
     description = "Verifies FileWatchManager.parseSidecarPath splits underscore-bearing box ids/properties without spawning phantom boxes."
