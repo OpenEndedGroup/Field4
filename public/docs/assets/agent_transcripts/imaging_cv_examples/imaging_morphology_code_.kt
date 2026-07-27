@@ -1,6 +1,6 @@
 // Three disjoint discs of known radius, then noise on top of them.
-val discs = listOf(Triple(55.0, 60.0, 28.0), Triple(150.0, 55.0, 20.0), Triple(110.0, 135.0, 14.0))
-val clean = Img.generate(220, 180) { x, y ->
+val discs = listOf(Triple(550.0, 600.0, 280.0), Triple(1500.0, 550.0, 200.0), Triple(1100.0, 1350.0, 140.0))
+val clean = Img.generate(2200, 1800) { x, y ->
     if (discs.any { (cx, cy, r) -> hypot(x - cx, y - cy) <= r }) 0.85f else 0.15f
 }
 val rng = kotlin.random.Random(3)
@@ -30,3 +30,7 @@ cc.components.sortedByDescending { it.area }.forEach {
         "bbox=${it.boundingWidth}x${it.boundingHeight} fill=${"%.2f".format(it.fillRatio)}")
 }
 println("distance-transform peak ${"%.1f".format(dt.max())} (largest planted radius ${discs.maxOf { it.third }})")
+
+// Connected components are blobs; blobs have outlines. Same story as Canny — the raster
+// is the evidence, the FLines are the result you can actually build on.
+lines(cleaned.toContourFLines(minPerimeter = 120, simplifyTolerance = 8.0))

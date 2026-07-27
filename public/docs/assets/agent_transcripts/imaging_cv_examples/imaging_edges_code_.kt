@@ -1,9 +1,9 @@
-val src = Img.generate(240, 180) { x, y ->
-    var v = 0.12f + 0.08f * (y / 180f)
-    if (hypot(x - 62.0, y - 70.0) <= 34.0) v = 0.85f
-    if (x in 120..185 && y in 30..95) v = 0.68f
-    val tx = x - 210.0; val ty = y - 40.0
-    if (ty in 0.0..60.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
+val src = Img.generate(2400, 1800) { x, y ->
+    var v = 0.12f + 0.08f * (y / 1800f)
+    if (hypot(x - 620.0, y - 700.0) <= 340.0) v = 0.85f
+    if (x in 1200..1850 && y in 300..950) v = 0.68f
+    val tx = x - 2100.0; val ty = y - 400.0
+    if (ty in 0.0..600.0 && kotlin.math.abs(tx) <= ty * 0.5) v = 0.95f
     v
 }
 
@@ -12,8 +12,9 @@ val grad = src.sobel()
 val edges = src.canny(low = 0.05, high = 0.11, sigma = 1.2)
 val auto = src.cannyAuto()          // thresholds derived from this image's own gradients
 
-// Edges are geometry, and geometry in Field is an FLine.
-val flines = edges.toContourFLines(minPerimeter = 12, simplifyTolerance = 1.2)
+// Edges are geometry, and geometry in Field is an FLine. minPerimeter and the simplify
+// tolerance are pixel distances, so they scale with the image.
+val flines = edges.toContourFLines(minPerimeter = 120, simplifyTolerance = 12.0)
 
 showImgGrid(
     "source" to src,
@@ -30,3 +31,7 @@ println(
         "canny ${edges.data.count { it > 0.5f }} px, cannyAuto ${auto.data.count { it > 0.5f }} px; " +
         "${flines.size} FLines, ${flines.sumOf { it.nodes.size }} nodes total"
 )
+
+// The raster above is what Canny computed; this is what it *means* — three closed
+// outlines you can now transform, intersect or animate like any other Field geometry.
+lines(flines)

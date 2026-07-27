@@ -1,26 +1,28 @@
 // A square whose corners are at exactly known coordinates.
-val square = Img.generate(200, 200) { x, y -> if (x in 50..149 && y in 50..149) 0.92f else 0.08f }
-val harris = square.harrisCorners(threshold = 0.05, minDistance = 12, maxCount = 20)
-val fast = square.fastCorners(threshold = 0.2, minDistance = 12, maxCount = 20)
+val square = Img.generate(2000, 2000) { x, y -> if (x in 500..1499 && y in 500..1499) 0.92f else 0.08f }
+val harris = square.harrisCorners(threshold = 0.05, minDistance = 120, maxCount = 20)
+val fast = square.fastCorners(threshold = 0.2, minDistance = 120, maxCount = 20)
 
-val truth = listOf(50.0 to 50.0, 149.0 to 50.0, 50.0 to 149.0, 149.0 to 149.0)
+val truth = listOf(500.0 to 500.0, 1499.0 to 500.0, 500.0 to 1499.0, 1499.0 to 1499.0)
 val worst = truth.maxOf { (ex, ey) -> harris.minOf { hypot(it.x - ex, it.y - ey) } }
 
 // Three lines at exactly known (rho, theta), plus a decoy ring Hough must not fit.
-val lineMask = Img.zeros(200, 200, 1)
-for (x in 10 until 190) lineMask.set(x, 40, 0, 1f)          // rho = 40,  theta = pi/2
-for (y in 10 until 190) lineMask.set(150, y, 0, 1f)         // rho = 150, theta = 0
-for (t in 0 until 240) {
-    val x = 20 + t * 0.6; val y = 60 + t * 0.6
-    if (x < 199 && y < 199) lineMask.set(x.toInt(), y.toInt(), 0, 1f)
+val lineMask = Img.zeros(2000, 2000, 1)
+for (x in 100 until 1900) lineMask.set(x, 400, 0, 1f)        // rho = 400,  theta = pi/2
+for (y in 100 until 1900) lineMask.set(1500, y, 0, 1f)       // rho = 1500, theta = 0
+for (t in 0 until 2400) {
+    val x = 200 + t * 0.6; val y = 600 + t * 0.6
+    if (x < 1999 && y < 1999) lineMask.set(x.toInt(), y.toInt(), 0, 1f)
 }
-for (i in 0 until 360) {
-    val a = 2.0 * PI * i / 360
-    val x = (60 + 22 * kotlin.math.cos(a)).toInt()
-    val y = (150 + 22 * kotlin.math.sin(a)).toInt()
-    if (x in 0..199 && y in 0..199) lineMask.set(x, y, 0, 1f)
+for (i in 0 until 3600) {
+    val a = 2.0 * PI * i / 3600
+    val x = (600 + 220 * kotlin.math.cos(a)).toInt()
+    val y = (1500 + 220 * kotlin.math.sin(a)).toInt()
+    if (x in 0..1999 && y in 0..1999) lineMask.set(x, y, 0, 1f)
 }
-val lines = houghLines(lineMask, thetaSteps = 360, threshold = 100, maxLines = 5)
+// threshold is a vote count, so it scales with the number of edge pixels on a line.
+// Named `houghs`, not `lines`, so it cannot shadow the lines() drawing call below.
+val houghs = houghLines(lineMask, thetaSteps = 360, threshold = 1000, maxLines = 5)
 
 showImgGrid(
     "harrisResponse (signed, coolwarm)" to square.harrisResponse().colormapDiverging("coolwarm"),
@@ -32,6 +34,14 @@ showImgGrid(
 println("harris ${harris.size} corners, worst ${"%.2f".format(worst)} px from the true square corners")
 println("fast ${fast.size} corners at " + fast.sortedBy { it.y * 1000 + it.x }
     .joinToString(", ") { "(${it.x.toInt()},${it.y.toInt()})" })
-println("hough " + lines.joinToString(", ") {
+println("hough " + houghs.joinToString(", ") {
     "(rho=${"%.0f".format(it.rho)}, theta=${"%.2f".format(it.theta)}, votes=${it.votes})"
 })
+
+// A HoughLine is an INFINITE line — (rho, theta) names a whole line, not a segment — so
+// it has no drawable form until you say which rectangle you are drawing it into. That is
+// what toFLine(w, h) is for, and why it is nullable: a peak can name a line that misses.
+lines(
+    cornersToFLines(harris, size = 40.0) +
+        houghs.mapNotNull { it.toFLine(lineMask.width, lineMask.height) }
+)
