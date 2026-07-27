@@ -29,6 +29,15 @@ import kotlin.reflect.typeOf
  * failure to read, write or serialize is rethrown as a `SerializationException` naming the file.
  */
 
+/**
+ * Writes any serializable value to a JSON file, atomically, creating parent directories as needed.
+ *
+ * The no-delegate half of this file: use it when you want to choose the path yourself rather than let [saved]
+ * derive one. Atomic via Field's `safeSave`, so an interrupted write cannot leave a half-written file behind.
+ *
+ * @throws kotlinx.serialization.SerializationException wrapping **any** failure — a missing serializer, a
+ * permission error, a full disk — with the absolute path in the message
+ */
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> toJSONFile(file: File, value: T) {
     try {
@@ -44,6 +53,16 @@ inline fun <reified T> toJSONFile(file: File, value: T) {
     }
 }
 
+/**
+ * Reads a value back from a JSON file, or returns [defaultValue] if the file does not exist.
+ *
+ * A missing file is *not* an error — that is the whole point, so first-run code needs no special case. A file
+ * that exists but cannot be decoded **is** an error, so a corrupted or schema-drifted file throws rather than
+ * silently reverting to the default.
+ *
+ * @throws kotlinx.serialization.SerializationException on any decode or read failure, with the path in the
+ * message (which reads "Couldn't save to …" — the message is wrong about the direction, though the path is right)
+ */
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> fromJSONFile(file: File, defaultValue: () -> T): T {
     try {
@@ -62,6 +81,20 @@ inline fun <reified T> fromJSONFile(file: File, defaultValue: () -> T): T {
     }
 }
 
+/**
+ * The delegate behind `var n by saved { 0 }`: a property that loads itself from disk on first read and writes
+ * itself back on every assignment.
+ *
+ * The file is derived, not chosen — `<document directory>/<box id>/<property name>.json` — so renaming the
+ * property or the box **orphans the old file** and the value appears to reset. The box comes from the delegate's
+ * receiver if that is a `Box`, otherwise from the ambient `Box.context`.
+ *
+ * Every write hits the disk synchronously and atomically, so this is persistence for settings and small state,
+ * not for something you assign in a per-frame loop. The value is cached in memory after the first read, which
+ * also means an edit to the file underneath a running box is not noticed.
+ *
+ * Construct it through [saved] rather than directly; that is what supplies the serializer for `T`.
+ */
 class SavedJsonValue<T>(
     private val serializer: KSerializer<T>,
     private val defaultValue: () -> T
@@ -70,6 +103,15 @@ class SavedJsonValue<T>(
     private var loaded = false
     private var value: T? = null
 
+    /**
+     * The stored value, loading it from disk on the first read of this box's run.
+     *
+     * If there is no file yet, the default is computed **and immediately written**, so the file exists from then
+     * on. A file that cannot be decoded throws rather than falling back to the default.
+     *
+     * @throws kotlinx.serialization.SerializationException if the existing file cannot be decoded
+     * @throws IllegalArgumentException if there is no initialised box and session to derive a path from
+     */
     override fun getValue(thisRef: Any?, property: KProperty<*>): T {
         if (!loaded) {
             val file = fileFor(thisRef, property)
@@ -91,6 +133,12 @@ class SavedJsonValue<T>(
         return value as T
     }
 
+    /**
+     * Stores the value and writes it to disk immediately — there is no batching and no dirty flag, so an
+     * assignment in a tight loop is a file write per iteration.
+     *
+     * @throws kotlinx.serialization.SerializationException if encoding or writing fails
+     */
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: T) {
         val file = fileFor(thisRef, property)
         save(file, value, property)
@@ -127,6 +175,16 @@ class SavedJsonValue<T>(
     }
 }
 
+/**
+ * `var n by saved { 0 }` — a box property that persists across runs, restarts and reopening the document.
+ *
+ * The shortest way to give a sketch memory: assign to it and it is on disk; read it next session and it is still
+ * there. [defaultValue] is used only when there is no file yet, and is then written out.
+ *
+ * `T` must be serializable by kotlinx.serialization — a `@Serializable` class, or one of the types Field's
+ * `FieldJson` already knows. The failure for an unsupported type is a `SerializationException` at the first read
+ * or write, not at compile time.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> saved(noinline defaultValue: () -> T): SavedJsonValue<T> {
     @Suppress("UNCHECKED_CAST")
@@ -134,6 +192,14 @@ inline fun <reified T> saved(noinline defaultValue: () -> T): SavedJsonValue<T> 
     return SavedJsonValue(serializer, defaultValue)
 }
 
+/**
+ * `val log by saved<List<String>>()` — [saved] without a default, for the collection types that have an obvious
+ * empty value.
+ *
+ * Supported only for `List`, `Set`, `Map` and their mutable forms; **anything else throws** on first use rather
+ * than at compile time, with a message saying an explicit default is required. When in doubt use the overload
+ * that takes one.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> saved(): SavedJsonValue<T> {
     val type = typeOf<T>()
