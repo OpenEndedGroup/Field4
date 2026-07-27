@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import os
 import re
@@ -366,6 +367,33 @@ def filter_tests(
             continue
         selected.append(test)
     return selected
+
+
+def unmatched_ids(selected: list[dict[str, Any]], requested: set[str]) -> set[str]:
+    """Requested `--id`s that no test in the catalog answers to.
+
+    Selection is a filter, so an id nobody matches contributes nothing and
+    disappears without trace: ask for four tests, get "3 passed, 0 failed", and
+    the run reads as green. A typo, a renamed test or a stale catalog all look
+    like success. Callers use this to refuse instead.
+    """
+    return requested - {str(test.get("id") or "") for test in selected}
+
+
+def describe_unmatched_ids(missing: set[str], tests: list[dict[str, Any]]) -> str:
+    known = sorted(str(test.get("id") or "") for test in tests)
+    lines = [
+        f"{len(missing)} requested --id value(s) matched no test in the catalog:",
+    ]
+    for wanted in sorted(missing):
+        near = difflib.get_close_matches(wanted, known, n=3, cutoff=0.6)
+        suffix = f"  (did you mean: {', '.join(near)}?)" if near else ""
+        lines.append(f"  - {wanted}{suffix}")
+    lines.append(
+        "The catalog was refreshed before this check, so these ids are absent from the "
+        "FIELD_TEST blocks in the scanned roots, not merely stale."
+    )
+    return "\n".join(lines)
 
 
 def current_platform_tokens() -> set[str]:
@@ -1242,12 +1270,41 @@ def run(args: argparse.Namespace) -> int:
         refresh_catalog=args.refresh_catalog,
         roots=args.roots,
     )
-    selected = filter_tests(
-        list(catalog.get("tests") or []),
-        ids=set(args.ids or []),
-        tags=set(args.tags or []),
-        runner_names=set(args.runners or []),
-    )
+    requested_ids = set(args.ids or [])
+
+    def select(from_catalog: dict[str, Any]) -> list[dict[str, Any]]:
+        return filter_tests(
+            list(from_catalog.get("tests") or []),
+            ids=requested_ids,
+            tags=set(args.tags or []),
+            runner_names=set(args.runners or []),
+        )
+
+    selected = select(catalog)
+
+    # An unmatched --id is usually a stale catalog rather than a typo: the file on
+    # disk is only rebuilt on --refresh-catalog or when absent, so a test added
+    # since the last run is invisible. Rediscover once before believing it is gone.
+    missing = unmatched_ids(selected, requested_ids)
+    if missing and not args.refresh_catalog:
+        print(
+            f"Re-scanning for FIELD_TEST blocks: {len(missing)} requested id(s) "
+            f"absent from {catalog_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+        catalog = load_or_refresh_catalog(
+            catalog_path=catalog_path,
+            refresh_catalog=True,
+            roots=args.roots,
+        )
+        selected = select(catalog)
+        missing = unmatched_ids(selected, requested_ids)
+
+    # Refuse rather than run a subset: a partially-matched selection that reports
+    # "N passed" for fewer tests than were asked for reads as a clean run.
+    if missing:
+        raise SystemExit(describe_unmatched_ids(missing, list(catalog.get("tests") or [])))
 
     if not selected:
         raise SystemExit("No tests matched the requested filters.")
