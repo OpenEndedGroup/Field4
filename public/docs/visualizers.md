@@ -314,6 +314,67 @@ parameter sweep already has:
 
 ![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png)
 
+#### All of it, in a real box
+
+Everything above is a fragment rendered on its own. Here is the same renderer
+inside an actual Field box, in Field's own output areas — a whole pipeline read at
+a glance, with `.h` doing all the work:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.imaging-panels
+runner: backdoor-box
+tags: [docs, visualizers, imaging, cv]
+timeoutSec: 90
+waitSec: 1.5
+# Measured, not guessed: the captured output pane sizes itself to its CONTENT, not to the
+# box frame — setting w/h here moved the box but not the pane. So the row is `nowrap` and
+# holds four panels (~1440px); a fifth ran off the right edge of the capture, and a
+# `flex-wrap:wrap` row collapsed to one panel per line because the intrinsic width is then
+# small. ComponentLabelling has its own figure above, so four is the honest fit.
+w: 1120
+h: 420
+expect:
+  outputContains:
+    - "imaging visualizers ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
+:::static
+val scene = Img.generateRGB(180, 132) { x, y ->
+    var r = 0.10f + 0.30f * (x / 179f)
+    var g = 0.12f + 0.22f * (y / 131f)
+    var b = 0.34f - 0.20f * (x / 179f)
+    if (x in 24..68 && y in 20..56) { r = 0.94f; g = 0.86f; b = 0.42f }
+    if (hypot(x - 128.0, y - 46.0) <= 22.0) { r = 0.30f; g = 0.80f; b = 0.92f }
+    if (x in 112..113 || y in 104..105) { r = 0.98f; g = 0.98f; b = 0.98f }
+    Triple(r, g, b)
+}
+val gray = scene.luma()
+
+// Four stages of one pipeline, four different value types, one `.h` each. A flex row
+// keeps them in a single output channel instead of four tall ones.
+val panels = listOf(
+    scene.h,                                                // direct mode, 3 channels
+    gray.sobel().dx.h,                                      // signed -> coolwarm diverging
+    gray.gaussianPyramid(4).h,                              // rungs at true relative scale
+    gray.harrisCorners(minDistance = 6, maxCount = 20).h    // scatter, strength-coded
+)
+display("panels", "<div style='display:flex;gap:14px;flex-wrap:nowrap;align-items:flex-start'>" +
+    panels.joinToString("") + "</div>")
+
+println("imaging visualizers ready")
+```
+
+Note what is *not* in that code: no `showImg`, no PNG encoding, no colour-map
+choice, no normalisation, no per-type branching. `.h` is the whole interface, and
+the renderer decides per value whether it is looking at colour data, a signed
+response, a pyramid, or a list of detections.
+
 !!! tip "Open the demo document"
     `dev_docs/agents/transcripts/imaging_visualizers_demo.yaml` is a loadable
     document with one box per visualizer on this page. Replay it into a fresh
