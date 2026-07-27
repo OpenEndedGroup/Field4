@@ -53,12 +53,9 @@ import kotlin.math.*
  * single NaN in either array propagates straight into the result. Variances and covariances are the
  * population (divide by n) forms, which cancels out of a correlation anyway.
  *
- * Two members are broken as things stand, both for the same reason: [ranksAverageTies], and the
- * private rank helper inside [micTicNaive], each sort a copy of their index array and then throw the
- * sorted copy away, so the "ranks" they compute are merely positions. That makes [spearman] return
- * about 1.0 for any input without adjacent ties, and [micTicNaive] report a MIC of about 1.0 for any
- * input at all. [kendallTauB], [chatterjeeXi] and [distanceCorrelation] do their own sorting
- * correctly and are unaffected.
+ * The rank-based members all sort by value with a stable tie-break on the original index:
+ * [ranksAverageTies] hands tied values their average rank, while the private helper inside
+ * [micTicNaive] uses plain order ranks, which is all its equipartition binning needs.
  */
 object StatsDependence {
 
@@ -96,19 +93,18 @@ object StatsDependence {
     // Average-rank ties:
     // returns ranks in [1..n] with average ranks for tied values.
     /**
-     * Meant to return ranks in 1..n with tied values sharing their average rank — but **it never
-     * sorts**. The `sortedWith` call below returns a new list and its result is discarded, so the index
-     * array stays in identity order and what comes back is each element's *position*, averaged only
-     * over runs of equal values that happened to be adjacent already. For input whose neighbours all
-     * differ that is exactly 1.0, 2.0, 3.0 … whatever the values are.
+     * Ranks in 1..n, smallest value first, with tied values sharing the average of the positions they
+     * occupy: `3, 1, 4, 1, 5` comes back as `3.0, 1.5, 4.0, 1.5, 5.0`, since the two 1s sit at positions
+     * 1 and 2. The result therefore always sums to n(n+1)/2 whatever the input looks like.
      *
-     * Documented rather than left blank because [spearman] is built on it and inherits the fault. Do
-     * not use this as a ranking until the discarded sort is put back.
+     * Ties are broken by original index, so the ordering is stable and the ranks do not depend on the
+     * sort's internals. Equality is exact `Double` comparison — values a hair apart count as distinct
+     * and get consecutive ranks rather than a shared average. O(n log n); [spearman] is built on it.
      */
     fun ranksAverageTies(values: DoubleArray): DoubleArray {
         val n = values.size
-        val idx = IntArray(n) { it }
-        idx.sortedWith { i, j ->
+        // sortedWith returns a new list; index through that, never through the unsorted 0..n-1.
+        val order = (0 until n).sortedWith { i, j ->
             val a = values[i]
             val b = values[j]
             when {
@@ -122,13 +118,13 @@ object StatsDependence {
         var pos = 0
         while (pos < n) {
             var end = pos
-            val v = values[idx[pos]]
-            while (end + 1 < n && values[idx[end + 1]] == v) end++
+            val v = values[order[pos]]
+            while (end + 1 < n && values[order[end + 1]] == v) end++
 
             // positions are 0-based; rank is 1-based
             val avgRank = ((pos + 1) + (end + 1)) / 2.0
             for (k in pos..end) {
-                ranks[idx[k]] = avgRank
+                ranks[order[k]] = avgRank
             }
             pos = end + 1
         }
@@ -163,10 +159,14 @@ object StatsDependence {
     // Spearman (Pearson on ranks)
     // -------------------------
     /**
-     * Spearman's rank correlation — [pearson] applied to each array's average-tie ranks, which would put
-     * a monotone-but-curved relationship near ±1 where Pearson reads less. **Unusable as it stands: it
-     * inherits the missing sort in [ranksAverageTies] and so returns about 1.0 for essentially any
-     * input.** Use [kendallTauB] or [chatterjeeXi] until that is fixed.
+     * Spearman's rank correlation — [pearson] applied to each array's [ranksAverageTies], which puts a
+     * monotone-but-curved relationship at ±1 where Pearson reads less: exactly +1 for any strictly
+     * increasing pair, exactly -1 for any strictly decreasing one, whatever curve connects them.
+     *
+     * Monotone is the whole of what it sees, so a symmetric parabola reads 0 here just as it does under
+     * [pearson] — reach for [chatterjeeXi] or [distanceCorrelation] for non-monotone shapes. Ties pull
+     * the magnitude in from ±1 by way of the shared average ranks, and NaN comes back when either array
+     * is constant, since every rank is then identical and [pearson] has no variance to divide by.
      */
     fun spearman(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
@@ -184,8 +184,8 @@ object StatsDependence {
     // -------------------------
     /**
      * Kendall's tau-b, in -1..1: concordant minus discordant pairs over all pairs, corrected for ties in
-     * either variable. Like [spearman] it measures monotone rather than linear association, and unlike
-     * [spearman] it is the rank coefficient in this file that actually works today.
+     * either variable. Like [spearman] it measures monotone rather than linear association, and the two
+     * agree in sign throughout; tau-b is the more conservative of the pair in magnitude.
      *
      * Returns NaN when the tie-adjusted denominator collapses — all x identical, or all y identical.
      * Pairs tied in *both* variables are counted apart and excluded from the correction, which is what
@@ -443,15 +443,15 @@ object StatsDependence {
 
     /**
      * A MIC/TIC-style scan: bin x and y onto every grid whose cell count fits a budget, score normalized
-     * mutual information on each, and report the maximum and the sum. **Broken as it stands** — its
-     * private rank helper discards its sorted index array exactly as [ranksAverageTies] does, so both
-     * axes end up binned by array position, the joint grid is always diagonal, and it reports a MIC of
-     * about 1.0 whatever you pass in.
+     * mutual information on each, and report the maximum and the sum. Unlike the correlation
+     * coefficients above it is blind to the *shape* of the relationship, so a parabola or a sine scores
+     * about as high as a straight line — which is the point of reaching for it.
      *
-     * Even once that is fixed it is not MICe/TICe, and the header comment in this file is emphatic about
-     * it: this is an equipartition-by-order grid approximation, good for intuition, and it will not
-     * reproduce published numbers. `bMax` caps the product of the two bin counts, defaulting to
-     * floor(n^0.6) and never less than 4.
+     * It is not MICe/TICe, and the header comment in this file is emphatic about it: this is an
+     * equipartition-by-order grid approximation, good for intuition, and it will not reproduce published
+     * numbers. Small samples read high because the mutual-information estimate is biased upward on a
+     * sparse grid, so compare scores at one n rather than across sizes. `bMax` caps the product of the
+     * two bin counts, defaulting to floor(n^0.6) and never less than 4.
      */
     fun micTicNaive(
         x: DoubleArray,
@@ -467,8 +467,8 @@ object StatsDependence {
 
         // ranks by order (0..n-1) without averaging ties, for binning convenience
         fun orderRanks(values: DoubleArray): IntArray {
-            val idx = IntArray(n) { it }
-            idx.sortedWith { i, j ->
+            // as in ranksAverageTies: use the sorted result, don't discard it
+            val order = (0 until n).sortedWith { i, j ->
                 val a = values[i]
                 val b = values[j]
                 when {
@@ -478,7 +478,7 @@ object StatsDependence {
                 }
             }
             val rank = IntArray(n)
-            for (r in 0 until n) rank[idx[r]] = r
+            for (r in 0 until n) rank[order[r]] = r
             return rank
         }
 
@@ -549,8 +549,9 @@ object StatsDependence {
  * x grid symmetric about zero — the textbook case where [pearson] reads about 0 while the dependence is
  * in fact total, so [StatsDependence.chatterjeeXi] and [StatsDependence.distanceCorrelation] read high.
  *
- * Run today it also prints the evidence for the rank bug described on [StatsDependence]: Spearman comes
- * out at 1.0 and the MIC-like score at 1.0 for a relationship where neither belongs.
+ * The three rank coefficients side with Pearson here and print about 0: the parabola is a function but
+ * not a monotone one, and monotone is all any of them can see. The MIC-like score, which bins rather
+ * than ranks, is the other one that notices.
  */
 fun main() {
     val n = 400
