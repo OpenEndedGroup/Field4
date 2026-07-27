@@ -300,6 +300,24 @@ internal object ImgSimd {
         while (i < len) { acc[i] += src[srcOff + i]; i++ }
     }
 
+    /**
+     * `acc[i] -= src[srcOff + i]` for `i in 0 until len`.
+     *
+     * Only reachable under [Border.ZERO], where the row entering the sliding window is outside the
+     * image and contributes nothing while the row leaving it still has to be subtracted.
+     */
+    fun subInto(acc: FloatArray, src: FloatArray, srcOff: Int, len: Int) {
+        val bound = SPECIES.loopBound(len)
+        var i = 0
+        while (i < bound) {
+            FloatVector.fromArray(SPECIES, acc, i)
+                .sub(FloatVector.fromArray(SPECIES, src, srcOff + i))
+                .intoArray(acc, i)
+            i += LANES
+        }
+        while (i < len) { acc[i] -= src[srcOff + i]; i++ }
+    }
+
     /** `dst[dstOff + i] = src[i] * w` for `i in 0 until len` — a running sum's normalising store. */
     fun scaleInto(dst: FloatArray, dstOff: Int, src: FloatArray, len: Int, w: Float) {
         val vw = FloatVector.broadcast(SPECIES, w)

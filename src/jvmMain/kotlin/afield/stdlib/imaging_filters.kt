@@ -409,31 +409,162 @@ fun Img.boxBlur(radius: Int, border: Border = Border.CLAMP): Img {
     require(radius >= 0) { "radius must be >= 0, got $radius" }
     if (radius == 0) return copy()
     val n = 2 * radius + 1
-    // horizontal pass
+    val inv = 1f / n
+    val rowLen = width * channels
+
     val tmp = FloatArray(data.size)
-    for (y in 0 until height) for (c in 0 until channels) {
-        var acc = 0f
-        for (t in -radius..radius) acc += get(t, y, c, border)
-        tmp[index(0, y, c)] = acc / n
-        for (x in 1 until width) {
-            acc += get(x + radius, y, c, border) - get(x - radius - 1, y, c, border)
-            tmp[index(x, y, c)] = acc / n
-        }
-    }
-    val mid = Img(width, height, channels, tmp)
-    // vertical pass
+    horizontalBoxPass(data, tmp, radius, inv, border)
+
+    // ---- vertical pass -------------------------------------------------------------------------
+    //
+    // The obvious transcription of "a running sum down each column" is `for (x) for (y)`, which walks
+    // a column at a time: stride `width * channels` down an 8 MB array, a cache miss per sample, and
+    // one serial dependency chain. That was most of this operator's 5.9x gap to OpenCV, on an
+    // algorithm that is already optimal in operation count.
+    //
+    // Turning it inside out fixes both problems at once. Keep the accumulator as a whole *row* of
+    // partial sums, one lane per column, and advance every column together: each output row is then
+    // `acc += rowEntering - rowLeaving` followed by a scale, all elementwise over contiguous memory.
+    // Same O(1) per pixel, but sequential access and trivially vectorized. Note the incremental form
+    // stays valid under every Border, including the repeated rows CLAMP produces, because the
+    // recurrence only ever adds the row that enters the window and subtracts the one that leaves it.
     val out = FloatArray(data.size)
-    for (x in 0 until width) for (c in 0 until channels) {
-        var acc = 0f
-        for (t in -radius..radius) acc += mid.get(x, t, c, border)
-        out[index(x, 0, c)] = acc / n
-        for (y in 1 until height) {
-            acc += mid.get(x, y + radius, c, border) - mid.get(x, y - radius - 1, c, border)
-            out[index(x, y, c)] = acc / n
+    val acc = FloatArray(rowLen)
+    // Under Border.ZERO an out-of-range row contributes nothing; `-1` means "no row".
+    fun rowOffset(sy: Int): Int =
+        if (sy in 0 until height) sy * rowLen
+        else when (border) {
+            Border.ZERO -> -1
+            Border.CLAMP -> sy.coerceIn(0, height - 1) * rowLen
+            Border.REFLECT -> reflectIndex(sy, height) * rowLen
+            Border.WRAP -> Math.floorMod(sy, height) * rowLen
         }
+
+    for (t in -radius..radius) {
+        val o = rowOffset(t)
+        if (o >= 0) ImgSimd.addInto(acc, tmp, o, rowLen)
+    }
+    ImgSimd.scaleInto(out, 0, acc, rowLen, inv)
+    for (y in 1 until height) {
+        val entering = rowOffset(y + radius)
+        val leaving = rowOffset(y - radius - 1)
+        if (entering >= 0 && leaving >= 0) ImgSimd.addSub(acc, tmp, entering, tmp, leaving, rowLen)
+        else if (entering >= 0) ImgSimd.addInto(acc, tmp, entering, rowLen)
+        else if (leaving >= 0) ImgSimd.subInto(acc, tmp, leaving, rowLen)
+        ImgSimd.scaleInto(out, y * rowLen, acc, rowLen, inv)
     }
     return Img(width, height, channels, out)
 }
+
+/**
+ * `src` -> `dst`, a running-sum mean of half-width [r] along each row, scaled by [inv].
+ *
+ * Along a row the sliding window *is* a serial dependency chain — `acc` next depends on `acc` now —
+ * so unlike the vertical pass this cannot be turned into whole-row vector work. Two things make it
+ * fast anyway:
+ *
+ * - **The window ends stop going through [Img.get].** Both ends are in range for
+ *   `x in radius+1 until width-radius`, so the loop splits into three ranges and the long middle one
+ *   reads the array directly — no bounds check, no `when (border)`, nothing the JIT cannot hoist.
+ * - **Several chains run at once.** One chain leaves the machine waiting on floating-point add
+ *   latency. For multi-channel images the channels are already independent chains; for the
+ *   single-channel case (masks, gradients, pyramid levels — and the benchmark) there is only one per
+ *   row, so four *rows* are advanced together instead. Same idea as the four accumulators in
+ *   [ImgSimd.stencil].
+ */
+private fun Img.horizontalBoxPass(src: FloatArray, dst: FloatArray, r: Int, inv: Float, border: Border) {
+    val rowLen = width * channels
+    val srcImg = Img(width, height, channels, src)
+    // Ranges of x whose window ends both land inside the row.
+    val loSplit = min(width, r + 1)
+    val hiSplit = max(loSplit, width - r)
+
+    if (channels == 1) {
+        var y = 0
+        while (y + 4 <= height) {
+            val o0 = y * rowLen
+            val o1 = o0 + rowLen
+            val o2 = o1 + rowLen
+            val o3 = o2 + rowLen
+            var a0 = 0f
+            var a1 = 0f
+            var a2 = 0f
+            var a3 = 0f
+            for (t in -r..r) {
+                val p = borderIndex(t, width, border)
+                if (p < 0) continue
+                a0 += src[o0 + p]; a1 += src[o1 + p]; a2 += src[o2 + p]; a3 += src[o3 + p]
+            }
+            dst[o0] = a0 * inv; dst[o1] = a1 * inv; dst[o2] = a2 * inv; dst[o3] = a3 * inv
+            for (x in 1 until width) {
+                val pIn: Int
+                val pOut: Int
+                if (x in loSplit until hiSplit) {
+                    pIn = x + r; pOut = x - r - 1
+                } else {
+                    pIn = borderIndex(x + r, width, border); pOut = borderIndex(x - r - 1, width, border)
+                }
+                if (pIn >= 0) { a0 += src[o0 + pIn]; a1 += src[o1 + pIn]; a2 += src[o2 + pIn]; a3 += src[o3 + pIn] }
+                if (pOut >= 0) { a0 -= src[o0 + pOut]; a1 -= src[o1 + pOut]; a2 -= src[o2 + pOut]; a3 -= src[o3 + pOut] }
+                dst[o0 + x] = a0 * inv; dst[o1 + x] = a1 * inv; dst[o2 + x] = a2 * inv; dst[o3 + x] = a3 * inv
+            }
+            y += 4
+        }
+        while (y < height) {
+            val o = y * rowLen
+            var a = 0f
+            for (t in -r..r) {
+                val p = borderIndex(t, width, border)
+                if (p >= 0) a += src[o + p]
+            }
+            dst[o] = a * inv
+            for (x in 1 until width) {
+                val pIn = borderIndex(x + r, width, border)
+                val pOut = borderIndex(x - r - 1, width, border)
+                if (pIn >= 0) a += src[o + pIn]
+                if (pOut >= 0) a -= src[o + pOut]
+                dst[o + x] = a * inv
+            }
+            y++
+        }
+        return
+    }
+
+    // Multi-channel: the `channels` accumulators of one row are already independent chains.
+    val acc = FloatArray(channels)
+    for (y in 0 until height) {
+        val row = y * rowLen
+        java.util.Arrays.fill(acc, 0f)
+        for (t in -r..r) for (c in 0 until channels) acc[c] += srcImg.get(t, y, c, border)
+        for (c in 0 until channels) dst[row + c] = acc[c] * inv
+        for (x in 1 until width) {
+            if (x in loSplit until hiSplit) {
+                val i = row + (x + r) * channels
+                val o = row + (x - r - 1) * channels
+                for (c in 0 until channels) acc[c] += src[i + c] - src[o + c]
+            } else {
+                for (c in 0 until channels) {
+                    acc[c] += srcImg.get(x + r, y, c, border) - srcImg.get(x - r - 1, y, c, border)
+                }
+            }
+            val d = row + x * channels
+            for (c in 0 until channels) dst[d + c] = acc[c] * inv
+        }
+    }
+}
+
+/**
+ * Resolve an out-of-range 1-D index against [border], or `-1` for "contributes nothing"
+ * ([Border.ZERO]). Returns a *pixel* index, so callers scale by the channel count themselves.
+ */
+private fun borderIndex(i: Int, n: Int, border: Border): Int =
+    if (i in 0 until n) i
+    else when (border) {
+        Border.ZERO -> -1
+        Border.CLAMP -> i.coerceIn(0, n - 1)
+        Border.REFLECT -> reflectIndex(i, n)
+        Border.WRAP -> Math.floorMod(i, n)
+    }
 
 /**
  * Three successive [boxBlur] passes, which by the central limit theorem approximate a Gaussian of
@@ -477,28 +608,88 @@ fun Img.bilateral(sigmaSpace: Double = 3.0, sigmaRange: Double = 0.1, border: Bo
     require(sigmaSpace > 0.0) { "sigmaSpace must be > 0, got $sigmaSpace" }
     require(sigmaRange > 0.0) { "sigmaRange must be > 0, got $sigmaRange" }
     val r = max(1, ceil(sigmaSpace * 2.0).toInt())
-    val spatial = FloatArray((2 * r + 1) * (2 * r + 1))
+    val win = 2 * r + 1
+    val spatial = FloatArray(win * win)
     val inv2ss = 1.0 / (2.0 * sigmaSpace * sigmaSpace)
     var i = 0
     for (dy in -r..r) for (dx in -r..r) spatial[i++] = exp(-(dx * dx + dy * dy) * inv2ss).toFloat()
     val inv2sr = (1.0 / (2.0 * sigmaRange * sigmaRange)).toFloat()
+
+    // The range weight, tabulated against squared intensity distance.
+    //
+    // This is the whole cost of a bilateral filter: the spatial weight is a constant per window
+    // position, but the range weight depends on the sample, so the literal definition evaluates
+    // exp() once per tap per pixel — at the benchmark's settings, 169 calls per pixel and 350 million
+    // per frame. Tabulating against d*d rather than |d| keeps the lookup to a multiply and a
+    // truncation (no abs, no sqrt), and the function is smooth enough there that linear interpolation
+    // between 4096 samples is worth ~2e-6 of weight error, four orders below anything an image cares
+    // about. Past RANGE_CUTOFF_SIGMAS the true weight is exp(-18) ~ 1.5e-8, so it is dropped to zero
+    // rather than tabulated: that is a smaller error than the interpolation itself.
+    val lutSize = 4096
+    val cutoff = (RANGE_CUTOFF_SIGMAS * sigmaRange) * (RANGE_CUTOFF_SIGMAS * sigmaRange)
+    val lutScale = ((lutSize - 1) / cutoff).toFloat()
+    val invLutScale = 1.0 / lutScale
+    val lut = FloatArray(lutSize) { exp(-(it * invLutScale) * inv2sr).toFloat() }
+    val lutMax = (lutSize - 1).toFloat()
+
+    // Flat element offsets of the window, for the interior where every tap is in range.
+    val rowLen = width * channels
+    val offsets = IntArray(win * win)
+    var t = 0
+    for (dy in -r..r) for (dx in -r..r) offsets[t++] = dy * rowLen + dx * channels
+
     val out = FloatArray(data.size)
-    for (y in 0 until height) for (x in 0 until width) for (c in 0 until channels) {
-        val centre = data[index(x, y, c)]
-        var num = 0f
-        var den = 0f
-        var k = 0
-        for (dy in -r..r) for (dx in -r..r) {
-            val v = get(x + dx, y + dy, c, border)
-            val d = v - centre
-            val w = spatial[k++] * exp((-d * d * inv2sr).toDouble()).toFloat()
-            num += w * v
-            den += w
+    for (y in 0 until height) {
+        val interiorY = y >= r && y < height - r
+        for (x in 0 until width) {
+            val interior = interiorY && x >= r && x < width - r
+            for (c in 0 until channels) {
+                val base = (y * width + x) * channels + c
+                val centre = data[base]
+                var num = 0f
+                var den = 0f
+                if (interior) {
+                    // No bounds check, no Border branch, no exp — just a load and a table lookup.
+                    for (k in offsets.indices) {
+                        val v = data[base + offsets[k]]
+                        val d = v - centre
+                        val fi = d * d * lutScale
+                        if (fi >= lutMax) continue
+                        val li = fi.toInt()
+                        val frac = fi - li
+                        val w = spatial[k] * (lut[li] + frac * (lut[li + 1] - lut[li]))
+                        num += w * v
+                        den += w
+                    }
+                } else {
+                    var k = 0
+                    for (dy in -r..r) for (dx in -r..r) {
+                        val v = get(x + dx, y + dy, c, border)
+                        val d = v - centre
+                        val fi = d * d * lutScale
+                        val s = spatial[k++]
+                        if (fi >= lutMax) continue
+                        val li = fi.toInt()
+                        val frac = fi - li
+                        val w = s * (lut[li] + frac * (lut[li + 1] - lut[li]))
+                        num += w * v
+                        den += w
+                    }
+                }
+                out[base] = if (den > 0f) num / den else centre
+            }
         }
-        out[index(x, y, c)] = if (den > 0f) num / den else centre
     }
     return Img(width, height, channels, out)
 }
+
+/**
+ * Where [Img.bilateral]'s range-weight table stops. At 6 sigma the true Gaussian weight is
+ * `exp(-18)`, about 1.5e-8 — below the interpolation error of the table itself, so truncating there
+ * costs nothing measurable and bounds the table to a fixed size regardless of [Img.bilateral]'s
+ * `sigmaRange`.
+ */
+private const val RANGE_CUTOFF_SIGMAS = 6.0
 
 /**
  * Unsharp mask: `image + amount * (image - gaussianBlur(image, sigma))`. The oldest sharpening

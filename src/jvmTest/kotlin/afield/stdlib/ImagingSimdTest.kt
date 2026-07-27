@@ -207,6 +207,39 @@ class ImagingSimdTest {
     }
 
     @Test
+    fun runningSumBoxBlurMatchesTheSeparableBoxKernelEverywhere() {
+        // boxBlur is a running sum in both directions and shares no code with convolveSeparable, so
+        // the box *kernel* is an independent definition of the same operation. ImagingCoreTest already
+        // checks them against each other, but only at 1 channel with Border.CLAMP — and the rewrite
+        // here changed every border path (the vertical pass now advances a whole row of accumulators
+        // at once, and the horizontal one splits into in-range and border ranges and runs four rows in
+        // flight). So sweep it properly: this is the test that catches a sliding window that adds the
+        // wrong entering row, or a four-row block that drops the remainder rows.
+        for (border in Border.entries) {
+            for (ch in listOf(1, 3, 4)) {
+                // Heights that are and are not multiples of 4, to exercise the row-block remainder.
+                for ((w, h) in listOf(16 to 16, 17 to 13, 31 to 5, 8 to 23, 12 to 4, 9 to 3, 1 to 1)) {
+                    for (r in listOf(1, 2, 5)) {
+                        val img = textured(w, h, ch)
+                        val running = img.boxBlur(r, border)
+                        val kernel = img.convolveSeparable(boxKernel1D(r), boxKernel1D(r), border)
+                        var worst = 0f
+                        var worstAt = -1
+                        for (i in running.data.indices) {
+                            val d = abs(running.data[i] - kernel.data[i])
+                            if (d > worst) { worst = d; worstAt = i }
+                        }
+                        assertTrue(
+                            worst < 1e-5f,
+                            "boxBlur ${w}x$h x$ch r=$r $border differs from the box kernel by $worst at $worstAt"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun fusedPyrDownMatchesBlurThenSubsample() {
         // pyrDown fuses the 2x decimation into both passes and swaps their order, which is three
         // separate chances to be off by one: the polyphase even/odd split, the interior column bounds,
