@@ -49,13 +49,14 @@ class SourceBackedFnRewriteNumberExpression(
     private var hydratedBlock: ((FnRewriteNumberContext) -> Any?)? = null
 
     override fun invoke(context: FnRewriteNumberContext): Double? {
-        val result = block?.invoke(context) ?: run {
-            val delegate = hydratedBlock ?: synchronized(this) {
-                hydratedBlock ?: hydrate().also { hydratedBlock = it }
-            }
-            delegate(context)
+        // A live block returning null means "leave this value alone", so only the absence of a
+        // block sends us to the source; an elvis here would hydrate an empty `source` instead.
+        block?.let { return coerceResult(it.invoke(context)) }
+
+        val delegate = hydratedBlock ?: synchronized(this) {
+            hydratedBlock ?: hydrate().also { hydratedBlock = it }
         }
-        return coerceResult(result)
+        return coerceResult(delegate(context))
     }
 
     private fun hydrate(): (FnRewriteNumberContext) -> Any? {
