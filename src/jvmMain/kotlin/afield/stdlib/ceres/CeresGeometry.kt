@@ -6,6 +6,24 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.max
 
+/**
+ * The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a
+ * backend. Geometry is a flat xyz [PointCloud] addressed by [PointId]; a solve is described by a
+ * [CeresProgram] of [GeometryConstraint]s — [Planar], [Colinear], [DistanceEquals],
+ * [Perpendicular], [LockPosition], [WeakPosition], [PointOnPlane], [DihedralAngle], [PanelArea] and
+ * the rest — most conveniently assembled with [buildCeresProgram] / [CeresProgramBuilder].
+ *
+ * Every constraint serialises itself into one flat `DoubleArray` of opcodes ([CeresOpcode]) via
+ * `encodeLegacyBytecode`, and declares the [CeresFeature] a backend must support to run it; the
+ * actual solving happens behind [CeresSolverBackend] / [CompiledCeresSolver] (see
+ * `FfmCeresBackend.kt` for the native one). [CachedCeresSolvers] keys compiled solvers by point
+ * count plus program hash so an unchanged program is compiled once.
+ *
+ * Constructors validate aggressively: coordinates and weights must be finite, weights non-negative,
+ * point indices distinct where the opcode requires it, and the `-1`/[PointId.ALL_POINTS] sentinel
+ * may only be used alone and only where a constraint allows it.
+ */
+
 @JvmInline
 value class PointId(val value: Int) {
     init {

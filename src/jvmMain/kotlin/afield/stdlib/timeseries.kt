@@ -4,6 +4,27 @@ package afield.stdlib
 
 import kotlin.math.*
 
+/**
+ * Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the
+ * frequency-domain code in `spectral.kt`.
+ *
+ * Everything here implements the [FloatFilter] fun interface (one `Float` in, one `Float` out)
+ * and composes with `then`, so a chain reads as
+ * `DCBlocker() then EMAFilter(0.1f) then NoiseGate(0.05f)`. Three families share that interface:
+ * smoothers and classic filters ([EMAFilter], [AlphaBetaFilter], [OneEuroFilter], [BiquadFilter]
+ * with its [LowPassFilter] / [HighPassFilter] / [BandPassFilter] / [BandRejectFilter]
+ * constructors); rolling distribution fits — exponential, gamma, beta and Rayleigh — each
+ * paired with a `Normalizer` mapping the fitted CDF into a target range and an `EventDetector`
+ * firing on tail probability ([ZScoreEventDetector] instead thresholds on standard deviations
+ * from a rolling mean); and utility stages such as [MedianFilter], [SchmittTrigger], [AGC],
+ * [PIDController], [LeakyIntegrator] and [DynamicRangeCompressor].
+ *
+ * Pure Kotlin with no external dependency: the log-gamma, regularized incomplete gamma and
+ * regularized incomplete beta functions the distribution fits need are implemented privately at
+ * the top of this file. Filters are stateful objects, so use one instance per signal, and the
+ * window-based ones allocate their ring buffer up front from `windowSize`.
+ */
+
 private const val DISTRIBUTION_EPSILON = 1e-6f
 
 private fun rollingMean(buffer: FloatArray, count: Int): Float {

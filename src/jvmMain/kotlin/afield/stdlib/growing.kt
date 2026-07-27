@@ -5,6 +5,22 @@ package afield.stdlib
 import kotlin.math.max
 
 /**
+ * A 3-regular graph that grows by local rewriting. Every node in a [GrowingGraph] has exactly
+ * three neighbours and one bit of state, and [GrowingGraph.grow] alternates two phases: compute
+ * each node's next state and a "dividing" flag by indexing an integer rule with
+ * `neighbour-count + 4 × state`, then apply a division to each flagged node that adds two nodes
+ * and rewires their edges.
+ *
+ * Seed the adjacency with [GrowingGraph.setNeighbors] (it must be a consistent 3-regular graph or
+ * the rewrite throws), set states with [GrowingGraph.setState] or [GrowingGraph.randomizeStates],
+ * then call `grow()` per step and use the returned [GrowingGraph.GrowDelta] together with
+ * [GrowingGraph.newEdgeU] / [GrowingGraph.newEdgeV] to draw only what changed. Storage is flat
+ * `IntArray`/`ByteArray` with no per-node allocation and no allocation in the inner loops except
+ * when capacity doubles; pure Kotlin, single-threaded, with a built-in xorshift64* generator for
+ * the optional `flipProb` noise. [main] is a runnable 10-node demo.
+ */
+
+/**
  * Self-contained Kotlin port of the "GrowingGraph" algorithm:
  * - 3-regular graph: each node has exactly 3 neighbors
  * - Binary state per node (0/1)

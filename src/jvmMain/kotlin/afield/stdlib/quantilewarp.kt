@@ -17,6 +17,30 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the
+ * measured quantiles of recent samples onto the quantiles of a chosen target distribution —
+ * [TargetDistributions.UnitNormal] by default, or any [QuantileFunction].
+ *
+ * [AdaptiveQuantileWarp.update] takes a batch of samples, merges it with the last
+ * `historyFrames` batches, and returns a [QuantileWarpState]: the knot pairs, an
+ * [QuantileWarpState.evaluate] for CPU-side use, and the same 16 knots packed into four `vec4`s
+ * ready for push constants via [QuantileWarpState.applyToPushConstants]. Successive states are
+ * smoothed towards each other by `smoothingAlpha` and forced strictly increasing, so the curve
+ * stays invertible even when the input degenerates.
+ *
+ * [fieldQuantileWarpIncludeSource] is the matching GLSL — `fieldQuantileWarp8` and
+ * `fieldQuantileWarpMix` evaluate the identical PCHIP curve on the GPU — and is reachable from
+ * shader source as the built-in include named by [FIELD_QUANTILE_WARP_INCLUDE_NAME].
+ * [Box.fieldProbeQuantileWarp] closes the loop: it installs a runloop hook that drains a
+ * `ShaderFieldProbe`, updates the warp, calls your `apply` callback and renders a knot table into a
+ * box display channel.
+ *
+ * Constraints worth knowing: exactly eight strictly increasing probabilities inside `(0, 1)`, and
+ * the [Box.fieldProbeQuantileWarp] entry point needs a live `Box` plus a probe configured for
+ * continuous snapshot reads.
+ */
+
 private val defaultQuantileWarpProbabilities = doubleArrayOf(
     0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99
 )

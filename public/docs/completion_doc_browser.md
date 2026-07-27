@@ -90,3 +90,11 @@ to read the codebase by following its own cross-references.
 The underlying autocomplete is covered in the
 [Survival Guide](survivalGuide.md#autocomplete). Conversational code search is
 a separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
+
+## Browsing, rather than resolving
+
+The one thing this panel cannot do is answer a question you cannot yet name: it
+resolves symbols, it does not list them. That is what
+[What's already in the box](reference/index.md) is for — the same declarations,
+read out of the source by the same parser this panel uses, laid out as a
+browsable index. Anything listed there resolves here.

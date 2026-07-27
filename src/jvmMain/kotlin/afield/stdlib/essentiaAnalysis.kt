@@ -21,6 +21,29 @@ import java.nio.ByteOrder
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
+/**
+ * Readers for two on-disk audio-analysis products, so a box can query them by time.
+ *
+ * Nothing here performs analysis or links against a native library — both entry points just parse
+ * files that some offline tool has already written.
+ *
+ * [loadFramesSig] reads an Essentia-shaped YAML `.sig` file into a [FramesSigDocument]: the tree is
+ * flattened into dotted paths, and each leaf is sorted into a scalar, a per-frame
+ * [FramesSigFloatProduct], or a per-frame [FramesSigFloatVectorProduct]. `sampleAt` /
+ * `floatValueAt` / `floatVectorAt` map a time in seconds to a frame index by assuming frames are
+ * evenly spaced across the analysis window described in `metadata` (`analysis.start_time` and
+ * `analysis.length`, falling back to the audio length); `available` / `availableArrays` list what
+ * a given file actually contains. Large `.sig` files are handled by raising SnakeYAML's code-point
+ * limit to the file size plus padding.
+ *
+ * [loadSound2Vec] reads a directory of `metadata.csv` + `embeddings.npy` (+ optional
+ * `manifest.json`) into a [Sound2VecDataset] of [Sound2VecClip]s, each carrying its embedding, its
+ * time span within a source audio file, and optional t-SNE 2D/3D coordinates; clips can be looked
+ * up by chunk id, or by audio path and time. The bundled `.npy` reader is deliberately narrow: it
+ * accepts only C-ordered (non-Fortran) `float32` 1D or 2D arrays, and by default requires the CSV
+ * row count, the embedding row count and the manifest's `num_chunks` / `embedding_dim` to agree.
+ */
+
 data class FramesSigLoadOptions(
     val minimumCodePointLimit: Int = 4_000_000,
     val codePointLimitPadding: Int = 1_000_000,

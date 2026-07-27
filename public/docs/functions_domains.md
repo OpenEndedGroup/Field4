@@ -1,5 +1,7 @@
 # Domains: how far does a function reach?
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`Functions.kt`](reference/math.md#functions-kt). Start from [what's already in the box](reference/index.md).*
+
 Every `Fn` in the Functions small language carries one interval: its `domain`. It is the answer to a simple question — *over what stretch of the number line is this function meant to be looked at?* A `hannWindow()` is shaped across `0.0..1.0` and is silent outside it. A `ramp` rises across the interval you give it. And an oscillator, honestly, goes on forever.
 
 That last case is where the domain stops being bookkeeping and starts mattering, because domains are not just labels: **arithmetic intersects them.** Add two functions and the sum is only defined where *both* operands are defined. Get an operand's domain wrong and the mistake propagates silently into every expression it touches. This page is about getting it right.

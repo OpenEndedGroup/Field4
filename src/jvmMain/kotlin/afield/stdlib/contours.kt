@@ -12,6 +12,24 @@ import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to
+ * contour.
+ *
+ * A field is just a [ScalarField2D], `(Double, Double) -> Double`. [pointEdgeScalarField2D] builds
+ * one from points and edges — or from a 2D `FLine` — as the union of weighted discs and capsules,
+ * signed so that `iso = 0.0` is the tube boundary; it re-reads the supplied point list on every
+ * sample, so mutating those `Vec2`s moves the field live. [generateIsoContours] samples a field on
+ * an `nx` by `ny` grid and returns stitched polylines, [generateIsoContoursWithStep] takes a target
+ * cell size instead, and the `FLine` overloads choose the sampling window from the line's 2D bounds
+ * grown by the tube radius.
+ *
+ * [smoothIsoContours] and [generateSmoothIsoContours] fit cubic splines through the polylines,
+ * treating a contour that ends on the sampling bounds as open and the rest as closed loops. Two
+ * known roughnesses: the four-crossing saddle cell is split arbitrarily, and the segment stitcher
+ * is O(m^2) in the number of segments, so very high grid resolutions get expensive.
+ */
+
 private data class Vec2Segment(val a: Vec2, val b: Vec2)
 private data class PointEdgeGraph2D(val points: List<Vec2>, val edges: List<Pair<Int, Int>>)
 

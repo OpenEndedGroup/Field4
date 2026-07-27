@@ -22,6 +22,29 @@ import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import kotlin.reflect.KProperty
 
+/**
+ * The general-purpose helpers that every Field box already has in scope.
+ *
+ * Box code is compiled with `import afield.stdlib.*` in its preamble and with `Box` as an
+ * implicit receiver, so everything here — including the `Box.` extensions — can be called
+ * unqualified from inside a box.
+ *
+ * The substantial part is the property-delegate machinery that `prop` and `@exported` generate
+ * against: [Delegation] (stores on the receiver's own property bag), [Inheritance] (walks up
+ * `parents` until some ancestor has the property, otherwise throws
+ * [MissingInheritedPropertyException] with a message naming the property and the box), and
+ * [InheritanceFromContext] (same walk, but prefers each box's live Kotlin variables over raw
+ * properties).
+ *
+ * The rest is deliberately small conveniences: graph access (`named`, `+=` / `-=` for
+ * connect/disconnect, `__m` markers); execution control (`begin`, `end`, [start], [animate],
+ * `aside`, `cell`); frame-presentation logging ([frameLogStart], [frameLogStop],
+ * [frameLogMark], [frameLogLine]); matrix and buffer building ([mat4], [mat3], `FloatBuffer.add`,
+ * `IntBuffer.add`, `ByteBuffer.putf16`); and terse numeric/collection/string shorthands
+ * (`Number.f` / `.i` / `.l` / `.d`, [fa], [ia], `Int.alphas`, `String.times`, `List.m` / `.s`,
+ * `String.r`, and [highlightSyntax] behind `String.h` / `String.ss`).
+ */
+
 interface HasMatrix4f {
     val m: Matrix4f
 }

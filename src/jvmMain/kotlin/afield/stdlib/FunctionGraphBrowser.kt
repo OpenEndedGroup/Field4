@@ -4,6 +4,25 @@ package afield.stdlib
 
 import afield.Box
 
+/**
+ * The looking-at-it layer for the `Fn` graph family: sample a graph on one shared time-base, then
+ * render it as a self-contained interactive HTML browser.
+ *
+ * [Functions.Fn.graphTrace] samples every visible occurrence three ways — `local` (that subgraph
+ * alone), `muted` (the whole root with the occurrence replaced by a neutral constant: `0.0`, or
+ * `1.0` for a divisor) and `effect` (`final - muted`) — plus optional value sweeps for numeric
+ * nodes, and [Functions.Fn.graphBrowseHtml] / [Functions.Fn.browseGraph] wrap that in a canvas UI.
+ * [Functions.Fn.graphRewriteTrace] is the same idea for rewriting: it applies rules cumulatively
+ * — either `FnGraphRule`s or the meaningful lines of a string-DSL spec — recording before, after
+ * and delta per stage for [FnRewriteTrace.rewriteBrowseHtml] and [Functions.Fn.browseRewrite].
+ *
+ * `effect` is a counterfactual, not an additive decomposition: it includes every transformation
+ * between the occurrence and the root. Tracing is bounded by `maxDepth`/`maxNodes` and sampling is
+ * NaN-safe (out-of-domain and throwing evaluations become `NaN` and are simply left undrawn). The
+ * `browse*` functions display into the current box and throw without an active `Box.context`; the
+ * `*Html` functions are pure strings and work anywhere.
+ */
+
 /** One swept value of a numeric node and the final signal it produces. */
 data class FnGraphSweepPoint(
     val value: Double,

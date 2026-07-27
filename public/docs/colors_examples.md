@@ -1,5 +1,7 @@
 # Colors to FLine examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
+
 Color trouble usually appears once several related colors have to survive on the same page. In creative coding the failure mode is muddy geometry. In data visualization it is two series that can no longer be distinguished. In music tools it is a control surface that stops reading at a glance. These examples keep color attached to shapes.
 
 ## HSL vs OKHSL hue sets

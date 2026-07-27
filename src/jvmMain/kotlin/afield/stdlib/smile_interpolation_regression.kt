@@ -6,6 +6,21 @@ import smile.interpolation.CubicSplineInterpolation1D
 import smile.math.kernel.GaussianKernel
 import smile.regression.GaussianProcessRegression
 
+/**
+ * Two 1D fitters that wrap the Smile library: [smileCubicSpline] (cubic spline interpolation
+ * through the data) and [smileGaussianProcess] (Gaussian-process regression with a Gaussian
+ * kernel, configured by [SmileGpOptions]).
+ *
+ * Both take parallel `xs`/`ys` arrays, copy them, and require at least two finite samples with
+ * `xs` strictly increasing — a violation throws rather than producing a quietly bad fit. The
+ * returned [SmileCubicSpline1D] / [SmileGaussianProcess1D] are callable via `invoke` and also
+ * expose `predict` for a single `x` or for a whole array.
+ *
+ * One caveat worth knowing: if Smile throws while fitting the GP, [smileGaussianProcess] prints
+ * a warning to stderr and substitutes plain linear interpolation between the training points, so
+ * holding a [SmileGaussianProcess1D] is not proof that a GP was actually fitted.
+ */
+
 data class SmileGpOptions(
     val lengthScale: Double = 0.15,
     val noise: Double = 1e-3,

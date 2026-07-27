@@ -427,17 +427,30 @@ object KotlinSourceIndex {
         return out
     }
 
-    private data class ParsedDefinition(
+    /**
+     * One declaration as [parseTopLevelDefinitions] saw it.
+     *
+     * [visibility] and [owner] are *not* persisted into [KotlinDefinitionRecord] — the on-disk index
+     * schema is unchanged — they exist for in-process consumers that need more than the completion
+     * resolver does. `afield.docs.StdlibReferenceGenerator` uses them to emit only the public API and
+     * to group members under their declaring type.
+     */
+    internal data class ParsedDefinition(
         val kind: String,
         val name: String,
         val line: Int,
         val kdoc: String? = null,
-        val completionCategory: String? = null
+        val completionCategory: String? = null,
+        /** `public`, `private`, `internal` or `protected`; `public` when no modifier was written. */
+        val visibility: String = "public",
+        /** Qualified name of the enclosing class/object/interface, or null for a top-level declaration. */
+        val owner: String? = null
     )
     private data class ParsedLineDefinition(
         val kind: String,
         val name: String,
-        val completionCategory: String? = null
+        val completionCategory: String? = null,
+        val visibility: String = "public"
     )
     private data class ClassContext(val name: String, val depth: Int)
     private data class PendingClass(
@@ -453,7 +466,36 @@ object KotlinSourceIndex {
         "const", "lateinit", "companion", "inner"
     )
 
-    private fun parseTopLevelDefinitions(text: String): List<ParsedDefinition> {
+    private val visibilityTokens = setOf("public", "private", "internal", "protected")
+
+    /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
+    private val FUN_INTERFACE = Regex("""^interface\b""")
+
+    /**
+     * The name part of a property declaration's text, with any delegate or initialiser removed.
+     *
+     * `by` is cut *before* `:` because a delegated property need have no type annotation at all
+     * (`var FLine.color by Delegation<Vector4f> { vec(1, 1, 1, 1) }`), in which case there is no `:`
+     * to stop at and the whole delegate expression would otherwise be taken for the name — which
+     * fails to parse and drops the declaration from the index entirely.
+     */
+    private fun propertyNameHead(remainder: String): String =
+        remainder.substringBefore(" by ").substringBefore(":").substringBefore("=").trim()
+
+    /**
+     * Line-based scan of one Kotlin source file for its top-level and one-level-nested declarations.
+     *
+     * Deliberately not a real parser: a [KotlinParseState] brace/string/comment state machine keeps
+     * track of nesting so only declarations at file scope, or directly inside a class/object/interface
+     * body, are emitted (never locals inside a function body). Members are emitted qualified as
+     * `Owner.member`.
+     *
+     * `internal` rather than private because this is the single place that decides "what counts as a
+     * declaration" for Field: the completion doc browser and the generated codebase reference
+     * (`afield.docs.StdlibReferenceGenerator`) must agree by construction rather than by two parsers
+     * happening to behave the same way.
+     */
+    internal fun parseTopLevelDefinitions(text: String): List<ParsedDefinition> {
         val out = mutableListOf<ParsedDefinition>()
 
         // Extract KDocs using the KDocExtractor
@@ -502,16 +544,27 @@ object KotlinSourceIndex {
                             } else {
                                 name
                             }
-                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc, category)
+                            out += ParsedDefinition(
+                                kind, qualifiedName, lineNumber, kdoc, category,
+                                parsed.visibility, currentClass?.name
+                            )
                             pendingClass = PendingClass(qualifiedName, lineNumber)
                         }
                         "fun", "val", "var", "typealias" -> {
-                            val qualifiedName = if (currentClass != null && depthAtStart == currentClass.depth) {
-                                "${currentClass.name}.$name"
-                            } else {
-                                name
-                            }
-                            out += ParsedDefinition(kind, qualifiedName, lineNumber, kdoc, category)
+                            // A `val`/`var` on a continuation line of a class's primary constructor
+                            // is that class's property, not a top-level declaration. Without this the
+                            // index gained bogus bare entries (`re`, `im`, `sampleRate`, …) that any
+                            // simple-name KDoc lookup could match by accident.
+                            val constructorOwner = pendingClass
+                                ?.takeIf { (kind == "val" || kind == "var") && it.headerParenDepth > 0 }
+                                ?.name
+                            val owner = constructorOwner
+                                ?: currentClass?.takeIf { depthAtStart == it.depth }?.name
+                            val qualifiedName = if (owner != null) "$owner.$name" else name
+                            out += ParsedDefinition(
+                                kind, qualifiedName, lineNumber, kdoc, category,
+                                parsed.visibility, owner
+                            )
                         }
                     }
                 }
@@ -561,17 +614,26 @@ object KotlinSourceIndex {
         val tokens = s.split(Regex("\\s+"))
         var idx = 0
         var sawCompanion = false
+        var visibility = "public"
         while (idx < tokens.size && modifierTokens.contains(tokens[idx])) {
             if (tokens[idx] == "companion") sawCompanion = true
+            if (tokens[idx] in visibilityTokens) visibility = tokens[idx]
             idx++
         }
         if (idx >= tokens.size) return null
 
-        val keyword = tokens[idx]
-        val remainder = s.substringAfter(keyword, "").trimStart()
+        var keyword = tokens[idx]
+        var remainder = s.substringAfter(keyword, "").trimStart()
+
+        // `fun interface Foo` declares a SAM interface, not a function. Skipping it hid a whole
+        // class of public API (FnMetric, TuioListener, QuantileFunction…) from the index.
+        if (keyword == "fun" && FUN_INTERFACE.containsMatchIn(remainder)) {
+            keyword = "interface"
+            remainder = remainder.removePrefix("interface").trimStart()
+        }
+
         val rawName = when (keyword) {
             "fun" -> {
-                if (remainder.startsWith("interface")) return null
                 val head = remainder.substringBefore("(").trim()
                 parseQualifiedName(head)
             }
@@ -580,7 +642,7 @@ object KotlinSourceIndex {
                     .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
             }
             "val", "var" -> {
-                val head = remainder.substringBefore(":").substringBefore("=").trim()
+                val head = propertyNameHead(remainder)
                 parseQualifiedName(head)
             }
             "typealias" -> {
@@ -597,7 +659,7 @@ object KotlinSourceIndex {
         val name = effectiveName
         if (name.isBlank()) return null
         if (keyword == "class" || keyword == "interface" || keyword == "object" || keyword == "fun" || keyword == "val" || keyword == "var" || keyword == "typealias") {
-            return ParsedLineDefinition(keyword, name, category)
+            return ParsedLineDefinition(keyword, name, category, visibility)
         }
         return null
     }

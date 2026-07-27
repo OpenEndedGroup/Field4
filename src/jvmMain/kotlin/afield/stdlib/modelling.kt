@@ -7,6 +7,30 @@ import afield.Runloop
 import java.util.*
 import kotlin.math.*
 
+/**
+ * A self-tuning controller for pushing the *distribution* of a scalar signal towards a target
+ * shape. You hand [AdaptiveDistributionController.pushSamples] a batch of samples each frame and it
+ * returns a [ControlOutput] whose `appliedParams` are the next parameter values to send to whatever
+ * produced them — a shader, a simulation, a tone curve.
+ *
+ * The error signal comes from a [FeatureExtractor]; [UniformQuantileFeatureExtractor] is the
+ * built-in one and measures how far a set of sample quantiles sit from their targets. Internally
+ * each feature gets a recursive-least-squares row (with forgetting) that learns a local Jacobian,
+ * the step is a Tikhonov-regularised Gauss-Newton solve scaled by a confidence estimate, then
+ * softened near the parameter bounds, rate-limited by `maxStep`, clipped, and finally offset by a
+ * per-parameter sinusoidal dither so the estimator keeps seeing excitation.
+ *
+ * [ControllerConfig.observationDelayFrames] is the important knob: it models pipeline latency
+ * explicitly by pairing each observation with the command issued that many pushes earlier, so the
+ * loop does not have to be slowed down to learn correctly. Use [AdaptiveDistributionControllerBank]
+ * for one controller per scene, and [AdaptiveDistributionLoop] to drive `observe`/`apply` from a
+ * `Runloop` hook.
+ *
+ * This is plain `DoubleArray` math with no GPU or `Box` dependency; every array in
+ * [ControllerConfig] must be `parameterNames.size` long. [main] runs a synthetic drifting-Gaussian
+ * plant against the controller and prints a trace.
+ */
+
 private fun clamp(x: Double, lo: Double, hi: Double): Double =
     when {
         x < lo -> lo

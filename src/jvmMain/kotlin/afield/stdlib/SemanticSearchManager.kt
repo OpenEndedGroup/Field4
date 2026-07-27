@@ -12,6 +12,23 @@ import afield.ai.SemanticRetrievalSettingsStatus
 import afield.ai.SemanticRetrievalStatus
 import java.util.Locale
 
+/**
+ * Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search
+ * over source, docs and workspace boxes. Make a [SemanticSearchManager] and call
+ * [SemanticSearchManager.find] for the full [SemanticSearchResult] (message, status, hits) or
+ * [SemanticSearchManager.findTopK] / [SemanticSearchManager.findWorkspaceTopK] when you just want
+ * a `List<`[SemanticSearchHit]`>`; each hit carries score, kind, corpus, path and line range, and
+ * prints as one readable line. Queries can be narrowed by corpus, path prefix, kind, document,
+ * box or property, and note that `find` passes `rebuildIfEmpty = true` by default.
+ *
+ * The remaining methods administer the service rather than query it:
+ * [SemanticSearchManager.status], [SemanticSearchManager.settings], [SemanticSearchManager.enable],
+ * [SemanticSearchManager.saveSettings], [SemanticSearchManager.downloadPreset],
+ * [SemanticSearchManager.rebuild], [SemanticSearchManager.deleteIndex] and
+ * [SemanticSearchManager.deleteModels]. Every call delegates straight through and blocks; the only
+ * state kept here is [SemanticSearchManager.lastResult].
+ */
+
 data class SemanticSearchResult(
     val success: Boolean,
     val message: String,

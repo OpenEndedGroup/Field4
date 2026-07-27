@@ -1,5 +1,7 @@
 # Linear algebra in Field
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`linalg.kt`](reference/math.md#linalg-kt). Start from [what's already in the box](reference/index.md).*
+
 Linear algebra is the small vocabulary underneath movement, cameras, lighting,
 meshes, simulation, and spatial data. In Field it is meant to read like GLSL and
 run like live code: reorder a vector's components by name, do arithmetic with the

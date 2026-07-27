@@ -1,8 +1,23 @@
+@file:afield.CompletionCategory("Function")
+
 package afield.stdlib
 
 import afield.stdlib.Functions.Easing
 import afield.stdlib.Functions.PulseEdge
 import afield.stdlib.Functions.PulseProfile
+
+/**
+ * The op vocabulary for the whole `Fn` graph family, held in one object, [OpRegistry]: which op
+ * names the stdlib actually emits into a graph node, which of them are aliases of each other, and
+ * which can be rebuilt from an arbitrary node's role-addressed children — those rebuildable ones
+ * each carrying a family label (oscillator, noise, transform, …).
+ *
+ * Everything that has to reason about ops consults it instead of keeping a private list — the
+ * rewrite DSL's `op=` validator and its hint text, the pattern matcher's alias-aware op
+ * comparison, `rebuildAsOp`, and the "another op in the same family" draw behind the
+ * `substituteOp` mutation. The Monaco `fnrewrite.js` extension mirrors it, and a JVM test asserts
+ * that mirror never drifts.
+ */
 
 /**
  * Single source of truth for the `Fn` graph op vocabulary and `op=` transmutation.

@@ -1,5 +1,7 @@
 # Timeseries examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`timeseries.kt`](reference/math.md#timeseries-kt). Start from [what's already in the box](reference/index.md).*
+
 Signal processing needs pictures. A filter can reveal structure or erase the detail you cared about. An event detector can catch a gesture or promote a random spike. These examples keep the raw stream and the processed stream in the same frame.
 
 ## Filter chains as layered curves

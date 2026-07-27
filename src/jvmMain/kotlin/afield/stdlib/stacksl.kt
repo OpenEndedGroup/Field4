@@ -33,6 +33,21 @@ import java.util.WeakHashMap
 import kotlin.math.ceil
 import kotlin.math.max
 
+/**
+ * Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on
+ * the GPU sample by sample. The language, its compiler and its diagnostics live in
+ * `afield.stacksl`; this file is the Kotlin surface a box calls.
+ *
+ * [stackSL] holds a box's StackSL source, falling back to a parent box's. [compileStackSL],
+ * [stackSLToGlsl] and the standalone [slGlsl] are pure compilation and need no device. [slEval] and
+ * [slSweep] actually run the compiled function: they wrap it in a small compute shader and dispatch
+ * it through a `Renderer` that defaults to `fromContext()`, so they need a live graphics context.
+ * Neither binds any texture sampler, so a source that needs one is rejected.
+ *
+ * [slSweep] returns a [StackSLSweep], which implements `ToHTML` and draws itself as an inline SVG
+ * plot of the four output channels with per-channel min/median/max; [StackSLSweep.h] is that HTML.
+ */
+
 var Box.stackSL by Inheritance<String?>()
 
 fun Box.stackSLPrefix(): String {

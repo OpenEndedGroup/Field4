@@ -53,13 +53,20 @@ object KDocExtractor {
                 // Collect KDoc lines
                 var j = i
                 while (j < lines.size) {
-                    val kdocLine = lines[j].trimStart()
-                    if (j == i && kdocLine == "/**") {
-                        // First line with only /**
-                        j++
-                        continue
+                    var kdocLine = lines[j].trimStart()
+                    if (j == i) {
+                        if (kdocLine == "/**") {
+                            // First line with only /**
+                            j++
+                            continue
+                        }
+                        // A one-liner (`/** text */`) or a block whose first line already carries
+                        // text: strip the opening marker here, or it survives into the extracted
+                        // comment and is rendered literally on completion cards and in the
+                        // generated codebase reference.
+                        kdocLine = kdocLine.removePrefix("/**").trimStart()
                     }
-                    
+
                     if (kdocLine.contains("*/")) {
                         // End of KDoc
                         val beforeEnd = kdocLine.substringBefore("*/").trimStart()
@@ -103,7 +110,14 @@ object KDocExtractor {
                             declLine++
                             continue
                         }
-                        
+                        // A second KDoc block before any declaration means this block documents
+                        // nothing in particular — a file-level overview, most often. Stop here, or
+                        // this block would be attached to the *next* declaration and, worse, the
+                        // outer loop would resume past that declaration's own KDoc and drop it.
+                        if (declLineText.startsWith("/**")) {
+                            break
+                        }
+
                         // Try to parse declaration
                         declaration = parseDeclaration(declLineText)
                         if (declaration != null) {
@@ -166,12 +180,18 @@ object KDocExtractor {
         }
         if (idx >= tokens.size) return null
         
-        val keyword = tokens[idx]
-        val remainder = s.substringAfter(keyword, "").trimStart()
-        
+        var keyword = tokens[idx]
+        var remainder = s.substringAfter(keyword, "").trimStart()
+
+        // `fun interface Foo` declares a SAM interface, not a function. Treating it as unparseable
+        // dropped the declaration *and* slid its KDoc onto whatever parsed next.
+        if (keyword == "fun" && FUN_INTERFACE.containsMatchIn(remainder)) {
+            keyword = "interface"
+            remainder = remainder.removePrefix("interface").trimStart()
+        }
+
         val name = when (keyword) {
             "fun" -> {
-                if (remainder.startsWith("interface")) return null
                 val head = remainder.substringBefore("(").trim()
                 parseQualifiedName(head)
             }
@@ -180,7 +200,7 @@ object KDocExtractor {
                     .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
             }
             "val", "var" -> {
-                val head = remainder.substringBefore(":").substringBefore("=").trim()
+                val head = propertyNameHead(remainder)
                 parseQualifiedName(head)
             }
             else -> null
@@ -194,6 +214,20 @@ object KDocExtractor {
         }
     }
     
+    /** `fun` followed by the `interface` keyword — a SAM declaration, not a function. */
+    private val FUN_INTERFACE = Regex("""^interface\b""")
+
+    /**
+     * The name part of a property declaration's text, with any delegate or initialiser removed.
+     *
+     * `by` is cut *before* `:` because a delegated property need have no type annotation at all
+     * (`var FLine.color by Delegation<Vector4f> { vec(1, 1, 1, 1) }`), in which case there is no `:`
+     * to stop at and the whole delegate expression would otherwise be taken for the name — which
+     * fails to parse, dropping the declaration and sliding its KDoc onto the next one.
+     */
+    private fun propertyNameHead(remainder: String): String =
+        remainder.substringBefore(" by ").substringBefore(":").substringBefore("=").trim()
+
     private fun parseQualifiedName(raw: String): String? {
         if (raw.isBlank()) return null
         val noGenerics = stripGenericArgs(raw)

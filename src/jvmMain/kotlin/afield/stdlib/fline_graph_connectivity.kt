@@ -8,6 +8,22 @@ import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
+ * Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded
+ * point graph.
+ *
+ * [flineGraph], or the `toFLineGraph` extensions on `FLine` and `Iterable<FLine>`, adaptively
+ * subdivides cubics down to `cubicFlatness`, samples every node, then welds samples closer than
+ * `epsilon` using a uniform grid plus union-find (`epsilon = 0` welds only bit-identical
+ * positions). A welded vertex is the mean of the samples that reached it, and
+ * [FLineGraph.vertexSources] records which line index and node instruction each of those samples
+ * came from. Edges join consecutive samples, `close()` joins back to the subpath start,
+ * self-edges are dropped and duplicates collapse to the shortest.
+ *
+ * The result carries a `PointGraph` of `GraphEdge`s — the same types as `graph_connectivity.kt` —
+ * so the search, spanning-tree and analysis functions there apply directly to a drawing.
+ */
+
+/**
  * A sampled source point that contributed to a welded [FLineGraph] vertex.
  */
 data class FLineGraphSource(

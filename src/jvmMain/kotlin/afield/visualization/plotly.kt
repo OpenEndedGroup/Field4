@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Visualization")
+
 package afield
 
 import afield.stdlib.Vec2
@@ -15,6 +17,20 @@ import space.kscience.plotly.models.YAnchor
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/**
+ * Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`.
+ *
+ * `linePlot`, [scatter], [scatterSized] and [violin] cover the common shapes (lists of numbers,
+ * `Vec2`, `Vec3`) and hand back a `Plot` already run through [darkMode], the repo dark theme with
+ * data-first margins. [showSignals] goes one step further: pass `"label" to values` pairs and it
+ * traces them against a shared x with the [signalPalette], optionally min-max normalized and with
+ * dashed reference marks, then displays the plot into a channel of a live `Box` — it is already on
+ * screen when it returns, so do not display it again.
+ *
+ * [toHtml] renders a `Plot` into an HTML fragment via [PlotlyIntegration]. That fragment calls
+ * `Plotly.react` in the browser, so the page has to have the Plotly library loaded already;
+ * without it the fragment logs to the console and draws nothing.
+ */
 
 @JvmName("linePlot_scalar")
 fun linePlot(vararg data: List<Number>): Plot {

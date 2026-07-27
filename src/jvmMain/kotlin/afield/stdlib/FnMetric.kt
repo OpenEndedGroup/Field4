@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Function")
+
 package afield.stdlib
 
 import kotlin.math.abs
@@ -6,6 +8,20 @@ import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sqrt
+
+/**
+ * The objective shared by both halves of the function-search family: [FnMetric], a `fun interface`
+ * scoring a candidate signal against a target on one even sample grid (lower is better), plus a
+ * companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`,
+ * `correlation` — and the `fromResidual` / `window` builders behind them.
+ *
+ * [FnMetric.lossAgainst] turns a metric into the `(Fn) -> Double` closure the gradient fitters in
+ * FunctionFit.kt descend, sampling the target once and reusing it across the finite-difference
+ * inner loop; the same metrics are what `matchFitness` in FunctionEvolve.kt negates, so structural
+ * search and numeric fitting can run under one notion of "close". Any metric — including a
+ * hand-written lambda — must ignore indices where either side is non-finite and return
+ * [Double.POSITIVE_INFINITY] when no index is jointly finite, which callers read as maximally bad.
+ */
 
 /**
  * A pluggable distance metric between a target signal and a candidate, evaluated on a shared

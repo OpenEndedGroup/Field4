@@ -8,6 +8,23 @@ import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 
+/**
+ * [smoothTo] wraps a target-producing lambda so that reading it eases toward the target instead
+ * of jumping to it.
+ *
+ * The returned `() -> T` is privately also a `HasUniform`/`ProgressingUniform`, so it can sit
+ * where Field expects a uniform and be re-evaluated per frame. It implements
+ * [NeedsStartingValue], and whoever binds it is responsible for calling `startAt` with the
+ * current value — until that happens the interpolant simply reports the target and marks itself
+ * complete.
+ *
+ * Interpolation is linear and only covers `Float`, `Double`, `Int`, `Long` and
+ * `Vector2f`/`Vector3f`/`Vector4f`; any other type completes immediately at the target. Progress
+ * is either wall-clock (`time` seconds, measured with `System.nanoTime`) or a fixed number of
+ * evaluations (`steps`, default 100), and it is one-shot: once it reaches the target it stays
+ * there.
+ */
+
 interface NeedsStartingValue<T> {
     fun startAt(a: Any?)
 }

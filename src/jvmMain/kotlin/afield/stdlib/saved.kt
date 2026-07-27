@@ -15,6 +15,19 @@ import kotlin.reflect.KProperty
 import kotlin.reflect.KType
 import kotlin.reflect.typeOf
 
+/**
+ * Per-box persistence for Kotlin values, on top of kotlinx.serialization. `var n by saved { 0 }`
+ * declares a property that loads itself on first read and writes itself back on every assignment,
+ * as JSON at `<document directory>/<box id>/<property name>.json`, encoded with Field's
+ * `FieldJson` and written through the atomic `safeSave`. The no-argument [saved] overload skips
+ * the default lambda but only for `List`, `Set` and `Map` (see [defaultSavedValue]); anything else
+ * demands an explicit default.
+ *
+ * The delegate itself is [SavedJsonValue]; it takes the box from its receiver or from the ambient
+ * `Box.context`, so it needs an initialised box and session and errors out otherwise. [toJSONFile]
+ * and [fromJSONFile] do the same encode/decode against an explicit `File` with no delegate. Any
+ * failure to read, write or serialize is rethrown as a `SerializationException` naming the file.
+ */
 
 @OptIn(ExperimentalSerializationApi::class)
 inline fun <reified T> toJSONFile(file: File, value: T) {

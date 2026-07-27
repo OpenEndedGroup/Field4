@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Function")
+
 package afield.stdlib
 
 import afield.graphics.FLine
@@ -5,6 +7,24 @@ import afield.graphics.FLineMap
 import java.util.IdentityHashMap
 import kotlin.math.max
 import kotlin.math.min
+
+/**
+ * The data model and the copy engine underneath Field's graph-rewritable notion of a function:
+ * [FnGraphNode] / [FnGraphEdge] (an op name, role-tagged children, scalar metadata and an
+ * optional rebuild recipe) plus [Functions.Fn.deepCopy] and [Functions.Fn.rewriteGraph], a
+ * bottom-up copy that offers every occurrence to an [FnGraphEdit]. Every other file in this
+ * family runs on that single traversal, as do the edit primitives declared here —
+ * [Functions.Fn.mapGraphNumbers], [Functions.Fn.replaceOps], [Functions.Fn.pruneWhere],
+ * [Functions.Fn.graftWhere], [Functions.Fn.duplicateWhere], [Functions.Fn.slideCopy]. The
+ * read-only renderings live here too: [Functions.Fn.graphSnapshot], [Functions.Fn.graphText],
+ * [Functions.Fn.graphSvg] and [Functions.Fn.graphFLineMap].
+ *
+ * Two constraints show up everywhere downstream. A node whose `rebuild` is null cannot be
+ * reconstructed, so a copy keeps the original evaluator and drops the recipe. And
+ * `preserveSharing` decides whether a shared subgraph stays shared (memoized by identity) or is
+ * expanded into a tree — [Functions.Fn.deepCopy] defaults it to true, while the rewriting entry
+ * points default it to false so each occurrence can be edited independently.
+ */
 
 /**
  * Structural metadata for [Functions.Fn].

@@ -17,6 +17,23 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import java.util.stream.Stream
 
+/**
+ * Path resolution for the running Field session: turns a short spec into a real `File` or `Path`.
+ * The [files] / [fileManager] properties (and the [String.file], [String.path],
+ * [String.absolutePath] extensions) hand you the [FieldFileManager] for the current box or
+ * session, which resolves, in order: absolute and `~/` paths; `%document/…` and `%project/…`;
+ * any name registered with [FileManager.add] or `FileManager["name"] = dir`; globs, by walking
+ * the search roots and taking the first sorted match; and otherwise a plain relative name looked
+ * up in the document's `files/` directory and then in the `files/` directory of every workspace
+ * project the document belongs to.
+ *
+ * Resolutions are cached per session and dropped when the named-directory table changes, and a
+ * child path that would escape its root is rejected. Every lookup is appended to the session
+ * root's [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] property, trimmed to
+ * [FileManager.maxAccessHistoryEntries] — so these calls need an active session or Box context and
+ * will error without one.
+ */
+
 const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY = "fileManagerAccessHistory"
 
 class FieldFileManager internal constructor(private val session: SessionInformation) {

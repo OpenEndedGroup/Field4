@@ -8,6 +8,30 @@ import afield.Box
 import afield.graphics.FLine
 import kotlin.math.*
 
+/**
+ * The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw.
+ *
+ * Nearly everything lives inside the [Functions] object, and most of it as extension functions,
+ * so callers normally work inside `with(Functions) { ... }`. A `Functions.Fn` is an evaluator
+ * plus the `Functions.Domain` it is meant to be sampled over (default `0.0..1.0`). Sources —
+ * `sin`, `saw`, `triangle`, `square`, the `pulseTrain` / `pulseBurst` family, the noise and
+ * `fbm` generators, and keyframe interpolants such as `catmullRomSpline` and `monotoneCubic` —
+ * combine through arithmetic operators, through chainable `Fn` extensions (`stretch`, `repeat`,
+ * `fold`, `quantize`, `echo`, `convolve`, `blur`, ...), and through reusable `FnTransform`
+ * pipelines applied with `/`. Arrangement in time is `timeline { }` and the `List<Fn>`
+ * combinators (`sequence`, `randomPermute`, `morph`, `stack`, `average`).
+ *
+ * Every combinator also records an `FnGraphNode` recipe alongside the closure (see
+ * `FunctionGraph.kt`), which is what makes graphs inspectable and rewritable rather than opaque
+ * lambdas. On the output side: `toDoubleArray` and the `sample*` helpers for numbers, `toFLine`
+ * for drawing, `plotHtml` for a self-contained plot, and `Fn.plot`, which displays into the
+ * active `Box` and throws when there is none (`Box.plot` takes the `Fn` explicitly instead).
+ *
+ * [RbfKernel], [RbfKernels] and [RbfInterpolator] at the top of the file are the scattered-data
+ * fitter behind `Functions.rbf`; it solves a dense n×n system per construction, so it is sized
+ * for handfuls of control points, not thousands.
+ */
+
 fun interface RbfKernel {
     fun eval(r: Double): Double
 }

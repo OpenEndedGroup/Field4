@@ -12,6 +12,20 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.zip.ZipInputStream
 
+/**
+ * Reader for NumPy's `.npy` and `.npz` on-disk formats. [npy] and [npz] are the short entry
+ * points over [NumpyIO]; `.npz` is unzipped into a `LinkedHashMap` of entry name to [NpyArray] and
+ * must contain at least one `.npy` member. An [NpyArray] holds the raw payload bytes plus the
+ * shape, the Fortran-order flag and an [NpyDType], and converts on demand via
+ * [NpyArray.asDoubleArray], [NpyArray.asFloatArray], [NpyArray.asLongArray],
+ * [NpyArray.asULongArray], [NpyArray.asBooleanArray] and [NpyArray.asComplexDoublePairs] —
+ * Fortran-ordered data is remapped to C order unless you ask for [NpyLinearOrder.STORAGE].
+ *
+ * Read-only and pure JVM: there is no writer and no ndarray arithmetic. Format versions 1–3 are
+ * accepted; bool, signed/unsigned int, half/float/double and complex64/128 decode, and any other
+ * dtype kind ([NpyKind.OTHER]) throws. Element and byte counts must fit in an `Int`.
+ */
+
 enum class NpyLinearOrder {
     C,
     STORAGE

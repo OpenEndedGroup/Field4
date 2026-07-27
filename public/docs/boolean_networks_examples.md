@@ -1,5 +1,7 @@
 # Boolean networks to FLine examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
+
 Boolean networks are clean material for drawing dynamics. The state space is finite, the update rule is explicit, and attractors are actual loops or fixed points you can enumerate. That makes them good for pictures that mix mechanism and behavior.
 
 ## Wiring and state-space, side by side

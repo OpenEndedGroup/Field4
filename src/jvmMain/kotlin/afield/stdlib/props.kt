@@ -8,6 +8,20 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
 
+/**
+ * The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot.
+ *
+ * [prop] and [rootProp] exist only as the declarations that make `prop<Int>(foo)` resolve; neither
+ * is meant to run, and calling one throws `MacroRegistry.MacroNotExpandedException`. The real work
+ * happens at expansion time in [macro_prop] and [macro_root_prop], which are handed the type
+ * argument and the name, and return an `Insert` that rewrites the call site to the bare name (or
+ * `root.name`) and pushes two declarations into the box's preamble: a
+ * `var Box.<name> by Inheritance<T>()` and a `val Once.<name> by Onceing<T>()`. Both generated
+ * lines carry the trailing empty-comment marker that makes the preamble gather copy them down into
+ * child boxes, and an import for `T` is added via `kotlinImportStatementFor`. [macro_root_prop]
+ * differs only in targeting `this.root`, so the accessors land on the document root rather than
+ * on the calling box.
+ */
 
 fun <T> Box.prop(name: String) {
     throw MacroRegistry.MacroNotExpandedException("prop should not be callable directly, but should be expanded as a macro")

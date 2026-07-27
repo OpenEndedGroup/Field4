@@ -1,5 +1,7 @@
 # State estimation: tracking what you cannot measure
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`pf.kt`](reference/math.md#pf-kt). Start from [what's already in the box](reference/index.md).*
+
 Some quantities you care about are never observed directly. You see a noisy
 position but want the velocity; you see one coordinate of a chaotic system but
 need its hidden delayed state; you have a measurement but not the model parameter

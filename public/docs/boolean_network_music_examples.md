@@ -1,5 +1,7 @@
 # Boolean network music examples
 
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`booleannetworks.kt`](reference/data.md#booleannetworks-kt). Start from [what's already in the box](reference/index.md).*
+
 Boolean networks become musically useful once their states acquire time. Give each network step a duration and the state stream can be read as notes, labels, triggers, and sample hits. The bridge lives inside `afield.four.synth`.
 
 The bridge now lives in four pieces:

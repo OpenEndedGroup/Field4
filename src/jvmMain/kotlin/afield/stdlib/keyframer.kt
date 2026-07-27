@@ -31,6 +31,29 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 import kotlin.io.path.name
 
+/**
+ * Snapshot, interpolate and persist the live state of a running sketch. A [KeyframeScope] is a set
+ * of named targets — uniform `Structure` bindings, the uniform structures of a `ModulePointer` /
+ * `ComputeModulePointer` / `MeshModulePointer`, a stackAuto shader-source slot via
+ * [KeyframeScope.stackAuto], or a `Camera` pose via [KeyframeScope.camera]. `capture()` reads them
+ * all into a [KeyframeScope.Key]; invoking that `Key` writes them all back.
+ *
+ * [KeyframeScope.interpolate] blends two keys per value type: numbers and vectors lerp, quaternions
+ * slerp, dual quaternions and `CameraPose` sclerp, and strings / [StackSLString] /
+ * `SourceBackedBlock` step to the right-hand value at `t >= 1`. `remap` can re-time an individual
+ * key's `t`.
+ *
+ * Persistence goes through the [KValue] serial union, so only the types [KValue.fromAny] recognises
+ * survive a save — numbers, vec2/3/4, quaternion, dual quaternion, camera pose, string, StackSL
+ * source and source-backed block; anything else is silently dropped. Every `saveKey` also writes a
+ * numbered copy into a `<file>.versions` directory with a manifest, which
+ * [KeyframeScope.keyVersions] lists and [KeyframeScope.loadLatestKey] follows. [KeyframeScope.missingKey] supplies defaults for
+ * keys absent from an older file, optionally per schema version.
+ *
+ * Keys render themselves as HTML for box output ([KeyDiff], `diffHtml`), and
+ * `copyUpdateCodeToClipboard` emits pasteable Kotlin — that one goes through the AWT clipboard.
+ */
+
 @Serializable
 enum class NumKind { BYTE, SHORT, INT, LONG, FLOAT, DOUBLE }
 

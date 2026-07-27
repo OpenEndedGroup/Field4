@@ -26,6 +26,21 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 /**
+ * A TCP listener that turns newline-delimited JSON into a value a box can read each frame.
+ * [JSONLineServer] binds a `ServerSocket`, accepts any number of clients on daemon threads, and
+ * keeps only the most recently received valid JSON line — [JSONLineServer.output] is a snapshot,
+ * not a queue, so lines that arrive between reads are dropped. Non-JSON lines are counted in
+ * [JSONLineServer.invalidLineCount] and logged, never thrown.
+ *
+ * [jsonl] and [JSONLineServers] hand out one cached, already-started server per
+ * (port, bind host, backlog) so that re-running a box does not fight itself for the port;
+ * ephemeral port 0 servers are rejected by the cache and must be built with `autoStart = false`.
+ * Returning a [JSONLineServer] from a box keeps it running for that box's run —
+ * [registerJSONLineServerReturnValue] installs the `ReturnValueRegistry` handler that does it, and
+ * an uncached server is stopped when the run ends.
+ */
+
+/**
  * Small TCP server for newline-delimited JSON streams.
  *
  * Example sender:

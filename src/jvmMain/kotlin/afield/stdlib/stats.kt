@@ -9,6 +9,24 @@ import kotlin.collections.ArrayDeque
 import kotlin.math.*
 import kotlin.math.atan2
 
+/**
+ * Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output.
+ *
+ * [buildSummaryStats] reduces a sequence of doubles to a [SummaryStats] — count, quartiles, IQR,
+ * MAD, variance, skewness, excess kurtosis — dropping and counting non-finite values as it goes.
+ * [buildHistogram] picks a bin width as the smallest of the Freedman–Diaconis, Scott and Sturges
+ * estimates, clamped to at most 2000 bins. [SummaryStatsBuffer] wraps both behind a synchronized,
+ * capped sliding window you can `add` to sample by sample; there are parallel
+ * [Vec2SummaryStats] / [Vec3SummaryStats] / [Vec4SummaryStats] forms that carry per-component
+ * stats, vector length and the pairwise component correlations, each with their own buffer.
+ *
+ * The rendering half — [histogramToSvg], [seriesPlotToSvg] and [summaryStatsBoxToHtml] — builds
+ * SVG and HTML by string interpolation, with no drawing library involved, and defaults to
+ * Field's cyan-on-black look through a long list of colour and padding parameters. Pass the
+ * previous [SummaryStats] and changed numbers are tinted by the sign and relative size of the
+ * change. [seriesPlotToSvg] envelope-downsamples to `maxSeriesPoints` (500) before drawing.
+ */
+
 data class HistogramBin(val start: Double, val end: Double, val count: Int)
 
 data class Histogram(

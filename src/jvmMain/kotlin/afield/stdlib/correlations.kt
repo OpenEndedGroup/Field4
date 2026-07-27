@@ -4,6 +4,21 @@ package afield.stdlib
 
 import kotlin.math.*
 
+/**
+ * Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling.
+ *
+ * [StatsDependence] carries the batch versions: `pearson`, `spearman` (Pearson on average-tie
+ * ranks), `kendallTauB`, `chatterjeeXi` (aliased as `xi`), `distanceCorrelation` and
+ * `micTicNaive`. Kendall's tau-b and distance correlation are both O(n²) in time, and distance
+ * correlation additionally materialises two n×n matrices, so neither suits long series.
+ *
+ * [RollingDistanceCorrelation] holds a fixed window and updates its maintained row and grand sums
+ * in O(n) per `push`; [RollingXiCorrelation] only keeps the window and recomputes xi from
+ * scratch. All of it is pure Kotlin with no external dependency. Note the block comment below,
+ * which is explicit that `micTicNaive` is an equipartition-grid approximation and not MICe/TICe —
+ * do not expect matching values.
+ */
+
 // StatsDependence.kt
 // Single-file Kotlin implementation of:
 // - Pearson correlation

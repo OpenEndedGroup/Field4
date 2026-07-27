@@ -9,6 +9,22 @@ import java.awt.Stroke
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * The small vocabulary of `FLine` construction and styling that sketches and examples reach for
+ * first.
+ *
+ * [fline] is the builder; the [rangeTo] operator makes a one-segment line out of two vectors
+ * (`a..b`, composable with `+=`), and the styling overloads of `moveTo` / `lineTo` / `cubicTo`
+ * position a node and style it in the same call. Appearance is carried by delegated properties on
+ * `FLine` and `FLine.Node` — `color`, `thickness`, `thicken`, `filled`, `stroked`, `pointed`,
+ * `pointSize` — which the renderers read back; `onClick` and `hoverColor` only do anything in the
+ * interactive outputs.
+ *
+ * The rest are shape helpers: `rect` and [Rect.toFLine], `arrow` (a real filled arrowhead rather
+ * than a point sprite), [seg], and [fitInto], which scales and centres a list of lines into a
+ * `Rect` using their 2D bounds only.
+ */
+
 fun rect(x: Number, y: Number, w: Number, h: Number) =
     Rect(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
 

@@ -13,6 +13,19 @@ import java.io.Closeable
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
+/**
+ * A minimal TUIO receiver. [TuioReceiver] opens a UDP OSC port (3333 by default) through JavaOSC
+ * and listens on `/tuio/2Dcur` and `/tuio/2Dobj` only — no blobs, no 2.5D or 3D profiles. It keeps
+ * the live cursor and object sets, deduces additions and removals by diffing successive ALIVE
+ * messages, and on each FSEQ message hands your [TuioListener] one [TuioReceiver.Frame] holding
+ * both the full state and the per-frame added / updated / removed lists.
+ *
+ * Call [TuioReceiver.start] to bind and [TuioReceiver.close] (or `stop()`) to release the port;
+ * both are idempotent. Callbacks arrive on JavaOSC's receive thread, not yours, and all internal
+ * state is guarded by one lock. Numeric OSC arguments are coerced leniently, and malformed `set`
+ * messages are skipped rather than reported. [main] is a demo that prints frame deltas.
+ */
+
 fun interface TuioListener {
     fun onFrame(frame: TuioReceiver.Frame)
 }

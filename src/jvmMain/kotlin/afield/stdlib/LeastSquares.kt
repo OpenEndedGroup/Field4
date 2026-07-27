@@ -7,6 +7,22 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.sqrt
 
+/**
+ * A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained.
+ *
+ * [leastSquares] takes an initial parameter vector and a `residuals: (DoubleArray) -> DoubleArray`
+ * lambda and minimises half the squared residual norm. [LeastSquaresOptions] controls the
+ * iteration cap, the damping schedule and three convergence tolerances; [LeastSquaresResult]
+ * reports the parameters, final residuals, cost, iteration count, an `rms`, and a `reason` string
+ * — one of "gradient", "step", "improvement", "no accepted step" or "max iterations".
+ *
+ * The Jacobian is central finite differences, so you never supply derivatives but each iteration
+ * costs `2 * parameters` extra residual evaluations. The damped normal equations are solved by
+ * Gaussian elimination with partial pivoting; a singular system or a non-finite candidate raises
+ * the damping and retries (up to 12 times per iteration) rather than failing. Non-finite initial
+ * residuals throw.
+ */
+
 data class LeastSquaresOptions(
     val maxIterations: Int = 64,
     val initialDamping: Double = 1e-3,

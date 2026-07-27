@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Visualization")
+
 package afield
 
 import afield.stdlib.linalg.Vector2f
@@ -25,6 +27,22 @@ import kotlin.reflect.KType
 import kotlin.reflect.KTypeProjection
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
+
+/**
+ * The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out.
+ *
+ * [ValueVisualizer.visualize] is the entry point; [Any.h] and [Box.viz] are how it is usually
+ * reached — `.h` hands back the fragment, `viz` displays it into a channel of a live box. A type
+ * can take over its own rendering either by implementing [ToHTML] or by registering a printer with
+ * [registerValuePrinter]; both are trusted to return well-formed HTML, while ordinary strings,
+ * characters, keys and reflected values are escaped here.
+ *
+ * Output is deliberately bounded — [ValueVisualizer]'s own KDoc below covers dispatch order, the
+ * built-in formatters and the size limits. Whatever those limits elide (the tail of a long string
+ * or list, extra fields of an object) becomes an expander link, resolved later by
+ * `renderLazyFragment` from the server's `/lazy-value-fragment` route, so the rest of the value is
+ * only ever rendered if someone asks for it.
+ */
 
 /**
  * Interface for objects that can provide their own HTML representation
