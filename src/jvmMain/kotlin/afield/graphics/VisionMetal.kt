@@ -493,6 +493,23 @@ fun Box.installVisionMetalActions(name: String = "live-metal") {
             notify("Vision geometry: built-in cube in '${box.name}'", "vision-metal")
         }
     }
+
+    // The other half of "is it my shader or my geometry?", and the half you can answer without a
+    // headset: build the mesh for real on this machine and draw it in the box.
+    existing["visionMetal_preview_geometry"] = Action(
+        "Preview Vision Geometry",
+        "Builds this box's geometry { … } on your Mac and draws the mesh into its output — " +
+            "the real builder, a stand-in shader",
+    ) { boxes ->
+        boxes.forEach { box ->
+            // Compiling Kotlin to JavaScript and running node takes a second or two; the main
+            // runloop must not wait for it.
+            Thread({
+                runCatching { box.previewVisionGeometry() }
+                    .onFailure { notify("Geometry preview failed in '${box.name}': ${it.message}", "vision-metal") }
+            }, "vision-geometry-preview-${box.id.take(8)}").apply { isDaemon = true }.start()
+        }
+    }
 }
 
 /** Recompile this box's MSL on the head. Script, geometry and clock survive. */

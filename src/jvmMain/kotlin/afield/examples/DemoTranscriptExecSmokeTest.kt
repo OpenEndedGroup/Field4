@@ -73,6 +73,9 @@ object DemoTranscriptExecSmokeTest {
         "spectral_examples",
         "imaging_cv_examples",
         "vision_metal_cube",
+        // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
+        // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.
+        "vision_geometry_desk_preview",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
     )
@@ -120,8 +123,16 @@ object DemoTranscriptExecSmokeTest {
 
         startRunloopDaemon()
 
+        // Iterating on one demo otherwise means waiting three minutes for the other twenty-odd. The
+        // filter is for development only — CI runs the whole set, and an unfiltered run is the
+        // default — but without it a single failing demo is painful to debug.
+        val only = (args.firstOrNull() ?: System.getenv("DEMO_TRANSCRIPT_ONLY"))
+            ?.split(',')?.map(String::trim)?.filter(String::isNotEmpty)?.toSet()
+        only?.let { println("DemoTranscriptExecSmokeTest: FILTERED to ${it.joinToString()} — not a full run") }
+
         val yamls = (transcriptsDir.listFiles { f -> f.isFile && f.extension == "yaml" } ?: emptyArray())
             .sortedBy { it.name }
+            .filter { only == null || it.nameWithoutExtension in only }
         require(yamls.isNotEmpty()) { "No transcript yaml files found in ${transcriptsDir.absolutePath}" }
 
         val failures = mutableListOf<String>()

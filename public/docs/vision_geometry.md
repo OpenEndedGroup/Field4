@@ -1,9 +1,13 @@
 # Building geometry in the headset
 
-!!! warning "Requires the visionOS app"
-    Everything here runs inside Field4Vision's **Live Metal** head on an Apple Vision Pro. The code
-    compiles and is tested without a headset, but there is nothing to look at without one. See
-    [Field on Apple Vision Pro](vision.md) for the app itself.
+!!! warning "Written for the visionOS app"
+    Everything here runs inside Field4Vision's **Live Metal** head on an Apple Vision Pro — that is
+    where the shader, the uniforms and the finished image live. See [Field on Apple Vision
+    Pro](vision.md) for the app itself.
+
+    The **geometry** is the exception: [Preview Vision Geometry](#previewing-it-on-your-desk) builds
+    your mesh on your Mac and shows it to you, headset or no headset. Every picture on this page was
+    made that way.
 
 A Live Metal program has three parts, and you write each one somewhere different:
 
@@ -72,7 +76,8 @@ geometry {
 ```
 
 Winding is **counter-clockwise as seen from the front**; the head culls back faces, so a face wound
-the other way is invisible. If a shape appears to have holes in it, that's the first thing to check.
+the other way is invisible. If a shape appears to have holes in it, that's the first thing to check —
+and [the preview](#winding-and-why-a-mesh-can-be-invisible) will check it for you.
 
 Because faces reference vertices by index, you choose your own normals:
 
@@ -191,7 +196,8 @@ geometry { }   // clears the mesh
 Note the flip side of geometry being explicit: there is **no** fallback to a built-in cube. A box that
 never calls `geometry { … }` draws nothing. The head says so once rather than leaving you puzzled, and
 the **Vision Geometry: Built-in Cube** command drops in a known-good mesh when you want to work out
-whether the problem is your shader or your geometry.
+whether the problem is your shader or your geometry. **Preview Vision Geometry** comes at that same
+question from the other side — see [below](#previewing-it-on-your-desk).
 
 ## A procedural mesh, start to finish
 
@@ -240,11 +246,13 @@ onStart {
             }
         }
 
+        // This sheet lies in XZ with its normal on +y, so the corners have to go round this way.
+        // The other diagonal winds it face-down and the head culls the whole landscape away.
         val stride = n + 1
         for (row in 0 until n) {
             for (col in 0 until n) {
                 val a = base + row * stride + col
-                quad(a, a + 1, a + stride + 1, a + stride)
+                quad(a, a + stride, a + stride + 1, a + 1)
             }
         }
     }
@@ -256,6 +264,90 @@ onStart {
 
 Note the `import kotlin.math.…` lines above the `onStart`. `kotlin.math` is not a default import, and
 imports go at the top of the box, under the marker.
+
+![The ripple height field: a central peak, a trough ring and a decaying wave, shaded by
+height](assets/vision_geometry/vision-geometry-heightfield.png)
+
+That picture was made on a Mac, from this exact code. Which brings us to:
+
+## Previewing it on your desk
+
+`geometry { … }` runs in the headset, and for a while that meant you could only *see* it in the
+headset. The **Preview Vision Geometry** command closes that: it takes the box's Kotlin, compiles it
+to JavaScript with the same compiler a live box uses, runs it against a mirror of the head's
+JavaScriptCore bridge, and rasterizes the mesh that comes out — into the box's own output.
+
+!!! warning "It previews your geometry, not your shader"
+    The mesh is the real one: the packed vertex array your headset would have received, built by the
+    same builder, byte for byte. The **shading is a stand-in** — a fixed two-light lambert over your
+    vertex colours. Your MSL is not compiled, translated or simulated here, and every preview says so
+    in its caption. This answers *"is my geometry the shape I meant?"*; **Vision Geometry: Built-in
+    Cube** answers the other half on the device.
+
+![Cube, sphere, plane and swept tube in one mesh, previewed side by side on a
+desktop](assets/vision_geometry/vision-geometry-shapes.png)
+
+From Kotlin, the same thing is one call:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val capture = previewVisionGeometry(source = myLiveMetalProgram)
+val mesh = capture!!.mesh()
+println("built " + mesh.vertexCount + " vertices, " + mesh.triangleCount + " triangles")
+```
+
+`capture.meshes` holds *every* upload in order, so a box that rebuilds in `onFrame` gives you one mesh
+per tick and you can watch the shape move:
+
+![Four frames of a helix whose winding count and radius drift, rebuilt from scratch each
+frame](assets/vision_geometry/vision-geometry-animated-filmstrip.png)
+
+### Winding, and why a mesh can be invisible
+
+The preview culls back faces because the head does. That reproduces the most common way a mesh goes
+wrong: a face wound the other way is simply not there.
+
+Worse, it can be *convincingly* not there. A closed shape wound inside-out still draws a plausible
+solid — you are looking at the inside of its far side. So the preview also measures the mesh against
+itself: for every triangle it compares the winding's implied direction with the `normal()` you
+declared, and reports the fraction that agree. A clean mesh reads 100%. Anything less will have holes
+in it on the device, and the number is printed on the frame.
+
+![A ring of quads wound backwards, drawn with culling disabled, its stats line reading "winding 0%
+agrees with normals" in amber](assets/vision_geometry/vision-geometry-lantern-inverted.png)
+
+That check is not hypothetical: it is what found `sphere()` and `tube()` wound the opposite way round
+from `cube()` and `plane()`, and the height field above facing downwards. All three are fixed, and the
+gallery fails the build if they come back.
+
+### Uniforms that don't line up
+
+The other thing the preview checks needs no picture at all. A uniform is named in three places — the
+marker's `uniforms=` list, the shader's `u_NAME`, and the script's `uniform("name", …)` — and each
+mismatch fails differently and late:
+
+| Mismatch | What the head does |
+|---|---|
+| shader reads `u_NAME`, marker doesn't declare it | no `#define` is emitted; **Metal fails to compile your shader** |
+| script writes a name the marker doesn't declare | there is no slot; the write is dropped and the shader reads zero |
+| marker declares a name nothing uses | a wasted slot — reported, but harmless |
+| shader has no `field_vertex` / `field_fragment` | the head refuses to build a pipeline |
+
+`VisionMetalProgramCheck` decides all of those from the box's own text plus a real run of its script,
+and **Preview Vision Geometry** reports them alongside the mesh. It does not compile MSL — that still
+happens on the device — but the mistakes above never reach the compiler in the first place.
+
+### A turntable, and the mesh as FLines
+
+`VisionGeometryPreview.renderContactSheet` draws the same mesh from several angles at once, which is
+the quickest way to be sure a shape is a solid and not a lucky projection:
+
+![The same cube from yaw 0, 90, 180 and 270 degrees, each face a different
+tint](assets/vision_geometry/vision-geometry-cube-turntable.png)
+
+And if you would rather measure the mesh than look at it, `CapturedMesh.toFLines()` hands its unique
+edges — in metres, with vertex colour — to Field's own 3-D viewer, where the rest of Field's drawing
+and geometry tools apply.
 
 ## Runnable starting points
 
@@ -272,6 +364,10 @@ Kotlin→JavaScript pipeline, so none of the code above is aspirational.
   [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_heightfield/metadata.edn)
 - **vision_geometry_animated** — a swept tube rebuilt from scratch every frame.
   [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_animated/metadata.edn)
+- **vision_geometry_desk_preview** — the preview above, without a headset: one box builds a lantern
+  and draws it in its own output, the next builds the same ring wound backwards so you can see what
+  the winding check catches.
+  [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/vision_geometry_desk_preview/metadata.edn)
 
 ## Further reading
 
