@@ -25,6 +25,14 @@ import kotlin.math.min
  * `Rect` using their 2D bounds only.
  */
 
+/**
+ * A plain [Rect] from `x, y, w, h` — the frame type [fitInto], [Rect.toFLine] and the `lines(...)`
+ * outputs all speak.
+ *
+ * Origin-plus-size, not two corners, and any [Number] is coerced to `Double`. `y` grows *downwards*
+ * in the 2D outputs, so `rect(0, 0, w, h)` is the top-left corner. Distinct from the [FLine.rect]
+ * extension, which appends a rectangle path to a line you already have.
+ */
 fun rect(x: Number, y: Number, w: Number, h: Number) =
     Rect(x.toDouble(), y.toDouble(), w.toDouble(), h.toDouble())
 
@@ -54,20 +62,89 @@ inline fun FLine.lineTo(v: Vec3, style: FLine.Node.() -> Unit): FLine = lineTo(v
 inline fun FLine.cubicTo(c1: Vec3, c2: Vec3, to: Vec3, style: FLine.Node.() -> Unit): FLine =
     cubicTo(c1, c2, to).also { here.style() }
 
+/**
+ * The line's colour as RGBA in `0..1` (sRGB, alpha included) — one colour for the stroke, the fill
+ * and the node dots alike. Opaque white when never set.
+ *
+ * The default is *materialised on first read*: reading `color` from a line that has never had one
+ * writes white into that line's property bag, so a line you merely inspected is no longer "unset".
+ */
 var FLine.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
+
+/**
+ * Per-node colour override in `0..1`, which is how one FLine carries a gradient: the GPU
+ * point/triangle writers in `afield.graphics.StandardDrawing` use a node's own colour where it has
+ * one and the whole line's [color] where it does not.
+ *
+ * Those writers read the node's raw property, so the default-on-read behaviour of [color] bites
+ * harder here — merely *reading* `node.color` pins that node to white, and it stops following the
+ * line's colour thereafter.
+ */
 var FLine.Node.color by Delegation<Vector4f> { vec(1.0, 1.0, 1.0, 1.0) }
+
+/**
+ * Stroke width, in the same units as the line's own points (pixels, for the 2D outputs). `null` —
+ * the default — means "unset", which every renderer reads as 1.0 rather than as "invisible".
+ */
 var FLine.thickness by Delegation<Double?>()
+
+/**
+ * An AWT [Stroke] that replaces "stroke at one width" with "convert this line into the outline of
+ * its own stroke" — dashes, tapers, calligraphic pens, anything `Stroke.createStrokedShape` can do.
+ *
+ * Only the Java2D `Shape` conversion (`FLinesAndJavaShapes.flineToJavaShape`) honours it, and there
+ * it takes precedence over [thickness]; the Skiko, SVG and GPU line renderers ignore it entirely, so
+ * a dashed line will look solid on screen. `null` by default.
+ */
 var FLine.thicken by Delegation<Stroke?>()
+
+/**
+ * Whether closed subpaths are flooded with [color]. `false` by default, and independent of
+ * [stroked] — with both true the renderers fill and then draw the outline on top.
+ */
 var FLine.filled by Delegation<Boolean> { false }
+
+/**
+ * Whether the path is stroked at [thickness]. `true` by default; with this and [filled] both false
+ * the geometry still exists and still hit-tests, but nothing is drawn except the node dots that
+ * [pointed] asks for.
+ */
 var FLine.stroked by Delegation<Boolean> { true }
+
+/**
+ * Draw a dot at every node of the line — every `moveTo`/`lineTo`/`cubicTo` endpoint, not the
+ * interior control points of a cubic and not `close`. Off by default. The fast way to see where a
+ * path's points actually landed, and how a particle set gets drawn at all.
+ */
 var FLine.pointed by Delegation<Boolean> { false }
+
+/**
+ * Size of the dots [pointed] draws, 1.0 by default, overridable node by node with
+ * [FLine.Node.pointSize].
+ *
+ * It is not a radius: the Skiko, SVG and three.js outputs all draw a dot of radius `pointSize * 3`,
+ * so the default is a 6-unit-wide dot.
+ */
 var FLine.pointSize by Delegation<Double> { 1.0 }
 
+/**
+ * Per-node override of the line's [FLine.pointSize], under the same `* 3` radius convention. `null`
+ * — the default, and unlike the line-level property this one is not written back on read — means
+ * "follow the line".
+ */
 var FLine.Node.pointSize by Delegation<Double?>(null)
 
 /** Hit information passed to [FLine.onClick] from the interactive line renderers. */
 data class FLineIntersection(
+    /**
+     * Index into the line's `nodes` of the node nearest the click, or `-1` when the client did not
+     * work one out.
+     */
     val closestVertexIndex: Int,
+    /**
+     * Where the click landed, in the line's own coordinate space. The three.js output fills in all
+     * three components; the 2D SVG output leaves `z` at 0.
+     */
     val position: Vec3
 )
 
@@ -80,6 +157,14 @@ var FLine.onClick by Delegation<((FLineIntersection) -> Unit)?>()
  */
 var FLine.hoverColor by Delegation<Vec4?>()
 
+/**
+ * One straight 2D segment from [a] to [b], styled in the same call — the named form of
+ * `fline { moveTo(a); lineTo(b) }`, and what the graph and network examples draw their edges with.
+ *
+ * [color] is RGBA in `0..1` and is *copied* into the line, so mutating the vector afterwards leaves the
+ * segment alone. Thickness is left unset, which the renderers read as 1.0. Pass `pointed = true` to also
+ * dot both endpoints.
+ */
 fun seg(a: Vec2, b: Vec2, pointed: Boolean = false, color: Vec4 = vec(1, 1, 1, 1)) = fline {
     moveTo(a.x, a.y); lineTo(b.x, b.y)
     if (pointed) this.pointed = true
