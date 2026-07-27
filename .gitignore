@@ -238,3 +238,12 @@ config/field4-local.p12
 /NIGHTLY_WORKLOG.md
 # Test-generated Functions plot proofs dropped at repo root by ChebyshevWaveshaperTest et al.
 /*-proof.svg
+
+# Test-generated artefacts that land in whatever tree runs jvmTest, and which a broad
+# `git add -A` on a nightly branch will otherwise sweep onto a feature branch (2026-07-26).
+# The real fix is for these tests to render to a temp dir; until then, root-anchored ignores.
+#   ArraySparklineVisualizerTest -> File("sparkline-proof")
+#   SpectralTest                 -> spectral_*_spectrogram.png
+/sparkline-proof/
+/spectral_chirp_spectrogram.png
+/spectral_mel_spectrogram.png
