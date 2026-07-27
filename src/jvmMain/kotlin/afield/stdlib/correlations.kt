@@ -79,8 +79,8 @@ object StatsDependence {
     // returns ranks in [1..n] with average ranks for tied values.
     fun ranksAverageTies(values: DoubleArray): DoubleArray {
         val n = values.size
-        val idx = IntArray(n) { it }
-        idx.sortedWith { i, j ->
+        // sortedWith returns a new list; index through that, never through the unsorted 0..n-1.
+        val order = (0 until n).sortedWith { i, j ->
             val a = values[i]
             val b = values[j]
             when {
@@ -94,13 +94,13 @@ object StatsDependence {
         var pos = 0
         while (pos < n) {
             var end = pos
-            val v = values[idx[pos]]
-            while (end + 1 < n && values[idx[end + 1]] == v) end++
+            val v = values[order[pos]]
+            while (end + 1 < n && values[order[end + 1]] == v) end++
 
             // positions are 0-based; rank is 1-based
             val avgRank = ((pos + 1) + (end + 1)) / 2.0
             for (k in pos..end) {
-                ranks[idx[k]] = avgRank
+                ranks[order[k]] = avgRank
             }
             pos = end + 1
         }
@@ -369,8 +369,8 @@ object StatsDependence {
 
         // ranks by order (0..n-1) without averaging ties, for binning convenience
         fun orderRanks(values: DoubleArray): IntArray {
-            val idx = IntArray(n) { it }
-            idx.sortedWith { i, j ->
+            // as in ranksAverageTies: use the sorted result, don't discard it
+            val order = (0 until n).sortedWith { i, j ->
                 val a = values[i]
                 val b = values[j]
                 when {
@@ -380,7 +380,7 @@ object StatsDependence {
                 }
             }
             val rank = IntArray(n)
-            for (r in 0 until n) rank[idx[r]] = r
+            for (r in 0 until n) rank[order[r]] = r
             return rank
         }
 
