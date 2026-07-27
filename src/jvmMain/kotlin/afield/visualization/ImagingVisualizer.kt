@@ -211,7 +211,7 @@ object ImagingVisualizer {
 
     /** Per-channel strip + histogram + numeric statistics, behind a closed `<details>`. */
     private fun imgDisclosure(image: Img, stats: Stats, raster: Raster): String = disclosure(
-        summary = if (image.channels == 1) "value &middot; viridis &middot; histogram &middot; stats"
+        summary = if (image.channels == 1) "grey &middot; viridis &middot; histogram &middot; stats"
         else "channels &middot; histogram &middot; stats"
     ) {
         append(channelStrip(image, stats))
@@ -221,15 +221,16 @@ object ImagingVisualizer {
 
     /**
      * One small thumbnail per channel. A 1-channel image has no channels to split, so it instead
-     * shows the raw value alongside a `viridis` version — a perceptually uniform ramp pulls
-     * structure out of a response image that grey flattens.
+     * shows two *different readings of itself*: plain grey (forced, even when the main thumbnail is
+     * the `coolwarm` diverging map — otherwise the strip would just repeat it) and `viridis`, whose
+     * perceptual uniformity pulls structure out of a response image that grey flattens.
      */
     private fun channelStrip(image: Img, stats: Stats): String {
         val small = fitLongEdge(image, K.CHANNEL_SIDE)
         val panels: List<Pair<String, Raster>> = if (image.channels == 1) {
             listOf(
-                "value" to renderRaster(small, stats, K.CHANNEL_SIDE, ramp = null),
-                "viridis" to renderRaster(small, stats, K.CHANNEL_SIDE, ramp = "viridis")
+                "grey" to renderRaster(small, stats, K.CHANNEL_SIDE, ramp = null, forceRamp = true),
+                "viridis" to renderRaster(small, stats, K.CHANNEL_SIDE, ramp = "viridis", forceRamp = true)
             )
         } else {
             (0 until image.channels).map { c ->
@@ -237,7 +238,8 @@ object ImagingVisualizer {
                 // Alpha is always 0..1 by construction, so it gets its own direct-mode statistics
                 // rather than inheriting the colour channels' range.
                 val chStats = if (c == 3) Stats.of(ch) else stats
-                channelName(image.channels, c) to renderRaster(ch, chStats, K.CHANNEL_SIDE, ramp = null)
+                channelName(image.channels, c) to
+                    renderRaster(ch, chStats, K.CHANNEL_SIDE, ramp = null, forceRamp = true)
             }
         }
         return buildString {
@@ -316,7 +318,10 @@ object ImagingVisualizer {
     }
 
     private fun statsTable(image: Img, stats: Stats, raster: Raster): String = buildString {
-        append("<div style='color:${K.C_DIM};font-size:10px;line-height:1.5'>")
+        // flex-wrap, not a run of &nbsp;: `px=43200 samples=129600` is otherwise one unbreakable
+        // line that pushes the card past its max-width and gets clipped.
+        append("<div style='color:${K.C_DIM};font-size:10px;line-height:1.5;display:flex;")
+        append("flex-wrap:wrap;column-gap:10px;max-width:${K.HIST_W}px'>")
         append(kv("min", num(stats.min)))
         append(kv("max", num(stats.max)))
         append(kv("mean", num(stats.mean)))
@@ -368,7 +373,7 @@ object ImagingVisualizer {
         append(
             caption(
                 typeToken("GaussianPyramid"),
-                "${p.size} levels",
+                plural(p.size, "level"),
                 p.levels.joinToString(" &rarr; ") { "${it.width}&times;${it.height}" }
             )
         )
@@ -383,7 +388,7 @@ object ImagingVisualizer {
         append(
             caption(
                 typeToken("LaplacianPyramid"),
-                "${p.size} bands",
+                plural(p.size, "band"),
                 "residual ${p.residual.width}&times;${p.residual.height}",
                 "reconstructs to ${p.bands.firstOrNull()?.let { "${it.width}&times;${it.height}" } ?: "residual"}"
             )
@@ -421,7 +426,7 @@ object ImagingVisualizer {
             append(
                 caption(
                     typeToken("List&lt;Img&gt;"),
-                    "${images.size} images",
+                    plural(images.size, "image"),
                     images.map { "${it.width}&times;${it.height}" }.distinct().take(3).joinToString(", "),
                     if (images.size > shown.size) "showing first ${shown.size}" else null
                 )
@@ -478,7 +483,7 @@ object ImagingVisualizer {
             append(
                 caption(
                     typeToken("ComponentLabelling"),
-                    "${cl.count} components",
+                    plural(cl.count, "component"),
                     "${labels.width}&times;${labels.height}",
                     cl.largest()?.let { "largest ${it.area}px" }
                 )
@@ -532,7 +537,7 @@ object ImagingVisualizer {
             append(
                 caption(
                     typeToken("List&lt;Corner&gt;"),
-                    "${corners.size} corners",
+                    plural(corners.size, "corner"),
                     "response ${num(rLo)}&hellip;${num(rHi)}",
                     "inferred extent ${fmt(fit.vbW)}&times;${fmt(fit.vbH)}",
                     if (shown.size < corners.size) "strongest ${shown.size} drawn" else null
@@ -566,7 +571,8 @@ object ImagingVisualizer {
     private fun houghLines(lines: List<HoughLine>): String {
         val maxRho = max(1.0, lines.maxOf { abs(it.rho) })
         val side = ceil(maxRho / 0.7071).coerceAtLeast(2.0)
-        val fit = Fit(0.0, 0.0, side, side)
+        // Two panels side by side must both fit inside the card, so the geometry half is narrowed.
+        val fit = Fit(0.0, 0.0, side, side, panelW = K.PANEL_W - K.HOUGH_PARAM_W + 8)
         val vLo = lines.minOf { it.votes }.toDouble()
         val vHi = lines.maxOf { it.votes }.toDouble()
         var missed = 0
@@ -611,7 +617,7 @@ object ImagingVisualizer {
             append(
                 caption(
                     typeToken("List&lt;HoughLine&gt;"),
-                    "${lines.size} lines",
+                    plural(lines.size, "line"),
                     "votes ${vLo.toInt()}&hellip;${vHi.toInt()}",
                     "no image extent known",
                     if (missed > 0) "$missed missed the inferred square" else null
@@ -648,7 +654,7 @@ object ImagingVisualizer {
                     val t = norm(c.votes.toDouble(), vLo, vHi)
                     val col = hex(Colormaps.sample("turbo", 0.1 + 0.85 * t))
                     append("<circle cx='${fmt(fit.tx(c.x))}' cy='${fmt(fit.ty(c.y))}' ")
-                    append("r='${fmt(max(0.8, c.radius * fit.s))}' fill='none' ")
+                    append("r='${fmt(max(0.8, c.radius * fit.scale))}' fill='none' ")
                     append("stroke='$col' stroke-width='${fmt(0.8 + 1.4 * t)}' stroke-opacity='0.95'/>")
                     append("<circle cx='${fmt(fit.tx(c.x))}' cy='${fmt(fit.ty(c.y))}' r='1.4' fill='$col'/>")
                 }
@@ -656,7 +662,7 @@ object ImagingVisualizer {
             append(
                 caption(
                     typeToken("List&lt;HoughCircle&gt;"),
-                    "${circles.size} circles",
+                    plural(circles.size, "circle"),
                     "r ${num(circles.minOf { it.radius })}&hellip;${num(circles.maxOf { it.radius })}",
                     "votes ${vLo.toInt()}&hellip;${vHi.toInt()}",
                     "extent ${fmt(fit.vbW)}&times;${fmt(fit.vbH)}"
@@ -719,8 +725,8 @@ object ImagingVisualizer {
                     val dy = v.dy * exaggeration
                     val x0 = fit.tx(v.x0)
                     val y0 = fit.ty(v.y0)
-                    val x1 = x0 + dx * fit.s
-                    val y1 = y0 + dy * fit.s
+                    val x1 = x0 + dx * fit.scale
+                    val y1 = y0 + dy * fit.scale
                     val ang = atan2(y1 - y0, x1 - x0)
                     val head = 4.0
                     val col = hueColor((atan2(v.dy, v.dx) / (2 * Math.PI) + 1.0) % 1.0)
@@ -825,17 +831,26 @@ object ImagingVisualizer {
     /**
      * Turn an [Img] into a display-ready PNG under the documented range policy.
      *
-     * @param ramp force a [Colormaps] ramp; `null` means "grey, unless the data is signed and
-     *   1-channel, in which case `coolwarm`".
+     * @param ramp the [Colormaps] ramp to use; `null` means grey.
+     * @param forceRamp take [ramp] literally. When `false` (the default) a `null` ramp is upgraded to
+     *   `coolwarm` for signed 1-channel data, which is the whole point of the diverging mode; the
+     *   per-channel strip sets this to `true` so it can show a genuinely plain grey reading.
      */
-    private fun renderRaster(image: Img, stats: Stats, maxSide: Int, ramp: String? = null): Raster {
+    private fun renderRaster(
+        image: Img,
+        stats: Stats,
+        maxSide: Int,
+        ramp: String? = null,
+        forceRamp: Boolean = false
+    ): Raster {
         val small = fitLongEdgeSanitized(image, maxSide, stats)
         val tw = small.width
         val th = small.height
         val lo = stats.displayLo
         val hi = stats.displayHi
         val span = (hi - lo).let { if (abs(it) < 1e-12f) 1f else it }
-        val chosenRamp = ramp ?: if (image.channels == 1 && stats.signed) "coolwarm" else null
+        val chosenRamp = if (forceRamp) ramp
+        else ramp ?: if (image.channels == 1 && stats.signed) "coolwarm" else null
         val lut = chosenRamp?.let { name -> Array(256) { rgbInt(Colormaps.sample(name, it / 255.0)) } }
         val badRgb = rgbInt(K.NON_FINITE)
         val px = IntArray(tw * th)
@@ -944,24 +959,38 @@ object ImagingVisualizer {
      * A data-space → panel-space fit. Everything is emitted in *panel* pixels rather than through an
      * SVG `viewBox`, so a marker radius or a stroke width means the same thing at any data scale.
      * Y is not flipped: image coordinates and SVG coordinates both run downwards.
+     *
+     * The members are spelled out (`panelW`, not `w`) on purpose. Inside [svg]'s `buildString` the
+     * innermost implicit receiver is a `StringBuilder`, and this package declares
+     * `val Any?.h: String` — so a `"height='$h'"` template silently resolved to
+     * *`ValueVisualizer.visualize(theStringBuilder)`* and emitted a rendered value tree in the middle
+     * of the `<svg>` tag. It compiled, the unit tests still found their `<circle>` substrings, and
+     * only looking at the capture showed the panel was gone.
      */
-    private class Fit(val vbX: Double, val vbY: Double, val vbW: Double, val vbH: Double) {
-        val w: Int = K.PANEL_W
-        val h: Int = (K.PANEL_W * vbH / vbW).roundToInt().coerceIn(K.PANEL_H_MIN, K.PANEL_H_MAX)
+    private class Fit(
+        val vbX: Double,
+        val vbY: Double,
+        val vbW: Double,
+        val vbH: Double,
+        val panelW: Int = K.PANEL_W
+    ) {
+        val panelH: Int = (panelW * vbH / vbW).roundToInt().coerceIn(K.PANEL_H_MIN, K.PANEL_H_MAX)
 
         /** Uniform data→panel scale, with a small inset so glyphs on the border are not clipped. */
-        val s: Double = min((w - 8.0) / vbW, (h - 8.0) / vbH)
-        private val ox = (w - vbW * s) / 2.0
-        private val oy = (h - vbH * s) / 2.0
+        val scale: Double = min((panelW - 8.0) / vbW, (panelH - 8.0) / vbH)
+        private val ox = (panelW - vbW * scale) / 2.0
+        private val oy = (panelH - vbH * scale) / 2.0
 
-        fun tx(x: Double): Double = (x - vbX) * s + ox
-        fun ty(y: Double): Double = (y - vbY) * s + oy
+        fun tx(x: Double): Double = (x - vbX) * scale + ox
+        fun ty(y: Double): Double = (y - vbY) * scale + oy
 
         inline fun svg(body: StringBuilder.() -> Unit): String = buildString {
-            append("<svg xmlns='http://www.w3.org/2000/svg' width='$w' height='$h' viewBox='0 0 $w $h' ")
+            append("<svg xmlns='http://www.w3.org/2000/svg' ")
+            append("width='${panelW}' height='${panelH}' viewBox='0 0 ${panelW} ${panelH}' ")
             append("style='display:block;background:${K.PANEL_BG};border:1px solid ${K.BORDER};border-radius:3px'>")
             // The data rectangle, so "where in the frame" is legible even for a sparse scatter.
-            append("<rect x='${fmt(ox)}' y='${fmt(oy)}' width='${fmt(vbW * s)}' height='${fmt(vbH * s)}' ")
+            append("<rect x='${fmt(ox)}' y='${fmt(oy)}' ")
+            append("width='${fmt(vbW * scale)}' height='${fmt(vbH * scale)}' ")
             append("fill='none' stroke='#262a33'/>")
             body()
             append("</svg>")
@@ -1017,7 +1046,8 @@ object ImagingVisualizer {
     }
 
     private fun kv(key: String, value: String, color: String = K.C_ACCENT): String =
-        "<span style='color:${K.C_FAINT}'>$key</span>=<span style='color:$color'>$value</span>&nbsp;&nbsp;"
+        "<span style='white-space:nowrap'><span style='color:${K.C_FAINT}'>$key</span>=" +
+            "<span style='color:$color'>$value</span></span>"
 
     // ==========================================================================================
     // Numeric / colour helpers
@@ -1097,4 +1127,8 @@ object ImagingVisualizer {
     }
 
     private fun num(v: Float): String = num(v.toDouble())
+
+    /** "1 circle", "4 circles" — a detector that finds exactly one thing should not stutter. */
+    private fun plural(n: Int, singular: String): String =
+        if (n == 1) "1 $singular" else "$n ${singular}s"
 }

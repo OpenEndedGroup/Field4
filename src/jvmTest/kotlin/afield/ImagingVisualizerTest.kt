@@ -389,6 +389,38 @@ class ImagingVisualizerTest {
     // Non-ownership: the hooks must not swallow other values
     // ---------------------------------------------------------------------------------------
 
+    /**
+     * Regression guard for a bug that shipped past the rest of this file: inside the geometry panel's
+     * `buildString`, the template `"height='$h'"` resolved `h` against the innermost implicit
+     * receiver — the `StringBuilder` — and this package declares `val Any?.h: String`. So the panel
+     * emitted a whole rendered value tree inside its own `<svg>` opening tag, the browser threw the
+     * element away, and every "one `<circle>` per corner" assertion still passed. Substring counts
+     * cannot see a malformed tag, so check the tag.
+     */
+    @Test
+    fun `every geometry panel opens a well-formed svg tag`() {
+        val values: List<Any> = listOf(
+            listOf(afield.stdlib.Corner(10.0, 20.0, 1.0), afield.stdlib.Corner(30.0, 40.0, 2.0)),
+            listOf(HoughLine(20.0, 0.4, 50), HoughLine(60.0, 1.9, 30)),
+            listOf(HoughCircle(20.0, 20.0, 8.0, 40), HoughCircle(60.0, 40.0, 12.0, 60)),
+            FlowField(listOf(FlowVector(5.0, 5.0, 15.0, 9.0, ok = true, error = 0.0)))
+        )
+        for (v in values) {
+            val html = viz(v)
+            val tags = Regex("<svg[^>]*>").findAll(html).map { it.value }.toList()
+            assertTrue(tags.isNotEmpty(), "expected an svg panel for ${v::class.simpleName}: $html")
+            for (tag in tags) {
+                assertTrue(
+                    Regex("^<svg xmlns='http://www\\.w3\\.org/2000/svg'[^>]*width='\\d+' height='\\d+'")
+                        .containsMatchIn(tag),
+                    "malformed svg opening tag for ${v::class.simpleName}: $tag"
+                )
+                assertTrue("value-viz" !in tag, "the svg tag must not contain a rendered value: $tag")
+                assertTrue("StringBuilder" !in tag, "the svg tag leaked a receiver: $tag")
+            }
+        }
+    }
+
     @Test
     fun `mixed and unrelated lists are left to the ordinary list renderer`() {
         assertTrue("<img" !in viz(listOf(1, 2, 3)), "a numeric list is not an imaging value")
