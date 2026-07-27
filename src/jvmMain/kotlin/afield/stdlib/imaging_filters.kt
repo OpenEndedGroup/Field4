@@ -175,6 +175,24 @@ fun Img.convolveSeparable(kx: Kernel1D, ky: Kernel1D? = kx, border: Border = Bor
 /**
  * `src` -> `dst`, convolving along x. Interior columns are SIMD spans (one per tap); the `radius`
  * columns at each end fall back to the bounds-checked accessor.
+ *
+ * ### Why this accumulates in memory when [ImgSimd.stencil] exists
+ *
+ * On paper the register-accumulating [ImgSimd.stencil] should win here too: `n` reads and one write
+ * per span instead of `n` read-modify-writes. It was tried (2026-07-27) and it is **slower** for the
+ * separable passes, consistently, at every kernel width in the suite: Sobel 2.08x -> 2.63x of OpenCV,
+ * pyrDown 16.2x -> 18.2x, Gaussian sigma 2 (17 taps) 1.07x -> 1.11x. Meanwhile the same change made
+ * the *dense* [convolve2D] 2.4x faster.
+ *
+ * The reason the paper argument fails is that the read-modify-write it counts never reaches memory: a
+ * span here is one image row (7.7 KB at 1920x1), so taps 1..n-1 hit L1 and cost bandwidth we are not
+ * short of. What the simple one-tap loops buy in exchange is code C2 optimises perfectly — a single
+ * live vector variable, a counted loop, aggressive software pipelining. The stencil's four loop-carried
+ * accumulators plus a trip count that is only known at runtime is a worse trade at these tap counts,
+ * and only pays off when the tap loop is long enough to amortise it (121 taps, in `convolve2D`).
+ *
+ * So: keep this, and do not "fix" it without measuring. The lever that *did* work for the separable
+ * family was algorithmic — not computing samples that get thrown away (see [Img.pyrDown]).
  */
 private fun Img.horizontalPass(src: FloatArray, dst: FloatArray, k: Kernel1D, border: Border) {
     val taps = k.taps
@@ -215,6 +233,8 @@ private fun Img.horizontalPass(src: FloatArray, dst: FloatArray, k: Kernel1D, bo
 /**
  * `src` -> `dst`, convolving along y. The border decision is per row, so every output row is a
  * single contiguous SIMD span per tap — there is no edge case to split out.
+ *
+ * Accumulates in memory for the same measured reason as [horizontalPass]; see the note there.
  */
 private fun Img.verticalPass(src: FloatArray, dst: FloatArray, k: Kernel1D, border: Border) {
     val taps = k.taps
@@ -633,8 +653,112 @@ fun Img.differenceOfGaussians(sigma1: Double = 1.0, sigma2: Double = 2.0, border
 /**
  * One-octave downsample: blur by [sigma] then take every other pixel. The blur is what keeps this
  * from aliasing — a bare decimation of a fine texture produces moiré, not a small picture.
+ *
+ * ### The decimation is fused into the passes, not applied after them
+ *
+ * Written literally — `gaussianBlur(sigma)` then subsample — three quarters of the blur is computed
+ * and thrown away, which is what made this 16x OpenCV's `pyrDown` rather than the ~2x its wider
+ * kernel costs. So instead:
+ *
+ * 1. The vertical pass runs **only on even output rows**, straight into a one-row scratch buffer.
+ *    Skipping rows is free: nothing else needs them.
+ * 2. That row is then split into its even- and odd-indexed pixels ([ImgSimd.splitByPhase]) and the
+ *    horizontal pass runs over the halves. Halving *columns* is the awkward direction, because
+ *    output `x` reads source pixel `2x + s` and the reads become stride-2 — but the parity of
+ *    `2x + s` is fixed by the parity of `s`, so each tap only ever touches one of the two halves and
+ *    every tap is unit-stride again. This is the polyphase decomposition.
+ *
+ * Neither step is an approximation: the arithmetic per surviving output sample is unchanged, so this
+ * computes the same image as the naive version to within float summation order (the passes now run
+ * vertical-then-horizontal rather than horizontal-then-vertical, which commutes exactly — the x and y
+ * border clamps are independent, so even the corners agree). [pyrDownReference] is the naive
+ * definition, kept as the oracle `ImagingCoreTest` checks this against.
+ *
+ * It is also allocation-free apart from the result: both scratch buffers are one row, so they stay in
+ * L1 and the whole operator touches memory once in and once out. The residual gap to OpenCV is not
+ * structural — it is that our kernel is `gaussianKernel1D(sigma)`, 9 taps at the default sigma, where
+ * OpenCV's `pyrDown` is a fixed 5-tap `[1,4,6,4,1]/16`. We do close to twice the arithmetic because we
+ * apply a better filter, and the [sigma] parameter is the point.
  */
 fun Img.pyrDown(sigma: Double = 1.0): Img {
+    val nw = max(1, width / 2)
+    val nh = max(1, height / 2)
+    val k = gaussianKernel1D(sigma)
+    val taps = k.taps
+    val n = taps.size
+    val r = k.radius
+    val rowLen = width * channels
+    val out = FloatArray(nw * nh * channels)
+
+    // One row of the vertical pass, and the same row split into even/odd pixels. Both L1-resident.
+    val vrow = FloatArray(rowLen)
+    val phase = FloatArray(rowLen)
+    val oddBase = ((width + 1) / 2) * channels
+
+    // Interior output columns: every tap of the horizontal pass reads a real pixel, i.e.
+    // 2x + t - r in 0 until width for all t.
+    val xLo = (r + 1) / 2
+    val xHi = min(nw - 1, (width - 1 - (n - 1 - r)) / 2)     // inclusive
+    val spanLen = (xHi - xLo + 1) * channels
+
+    for (oy in 0 until nh) {
+        val sy = oy * 2
+        // --- vertical pass, this row only. Border resolves per tap, exactly as verticalPass does.
+        var wrote = false
+        for (t in 0 until n) {
+            val w = taps[t]
+            val resolved = (sy + t - r).coerceIn(0, height - 1)
+            val srcOff = resolved * rowLen
+            if (!wrote) {
+                ImgSimd.mulSet(vrow, 0, data, srcOff, rowLen, w)
+                wrote = true
+            } else if (w != 0f) {
+                ImgSimd.axpy(vrow, 0, data, srcOff, rowLen, w)
+            }
+        }
+
+        // --- horizontal pass, decimating. Split once, then every tap is a contiguous span.
+        ImgSimd.splitByPhase(vrow, 0, phase, width, channels)
+        val dstRow = oy * nw * channels
+        if (spanLen > 0) {
+            val dstOff = dstRow + xLo * channels
+            val srcOff = xLo * channels
+            var h = false
+            for (t in 0 until n) {
+                val w = taps[t]
+                val s = t - r
+                // Even offsets live in the even half, odd offsets in the odd half. Both divisions are
+                // exact (s and s-1 are even respectively), so no floor-division subtlety.
+                val off = if (s % 2 == 0) (s / 2) * channels else oddBase + ((s - 1) / 2) * channels
+                if (!h) {
+                    ImgSimd.mulSet(out, dstOff, phase, srcOff + off, spanLen, w)
+                    h = true
+                } else if (w != 0f) {
+                    ImgSimd.axpy(out, dstOff, phase, srcOff + off, spanLen, w)
+                }
+            }
+        }
+        // Edge output columns — a handful either side, general clamped read of the filtered row.
+        for (ox in 0 until nw) {
+            if (spanLen > 0 && ox in xLo..xHi) continue
+            for (c in 0 until channels) {
+                var s = 0f
+                for (t in 0 until n) {
+                    val px = (ox * 2 + t - r).coerceIn(0, width - 1)
+                    s += taps[t] * vrow[px * channels + c]
+                }
+                out[dstRow + ox * channels + c] = s
+            }
+        }
+    }
+    return Img(nw, nh, channels, out)
+}
+
+/**
+ * The naive definition of [pyrDown] — blur the whole image, then throw three quarters of it away.
+ * Kept as the oracle the fused implementation is tested against, not for production use.
+ */
+internal fun Img.pyrDownReference(sigma: Double = 1.0): Img {
     val blurred = gaussianBlur(sigma)
     val nw = max(1, width / 2)
     val nh = max(1, height / 2)
