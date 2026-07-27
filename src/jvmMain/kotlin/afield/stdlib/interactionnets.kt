@@ -1802,14 +1802,18 @@ object PairSelectors {
  * defensive skips: a passthrough or a reconnection whose target port is already occupied is **silently dropped** rather
  * than throwing, so a rule that double-books a port loses a wire quietly.
  *
- * Use [step] or [stepDetailed] once per frame to watch it happen, [reduce] to run to normal form.
+ * Use [step] or [stepDetailed] once per frame to watch it happen, [reduce] to run to normal form. There is a second
+ * constructor taking one of the stock [ActivationOrder]s in place of a [PairSelector], for when you want a named
+ * schedule rather than a lambda of your own.
  */
 class Reducer(
     private val rules: RuleBook,
     private val selector: PairSelector = PairSelectors.firstFound,
     private val layout: LayoutConfig = LayoutConfig()
 ) {
-    /** Convenience constructor taking one of the stock [ActivationOrder]s instead of a [PairSelector]. */
+    // No KDoc block of its own, deliberately: the completion parser's declaration matcher does not
+    // recognise `constructor`, so a comment here is dropped — or, if the next declaration had no KDoc
+    // of its own, would slide onto that instead. Described in the class KDoc above instead.
     constructor(
         rules: RuleBook,
         order: ActivationOrder,
