@@ -202,6 +202,7 @@ object ImagingGallery {
         Panel("01-filters", "Smoothing — Gaussian, box, median, bilateral, unsharp") {
             val src = saltPepper(testCard(), 0.04, 11)
             val gauss = src.gaussianBlur(2.0)
+            val box = src.boxBlur(2)
             val med = src.median(2)
             val bil = src.bilateral(3.0, 0.12)
             val sharp = testCard().gaussianBlur(2.0).unsharpMask(2.0, 1.4)
@@ -210,15 +211,25 @@ object ImagingGallery {
             val eMed = med.meanAbsDiff(clean)
             val eGauss = gauss.meanAbsDiff(clean)
             check(eMed < eGauss) { "median ($eMed) should beat the Gaussian ($eGauss) on impulse noise" }
+            // boxBlur is a running sum in both directions and shares no code with the convolution
+            // path, so the separable box *kernel* is a genuinely independent definition of the same
+            // operation. Checking them against each other here means the gallery — the thing a human
+            // actually looks at — also fails if the running sum drifts, not only the unit tests.
+            val boxByKernel = src.convolveSeparable(boxKernel1D(2), boxKernel1D(2))
+            var worstBox = 0f
+            for (i in box.data.indices) worstBox = maxOf(worstBox, abs(box.data[i] - boxByKernel.data[i]))
+            check(worstBox < 1e-5f) { "boxBlur disagrees with the separable box kernel by $worstBox" }
             Figure(
                 listOf(
                     Tile("source + 4% salt-and-pepper", src),
                     Tile("gaussianBlur(2.0)", gauss),
+                    Tile("boxBlur(2) — O(1) per pixel at any radius", box),
                     Tile("median(2)", med),
                     Tile("bilateral (edge-preserving; keeps impulses)", bil),
                     Tile("unsharpMask(2.0, 1.4)", sharp)
                 ),
-                "median residual ${"%.4f".format(eMed)} < gaussian ${"%.4f".format(eGauss)}"
+                "median residual ${"%.4f".format(eMed)} < gaussian ${"%.4f".format(eGauss)}; " +
+                    "boxBlur vs box kernel ${"%.2e".format(worstBox)}"
             )
         },
 
