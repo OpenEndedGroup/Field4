@@ -1031,6 +1031,16 @@ tasks.register<JavaExec>("checkCodebaseReference") {
     mainClass.set("afield.docs.StdlibReferenceGenerator")
 }
 
+// public/docs/reference/ and dev_docs/kdoc_worklist.md are generated from the KDoc in
+// afield.stdlib and afield.visualization, so *any* edit to a summary in those packages can put them
+// out of date — and the pages are published. Wiring the byte-exact guard into `check` means the
+// staleness is caught by an ordinary build rather than only by the docs.codebase-reference.generate
+// FIELD_TEST, which needs the test catalog to be run. Fix a failure with:
+//   ./gradlew generateCodebaseReference
+tasks.named("check") {
+    dependsOn("checkCodebaseReference")
+}
+
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
     group = "verification"
     description = "Verifies FileWatchManager.parseSidecarPath splits underscore-bearing box ids/properties without spawning phantom boxes."
