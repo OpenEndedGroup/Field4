@@ -143,7 +143,9 @@ class ChebyshevWaveshaperTest {
 $rows
 </svg>"""
 
-        val out = File("chebyshev-proof.svg")
+        // A temp dir by default — a relative path here littered the repository (and every nightly
+        // agent worktree) with a `chebyshev-proof.svg`. Set AFIELD_PROOF_DIR to collect it.
+        val out = File(afield.proofDir("chebyshev"), "chebyshev-proof.svg")
         out.writeText(svg)
         println("[chebyshev] wrote visual proof to ${out.absolutePath} (${out.length()} bytes)")
 

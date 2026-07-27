@@ -218,7 +218,12 @@ class FunctionFitTest {
         g.drawString("initial RMSE=%.4f  final RMSE=%.4f".format(run.initialError, run.finalError), pad, h - 6)
         g.dispose()
 
-        val out = File(System.getProperty("fnfit.png.dir", "."), "fn_fit_montage.png")
+        // The default used to be "." — i.e. the repository root of whatever tree ran the test. A
+        // temp dir instead; `-Dfnfit.png.dir=…` still overrides, and AFIELD_PROOF_DIR also collects.
+        val out = File(
+            System.getProperty("fnfit.png.dir")?.let { File(it) } ?: afield.proofDir("fn-fit"),
+            "fn_fit_montage.png"
+        )
         ImageIO.write(img, "png", out)
         assertTrue(out.exists() && out.length() > 1000, "montage PNG should be written: ${out.absolutePath}")
         println("Wrote fit montage: ${out.absolutePath} (${out.length()} bytes)")

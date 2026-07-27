@@ -235,7 +235,9 @@ class SpectralTest {
         assertTrue(spec.numFrames > 10, "chirp produced ${spec.numFrames} frames")
 
         val png = renderSpectrogram(spec, width = 900, height = 420)
-        val out = File(worktreeRoot(), "spectral_chirp_spectrogram.png")
+        // A temp dir by default — this used to drop a PNG at the repository root, and at the root
+        // of every nightly agent worktree, on every run. Set AFIELD_PROOF_DIR to collect it.
+        val out = File(afield.proofDir("spectral"), "spectral_chirp_spectrogram.png")
         ImageIO.write(png, "png", out)
         assertTrue(out.length() > 2000, "PNG must be non-trivial (${out.length()} bytes) at ${out.absolutePath}")
 
@@ -281,7 +283,7 @@ class SpectralTest {
                 img.setRGB(px, py, viridis(((db + 80.0) / 80.0).coerceIn(0.0, 1.0)).rgb)
             }
         }
-        val out = File(worktreeRoot(), "spectral_mel_spectrogram.png")
+        val out = File(afield.proofDir("spectral"), "spectral_mel_spectrogram.png")
         ImageIO.write(img, "png", out)
         assertTrue(out.length() > 2000, "mel PNG non-trivial (${out.length()} bytes)")
         var bright = 0
@@ -341,12 +343,4 @@ class SpectralTest {
         return Color((r * 255).toInt(), (gg * 255).toInt(), (b * 255).toInt())
     }
 
-    private fun worktreeRoot(): File {
-        var dir: File? = File(System.getProperty("user.dir")).absoluteFile
-        while (dir != null) {
-            if (File(dir, "settings.gradle.kts").exists()) return dir
-            dir = dir.parentFile
-        }
-        return File(System.getProperty("user.dir"))
-    }
 }

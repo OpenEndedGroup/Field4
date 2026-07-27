@@ -94,7 +94,11 @@ class ArraySparklineVisualizerTest {
 
     @Test
     fun `emit proof SVGs for a human to eyeball`() {
-        val dir = File("sparkline-proof").apply { mkdirs() }
+        // A temp directory, NOT `File("sparkline-proof")`. A relative path here resolves against
+        // whatever tree the test happens to run in, so this used to drop a `sparkline-proof/`
+        // directory into the repository — and into every nightly agent worktree — on every run.
+        // Set AFIELD_PROOF_DIR to collect the proofs somewhere you can find them.
+        val dir = proofDir("sparkline-proof")
         File(dir, "ramp.svg").writeText(svgOf(viz(DoubleArray(64) { it.toDouble() })))
         File(dir, "sine.svg").writeText(svgOf(viz(DoubleArray(128) { sin(it / 128.0 * 2.0 * Math.PI) })))
         // an array with a NaN gap in the middle
