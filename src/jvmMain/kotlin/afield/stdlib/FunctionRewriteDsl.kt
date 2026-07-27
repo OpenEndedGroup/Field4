@@ -34,91 +34,257 @@ package afield.stdlib
  * and recursive wildcards match the copied node with its occurrence path.
  */
 data class FnRewriteNumberContext(
+    /**
+     * The Kotlin source of the right-hand side, already unwrapped from its `@{...}` or dollar-brace
+     * delimiters, and trimmed. An expression that carried no delimiters at all arrives verbatim.
+     */
     val expression: String,
+    /** The numeric value the action is about to change: the matched node's `value` metadata entry. */
     val current: Double,
+    /** The matched occurrence itself — op, role, path, ancestry, domain and the node's scalar maps. */
     val graph: FnGraphCopyContext
 ) {
+    /** [current] under the name a snippet actually writes, as in `*= @{value * 1.1}`. */
     val value: Double get() = current
+
+    /**
+     * [current] again, so a snippet can read like a lambda: `= @{it * 2}`. A plain property, not a
+     * real lambda parameter — nothing is shadowing it, and `it` inside a nested lambda wins as usual.
+     */
     val it: Double get() = current
+
+    /** The op name of the matched node, from `OpRegistry`'s vocabulary. */
     val op: String get() = graph.op
+
+    /** The role of the edge this node was reached by (`"frequency"`, `"amplitude"`, …), or null at the root. */
     val role: String? get() = graph.role
+
+    /** Alias for [role], for rules that read better as "which parameter am I". */
     val parameter: String? get() = graph.role
+
+    /** The immediate parent's op, or null at the root — "am I inside an fbm?" in one property. */
     val parentOp: String? get() = graph.parentOp
+
+    /** How many edges below the root this occurrence sits; the root itself is `0`. */
     val depth: Int get() = graph.depth
+
+    /** Child indices from the root down to this node — the same path a preview reports. */
     val path: List<Int> get() = graph.path
+
+    /** The path elements from the root down to this node's parent, root first. Empty at the root. */
     val ancestors: List<FnGraphPathElement> get() = graph.ancestors
+
+    /**
+     * [ancestors] plus this node — the whole root-to-here path, which is what a path selector matches
+     * against. Rebuilt on every read, so bind it to a local rather than indexing it repeatedly.
+     */
     val occurrence: List<FnGraphPathElement> get() = graph.occurrence
+
+    /** The matched function's own name, if it was given one. Null for the great majority of nodes. */
     val name: String? get() = graph.name
+
+    /** The matched function's own domain, which can be narrower than the root's. */
     val domain: Functions.Domain get() = graph.domain
+
+    /** This node's numeric metadata — its own parameters, keyed by name. A constant carries `value`. */
     val numbers: Map<String, Double> get() = graph.node.numbers
+
+    /** This node's string metadata, for the ops that carry names or modes rather than numbers. */
     val strings: Map<String, String> get() = graph.node.strings
+
+    /** This node's boolean metadata — flags such as a wrap or clamp mode. */
     val booleans: Map<String, Boolean> get() = graph.node.booleans
+
+    /** This node's long metadata, typically seeds and counts. */
     val longs: Map<String, Long> get() = graph.node.longs
 
+    /** One numeric metadata entry, or null if this node has no such key. */
     fun number(key: String): Double? = numbers[key]
+
+    /** One string metadata entry, or null if this node has no such key. */
     fun string(key: String): String? = strings[key]
+
+    /** One boolean metadata entry, or null if this node has no such key. */
     fun boolean(key: String): Boolean? = booleans[key]
+
+    /** One long metadata entry, or null if this node has no such key. */
     fun long(key: String): Long? = longs[key]
 }
 
+/**
+ * How a rewrite should be run: who evaluates a Kotlin right-hand side, and whether shared subgraphs
+ * stay shared.
+ *
+ * The default is the compiler-free configuration, and that is a trap worth knowing: with no evaluator
+ * installed, a rule whose action is a Kotlin expression is **quietly not applied** — the rule still
+ * matches, and a preview records it as `matched/no-op`. Pass an evaluator (or use `rewriteKotlin`,
+ * which wires the live box's one in for you) when those actions are meant to run.
+ */
 data class FnRewriteOptions(
+    /**
+     * The older, flatter evaluator hook, taking the raw expression text. Consulted only when
+     * [kotlinNumberContext] is absent *or* returns null, so it also works as a fallback under it.
+     */
     val kotlinNumber: ((expression: String, current: Double, context: FnGraphCopyContext) -> Double?)? = null,
+    /**
+     * Whether a subgraph reached by two paths is copied once and shared, or expanded so each
+     * occurrence can be edited on its own. False — expand — because that is what makes
+     * path-sensitive selectors behave the way you would guess; see [Functions.Fn.deepCopy].
+     */
     val preserveSharing: Boolean = false,
+    /**
+     * The preferred hook: given the matched node wrapped as an [FnRewriteNumberContext], return the
+     * new number, or null to leave the value alone. Returning null falls through to [kotlinNumber].
+     */
     val kotlinNumberContext: ((FnRewriteNumberContext) -> Double?)? = null
 )
 
+/**
+ * Whether a diagnostic kills a rule or merely grumbles about it.
+ *
+ * `ERROR` means the rule was dropped at parse time and [Functions.Fn.rewriteChecked] will refuse the
+ * whole spec; the surviving rules still run under plain [Functions.Fn.rewrite]. `WARNING` means the
+ * rule was kept and will be applied — an `op=` target the `OpRegistry` does not know is the usual
+ * case, and it ends up as a silent no-op at every node it matches.
+ */
 enum class FnRewriteSeverity { ERROR, WARNING }
 
+/**
+ * One complaint from the rewrite parser, addressed to a line and column of the spec so an editor or
+ * an agent can point at it.
+ *
+ * Only the *action* side is checked this thoroughly. A selector is validated for balanced brackets
+ * and nothing else, so a mistyped selector key produces no diagnostic at all and simply matches
+ * nothing — [FnRewritePreview.unmatchedRules] is where that shows up instead.
+ */
 data class FnRewriteDiagnostic(
+    /** Fatal for [FnRewriteProgram.valid], or advisory. See [FnRewriteSeverity]. */
     val severity: FnRewriteSeverity,
+    /** One-based line within the spec. Rules separated by `;` on one line all report that line. */
     val line: Int,
+    /**
+     * One-based column. Mostly `1`, because most checks are about the statement as a whole; an empty
+     * action is reported just past the arrow.
+     */
     val column: Int,
+    /** What is wrong, as a sentence. */
     val message: String,
+    /** An optional nudge toward the fix — accepted arrow forms, valid domain syntax, viable ops. */
     val hint: String? = null
 ) {
+    /** `severity at line:column: message (hint)` — the one-line form that goes into a report. */
     override fun toString(): String = buildString {
         append(severity.name.lowercase()).append(" at ").append(line).append(':').append(column).append(": ").append(message)
         hint?.let { append(" (").append(it).append(')') }
     }
 }
 
+/**
+ * One parsed rule: the line it came from, the selector text on the left of the arrow, and the actions
+ * on the right.
+ *
+ * Both sides are kept as **text** and interpreted per node at rewrite time; nothing here is a compiled
+ * matcher. The actions are already split on top-level commas and pipes (both of which mean "then") and
+ * are applied left to right to the same copied node, so `*= 2.0, += 1.0` adds one to the doubled value.
+ */
 data class FnRewriteRuleSpec(
+    /** One-based line of the spec this rule was written on. */
     val line: Int,
+    /** The raw selector text, trimmed — everything before the arrow. */
     val selector: String,
+    /** The actions, in application order, each already trimmed and non-empty. */
     val actions: List<String>
 )
 
+/**
+ * A compiled rewrite spec: the source you handed in, the rules that survived parsing, and every
+ * diagnostic raised along the way.
+ *
+ * Produced by [compileFnRewrite], which needs no function graph at all — this is a pure check of the
+ * language. Parsing is *partial by design*: a statement that raises an error is dropped and the rest
+ * are kept, so `rules.size` can be smaller than the number of rules you wrote and a plain
+ * [Functions.Fn.rewrite] will happily run the remainder. [Functions.Fn.rewriteChecked] is the entry
+ * point that refuses to.
+ */
 data class FnRewriteProgram(
+    /** The spec text exactly as it was passed in. */
     val source: String,
+    /** The rules that parsed, in source order. This is the order they are tried at each node. */
     val rules: List<FnRewriteRuleSpec>,
+    /** Every error and warning, in source order. */
     val diagnostics: List<FnRewriteDiagnostic>
 ) {
+    /** True when nothing fatal was found. Warnings — an unknown `op=` target — do not make a program invalid. */
     val valid: Boolean get() = diagnostics.none { it.severity == FnRewriteSeverity.ERROR }
 
+    /** The diagnostics as printable lines, or a one-line "no diagnostics" note with the rule count. */
     fun diagnosticText(): String = if (diagnostics.isEmpty()) "FnRewrite: ${rules.size} rule(s), no diagnostics"
     else diagnostics.joinToString("\n")
 }
 
+/**
+ * One rule firing at one occurrence: which rule, where it landed, and whether it actually changed
+ * anything.
+ *
+ * Recorded per *match*, so a rule that matches five nodes contributes five of these. Every rule is
+ * tried at every node and each matching one is applied in turn to the same copy, so [beforeOp] is the
+ * op as it stood after any earlier rule already ran here — not necessarily the op in the original graph.
+ */
 data class FnRewriteApplication(
+    /** Zero-based index into [FnRewriteProgram.rules]. A summary prints it one-based, as `#1`. */
     val rule: Int,
+    /** The one-based spec line of the rule, for reporting back at the source. */
     val line: Int,
+    /** The rule's selector text, copied here so an application reads on its own. */
     val selector: String,
+    /** The rule's actions, in the order they were applied to this node. */
     val actions: List<String>,
+    /** Child indices from the graph root to the matched node; empty means the root itself. */
     val path: List<Int>,
+    /** The role of the edge the matched node hangs from, or null at the root. */
     val role: String?,
+    /** The op before this rule's actions ran here. */
     val beforeOp: String,
+    /** The op afterwards. Usually the same: a naming edit, a numeric edit or a refused transmutation all leave it. */
     val afterOp: String,
+    /**
+     * Whether the node's structural signature actually moved. False is the honest report for a
+     * transmutation the `OpRegistry` refused, a numeric action on a non-numeric node, a Kotlin
+     * right-hand side with no evaluator installed, and `*= 1.0`.
+     */
     val changed: Boolean
 )
 
+/**
+ * The result of a rewrite *with its receipts*: the rewritten function, the compiled program, and one
+ * [FnRewriteApplication] per match.
+ *
+ * Not a dry run. By the time you hold one of these the rewrite has been done and [function] is the
+ * result — [Functions.Fn.rewrite] is literally this call with the report thrown away. What "preview"
+ * buys you is evidence before you commit: matched paths, no-ops, and above all
+ * [unmatchedRules], since a selector that matches nothing is otherwise completely silent.
+ */
 data class FnRewritePreview(
+    /** The rewritten function. Always a fresh graph; the receiver of the rewrite is untouched. */
     val function: Functions.Fn,
+    /** The compiled spec, including the diagnostics that did not stop it. */
     val program: FnRewriteProgram,
+    /** Every rule/occurrence pair that fired, in traversal order (bottom-up, so children first). */
     val applications: List<FnRewriteApplication>
 ) {
+    /** How many distinct rules found at least one node. Compare with `program.rules.size`. */
     val matchedRules: Int get() = applications.map { it.rule }.distinct().size
+
+    /** Total matches across all rules — one per rule per occurrence, so easily larger than the rule count. */
     val matchCount: Int get() = applications.size
+
+    /** How many of those matches changed the graph. The gap between this and [matchCount] is the no-ops. */
     val changeCount: Int get() = applications.count { it.changed }
+
+    /**
+     * The rules that never matched anything — the one place a mistyped selector becomes visible, since
+     * the parser does not check selectors. Treat these as hypotheses to reconsider, not as success.
+     */
     val unmatchedRules: List<FnRewriteRuleSpec> get() {
         val matched = applications.mapTo(mutableSetOf()) { it.rule }
         return program.rules.filterIndexed { index, _ -> index !in matched }
@@ -147,14 +313,41 @@ data class FnRewritePreview(
     }
 }
 
+/**
+ * Parses a rewrite spec and reports on it, without needing a function graph or touching one.
+ *
+ * The language check on its own: statements split on newlines and semicolons, `#` and `//` comments
+ * stripped, `=>` / `->` / `→` all accepted as the arrow, actions split on top-level commas and pipes.
+ * Every action is validated (an unknown one is an error, an unknown `op=` target a warning); selectors
+ * are only checked for balanced square brackets. Bad statements are dropped and the rest are kept, so read
+ * [FnRewriteProgram.valid] before assuming the whole spec survived.
+ */
 fun compileFnRewrite(spec: String): FnRewriteProgram = parseFnDslRewriteProgram(spec)
 
+/**
+ * Compiles [spec] and applies it, returning a new function and discarding everything the attempt
+ * learned — the forgiving one-liner for sketching and performance.
+ *
+ * Deliberately quiet: rules that failed to parse are skipped, rules that matched nothing say nothing,
+ * an impossible transmutation leaves the node alone, and a Kotlin right-hand side with no evaluator in
+ * [options] is not applied. Always returns a fresh graph, even for a spec with no usable rules at all
+ * (that case is a plain deep copy). When you need to know what actually happened, use
+ * [previewRewrite]; when a malformed spec should be an error, [rewriteChecked].
+ */
 fun Functions.Fn.rewrite(
     spec: String,
     options: FnRewriteOptions = FnRewriteOptions()
 ): Functions.Fn = previewRewrite(spec, options).function
 
-/** Compiles and applies [spec], retaining diagnostics, match paths, and effective-change information. */
+/**
+ * Compiles and applies [spec], retaining diagnostics, match paths, and effective-change information.
+ *
+ * The rewrite really is performed — [FnRewritePreview.function] is the result, not an estimate of it —
+ * so this costs exactly what [rewrite] costs and there is no second pass to commit. At each node every
+ * rule is tried in source order and **each** matching rule is applied, cumulatively, so later rules see
+ * what earlier ones did to that node; the traversal is bottom-up, so a rule can never revisit children
+ * that have already been copied.
+ */
 fun Functions.Fn.previewRewrite(
     spec: String,
     options: FnRewriteOptions = FnRewriteOptions()
@@ -189,7 +382,14 @@ fun Functions.Fn.previewRewrite(
     return FnRewritePreview(rewritten, program, applications)
 }
 
-/** Rejects malformed specs before applying any valid rules that happen to remain. */
+/**
+ * Rejects malformed specs before applying any valid rules that happen to remain.
+ *
+ * Throws `IllegalArgumentException` carrying [FnRewriteProgram.diagnosticText] when the program has any
+ * error. Only errors: a warning — the usual one being an `op=` target the `OpRegistry` does not know —
+ * passes through here and then quietly does nothing at the nodes it matches, so check a preview too if
+ * a transmutation is load-bearing.
+ */
 fun Functions.Fn.rewriteChecked(
     spec: String,
     options: FnRewriteOptions = FnRewriteOptions()
@@ -201,6 +401,13 @@ fun Functions.Fn.rewriteChecked(
     return preview.function
 }
 
+/**
+ * [rewrite] when the only thing you want to vary is sharing — no evaluator, no other options.
+ *
+ * With `preserveSharing = true` a subgraph reached by several paths is copied once and the single
+ * replacement is reused at every one of them, which is usually *not* what a path-sensitive selector
+ * wants. The overload exists so `f.rewrite(spec, true)` does not need an options object.
+ */
 fun Functions.Fn.rewrite(
     spec: String,
     preserveSharing: Boolean

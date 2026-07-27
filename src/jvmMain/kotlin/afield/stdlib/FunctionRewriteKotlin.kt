@@ -41,13 +41,33 @@ import kotlin.script.experimental.api.ResultValue
  * ```
  */
 class SourceBackedFnRewriteNumberExpression(
+    /**
+     * The box whose live-coding context the source will be compiled in. Empty when there was no box in
+     * scope at construction, which makes the first call fail rather than fall back to anything.
+     */
     val boxId: String,
+    /**
+     * The Kotlin source of the right-hand side, already stripped of its `@{...}` wrapper. Compiled inside
+     * a `with(context)` block, so it reads the [FnRewriteNumberContext] members as bare names, and its last
+     * expression is the result.
+     */
     val source: String,
     private val block: ((FnRewriteNumberContext) -> Any?)? = null
 ) : (FnRewriteNumberContext) -> Double? {
     @Volatile
     private var hydratedBlock: ((FnRewriteNumberContext) -> Any?)? = null
 
+    /**
+     * Evaluates the expression for one matched node, returning the new number or null to leave the value
+     * alone.
+     *
+     * The first call compiles, under a lock, and later calls reuse the compiled lambda. A result that is
+     * neither null nor a `Number` is a hard error naming the offending source — a snippet ending in a
+     * `println` or an assignment throws rather than being quietly ignored. Note that a *live* block which
+     * returns null does not short-circuit: it falls through to the source-hydration path, which for a
+     * block-backed expression has no source to compile and fails. Return the current value instead of null
+     * from those.
+     */
     override fun invoke(context: FnRewriteNumberContext): Double? {
         val result = block?.invoke(context) ?: run {
             val delegate = hydratedBlock ?: synchronized(this) {
@@ -121,27 +141,58 @@ class SourceBackedFnRewriteNumberExpression(
             )
         }
 
+    /** The box id and the first 80 characters of the source, newlines flattened — safe to log. */
     override fun toString(): String =
         "SourceBackedFnRewriteNumberExpression(boxId=$boxId, source=${source.take(80).replace('\n', ' ')})"
 }
 
+/**
+ * The evaluator a whole rewrite runs through: one per box, compiling and caching a
+ * [SourceBackedFnRewriteNumberExpression] per distinct expression string it is asked for.
+ *
+ * The cache is keyed on the source text alone — the node is passed in at call time — so one `@{...}` action
+ * is compiled once no matter how many occurrences it matches. It is not, however, shared between rewrites:
+ * `rewriteKotlin` and friends build a fresh evaluator per call, so a spec re-run in an animation loop
+ * recompiles its expressions every time. That compile is a real snippet compile in the box's engine, not a
+ * cheap parse; hoist the rewrite out of the loop, or keep one evaluator of your own and pass it through
+ * [FnRewriteOptions].
+ */
 class SourceBackedFnRewriteNumberEvaluator(
+    /** The box every expression will be compiled in. */
     val boxId: String
 ) : (FnRewriteNumberContext) -> Double? {
     private val expressions = ConcurrentHashMap<String, SourceBackedFnRewriteNumberExpression>()
 
+    /** Compiles [FnRewriteNumberContext.expression] if this is the first sighting of it, then evaluates it. */
     override fun invoke(context: FnRewriteNumberContext): Double? =
         expressions.computeIfAbsent(context.expression) {
             SourceBackedFnRewriteNumberExpression(boxId = boxId, source = it)
         }.invoke(context)
 }
 
+/**
+ * Wraps a snippet of Kotlin source as a rewrite-number evaluator bound to [box], compiled lazily on first
+ * use.
+ *
+ * The way to build one evaluator by hand — to reuse across several rewrites, or to hand a persisted
+ * expression back its box. Nothing is compiled or even checked here, so a syntax error surfaces at the first
+ * matched node, and a null [box] produces an object that throws on first use rather than one that quietly
+ * does nothing.
+ */
 fun fnRewriteNumberExpression(
     source: String,
     box: Box? = Box.context.get()
 ): SourceBackedFnRewriteNumberExpression =
     SourceBackedFnRewriteNumberExpression(boxId = box?.id ?: "", source = source)
 
+/**
+ * A rewrite-number evaluator written as an ordinary Kotlin lambda over [FnRewriteNumberContext], with no
+ * compilation involved — the typed alternative to a string of source.
+ *
+ * The block runs directly, so it can close over anything in scope. One catch: returning null does **not**
+ * mean "leave this value alone". A null sends the call down the source-hydration path, and since a block-built
+ * expression carries no source that path fails. Return the current `value` for the cases you want to skip.
+ */
 fun fnRewriteNumber(block: FnRewriteNumberContext.() -> Number?): SourceBackedFnRewriteNumberExpression =
     SourceBackedFnRewriteNumberExpression(
         boxId = Box.context.get()?.id ?: "",
@@ -149,18 +200,44 @@ fun fnRewriteNumber(block: FnRewriteNumberContext.() -> Number?): SourceBackedFn
         block = { context -> context.block() }
     )
 
+/**
+ * [Functions.Fn.rewrite] with the live box's Kotlin evaluator wired in — the version to use in Field code,
+ * and the only one where a `@{...}` right-hand side actually runs.
+ *
+ * The snippets are compiled in [box]'s coding context, so they see its imports, its top-level values and its
+ * helper functions. When no box can be found (the default looks one up in `Box.context`) no evaluator is
+ * installed at all and Kotlin actions are silently skipped, leaving the rest of the spec to apply — quiet by
+ * design, and worth remembering when a rewrite run outside a box appears to do nothing. As forgiving about
+ * malformed rules as [Functions.Fn.rewrite]; see [rewriteKotlinChecked] for the strict form.
+ */
 fun Functions.Fn.rewriteKotlin(
     spec: String,
     preserveSharing: Boolean = false,
     box: Box? = Box.context.get()
 ): Functions.Fn = rewrite(spec, kotlinRewriteOptions(preserveSharing, box))
 
+/**
+ * [Functions.Fn.previewRewrite] with the live box's Kotlin evaluator wired in: the same rewrite
+ * `rewriteKotlin` performs, but keeping the diagnostics, matched paths and no-ops.
+ *
+ * The one to read before committing, because it is the only place the quiet failures of this path become
+ * visible — an expression that returned the value unchanged shows up as `matched/no-op`, and an unmatched
+ * selector as an unmatched rule. Preview and commit compile in the same box, so they see the same live state.
+ */
 fun Functions.Fn.previewRewriteKotlin(
     spec: String,
     preserveSharing: Boolean = false,
     box: Box? = Box.context.get()
 ): FnRewritePreview = previewRewrite(spec, kotlinRewriteOptions(preserveSharing, box))
 
+/**
+ * [Functions.Fn.rewriteChecked] with the live box's Kotlin evaluator wired in — refuses a spec whose parse
+ * produced any error, and applies the Kotlin right-hand sides otherwise.
+ *
+ * Throws `IllegalArgumentException` with the diagnostics attached. It checks the *rewrite language* only:
+ * the Kotlin inside `@{...}` is compiled lazily at the first node that matches, so a snippet that does not
+ * compile, or returns something that is not a number, throws from there and not from here.
+ */
 fun Functions.Fn.rewriteKotlinChecked(
     spec: String,
     preserveSharing: Boolean = false,
@@ -173,6 +250,12 @@ private fun kotlinRewriteOptions(preserveSharing: Boolean, box: Box?): FnRewrite
         kotlinNumberContext = box?.let { SourceBackedFnRewriteNumberEvaluator(it.id) }
     )
 
+/**
+ * [Functions.Fn.rewriteKotlin] with the box named explicitly instead of looked up: `box.rewriteFn(f, spec)`.
+ *
+ * For code that is not running inside the box whose context the snippets should compile in — a helper on
+ * another thread, or an agent driving a specific box — where `Box.context` would be empty or wrong.
+ */
 fun Box.rewriteFn(
     fn: Functions.Fn,
     spec: String,
@@ -180,6 +263,10 @@ fun Box.rewriteFn(
 ): Functions.Fn =
     fn.rewriteKotlin(spec, preserveSharing = preserveSharing, box = this)
 
+/**
+ * [Functions.Fn.previewRewriteKotlin] with the box named explicitly: the reporting form of [rewriteFn], for
+ * the same off-context callers.
+ */
 fun Box.previewRewriteFn(
     fn: Functions.Fn,
     spec: String,
