@@ -28,8 +28,22 @@ import kotlin.math.*
 // Bluestein routine reduces an arbitrary-length DFT to a power-of-two convolution.
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The transform itself: an in-place, self-contained complex FFT that accepts **any** length, not just a
+ * power of two.
+ *
+ * A power-of-two length goes through the fast iterative radix-2 kernel; anything else is handled by a
+ * Bluestein (chirp-z) reduction to a power-of-two convolution, which is correct but allocates several
+ * arrays of the next power of two above `2n+1` and is markedly slower. So a length of 1024 is cheap and a
+ * length of 1000 is not — pad to a power of two when you can.
+ *
+ * The sign convention is the usual one: forward carries `exp(-2πi·kn/N)` and no scaling, inverse carries
+ * `exp(+2πi·kn/N)` and the `1/N`. Most callers want [Spectrum] and the `stft` family rather than this
+ * directly.
+ */
 object FFT {
 
+    /** True for 1, 2, 4, 8, … — and false for zero and negatives, so it is safe on unvalidated input. */
     fun isPowerOfTwo(n: Int): Boolean = n > 0 && (n and (n - 1)) == 0
 
     /** Smallest power of two >= [n] (>= 1). */
@@ -189,8 +203,27 @@ object FFT {
 // Analysis windows.
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Which analysis window to taper a frame with before transforming it — the trade between how sharply you
+ * can separate two nearby frequencies and how much a strong one smears into its neighbours.
+ *
+ * `RECTANGULAR` is no window at all: the narrowest main lobe, and the worst leakage, so a loud tone
+ * spatters energy right across the spectrum. `HANN` is the sane default. `HAMMING` is similar with a
+ * slightly narrower lobe and a higher first sidelobe. `BLACKMAN` suppresses leakage hardest at the cost of
+ * the widest lobe — reach for it when you need to see something quiet next to something loud.
+ */
 enum class WindowType { RECTANGULAR, HANN, HAMMING, BLACKMAN }
 
+/**
+ * The window functions themselves, as plain `DoubleArray`s you multiply a frame by.
+ *
+ * Every one of them takes a `periodic` flag that is **false by default**, meaning symmetric — the right
+ * choice for filter design and for looking at a single frame. Pass `true` for the periodic form, which is
+ * the correct one for STFT analysis where frames overlap and are expected to sum smoothly; the difference
+ * is one sample in the divisor and it matters more than it looks.
+ *
+ * All of them return an all-ones array for `n <= 1` rather than dividing by zero.
+ */
 object Windows {
 
     /** Build a length-[n] window of the given [type]. Symmetric (periodic=false) by default. */
@@ -201,20 +234,33 @@ object Windows {
         WindowType.BLACKMAN -> blackman(n, periodic)
     }
 
+    /** All ones — i.e. no window. The `periodic` distinction does not apply, so there is no such parameter. */
     fun rectangular(n: Int): DoubleArray = DoubleArray(n) { 1.0 }
 
+    /**
+     * The raised-cosine window: `0.5 - 0.5·cos(2πi/d)`, zero at both ends, and the default worth reaching
+     * for. Symmetric unless `periodic` is true.
+     */
     fun hann(n: Int, periodic: Boolean = false): DoubleArray {
         if (n <= 1) return DoubleArray(n) { 1.0 }
         val denom = if (periodic) n.toDouble() else (n - 1).toDouble()
         return DoubleArray(n) { 0.5 - 0.5 * cos(2.0 * PI * it / denom) }
     }
 
+    /**
+     * `0.54 - 0.46·cos(2πi/d)` — like [hann] but it does **not** reach zero at the ends, which is what buys
+     * its slightly better resolution and slightly worse far-field leakage.
+     */
     fun hamming(n: Int, periodic: Boolean = false): DoubleArray {
         if (n <= 1) return DoubleArray(n) { 1.0 }
         val denom = if (periodic) n.toDouble() else (n - 1).toDouble()
         return DoubleArray(n) { 0.54 - 0.46 * cos(2.0 * PI * it / denom) }
     }
 
+    /**
+     * The three-term `0.42 - 0.5·cos(w) + 0.08·cos(2w)` window: the strongest leakage suppression here, and
+     * the widest main lobe, so two frequencies closer than about twice [hann]'s separation blur into one.
+     */
     fun blackman(n: Int, periodic: Boolean = false): DoubleArray {
         if (n <= 1) return DoubleArray(n) { 1.0 }
         val denom = if (periodic) n.toDouble() else (n - 1).toDouble()
@@ -484,6 +530,15 @@ fun istft(spec: Spectrogram): DoubleArray {
 // Spectral features — over a one-sided magnitude spectrum unless noted.
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * Single numbers that describe the *shape* of a spectrum — brightness, spread, where the energy stops —
+ * for driving something from a sound without looking at every bin.
+ *
+ * Everything here takes a **one-sided magnitude** spectrum (as from `Spectrum.magnitudeOneSided`) plus the
+ * sample rate, and returns Hz where the answer is a frequency. The bin width is derived as
+ * `sampleRate / (2·(n-1))`, so passing a two-sided spectrum by mistake silently halves every frequency it
+ * reports rather than failing. An empty spectrum gives 0.0 throughout instead of NaN.
+ */
 object SpectralFeatures {
 
     /** Spectral centroid (Hz): magnitude-weighted mean frequency. */
@@ -582,6 +637,13 @@ object SpectralFeatures {
         return sqrt(s / signal.size)
     }
 
+    /**
+     * Root-mean-square level of a time-domain buffer — loudness, roughly, and the number to drive a meter
+     * from. 0.0 for an empty buffer.
+     *
+     * A `FloatArray` convenience over the `DoubleArray` overload; the accumulation is in `Double`
+     * regardless, so a long buffer does not lose precision.
+     */
     fun rms(signal: FloatArray): Double {
         if (signal.isEmpty()) return 0.0
         var s = 0.0
@@ -601,8 +663,20 @@ object SpectralFeatures {
 // Mel scale — a perceptual log-frequency warping + triangular filter bank (bonus).
 // ---------------------------------------------------------------------------------------------
 
+/**
+ * The mel scale and its triangular filter bank — frequency re-spaced the way hearing actually works, so
+ * that a step of one band means about as much low down as high up.
+ *
+ * Why bother: a linear FFT spends most of its bins on the top few octaves, where we hear the least detail.
+ * Collapsing to mel bands gives a compact vector that changes when a sound changes *audibly*, which is what
+ * you want for driving visuals or comparing two sounds. Use [filterBank] on a one-sided magnitude spectrum;
+ * [hzToMel] and [melToHz] are the scale itself, in the standard `2595·log10(1 + hz/700)` form.
+ */
 object Mel {
+    /** Hz to mels, `2595·log10(1 + hz/700)`. Monotonic, 0 at 0 Hz, and defined for negative input too. */
     fun hzToMel(hz: Double): Double = 2595.0 * log10(1.0 + hz / 700.0)
+
+    /** Mels back to Hz — the exact inverse of [hzToMel]. */
     fun melToHz(mel: Double): Double = 700.0 * (10.0.pow(mel / 2595.0) - 1.0)
 
     /**
