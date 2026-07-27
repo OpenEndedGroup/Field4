@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-4 source file(s), 227 public symbol(s), 13 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+5 source file(s), 231 public symbol(s), 17 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -537,6 +537,22 @@ This bundle is intentionally pragmatic rather than dogmatic.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">betaBridgeDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | A minimal APP/LAM bridge demo. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">duplicatedConstantDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | A tiny nonlinear sketch: the lambda body is demanded twice through DUP. This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">eraseApplicationDemo</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Net</span></code> | Erase an application tree to demonstrate explicit garbage collection. |
+
+## ImagingVisualizer.kt { #imagingvisualizer-kt }
+
+`src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt`
+
+### ImagingVisualizer { #imagingvisualizer-kt-imagingvisualizer }
+
+<code class="highlight"><span class="k">object</span> <span class="nc">ImagingVisualizer</span></code>
+
+Inline visualizers for the CPU imaging / computer-vision family (`afield.stdlib/imaging*.kt`).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">format</span><span class="p">(</span><span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Render one of the imaging family's non-list types, or `null` if `value` is not one of them (in which case `ValueVisualizer` carries on with its reflective/`toString` fallback). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">formatList</span><span class="p">(</span><span class="n">list</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Render a homogeneous list of imaging values as one picture, or `null` when the list is not homogeneously one of the supported element types (empty lists and mixed lists fall through to `ValueVisualizer`'s ordinary list rendering). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">img</span><span class="p">(</span><span class="n">image</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The inline picture for an [`Img`](imaging.md#imaging-kt-img): an aspect-correct thumbnail of the actual pixels under the range policy documented on [`ImagingVisualizer`](visualization.md#imagingvisualizer-kt-imagingvisualizer), a one-line readout, and a disclosure holding the per-channel strip, histogram and statistics. |
 
 ## LazyValueVisualizer.kt { #lazyvaluevisualizer-kt }
 
