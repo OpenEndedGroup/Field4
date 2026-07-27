@@ -76,51 +76,221 @@ import java.util.Locale
 // ------------------------------
 // Box properties
 // ------------------------------
+/**
+ * The fragment-stage GLSL for this box, as text — the shader tab you type into, and the *only*
+ * place a graphics module's fragment shader comes from (assignments inside a `moduleHere { }`
+ * lambda do not set it).
+ *
+ * Inherited, so a box with none of its own reads its nearest ancestor's and one parent can dress a
+ * whole family of children. Writing it does **not** recompile anything by itself: reflected
+ * bindings and the live pipeline only change when something explicitly reloads — the *Reload
+ * Shader* action (`alt-r`), *Update Shader* (`alt-shift-enter`), [Box.attachShader], or an AI
+ * provisional accept — and those actions only exist on a box that has expanded a
+ * `moduleHere`-family macro or called `attachShader`. [Box.fragment_s] and [Box.vertex_fragment]
+ * both take precedence over this when they are non-blank.
+ */
 var Box.fragment by Inheritance<String?>()
+
+/**
+ * The vertex-stage GLSL for this box. Its `layout(location = …) in` declarations are the contract
+ * that generates the box's `Mesh` writers (`pos`, `col`, …), so changing an input here changes the
+ * Kotlin API of every box downstream of the next reload.
+ *
+ * Same rules as [Box.fragment]: inherited, read at prepare time, and overridden by [Box.vertex_s]
+ * or [Box.vertex_fragment] when either is non-blank. If a box has neither vertex nor fragment
+ * source when `moduleHere` expands, both are seeded from [defaultVertexShader] /
+ * [defaultFragmentShader].
+ */
 var Box.vertex by Inheritance<String?>()
+
+/**
+ * One Slang source holding *both* the vertex and fragment stages, compiled twice (once per stage)
+ * by `slangc`. It beats `vertex`, `fragment`, `vertex_s` and `fragment_s` outright: when this is
+ * non-blank it is the source for both graphics stages.
+ *
+ * Worth knowing: this is the one path whose reflection comes from Slang's own reflection JSON
+ * rather than from shaderc's SPIR-V walk, so the generated bindings are produced by a different
+ * code path than the GLSL boxes use. Needs `slangc` on the machine; a transpile failure is reported
+ * on this property's lines and the stage is abandoned with the previous module left running.
+ */
 var Box.vertex_fragment by Inheritance<String?>()
+
+/** The task-shader (amplification) stage GLSL of a mesh-shader pipeline. `meshModuleHere` needs
+ * `task`, `mesh` *and* `fragment` — there is no task-less mesh path here — and seeds a small
+ * `EmitMeshTasksEXT` default into all three if the box has none. */
 var Box.task by Inheritance<String?>()
+
+/** The mesh-shader stage GLSL, the stage that emits vertices and primitives directly
+ * (`SetMeshOutputsEXT` / `gl_MeshVerticesEXT`) instead of consuming a vertex buffer. Paired with
+ * [Box.task] and [Box.fragment] by `meshModuleHere`; note the name collides conceptually with
+ * `Mesh` the Kotlin draw object, which is unrelated. */
 var Box.mesh by Inheritance<String?>()
+
+/** Slang source for the fragment stage. When non-blank it wins over [Box.fragment] and is
+ * transpiled to GLSL by `slangc` before shaderc ever sees it, so compile errors arrive in Slang's
+ * `(line): error` format — which [numberFromErrorMessage] does understand. */
 var Box.fragment_s by Inheritance<String?>()
+
+/** Slang source for the vertex stage; wins over [Box.vertex] when non-blank. Prefer
+ * [Box.vertex_fragment] if you want the two stages to share declarations — two separate `_s`
+ * properties are transpiled independently and cannot see each other. */
 var Box.vertex_s by Inheritance<String?>()
+
+/** Slang source for the task stage; wins over [Box.task] when non-blank. */
 var Box.task_s by Inheritance<String?>()
+
+/** Slang source for the mesh stage; wins over [Box.mesh] when non-blank. */
 var Box.mesh_s by Inheritance<String?>()
+
+/**
+ * The *prepared* fragment GLSL: box-local, post-`#include`-template, post-`{% copyPC %}`,
+ * post-Slang-transpile — literally the text handed to shaderc. Written by every prepare pass and
+ * read by `_moduleHere`, which throws a `NullPointerException` if no pass ever ran.
+ *
+ * Not inherited (unlike [Box.fragment]) and not worth hand-editing: the next prepare overwrites it.
+ * It is, however, the right thing to read when you want to see what your `{{ }}` slots and
+ * includes actually expanded to.
+ */
 var Box._fragment by Delegation<String?>()
+
+/** The prepared vertex GLSL — see [Box._fragment] for what "prepared" means and why you should
+ * treat it as read-only. */
 var Box._vertex by Delegation<String?>()
+
+/** The prepared task-stage GLSL. See [Box._fragment]. */
 var Box._task by Delegation<String?>()
+
+/** The prepared mesh-stage GLSL. See [Box._fragment]. */
 var Box._mesh by Delegation<String?>()
 
+/**
+ * The compute-stage GLSL for this box, the source `computeModuleHere { }` builds from. Its
+ * `layout(binding = …) buffer` blocks and push constants generate the box's `ComputeMesh`
+ * accessors.
+ *
+ * Inherited, and seeded with a trivial `outData[i] = inData[i] + 1` kernel if the box has none when
+ * the macro expands. [Box.compute_s] wins over it when non-blank.
+ */
 var Box.compute by Inheritance<String?>()
+
+/** Slang source for the compute stage; wins over [Box.compute] when non-blank. */
 var Box.compute_s by Inheritance<String?>()
+
+/** The prepared compute GLSL. See [Box._fragment]. */
 var Box._compute by Delegation<String?>()
 
+/** The ray-generation stage GLSL: the one ray-tracing stage that is **required**, and the only one
+ * `rayTracingModuleHere` seeds a default for ([defaultRaygenShader]). The others are all optional
+ * and are simply skipped if their property is blank. */
 var Box.raygen by Inheritance<String?>()
+
+/** The miss-shader stage GLSL, run when a traced ray hits nothing. Optional: leave it blank and the
+ * stage is left out of the pipeline entirely. */
 var Box.miss by Inheritance<String?>()
+
+/** The closest-hit stage GLSL. Optional; omitted from the pipeline when blank. */
 var Box.closesthit by Inheritance<String?>()
+
+/** The any-hit stage GLSL, run per candidate intersection (alpha-cutout style rejection).
+ * Optional; omitted from the pipeline when blank. */
 var Box.anyhit by Inheritance<String?>()
+
+/** The intersection stage GLSL for custom (non-triangle) primitives. Optional; omitted from the
+ * pipeline when blank. */
 var Box.intersection by Inheritance<String?>()
+
+/** The callable-shader stage GLSL. Optional; omitted from the pipeline when blank. */
 var Box.callable by Inheritance<String?>()
+
+/** Slang source for the raygen stage; wins over [Box.raygen] when non-blank. */
 var Box.raygen_s by Inheritance<String?>()
+
+/** Slang source for the miss stage; wins over [Box.miss] when non-blank. */
 var Box.miss_s by Inheritance<String?>()
+
+/** Slang source for the closest-hit stage; wins over [Box.closesthit] when non-blank. */
 var Box.closesthit_s by Inheritance<String?>()
+
+/** Slang source for the any-hit stage; wins over [Box.anyhit] when non-blank. */
 var Box.anyhit_s by Inheritance<String?>()
+
+/** Slang source for the intersection stage; wins over [Box.intersection] when non-blank. */
 var Box.intersection_s by Inheritance<String?>()
+
+/** Slang source for the callable stage; wins over [Box.callable] when non-blank. */
 var Box.callable_s by Inheritance<String?>()
+
+/** The prepared raygen GLSL. See [Box._fragment]. */
 var Box._raygen by Delegation<String?>()
+
+/** The prepared miss GLSL, or `null` when the box has no miss stage. See [Box._fragment]. */
 var Box._miss by Delegation<String?>()
+
+/** The prepared closest-hit GLSL, or `null` when the box has no such stage. See [Box._fragment]. */
 var Box._closesthit by Delegation<String?>()
+
+/** The prepared any-hit GLSL, or `null` when the box has no such stage. See [Box._fragment]. */
 var Box._anyhit by Delegation<String?>()
+
+/** The prepared intersection GLSL, or `null` when the box has no such stage. See [Box._fragment]. */
 var Box._intersection by Delegation<String?>()
+
+/** The prepared callable GLSL, or `null` when the box has no such stage. See [Box._fragment]. */
 var Box._callable by Delegation<String?>()
 
+/**
+ * The live graphics module this box owns, or `null` if it has never built one. Set by
+ * [Box._moduleHere] and [Box.attachShader]; a re-run replaces the pointer rather than adding a
+ * second module.
+ *
+ * Its presence is load-bearing outside this file: it is how the editor decides that this box has a
+ * graphics pipeline worth offering reflected GLSL completions for, and how the AI/provisional path
+ * decides a shader-property edit should trigger a reload. Box-local, deliberately — a child box
+ * must build its own module rather than inherit its parent's.
+ */
 var Box._shader by Delegation<ModulePointer?>()
+
+/** The live compute module this box owns, or `null`. Set by [Box._computeModuleHere] and
+ * [Box.attachShader]; see [Box._shader] for the ownership rules. */
 var Box._computeShader by Delegation<ComputeModulePointer?>()
+
+/** The live ray-tracing module this box owns, or `null`. Set by [Box._rayTracingModuleHere] and
+ * [Box.attachShader]; see [Box._shader]. */
 var Box._rayTracingShader by Delegation<RayTracingModulePointer?>()
 
+/** Vestigial: declared, inherited, and read or written by nothing in the tree. The mesh pipeline
+ * uses the box-local [Box._meshShader] throughout; treat this as a name to avoid rather than an
+ * API. */
 var Box.meshShader by Inheritance<MeshModulePointer?>()
+
+/** The live mesh-shader module this box owns, or `null`. Set by [Box._meshModuleHere] and
+ * [Box.attachShader]; see [Box._shader]. */
 var Box._meshShader by Delegation<MeshModulePointer?>()
+
+/**
+ * This box's GPU sample probe, or `null` if nothing has asked for one. Created on demand either by
+ * [Box.fieldProbeHere] or by the first `#include "fieldProbe"` in one of this box's shaders, so the
+ * include alone is enough to bring it into being.
+ *
+ * The SSBO that backs it is wired into a module's parameters at module *construction* or reload, so
+ * a probe that appears after the module already exists stays unbound until the next reload.
+ */
 var Box._fieldProbe by Delegation<ShaderFieldProbe?>()
+
+/** The per-frame controller installed by [Box.fieldProbeAutoControl], or `null`. Kept on the box so
+ * a re-run can stop the previous one before installing its replacement — which is exactly what
+ * `fieldProbeAutoControl` does, and why re-running a box does not leave two controllers fighting
+ * over the same push constants. */
 var Box._fieldProbeAutoController by Delegation<ShaderFieldAutoController?>()
+
+/**
+ * How this box is joined to a [ShaderFieldStats] block: the stats object plus whether this box is
+ * its *producer* (it owns the buffers and its GLSL records into them) or merely a consumer.
+ *
+ * `#include "fieldStats"` reads this to decide which GLSL to emit, and throws if it is `null` —
+ * so a box that includes `fieldStats` must first call [Box.fieldStatsHere] (producer) or
+ * [Box.useFieldStats] (consumer).
+ */
 var Box._fieldStatsBinding by Delegation<ShaderFieldStatsBinding?>()
 
 // `once.vertex { ... }` / `once.fragment { ... }` etc. seed a box's shader-source property once,
@@ -129,22 +299,76 @@ var Box._fieldStatsBinding by Delegation<ShaderFieldStatsBinding?>()
 // are overwritten by the box's prepared `_vertex`/`_fragment`), so this is how box code hands a
 // module a non-default shader. Set these in a fragment *before* the `moduleHere { }` fragment (split
 // with `//%-`) so the box's later `moduleHere` expansion prepares its shaders from what you supplied.
+/**
+ * `once.vertex { …GLSL… }` fills the box's [Box.vertex] property from code, the first time only.
+ *
+ * The trap is timing, not syntax: `once.vertex` runs at *runtime* and `moduleHere` reads the
+ * property at *macro-expansion* time, so both in one fragment means `moduleHere` expands first,
+ * finds nothing, and seeds [defaultVertexShader] instead. Put a `//%-` fragment break between them.
+ */
 val Once.vertex by Onceing<String>()
+
+/** `once.fragment { …GLSL… }` fills [Box.fragment] once from code. Same fragment-ordering trap as
+ * [Once.vertex]: seed it in a fragment *before* the one that expands `moduleHere`. */
 val Once.fragment by Onceing<String>()
+
+/** `once.vertex_fragment { …Slang… }` fills [Box.vertex_fragment] once — the shared-Slang route,
+ * which overrides whatever `once.vertex`/`once.fragment` put in place. */
 val Once.vertex_fragment by Onceing<String>()
+
+/** `once.compute { …GLSL… }` fills [Box.compute] once, ahead of the `computeModuleHere` fragment. */
 val Once.compute by Onceing<String>()
+
+/** `once.task { …GLSL… }` fills [Box.task] once, ahead of the `meshModuleHere` fragment. */
 val Once.task by Onceing<String>()
+
+/** `once.mesh { …GLSL… }` fills [Box.mesh] once, ahead of the `meshModuleHere` fragment. */
 val Once.mesh by Onceing<String>()
+
+/** `once.raygen { …GLSL… }` fills [Box.raygen] once, ahead of the `rayTracingModuleHere` fragment. */
 val Once.raygen by Onceing<String>()
+
+/** `once.miss { …GLSL… }` fills [Box.miss] once; leave it unset to build a pipeline with no miss
+ * stage at all. */
 val Once.miss by Onceing<String>()
+
+/** `once.closesthit { …GLSL… }` fills [Box.closesthit] once. Optional stage. */
 val Once.closesthit by Onceing<String>()
+
+/** `once.anyhit { …GLSL… }` fills [Box.anyhit] once. Optional stage. */
 val Once.anyhit by Onceing<String>()
+
+/** `once.intersection { …GLSL… }` fills [Box.intersection] once. Optional stage. */
 val Once.intersection by Onceing<String>()
+
+/** `once.callable { …GLSL… }` fills [Box.callable] once. Optional stage. */
 val Once.callable by Onceing<String>()
 
+/**
+ * The named values this box's `{{ slot }}` template expressions resolve against — the mechanism
+ * behind the shadertoy preamble and any GLSL boilerplate you would rather write once.
+ *
+ * Resolution walks up the box graph (a child's slots shadow its parents') and then falls back to the
+ * process-global template registry, so a slot can be supplied by an ancestor box or by
+ * `registerGlobalShaderTemplate`. Values may be `String`s, nested `Map`s (addressed as
+ * `{{ a.b.c }}`) or `Resolver`s. An unresolved slot is a hard preprocessing error naming the line,
+ * not a silent empty string.
+ *
+ * Note this defaults to a plain `HashMap` — unlike [Box.stackAutoShaderSources] — while the shader
+ * *update* path reads it from a background thread, so mutating it during a live update is not safe.
+ */
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
     defaultValue = { HashMap<String, Any>() })
 
+/**
+ * StackSL source, by `stack.auto` slot name, for every `{{ stack.auto.foo }}` this box's shaders
+ * declare. Concurrent, because the compile/reload path reads it off the main thread.
+ *
+ * You normally reach it through the generated `module.foo = "p length ]2s2.0"` properties rather
+ * than directly; see [stackAutoShaderSource]. A name present with an empty value is normal — that
+ * is a slot which has been discovered but never bound, and it compiles to the stable
+ * `vec4 foo(vec4 foo_in) { return vec4(0.0); }` fallback.
+ */
 val Box.stackAutoShaderSources by Delegation<MutableMap<String, String>>(
     defaultValue = { ConcurrentHashMap<String, String>() })
 
@@ -276,18 +500,31 @@ private fun registerStackAutoShaderOwner(box: Box, module: Any) {
 private fun stackAutoShaderBoxFor(module: Any): Box? =
     stackAutoShaderOwner(module) ?: Box.context.get()
 
+/**
+ * The StackSL source currently bound to the `{{ stack.auto.name }}` slot of this graphics module's
+ * shaders — the getter behind the generated `module.name` property.
+ *
+ * The module is only a handle to find the owning box by (registered when the module was built, and
+ * falling back to the ambient `Box.context`); the source itself lives on the box. An unbound or
+ * unknown slot reads back as `""`, never `null`, so you cannot tell "never set" from "set to
+ * empty". A name that is not a GLSL identifier throws.
+ */
 fun stackAutoShaderSource(module: ModulePointer, name: String): String {
     validateStackAutoShaderName(name)
     val box = stackAutoShaderBoxFor(module)
     return box?.stackAutoShaderSources?.get(name) ?: ""
 }
 
+/** The StackSL source bound to a compute module's `stack.auto` slot; `""` when unbound. See the
+ * [ModulePointer][stackAutoShaderSource] overload for the ownership and empty-string rules. */
 fun stackAutoShaderSource(module: ComputeModulePointer, name: String): String {
     validateStackAutoShaderName(name)
     val box = stackAutoShaderBoxFor(module)
     return box?.stackAutoShaderSources?.get(name) ?: ""
 }
 
+/** The StackSL source bound to a mesh module's `stack.auto` slot; `""` when unbound. See the
+ * [ModulePointer][stackAutoShaderSource] overload for the ownership and empty-string rules. */
 fun stackAutoShaderSource(module: MeshModulePointer, name: String): String {
     validateStackAutoShaderName(name)
     val box = stackAutoShaderBoxFor(module)
@@ -322,45 +559,137 @@ private fun setStackAutoShaderSource(module: Any, name: String, source: String, 
     lprintln("graphics", "compiled stack.auto.$name (${compiled.length} chars GLSL); queued shader update.")
 }
 
+/**
+ * Bind new StackSL source to a graphics module's `{{ stack.auto.name }}` slot and queue the pipeline
+ * update — the setter behind the generated `module.name = "…"` property, and the fastest live-coding
+ * loop in the file.
+ *
+ * The StackSL is compiled *before* anything is stored. On a compile error nothing changes: the
+ * previous binding and the running pipeline are both left alone and the diagnostic is reported onto
+ * the box's `code` property rather than thrown, so a half-typed expression does not take the frame
+ * down. On success the update runs on a background coroutine through the ABI-preserving update path
+ * (no full module rebuild), and rapid writes are coalesced into one pending follow-up. Writing the
+ * value it already has is a no-op.
+ *
+ * Throws only for a name that is not a GLSL identifier, or when the module has no registered owner
+ * box *and* there is no ambient `Box.context` to fall back on.
+ */
 fun stackAutoShaderSource(module: ModulePointer, name: String, source: String) {
     setStackAutoShaderSource(module, name, source, ShaderReloadType.GRAPHICS)
 }
 
+/** Bind StackSL source to a compute module's `stack.auto` slot; queues the same coalesced,
+ * ABI-preserving background update as the graphics [stackAutoShaderSource] setter. */
 fun stackAutoShaderSource(module: ComputeModulePointer, name: String, source: String) {
     setStackAutoShaderSource(module, name, source, ShaderReloadType.COMPUTE)
 }
 
+/**
+ * Bind StackSL source to a mesh module's `stack.auto` slot.
+ *
+ * Unlike the graphics and compute setters this one currently goes through the *full* mesh reload
+ * path rather than an ABI-preserving pipeline update, so it rebuilds the module and is
+ * correspondingly heavier. (Ray-tracing modules have no `stack.auto` setter at all.)
+ */
 fun stackAutoShaderSource(module: MeshModulePointer, name: String, source: String) {
     setStackAutoShaderSource(module, name, source, ShaderReloadType.MESH)
 }
 
+/**
+ * One `#include` that landed inside a registered include root, handed to a
+ * [ShaderIncludeRootResolver] to turn into text.
+ *
+ * The path arrives pre-chewed: [root] has already been matched against the registry, [includePath]
+ * is the remainder with `.`/`..` collapsed and guaranteed not to climb above the root, and
+ * [requestedPath] is what the shader literally wrote. Resolvers should key off [includePath] and use
+ * [requestedPath] only for error messages.
+ */
 data class ShaderIncludeRootRequest(
+    /** The registered root name that matched — the first path segment of a `root/…` include, or, for
+     * a relative include, the root the *including* file itself came from. */
     val root: String,
+    /** The path within [root], normalised: separators unified to `/`, `.` and empty segments
+     * dropped, `..` resolved (and rejected if it would escape the root), no leading slash. This is
+     * the key a resolver should look up. */
     val includePath: String,
+    /** Exactly what the `#include` said, root prefix and all. Useful in diagnostics; do not resolve
+     * against it. */
     val requestedPath: String,
+    /** The resolved path of the file doing the including (a previous resolution's `resolvedPath`, or
+     * a `field/<box>-<id>/<property>.glsl` name for box source), or `null` when shaderc did not
+     * supply one. */
     val requestingSourcePath: String?,
+    /** `RELATIVE` for `#include "…"`, `STANDARD` for `#include <…>`. Only `RELATIVE` includes are
+     * resolved relative to [requestingSourcePath]'s directory. */
     val includeType: ShaderIncludeType,
+    /** How deep this include is nested, straight from shaderc. Informational — nothing in Field
+     * enforces a limit on it. */
     val includeDepth: Long
 )
 
+/**
+ * Turns an include inside one registered root into source text. Register one under a name with
+ * [registerShaderIncludeRoot] and every `#include "thatName/whatever.glsl"` in every box's shaders
+ * goes through it.
+ *
+ * Returning `null` does **not** mean "let someone else try": once a root has claimed a path the
+ * caller escalates a `null` into a thrown, box-reported error naming the root. Throwing is
+ * equivalent, so prefer whichever gives the better message. Called on whichever thread is compiling
+ * — the main runloop for a reload, a background coroutine for an update — so anything slow in here
+ * (a network fetch, say) is felt directly by that thread.
+ */
 fun interface ShaderIncludeRootResolver {
+    /** Resolve one include, or return `null` if this root does not have it (which the caller turns
+     * into a hard error). */
     fun resolve(request: ShaderIncludeRootRequest): ShaderIncludeResolution?
 }
 
 private val shaderIncludeRoots = ConcurrentHashMap<String, ShaderIncludeRootResolver>()
 
+/**
+ * Claim a first path segment for a resolver, so `#include "root/some/file.glsl"` in any box's shader
+ * is answered by [resolver] instead of being looked for as a box name.
+ *
+ * The registry is **process-global**, not per document or per box: one registration serves every
+ * open workspace, and registering the same name again silently replaces the previous resolver
+ * (nothing warns). [root] must be a single path segment — leading and trailing slashes are trimmed,
+ * but an embedded `/` throws, as does an empty name.
+ *
+ * The trap worth knowing: roots are honoured by the `#include` path (resolved by shaderc while
+ * compiling) but **not** by the template engine's `{% include "…" %}` tag, which only knows about
+ * built-in includes and `box.property` references. A `{% include "lygia/math/const.glsl" %}` fails
+ * with "no box named …" no matter what you have registered here.
+ */
 fun registerShaderIncludeRoot(root: String, resolver: ShaderIncludeRootResolver) {
     shaderIncludeRoots[normalizeShaderIncludeRootName(root)] = resolver
 }
 
+/** Remove an include root, returning the resolver that was registered under it (or `null` if none
+ * was). Shaders already compiled keep working — this only affects the next compile. */
 fun unregisterShaderIncludeRoot(root: String): ShaderIncludeRootResolver? =
     shaderIncludeRoots.remove(normalizeShaderIncludeRootName(root))
 
+/** Every include-root name currently registered, sorted — the quickest way to answer "why isn't
+ * `#include "lygia/…"` resolving?" from a box. */
 fun listShaderIncludeRoots(): Set<String> = shaderIncludeRoots.keys.toSortedSet()
 
+/**
+ * Where a URL-backed include root keeps its on-disk copies, and how patient it is with the network.
+ *
+ * The cache is permanent and has no invalidation: once a file is written it is served from disk
+ * forever, so picking up an upstream change means deleting the cached file (or the whole
+ * [cacheDirectory]) yourself. Failures are not cached at all, so a 404 or a timeout is re-attempted
+ * on every compile.
+ */
 data class ShaderRemoteIncludeCacheOptions(
+    /** Directory the fetched includes are mirrored into, one file per include path. Created on
+     * demand. Resolved to an absolute, normalised path, and includes that would escape it are
+     * rejected — a remote server cannot talk you into writing outside this directory. */
     val cacheDirectory: Path,
+    /** `HttpURLConnection` connect timeout, in milliseconds. */
     val connectTimeoutMillis: Int = 5_000,
+    /** `HttpURLConnection` read timeout, in milliseconds. Both timeouts are felt by whichever thread
+     * is compiling — the main runloop, on the reload path — so the defaults are deliberately short. */
     val readTimeoutMillis: Int = 5_000
 )
 
@@ -421,6 +750,22 @@ private fun fetchRemoteShaderInclude(url: String, options: ShaderRemoteIncludeCa
     }
 }
 
+/**
+ * An include root that fetches `baseUrl/<path>` over HTTP the first time and reads the local copy
+ * every time after — how Field consumes a shader library that lives on a website rather than on
+ * disk.
+ *
+ * Fetches are plain `GET`s with redirects followed; a non-200 throws (the body, if any, is appended
+ * to the message) and is reported onto the box's shader lines like any other include failure.
+ * Progress and failures are also pushed to the `remoteShader` notification channel, so the fetch is
+ * visible in the UI. Because the fetch happens inline in shader compilation, a cold cache on a slow
+ * link stalls whichever thread is compiling.
+ *
+ * The returned resolver is not registered anywhere; hand it to [registerShaderIncludeRoot]. Note
+ * that [root] is used for the cache subdirectory *and* for the `resolvedPath` reported back to
+ * shaderc, which is what makes relative includes *inside* the fetched library resolve against the
+ * same root.
+ */
 fun shaderCachedUrlIncludeRootResolver(
     root: String,
     baseUrl: String,
@@ -456,6 +801,16 @@ fun shaderCachedUrlIncludeRootResolver(
     }
 }
 
+/**
+ * The [Lygia](https://lygia.xyz) GLSL library as an include root, cached under
+ * `~/.field4/shader-include-cache/lygia.xyz` by default — one call and `#include "lygia/math/const.glsl"`
+ * works.
+ *
+ * Just builds the resolver; [registerLygiaIncludeRoot] is the one-liner that also registers it under
+ * the name `lygia`. Note the default cache directory is named after the *host* (`lygia.xyz`) rather
+ * than after the root (`lygia`), so it differs from what [shaderCachedUrlIncludeRootResolver] would
+ * have chosen for the same root.
+ */
 fun shaderLygiaIncludeRootResolver(
     cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(
         cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz")
@@ -466,12 +821,24 @@ fun shaderLygiaIncludeRootResolver(
     cacheOptions = cacheOptions
 )
 
+/** The Lygia include root with the cache pointed somewhere of your choosing and the default
+ * timeouts — a per-project cache directory, say, rather than the shared one under `~/.field4`. */
 fun shaderLygiaIncludeRootResolver(cacheDirectory: Path): ShaderIncludeRootResolver =
     shaderLygiaIncludeRootResolver(ShaderRemoteIncludeCacheOptions(cacheDirectory = cacheDirectory))
 
+/** The Lygia include root with the cache directory given as a string. Interpreted by
+ * `Paths.get`, so a relative path is relative to the JVM's working directory — *not* to the
+ * workspace. Prefer an absolute path. */
 fun shaderLygiaIncludeRootResolver(cacheDirectory: String): ShaderIncludeRootResolver =
     shaderLygiaIncludeRootResolver(Paths.get(cacheDirectory))
 
+/**
+ * Register Lygia under the include root `lygia`, so every box's shaders can `#include "lygia/…"`.
+ *
+ * Process-global and idempotent-ish: calling it twice replaces the resolver, which is harmless but
+ * also means a second call with different [cacheOptions] silently wins. Nothing fetches yet — the
+ * first `#include` that needs a file it has not cached does.
+ */
 fun registerLygiaIncludeRoot(
     cacheOptions: ShaderRemoteIncludeCacheOptions = ShaderRemoteIncludeCacheOptions(
         cacheDirectory = defaultShaderIncludeCacheDirectory().resolve("lygia.xyz")
@@ -480,14 +847,30 @@ fun registerLygiaIncludeRoot(
     registerShaderIncludeRoot(LYGIA_SHADER_ROOT, shaderLygiaIncludeRootResolver(cacheOptions))
 }
 
+/** Register Lygia under the root `lygia`, caching into [cacheDirectory]. */
 fun registerLygiaIncludeRoot(cacheDirectory: Path) {
     registerShaderIncludeRoot(LYGIA_SHADER_ROOT, shaderLygiaIncludeRootResolver(cacheDirectory))
 }
 
+/** Register Lygia under the root `lygia`, caching into a directory named by string —
+ * `Paths.get`-relative to the JVM's working directory, so prefer an absolute path. */
 fun registerLygiaIncludeRoot(cacheDirectory: String) {
     registerLygiaIncludeRoot(Paths.get(cacheDirectory))
 }
 
+/**
+ * An include root served straight from a directory on disk: `#include "root/sub/thing.glsl"` reads
+ * `directory/sub/thing.glsl`.
+ *
+ * Read once per compile, not watched — editing a file on disk changes nothing until something
+ * triggers a shader reload. Paths that would climb out of [directory] throw, and a path that simply
+ * does not exist resolves to `null`, which the caller turns into a "cannot resolve include" error
+ * against the including shader's line.
+ *
+ * [directory] is captured absolute and normalised at construction, so the resolver keeps working
+ * whatever the JVM's working directory does later — but that also means a relative [directory] is
+ * frozen against the working directory at *this* moment, not against any workspace.
+ */
 fun shaderFilesystemIncludeRootResolver(directory: Path): ShaderIncludeRootResolver {
     val rootDirectory = directory.toAbsolutePath().normalize()
     return ShaderIncludeRootResolver { request ->
@@ -503,18 +886,51 @@ fun shaderFilesystemIncludeRootResolver(directory: Path): ShaderIncludeRootResol
     }
 }
 
+/** A directory-backed include root named by string. `Paths.get`-relative to the JVM's working
+ * directory, which is *not* the workspace directory — pass an absolute path unless you are certain. */
 fun shaderFilesystemIncludeRootResolver(directory: String): ShaderIncludeRootResolver =
     shaderFilesystemIncludeRootResolver(Paths.get(directory))
 
+/**
+ * Register [directory] as the include root [root], so `#include "root/…"` reads files under it —
+ * the one-liner for pulling a checked-out shader library into a workspace.
+ *
+ * Process-global (see [registerShaderIncludeRoot]) and read-through, not watched: edit a file on
+ * disk and the change appears at the next shader reload, not immediately.
+ */
 fun registerShaderFilesystemIncludeRoot(root: String, directory: Path) {
     val normalizedRoot = normalizeShaderIncludeRootName(root)
     registerShaderIncludeRoot(normalizedRoot, shaderFilesystemIncludeRootResolver(directory))
 }
 
+/** Register a directory as an include root, with the directory given as a string —
+ * `Paths.get`-relative to the JVM's working directory, so prefer an absolute path. */
 fun registerShaderFilesystemIncludeRoot(root: String, directory: String) {
     registerShaderFilesystemIncludeRoot(root, Paths.get(directory))
 }
 
+/**
+ * Create (or reconfigure) this box's GPU sample probe and hand it back for chaining — the Kotlin
+ * half of `#include "fieldProbe"`, which lets a shader call `fieldProbe(x)` and see the resulting
+ * distribution on the CPU.
+ *
+ * Typically `fieldProbeHere(samples = 4096).display("probe")`. The call is idempotent in the sense
+ * that it reuses the box's existing probe rather than making a second one, but it **clears any
+ * previously registered display channel and `onSnapshot` callback first** — that is deliberate, so a
+ * re-run of the box does not accumulate stale registrations, and it is why `.display(…)` belongs on
+ * the end of every call rather than being set up once.
+ *
+ * Read-back happens off the render thread and is throttled by `probe.maxDisplayHz`, so a slow front
+ * end cannot stall the GPU. The probe's buffer is bound into a module's parameters when that module
+ * is built or reloaded, so calling this *after* the module exists needs a reload to take effect.
+ *
+ * @param samples reservoir size pulled back to the CPU; clamped to 1..262144 by the probe
+ * @param binding SSBO binding for `FieldProbeBuffer` — must match what the include declares
+ * @param descriptorSet descriptor set the probe buffer lives in
+ * @param enabled `false` leaves the instrumentation compiled in but recording nothing
+ * @param ordinalRange restrict sampling to a slice of shader invocations; `null` resets to all of
+ *   them (it does not mean "leave the previous range alone")
+ */
 fun Box.fieldProbeHere(
     samples: Int = afield.four.util.FIELD_PROBE_DEFAULT_SAMPLES,
     binding: Int = afield.four.util.FIELD_PROBE_DEFAULT_BINDING,
@@ -535,6 +951,32 @@ fun Box.fieldProbeHere(
     return probe
 }
 
+/**
+ * Declare that this box *produces* a GPU statistics block, and get the handle to read it back with —
+ * the Kotlin half of `#include "fieldStats"` in a shader that records into it.
+ *
+ * Unlike the probe, nothing is sampled back to the CPU by default beyond a few scalars per channel:
+ * the mean, variance, min/max and a quantile sketch are all reduced on the GPU, so a shader can feed
+ * its own statistics back into itself without a round trip. See the Field Probes page for the GLSL
+ * side.
+ *
+ * This is a **macro**: written in a box it is expanded at compile time (which is why every argument
+ * has to be an integer *literal* — see [Box.macro_fieldStatsHere]) and rewritten to
+ * [Box._fieldStatsHere]. Calling it from ordinary Kotlin outside a box works too, since it simply
+ * delegates.
+ *
+ * A box that only *reads* someone else's stats calls [Box.useFieldStats] instead; calling this on
+ * both boxes would allocate two unrelated blocks.
+ *
+ * @param channels independent distributions, 1..64
+ * @param sketchSize quantile-sketch resolution; a power of two in 16..256
+ * @param maxPartials per-channel partial-record capacity — if a snapshot reports `droppedPartials`
+ *   above zero, this is the number to raise
+ * @param descriptorSet descriptor set holding both stats buffers
+ * @param partialBinding SSBO binding of the partial (per-invocation) buffer
+ * @param resultBinding SSBO binding of the reduced result buffer
+ * @param stateSlots GPU-side smoothed/EMA slots, 1..64
+ */
 fun Box.fieldStatsHere(
     channels: Int = 1,
     sketchSize: Int = 256,
@@ -553,6 +995,16 @@ fun Box.fieldStatsHere(
     stateSlots = stateSlots
 )
 
+/**
+ * The real work behind [Box.fieldStatsHere] — what the macro rewrites the call site to. Reach for it
+ * directly only when you are driving a box from outside and do not want macro expansion.
+ *
+ * Reuses the box's existing [ShaderFieldStats] when *every* parameter matches and the block belongs
+ * to this box; change one number and you get a fresh block with fresh buffers, and the previous one
+ * is simply dropped on the floor — [ShaderFieldStats] has no disposal call of its own. Either way the
+ * box is re-marked as the block's producer, so a box that had been a consumer via
+ * [Box.useFieldStats] becomes a producer again.
+ */
 fun Box._fieldStatsHere(
     channels: Int = 1,
     sketchSize: Int = 256,
@@ -590,6 +1042,16 @@ fun Box._fieldStatsHere(
     return stats
 }
 
+/**
+ * Macro expansion for `fieldStatsHere(...)`: parse the argument text, allocate the stats block *now*
+ * (at expansion time, so a `computeModuleHere` in the same fragment can already resolve
+ * `#include "fieldStats"`), and rewrite the call to [Box._fieldStatsHere].
+ *
+ * Because it has to know the numbers before anything is compiled, every argument must be an integer
+ * literal — `channels = n` where `n` is a variable throws with that explanation rather than silently
+ * using a default. Underscores in literals are fine (`65_536`). Positional and named arguments both
+ * work, in the same order as [Box.fieldStatsHere]'s parameters.
+ */
 fun Box.macro_fieldStatsHere(args: List<String>): Insert {
     val call = args.joinToString("").trim()
     val body = call.removePrefix("(").removeSuffix(")").trim()
@@ -637,27 +1099,81 @@ fun Box.macro_fieldStatsHere(args: List<String>): Insert {
     return Insert(here = "_fieldStatsHere$call")
 }
 
+/**
+ * Bind another box's [ShaderFieldStats] into this box as a **consumer**, so `#include "fieldStats"`
+ * here emits the read-only GLSL instead of the recording GLSL.
+ *
+ * The idiom is one box recording (`fieldStatsHere`) and another reading the reduced result —
+ * `consumerBox.useFieldStats(producerBox.fieldStatsHere(channels = 1))`. Allocates nothing; it only
+ * records the binding, so the buffers stay owned by the producing box. Returns [stats] unchanged for
+ * chaining.
+ */
 fun Box.useFieldStats(stats: ShaderFieldStats): ShaderFieldStats {
     _fieldStatsBinding = ShaderFieldStatsBinding(stats, producer = false)
     return stats
 }
 
+/**
+ * How [Box.fieldProbeAutoControl] turns probe read-backs into controller updates: when a batch is
+ * big enough to act on, what counts as clipped, and where the diagnostics card goes.
+ *
+ * The defaults assume the thing being controlled is a shader whose output should fill `0..1` — hence
+ * `clipLower = 0.0`, `clipUpper = 1.0` — and that you want to watch it happen (`displayChannel =
+ * "auto"`).
+ */
 data class ShaderProbeAutoControlConfig(
+    /** Minimum samples in a read-back before the controller is allowed to learn from it. A snapshot
+     * with fewer is skipped entirely — `tick()` returns `null` and nothing is applied. */
     val minSamples: Int = 128,
+    /** Values at or below this (within [clipEpsilon]) count as clipped low and are reported to the
+     * controller as a clip rate; `null` means "nothing clips at the bottom". */
     val clipLower: Double? = 0.0,
+    /** Values at or above this (within [clipEpsilon]) count as clipped high; `null` means nothing
+     * clips at the top. With both bounds `null` the reported clip rate is a flat `0.0`. */
     val clipUpper: Double? = 1.0,
+    /** Tolerance for the two clip comparisons — floating-point slop, not a percentage. */
     val clipEpsilon: Double = 1.0e-6,
+    /** `true` applies the controller's *nominal* parameters, `false` (the default) its *applied*
+     * ones, which carry the small dither the controller needs to identify the system. Turn it on
+     * once identification has settled and the dither is visible in the output. */
     val useNominalParams: Boolean = false,
+    /** Box output channel for the HTML diagnostics table (nominal vs applied parameters, objective,
+     * confidence, clip rate, p10/p50/p90). `null` disables the display entirely, which is what a
+     * headless test wants. */
     val displayChannel: String? = "auto",
+    /** Whether `stop()` closes the display channel by default. */
     val closeDisplayOnStop: Boolean = false,
+    /** Whether `stop()` clears the display channel's contents by default. */
     val clearDisplayOnStop: Boolean = false,
+    /** Prefix of the runloop hook key, which is `"$runloopKeySuffix:${box.id}"`. Two controllers on
+     * one box need two different values here or the second silently displaces the first. */
     val runloopKeySuffix: String = "shaderFieldAuto"
 )
 
+/**
+ * The running loop that closes a shader's feedback circuit: read the probe, push the samples into an
+ * adaptive controller, hand the new parameters to your `apply` lambda, and draw the diagnostics.
+ *
+ * Build one with [Box.fieldProbeAutoControl] rather than directly — that is what registers it on the
+ * box so a re-run can stop the previous one. Once [install]ed it ticks once per runloop frame; a
+ * headless test can leave `install = false` and call [tick] by hand, as
+ * `ShaderFieldAutoControlSmokeTest` does.
+ *
+ * Everything happens on whichever thread calls [tick] — the main runloop, normally — so the `apply`
+ * lambda may write push constants directly without further synchronisation.
+ */
 class ShaderFieldAutoController(
+    /** The box this controller belongs to: the source of the display channel and the identity in the
+     * runloop hook key. */
     val box: Box,
+    /** The probe being read. [Box.fieldProbeAutoControl] has already put it into continuous-read mode,
+     * so it delivers a snapshot every frame rather than at the display rate. */
     val probe: ShaderFieldProbe,
+    /** The adaptive controller doing the actual learning; its `parameterNames` label the diagnostics
+     * table and its `pushSamples` is what turns a batch into parameters. */
     val controller: AdaptiveDistributionController,
+    /** The thresholds, clip bounds and display settings this controller was built with. Read on every
+     * tick, but the object is immutable — copy it and rebuild to change your mind. */
     val config: ShaderProbeAutoControlConfig,
     private val apply: (params: DoubleArray, output: ControlOutput, batch: FieldProbeScalarBatch) -> Unit
 ) {
@@ -665,15 +1181,34 @@ class ShaderFieldAutoController(
     private var installed = false
     private var lastSnapshot: FieldProbeSnapshot? = null
 
+    /** How many ticks have actually done work. Ticks that found no new snapshot, or too few samples,
+     * do not count — so a `tickCount` stuck at zero means the probe is not delivering, not that the
+     * hook is missing. */
     var tickCount: Int = 0
         private set
 
+    /** The last probe batch the controller learned from, or `null` before the first useful tick.
+     * Carries both the raw snapshot and the clip rate computed from [config]. */
     var lastBatch: FieldProbeScalarBatch? = null
         private set
 
+    /** The last controller output — nominal and applied parameters plus diagnostics — or `null` before
+     * the first useful tick. The same object the `apply` lambda was handed. */
     var lastOutput: ControlOutput? = null
         private set
 
+    /**
+     * Do one control step, returning the controller's output, or `null` if there was nothing to do.
+     *
+     * `null` means one of two boring things: the probe has produced no *new* snapshot since the last
+     * tick (compared by identity, so a frame with no dispatch is skipped rather than double-counted),
+     * or the snapshot has fewer than `config.minSamples` scalar samples. Neither is an error, and
+     * neither advances [tickCount].
+     *
+     * When it does run: samples go into the controller, the resulting parameters go to the `apply`
+     * lambda *before* the diagnostics are drawn, and the display channel is refreshed. Call it on the
+     * thread that owns the resources `apply` touches.
+     */
     fun tick(): ControlOutput? {
         val batch = probe.readLatestScalarBatch(
             minSamples = config.minSamples,
@@ -709,6 +1244,14 @@ class ShaderFieldAutoController(
         return output
     }
 
+    /**
+     * Install a `preRun` hook that calls [tick] once per frame, and return `this` for chaining.
+     * Idempotent — a second call while already installed does nothing.
+     *
+     * The hook is keyed `"${config.runloopKeySuffix}:${box.id}"`, so one box gets one controller per
+     * suffix. Note that the runloop is *not* remembered: if you install into a non-default runloop you
+     * must pass the same one to [stop], or the hook is never removed and keeps ticking.
+     */
     fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldAutoController {
         if (installed) return this
         runloop.preRun[hookKey] = sequence {
@@ -721,6 +1264,14 @@ class ShaderFieldAutoController(
         return this
     }
 
+    /**
+     * Remove the runloop hook, optionally tidy the display channel, and forget this controller on the
+     * box. Returns `this`, and can be re-[install]ed afterwards.
+     *
+     * Two things it does *not* do: it does not reset the controller's learned state (re-installing
+     * resumes where it left off), and it does not take the probe out of continuous-read mode. It also
+     * only removes the hook from the [runloop] you pass — the same asymmetry [install] warns about.
+     */
     fun stop(
         runloop: Runloop = Runloop.runLoop,
         closeDisplay: Boolean = config.closeDisplayOnStop,
@@ -741,6 +1292,30 @@ class ShaderFieldAutoController(
     }
 }
 
+/**
+ * Wire this box's probe into an adaptive controller, so a shader parameter is steered every frame by
+ * what the shader's own output distribution turns out to be.
+ *
+ * The one-liner version of "close the loop": the probe reports a batch of scalar samples, the
+ * controller compares their distribution against the target its feature extractor encodes, and your
+ * `apply` lambda writes the resulting parameters wherever they belong — typically
+ * `dispatch.push.set("offset", params[0].toFloat())`.
+ *
+ * Housekeeping done for you: any controller already on this box is stopped first (so re-running a box
+ * cannot leave two of them fighting over the same push constants), the probe is switched into
+ * continuous-read mode so a snapshot arrives every frame rather than at display rate, and the new
+ * controller is stored on the box. With `install = true` (the default) it starts ticking immediately;
+ * with `false` you own the pacing and call `tick()` yourself, which is what the smoke test does.
+ *
+ * @param probe the probe to read; defaults to this box's, created on demand
+ * @param controller the learner; the default is an `AdaptiveDistributionController` over uniform
+ *   quantile features, i.e. "make the output uniform over the clip range"
+ * @param config thresholds, clip bounds and where the diagnostics card goes
+ * @param install `false` to build it without registering the per-frame hook
+ * @param runloop which runloop to install into — pass the *same* one to `stop()`
+ * @param apply called on every useful tick with the parameters to apply, the full controller output,
+ *   and the batch they were derived from
+ */
 fun Box.fieldProbeAutoControl(
     probe: ShaderFieldProbe = ensureFieldProbe(),
     controller: AdaptiveDistributionController = AdaptiveDistributionController(
@@ -830,38 +1405,81 @@ fun Box.moduleHere(p: Parameters): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("moduleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/**
+ * Macro placeholder expanded to a [ComputeModulePointer] built from this box's `compute` property.
+ *
+ * Exists only to be rewritten; calling it directly throws. Expansion seeds a trivial default compute
+ * shader if the box has none, compiles it, and generates the `ComputeMesh` push-constant and buffer
+ * accessors into the box's preamble.
+ */
 fun Box.computeModuleHere(p: Parameters): ComputeModulePointer {
     throw MacroRegistry.MacroNotExpandedException("computeModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/**
+ * Macro placeholder expanded to a [MeshModulePointer] built from this box's `task`, `mesh` *and*
+ * `fragment` properties — all three are required, and defaults are seeded for any that are missing.
+ *
+ * Exists only to be rewritten; calling it directly throws.
+ */
 fun Box.meshModuleHere(p: Parameters): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/**
+ * Macro placeholder expanded to a [RayTracingModulePointer] built from this box's `raygen` property
+ * plus whichever of `miss`/`closesthit`/`anyhit`/`intersection`/`callable` are non-blank.
+ *
+ * Exists only to be rewritten; calling it directly throws.
+ */
 fun Box.rayTracingModuleHere(p: Parameters): RayTracingModulePointer {
     throw MacroRegistry.MacroNotExpandedException("rayTracingModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/**
+ * Macro placeholder for the trailing-lambda form, `moduleHere { primitiveType = triangles }`.
+ *
+ * The lambda configures the module's [Parameters] — blending, depth test, primitive type — but **not**
+ * its shaders: assigning `vertex` inside it has no effect, because the prepared source from the box's
+ * properties is written over the top. Seed shaders with `once.vertex { }` in an earlier `//%-`
+ * fragment instead. Calling it directly throws.
+ */
 fun Box.moduleHere(p: Parameters.() -> Unit): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("moduleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** Macro placeholder for `computeModuleHere { … }`, the trailing-lambda form. The lambda configures
+ * [Parameters], not the shader source. Calling it directly throws. */
 fun Box.computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
     throw MacroRegistry.MacroNotExpandedException("computeModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** Macro placeholder for `meshModuleHere { … }`, the trailing-lambda form. Calling it directly
+ * throws. */
 fun Box.meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
     throw MacroRegistry.MacroNotExpandedException("meshModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** Macro placeholder for `rayTracingModuleHere { … }`, the trailing-lambda form. Calling it directly
+ * throws. */
 fun Box.rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer {
     throw MacroRegistry.MacroNotExpandedException("rayTracingModuleHere should not be callable directly, but should be expanded as a macro")
 }
 
+/**
+ * Macro placeholder expanded to a Shadertoy-shaped graphics module: a full-screen triangle, the
+ * `iResolution`/`iTime`/`iMouse`/`iDate` uniform block already bound, four 1×1 dummy `iChannel`
+ * textures, and depth testing off — so pasting a `mainImage` body into the box's fragment shader
+ * mostly just works.
+ *
+ * Exists only to be rewritten; calling it directly throws.
+ */
 fun Box.shadertoyHere(p: Parameters): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("shadertoyHere should not be callable directly, but should be expanded as a macro")
 }
 
+/** Macro placeholder for `shadertoyHere { … }`, the trailing-lambda form. Calling it directly
+ * throws. */
 fun Box.shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
     throw MacroRegistry.MacroNotExpandedException("shadertoyHere should not be callable directly, but should be expanded as a macro")
 }
@@ -895,6 +1513,15 @@ private data class ShaderIncludeRef(val boxName: String, val property: String) {
     val key = "${boxName.trim()}.${property.trim()}"
 }
 
+/**
+ * Dig a line number out of a shader (or Vulkan) error message, so the error can be pinned to a line
+ * in the box's editor rather than dumped in the log.
+ *
+ * Tries four known shapes in order — glslang's `ERROR: 0:12:`, a `file:12: error`, Slang's
+ * `(12): error`, and a bare `line 12` — and only then falls back to "the *last* `:N:` anywhere in the
+ * message", which is a guess and occasionally a wrong one. Returns `null` when even that finds
+ * nothing; callers in this file treat `null` as line 0, i.e. "somewhere in this text".
+ */
 fun numberFromErrorMessage(m: String): Int? {
     glslSourceLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
     fileLineRegex.find(m)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
@@ -1275,6 +1902,26 @@ private fun preprocess(
     )
 }
 
+/**
+ * Run one shader stage's source through Field's preprocessor and hand back the GLSL that shaderc would
+ * see — the thing to call when you are building a module by hand instead of through a
+ * `moduleHere`-family macro.
+ *
+ * Three expansions happen here, all resolved against [inside] and its ancestors: `{{ slot }}` template
+ * expressions (from [Box.shaderTemplate] and the global registry), `{% include "box.property" %}` tags
+ * (recursively preprocessed, cycle-detected, and fitted with `#line` directives so error line numbers
+ * still point at your text), and `{{ stack.auto.name }}` slots compiled from StackSL. Built-in
+ * includes — `fieldProbe`, `fieldStats`, `quantileWarp` — resolve here too, and asking for `fieldStats`
+ * without a [Box.fieldStatsHere] or [Box.useFieldStats] binding throws.
+ *
+ * Two things this overload deliberately cannot do, because it has no notion of a previous stage or a
+ * registered root: `{% copyPC %}` throws (there is no prior stage to copy a push-constant block from),
+ * and `{% include "someRoot/file.glsl" %}` fails as "no box named …" — registered include roots are
+ * only reachable from a real `#include` during compilation, not from the template tag.
+ *
+ * Failures throw rather than being reported onto the box; the reload path catches them for you, a
+ * hand-rolled caller must not.
+ */
 fun preprocess(inside: Box, code: String, kind: ShaderKind): String {
     return preprocess(inside, code, kind, defaultShaderProperty(kind), emptyList())
 }
@@ -1887,6 +2534,16 @@ private fun generatedPreambleGroup(key: String): String? {
     }
 }
 
+/**
+ * Tidy a box's preamble text: drop duplicate declarations, hoist every `import` to the top, and remove
+ * blank lines.
+ *
+ * "Duplicate" is judged by a segment's key, and for a generated line the key is only the name in its
+ * leading marker comment — so two lines both tagged `graphics-ubo:params` collapse to whichever appeared
+ * **first**, whatever their bodies say. That is the right rule for de-duplicating a preamble that has
+ * accumulated over several runs, and the wrong one if you were hoping the newer line would win; for
+ * that, go through [applyInsertToPreamble], where incoming segments do replace existing ones.
+ */
 fun normalizePreambleText(preamble: String): String {
     val merged = LinkedHashMap<String, PreambleSegment>()
     splitPreambleSegments(preamble.lines()).forEach { segment ->
@@ -2134,6 +2791,22 @@ private fun mergePreambleSegments(existing: List<String>, incoming: List<String>
     return merged.values.toList()
 }
 
+/**
+ * Fold an [Insert]'s generated declarations into a box's preamble — how a shader reload gets its new
+ * typed bindings in front of the Kotlin compiler.
+ *
+ * Writes to `e.target` if the Insert names one, otherwise to [box]. The merge is per-segment and
+ * key-based, with two rules worth knowing: an incoming segment **replaces** an existing one with the
+ * same key (so a reload updates a binding in place rather than appending a second copy), and an
+ * incoming segment from a generated family — `graphics-`, `compute-`, `mesh-`, `ray-`, `stack-auto` —
+ * causes *every* existing segment of that family to be dropped first, so bindings for a uniform you
+ * just deleted from the shader disappear instead of lingering. `import` lines are hoisted above
+ * everything else. An Insert with no preamble content is a no-op; the Insert's `here` text is not this
+ * function's business.
+ *
+ * What it does *not* do is re-run the box. New accessors are in the preamble but the box's Kotlin has
+ * to execute again before they mean anything at a call site.
+ */
 fun applyInsertToPreamble(box: Box, e: Insert) {
     val b = e.target ?: box
     val incomingLines = buildList {
@@ -2451,6 +3124,25 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
     }
 }
 
+/**
+ * Recompile this box's vertex and fragment stages from its shader properties and swap the live
+ * graphics module — the *Reload Shader* action (`alt-r`), as a function.
+ *
+ * The full-rebuild path, as opposed to the ABI-preserving *Update Shader* (`alt-shift-enter`): it
+ * re-preprocesses both stages, re-introspects them, rewrites the box's preamble with the resulting
+ * typed bindings, and reloads the module with `forceReresolve`, which re-resolves every texture and
+ * buffer the shader asks for by name. Use it when the shader's interface changed; use the update path
+ * when only the arithmetic did.
+ *
+ * Must be called on the main runloop — it touches the Vulkan module directly. Errors are not thrown:
+ * they are reported onto the offending shader property's line and the function returns `false` with the
+ * **previous module left running**, so a broken edit does not black out the window. Stale errors from
+ * a previous attempt are cleared on the way in and again on success.
+ *
+ * One rough edge: a box with no graphics module at all throws a `NullPointerException` here, rather
+ * than reporting "no shader attached" the way the update path politely does. Check `box._shader != null`
+ * first if you cannot be sure.
+ */
 fun reloadShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
     val vertexStage = prepareShaderStage(box, ShaderKind.VERTEX_SHADER, "vertex") ?: return false
@@ -2490,6 +3182,23 @@ fun reloadShader(box: Box): Boolean {
     return true
 }
 
+/**
+ * Adopt a graphics module you built yourself into this box's hot-reload machinery: the box gains the
+ * *Reload Shader* and *Update Shader* actions, its shader properties are seeded from the module's
+ * source, and the module becomes `box._shader`.
+ *
+ * The route in for code that constructs a `Module` directly rather than through `moduleHere`. Ownership
+ * does not change — you get the same pointer back — but the box now drives it, and an immediate
+ * [reloadShader] runs before this returns, so an unreachable `#include` in the adopted source surfaces
+ * as a box error straight away.
+ *
+ * Requires both stages to have non-blank source (it throws otherwise). By default the box's `vertex` /
+ * `fragment` properties are only seeded if the box has none of its own, so an existing shader tab wins;
+ * pass `overwriteProperties = true` to clobber it. Note what gets seeded is the module's *already
+ * expanded* GLSL, so template slots and includes in the original are gone from the copy.
+ *
+ * @param overwriteProperties replace the box's existing shader properties instead of leaving them alone
+ */
 fun Box.attachShader(module: ModulePointer, overwriteProperties: Boolean = false): ModulePointer {
     installGraphicsShaderReloadAction()
     installGraphicsShaderUpdateAction()
@@ -2580,6 +3289,15 @@ private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
     )
 }
 
+/**
+ * Recompile this box's compute stage and swap the live compute module — the *Reload Compute Shader*
+ * action (`alt-r`) as a function.
+ *
+ * Same contract as [reloadShader]: main runloop only, errors reported onto the `compute` property rather
+ * than thrown, `false` means the previous module is still the one running, and the box's preamble is
+ * rewritten with the freshly introspected `ComputeMesh` bindings. Likewise throws a
+ * `NullPointerException` if the box has no compute module to reload.
+ */
 fun reloadComputeShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "compute")
     val computeStage = prepareShaderStage(box, ShaderKind.COMPUTE_SHADER, "compute") ?: return false
@@ -2671,6 +3389,13 @@ private suspend fun updateComputeShader(box: Box, key: ShaderReloadKey, generati
     }
 }
 
+/**
+ * Adopt an externally built compute module into this box: install the reload and update actions, seed
+ * the `compute` property from the module's source, take it as `box._computeShader`, and reload once.
+ *
+ * See the [graphics overload][Box.attachShader] for the ownership and property-seeding rules; the only
+ * difference is that just one stage is required.
+ */
 fun Box.attachShader(module: ComputeModulePointer, overwriteProperties: Boolean = false): ComputeModulePointer {
     installComputeShaderReloadAction()
     installComputeShaderUpdateAction()
@@ -2753,6 +3478,20 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
     )
 }
 
+/**
+ * Recompile all three stages of this box's mesh-shader pipeline — task, then mesh, then fragment — and
+ * swap the live module.
+ *
+ * Order matters and is why they are not independent: each stage is prepared with the previous ones
+ * available, which is what makes `{% copyPC %}` able to copy the task stage's push-constant block into
+ * the mesh stage and the mesh stage's into the fragment stage. All three must have source; a blank one
+ * is an error, not an omission.
+ *
+ * Main runloop only, errors reported onto the stage properties rather than thrown, `false` leaves the
+ * previous module running. There is no ABI-preserving *Update* action for mesh pipelines — only this
+ * full reload — which is also why binding a `stack.auto` slot on a mesh module is heavier than on a
+ * graphics one. Throws `NullPointerException` if the box has no mesh module.
+ */
 fun reloadMeshShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
     val taskStage = prepareShaderStage(box, ShaderKind.TASK_SHADER, "task") ?: return false
@@ -2804,6 +3543,14 @@ fun reloadMeshShader(box: Box): Boolean {
     return true
 }
 
+/**
+ * Adopt an externally built mesh-shader module into this box, seeding the `task`, `mesh` and `fragment`
+ * properties and reloading once.
+ *
+ * All three stages must have source (it throws otherwise). Note this installs only the *Reload Mesh
+ * Shader* action — there is no ABI-preserving update action for mesh pipelines, so `alt-shift-enter`
+ * does nothing on such a box.
+ */
 fun Box.attachShader(module: MeshModulePointer, overwriteProperties: Boolean = false): MeshModulePointer {
     installMeshShaderReloadAction()
 
@@ -2915,6 +3662,19 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
     )
 }
 
+/**
+ * Recompile whichever ray-tracing stages this box has and swap the live module.
+ *
+ * `raygen` is required; the other five are included only if their property is non-blank, so deleting a
+ * miss shader and reloading genuinely removes that stage from the pipeline. Stages are prepared in
+ * declaration order with raygen available to the rest, which is what lets the hit and miss stages
+ * `{% copyPC %}` the raygen push-constant block. `rayTracingGroups` is reset to `null` so the shader
+ * binding table is rebuilt from the new stage set.
+ *
+ * Main runloop only; errors are reported onto the stage properties and `false` leaves the previous
+ * module running. Like the mesh path there is no ABI-preserving update action. Throws
+ * `NullPointerException` if the box has no ray-tracing module.
+ */
 fun reloadRayTracingShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
     val stages = prepareRayTracingStages(box) ?: return false
@@ -2953,6 +3713,15 @@ fun reloadRayTracingShader(box: Box): Boolean {
 private fun List<Pair<PreparedShaderStage, CompileResult>>.introspectionFor(kind: ShaderKind): Introspection? =
     firstOrNull { it.first.kind == kind }?.second?.introspection
 
+/**
+ * Adopt an externally built ray-tracing module into this box, seeding `raygen` (required) and whichever
+ * optional stages the module actually has.
+ *
+ * Blank optional stages are left unset rather than seeded as empty strings, so the box's property list
+ * reflects the pipeline's real shape. Installs only the *Reload Ray Tracing Shader* action; unlike the
+ * graphics and compute overloads it does **not** register `_rayTracingShader` via stack.auto ownership,
+ * so `{{ stack.auto.… }}` slots in ray-tracing shaders have no module-pointer setter.
+ */
 fun Box.attachShader(module: RayTracingModulePointer, overwriteProperties: Boolean = false): RayTracingModulePointer {
     installRayTracingShaderReloadAction()
 
@@ -2981,12 +3750,26 @@ fun Box.attachShader(module: RayTracingModulePointer, overwriteProperties: Boole
 // ------------------------------
 // Graphics macro
 // ------------------------------
+/**
+ * Macro expansion for `moduleHere(…)` — the entry point `MacroRegistry` calls when it finds one in a
+ * box's text. Delegates to [Box.macro_moduleHereWithDefaultShaders] with Field's stock vertex and
+ * fragment shaders as the fallbacks.
+ */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_moduleHere(args: List<String>): Insert? {
     return macro_moduleHereWithDefaultShaders(args)
 }
 
 
+/**
+ * The vertex shader a box gets if `moduleHere` expands and the box has no vertex source of its own:
+ * one `vec3 pos` input transformed by a `push_constant` block of two `mat4`s, `p` and `m`.
+ *
+ * Worth knowing because it decides the box's *initial* Kotlin API — `pos` as the only mesh writer, and
+ * `p`/`m` reachable as `mesh.p` / `mesh.m`. If your first run produced a mesh whose vertex attributes
+ * do not match your real shader, this is what it matched instead: seed the shader in an earlier `//%-`
+ * fragment.
+ */
 val defaultVertexShader = """
     #version 450
     layout (location = 0) in vec3 pos;
@@ -3002,6 +3785,9 @@ val defaultVertexShader = """
     }
 """.trimIndent()
 
+/** The fragment shader a box gets if `moduleHere` expands with no fragment source of its own: a flat
+ * warm orange, chosen so "it drew *something*" is unmistakable. Declares no uniforms, so it generates
+ * no accessors. */
 val defaultFragmentShader = """
     #version 450
     layout(location = 0) out vec4 uFragColor;
@@ -3062,6 +3848,14 @@ private fun Box.ensureShadertoyTemplates() {
     shaderTemplate.putIfAbsent(SHADERTOY_FRAGMENT_TEMPLATE_KEY, shadertoyFragmentPreamble)
 }
 
+/**
+ * The vertex shader `shadertoyHere` seeds: no inputs at all, just a full-screen triangle synthesised
+ * from `gl_VertexIndex`. That is why the shadertoy module needs a 3-vertex mesh and no vertex buffer.
+ *
+ * It opens with a `{{ shadertoy.vertexPreamble }}` template slot, which `shadertoyHere` puts into the
+ * box's [Box.shaderTemplate] map. Copy this text into a box that has never expanded `shadertoyHere` and
+ * preprocessing fails on the unresolved slot.
+ */
 val shadertoyVertexShader = """
     {{ shadertoy.vertexPreamble }}
 
@@ -3071,6 +3865,15 @@ val shadertoyVertexShader = """
     }
 """.trimIndent()
 
+/**
+ * The fragment shader `shadertoyHere` seeds: the `{{ shadertoy.fragmentPreamble }}` slot (which brings
+ * in the `iResolution`/`iTime`/`iMouse`/… uniform block and the `#define`s that make them look like
+ * shadertoy globals), a `main` that calls `mainImage`, and a placeholder `mainImage` drawing a uv
+ * gradient that pulses with `iTime`.
+ *
+ * Replace the `mainImage` body and leave the rest alone. As with [shadertoyVertexShader], the template
+ * slot only resolves on a box whose [Box.shaderTemplate] carries the shadertoy preambles.
+ */
 val shadertoyFragmentShader = """
     {{ shadertoy.fragmentPreamble }}
 
@@ -3187,6 +3990,27 @@ private fun installShadertoyMesh(module: ModulePointer, renderer: Renderer, name
     return mesh
 }
 
+/**
+ * The shared body of every graphics-module macro: seed the box's shader properties if it has none,
+ * preprocess and compile both stages *at expansion time*, and return the [Insert] that carries the
+ * generated typed bindings plus the rewritten call site.
+ *
+ * Compiling during expansion is the whole point — the reflected interface is what the generated `Mesh`
+ * writers, push-constant properties and structure classes are made of, so there is no way to produce
+ * them without knowing what the shader declares. It is also why macro expansion is not side-effect
+ * free: this installs the box's reload/update actions and can write its `vertex`/`fragment` properties.
+ *
+ * If either stage fails to compile it still returns an Insert — but one carrying only the rewritten call
+ * site, no bindings — so the box's Kotlin compiles and the shader error is what you see rather than a
+ * cascade of unresolved references. The seeding is all-or-nothing across the two stages: a box with a
+ * vertex shader but no fragment shader gets [fragment] filled in too.
+ *
+ * @param args the macro's raw argument text, as captured from the call site
+ * @param vertex fallback vertex source, used only if the box has no vertex source of its own
+ * @param fragment fallback fragment source, likewise
+ * @param resolvesToCall the runtime function the call site is rewritten to — `_moduleHere` normally,
+ *   `_shadertoyHere` for the shadertoy flavour
+ */
 fun Box.macro_moduleHereWithDefaultShaders(
     args: List<String>,
     vertex: String = defaultVertexShader,
@@ -3237,6 +4061,14 @@ fun Box.macro_moduleHereWithDefaultShaders(
     }
 }
 
+/**
+ * Macro expansion for `shadertoyHere(…)`: register the shadertoy template preambles on the box, then run
+ * the ordinary graphics expansion with the shadertoy vertex/fragment shaders as fallbacks and
+ * `_shadertoyHere` as the runtime call.
+ *
+ * The template registration has to happen first, because the seeded shaders reference
+ * `{{ shadertoy.fragmentPreamble }}` and preprocessing would otherwise fail on the unresolved slot.
+ */
 fun Box.macro_shadertoyHere(args: List<String>): Insert? {
     ensureShadertoyTemplates()
     return macro_moduleHereWithDefaultShaders(
@@ -3302,6 +4134,21 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
     }
 }
 
+/**
+ * Turn a compiled vertex+fragment pair into the [Insert] that gives a box its typed graphics API: one
+ * `val Mesh.<name> by FromInput()` per vertex attribute, the `m.set { }` writer map, a generated Kotlin
+ * class per GLSL struct/UBO/SSBO layout, `stack.auto` string properties, and `Mesh`/`MeshGroup`
+ * accessors for every push-constant and UBO member.
+ *
+ * Shared by macro expansion and [reloadShader] so both produce byte-identical preamble segments — which
+ * is what lets [applyInsertToPreamble] recognise and replace them in place instead of piling up copies.
+ * Members with the same name across the two stages are emitted once. Push-constant members also get an
+ * untyped `Structure.<name>` accessor, so the `m.push["name"]` form works without any of this.
+ *
+ * @param resolvesToCall the runtime function the call site becomes — `_moduleHere` or `_shadertoyHere`
+ * @param args the call site's argument text; up to three fragments are concatenated onto the call
+ * @param box the owning box, used only to discover its `stack.auto` slot names; `null` skips those
+ */
 fun insertForShader(
     vi: Introspection,
     fi: Introspection,
@@ -3381,10 +4228,35 @@ fun insertForShader(
 // ------------------------------
 // Expanded graphics module creation
 // ------------------------------
+/**
+ * The runtime graphics-module builder for the trailing-lambda call site, `moduleHere { … }` after
+ * expansion. Resolves the [Renderer] from the ambient context — which means this box must be a
+ * descendant of the box that owns the window, or `fromContext()` finds nothing.
+ */
 fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
     return _moduleHere(parameters(renderer = fromContext(), p))
 }
 
+/**
+ * Build this box's graphics module and store it as `box._shader` — the function every expanded
+ * `moduleHere` call actually ends up in.
+ *
+ * Takes its GLSL from the *prepared* `_vertex` / `_fragment` properties, overwriting whatever the caller
+ * put in [p], which is the mechanism behind "assigning `vertex` inside the lambda does nothing". Throws
+ * a `NullPointerException` if no prepare pass has run — normally impossible from an expanded macro,
+ * easy to hit when calling this by hand.
+ *
+ * Also installed here: the box's include resolvers and source names (so shader errors point at box
+ * lines), a texture resolver that finds samplers by matching their GLSL name against this box's
+ * properties, the field-probe and field-stats SSBO resolvers, and an error handler that reports
+ * compilation and validation messages onto the box's `code` property.
+ *
+ * Two things to be aware of. The shared-Slang (`vertex_fragment`) path re-prepares and re-compiles both
+ * stages here, so a box on that route pays for compilation twice — once at expansion, once now. And it
+ * sets `globalAsyncDebugHandler`, which is exactly as global as it sounds: the most recently built module
+ * wins, so asynchronous Vulkan debug messages are reported onto *that* box regardless of which one
+ * provoked them.
+ */
 fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     val vertexSourceProperty = sourcePropertyForStage(this, "vertex")
     val fragmentSourceProperty = sourcePropertyForStage(this, "fragment")
@@ -3444,10 +4316,23 @@ fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
     return this._shader!!
 }
 
+/** The runtime shadertoy-module builder for the trailing-lambda call site. Resolves the [Renderer] from
+ * the ambient context, so the box must be a descendant of its renderer box. */
 fun Box._shadertoyHere(p: Parameters.() -> Unit): ModulePointer {
     return _shadertoyHere(parameters(renderer = fromContext(), p))
 }
 
+/**
+ * Build a shadertoy-shaped module: an ordinary [Box._moduleHere] with depth testing off, four 1×1 dummy
+ * `iChannel` textures, the shadertoy uniform block bound to live values, and a 3-vertex mesh named
+ * `"shadertoy"` already attached so the box draws without you building any geometry.
+ *
+ * The dummy channels are white/red/green/blue single pixels, cached per renderer, and they are consulted
+ * *before* the normal by-name texture search — so `iChannel0` resolves to the dummy even if the box has a
+ * property of that name. Two quirks in the uniform bindings are worth knowing: `iFrame` is derived from
+ * wall-clock time divided by 16.667 ms rather than from a real frame counter, and `iChannelResolution*`
+ * is hard-coded to `(1,1,1)` whatever is actually bound.
+ */
 fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
     val renderer: Renderer = p.renderer
     val dummyTextures = ShadertoyTextures.forRenderer(renderer)
@@ -3466,8 +4351,34 @@ fun Box._shadertoyHere(p: Parameters = parameters {}): ModulePointer {
     return module
 }
 
+/**
+ * A hook for deciding yourself what a shader's `sampler2D someName` should be bound to, consulted before
+ * Field's own by-name search of the box's properties.
+ *
+ * Called with the box and the sampler's GLSL name; return `null` to fall through to the normal search
+ * (which tries `HasImageViewArray`, `HasImageView`, `ImageView`, arrays of those, `LoadedTexture` and
+ * `RenderToTexture`, in that order, and throws if none matches). Inherited, so a renderer box can supply
+ * one resolver for a whole family of shader boxes.
+ *
+ * Invoked from the texture resolver during module construction and resolution, on the graphics thread.
+ * Note that the surrounding resolver sets the thread-local `Box.context` to the box and never restores it
+ * — a `todo` in the source, and something to be aware of if your lambda cares about that context.
+ */
 var Box.customTextureResolver by Inheritance<((Box, String) -> HasImageViewArray?)?>()
 
+/**
+ * Package a fixed list of image views as the `(provider, sampler)` pair a texture resolver returns — the
+ * usual way to answer "bind *these* images to that sampler".
+ *
+ * The list is **captured**: later changes to the underlying object's view array are not seen, which makes
+ * this the wrong overload for something like a [RenderToTexture] that can swap its views (use the
+ * `HasImageViewArray` overload for that). The returned provider also forwards `prepareSampledImagesFor`
+ * to any view that wants it, so render-to-texture layout transitions still happen.
+ *
+ * The sampler is the first of: [sampler] if you gave one, the first view's own default sampler, or a new
+ * mip-aware [TextureSampler] built against `fromContext()`'s renderer — so the last of those needs a live
+ * graphics context on this thread. Throws if [views] is empty.
+ */
 fun fromViews(
     views: List<HasImageView>,
     name: String = "",
@@ -3499,6 +4410,16 @@ private fun sampledTextureMipLevels(view: HasImageView): Int {
         ?: view.imageView.imageViewData.mipLevels
 }
 
+/**
+ * Package a live view *provider* as the `(provider, sampler)` pair a texture resolver returns — the
+ * overload to prefer when the thing you are binding can change its views underneath you.
+ *
+ * Unlike the `List<HasImageView>` overload this does not snapshot: the wrapper re-reads
+ * `provider.imageViewArray` every time it is asked, so a [RenderToTexture] that reallocates keeps
+ * resolving to its current images. Sampler selection is the same three-step fallback, with the provider's
+ * own default sampler preferred over any individual view's, and mip levels taken from the provider when it
+ * is a [RenderToTexture]. Throws if the provider is currently empty.
+ */
 fun fromViews(
     provider: HasImageViewArray,
     name: String = "",
@@ -3571,6 +4492,16 @@ private fun Box.textureResolverFor(previousResolver: (Introspected.Texture) -> P
 // ------------------------------
 // Compute macro + module creation
 // ------------------------------
+/**
+ * Macro expansion for `computeModuleHere(…)`: install the reload and update actions, seed a trivial
+ * `outData[i] = inData[i] + 1` kernel if the box has no compute source, compile it, and return the
+ * [Insert] carrying the generated `ComputeMesh` bindings and the rewritten `_computeModuleHere` call.
+ *
+ * As with the graphics macro, compilation happens *now*, at expansion time, because the reflected
+ * interface is what the generated accessors are built from. If the shader does not compile the Insert
+ * still rewrites the call site but carries no bindings, so the shader error is what surfaces rather than a
+ * wall of unresolved Kotlin references.
+ */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_computeModuleHere(args: List<String>): Insert {
     installComputeShaderReloadAction()
@@ -3619,10 +4550,21 @@ void main() {
     }
 }
 
+/** The runtime compute-module builder for the trailing-lambda call site, `computeModuleHere { … }` after
+ * expansion. Resolves the [Renderer] from the ambient context, so the box must be a descendant of its
+ * renderer box. */
 fun Box._computeModuleHere(p: Parameters.() -> Unit): ComputeModulePointer {
     return _computeModuleHere(parameters(renderer = fromContext(), p))
 }
 
+/**
+ * Build this box's compute module and store it as `box._computeShader`.
+ *
+ * Takes its GLSL from the prepared `_compute` property, overriding whatever the caller set, and throws a
+ * `NullPointerException` if no prepare pass has run. Wires up the same by-name texture resolver, include
+ * resolver, source name and box-reporting error handler as the graphics path, and attaches the box's field
+ * probe / field stats buffers. Unlike [Box._moduleHere] it leaves `globalAsyncDebugHandler` alone.
+ */
 fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
     p.compute = this._compute!!
     val computeSourceProperty = sourcePropertyForStage(this, "compute")
@@ -3648,6 +4590,15 @@ fun Box._computeModuleHere(p: Parameters): ComputeModulePointer {
 // ------------------------------
 // Mesh macro + module creation
 // ------------------------------
+/**
+ * Macro expansion for `meshModuleHere(…)`: install the reload action, seed a runnable task/mesh/fragment
+ * trio for any of the three the box is missing, compile all three in order, and return the [Insert] with
+ * the generated `MeshMesh` bindings.
+ *
+ * The seeded default is a real, if minimal, mesh pipeline — a task shader that emits three mesh workgroups
+ * and a mesh shader that emits one triangle each — so a fresh box draws something. Any stage failing to
+ * compile drops the bindings and rewrites the call site only.
+ */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_meshModuleHere(args: List<String>): Insert {
     installMeshShaderReloadAction()
@@ -3766,10 +4717,21 @@ void main()
     }
 }
 
+/** The runtime mesh-module builder for the trailing-lambda call site. Resolves the [Renderer] from the
+ * ambient context, so the box must be a descendant of its renderer box. */
 fun Box._meshModuleHere(p: Parameters.() -> Unit): MeshModulePointer {
     return _meshModuleHere(parameters(renderer = fromContext(), p))
 }
 
+/**
+ * Build this box's mesh-shader module from the prepared `_task`, `_mesh` and `_fragment` properties and
+ * store it as `box._meshShader`.
+ *
+ * All three are required and dereferenced without a null check, so a missing prepare pass is a
+ * `NullPointerException`. Per-stage include resolvers and source names are installed so errors land on the
+ * right property. Note that, unlike the graphics and compute paths, no custom texture resolver is
+ * installed here — a mesh-pipeline shader's samplers are resolved by whatever [p] already carries.
+ */
 fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
 
     p.mesh = this._mesh!!
@@ -3802,6 +4764,14 @@ fun Box._meshModuleHere(p: Parameters = parameters {}): MeshModulePointer {
 // ------------------------------
 // Ray tracing macro + module creation
 // ------------------------------
+/**
+ * The ray-generation shader a box gets when `rayTracingModuleHere` expands and the box has no `raygen`
+ * source: it writes the launch uv into the ray payload and traces nothing at all.
+ *
+ * Deliberately trace-free, so the pipeline builds and dispatches on any device with ray tracing without
+ * needing an acceleration structure to exist yet. Declares no push constants or bindings, so it generates
+ * no accessors either.
+ */
 val defaultRaygenShader = """
 #version 460
 #extension GL_EXT_ray_tracing : require
@@ -3815,6 +4785,15 @@ void main()
 }
 """.trimIndent()
 
+/**
+ * Macro expansion for `rayTracingModuleHere(…)`: install the reload action, seed [defaultRaygenShader] if
+ * the box has no `raygen`, compile every stage the box does have, and return the [Insert] with the
+ * generated `RayTracingDispatch` bindings.
+ *
+ * Only `raygen` is seeded — the optional stages stay absent rather than being filled with placeholders, so
+ * the expansion reflects the pipeline you actually asked for. If any present stage fails to compile the
+ * bindings are dropped and only the call site is rewritten.
+ */
 @OptIn(DelicateCoroutinesApi::class)
 fun Box.macro_rayTracingModuleHere(args: List<String>): Insert {
     installRayTracingShaderReloadAction()
@@ -3844,10 +4823,23 @@ fun Box.macro_rayTracingModuleHere(args: List<String>): Insert {
     return buildRayTracingInsert(introspections).copy(here = here)
 }
 
+/** The runtime ray-tracing-module builder for the trailing-lambda call site. Resolves the [Renderer] from
+ * the ambient context, so the box must be a descendant of its renderer box. */
 fun Box._rayTracingModuleHere(p: Parameters.() -> Unit): RayTracingModulePointer {
     return _rayTracingModuleHere(parameters(renderer = fromContext(), p))
 }
 
+/**
+ * Build this box's ray-tracing module from the prepared stage properties and store it as
+ * `box._rayTracingShader`.
+ *
+ * `_raygen` is required and dereferenced without a check; the five optional stages become `""` when absent,
+ * and only stages the box actually has get a source name and include resolver, so a blank stage genuinely
+ * stays out of the pipeline. Installs the by-name texture resolver and the box-reporting error handler.
+ *
+ * Unlike the other three builders this one does not register the module for `stack.auto` ownership, so
+ * `{{ stack.auto.… }}` slots in ray-tracing shaders have no generated setter to drive them.
+ */
 fun Box._rayTracingModuleHere(p: Parameters = parameters {}): RayTracingModulePointer {
     p.raygen = this._raygen!!
     p.miss = this._miss ?: ""
