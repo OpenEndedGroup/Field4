@@ -247,9 +247,17 @@ open class ImagingBenchmark {
      * That measurement was not good enough to act on, which is why this arm exists. Box code runs
      * through the REPL with implicit receivers and only two warm-up reps, so it under-reports
      * whichever implementation depends more on C2 having fully warmed — and `oursBoxBlur`'s
-     * vectorized row accumulator is exactly that kind of code. This arm settles it under the same
-     * fully-JIT'd conditions as `oursBoxBlur`; if the kernel wins here too, [boxBlur] should
-     * dispatch to it below some radius threshold.
+     * vectorized row accumulator is exactly that kind of code.
+     *
+     * **Answered, 2026-07-27, and the answer is the opposite of the box's:** fully JIT'd, the
+     * running sum wins. Minimum over 24 iterations across 2 forks at 1920x1080 — `oursBoxBlur`
+     * 2.477 ms, `oursBoxBlurViaKernel` 3.022 ms, `opencvBoxBlur` 1.777 ms. So [boxBlur] keeps the
+     * running sum at every radius and there is no dispatch threshold to tune. The arm stays because
+     * it is the evidence for that decision, and because it will catch the day a change to
+     * `convolveSeparable` or to the running sum moves the crossover.
+     *
+     * The wider lesson, worth more than the arm: a timing taken inside a live box is a fine way to
+     * *notice* something and a bad way to *decide* it.
      */
     @Benchmark fun oursBoxBlurViaKernel(bh: Blackhole) =
         bh.consume(gray.convolveSeparable(boxKernel1D(2), boxKernel1D(2), Border.REFLECT))
