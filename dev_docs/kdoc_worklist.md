@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 591 of 4011 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 1400 of 4011 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**759 undocumented entry points** (types, top-level functions and values) and 2287 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**366 undocumented entry points** (types, top-level functions and values) and 1898 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -12,29 +12,20 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
-| [shaders.kt](../src/jvmMain/kotlin/afield/stdlib/shaders.kt) | Graphics | box_code_pipeline, afield_four_graphics, field_probes | 125 | 29 | 0% |
-| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 51 | 15 | 6% |
-| [interactionnets.kt](../src/jvmMain/kotlin/afield/stdlib/interactionnets.kt) | Visualization | interaction_nets_examples | 47 | 140 | 2% |
-| [timeseries.kt](../src/jvmMain/kotlin/afield/stdlib/timeseries.kt) | Math | timeseries_examples, spectral_examples | 43 | 169 | 0% |
-| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 41 | 24 | 19% |
-| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 21 | 46 | 1% |
-| [colors.kt](../src/jvmMain/kotlin/afield/stdlib/colors.kt) | Graphics | colors_examples | 14 | 0 | 0% |
-| [randoms.kt](../src/jvmMain/kotlin/afield/stdlib/randoms.kt) | Math | functions_examples, state_estimation_examples | 14 | 0 | 6% |
-| [math.kt](../src/jvmMain/kotlin/afield/stdlib/math.kt) | Math | colors_examples, field_probes, fline_examples | 13 | 0 | 0% |
-| [keyframer.kt](../src/jvmMain/kotlin/afield/stdlib/keyframer.kt) | Graphics | interpolants_examples | 11 | 45 | 0% |
-| [StandardDrawing.kt](../src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt) | Graphics | fline_examples, graph_connectivity_examples, boolean_networks_examples | 11 | 2 | 53% |
 | [FunctionRewriteDsl.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt) | Function | functions_examples | 10 | 55 | 5% |
-| [stacksl.kt](../src/jvmMain/kotlin/afield/stdlib/stacksl.kt) | Graphics | stacksl_cheatsheet, stacksl_examples | 9 | 9 | 0% |
 | [FunctionRewriteKotlin.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt) | Function | functions_examples | 8 | 5 | 6% |
 | [smile_neighbors.kt](../src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt) | Data | graph_connectivity_examples | 7 | 18 | 3% |
 | [plotly.kt](../src/jvmMain/kotlin/afield/visualization/plotly.kt) | Visualization | interpolants_examples | 7 | 2 | 16% |
 | [FunctionGraphBrowser.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt) | Function | functions_examples | 6 | 27 | 21% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 5 | 35 | 50% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 5 | 23 | 26% |
+| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 5 | 9 | 83% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 4 | 242 | 5% |
 | [correlations.kt](../src/jvmMain/kotlin/afield/stdlib/correlations.kt) | Math | interpolants_examples | 4 | 12 | 11% |
-| [interpolants.kt](../src/jvmMain/kotlin/afield/stdlib/interpolants.kt) | Math | interpolants_examples | 2 | 1 | 0% |
+| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 3 | 3 | 91% |
+| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 1 | 38 | 42% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers | 1 | 1 | 77% |
+| [interactionnets.kt](../src/jvmMain/kotlin/afield/stdlib/interactionnets.kt) | Visualization | interaction_nets_examples | 0 | 41 | 79% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples | 0 | 28 | 63% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
@@ -80,13 +71,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `FnGraphNode` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:45` |
-| `FnGraphPathElement` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:59` |
-| `FnGraphCopyContext` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:68` |
-| `FnGraphEdit` | interface | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:85` |
-| `FnGraphSnapshotNode` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:89` |
-| `FnGraphSnapshotEdge` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:102` |
-| `FnGraphSnapshot` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:108` |
 | `FnGraphTraceNode` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:32` |
 | `FnGraphTrace` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:46` |
 | `FnRewriteTrace` | class | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:143` |
@@ -102,61 +86,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RbfInterpolator` | class | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:92` |
 | `RollingDistanceCorrelation` | class | `src/jvmMain/kotlin/afield/stdlib/correlations.kt:467` |
 | `RollingXiCorrelation` | class | `src/jvmMain/kotlin/afield/stdlib/correlations.kt:659` |
-| `LayoutConfig` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:143` |
-| `NodeState` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:155` |
-| `PortKind` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:226` |
-| `AgentType` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:228` |
-| `Port` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:232` |
-| `Node` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:241` |
-| `Edge` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:263` |
-| `ActivePair` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:271` |
-| `Net` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:280` |
-| `NodeRef` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:729` |
-| `PortRef` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:733` |
-| `NetFragment` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:742` |
-| `FragmentBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:752` |
-| `FragmentEmbed` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:789` |
-| `NetBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:798` |
-| `EmbeddedPorts` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:822` |
-| `PairSignature` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:836` |
-| `SignatureBinding` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:846` |
-| `RuleMatch` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:847` |
-| `PairContext` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:849` |
-| `RewriteEvent` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:893` |
-| `ReductionStep` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:900` |
-| `RewriteBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:909` |
-| `RewriteResult` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:961` |
-| `RewriteRule` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:968` |
-| `AutoEndpoint` | interface | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:974` |
-| `InternalEndpoint` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:976` |
-| `ExternalEndpoint` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:978` |
-| `AutoRuleBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:985` |
-| `RuleBook` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1056` |
-| `ActivationOrder` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1093` |
-| `PairCandidate` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1102` |
-| `PairSelector` | interface | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1106` |
-| `Reducer` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1137` |
-| `IdSource` | class | `src/jvmMain/kotlin/afield/stdlib/interactionnets.kt:1264` |
-| `NeedsStartingValue` | interface | `src/jvmMain/kotlin/afield/stdlib/interpolants.kt:28` |
-| `NumKind` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:58` |
-| `KValue` | interface | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:61` |
-| `KeyDTO` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:186` |
-| `KeyVersionInfo` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:192` |
-| `StackSLString` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:204` |
-| `KeyframeScope` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:211` |
-| `KeyDiffKind` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:572` |
-| `KeyDiffEntry` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:574` |
-| `KeyDiff` | class | `src/jvmMain/kotlin/afield/stdlib/keyframer.kt:581` |
-| `Cuboid` | class | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:567` |
 | `RougheningOptions` | class | `src/jvmMain/kotlin/afield/stdlib/pf.kt:41` |
 | `UnscentedKalmanFilter` | class | `src/jvmMain/kotlin/afield/stdlib/pf.kt:64` |
 | `UKFParticle` | class | `src/jvmMain/kotlin/afield/stdlib/pf.kt:257` |
 | `UKFParticleFilter` | class | `src/jvmMain/kotlin/afield/stdlib/pf.kt:263` |
-| `ShaderIncludeRootRequest` | class | `src/jvmMain/kotlin/afield/stdlib/shaders.kt:337` |
-| `ShaderIncludeRootResolver` | interface | `src/jvmMain/kotlin/afield/stdlib/shaders.kt:346` |
-| `ShaderRemoteIncludeCacheOptions` | class | `src/jvmMain/kotlin/afield/stdlib/shaders.kt:361` |
-| `ShaderProbeAutoControlConfig` | class | `src/jvmMain/kotlin/afield/stdlib/shaders.kt:645` |
-| `ShaderFieldAutoController` | class | `src/jvmMain/kotlin/afield/stdlib/shaders.kt:657` |
 | `VecNNMode` | class | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:24` |
 | `VecNNBuildOptions` | class | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:29` |
 | `VecNeighbor2` | class | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:36` |
@@ -164,41 +97,99 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Vec2NNIndex` | class | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:48` |
 | `Vec3NNIndex` | class | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:143` |
 | `WindowType` | class | `src/jvmMain/kotlin/afield/stdlib/spectral.kt:192` |
-| `StackSLSweep` | class | `src/jvmMain/kotlin/afield/stdlib/stacksl.kt:142` |
-| `HasMatrix4f` | interface | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:48` |
-| `Delegation` | class | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:52` |
-| `MissingInheritedPropertyException` | class | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:116` |
-| `Inheritance` | class | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:143` |
-| `InheritanceFromContext` | class | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:172` |
-| `Marker` | class | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:510` |
-| `FloatFilter` | interface | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:203` |
-| `EMAFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:211` |
-| `AlphaBetaFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:226` |
-| `OneEuroFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:253` |
-| `BiquadType` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:292` |
-| `BiquadFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:296` |
-| `RollingStats` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:406` |
-| `RollingExponentialStats` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:445` |
-| `ExponentialNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:500` |
-| `ExponentialEventDetector` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:514` |
-| `RollingGammaStats` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:580` |
-| `GammaNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:640` |
-| `GammaEventDetector` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:654` |
-| `RollingBetaStats` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:731` |
-| `BetaNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:808` |
-| `BetaEventDetector` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:829` |
-| `RollingRayleighStats` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:915` |
-| `RayleighNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:972` |
-| `RayleighEventDetector` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:986` |
-| `ZScoreEventDetector` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1058` |
-| `AdaptiveCompander` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1106` |
-| `AGC` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1142` |
-| `LeakyIntegrator` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1173` |
-| `RollingNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1181` |
-| `RollingOneDollarNormalizer` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1206` |
-| `AdaptiveThresholder` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1236` |
-| `DerivativeFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1271` |
-| `IntegralFilter` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1280` |
-| `DCBlocker` | class | `src/jvmMain/kotlin/afield/stdlib/timeseries.kt:1288` |
+| `PlotlyIntegration` | class | `src/jvmMain/kotlin/afield/visualization/plotly.kt:245` |
+| `FnGraphRebuilder` | typealias | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:49` |
+| `RbfKernels` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:39` |
+| `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:138` |
+| `StatsDependence` | object | `src/jvmMain/kotlin/afield/stdlib/correlations.kt:45` |
+| `Vec4` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:47` |
+| `Vec3` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:55` |
+| `Vec2` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:63` |
+| `Quat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:73` |
+| `DualQuat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:83` |
+| `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
+| `FFT` | object | `src/jvmMain/kotlin/afield/stdlib/spectral.kt:31` |
+| `Windows` | object | `src/jvmMain/kotlin/afield/stdlib/spectral.kt:194` |
+| `SpectralFeatures` | object | `src/jvmMain/kotlin/afield/stdlib/spectral.kt:487` |
+| `Mel` | object | `src/jvmMain/kotlin/afield/stdlib/spectral.kt:604` |
+| `Vec2h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:881` |
+| `Vec3h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:884` |
+| `Vec4h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:887` |
+| `Functions.Fn.browseGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:478` |
+| `Functions.Fn.graphBrowseHtml` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:492` |
+| `Functions.Fn.browseGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionGraphBrowser.kt:502` |
+| `compileFnRewrite` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt:150` |
+| `Functions.Fn.rewrite` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt:152` |
+| `Functions.Fn.rewrite` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt:204` |
+| `fnRewriteNumberExpression` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:139` |
+| `fnRewriteNumber` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:145` |
+| `Functions.Fn.rewriteKotlin` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:152` |
+| `Functions.Fn.previewRewriteKotlin` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:158` |
+| `Functions.Fn.rewriteKotlinChecked` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:164` |
+| `Box.rewriteFn` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:176` |
+| `Box.previewRewriteFn` | fun | `src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt:183` |
+| `main` | fun | `src/jvmMain/kotlin/afield/stdlib/correlations.kt:449` |
+| `vec3NN` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt:267` |
+| `linePlot` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:36` |
+| `scatter` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:61` |
+| `scatterSized` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:76` |
+| `violin` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:91` |
+| `Plot.darkMode` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:179` |
+| `Plot.toHtml` | fun | `src/jvmMain/kotlin/afield/visualization/plotly.kt:231` |
+| `Any.h` | val | `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt:2476` |
+| `FieldFileManager` | class | `src/jvmMain/kotlin/afield/stdlib/FileManager.kt:39` |
+| `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:37` |
+| `LeastSquaresOptions` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:26` |
+| `LeastSquaresResult` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:48` |
+| `SemanticSearchResult` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:32` |
+| `SemanticSearchHit` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:39` |
+| `SemanticSearchManager` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:73` |
+| `PointRef` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:37` |
+| `LineRef` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:48` |
+| `PlaneRef` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:50` |
+| `PanelRef` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:52` |
+| `PointExpr` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:56` |
+| `DotExpr` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:100` |
+| `GeometryTrace` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:106` |
+| `PointBinding` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:111` |
+| `GeometryModel` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:127` |
+| `GeometryModelScope` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:189` |
+| `ConstraintScope` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:366` |
+| `GeometrySolveSession` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:558` |
+| `DragHandle` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:685` |
+| `LivePointMove` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:734` |
+| `LiveGeometryStep` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:742` |
+| `LiveGeometryProgram` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:751` |
+| `PointId` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:28` |
+| `Vec3` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:38` |
+| `Axis` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:40` |
+| `AxisSet` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:46` |
+| `CeresFeature` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:56` |
+| `CeresOpcode` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:63` |
+| `GeometryConstraint` | interface | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:112` |
+| `Planar` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:118` |
+| `Colinear` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:136` |
+| `DistanceEquals` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:165` |
+| `DistanceAtLeast` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:188` |
+| `DistanceAtMost` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:211` |
+| `EqualDistance` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:234` |
+| `SameCoordinate` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:259` |
+| `Perpendicular` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:289` |
+| `LockPosition` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:314` |
+| `WeakPosition` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:344` |
+| `NoNegativeZ` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:375` |
+| `DotAtOrigin` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:394` |
+| `VectorDot` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:429` |
+| `PointOnPlane` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:467` |
+| `LineParallel` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:491` |
+| `LineAngle` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:512` |
+| `DihedralAngle` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:545` |
+| `EqualEdgeVector` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:569` |
+| `MirrorAcrossPlane` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:590` |
+| `PanelArea` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:612` |
+| `PointInHalfspace` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:636` |
+| `LineDirection` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:660` |
+| `PlaneNormalDirection` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:682` |
+| `LineTowardPoint` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:708` |
 
-…and **639 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **246 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
