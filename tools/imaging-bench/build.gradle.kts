@@ -103,11 +103,16 @@ kotlin {
 }
 
 jmh {
-    warmupIterations.set(3)
+    // Deliberately more iterations than a quick sanity run needs. These numbers get published, and
+    // this is a developer laptop rather than a quiet benchmark box — a 2026-07-26 run at load
+    // average 6 produced `opencvBoxBlur 4.140 ± 6.585 ms/op`, an error bar larger than the mean and
+    // a 2.3x swing against a calmer run. Short benchmarks (a few ms/op) are the ones scheduler noise
+    // destroys, so average more of them rather than quoting a number that cannot be reproduced.
+    warmupIterations.set(5)
     warmup.set("1s")
-    iterations.set(5)
+    iterations.set(10)
     timeOnIteration.set("1s")
-    fork.set(2)
+    fork.set(3)
     benchmarkMode.set(listOf("avgt"))
     timeUnit.set("ms")
     resultFormat.set("TEXT")
