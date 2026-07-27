@@ -32,6 +32,16 @@ import kotlin.uuid.Uuid
  * without it the fragment logs to the console and draws nothing.
  */
 
+/**
+ * A dark-mode line plot of one or more lists of numbers against their own sample index — the fastest
+ * way to look at a signal. Each list becomes its own hairline trace, so lists of different lengths
+ * are fine: they simply run out at different x.
+ *
+ * The `Plot` is returned, **not** displayed — hand it to `display` yourself, or use [showSignals],
+ * which labels the traces and puts them on screen in one call. [darkMode] has already run, and it
+ * sized the top margin for an *untitled* plot, so a title set after this returns gets a slim band;
+ * see [darkMode].
+ */
 @JvmName("linePlot_scalar")
 fun linePlot(vararg data: List<Number>): Plot {
     return Plotly.plot {
@@ -45,6 +55,14 @@ fun linePlot(vararg data: List<Number>): Plot {
     }.darkMode()
 }
 
+/**
+ * A dark-mode line plot of one or more `Vec2` polylines, using each point's own x and y — the variant
+ * to reach for when x is a real abscissa (time, frequency, arc length) rather than a sample index.
+ * Points are joined in list order, so this draws a path and will happily double back on itself.
+ *
+ * Same conventions as the scalar overload: one hairline trace per list, [darkMode] already applied,
+ * and the `Plot` returned rather than displayed.
+ */
 @JvmName("linePlot_vec2")
 fun linePlot(vararg data: List<Vec2>): Plot {
     return Plotly.plot {
@@ -58,6 +76,13 @@ fun linePlot(vararg data: List<Vec2>): Plot {
     }.darkMode()
 }
 
+/**
+ * A dark-mode markers-only scatter of one or more `Vec2` lists, at a fixed 3px marker — for point
+ * clouds where the order of the points means nothing and a connecting line would lie about it.
+ *
+ * Reach for [scatterSized] instead when a third number per point should drive the marker size.
+ * [darkMode] is already applied and the `Plot` is returned, not displayed.
+ */
 fun scatter(vararg data: List<Vec2>): Plot {
     return Plotly.plot {
         data.forEach {
@@ -73,6 +98,14 @@ fun scatter(vararg data: List<Vec2>): Plot {
     }.darkMode()
 }
 
+/**
+ * A dark-mode scatter of `Vec3` lists in which x and y place the marker and **z is the marker size** —
+ * a bubble chart, for carrying a third quantity per point.
+ *
+ * The z values go to Plotly as marker sizes with no normalisation and no `sizeref`, so they are read
+ * as diameters in pixels: a z of 0.5 is invisible and a z of 400 swallows the chart. Scale z yourself.
+ * [darkMode] is applied and the `Plot` is returned, not displayed.
+ */
 fun scatterSized(vararg data: List<Vec3>): Plot {
     return Plotly.plot {
         data.forEach {
@@ -88,6 +121,14 @@ fun scatterSized(vararg data: List<Vec3>): Plot {
     }.darkMode()
 }
 
+/**
+ * A dark-mode violin plot, one violin per list of numbers, for comparing whole distributions rather
+ * than sequences — order within a list is irrelevant here, only the spread of values.
+ *
+ * Each violin carries its inner box and its mean line, and draws individual points only for outliers.
+ * The traces are deliberately left unnamed, so name them yourself when you plot more than one or the
+ * legend will be useless. [darkMode] is applied and the `Plot` is returned, not displayed.
+ */
 fun violin(vararg data: List<Number>): Plot {
     return Plotly.plot {
         data.forEach {
@@ -176,6 +217,17 @@ fun Box.showSignals(
     return plot
 }
 
+/**
+ * Restyle a `Plot` into the repo's dark theme and hand back the same instance — near-black paper and
+ * plot backgrounds, muted grid and tick colours, tick labels rotated 20°, a horizontal legend, and
+ * data-first margins that reclaim most of the ~100px Plotly reserves up top for a title.
+ *
+ * It mutates the receiver rather than copying, so the `Plot` you get back is the one you passed in.
+ * The top margin is decided *at the moment you call it*, from whether a title is already set: 46px if
+ * so, 22px if not. Set the title first, or a title added afterwards is squeezed into the slim band.
+ * Axis `automargin` stays on, so tick labels and axis titles still get the room they need. Everything
+ * else in this file already calls this for you — you only need it on a `Plot` you built by hand.
+ */
 fun Plot.darkMode(): Plot {
     val hasTitle = !this.layout.title.isNullOrEmpty()
     layout {
@@ -227,6 +279,18 @@ fun Plot.darkMode(): Plot {
     return this
 }
 
+/**
+ * Render a `Plot` to an inline HTML fragment: one `div` with a fresh random id, plus a script that
+ * calls `Plotly.react` on it. Not an iframe and not a whole document — this is exactly what a box
+ * output does with a `Plot`, so the result drops straight into the editor's output pane.
+ *
+ * The host page must already have the Plotly library loaded. If it does not, the script logs
+ * "Plotly not loaded" to the browser console and you are left with an empty div: no exception, no
+ * placeholder. The traces and layout are serialised into that script as JavaScript literals, so a
+ * non-finite value survives as a bare NaN or Infinity token — legal JavaScript, so Plotly receives a
+ * real NaN and leaves a gap in the line there, but *not* legal JSON, so never route this payload
+ * through a JSON parser. The id is a new UUID on every call, so two calls give two independent charts.
+ */
 @OptIn(ExperimentalUuidApi::class)
 fun Plot.toHtml(): String {
 
@@ -242,7 +306,24 @@ fun Plot.toHtml(): String {
     }
 }
 
+/**
+ * The `PlotlyRenderer` behind [toHtml]: it emits a bare `div` plus a `Plotly.react` call against it,
+ * rather than the self-contained page plotly-kt's own renderers produce. That is what makes the output
+ * embeddable in a box output or a docs page that already loads Plotly.
+ *
+ * Rarely worth using directly — [toHtml] is the front door, and [renderFragment] is here for a
+ * `PlotlyFragment` holding several plots at once.
+ */
 public class PlotlyIntegration : PlotlyRenderer {
+    /**
+     * Emit `plot` into the surrounding `kotlinx.html` flow as a div with id `plotId`, followed by an
+     * inline script handing the trace data, layout and `config` to `Plotly.react`. Returns the plot
+     * unchanged.
+     *
+     * The script is guarded on `Plotly` being defined, so a page without the library logs to the
+     * console rather than throwing. Everything is serialised as JavaScript literals, which is what
+     * lets NaN through intact — see [toHtml].
+     */
     override fun FlowContent.renderPlot(plot: Plot, plotId: String, config: PlotlyConfig): Plot {
         div {
             id = plotId
@@ -267,6 +348,12 @@ public class PlotlyIntegration : PlotlyRenderer {
         return plot
     }
 
+    /**
+     * Render a whole `PlotlyFragment` — a piece of `kotlinx.html` that may hold several plots and
+     * ordinary markup between them — to an HTML string, with every plot inside it going through this
+     * renderer. The result is wrapped in a single enclosing div; the same "Plotly must already be
+     * loaded" caveat applies as for [toHtml].
+     */
     fun renderFragment(fragment: PlotlyFragment): String = createHTML().div {
         with(fragment) {
             render(this@PlotlyIntegration)

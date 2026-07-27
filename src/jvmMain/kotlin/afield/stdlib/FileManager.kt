@@ -452,8 +452,8 @@ val fileManager: FieldFileManager
 /**
  * `"data.csv".file` — the terse form of `files.file(this)`, and the idiom worth learning first.
  *
- * Understands everything [FieldFileManager] does: `"~/notes.txt".file`, `"%document/out.png".file`,
- * `"**/*.wav".file`. Throws on an unmatched glob or an unknown `%name`; see [FieldFileManager.file].
+ * Understands everything [FieldFileManager] does — a home-relative path, a `%document/…` or `%project/…` spec, a
+ * registered `%name`, or a recursive glob. Throws on an unmatched glob or an unknown name; see [FieldFileManager.file].
  */
 val String.file: File
     get() = FileManager.current().file(this)
