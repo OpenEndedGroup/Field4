@@ -71,6 +71,7 @@ object DemoTranscriptExecSmokeTest {
         "hello_display_capture",
         "two_box_context",
         "spectral_examples",
+        "imaging_cv_examples",
         "vision_metal_cube",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
@@ -263,6 +264,14 @@ object DemoTranscriptExecSmokeTest {
                 println("[execute] FAIL $msg")
             }
             else -> println("[execute] PASS $name (applied=${run.applied}, output lines=${run.output.size})")
+        }
+
+        // A demo can PASS (no error diagnostics) while printing nonsense. Set
+        // AFIELD_DEMO_TRANSCRIPT_VERBOSE=1 — or =<name> for one demo — to echo what the boxes
+        // actually printed, so the numbers a worked example claims can be read back and checked.
+        val verbose = System.getenv("AFIELD_DEMO_TRANSCRIPT_VERBOSE")
+        if (!verbose.isNullOrBlank() && (verbose == "1" || verbose == "all" || verbose == name)) {
+            run.output.forEach { println("[execute:$name] ${it.kind}: ${stripHtml(it.html).trim()}") }
         }
     }
 

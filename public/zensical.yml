@@ -68,6 +68,7 @@ nav:
         - Timeseries Examples: timeseries_examples.md
         - State Estimation Examples: state_estimation_examples.md
         - Spectral Examples: spectral_examples.md
+        - Imaging & Computer Vision: imaging_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md
