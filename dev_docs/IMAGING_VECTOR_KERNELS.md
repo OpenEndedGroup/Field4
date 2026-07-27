@@ -86,10 +86,17 @@ The two largest improvements came from not doing work, and from touching memory 
 
   The incremental form stays valid under every `Border`, including the repeated rows `CLAMP`
   produces, because it only ever adds what enters the window and subtracts what leaves it.
-- **`bilateral`, 6.3x -> below 1.0x** (we are now faster than OpenCV's). Its whole cost was that the
+- **`bilateral`, 6.0x -> 1.16x** (3789 ms -> 720 ms, a 5.3x speed-up). Its whole cost was that the
   range weight depends on the sample, so the literal definition calls `exp` once per tap per pixel —
   169 per pixel at the benchmark's settings. Now a 4096-entry table indexed by **squared** intensity
   distance (no `abs`, no `sqrt`), read with linear interpolation, worth ~2e-6 of weight error.
+
+  A caution attached to that number, because it caught me: an intermediate measurement taken while
+  the machine was under memory-bandwidth contention read as **below 1.0x**, and I believed it long
+  enough to write it down twice. It was wrong — the contention inflated OpenCV's arm far more than
+  ours. Re-measured against controls whose quiet values were already known (`opencvBilateral` min
+  622.2 ms against the committed 629.5) it is 1.16x. Ratios are only load-robust when the load is
+  *stationary across the run*; when it is not, they can move either way. Carry a control arm.
 
 ## Adding an operator: the checklist
 
