@@ -131,11 +131,33 @@ Two rules the numbers depend on:
 
 ## Where the remaining gaps are
 
-As of 2026-07-27, worst first: `median` (a per-pixel `FloatArray.sort()` of 25 floats, which
-`compareExchange` exists to replace with a branchless sorting network — each SIMD lane a different
-pixel, since for a fixed window every tap is a constant offset), `resizeDown`, `Sobel`/`Scharr`
-(memory-bound: four full-image passes and four 8 MB allocations per call, so a scratch-buffer pool is
-the lever, not lanes), and `luma`.
+As of 2026-07-27, worst first, with what the lever actually is in each case — none of them is "add
+more lanes":
+
+- **`median`, ~3.6x.** A per-pixel `FloatArray.sort()` (dual-pivot quicksort) of 25 floats, plus 25
+  `Img.get` calls. `compareExchange` exists to replace it with a branchless **sorting network**, each
+  SIMD lane carrying a different pixel — for a fixed window every tap is a constant element offset, so
+  there is no gather and no data-dependent control flow. Derive the comparator list from
+  `sorting_networks.kt` (a teaching data structure, not a hot kernel — do not call it per pixel);
+  a 25-element median needs a partial network, not a full sort. This is the largest remaining win and
+  the one the layer was already prepared for.
+- **`resizeDown`, ~4.9x.** `resizeArea` recomputes `index(xx, yy, c)` per sample and has
+  data-dependent inner trip counts, so it cannot vectorize. The general fix that does not special-case
+  a ratio: for each output row, vertically accumulate the source rows into a one-row scratch with
+  `addInto` (vectorized, any ratio), then reduce horizontally out of that L1-resident row. Watch the
+  accumulation type — the current code sums in `Double`, and a large downscale sums thousands of
+  samples, so a naive move to `Float` scratch can drift.
+- **`Sobel`/`Scharr`, ~2.0-2.2x.** Memory-bound, not compute-bound: each is two `convolveSeparable`
+  calls, so **four** full-image passes and **four** 8 MB allocations per call at 1920x1080 — around
+  33 MB of allocate-and-zero per operation, and the JVM must zero every one. The lever is a scratch
+  buffer pool for the intermediate (the `tmp` array in `convolveSeparable` is fully overwritten, so
+  its zero-fill is pure waste), not anything to do with lanes.
+- **`luma`, ~1.8x.** Already a tight scalar loop with no `Img.get`. It moves 32 MB (24 in, 8 out) in
+  ~2 ms — about 16 GB/s, where OpenCV's `cvtColor` gets ~29 GB/s. The difference is that OpenCV
+  vectorizes the RGB deinterleave (NEON `ld3`); the Vector API has no 3-way deinterleaving load, and
+  emulating it with an index-map gather is slower than the scalar loop. Reachable only via a
+  multi-vector `rearrange`, and worth measuring before believing. The free part first: hoist
+  `RGB_TO_LUMA[0..2]` into locals, since C2 cannot prove the weight array does not alias the output.
 
 `pyrDown`'s residual ~4x is **not** a bug and should not be "fixed" by narrowing the kernel: ours is
 `gaussianKernel1D(sigma)`, 9 taps at the default, where OpenCV's `pyrDown` is a fixed 5-tap
