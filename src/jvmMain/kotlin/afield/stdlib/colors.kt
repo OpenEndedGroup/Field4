@@ -378,6 +378,18 @@ private fun linearToVec4(rgb: LinearRgb, alpha: Float): Vec4 = Vec4(
     clamp01(alpha)
 )
 
+/**
+ * A colour from sRGB components, on whichever of the two usual scales you happened to type.
+ *
+ * The scale is inferred per call: if any of `r`, `g`, `b` exceeds 1 the three are read as 0..255,
+ * otherwise as 0..1. Alpha is inferred separately on the same rule, so `rgb(255, 128, 0)` and
+ * `rgb(1, 0.5, 0)` both work and `rgb(255, 128, 0, 0.5)` means half-transparent. Everything is
+ * clamped into `[0,1]` on the way out, and the components are taken as *already* sRGB-encoded —
+ * no transfer function is applied, unlike [hsl] and [okhsl].
+ *
+ * Reach for [rgb255] instead when a component genuinely might be 0 or 1 on the 0..255 scale and
+ * the guess would go the wrong way.
+ */
 fun rgb(r: Number, g: Number, b: Number, a: Number = 1f): Vec4 {
     val rf = n(r)
     val gf = n(g)
@@ -395,8 +407,15 @@ fun rgb(r: Number, g: Number, b: Number, a: Number = 1f): Vec4 {
     )
 }
 
+/** [rgb] under the name that reads better when you are passing alpha explicitly. Identical. */
 fun rgba(r: Number, g: Number, b: Number, a: Number = 1f): Vec4 = rgb(r, g, b, a)
 
+/**
+ * A colour from 0..255 sRGB components, with no scale guessing — the unambiguous form of [rgb].
+ *
+ * Alpha is 0..255 here too and defaults to opaque, so `rgb255(18, 18, 18)` is the near-black a
+ * dark theme wants and `rgb255(255, 0, 0, 128)` is a half-transparent red.
+ */
 fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4 = Vec4(
     clamp01(n(r) / 255f),
     clamp01(n(g) / 255f),
@@ -404,18 +423,50 @@ fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4 = Vec4(
     clamp01(n(a) / 255f)
 )
 
+/**
+ * A colour from classic hue / saturation / lightness.
+ *
+ * Hue may be a fraction of a turn (`0.33`) or degrees (`120`) — a magnitude above 1 is divided by
+ * 360 — and either way it wraps, so `hsl(1.25, …)` and `hsl(450, …)` are the same hue. Saturation
+ * and lightness are 0..1 and clamped; `l = 0.5` is the fully saturated band, 0 is black and 1 white.
+ *
+ * The HSL cube is treated as linear light and then encoded to sRGB, the same final step [okhsl]
+ * takes, so the pure hues match CSS's `hsl()` but mid-greys come out lighter than CSS would give.
+ * If you want perceptually even lightness across hues — a ramp where the yellow does not jump out
+ * of the row — use [okhsl].
+ */
 fun hsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
     val linear = hslToSrgb(hue01(h), clamp01(n(s)), clamp01(n(l)))
     return linearToVec4(linear, n(a))
 }
 
+/** [hsl] under the name that reads better when you are passing alpha explicitly. Identical. */
 fun hsla(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 = hsl(h, s, l, a)
 
+/**
+ * A colour from Oklab-based hue / saturation / lightness — HSL with the perceptual kinks taken out.
+ *
+ * Same argument conventions as [hsl] (hue in turns or degrees, wrapped; saturation and lightness
+ * 0..1, clamped) but `l` is *perceived* lightness, so a set of colours sharing one `l` really does
+ * read as one tonal step. `s = 1` is the most saturated colour the sRGB gamut holds at that hue and
+ * lightness rather than a fixed distance, which is why okhsl ramps stay in gamut without clipping.
+ *
+ * This is the one to reach for when building a palette by hand; [hueSetOkhsl] does the ring for you
+ * and [paletteForBackground] additionally makes it legible against a known background.
+ */
 fun okhsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
     val linear = okhslToSrgb(hue01(h), clamp01(n(s)), clamp01(n(l)))
     return linearToVec4(linear, n(a))
 }
 
+/**
+ * A colour from Oklab-based hue / saturation / *value* — the HSV-shaped sibling of [okhsl].
+ *
+ * Conventions as [hsl]. The difference from [okhsl] is the one HSV has always had from HSL: `v = 1`
+ * with `s = 1` is the vivid, full-strength colour rather than the mid-lightness one, and `v` scales
+ * the whole thing down toward black. Use it when you want "same colour, dimmer" and [okhsl] when you
+ * want "same lightness, different hue".
+ */
 fun okhsv(h: Number, s: Number, v: Number, a: Number = 1f): Vec4 {
     val linear = okhsvToSrgb(hue01(h), clamp01(n(s)), clamp01(n(v)))
     return linearToVec4(linear, n(a))
@@ -428,6 +479,17 @@ private fun equallySpacedHues(count: Int, startHue: Float): List<Float> {
     return List(count) { i -> wrap01(start + i * step) }
 }
 
+/**
+ * [count] colours whose hues are spaced evenly right round the wheel, all at one HSL saturation and
+ * lightness — the one-liner for "give me n distinguishable colours".
+ *
+ * The step is `1/count` of a turn from [startHue], so the last entry is one step short of coming
+ * back round. `startHue` follows the [hsl] convention (turns or degrees, wrapped). Consecutive
+ * entries are neighbours on the wheel, which is what you want for a gradient and not what you want
+ * for a legend — shuffle, or take every other one, if the categories must not be confusable.
+ *
+ * [hueSetOkhsl] is the same idea with even *perceived* lightness, and is usually the better default.
+ */
 fun hueSetHsl(
     count: Int,
     saturation: Number,
@@ -441,6 +503,15 @@ fun hueSetHsl(
     return equallySpacedHues(count, hue01(startHue)).map { h -> hsl(h, s, l, a) }
 }
 
+/**
+ * [count] evenly spaced hues at one [okhsl] saturation and lightness — the palette generator to
+ * reach for first.
+ *
+ * Spacing and the [startHue] convention are as [hueSetHsl]; the difference is that because okhsl's
+ * `l` is perceived lightness, no entry in the returned set is conspicuously brighter than its
+ * neighbours the way an HSL yellow is. If the set has to sit on a particular background and stay
+ * readable, use [paletteForBackground] instead.
+ */
 fun hueSetOkhsl(
     count: Int,
     saturation: Number,
@@ -454,6 +525,12 @@ fun hueSetOkhsl(
     return equallySpacedHues(count, hue01(startHue)).map { h -> okhsl(h, s, l, a) }
 }
 
+/**
+ * [count] evenly spaced hues at one [okhsv] saturation and value — [hueSetOkhsl] for the cases where
+ * you want the vivid end of the gamut rather than a fixed lightness.
+ *
+ * Spacing and the [startHue] convention are as [hueSetHsl].
+ */
 fun hueSetOkhsv(
     count: Int,
     saturation: Number,
@@ -467,6 +544,7 @@ fun hueSetOkhsv(
     return equallySpacedHues(count, hue01(startHue)).map { h -> okhsv(h, s, v, a) }
 }
 
+/** Short alias for [hueSetHsl]. */
 fun hslSet(
     count: Int,
     saturation: Number,
@@ -475,6 +553,7 @@ fun hslSet(
     startHue: Number = 0f
 ): List<Vec4> = hueSetHsl(count, saturation, lightness, alpha, startHue)
 
+/** Short alias for [hueSetOkhsl]. */
 fun okhslSet(
     count: Int,
     saturation: Number,
@@ -483,6 +562,7 @@ fun okhslSet(
     startHue: Number = 0f
 ): List<Vec4> = hueSetOkhsl(count, saturation, lightness, alpha, startHue)
 
+/** Short alias for [hueSetOkhsv]. */
 fun okhsvSet(
     count: Int,
     saturation: Number,
@@ -550,6 +630,23 @@ private fun contrastAdjustedOkhsl(
     return passed ?: best
 }
 
+/**
+ * [count] evenly spaced okhsl hues, each nudged in lightness until it is actually legible against
+ * [background].
+ *
+ * Starts from the same ring as [hueSetOkhsl], then for any entry whose WCAG contrast ratio against
+ * the background falls short of [minContrast] it walks that entry's lightness in up to
+ * [lightnessSteps] steps, at most [maxLightnessShift] away from [lightness], and takes the first
+ * candidate that clears the bar. The direction is chosen from the background: a dark background is
+ * searched lighter first, a light one darker first, and the other direction is tried if the first
+ * runs out of room. When nothing reaches [minContrast] the best candidate found is returned rather
+ * than an exception — the result is always [count] colours.
+ *
+ * [minContrast] is a ratio in the WCAG sense, where 3 is the large-text threshold, 4.5 body text and
+ * 7 the strict one; the default of 3 suits the graph strokes and labels this is usually used for.
+ * Contrast is measured against the background alone, so semi-transparent [alpha] values are not
+ * accounted for.
+ */
 fun paletteForBackground(
     background: Vec4,
     count: Int,

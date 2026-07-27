@@ -25,7 +25,21 @@ import afield.stdlib.linalg.Vector4f
  * there.
  */
 
+/**
+ * Implemented by a value that can only interpolate once something tells it where it is starting from.
+ *
+ * [smoothTo]'s interpolant is the one implementation: whatever binds it — a uniform slot, a
+ * structure-bound property — is expected to call [startAt] with the current value before the first
+ * read. Until that happens the interpolant has nothing to ease *from* and simply reports the target.
+ */
 interface NeedsStartingValue<T> {
+    /**
+     * Sets the value to ease away from, and restarts the interpolation.
+     *
+     * Accepts either the value itself or a `() -> value` lambda, which is re-read on each
+     * evaluation — pass the lambda when the origin is itself still moving. Calling this again mid-way
+     * re-starts the ease from the new origin rather than continuing.
+     */
     fun startAt(a: Any?)
 }
 
@@ -160,6 +174,20 @@ private class SmoothInterpolant<T>(
     }
 }
 
+/**
+ * Wraps a target-producing lambda so that reading it *eases toward* the target instead of jumping
+ * there — the one-word way to take the snap out of a value assignment.
+ *
+ * `m.color = smoothTo { rgb(1, 0, 0) }` reaches red over the next 100 evaluations instead of on the
+ * next frame. Give [time] in **seconds** for a wall-clock ease (measured with `System.nanoTime`, so
+ * it is frame-rate independent), or leave it null and let [steps] count evaluations. [time] wins if
+ * both are given.
+ *
+ * One-shot and linear: it arrives and stays, with no easing curve and no overshoot, and re-aims only
+ * if whoever bound it calls [NeedsStartingValue.startAt] again. Interpolation covers `Float`,
+ * `Double`, `Int`, `Long` and `Vector2f`/`Vector3f`/`Vector4f`; any other type is delivered
+ * immediately at the target rather than animated.
+ */
 fun <T> smoothTo(time: Double? = null, steps: Int? = 100, a: () -> T): () -> T {
     return SmoothInterpolant(time, steps, a)
 }
