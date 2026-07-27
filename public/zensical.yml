@@ -27,6 +27,7 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Imaging: reference/imaging.md
       - Function: reference/function.md
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md

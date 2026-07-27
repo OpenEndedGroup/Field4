@@ -135,6 +135,11 @@ object StdlibReferenceGenerator {
         "Graphics" to "Everything that ends up as an `FLine`, a colour or a shader: drawing " +
             "helpers, contouring, geometry, colour spaces, keyframing and the small shading " +
             "languages' host side.",
+        "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
+            "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
+            "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
+            "separable-convolution core vectorized to roughly OpenCV's single-threaded speed. " +
+            "Every detector hands back geometry, so results go straight to `lines()`.",
         "Function" to "The function algebra — Field's first-class, evolvable, graph-rewritable " +
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",

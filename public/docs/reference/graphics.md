@@ -26,7 +26,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt`
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Boolean networks to FLine examples](../boolean_networks_examples.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 

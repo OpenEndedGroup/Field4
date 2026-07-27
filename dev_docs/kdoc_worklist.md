@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 383 of 3757 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 591 of 4011 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**759 undocumented entry points** (types, top-level functions and values) and 2250 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**759 undocumented entry points** (types, top-level functions and values) and 2287 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -22,7 +22,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [randoms.kt](../src/jvmMain/kotlin/afield/stdlib/randoms.kt) | Math | functions_examples, state_estimation_examples | 14 | 0 | 6% |
 | [math.kt](../src/jvmMain/kotlin/afield/stdlib/math.kt) | Math | colors_examples, field_probes, fline_examples | 13 | 0 | 0% |
 | [keyframer.kt](../src/jvmMain/kotlin/afield/stdlib/keyframer.kt) | Graphics | interpolants_examples | 11 | 45 | 0% |
-| [StandardDrawing.kt](../src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt) | Graphics | fline_examples, functions_examples, graph_connectivity_examples | 11 | 2 | 53% |
+| [StandardDrawing.kt](../src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt) | Graphics | fline_examples, graph_connectivity_examples, boolean_networks_examples | 11 | 2 | 53% |
 | [FunctionRewriteDsl.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewriteDsl.kt) | Function | functions_examples | 10 | 55 | 5% |
 | [stacksl.kt](../src/jvmMain/kotlin/afield/stdlib/stacksl.kt) | Graphics | stacksl_cheatsheet, stacksl_examples | 9 | 9 | 0% |
 | [FunctionRewriteKotlin.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewriteKotlin.kt) | Function | functions_examples | 8 | 5 | 6% |
@@ -39,7 +39,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 17 | 51% |
+| [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
+| [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples | 0 | 10 | 85% |
+| [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers | 0 | 10 | 77% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
+| [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples | 0 | 6 | 82% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 45 | 226 | 0% |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | — | 27 | 52 | 0% |
