@@ -35,9 +35,55 @@ BACKDOOR_PATH = TOOLS_ROOT / "field_backdoor.py"
 PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
 DEFAULT_AUTOMATION_PORT = 9477
 
+# The node-backed tests emit `globalThis` (node 12+) and optional chaining (node 14+).
+# An older `node` first on PATH makes them fail with a bare SyntaxError/ReferenceError
+# from inside a temp .js file, which reads like a code regression and has twice been
+# misdiagnosed as one. 14 is the floor; warn once up front instead.
+MIN_NODE_MAJOR = 14
+
 
 class RunnerError(RuntimeError):
     pass
+
+
+def which_on_path(executable: str) -> str | None:
+    """Resolve `executable` exactly as the Kotlin tests' own which() does.
+
+    They scan PATH in order and take the first executable match, so this must
+    too — using shutil.which or a login shell would report a different binary
+    than the one the tests will actually run.
+    """
+    for entry in (os.environ.get("PATH") or "").split(os.pathsep):
+        if not entry:
+            continue
+        candidate = Path(entry) / executable
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def warn_if_node_too_old(progress: Any) -> None:
+    """Report the resolved `node` up front when it is too old for the JS tests."""
+    node = which_on_path("node")
+    if node is None:
+        return  # tests that need node report their own absence
+    try:
+        raw = subprocess.run(
+            [node, "--version"], capture_output=True, text=True, timeout=15
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return
+    match = re.match(r"v?(\d+)", raw)
+    if not match or int(match.group(1)) >= MIN_NODE_MAJOR:
+        return
+    progress(
+        f"WARNING: `node` on PATH is {raw} ({node}); the JS-backed tests need "
+        f"v{MIN_NODE_MAJOR}+ (globalThis, optional chaining).\n"
+        "         Expect rectsl.editor-extension.workout, both remotejs.kotlinjs-*, and\n"
+        "         vision.geometry-preview to fail with SyntaxError/ReferenceError from a\n"
+        "         temp .js file. These are environment failures, not code regressions.\n"
+        "         Put a newer node first on PATH, e.g. `nvm use 22`, and re-run."
+    )
 
 
 def probe_field_responsive(port: int, *, timeout: float = 20.0) -> bool:
@@ -1333,6 +1379,9 @@ def run(args: argparse.Namespace) -> int:
     passed = 0
     failed = 0
     total = len(tests)
+
+    if tests:
+        warn_if_node_too_old(progress)
 
     field_proc: subprocess.Popen[Any] | None = None
     if tests and not args.no_prewarm:
