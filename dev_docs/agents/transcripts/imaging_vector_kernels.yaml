@@ -1,0 +1,259 @@
+name: imaging_vector_kernels
+description: >
+  Loadable demo of the 2026-07-27 imaging performance work: the operators that were rebuilt on the
+  vector-kernel layer in afield.stdlib/imaging_simd.kt, each timed IN THE BOX against a slower
+  definition of the same operation that is still reachable from public API — so you see the speed
+  and the sameness of the answer at once, on your machine, not in a table someone else measured.
+
+  Three pure-compute boxes, no Window and no Renderer:
+    1. pyrDown   — the fused half-scale filter against the naive "blur the whole image, then throw
+                   three quarters of it away" version, written out longhand. Same picture (max abs
+                   difference printed, ~1e-7 float summation order), a fraction of the time, because
+                   the decimation is now fused into both passes and the horizontal one runs
+                   polyphase so the reads stay unit-stride.
+    2. boxBlur   — the O(1)-per-pixel running sum against convolveSeparable(boxKernel1D(r)), which
+                   computes the same mean the O(k) way. Two independent implementations, so the
+                   printed max difference is a real correctness check and not a tautology. The
+                   speed-up came from turning the vertical pass inside out: it now advances a whole
+                   row of accumulators at a time instead of walking down one column.
+                   This box also reports the thing the "O(1) beats O(k)" story gets wrong — at
+                   radius 2 the kernel is the *faster* of the two, because a running sum is serial
+                   by nature while a handful of taps vectorize freely. It prints both radii so you
+                   can see where the crossover is rather than take the asymptote on faith.
+    3. bilateral — no cheap public reference exists for this one, so it is timed on its own and
+                   shown next to a plain Gaussian of the same spatial sigma. The point is visible
+                   rather than numeric: both blur the flat regions, only the bilateral keeps the
+                   edges. Its cost used to be 169 Math.exp calls per pixel; the range weight is now
+                   a 4096-entry table read with linear interpolation.
+
+  Timings are best-of-N with a warm-up, and N and the image size are small on purpose so a replay
+  finishes in seconds. Best-of-N rather than the mean because this is a laptop: the minimum is the
+  least-contended sample, and the run that produced these numbers was sharing the machine.
+  Absolute ms here are NOT the published benchmark — that is :tools:imaging-bench against OpenCV,
+  and tools/imaging-bench/results-1920x1080.txt. What this demo shows is the ratio to the slower
+  definition, which is what the change actually did.
+
+  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all
+  three on screen, then change a sigma or a radius and re-run a box to watch it update live. Each
+  `execute` op omits inline code, so it runs the box's stored `code` property. Executed end-to-end
+  by examples.demo-transcript.exec.
+operations:
+  - create:
+      box: imaging_perf_pyrdown
+      name: pyrDown — fused decimation vs blur-then-throw-away
+      frame: { x: 80.0, y: 80.0, w: 900.0, h: 420.0 }
+      properties:
+        code: |
+          // 1280x720 rather than the benchmark's 1920x1080, so a replay of this file is quick.
+          // A texture with detail at several scales, so an aliasing bug in the decimation would be
+          // visible as moire rather than hiding in a smooth gradient.
+          val src = Img.generate(1280, 720) { x, y ->
+              (0.5 +
+                  0.22 * kotlin.math.sin(x * 0.018) * kotlin.math.cos(y * 0.015) +
+                  0.16 * kotlin.math.sin((x + y) * 0.009) +
+                  0.12 * kotlin.math.sin(x * 0.31) * kotlin.math.cos(y * 0.27)
+                  ).toFloat().coerceIn(0f, 1f)
+          }
+
+          // Best-of-N with a warm-up. The minimum is the least-contended sample, which is the only
+          // statistic worth quoting on a machine that is also doing other things.
+          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+              repeat(2) { block() }
+              var best = Double.MAX_VALUE
+              repeat(reps) {
+                  val t0 = System.nanoTime()
+                  block()
+                  val ms = (System.nanoTime() - t0) / 1e6
+                  if (ms < best) best = ms
+              }
+              best
+          }
+
+          val sigma = 1.0
+
+          // The naive definition, longhand: blur every pixel at full resolution, then keep one in
+          // four. This is exactly what pyrDown used to do internally.
+          val naiveOf: (Img) -> Img = { img ->
+              val blurred = img.gaussianBlur(sigma)
+              val nw = img.width / 2
+              val nh = img.height / 2
+              val out = Img.zeros(nw, nh, img.channels)
+              for (y in 0 until nh) for (x in 0 until nw) for (c in 0 until img.channels) {
+                  out.set(x, y, c, blurred.at(x * 2, y * 2, c))
+              }
+              out
+          }
+
+          val fused = src.pyrDown(sigma)
+          val naive = naiveOf(src)
+
+          val tFused = bestMs(5) { src.pyrDown(sigma) }
+          val tNaive = bestMs(5) { naiveOf(src) }
+
+          // Same answer? The two differ only in float summation order: the fused version runs
+          // vertical-then-horizontal, the naive one horizontal-then-vertical. Those commute exactly
+          // in real arithmetic, including at the borders, because the x and y clamps are independent.
+          var worst = 0f
+          for (i in fused.data.indices) worst = maxOf(worst, kotlin.math.abs(fused.data[i] - naive.data[i]))
+
+          showImgGrid(
+              "source ${src.width}x${src.height}" to src,
+              "pyrDown(1.0) -> ${fused.width}x${fused.height}" to fused,
+              "naive blur-then-subsample" to naive,
+              "|fused - naive|, x2000" to fused.zip(naive) { a, b -> kotlin.math.abs(a - b) * 2000f },
+              columns = 2,
+              cellSide = 300,
+          )
+          println("pyrDown ${src.width}x${src.height} -> ${fused.width}x${fused.height}, sigma $sigma")
+          println("  fused (ships)              ${"%.2f".format(tFused)} ms")
+          println("  naive blur-then-subsample  ${"%.2f".format(tNaive)} ms")
+          println("  speed-up                   ${"%.2f".format(tNaive / tFused)}x")
+          println("  max abs difference         ${"%.2e".format(worst)}  (float summation order only)")
+          println("Three quarters of the naive version's blur was computed and discarded. The fused")
+          println("one filters only the rows and columns that survive; see ImgSimd.splitByPhase for")
+          println("why halving the columns does not need a gather.")
+  - create:
+      box: imaging_perf_boxblur
+      name: boxBlur — running sum vs the box kernel, two independent definitions
+      frame: { x: 80.0, y: 540.0, w: 900.0, h: 420.0 }
+      properties:
+        code: |
+          val src = Img.generate(1280, 720) { x, y ->
+              var v = 0.12f + 0.10f * (y / 720f)
+              if (hypot(x - 340.0, y - 300.0) <= 170.0) v = 0.85f
+              if (x in 700..1050 && y in 140..430) v = 0.62f
+              if (y in 560..585 && x in 100..1179) v = 0.95f
+              v
+          }
+
+          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+              repeat(2) { block() }
+              var best = Double.MAX_VALUE
+              repeat(reps) {
+                  val t0 = System.nanoTime()
+                  block()
+                  val ms = (System.nanoTime() - t0) / 1e6
+                  if (ms < best) best = ms
+              }
+              best
+          }
+
+          val r = 2
+
+          // Two genuinely independent implementations of the same mean:
+          //   boxBlur          — a sliding running sum, O(1) per pixel at any radius
+          //   convolveSeparable — the box kernel evaluated tap by tap, O(k) per pixel
+          // They share no code, so the difference below is a real check rather than a tautology.
+          val running = src.boxBlur(r)
+          val kernelled = src.convolveSeparable(boxKernel1D(r), boxKernel1D(r))
+
+          val tRunning = bestMs(5) { src.boxBlur(r) }
+          val tKernel = bestMs(5) { src.convolveSeparable(boxKernel1D(r), boxKernel1D(r)) }
+
+          var worst = 0f
+          for (i in running.data.indices) worst = maxOf(worst, kotlin.math.abs(running.data[i] - kernelled.data[i]))
+
+          // The radius-independence is the whole claim of a running sum, so show it: r=2 and r=24
+          // should cost the same, while the kernel version's cost grows with r.
+          val tRunningBig = bestMs(3) { src.boxBlur(24) }
+          val tKernelBig = bestMs(3) { src.convolveSeparable(boxKernel1D(24), boxKernel1D(24)) }
+
+          showImgGrid(
+              "source ${src.width}x${src.height}" to src,
+              "boxBlur($r)" to running,
+              "convolveSeparable(boxKernel1D($r))" to kernelled,
+              "boxBlur(24) — same cost as r=2" to src.boxBlur(24),
+              columns = 2,
+              cellSide = 300,
+          )
+          println("boxBlur vs the box kernel, ${src.width}x${src.height}, radius $r")
+          println("  boxBlur (running sum)      ${"%.2f".format(tRunning)} ms")
+          println("  convolveSeparable(box)     ${"%.2f".format(tKernel)} ms")
+          println("  max abs difference         ${"%.2e".format(worst)}  (running-sum float drift)")
+          println("radius 24 — the O(1) claim:")
+          println("  boxBlur(24)                ${"%.2f".format(tRunningBig)} ms " +
+              "(${"%.2f".format(tRunningBig / tRunning)}x the r=$r cost)")
+          println("  convolveSeparable(box 24)  ${"%.2f".format(tKernelBig)} ms " +
+              "(${"%.2f".format(tKernelBig / tKernel)}x the r=$r cost)")
+          println("The vertical pass used to walk one column at a time — stride width*channels down")
+          println("a multi-megabyte array, a cache miss per sample. It now advances a whole row of")
+          println("accumulators together, which is both sequential and vectorized.")
+          println()
+          println("Read those two blocks together, because they say something the O(1)-beats-O(k)")
+          println("story alone would get wrong: at radius $r the KERNEL is the faster of the two, and")
+          println("only past a crossover of a few pixels does the running sum win. A running sum is")
+          println("serial by nature — each output waits on the previous one — while 2*$r+1 taps of")
+          println("separable convolution vectorize freely. O(1) is about the asymptote, not radius 2.")
+  - create:
+      box: imaging_perf_bilateral
+      name: bilateral — a tabulated range weight instead of 169 exp() per pixel
+      frame: { x: 80.0, y: 1000.0, w: 900.0, h: 420.0 }
+      properties:
+        code: |
+          // Smaller again: bilateral is O(r^2) per pixel and this is the expensive box.
+          val clean = Img.generate(640, 480) { x, y ->
+              var v = 0.15f + 0.10f * (y / 480f)
+              if (hypot(x - 190.0, y - 210.0) <= 120.0) v = 0.85f
+              if (x in 360..560 && y in 90..300) v = 0.62f
+              v
+          }
+          val rng = kotlin.random.Random(11)
+          val noisy = clean.map { (it + (rng.nextFloat() - 0.5f) * 0.10f).coerceIn(0f, 1f) }
+
+          val bestMs: (Int, () -> Unit) -> Double = { reps, block ->
+              repeat(2) { block() }
+              var best = Double.MAX_VALUE
+              repeat(reps) {
+                  val t0 = System.nanoTime()
+                  block()
+                  val ms = (System.nanoTime() - t0) / 1e6
+                  if (ms < best) best = ms
+              }
+              best
+          }
+
+          val sigmaSpace = 3.0
+          val sigmaRange = 0.12
+          val bil = noisy.bilateral(sigmaSpace, sigmaRange)
+          val gauss = noisy.gaussianBlur(sigmaSpace)
+
+          val tBil = bestMs(3) { noisy.bilateral(sigmaSpace, sigmaRange) }
+          val tGauss = bestMs(3) { noisy.gaussianBlur(sigmaSpace) }
+
+          // Edge contrast across the disc boundary, and flatness in a flat patch. The bilateral
+          // should win the first and roughly tie the second — that is what "edge-preserving" means,
+          // stated as two numbers rather than left to the eye.
+          // The disc boundary at y=210 is x=310. Probe 3 px either side of it — about one
+          // sigmaSpace — because that is where a Gaussian visibly smears and a bilateral does not.
+          // Probing 30 px out would show both "preserving" the step and prove nothing.
+          val edgeOf: (Img) -> Float = { img -> img.at(307, 210) - img.at(313, 210) }
+          val flatOf: (Img) -> Float = { img -> img.crop(430, 340, 120, 100).stdDev() }
+
+          showImgGrid(
+              "clean" to clean,
+              "+ uniform noise" to noisy,
+              "bilateral($sigmaSpace, $sigmaRange) — edges kept" to bil,
+              "gaussianBlur($sigmaSpace) — edges gone too" to gauss,
+              columns = 2,
+              cellSide = 300,
+          )
+          val win = 2 * kotlin.math.max(1, kotlin.math.ceil(sigmaSpace * 2.0).toInt()) + 1
+          println("bilateral ${noisy.width}x${noisy.height}, window ${win}x$win = ${win * win} taps per pixel")
+          println("  bilateral                  ${"%.2f".format(tBil)} ms")
+          println("  gaussianBlur (same sigma)  ${"%.2f".format(tGauss)} ms  — separable, so far cheaper by right")
+          println("edge step across the disc boundary:")
+          println("  bilateral    ${"%.4f".format(edgeOf(bil))}")
+          println("  gaussian     ${"%.4f".format(edgeOf(gauss))}   (smeared)")
+          println("noise left in a flat patch (stdDev), was ${"%.4f".format(flatOf(noisy))}:")
+          println("  bilateral    ${"%.4f".format(flatOf(bil))}")
+          println("  gaussian     ${"%.4f".format(flatOf(gauss))}")
+          println("Every one of those ${win * win} taps used to call Math.exp, because the range weight")
+          println("depends on the sample. It is now a 4096-entry table indexed by SQUARED intensity")
+          println("distance — no abs, no sqrt — read with linear interpolation, worth ~2e-6 of weight.")
+  - execute: { box: imaging_perf_pyrdown, property: code }
+  - execute: { box: imaging_perf_boxblur, property: code }
+  - execute: { box: imaging_perf_bilateral, property: code }
+  - await:
+      wait: pending
+  - wait:
+      millis: 500

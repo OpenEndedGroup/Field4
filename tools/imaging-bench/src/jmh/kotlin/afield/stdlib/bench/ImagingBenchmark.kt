@@ -7,6 +7,7 @@ import afield.stdlib.SOBEL_DERIV
 import afield.stdlib.SOBEL_SMOOTH
 import afield.stdlib.bilateral
 import afield.stdlib.boxBlur
+import afield.stdlib.boxKernel1D
 import afield.stdlib.convolve2D
 import afield.stdlib.convolveSeparable
 import afield.stdlib.convolveSeparableReference
@@ -233,6 +234,25 @@ open class ImagingBenchmark {
     // ---- ops that were NOT touched by the vectorization -----------------------------------------
 
     @Benchmark fun oursBoxBlur(bh: Blackhole) = bh.consume(gray.boxBlur(2, Border.REFLECT))
+
+    /**
+     * The same radius-2 mean computed the O(k) way, as a *decision* arm rather than a claim.
+     *
+     * [boxBlur] is a sliding running sum, O(1) per pixel at any radius, and the tempting conclusion
+     * is that it must therefore beat a 5-tap separable convolution. That is not obvious at all: a
+     * running sum is serial by nature — each output waits on the previous one — while 5 taps
+     * vectorize freely. O(1) is a statement about the asymptote, and radius 2 is nowhere near it.
+     * Measured in a live box at 1280x720, the kernel won: 1.77 ms against 2.79 ms.
+     *
+     * That measurement was not good enough to act on, which is why this arm exists. Box code runs
+     * through the REPL with implicit receivers and only two warm-up reps, so it under-reports
+     * whichever implementation depends more on C2 having fully warmed — and `oursBoxBlur`'s
+     * vectorized row accumulator is exactly that kind of code. This arm settles it under the same
+     * fully-JIT'd conditions as `oursBoxBlur`; if the kernel wins here too, [boxBlur] should
+     * dispatch to it below some radius threshold.
+     */
+    @Benchmark fun oursBoxBlurViaKernel(bh: Blackhole) =
+        bh.consume(gray.convolveSeparable(boxKernel1D(2), boxKernel1D(2), Border.REFLECT))
 
     @Benchmark fun opencvBoxBlur(bh: Blackhole) {
         opencv_imgproc.blur(grayMat, dst, Size(5, 5), org.bytedeco.opencv.opencv_core.Point(-1, -1), opencv_core.BORDER_REFLECT101)
