@@ -366,7 +366,7 @@ inline operator fun <T> IntRange.invoke(to: (Int) -> T): List<T> = this.map { to
 inline operator fun <T> Int.invoke(to: (Int) -> T): List<T> = (0 until this).map { to(it) }
 
 /**
- * `10 alphas { a -> … }` — calls the block with [Int] evenly spaced values from `0.0` to `1.0`
+ * `10 alphas { a -> … }` — calls the block with that many evenly spaced values from `0.0` to `1.0`
  * **inclusive**, and collects the results.
  *
  * The parameterise-a-curve loop: `20 alphas { a -> vec(cos(a * 2 * PI), sin(a * 2 * PI)) }` closes exactly,
