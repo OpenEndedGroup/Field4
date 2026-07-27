@@ -160,12 +160,25 @@ import kotlin.random.Random
  * near-coincident pair from firing off the canvas.
  */
 data class LayoutConfig(
+    /** How hard every node pushes every other away. Falls off as `1/d²`, so it sets the empty space between
+     * unconnected nodes without much affecting connected ones. */
     val repulsion: Double = 2500.0,
+    /** The distance an edge is happy at, in position units. The quickest single knob for the overall scale of
+     * the picture. */
     val springLength: Double = 90.0,
+    /** How strongly an edge pulls back toward [springLength]. Large values make the net rigid and jittery. */
     val springStrength: Double = 0.015,
+    /** Velocity retained per step. Below 1 is what makes the simulation settle at all; toward 1 it wobbles for
+     * far longer, and at 1 it never stops. */
     val damping: Double = 0.82,
+    /** Integration step. Scales both the velocity update and the movement, so raising it is a faster but less
+     * stable simulation. */
     val timeStep: Double = 1.0,
+    /** Stored but **unused** by the current layout step — new nodes get their initial scatter from [Net.create]
+     * instead. */
     val jitter: Double = 8.0,
+    /** Per-step speed limit, in position units. What stops two nearly coincident nodes from firing each other
+     * off the canvas. */
     val clampStep: Double = 20.0
 )
 
@@ -184,10 +197,20 @@ internal data class Motion(var velocity: Vec2 = Vec2())
  * are the three ways to get a fresh one, and [Net.create] copies whatever state you hand it.
  */
 data class NodeState(
+    /** Drives node radius when drawn, and is what the energy-biased [PairSelectors] rank pairs by. Every
+     * operation here floors it at 0, but nothing caps it. */
     var energy: Double = 1.0,
+    /** Carried and split, but **nothing in this file interprets it** — yours to use, though the renderer does
+     * fall back to it for a node's port angle when the node has no connected neighbours. */
     var phase: Double = 0.0,
+    /** Drives colour, as a fraction of a turn. Wrapped at render time rather than here, so it may drift far
+     * outside `0..1` and that is fine. */
     var hue: Double = 0.0,
+    /** Advanced only by [Net.incrementAges], in whatever unit you pass it — so age runs on the clock you choose.
+     * Nudges drawn lightness. */
     var age: Double = 0.0,
+    /** Room for your own named quantities. Deep-copied by [copyDeep] and blended key-wise by [blend], where a
+     * key missing from one side counts as 0. */
     val scalars: MutableMap<String, Double> = linkedMapOf()
 ) {
     /** An independent copy, [scalars] map included, so later mutation of either cannot reach the other. */
@@ -310,8 +333,12 @@ data class AgentType(val name: String, val auxPorts: Int) {
  * (`"node_3:1"`) that [Net] indexes on.
  */
 class Port internal constructor(
+    /** The node this port belongs to. A port never moves between nodes. */
     val node: Node,
+    /** Position in the node's `ports` list: 0 is the principal port, `1..auxPorts` the auxiliaries. Note this is
+     * the raw index, one more than the number [Node.aux] takes. */
     val index: Int,
+    /** Whether this is the one reactive port or an inert auxiliary. Fixed when the node is created. */
     val kind: PortKind
 ) {
     /** `"<nodeId>:<portIndex>"` — the stable string identity [Net] uses for its adjacency index. */
@@ -329,8 +356,13 @@ class Port internal constructor(
  * are built once and never change, since the port count is a property of the type.
  */
 class Node internal constructor(
+    /** Unique within its net and never reused, so a [ReductionStep]'s removed ids stay unambiguous after the
+     * fact. Minted as `type_n` by [IdSource] unless you named it. */
     val id: String,
+    /** Which kind of agent this is — what rules match on, and what fixes the port count. */
     val type: AgentType,
+    /** This node's mutable payload. [Net.create] copies whatever you pass, so two nodes never share one by
+     * accident; a rewrite rule must copy it deliberately. */
     val state: NodeState = NodeState()
 ) {
     /** All of this node's ports, principal first at index 0, then the auxiliaries in order. */
@@ -1235,15 +1267,29 @@ data class RuleMatch(val rule: RewriteRule, val binding: SignatureBinding)
  * second and [normal] its perpendicular — so [branchImpulse] can throw new nodes sideways out of the collision.
  */
 data class PairContext(
+    /** The node matching the rule signature's *left* type — ordinal 0 throughout the rule DSL, whichever way the
+     * edge happened to be stored. About to be deleted. */
     val first: Node,
+    /** The node matching the signature's *right* type — ordinal 1. Also about to be deleted. */
     val second: Node,
+    /** What each of [first]'s auxiliary ports was wired to, in aux order; a null entry means that port was already
+     * free. These are the loose ends the rule must account for. */
     val firstAuxPeers: List<Port?>,
+    /** The same for [second]'s auxiliary ports. */
     val secondAuxPeers: List<Port?>,
+    /** Midpoint of the two nodes, and the point replacement nodes are seeded at — which is why a rewrite appears to
+     * grow out of the collision rather than at the origin. */
     val center: Vec2,
+    /** Roughly half the pair's separation, **floored at 12.0** so a coincident pair still gives replacements
+     * somewhere to go. The default scale for [branchImpulse]. */
     val radius: Double,
+    /** [first]'s layout velocity at the moment of the collision, so a replacement can inherit its motion. */
     val firstVelocity: Vec2,
+    /** [second]'s layout velocity at the moment of the collision. */
     val secondVelocity: Vec2,
+    /** Unit vector from [first] toward [second]. Falls back to `(1, 0)` for a coincident pair rather than being NaN. */
     val axis: Vec2,
+    /** Unit vector perpendicular to [axis]. The direction [branchImpulse] throws branches along. */
     val normal: Vec2
 ) {
     /**
@@ -1320,9 +1366,15 @@ data class PairContext(
  * bulk, by `Reducer.reduceDetailed`.
  */
 data class RewriteEvent(
+    /** Free text naming what happened — `"beta"`, `"spark"`, `"note"`. **Nothing in this file interprets it**, so
+     * the vocabulary is entirely yours. */
     val kind: String,
+    /** Where in layout space it happened. Defaults to the collision centre when emitted from a rule. */
     val at: Vec2,
+    /** How much of it there was. Defaults to the pair's combined energy, which makes a decaying rule emit
+     * progressively weaker events for free. */
     val magnitude: Double = 1.0,
+    /** Any extra named numbers the rule wanted to pass along. Copied on emit, so the map you passed is not retained. */
     val data: Map<String, Double> = emptyMap()
 )
 
@@ -1335,11 +1387,18 @@ data class RewriteEvent(
  * you read this.
  */
 data class ReductionStep(
+    /** The [RewriteRule.name] that fired — which is why it is worth naming rules something you would read in a log. */
     val ruleName: String,
+    /** The collision as the rule saw it, including the geometry, so a caller can flash the right place on screen. */
     val context: PairContext,
+    /** Whether the pair had to be exchanged to match the rule's signature order. Informational; the rule's behaviour
+     * does not depend on it. */
     val swapped: Boolean,
+    /** The two consumed nodes' ids. Ids rather than nodes because those nodes are already gone by the time you read this. */
     val removedNodeIds: List<String>,
+    /** The ids of the replacement nodes, in the order the rule declared them. */
     val createdNodeIds: List<String>,
+    /** Everything the rule emitted, snapshot-copied — so this survives even though the nodes behind it do not. */
     val events: List<RewriteEvent>
 )
 
@@ -1474,8 +1533,12 @@ class RewriteResult internal constructor(
  * energy, geometry and velocity — a rule is a function of its situation, not a fixed template.
  */
 class RewriteRule(
+    /** What this law is called. Appears in every [ReductionStep] it produces, so make it readable. */
     val name: String,
+    /** The pair of agent types this fires on, matched in either order. */
     val signature: PairSignature,
+    /** Called afresh on **every** firing with that collision's context, so the replacement can depend on energy,
+     * geometry and velocity rather than being a fixed template. */
     val rewrite: (PairContext) -> RewriteResult
 )
 
