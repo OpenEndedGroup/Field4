@@ -40,8 +40,26 @@ data class FnGraphEdge(
     val fn: Functions.Fn
 )
 
+/**
+ * A node's recipe for putting itself back together: given the children in role order, return the equivalent [Functions.Fn].
+ *
+ * The presence of one is the difference between a node a rewrite can *change* and one it can only copy. Every op the
+ * stdlib emits supplies one; a hand-written lambda wrapped as an `Fn` cannot, and copies as an opaque evaluator instead.
+ */
 typealias FnGraphRebuilder = (List<Functions.Fn>) -> Functions.Fn
 
+/**
+ * One node of the graph hanging off a [Functions.Fn]: which op it is, its role-tagged children, its scalar metadata, and
+ * — if it can — how to rebuild itself.
+ *
+ * The structure a rewrite reads and writes. [op] is the name from `OpRegistry` and what rules match on; [label] is for
+ * display only. Children are addressed **by role** (`"source"`, `"frequency"`, …) rather than by position, which is what
+ * lets a transmutation move a frequency into a period slot. The four scalar maps carry the node's own parameters, and
+ * [tags] carries classifications like `"number"` or `"opaque"` that the renderers and rules test.
+ *
+ * A null [rebuild] means this node cannot be reconstructed: it stays inspectable, but a copy keeps the original evaluator
+ * and drops the recipe, so nothing downstream can edit *inside* it.
+ */
 data class FnGraphNode(
     val op: String,
     val label: String = op,
@@ -53,18 +71,37 @@ data class FnGraphNode(
     val tags: Set<String> = emptySet(),
     val rebuild: FnGraphRebuilder? = null
 ) {
+    /** The child in this role, or null if there is none — the role-addressed accessor rules use. First match wins. */
     fun child(role: String): Functions.Fn? = children.firstOrNull { it.role == role }?.fn
 }
 
+/**
+ * One step on the path from the root down to a node: the node, the role it was reached by, its index among its siblings,
+ * and its `Fn`'s name if it had one.
+ *
+ * These make up [FnGraphCopyContext.occurrence], so a rewrite predicate can ask about *where* a node sits — "only the
+ * frequency of a sine that is itself inside a sum" — rather than only what it is.
+ */
 data class FnGraphPathElement(
     val node: FnGraphNode,
     val role: String?,
     val index: Int,
     val name: String? = null
 ) {
+    /** The op at this step of the path. */
     val op: String get() = node.op
 }
 
+/**
+ * Everything a rewrite is told about the node it is currently being offered: the original `Fn`, its graph node, where it
+ * sits in the tree, and its immediate parent and full ancestry.
+ *
+ * The argument to every [FnGraphEdit]. Because the copy is **bottom-up**, the children of this node have already been
+ * copied (and possibly rewritten) by the time you see it, while the ancestors described here are the *originals*.
+ *
+ * The convenience accessors are what predicates are usually written against: [op] and [parentOp] for the shape,
+ * [name] and [domain] from the original function, and [occurrence] for the whole path when position matters.
+ */
 data class FnGraphCopyContext(
     val original: Functions.Fn,
     val node: FnGraphNode,
@@ -74,18 +111,52 @@ data class FnGraphCopyContext(
     val parent: FnGraphNode? = null,
     val ancestors: List<FnGraphPathElement> = emptyList()
 ) {
+    /** The op name of the node being offered — the first thing most predicates test. */
     val op: String get() = node.op
+
+    /** The original function's name, if it had one. Null for the great majority of nodes. */
     val name: String? get() = original.name
+
+    /** The original function's domain, which the replacement is usually expected to match. */
     val domain: Functions.Domain get() = original.domain
+
+    /** The op of the immediate parent, or null at the root — "am I inside a sum?" in one property. */
     val parentOp: String? get() = parent?.op
+
+    /**
+     * The whole path from the root to this node inclusive, as [FnGraphPathElement]s — the addressable identity of *this
+     * occurrence*, as opposed to this op in general.
+     *
+     * Rebuilt on each read, so bind it to a local rather than calling it repeatedly in a predicate.
+     */
     val occurrence: List<FnGraphPathElement> get() =
         ancestors + FnGraphPathElement(node, role, path.lastOrNull() ?: -1, name)
 }
 
+/**
+ * The rewrite hook: for each node of the graph, look at [FnGraphCopyContext] and either return a replacement or leave the
+ * copy alone.
+ *
+ * A `fun interface`, so it is written as a lambda. Return the `copy` argument (or null, which means the same thing) to
+ * keep the node as it is; return anything else to substitute it — including a subtree of a completely different shape.
+ * The children of the node you are handed have **already** been visited, so replacing it discards whatever was rewritten
+ * inside it.
+ *
+ * Called once per *occurrence* by default, since the rewriting entry points turn sharing off; with `preserveSharing = true`
+ * a shared subgraph is visited once and the same replacement is reused everywhere it appeared.
+ */
 fun interface FnGraphEdit {
+    /** Return a replacement for this node, or `copy`/null to keep it. */
     fun edit(context: FnGraphCopyContext, copy: Functions.Fn): Functions.Fn?
 }
 
+/**
+ * One node in a flattened, read-only [FnGraphSnapshot]: an integer id and the node's op, label, name, domain, scalars and
+ * tags, with no reference back to the live `Fn`.
+ *
+ * Plain data, so it survives being serialised, diffed or handed to a browser — which is the point of taking a snapshot
+ * rather than walking the graph.
+ */
 data class FnGraphSnapshotNode(
     val id: Int,
     val op: String,
@@ -99,18 +170,32 @@ data class FnGraphSnapshotNode(
     val tags: Set<String>
 )
 
+/** A parent-to-child link in an [FnGraphSnapshot], by node id, carrying the role the child was addressed by. */
 data class FnGraphSnapshotEdge(
     val from: Int,
     val to: Int,
     val role: String
 )
 
+/**
+ * A flattened, `Fn`-free picture of a graph: a node list, an edge list and the root's id.
+ *
+ * A **graph, not a tree** — a subgraph reached twice appears once with two edges into it, because identity is what is
+ * de-duplicated. That is the honest shape of an `Fn` built with shared sub-expressions, and it is why this is the right
+ * thing to serialise or diff, where `graphText` and `graphSvg` re-expand and mark repeats instead.
+ */
 data class FnGraphSnapshot(
     val nodes: List<FnGraphSnapshotNode>,
     val edges: List<FnGraphSnapshotEdge>,
     val root: Int
 )
 
+/**
+ * This function's graph node — or a synthetic `"opaque"` node, tagged `opaque`, when it has no graph at all.
+ *
+ * Never null, which is what lets every traversal in this family be written without a special case. An opaque node has no
+ * children and no rebuild recipe, so a rewrite can replace it wholesale but cannot see inside it.
+ */
 fun Functions.Fn.graphNode(): FnGraphNode =
     graph ?: FnGraphNode(
         op = "opaque",
@@ -118,6 +203,18 @@ fun Functions.Fn.graphNode(): FnGraphNode =
         tags = setOf("opaque")
     )
 
+/**
+ * Rebuilds this function from its graph, bottom-up, offering every node to [edit] on the way — the single traversal every
+ * other rewrite in this family is written in terms of.
+ *
+ * With the default no-op edit it is a genuine deep copy: nothing is shared with the original, so mutating one leaves the
+ * other alone. Nodes whose graph carries no `rebuild` recipe are copied as **opaque evaluators wrapping the original**,
+ * which means they still compute the same thing but their internals are gone from the copy.
+ *
+ * [preserveSharing] defaults to true here — a subgraph reached twice is copied once and the result reused, keeping the
+ * copy's structure (and its evaluation cost) the same as the original's. Turn it off, as [rewriteGraph] does, when each
+ * occurrence should be editable independently; the copy then expands into a tree and can be much larger.
+ */
 fun Functions.Fn.deepCopy(
     preserveSharing: Boolean = true,
     edit: FnGraphEdit = FnGraphEdit { _, copy -> copy }
@@ -158,11 +255,27 @@ fun Functions.Fn.deepCopy(
     return copyRec(this, emptyList(), null, null, emptyList())
 }
 
+/**
+ * [deepCopy] under the name that says what you are doing, and with sharing **off** by default so each occurrence of a
+ * repeated subgraph is offered to [edit] separately and can be changed independently.
+ *
+ * The general rewriting entry point, and what all the specific ones below call. Returns a new function; the original is
+ * untouched.
+ */
 fun Functions.Fn.rewriteGraph(
     preserveSharing: Boolean = false,
     edit: FnGraphEdit
 ): Functions.Fn = deepCopy(preserveSharing = preserveSharing, edit = edit)
 
+/**
+ * Rewrites the *numbers* in the graph: every node carrying a scalar under the key `"value"` — which is how a constant is
+ * represented — is replaced by a constant holding whatever [transform] returns.
+ *
+ * The "make everything 10% faster" pass. Only the key `"value"` is considered, so a node's other named parameters (a
+ * frequency, a phase) are **not** visited by this; and a node whose transform returns the value unchanged is left exactly
+ * as it was rather than rebuilt. The replacement is a plain constant, so any name is carried over but any structure the
+ * node had is not.
+ */
 fun Functions.Fn.mapGraphNumbers(
     preserveSharing: Boolean = false,
     transform: (value: Double, context: FnGraphCopyContext, key: String) -> Double
@@ -173,6 +286,17 @@ fun Functions.Fn.mapGraphNumbers(
     if (next == current) copy else Functions.c(next, copy.domain).withName(copy.name)
 }
 
+/**
+ * Transmutes ops in place: every node whose op is a key of [replacements] is rebuilt as the corresponding op, reusing its
+ * role-addressed children and its scalar parameters.
+ *
+ * "Make every sine a square" without rebuilding the expression by hand. The mapping is applied **once per node**, not
+ * repeatedly, so `mapOf("sin" to "cos", "cos" to "sin")` really does swap them rather than looping.
+ *
+ * `OpRegistry` decides what is a viable transmutation, including the cross-family role bridging (frequency ↔ period). A
+ * node the registry refuses is **left unchanged and silently**, so a typo'd target op is a no-op rather than an error —
+ * compare the graph before and after if you need to know it took.
+ */
 fun Functions.Fn.replaceOps(
     replacements: Map<String, String>,
     preserveSharing: Boolean = false
@@ -181,12 +305,23 @@ fun Functions.Fn.replaceOps(
     copy.rebuildAsOp(target) ?: copy
 }
 
+/** [replaceOps] for a single op. Same quiet no-op if the transmutation is not viable. */
 fun Functions.Fn.replaceOp(
     from: String,
     to: String,
     preserveSharing: Boolean = false
 ): Functions.Fn = replaceOps(mapOf(from to to), preserveSharing)
 
+/**
+ * Cuts every node matching [predicate] out of the graph, putting [replacement] in its place — zero, by default.
+ *
+ * Ablation: "what does this expression sound like without the noise term". Because the traversal is bottom-up and the
+ * replacement discards the copied subtree, pruning a node removes **everything below it**, whether or not those
+ * descendants also matched.
+ *
+ * The default replacement is `Functions.zero` over the pruned node's own domain, which is the identity for a sum but not
+ * for a product — pass a `replacement` of one if you are ablating a factor.
+ */
 fun Functions.Fn.pruneWhere(
     preserveSharing: Boolean = false,
     replacement: (FnGraphCopyContext) -> Functions.Fn = { Functions.zero(it.domain) },
@@ -195,6 +330,13 @@ fun Functions.Fn.pruneWhere(
     if (predicate(context)) replacement(context) else copy
 }
 
+/**
+ * Substitutes [graft] for every node matching [predicate] — transplanting one expression into another wherever it fits.
+ *
+ * Each match gets its **own copy** of the graft (a `deepCopy` with sharing preserved inside it), so the results are
+ * independent and a later rewrite can change one without changing the others. As with [pruneWhere], the matched node's
+ * whole subtree is discarded, and a graft whose domain differs from the node's is inserted as-is rather than adapted.
+ */
 fun Functions.Fn.graftWhere(
     graft: Functions.Fn,
     preserveSharing: Boolean = false,
@@ -203,6 +345,17 @@ fun Functions.Fn.graftWhere(
     if (predicate(context)) graft.deepCopy(preserveSharing = true) else copy
 }
 
+/**
+ * At every node matching [predicate], makes a second copy of that subtree, passes it through [duplicate], and combines the
+ * two with [merge].
+ *
+ * The "echo this part of the expression" primitive: `duplicate` is where you offset, detune or delay the copy, and `merge`
+ * is what puts the pair back together — a sum for a chorus, a max for a union. Both halves are fully independent
+ * expressions, so a subsequent rewrite treats them separately.
+ *
+ * The duplicate is taken from the already-copied node, so it includes any rewriting that happened below it in this same
+ * pass.
+ */
 fun Functions.Fn.duplicateWhere(
     preserveSharing: Boolean = false,
     duplicate: (Functions.Fn) -> Functions.Fn,
@@ -212,9 +365,26 @@ fun Functions.Fn.duplicateWhere(
     if (predicate(context)) merge(copy, duplicate(copy.deepCopy())) else copy
 }
 
+/**
+ * This function plus a shifted copy of itself: `f + f.shift(amount)` — the one-line canon or echo.
+ *
+ * [amount] is a shift along the input, in the same units as the domain, so a positive value delays. The copy is a real
+ * deep copy, so the two halves can be rewritten apart afterwards. Note that this **sums**, so the result's amplitude is
+ * roughly doubled where the two overlap.
+ */
 fun Functions.Fn.slideCopy(amount: Number, preserveSharing: Boolean = true): Functions.Fn =
     with(Functions) { this@slideCopy + this@slideCopy.deepCopy(preserveSharing).shift(amount) }
 
+/**
+ * A flattened, serialisable [FnGraphSnapshot] of this graph — ids, ops, metadata and role-labelled edges, with no live
+ * `Fn` references.
+ *
+ * De-duplicated **by identity**, so a shared subgraph appears once with several edges into it: the snapshot is the graph as
+ * it really is, which is what makes it the right input for diffing two versions of an expression.
+ *
+ * [maxDepth] stops the descent, but the node at the limit is still emitted — just without its children — so a truncated
+ * snapshot looks like a leaf rather than announcing itself. Depth is per path, not per node.
+ */
 fun Functions.Fn.graphSnapshot(maxDepth: Int = 32): FnGraphSnapshot {
     val ids = IdentityHashMap<Functions.Fn, Int>()
     val nodes = mutableListOf<FnGraphSnapshotNode>()
@@ -250,6 +420,13 @@ fun Functions.Fn.graphSnapshot(maxDepth: Int = 32): FnGraphSnapshot {
     return FnGraphSnapshot(nodes, edges, root)
 }
 
+/**
+ * The graph as indented text — one line per node with its op, name, domain and scalars — for printing into a box output.
+ *
+ * The quickest way to see what an expression is actually made of. Each node gets a `#n` id the first time it is seen, and a
+ * repeat of a shared subgraph prints as `ref #n` rather than being expanded again, so you can tell sharing from
+ * duplication at a glance. A path deeper than [maxDepth] ends in `...`.
+ */
 fun Functions.Fn.graphText(maxDepth: Int = 12): String {
     val seen = IdentityHashMap<Functions.Fn, Int>()
     var nextId = 0
@@ -285,6 +462,19 @@ fun Functions.Fn.graphText(maxDepth: Int = 12): String {
     return buildString { walk(this@graphText, 0, "", this) }
 }
 
+/**
+ * The graph drawn as a dark-themed SVG: one card per node, laid out left-to-right by depth, with curved edges and — by
+ * default — a **sparkline of what that sub-expression actually evaluates to** behind each card.
+ *
+ * The sparkline is the reason to prefer this over [graphText]: you see the shape produced at each point in the graph, not
+ * just its name. Each node is sampled 56 times across its own domain, or the unit interval when that domain is unbounded;
+ * constants and unevaluable nodes simply get no sparkline, and an exception during sampling is swallowed as a gap in the
+ * line rather than propagated.
+ *
+ * A repeated subgraph is **expanded again** here (outlined more brightly to mark it), unlike [graphSnapshot], so this is a
+ * tree view of a graph and a heavily shared expression can get wide. The returned SVG grows past [width] rather than
+ * clipping. Set `sparklines = false` when the evaluation cost matters — it is one full evaluation per node per call.
+ */
 fun Functions.Fn.graphSvg(
     width: Int = 960,
     nodeWidth: Double = 168.0,
@@ -536,6 +726,17 @@ fun Functions.Fn.graphSvg(
     """.trimIndent()
 }
 
+/**
+ * The graph as an [FLineMap] of drawable boxes and connectors — the same tree layout as [graphSvg], but as Field geometry
+ * you can restyle, animate or hit-test.
+ *
+ * Keys are meaningful and stable within a call: `"node_<n>_<op>"` and `"edge_<n>"`, so a box can recolour just the sines,
+ * or fade one edge. Structure only — no labels, no sparklines, no repeat marking; reach for [graphSvg] when you want the
+ * annotated picture and this when you want to draw it yourself.
+ *
+ * Beyond [maxDepth] a node is emitted without its children. Shared subgraphs are expanded each time they appear, so the
+ * node count can exceed the number of distinct nodes.
+ */
 fun Functions.Fn.graphFLineMap(
     nodeWidth: Double = 168.0,
     nodeHeight: Double = 54.0,
