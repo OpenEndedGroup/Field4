@@ -34,8 +34,31 @@ import java.util.stream.Stream
  * will error without one.
  */
 
+/**
+ * The property on the session root that accumulates every file lookup this session has made — request, resolved
+ * path, which root answered it, whether it existed, and which box asked.
+ *
+ * Reset when the session's file manager is created and trimmed to [FileManager.maxAccessHistoryEntries], so it is
+ * a recent-activity log rather than a complete one. Read it when a path resolved somewhere you did not expect and
+ * you want to see where it actually went.
+ */
 const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY = "fileManagerAccessHistory"
 
+/**
+ * One session's view of the filesystem: hand it a short spec and it gives you a real `File` or `Path`.
+ *
+ * Reach for it as [files] rather than constructing one. Resolution is tried in a fixed order — absolute and `~/`
+ * paths; `%document/…` and `%project/…`; any name registered with [FileManager.add]; a glob, matched by walking the
+ * search roots and taking the **first sorted** match; and otherwise a plain relative name looked for in the
+ * document's `files/` directory and then in each workspace project the document belongs to.
+ *
+ * Two things worth knowing. A resolution is cached only **if the file exists**, so a name you resolve before
+ * creating the file is re-resolved next time rather than being stuck; and a spec that would climb out of its root
+ * is rejected outright, so `%document/../..` throws rather than escaping.
+ *
+ * Every lookup is recorded to [FILE_MANAGER_ACCESS_HISTORY_PROPERTY], and every call needs a live session — there
+ * is no way to use this outside one.
+ */
 class FieldFileManager internal constructor(private val session: SessionInformation) {
     private val resolved = ConcurrentHashMap<String, FileResolution>()
     private val sequence = AtomicLong(0)
@@ -45,21 +68,49 @@ class FieldFileManager internal constructor(private val session: SessionInformat
         resetSessionAccessHistory()
     }
 
+    /** The directory this document lives in — a directory, not a single file, since a Field document is a folder. */
     val documentDirectory: Path
         get() = File(session.filename).absoluteFile.toPath().normalize()
 
+    /**
+     * This document's own `files/` directory, the first place a relative name is looked for.
+     *
+     * **Created on read** if it does not exist, so merely asking for it has a side effect on disk.
+     */
     val documentFilesDirectory: Path
         get() = documentDirectory.resolve("files").normalize().also { Files.createDirectories(it) }
 
+    /**
+     * The `files/` directory of every workspace project this document belongs to — where a name not found in the
+     * document itself is looked for next. Empty when the document is in no project.
+     *
+     * Like [documentFilesDirectory], reading this **creates** the directories.
+     */
     val projectFilesDirectories: List<Path>
         get() = currentProjectFilesDirectories(create = true)
 
+    /**
+     * Resolves a spec to a `File`. The everyday call, usually written as `"data.csv".file`.
+     *
+     * The file need not exist: for a plain relative name that is nowhere to be found, you get the path it *would*
+     * have inside the document's `files/`, which is what you want for something you are about to write. A glob or a
+     * `%name/…` that matches nothing throws instead, since there is no sensible path to invent.
+     *
+     * @throws IllegalStateException on a blank spec, an unmatched glob, an unknown `%name`, or a `%project` spec in a
+     * document that is in no project — or in more than one, ambiguously
+     */
     fun file(spec: String): File = resolveAndRecord(spec, "file").toFile()
 
+    /** The same resolution as [file], as an NIO `Path`. Prefer it when you are going on to use `java.nio.file`. */
     fun path(spec: String): Path = resolveAndRecord(spec, "path")
 
+    /** The same resolution as [file], as an absolute normalised `String` — for handing a path to a subprocess. */
     fun absolutePath(spec: String): String = resolveAndRecord(spec, "absolutePath").toAbsolutePath().normalize().toString()
 
+    /**
+     * Forgets this session's cached resolutions. Rarely needed: the cache already drops a resolution whose file has
+     * gone, and is cleared wholesale whenever the named-directory table changes.
+     */
     fun clearCache() {
         resolved.clear()
     }
@@ -269,8 +320,19 @@ object FileManager {
     private val namedDirectories = ConcurrentHashMap<String, Path>()
     private val version = AtomicLong(0)
 
+    /** How many lookups [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] keeps before dropping the oldest. Applied on the next
+     * lookup, so lowering it does not retroactively trim what is already there. */
     var maxAccessHistoryEntries: Int = 1024
 
+    /**
+     * The file manager for whatever session is in scope right now — the current box's, or the ambient session's.
+     *
+     * One manager per session, kept weakly, so it goes away with the session. This is what [files] and the `String`
+     * extensions call.
+     *
+     * @throws IllegalStateException when there is neither an active Box context nor a session — which is what you get
+     * calling this from a plain unit test or a bare thread
+     */
     fun current(): FieldFileManager {
         val box = Box.context.get()
         val session = when {
@@ -283,30 +345,54 @@ object FileManager {
         }
     }
 
+    /** The manager for a named session rather than the ambient one — for code holding a session explicitly. */
     fun forSession(session: SessionInformation): FieldFileManager {
         return synchronized(managers) {
             managers.getOrPut(session) { FieldFileManager(session) }
         }
     }
 
+    /**
+     * `FileManager["textures"] = "~/Pictures"` — registers a named directory, so `%textures/wall.png` resolves.
+     *
+     * Sugar for [add] with `create = false`, so the directory must already exist. Registration is **process-global**
+     * and outlives the document, and re-registering a name silently replaces it.
+     */
     operator fun set(name: String, directory: String) {
         add(name, directory)
     }
 
+    /** `FileManager["name"] = someFile` — as the `String` overload, taking a `File`. */
     operator fun set(name: String, directory: File) {
         add(name, directory)
     }
 
+    /** `FileManager["name"] = somePath` — as the `String` overload, taking a `Path`. */
     operator fun set(name: String, directory: Path) {
         add(name, directory)
     }
 
+    /** The directory registered under this name, or null. The `%` prefix is optional — `get("x")` and `get("%x")` agree. */
     operator fun get(name: String): Path? = namedDirectory(name)
 
+    /** [add] from a string path, with `~` expanded first. */
     fun add(name: String, directory: String, create: Boolean = false): Path = add(name, expandHome(directory), create)
 
+    /** [add] from a `File`. */
     fun add(name: String, directory: File, create: Boolean = false): Path = add(name, directory.toPath(), create)
 
+    /**
+     * Registers [directory] under [name] so `%name/…` resolves into it, returning the absolute path stored.
+     *
+     * Process-global and shared by every open document, so a name registered by one workspace affects them all, and
+     * registering an existing name replaces it without warning. Pass `create = true` to make the directory rather
+     * than require it.
+     *
+     * The name must look like an identifier (letters, digits, `_`, `-`, not starting with a digit); a leading `%` or
+     * `$` is stripped for you. `document` and `project` are **reserved**, since they are the built-in roots.
+     *
+     * @throws IllegalArgumentException on a malformed or reserved name, or when the path is not a directory
+     */
     fun add(name: String, directory: Path, create: Boolean = false): Path {
         val cleanName = validateName(name)
         val root = directory.toAbsolutePath().normalize()
@@ -317,12 +403,18 @@ object FileManager {
         return root
     }
 
+    /**
+     * Unregisters a named directory, returning whether there was one. Nothing on disk is touched.
+     *
+     * @throws IllegalArgumentException on a malformed or reserved name, the same as [add]
+     */
     fun remove(name: String): Boolean {
         val removed = namedDirectories.remove(validateName(name)) != null
         if (removed) version.incrementAndGet()
         return removed
     }
 
+    /** Clears every session's resolution cache. Registering or removing a named directory already does this. */
     fun clearCache() {
         synchronized(managers) {
             managers.values.forEach { it.clearCache() }
@@ -345,21 +437,41 @@ object FileManager {
     }
 }
 
+/**
+ * The current session's [FieldFileManager] — the way into all of this from a box: `files.file("data.csv")`.
+ *
+ * Resolved per read, so it always belongs to the session you are actually in.
+ */
 val files: FieldFileManager
     get() = FileManager.current()
 
+/** Alias for [files], for code that reads better spelled out. */
 val fileManager: FieldFileManager
     get() = FileManager.current()
 
+/**
+ * `"data.csv".file` — the terse form of `files.file(this)`, and the idiom worth learning first.
+ *
+ * Understands everything [FieldFileManager] does: `"~/notes.txt".file`, `"%document/out.png".file`,
+ * `"**/*.wav".file`. Throws on an unmatched glob or an unknown `%name`; see [FieldFileManager.file].
+ */
 val String.file: File
     get() = FileManager.current().file(this)
 
+/** `"data.csv".path` — the same resolution as [String.file], as an NIO `Path`. */
 val String.path: Path
     get() = FileManager.current().path(this)
 
+/** `"data.csv".absolutePath` — the same resolution, as an absolute normalised string. */
 val String.absolutePath: String
     get() = FileManager.current().absolutePath(this)
 
+/**
+ * A **misspelling** of [absolutePath] that works anyway.
+ *
+ * Kept so that box code which typed it once keeps running. Prefer [absolutePath] in anything new; this exists only
+ * for compatibility and does nothing different.
+ */
 val String.abslutePath: String
     get() = absolutePath
 
