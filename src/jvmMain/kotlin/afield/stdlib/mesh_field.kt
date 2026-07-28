@@ -144,21 +144,24 @@ fun tubeMesh(
  * their plane normal, and the plane normals point out of the cell, so fanning each polygon gives a
  * consistently outward mesh with no repair pass.
  *
- * # Why there is a healing step
+ * # Why there is still a healing step
  *
- * Fanning the faces alone does **not** always close. Where four bisector planes nearly meet at a
- * point, `voronoi.kt`'s per-face clipping can list that corner on one face and skip it (as
- * degenerate) on the neighbouring face, which leaves a **T-junction**: one edge on one side of the
- * seam, two on the other. It shows up as a hairline crack — a couple of boundary edges and one
- * non-manifold edge in an otherwise perfect cell — and no weld tolerance fixes it, because the
- * problem is a missing vertex rather than a mismatched one. Measured on a 72-site lattice: 22 of the
- * 36 interior cells closed from the faces alone.
+ * `voronoi.kt` used to leave a **T-junction** wherever four or more bisector planes nearly met: a face
+ * claiming a corner that was not on it, so one edge on one side of a seam and two on the other, showing
+ * up here as a hairline crack in an otherwise perfect cell. **That is now fixed at the source** — see
+ * `Voronoi3d.collectCorners` and `VoronoiFaceTopologyTest` — and where 22 of the 36 interior cells of a
+ * 72-site lattice used to close from their faces alone, all of them now do.
+ *
+ * The repair stays, because the fix is not total: 4 of 465 bounded cells over a 24-lattice sweep, and 12
+ * of 447 of the wildly-conditioned clipped ones, still have an ill-conditioned corner the clipper
+ * resolves into two. `VoronoiFaceTopologyTest` ratchets those counts, and `voronoi.kt` explains what
+ * closing the gap properly would take. A caller who would rather see the raw faceted result, cracks and
+ * all, passes `healToConvexHull = false`.
  *
  * A Voronoi cell is by construction the intersection of half-spaces, so it is **convex**, so its
  * convex hull is exactly itself. That makes [convexHullMesh] over the same corner set an exact repair
- * rather than an approximation, and it is what [healToConvexHull] does for the cells that need it.
- * With it, all 36 close. The faceted result is preferred whenever it is already correct, because it
- * keeps the cell's real face structure.
+ * rather than an approximation. The faceted result is preferred whenever it is already correct, because
+ * it keeps the cell's real face structure.
  *
  * @param shrink scale the cell toward its own site. `1.0` leaves the cells touching (so a whole
  *   lattice is one solid); `0.9` opens the seams, which is what makes an exploded Voronoi readable.
