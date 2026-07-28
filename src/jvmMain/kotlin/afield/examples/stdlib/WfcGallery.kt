@@ -9,13 +9,18 @@ import afield.stdlib.WfcRules
 import afield.stdlib.WfcSolver
 import afield.stdlib.WfcStatus
 import afield.stdlib.colormap
+import afield.stdlib.floatsToImg
+import afield.stdlib.gaussianBlur
+import afield.stdlib.isoContourFLines
 import afield.stdlib.hstack
 import afield.stdlib.montage
 import afield.stdlib.possibilityCountImg
 import afield.stdlib.resolvedFraction
 import afield.stdlib.savePng
 import afield.stdlib.sliceIntoOverlappingPatterns
+import afield.stdlib.sliceIntoOverlappingPatterns2D
 import afield.stdlib.sliceIntoUniqueTiles
+import afield.stdlib.sliceIntoUniqueTiles2D
 import afield.stdlib.solveWithRetries
 import afield.stdlib.toBufferedImage
 import afield.stdlib.toImg
@@ -754,6 +759,119 @@ object WfcGallery {
         montage(entropies, columns = 3, cellSide = 300).savePng(File(outDir, "wfc-collapse-entropy.png").absolutePath)
     }
 
+    /** Quantised smooth field, the source both float paths learn from. */
+    fun quantisedField(w: Int, h: Int, levels: Int): FloatArray {
+        val out = FloatArray(w * h)
+        for (y in 0 until h) for (x in 0 until w) {
+            val u = x / (w - 1.0)
+            val v = y / (h - 1.0)
+            val e = (bump(u, v, 0.32, 0.42, 0.26) +
+                0.85 * bump(u, v, 0.70, 0.60, 0.22) +
+                0.50 * bump(u, v, 0.80, 0.24, 0.14)).coerceIn(0.0, 1.0)
+            out[x + y * w] = (Math.round(e * (levels - 1)).toDouble() / (levels - 1)).toFloat()
+        }
+        return out
+    }
+
+    /** Mean absolute difference between horizontally / vertically adjacent values. */
+    fun roughness(values: FloatArray, w: Int, h: Int): Pair<Double, Double> {
+        var hSum = 0.0
+        var hN = 0
+        var vSum = 0.0
+        var vN = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            if (x + 1 < w) { hSum += kotlin.math.abs(values[x + y * w] - values[x + 1 + y * w]); hN++ }
+            if (y + 1 < h) { vSum += kotlin.math.abs(values[x + y * w] - values[x + (y + 1) * w]); vN++ }
+        }
+        return (hSum / hN) to (vSum / vN)
+    }
+
+    private fun figureScalarField(outDir: File) {
+        val sw = 26
+        val sh = 18
+        val levels = 6
+        val source = quantisedField(sw, sh, levels)
+
+        val tiles = source.sliceIntoUniqueTiles2D(sw, sh, tileWidth = 1, tileHeight = 1)
+        check(tiles.tileCount == levels, "scalar: expected $levels levels, got ${tiles.tileCount}")
+        val patterns = source.sliceIntoOverlappingPatterns2D(sw, sh, 3, 3, wrapX = false, wrapY = false)
+        check(patterns.tileCount > levels, "scalar: expected many 3x3 patterns, got ${patterns.tileCount}")
+
+        val tileRules = tiles.toRules()
+        val patternRules = patterns.toRules()
+        checkSymmetric("scalar 1x1", tileRules)
+        checkSymmetric("scalar 3x3", patternRules)
+
+        val w = 40
+        val h = 26
+
+        var lowestTile = 0
+        for (id in 0 until tiles.tileCount) {
+            if (tiles.tiles[id][0] < tiles.tiles[lowestTile][0]) lowestTile = id
+        }
+        // The page notes there is no 3x3 window uniformly at the lowest level in this source.
+        val floor = tiles.tiles[lowestTile][0]
+        check(
+            (0 until patterns.tileCount).none { id -> patterns.patterns[id].all { it == floor } },
+            "scalar: a uniformly-lowest 3x3 window exists, so the page's note about it is wrong"
+        )
+
+        val tiledSolver = WfcSolver(w, h, tileRules, seed = 5L)
+        val tiledOutcome = tiledSolver.solveWithRetries(maxAttempts = 30) {
+            for (x in 0 until w) { forceTile(x, 0, lowestTile); forceTile(x, h - 1, lowestTile) }
+            for (y in 0 until h) { forceTile(0, y, lowestTile); forceTile(w - 1, y, lowestTile) }
+        }
+        check(tiledOutcome.solved, "scalar 1x1: not solved after ${tiledOutcome.attempts} attempts")
+        val tiledGrid = tiledSolver.resolvedTileGridOrNull() ?: return
+        checkOutputSatisfiesRules("scalar 1x1", tileRules, tiledGrid, w, h)
+        val tiledHeights = tiles.render(tiledGrid, w, h)
+
+        val patternSolver = WfcSolver(w, h, patternRules, seed = 5L)
+        val patternOutcome = patternSolver.solveWithRetries(maxAttempts = 30)
+        check(patternOutcome.solved, "scalar 3x3: not solved after ${patternOutcome.attempts} attempts")
+        val patternGrid = patternSolver.resolvedTileGridOrNull() ?: return
+        checkOutputSatisfiesRules("scalar 3x3", patternRules, patternGrid, w, h)
+        val patternHeights = patterns.render(patternGrid, w, h)
+
+        // The page's claim, made checkable: the 1x1 result is rough in both axes, while the 3x3
+        // result is banded HORIZONTALLY -- near-zero variation along rows, real variation down them.
+        val (tiledH, tiledV) = roughness(tiledHeights, w, h)
+        val (patternH, patternV) = roughness(patternHeights, w, h)
+        // The distinguishing property is ANISOTROPY, not absolute roughness: the 1x1 result is rough
+        // about equally in both axes, the 3x3 result is smooth along rows and rough down them.
+        check(tiledH > 0.06, "scalar 1x1: horizontal roughness ${"%.3f".format(tiledH)} is too smooth to be speckle")
+        check(
+            tiledV / tiledH in 0.7..1.4,
+            "scalar 1x1: roughness should be isotropic, got h=${"%.3f".format(tiledH)} v=${"%.3f".format(tiledV)}"
+        )
+        check(patternH < 0.03, "scalar 3x3: horizontal roughness ${"%.3f".format(patternH)} is too high for horizontal banding")
+        check(
+            patternV > patternH * 5.0,
+            "scalar 3x3: expected strong horizontal banding, got h=${"%.3f".format(patternH)} v=${"%.3f".format(patternV)}"
+        )
+        println(
+            "[wfc-gallery] ok  scalar: 1x1 roughness h=${"%.3f".format(tiledH)} v=${"%.3f".format(tiledV)}; " +
+                "3x3 h=${"%.3f".format(patternH)} v=${"%.3f".format(patternV)} (horizontally banded)"
+        )
+        println("[wfc-gallery] ok  scalar: ${patterns.tileCount} 3x3 value patterns; " +
+            "means ${"%.2f".format(tiledHeights.average())} vs ${"%.2f".format(patternHeights.average())}")
+
+        // The FLine bridge the section exists for.
+        val contours = floatsToImg(patternHeights, w, h).gaussianBlur(1.2).isoContourFLines(0.35)
+        check(contours.isNotEmpty(), "scalar: no iso-contours extracted from the synthesised field")
+        println("[wfc-gallery] ok  scalar: ${contours.size} iso-contour FLine(s) at 0.35")
+
+        montage(
+            listOf(
+                "source ${sw}x$sh, $levels levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(4),
+                "1x1 tiles, border pinned" to floatsToImg(tiledHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3),
+                "3x3 value patterns" to floatsToImg(patternHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3)
+            ),
+            columns = 1,
+            cellSide = 640
+        ).savePng(File(outDir, "wfc-scalar-field.png").absolutePath)
+    }
+
     private fun figureContradiction(outDir: File) {
         // Deliberately over-constrained: three tiles in a chain, but nothing may repeat, so no
         // 2-wide row can be filled without a contradiction on a von Neumann neighborhood.
@@ -822,6 +940,7 @@ object WfcGallery {
         figureOverlapping(outDir)
         figureNeighborhood(outDir)
         figureCollapse(outDir)
+        figureScalarField(outDir)
         figureContradiction(outDir)
 
         if (failures.isNotEmpty()) {

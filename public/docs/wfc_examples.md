@@ -807,7 +807,9 @@ The `3 × 3` pattern model has context, and it clearly used it — the result is
 bands and a mean of 0.61. But they are **horizontal** bands, where the source was a concentric island.
 That is not a bug either: over most of a concentric source, a 3 × 3 window says "the level changes
 vertically and is constant horizontally", because the wide top and bottom of the island contribute far
-more windows than its curved left and right edges do. The model reproduced the statistically dominant
+more windows than its curved left and right edges do. The mean absolute difference between adjacent
+values makes it precise — the `1 × 1` result is isotropic (0.100 along rows, 0.112 down them) while the
+`3 × 3` result is anisotropic by a factor of fourteen (0.008 along rows, 0.112 down them). The model reproduced the statistically dominant
 local arrangement and tiled the plane with it. More context buys you more coherence, not global
 composition — the same lesson as §2, one level up.
 

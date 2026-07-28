@@ -3,12 +3,123 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
-## 1. 2 — Simple-tiled, learned from an image
+## 1. 7 — Not pixels: WFC on a scalar field
 
-<!-- field-box id="wfc_simple_tiled" index="0" -->
+<!-- field-box id="wfc_scalar_field" index="0" -->
+
+### Narrative
+
+From `code`
+
+Section 6: the solver never sees a pixel. sliceIntoUniqueTiles2D and
+sliceIntoOverlappingPatterns2D learn from a row-major FloatArray, so the same machinery
+synthesises numbers -- and numbers in Field are geometry waiting to happen.
+
+```edn [field-box id="wfc_scalar_field" role="properties"]
+{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [860.0 60.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 92 "characters" 4513 "sha256" "f566135146d9cea93d3c447d3c72329a89a7c3531c8223f4fe8363cd4eba607d"}]}
+```
+
+```kotlin [field-property box="wfc_scalar_field" name="code" path="wfc_scalar_field_code_.kt"]
+// Section 6: the solver never sees a pixel. sliceIntoUniqueTiles2D and
+// sliceIntoOverlappingPatterns2D learn from a row-major FloatArray, so the same machinery
+// synthesises numbers -- and numbers in Field are geometry waiting to happen.
+fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
+    val dx = u - cx
+    val dy = v - cy
+    return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
+}
+
+val sw = 26
+val sh = 18
+val levels = 6
+val source = FloatArray(sw * sh)
+for (cy in 0 until sh) for (cx in 0 until sw) {
+    val u = cx / (sw - 1.0)
+    val v = cy / (sh - 1.0)
+    val e = (bump(u, v, 0.32, 0.42, 0.26) +
+        0.85 * bump(u, v, 0.70, 0.60, 0.22) +
+        0.50 * bump(u, v, 0.80, 0.24, 0.14)).coerceIn(0.0, 1.0)
+    // Quantise: sliceIntoUniqueTiles2D dedupes on exact float equality, so a continuous field
+    // would give one tile per distinct value instead of six.
+    source[cx + cy * sw] = (Math.round(e * (levels - 1)).toDouble() / (levels - 1)).toFloat()
+}
+
+val tiles = source.sliceIntoUniqueTiles2D(sw, sh, tileWidth = 1, tileHeight = 1)
+val patterns = source.sliceIntoOverlappingPatterns2D(sw, sh, 3, 3, wrapX = false, wrapY = false)
+
+val outW = 40
+val outH = 26
+
+var lowestTile = 0
+for (id in 0 until tiles.tileCount) {
+    if (tiles.tiles[id][0] < tiles.tiles[lowestTile][0]) lowestTile = id
+}
+
+// The 1x1 model needs its border pinned or it settles on whichever level nucleates first.
+val tiledSolver = WfcSolver(outW, outH, tiles.toRules(), seed = 5L)
+tiledSolver.solveWithRetries(maxAttempts = 30) {
+    for (x in 0 until outW) { forceTile(x, 0, lowestTile); forceTile(x, outH - 1, lowestTile) }
+    for (y in 0 until outH) { forceTile(0, y, lowestTile); forceTile(outW - 1, y, lowestTile) }
+}
+// `throw`, not `error(...)`: a box has its own `error` in scope and it does not return Nothing.
+val tiledGrid: IntArray = tiledSolver.resolvedTileGridOrNull()
+    ?: throw IllegalStateException("1x1 model ended " + tiledSolver.status)
+val tiledHeights: FloatArray = tiles.render(tiledGrid, outW, outH)
+
+// The 3x3 model gets no pinning: pinning the whole border over-constrains it into a
+// contradiction, and its windows already encode what a slope looks like.
+val patternSolver = WfcSolver(outW, outH, patterns.toRules(), seed = 5L)
+patternSolver.solveWithRetries(maxAttempts = 30)
+val patternGrid: IntArray = patternSolver.resolvedTileGridOrNull()
+    ?: throw IllegalStateException("3x3 model ended " + patternSolver.status)
+val patternHeights: FloatArray = patterns.render(patternGrid, outW, outH)
+
+// Mean absolute difference along rows vs down columns. The 1x1 result is isotropic speckle;
+// the 3x3 result is smooth along rows and rough down them, i.e. horizontally banded.
+fun roughness(values: FloatArray): String {
+    var hs = 0.0
+    var hn = 0
+    var vs = 0.0
+    var vn = 0
+    for (y in 0 until outH) for (x in 0 until outW) {
+        if (x + 1 < outW) { hs += abs(values[x + y * outW] - values[x + 1 + y * outW]); hn++ }
+        if (y + 1 < outH) { vs += abs(values[x + y * outW] - values[x + (y + 1) * outW]); vn++ }
+    }
+    return "h=" + "%.3f".format(hs / hn) + " v=" + "%.3f".format(vs / vn)
+}
+
+println(tiles.tileCount.toString() + " levels, " + patterns.tileCount + " distinct 3x3 value patterns")
+println("1x1 tiles:    mean " + "%.2f".format(tiledHeights.average()) + ", roughness " + roughness(tiledHeights))
+println("3x3 patterns: mean " + "%.2f".format(patternHeights.average()) + ", roughness " + roughness(patternHeights))
+
+// The payoff: iso-contours of the synthesised field are FLines, not a picture of them.
+val smooth = floatsToImg(patternHeights, outW, outH).gaussianBlur(1.2)
+val contours = ArrayList<afield.graphics.FLine>()
+for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
+    for (line in smooth.isoContourFLines(iso)) {
+        line.color = vec(0.30 + iso * 0.65, 0.95 - iso * 0.45, 0.40 + iso * 0.45, 0.95)
+        line.thickness = 1.6
+        contours.add(line)
+    }
+}
+println(contours.size.toString() + " iso-contour FLines across four levels")
+
+showImgGrid(
+    "source 26x18" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(20),
+    "1x1 tiles, pinned" to floatsToImg(tiledHeights, outW, outH).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
+    "3x3 patterns" to floatsToImg(patternHeights, outW, outH).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
+    columns = 1,
+    cellSide = 640
+)
+lines(contours, channel = "contours", w = 900.0, h = 560.0, fitToSize = true)
+```
+
+## 2. 2 — Simple-tiled, learned from an image
+
+<!-- field-box id="wfc_simple_tiled" index="1" -->
 
 ### Narrative
 
@@ -19,7 +130,7 @@ weights do NOT capture. Tile size 1x1, so a "tile" is just a colour and "learnin
 rules" is literally "note which colours were seen touching".
 
 ```edn [field-box id="wfc_simple_tiled" role="properties"]
-{"id" "wfc_simple_tiled" "index" 0 "name" "2 — Simple-tiled, learned from an image" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Simple-tiled, learned from an image" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_simple_tiled_code_.kt" "lines" 84 "characters" 3379 "sha256" "080d5d2d9ea2b92fc9d510bb116ab3a243c7c6fa47f44a8669ea04a4550a0e19"}]}
+{"id" "wfc_simple_tiled" "index" 1 "name" "2 — Simple-tiled, learned from an image" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Simple-tiled, learned from an image" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_simple_tiled_code_.kt" "lines" 84 "characters" 3379 "sha256" "080d5d2d9ea2b92fc9d510bb116ab3a243c7c6fa47f44a8669ea04a4550a0e19"}]}
 ```
 
 ```kotlin [field-property box="wfc_simple_tiled" name="code" path="wfc_simple_tiled_code_.kt"]
@@ -109,9 +220,9 @@ showImgGrid(
 )
 ```
 
-## 2. 5 — Neighborhoods: von Neumann vs Moore
+## 3. 5 — Neighborhoods: von Neumann vs Moore
 
-<!-- field-box id="wfc_neighborhoods" index="1" -->
+<!-- field-box id="wfc_neighborhoods" index="2" -->
 
 ### Narrative
 
@@ -122,7 +233,7 @@ Diagonal stripes two cells wide: colour depends on (x + y) mod 4, so along the a
 offset (1, -1) the colour never changes, while east and south change only half the time.
 
 ```edn [field-box id="wfc_neighborhoods" role="properties"]
-{"id" "wfc_neighborhoods" "index" 1 "name" "5 — Neighborhoods: von Neumann vs Moore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Neighborhoods: von Neumann vs Moore" "_tombstone" false "frame" #afield/rect [460.0 260.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_neighborhoods_code_.kt" "lines" 33 "characters" 1559 "sha256" "988cd00507085ce7e66d542dadef315f2a1dd0f3fcbd2fc4aaf3d7e52981ef0b"}]}
+{"id" "wfc_neighborhoods" "index" 2 "name" "5 — Neighborhoods: von Neumann vs Moore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Neighborhoods: von Neumann vs Moore" "_tombstone" false "frame" #afield/rect [460.0 260.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_neighborhoods_code_.kt" "lines" 33 "characters" 1559 "sha256" "988cd00507085ce7e66d542dadef315f2a1dd0f3fcbd2fc4aaf3d7e52981ef0b"}]}
 ```
 
 ```kotlin [field-property box="wfc_neighborhoods" name="code" path="wfc_neighborhoods_code_.kt"]
@@ -161,9 +272,9 @@ showImgGrid(
 )
 ```
 
-## 3. 6 — Watching the collapse
+## 4. 6 — Watching the collapse
 
-<!-- field-box id="wfc_collapse" index="2" -->
+<!-- field-box id="wfc_collapse" index="3" -->
 
 ### Narrative
 
@@ -174,7 +285,7 @@ waveToImg averages each cell's remaining possibilities -- undecided cells are a 
 they might become. possibilityCountImg is the remaining option count as a scalar field.
 
 ```edn [field-box id="wfc_collapse" role="properties"]
-{"id" "wfc_collapse" "index" 2 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [460.0 460.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 63 "characters" 2571 "sha256" "b79c1afae17662ecb3af7eabf5c13e2628faad90fa02fe51b8009f1588e63d0b"}]}
+{"id" "wfc_collapse" "index" 3 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [460.0 460.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 63 "characters" 2571 "sha256" "b79c1afae17662ecb3af7eabf5c13e2628faad90fa02fe51b8009f1588e63d0b"}]}
 ```
 
 ```kotlin [field-property box="wfc_collapse" name="code" path="wfc_collapse_code_.kt"]
@@ -243,9 +354,9 @@ display("main", vstack(
 ).toPngBytes())
 ```
 
-## 4. 1 — The model, by hand
+## 5. 1 — The model, by hand
 
-<!-- field-box id="wfc_by_hand" index="3" -->
+<!-- field-box id="wfc_by_hand" index="4" -->
 
 ### Narrative
 
@@ -256,7 +367,7 @@ Sand is the only tile allowed to touch both sea and grass, so a coastline is not
 something the solver is told to draw -- it is what is left once a sea-grass edge is illegal.
 
 ```edn [field-box id="wfc_by_hand" role="properties"]
-{"id" "wfc_by_hand" "index" 3 "name" "1 — The model, by hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — The model, by hand" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_by_hand_code_.kt" "lines" 57 "characters" 2117 "sha256" "94be24146dfa61e9352d0c0f8affe914605958bcfc717725b1c63bcf456c46ad"}]}
+{"id" "wfc_by_hand" "index" 4 "name" "1 — The model, by hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — The model, by hand" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_by_hand_code_.kt" "lines" 57 "characters" 2117 "sha256" "94be24146dfa61e9352d0c0f8affe914605958bcfc717725b1c63bcf456c46ad"}]}
 ```
 
 ```kotlin [field-property box="wfc_by_hand" name="code" path="wfc_by_hand_code_.kt"]
@@ -319,9 +430,9 @@ showImgGrid(
 )
 ```
 
-## 5. 3 — Edge sockets: a tile set that connects
+## 6. 3 — Edge sockets: a tile set that connects
 
-<!-- field-box id="wfc_circuit" index="4" -->
+<!-- field-box id="wfc_circuit" index="5" -->
 
 ### Narrative
 
@@ -332,7 +443,7 @@ Rules come from edge sockets rather than from a sample: b may sit east of a exac
 a's east socket matches b's west socket. Every trace in the output therefore connects.
 
 ```edn [field-box id="wfc_circuit" role="properties"]
-{"id" "wfc_circuit" "index" 4 "name" "3 — Edge sockets: a tile set that connects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Edge sockets: a tile set that connects" "_tombstone" false "frame" #afield/rect [60.0 460.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_circuit_code_.kt" "lines" 53 "characters" 2607 "sha256" "cbb180801254378e591da21f1682bf177fef4d7b9b223584630c3262630df74b"}]}
+{"id" "wfc_circuit" "index" 5 "name" "3 — Edge sockets: a tile set that connects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Edge sockets: a tile set that connects" "_tombstone" false "frame" #afield/rect [60.0 460.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_circuit_code_.kt" "lines" 53 "characters" 2607 "sha256" "cbb180801254378e591da21f1682bf177fef4d7b9b223584630c3262630df74b"}]}
 ```
 
 ```kotlin [field-property box="wfc_circuit" name="code" path="wfc_circuit_code_.kt"]
@@ -391,9 +502,9 @@ display("tiles", tiles.sampleToImg().upscaleNearest(6).toPngBytes())
 display("main", tiles.toImg(grid, 34, 22).upscaleNearest(2).toPngBytes())
 ```
 
-## 6. 4 — Overlapping patterns + ground constraint
+## 7. 4 — Overlapping patterns + ground constraint
 
-<!-- field-box id="wfc_overlapping" index="5" -->
+<!-- field-box id="wfc_overlapping" index="6" -->
 
 ### Narrative
 
@@ -404,7 +515,7 @@ windows may be neighbours only if they agree on their overlap -- so each cell ca
 not just colour. Also the classic "ground" constraint, because WFC has no absolute position.
 
 ```edn [field-box id="wfc_overlapping" role="properties"]
-{"id" "wfc_overlapping" "index" 5 "name" "4 — Overlapping patterns + ground constraint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Overlapping patterns + ground constraint" "_tombstone" false "frame" #afield/rect [460.0 60.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_overlapping_code_.kt" "lines" 69 "characters" 2915 "sha256" "acabd1d2ab354a5cae7f5fd5fde85d4e5d858ed313cf64ff8d9bf6a97a4882ad"}]}
+{"id" "wfc_overlapping" "index" 6 "name" "4 — Overlapping patterns + ground constraint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Overlapping patterns + ground constraint" "_tombstone" false "frame" #afield/rect [460.0 60.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_overlapping_code_.kt" "lines" 69 "characters" 2915 "sha256" "acabd1d2ab354a5cae7f5fd5fde85d4e5d858ed313cf64ff8d9bf6a97a4882ad"}]}
 ```
 
 ```kotlin [field-property box="wfc_overlapping" name="code" path="wfc_overlapping_code_.kt"]

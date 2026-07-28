@@ -54,14 +54,16 @@ land in the global basin. On execute it plots the target and the fitted curve an
 before→after summary with a loss-trajectory sparkline.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
-**wfc_worked_example** — The six sections of the [Wave Function Collapse worked
-example](wfc_examples.md) as six independent boxes: adjacency authored by hand with `wfcRules { }`
+**wfc_worked_example** — The seven sections of the [Wave Function Collapse worked
+example](wfc_examples.md) as seven independent boxes: adjacency authored by hand with `wfcRules { }`
 and both phases pinned with `forceTile`; the simple-tiled model learned from an image, printing the
 band histogram that shows its learned weights losing the water bands entirely; an eight-tile
 edge-socket set whose traces always connect; the overlapping model with and without the classic
 ground constraint; von Neumann vs Moore on a source built so the choice provably matters (473
 diagonal breaks against 0); and the collapse itself sampled through `step()` into wave and
-possibility-count frames. Every box is pure CPU and runs on its own.
+possibility-count frames; and both `FloatArray` paths, whose synthesised heightfield ends up as
+iso-contour `FLine`s. Every box is pure CPU, runs on its own, and prints the numbers the docs page
+quotes.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
 
 ## visionOS device scenes
