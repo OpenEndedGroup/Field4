@@ -766,12 +766,18 @@ private fun opposite(tri: IntArray, t: Int, a: Int, b: Int): Int {
  * @param degenerateCount triangles with no area at all.
  */
 data class MeshQuality(
+    /** The smallest interior angle anywhere. 60 degrees is perfectly equilateral; below about 5 the mesh is numerically unpleasant. */
     val minAngleDegrees: Double,
+    /** Mean over triangles of each triangle's own smallest angle — a better summary than the single worst one. */
     val meanMinAngleDegrees: Double,
+    /** Mean of `circumradius / (2 * inradius)`: `1` for an equilateral triangle, unbounded for a sliver. */
     val meanAspectRatio: Double,
+    /** The worst single triangle's aspect ratio. */
     val worstAspectRatio: Double,
+    /** Triangles with no area at all. Legal (a UV sphere has none, a marched surface can) but worth knowing. */
     val degenerateCount: Int,
 ) {
+    /** All five numbers on one line, for `println`. */
     override fun toString(): String =
         "MeshQuality(minAngle=%.2f°, meanMinAngle=%.2f°, aspect mean=%.3f worst=%.3f, degenerate=%d)".format(
             minAngleDegrees, meanMinAngleDegrees, meanAspectRatio, worstAspectRatio, degenerateCount,

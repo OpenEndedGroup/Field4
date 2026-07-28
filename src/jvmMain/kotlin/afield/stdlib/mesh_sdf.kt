@@ -699,6 +699,7 @@ fun marchingCubes(
     return if (vertexNormals) mesh.withVertexNormals() else mesh
 }
 
+/** Squared distance between two accumulated march vertices — used to pick a quad's shorter diagonal. */
 private fun dist2(px: List<Float>, py: List<Float>, pz: List<Float>, a: Int, b: Int): Float {
     val dx = px[a] - px[b]; val dy = py[a] - py[b]; val dz = pz[a] - pz[b]
     return dx * dx + dy * dy + dz * dz

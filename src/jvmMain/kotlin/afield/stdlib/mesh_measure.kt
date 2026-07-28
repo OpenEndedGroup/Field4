@@ -262,10 +262,12 @@ class RayHit(
     val point: Vec3,
     /** The hit triangle's geometric normal — *not* flipped toward the ray. */
     val normal: Vec3,
-    /** Barycentric coordinates of the hit within the triangle, as `(u, v)` on corners `b` and `c`. */
+    /** Barycentric weight of the hit on corner `b`. `u + v <= 1`. */
     val u: Double,
+    /** Barycentric weight of the hit on corner `c`. `u + v <= 1`. */
     val v: Double,
 ) {
+    /** The triangle, the distance and the point, for `println`. */
     override fun toString(): String = "RayHit(tri=$triangle, t=%.6f, at=$point)".format(distance)
 }
 
@@ -278,6 +280,7 @@ class SurfacePoint(
     /** Distance from the query point to [point]. */
     val distance: Double,
 ) {
+    /** The triangle, the point and the distance, for `println`. */
     override fun toString(): String = "SurfacePoint(tri=$triangle, at=$point, d=%.6f)".format(distance)
 }
 
@@ -567,6 +570,7 @@ class MeshBvh(val mesh: TriMesh, leafSize: Int = 8) {
             )
         }
 
+    /** Node and triangle counts — enough to see whether the tree is the shape you expected. */
     override fun toString(): String = "MeshBvh($nodeCount nodes over ${mesh.triangleCount} triangles)"
 }
 

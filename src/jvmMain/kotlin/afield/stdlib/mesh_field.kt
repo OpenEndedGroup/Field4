@@ -313,15 +313,25 @@ fun TriMesh.coloredByScalar(
  * radius, so the same view frames a 2cm mesh and a 2m one.
  */
 data class MeshView(
+    /** Orbit around `+y`, in degrees. `0` looks straight down `-z`. */
     val yawDegrees: Double = 28.0,
+    /** Lift above the horizon, in degrees. Positive looks down on the mesh. */
     val pitchDegrees: Double = 18.0,
+    /** Eye distance in multiples of the mesh's bounding-sphere radius, so it is scale-free. */
     val distance: Double = 2.7,
+    /** Vertical field of view in degrees. Smaller is a longer lens and less perspective. */
     val fieldOfViewDegrees: Double = 40.0,
+    /** Output width in pixels. */
     val width: Int = 720,
+    /** Output height in pixels. */
     val height: Int = 540,
+    /** Draw a depth-tested wireframe over the shading. On by default: it turns "a smooth blob" into "a mesh you can count the triangles in". */
     val wireframe: Boolean = true,
+    /** Render at this multiple in each axis and box-filter down. `2` is a good anti-aliasing default. */
     val supersample: Int = 2,
+    /** Cull back faces, as a GPU would — so a face wound the wrong way is missing here exactly as it would be there. */
     val cullBackFaces: Boolean = true,
+    /** Background as packed ARGB. */
     val background: Int = 0xFF101318.toInt(),
 ) {
     internal fun camera() = VisionGeometryPreview.Camera(yawDegrees, pitchDegrees, distance, fieldOfViewDegrees)

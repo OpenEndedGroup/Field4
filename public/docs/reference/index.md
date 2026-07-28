@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**4011 public symbols across 67 source files**, 2141 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**4252 public symbols across 75 source files**, 2375 of them (55%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 14 | 1292 | 896 (69%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 15 | 589 | 166 (28%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 14 | 1074 | 348 (32%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 22 | 1315 | 582 (44%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Imaging](imaging.md) | 6 | 254 | 208 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [Function](function.md) | 10 | 345 | 228 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 4 | 227 | 215 (94%) | Turning a value into something you can look at, without leaving the box. |
@@ -67,6 +67,14 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 18 | 0 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 87 | 73 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md), [Linear algebra in Field](../linear_algebra.md) |
 | [math.kt](math.md#math-kt) | Math | 13 | 13 | `Number`-taking overloads of the trigonometric functions, so `sin(1)` and `sin(1f)` work without writing `.toDouble()` at every call site. | [Colors to FLine examples](../colors_examples.md), [Field Probes — instrumenting shaders](../field_probes.md), [FLine examples (Field graphics)](../fline_examples.md) |
+| [mesh.kt](graphics.md#mesh-kt) | Graphics | 58 | 52 | `TriMesh` — the CPU triangle mesh Field's 3D geometry family is built on, plus the builder that makes one and the whole-mesh transforms that move one around. |  |
+| [mesh_field.kt](graphics.md#mesh-field-kt) | Graphics | 28 | 28 | What makes the mesh family *Field's* rather than a generic geometry library: the bridges out of `TriMesh` and into the things Field already draws, renders and displays. |  |
+| [mesh_generate.kt](graphics.md#mesh-generate-kt) | Graphics | 20 | 20 | Where a `TriMesh` comes from: the primitives (`boxMesh`, `uvSphereMesh`, `icosphereMesh`, `torusMesh`, `cylinderMesh`, `coneMesh`, `capsuleMesh`, the five platonics) and the *derived* generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`, `tubeMesh`, `heightfieldMesh`, `polygonMesh`). |  |
+| [mesh_io.kt](graphics.md#mesh-io-kt) | Graphics | 10 | 10 | Getting a `TriMesh` in and out of the two formats every 3D tool on the machine can already read: **OBJ** (text, indexed, carries normals and uvs) and **STL** (ASCII or binary, triangle soup, the lingua franca of 3D printing). |  |
+| [mesh_measure.kt](graphics.md#mesh-measure-kt) | Graphics | 41 | 41 | Asking a `TriMesh` questions: how big is it, where is its middle, how curved is it — and, through `MeshBvh`, what does this ray hit, what is the nearest point on the surface, and is this point inside. | [FLine examples (Field graphics)](../fline_examples.md) |
+| [mesh_process.kt](graphics.md#mesh-process-kt) | Graphics | 15 | 15 | Changing a mesh's *sampling* without changing the shape it stands for: normals, subdivision, smoothing and decimation. |  |
+| [mesh_sdf.kt](graphics.md#mesh-sdf-kt) | Graphics | 36 | 35 | Modelling with functions: a `ScalarField3D` is `(Vec3) -> Float`, the signed-distance primitives and combinators that let you write a shape as an expression, and `marchingCubes`, which turns any such expression into a watertight `TriMesh`. |  |
+| [mesh_topology.kt](graphics.md#mesh-topology-kt) | Graphics | 33 | 33 | What a `TriMesh` *is*, as opposed to where it is: adjacency, boundaries, components, manifoldness, orientation, and the Euler characteristic those add up to — plus the repairs (`TriMesh.weld`, `TriMesh.fixWinding`, `TriMesh.removeDegenerateTriangles`) that turn a mesh which fails those checks into one that passes. |  |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
 | [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
 | [osc.kt](audio.md#osc-kt) | Audio | 27 | 9 | OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop. |  |
