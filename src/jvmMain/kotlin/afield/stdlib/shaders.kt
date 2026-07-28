@@ -117,8 +117,10 @@ var Box.vertex by Inheritance<String?>()
 var Box.vertex_fragment by Inheritance<String?>()
 
 /** The task-shader (amplification) stage GLSL of a mesh-shader pipeline. `meshModuleHere` needs
- * `task`, `mesh` *and* `fragment` — there is no task-less mesh path here — and seeds a small
- * `EmitMeshTasksEXT` default into all three if the box has none. */
+ * `task`, `mesh` *and* `fragment` — there is no task-less mesh path here — and fills in whichever of
+ * the three the box is missing, each independently and each with its own stub: an `EmitMeshTasksEXT`
+ * amplifier here, a `SetMeshOutputsEXT` triangle emitter for `mesh`, and a constant-colour write for
+ * `fragment`. A box that already has a task shader keeps it and gets only the other two. */
 var Box.task by Inheritance<String?>()
 
 /** The mesh-shader stage GLSL, the stage that emits vertices and primitives directly
@@ -2097,10 +2099,11 @@ private fun Char?.isShaderIdentifierPart(): Boolean =
     this != null && (this == '_' || this.isLetterOrDigit())
 
 /**
- * Unified compile/introspect helper that:
- *  - runs the GLSL/spirv compilation for a stage
- *  - reports errors via box.error with a friendly stage label
- *  - tells the caller whether errors occurred
+ * What one stage's compile produced: its [Introspection], or `null` when the compile failed.
+ *
+ * [hadError] is the authoritative flag — `introspection == null` implies it, but callers test
+ * [hadError] because a stage can fail after producing partial reflection. The compiling itself, and
+ * the `box.error` reporting, live in `compileStage`; this is only the value it hands back.
  */
 private data class CompileResult(val introspection: Introspection?, val hadError: Boolean)
 
@@ -2441,8 +2444,16 @@ private fun compileStage(
     return CompileResult(if (hadError) null else i, hadError)
 }
 
+// ---- Preamble assembly: the machinery applyInsertToPreamble uses to merge an Insert's
+// generated lines into a box's preamble in place. (This was a section heading that a later
+// declaration turned into a KDoc block for the regex below; it is a plain comment now.)
+
 /**
- * Applies an Insert’s preamble(s) into the target box.
+ * Matches a leading `/*marker*/` on one preamble line, capturing the marker text.
+ *
+ * Every generated preamble line is stamped with such a marker by `prefixed`, and it is the marker —
+ * not the code after it — that identifies the line for dedupe and replacement. Used by
+ * [preambleLineKey] to extract it and by [isImportLine] to look past it.
  */
 private val preamblePrefixRegex = Regex("^\\s*/\\*(.*?)\\*/\\s*")
 private const val preambleBlockStartMarker = "/*start*/"
@@ -3133,8 +3144,11 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
  *
  * The full-rebuild path, as opposed to the ABI-preserving *Update Shader* (`alt-shift-enter`): it
  * re-preprocesses both stages, re-introspects them, rewrites the box's preamble with the resulting
- * typed bindings, and reloads the module with `forceReresolve`, which re-resolves every texture and
- * buffer the shader asks for by name. Use it when the shader's interface changed; use the update path
+ * typed bindings, and reloads the module with `forceReresolve`. That flag reaches only the *texture*
+ * resolver — textures are re-resolved by name, falling back to the previous module's binding when the
+ * resolver comes up empty. Uniform buffers and SSBOs are deliberately *carried over* instead: a UBO
+ * whose name still matches keeps its existing source, and an SSBO keeps its previous source whenever
+ * `checkCompatibility` still passes. Use this when the shader's interface changed; use the update path
  * when only the arithmetic did.
  *
  * Must be called on the main runloop — it touches the Vulkan module directly. Errors are not thrown:
@@ -4141,7 +4155,11 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
  * Turn a compiled vertex+fragment pair into the [Insert] that gives a box its typed graphics API: one
  * `val Mesh.<name> by FromInput()` per vertex attribute, the `m.set { }` writer map, a generated Kotlin
  * class per GLSL struct/UBO/SSBO layout, `stack.auto` string properties, and `Mesh`/`MeshGroup`
- * accessors for every push-constant and UBO member.
+ * accessors for every push-constant member. UBO members deliberately get *less* than that: the block
+ * itself becomes a `val ModulePointer.<name> by FromUniform()` and each member a
+ * `var Structure.<name>`, with no `Mesh`/`MeshGroup` accessor, so a UBO member is written through the
+ * uniform rather than per-mesh. (The compute and mesh-shader inserts do emit `Mesh.<uboName>`; this
+ * graphics path does not.)
  *
  * Shared by macro expansion and [reloadShader] so both produce byte-identical preamble segments — which
  * is what lets [applyInsertToPreamble] recognise and replace them in place instead of piling up copies.
@@ -4380,9 +4398,11 @@ var Box.customTextureResolver by Inheritance<((Box, String) -> HasImageViewArray
  * `HasImageViewArray` overload for that). The returned provider also forwards `prepareSampledImagesFor`
  * to any view that wants it, so render-to-texture layout transitions still happen.
  *
- * The sampler is the first of: [sampler] if you gave one, the first view's own default sampler, or a new
- * mip-aware [TextureSampler] built against `fromContext()`'s renderer — so the last of those needs a live
- * graphics context on this thread. Throws if [views] is empty.
+ * The sampler is the first of: [sampler] if you gave one, the default sampler of the first view that
+ * *has* one — the list is scanned, so with a mixed list a later view can supply it — or a new
+ * mip-aware [TextureSampler] built against `fromContext()`'s renderer, whose mip count comes from
+ * `views.first()` regardless of which view supplied the sampler. That last case needs a live graphics
+ * context on this thread. Throws if [views] is empty.
  */
 fun fromViews(
     views: List<HasImageView>,
@@ -4421,9 +4441,12 @@ private fun sampledTextureMipLevels(view: HasImageView): Int {
  *
  * Unlike the `List<HasImageView>` overload this does not snapshot: the wrapper re-reads
  * `provider.imageViewArray` every time it is asked, so a [RenderToTexture] that reallocates keeps
- * resolving to its current images. Sampler selection is the same three-step fallback, with the provider's
- * own default sampler preferred over any individual view's, and mip levels taken from the provider when it
- * is a [RenderToTexture]. Throws if the provider is currently empty.
+ * resolving to its current images. Sampler selection has the same shape as the `List` overload but a
+ * different middle step: only the *provider's* own default sampler is consulted, never an individual
+ * view's, so a provider that is not `HasDefaultTextureSampler` goes straight to building a new
+ * [TextureSampler] — and therefore needs a live graphics context — even when its views carry default
+ * samplers of their own. Mip levels are taken from the provider when it is a [RenderToTexture].
+ * Throws if the provider is currently empty.
  */
 fun fromViews(
     provider: HasImageViewArray,
