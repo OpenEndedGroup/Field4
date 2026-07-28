@@ -128,10 +128,27 @@ object MeshGallery {
         val view: MeshView = MeshView(width = CELL_W, height = CELL_H),
         /** Extra facts printed on a second caption line; usually the mesh's own measurements. */
         val facts: String? = null,
+        /**
+         * Draw *this* image instead of rasterising [mesh] with [view].
+         *
+         * Only the inline-visualizer panel uses it, and for a reason that matters: that panel shows the
+         * PNG the value visualizer's own card embeds, decoded straight back out of its HTML, rather than
+         * a lookalike rendered beside it.
+         */
+        val image: BufferedImage? = null,
     )
 
     /** A built figure: the cells to lay out, plus the one-line factual summary printed to stdout. */
-    class Figure(val cells: List<Cell>, val summary: String, val columns: Int = 4)
+    class Figure(
+        val cells: List<Cell>,
+        val summary: String,
+        val columns: Int = 4,
+        /**
+         * How many lines of [Cell.facts] to print under each cell. One is enough for a measurement or
+         * two; the inline-visualizer panel needs several, because it prints a whole card's fact table.
+         */
+        val factLines: Int = 1,
+    )
 
     /** One gallery figure: a [name] (its PNG filename), a [title], a builder, and its invariants. */
     class Panel(val name: String, val title: String, val subtitle: String, val build: () -> Figure)
@@ -689,13 +706,79 @@ object MeshGallery {
                 columns = 3,
             )
         },
+
+        Panel(
+            "11-inline-visualizer",
+            "The inline visualizer — what a TriMesh looks like in a box",
+            "Every image here is the PNG that TriMesh.toHTML() embeds, decoded back out of the card's " +
+                "own HTML, and every caption line is that card's own fact rows. Nothing is a lookalike " +
+                "rendered alongside. This is what you see when a box evaluates to a mesh: the shape from " +
+                "a fixed three-quarter view, and the numbers that decide whether it is usable.",
+        ) {
+            val subjects = listOf(
+                "icosphereMesh(3)" to icosphereMesh(3, 0.7),
+                "torusMesh(40, 20)" to torusMesh(40, 20, 0.55, 0.22),
+                "marchingCubes(gyroid)" to marchingCubes(sdfGyroid(2.6, 0.35), boundsAround(radius = 0.95), 44),
+                "planeMesh(6, 6) — open" to afield.stdlib.planeMesh(6, 6),
+            )
+            val cells = subjects.map { (label, mesh) ->
+                val html = mesh.toHTML()
+                val image = decodeCardPng(html)
+                check(image.width == 300 && image.height == 225) {
+                    "$label: the card's PNG should be 300x225, got ${image.width}x${image.height}"
+                }
+                Cell(label, mesh, view = MeshView(width = 300, height = 225), facts = cardFacts(html), image = image)
+            }
+            // The card must be telling the truth about each of these, which is the same claim its pixel
+            // tests make; asserting it here too means a regression cannot land a pretty, wrong picture.
+            check(subjects[0].second.toHTML().contains("watertight")) { "the icosphere card should say watertight" }
+            check(subjects[1].second.toHTML().let { it.contains("χ=0") && it.contains("genus 1") }) {
+                "the torus card should report chi 0 and genus 1"
+            }
+            check(subjects[3].second.toHTML().contains("boundary loop")) { "the patch card should report a boundary" }
+            check(!subjects[3].second.toHTML().contains("volume")) { "and no volume" }
+            Figure(
+                cells,
+                "4 inline cards, decoded from their own HTML; 300x225 each",
+                columns = 4,
+                factLines = 6,
+            )
+        },
     )
+
+    /** The PNG a `toHTML()` card embeds, decoded — the card's real pixels, not a re-render. */
+    private fun decodeCardPng(html: String): BufferedImage {
+        val marker = "data:image/png;base64,"
+        val start = html.indexOf(marker)
+        check(start >= 0) { "the card embeds no inline PNG" }
+        val from = start + marker.length
+        // The card quotes its attributes with `"`; accept `'` too rather than depend on that.
+        val quote = html.indexOf('"', from)
+        val apostrophe = html.indexOf('\'', from)
+        val end = when {
+            quote < 0 -> apostrophe
+            apostrophe < 0 -> quote
+            else -> kotlin.math.min(quote, apostrophe)
+        }
+        check(end > from) { "the card's base64 payload is not delimited" }
+        val bytes = java.util.Base64.getDecoder().decode(html.substring(from, end))
+        return checkNotNull(ImageIO.read(java.io.ByteArrayInputStream(bytes))) {
+            "the card's PNG (${bytes.size} bytes) did not decode"
+        }
+    }
+
+    /** The card's own fact rows, flattened onto one line. */
+    private fun cardFacts(html: String): String =
+        Regex("<td[^>]*>([^<]*)</td><td[^>]*>([^<]*)</td>").findAll(html)
+            .map { "${it.groupValues[1]} ${it.groupValues[2]}" }
+            .joinToString("  ·  ")
 
     // ==========================================================================================
     // Rendering
     // ==========================================================================================
 
     private fun renderCell(cell: Cell): BufferedImage {
+        cell.image?.let { return it }
         val raster = cell.mesh.renderPixels(cell.view)
         val image = BufferedImage(raster.width, raster.height, BufferedImage.TYPE_INT_RGB)
         image.setRGB(0, 0, raster.width, raster.height, raster.pixels, 0, raster.width)
@@ -737,7 +820,7 @@ object MeshGallery {
 
     private fun renderPanel(panel: Panel, figure: Figure): BufferedImage {
         val gap = 12
-        val captionH = 34
+        val captionH = 21 + 13 * figure.factLines
         val columns = figure.columns
         val rows = (figure.cells.size + columns - 1) / columns
         val headerH = 74
@@ -785,7 +868,9 @@ object MeshGallery {
             cell.facts?.let {
                 g.color = ACCENT
                 g.font = Font(Font.MONOSPACED, Font.PLAIN, 10)
-                g.drawString(clip(it, cellW - 8, g), x + 3, y + cellH + 27)
+                wrap(it, cellW - 8, g).take(figure.factLines).forEachIndexed { line, text ->
+                    g.drawString(clip(text, cellW - 8, g), x + 3, y + cellH + 27 + line * 13)
+                }
             }
         }
         g.dispose()

@@ -402,30 +402,97 @@ fun TriMesh.toFigureHtml(view: MeshView = MeshView(), caption: String? = null, t
     }
 }
 
+/** The background the inline thumbnail's raster is cleared to, as packed ARGB. */
+internal const val MESH_THUMBNAIL_BACKGROUND: Int = 0xFF101318.toInt()
+
+/** How wide and tall [meshThumbnailHtml]'s render is, in pixels, before supersampling. */
+internal const val MESH_THUMBNAIL_WIDTH: Int = 300
+internal const val MESH_THUMBNAIL_HEIGHT: Int = 225
+
 /**
- * The inline thumbnail [TriMesh.toHTML] shows in the value visualizer: the mesh actually rendered,
- * small, with its measurements underneath.
+ * The inline card [TriMesh.toHTML] shows in the value visualizer: the mesh actually rendered, from a
+ * viewpoint above and to the right, beside the measurements you would otherwise have to type out.
+ *
+ * # What you are looking at
+ *
+ * The image is the real mesh through the same CPU rasterizer the gallery uses — perspective, z-buffer,
+ * two-light lambert over the mesh's own per-vertex colours (a neutral blue-grey if it has none), and a
+ * depth-tested wireframe so the triangles are countable. Back faces are culled exactly as a GPU would
+ * cull them, so an **open** mesh wound inside-out loses the surfaces facing you and reads as holes.
+ *
+ * A **closed** mesh wound inside-out does *not* show up in the picture, and it is worth knowing why: the
+ * silhouette is unchanged (culling the front faces only reveals the far inner wall) and the rasterizer
+ * deliberately flips an inward normal rather than shading it black, so the render looks normal. The tell
+ * is in the numbers instead — the `volume` line is the **signed** volume, so an inverted solid reports a
+ * negative one. Both halves of that are pinned by [afield.stdlib.MeshVisualizerPixelTest].
+ *
+ * Nothing in the picture is colour-coded by any measured quantity;
+ * for that, colour the mesh yourself with [coloredByScalar] and the shading will carry it.
+ *
+ * The facts beside it are the ones that decide whether a mesh is usable: counts, whether it is closed
+ * (and manifold, which is not the same thing), its Euler characteristic and genus, surface area, volume
+ * if it is closed, and its bounding box. All of them are computed on the mesh you actually have, even
+ * when the *picture* was decimated to stay cheap — which it says when it happens.
+ *
+ * # What it costs
+ *
+ * A 300x225 render at 2x supersampling — 270k rasterized samples — plus one topology pass (edge and
+ * vertex adjacency, boundary loops, components) and one area/volume pass over the triangles. On an
+ * icosphere that is a few milliseconds. Above 40k triangles the *render* runs on a decimation, because
+ * QEM at 20k triangles is much cheaper than rasterizing 200k of them; the numbers are still the real
+ * mesh's, and the caption says the picture is not.
  *
  * Kept out of `mesh.kt` so the type itself does not have to know about the rasterizer.
  */
 internal fun meshThumbnailHtml(mesh: TriMesh): String {
     if (mesh.triangleCount == 0) {
-        return "<div style=\"font-family:monospace;font-size:11px;color:#8a90a0\">TriMesh(empty)</div>"
+        return "<div style=\"font-family:monospace;font-size:11px;color:#8a90a0\">" +
+                "TriMesh(empty) — ${mesh.vertexCount} verts, no triangles</div>"
     }
     // A thumbnail must stay cheap: a 200k-triangle marched surface would otherwise rasterise on every
-    // hover. Decimating for display is honest as long as the caption reports the real count.
+    // evaluation. Decimating for display is honest as long as the caption reports the real count.
     val shown = if (mesh.triangleCount > 40_000) mesh.decimate(20_000) else mesh
-    val png = shown.renderPng(MeshView(width = 280, height = 210, supersample = 2), caption = "", title = null)
+    val png = shown.renderPng(
+        MeshView(
+            width = MESH_THUMBNAIL_WIDTH,
+            height = MESH_THUMBNAIL_HEIGHT,
+            supersample = 2,
+            background = MESH_THUMBNAIL_BACKGROUND,
+        ),
+        caption = "", title = null,
+    )
     val b64 = Base64.getEncoder().encodeToString(png)
     val b = mesh.boundsArray()
-    val note = if (shown !== mesh) " · thumbnail decimated to ${shown.triangleCount}" else ""
+    val topo = mesh.topology()
+
+    val rows = ArrayList<Pair<String, String>>()
+    rows += "size" to "${mesh.vertexCount} verts · ${mesh.triangleCount} tris" +
+            (if (topo.componentCount > 1) " · ${topo.componentCount} parts" else "")
+    rows += "closed" to when {
+        topo.isWatertight -> "watertight"
+        topo.isManifold -> "open · ${topo.boundaryLoops.size} boundary loop(s)"
+        else -> "not manifold · ${topo.boundaryLoops.size} boundary loop(s)"
+    }
+    rows += "topology" to buildString {
+        append("χ=${topo.eulerCharacteristic}")
+        topo.genus?.let { append(" · genus $it") }
+    }
+    rows += "area" to "%.4f".format(mesh.surfaceArea())
+    if (topo.isWatertight) rows += "volume" to "%.4f".format(mesh.signedVolume())
+    rows += "bounds" to "%.3f × %.3f × %.3f".format(b[3] - b[0], b[4] - b[1], b[5] - b[2])
+    rows += "at" to "(%.2f, %.2f, %.2f)…(%.2f, %.2f, %.2f)".format(b[0], b[1], b[2], b[3], b[4], b[5])
+    if (shown !== mesh) rows += "note" to "picture decimated to ${shown.triangleCount} tris"
+
+    val facts = rows.joinToString("") { (label, value) ->
+        "<tr><td style=\"color:#6d7787;padding:0 8px 2px 0;vertical-align:top\">$label</td>" +
+                "<td style=\"color:#c3ccd9;padding:0 0 2px 0\">$value</td></tr>"
+    }
     return """
-        <div style="font-family:monospace;font-size:11px;line-height:1.4">
-          <img src="data:image/png;base64,$b64" width="280" height="210"
-               style="border:1px solid #3a3f4b;border-radius:3px;display:block"/>
-          <div style="color:#8a90a0;margin-top:3px">
-            ${mesh.vertexCount} verts · ${mesh.triangleCount} tris · ${"%.3f × %.3f × %.3f".format(b[3] - b[0], b[4] - b[1], b[5] - b[2])}$note
-          </div>
+        <div style="font-family:monospace;font-size:11px;line-height:1.45;display:flex;gap:10px;align-items:flex-start">
+          <img src="data:image/png;base64,$b64" width="$MESH_THUMBNAIL_WIDTH" height="$MESH_THUMBNAIL_HEIGHT"
+               style="border:1px solid #3a3f4b;border-radius:3px;display:block;flex:0 0 auto"
+               alt="shaded render of a ${mesh.triangleCount}-triangle mesh"/>
+          <table style="border-collapse:collapse"><tbody>$facts</tbody></table>
         </div>
     """.trimIndent()
 }
