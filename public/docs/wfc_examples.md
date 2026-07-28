@@ -42,13 +42,19 @@ covers:
 Things it deliberately does not do, so you are not surprised:
 
 - **No backtracking.** A contradiction is terminal. The remedy is to start the attempt again, which
-  is what `solveWithRetries` does — see [§7](#7-contradictions-seeds-and-reproducibility).
-- **No symmetry expansion.** Most tileset formats let you declare a tile and ask for its four
-  rotations. Here, a rotated tile is a *different tile* that you supply and constrain yourself.
+  is what `solveWithRetries` does — see [§8](#8-contradictions-seeds-and-reproducibility).
+- **Symmetry expansion for *patterns*, not for hand-authored tiles.**
+  [`expandSymmetry`](reference/data.md#wfc-kt) closes a learned overlapping pattern set under the
+  rotations and reflections of the square, which is what stops a model from believing in whichever
+  orientation its source happened to contain most of ([§7](#7-not-pixels-wfc-on-a-scalar-field)).
+  It does *not* exist for the simple-tiled model: most tileset formats let you declare a tile and ask
+  for its four rotations, and here a rotated tile is still a different tile that you supply and
+  constrain yourself, because rotating tile *art* is a question about your pixels rather than about
+  adjacency.
 - **2-D only**, and the *output* never wraps. `wrapX` / `wrapY` on `fromSampleGrid` affect how the
   sample is *read*, not how the result is generated.
 - **No absolute position.** The rules are translation-invariant, so "sky belongs at the top" is not
-  something WFC can know. You pin it yourself with `forceTile` — see [§3](#3-the-overlapping-model).
+  something WFC can know. You pin it yourself with `forceTile` — see [§4](#4-the-overlapping-model-and-absolute-position).
 
 ## 1. The model, by hand
 
@@ -245,7 +251,7 @@ This is the result most WFC introductions quietly skip, and it is worth reading 
 The middle panel is **correct**. Every adjacent pair in it is a pair present in the source, and the
 set of band-to-band edges it contains is a subset of the set the source contains — `WfcGallery`
 asserts both. It is also nothing like the source: a speckle of grass and forest with a little sand,
-and — look at the histogram — **no water at all**, where the source was 28% water.
+and — look at the histogram — **no water at all**, where the source was 29% water.
 
 That is not bad luck with the seed. Every seed does this; the model is *bistable*. Grass and forest
 are the source's majority bands and they may touch each other, so they form a mutually reinforcing
@@ -261,17 +267,172 @@ the source's proportions — sand is now far more common than it ever was in the
 The honest conclusion is that this model cannot reproduce global proportions, because it does not
 represent them. It is a table of which colours may touch plus a marginal frequency per colour; "water
 covers about a quarter of the map in large connected regions" is not expressible in that language, so
-no amount of weight tuning will produce it. There are two real ways forward, and the rest of this page
-is both of them: give the tiles internal structure so their edges carry information (the circuit set
-below), or give each cell more context so the model can see shape at all (the overlapping model in
-§3). Pinning cells with `forceTile`, as in §1, is the third and bluntest.
+no amount of weight tuning will produce it.
 
-The other lever is the tiles themselves. When each tile carries internal art whose *edges* have to
-line up, the tile set encodes structure that a flat colour cannot, and the same solver produces
-something that looks constructed. Here is the same simple-tiled model with an eight-tile set of
-circuit traces, and rules derived from edge sockets rather than from a sample — `b` may sit east of
-`a` exactly when `a`'s east socket matches `b`'s west socket. This is the original "simple tiled
-model", and it is only about ten lines once the sockets are written down.
+### The same source, with context
+
+The diagnosis points somewhere specific. A cell that holds one colour can only ever learn which
+colours touch, and the source's structure — a coast is water, then a *one-cell* sand fringe, then
+land — is a statement about a run of three cells, which is not a thing a one-cell alphabet can hold.
+So give each cell more to hold.
+
+That is the **overlapping model**, and it is worth meeting here rather than waiting for
+[§4](#4-the-overlapping-model-and-absolute-position), because it is the answer to the figure above.
+Instead of cutting the source into disjoint tiles, slide an N×N window over every position and keep
+the distinct windows you find; each solver cell now stands for one whole window, and two cells may
+be neighbours only if their windows *agree where they overlap*. Nothing else changes — same solver,
+same four directions, same learned weights. Each cell simply knows nine pixels instead of one.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/terrain-overlapping.png" wait="4.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-terrain-overlapping"}
+:::static
+:::fold section 2's terrain source, unchanged — one pixel per cell
+fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
+    val dx = u - cx
+    val dy = v - cy
+    return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
+}
+
+val palette = listOf(
+    Triple(0.08f, 0.20f, 0.31f),   // deep water
+    Triple(0.18f, 0.48f, 0.66f),   // shallow water
+    Triple(0.85f, 0.78f, 0.55f),   // sand
+    Triple(0.31f, 0.55f, 0.24f),   // grass
+    Triple(0.12f, 0.29f, 0.14f)    // forest
+)
+
+val sw = 26
+val sh = 18
+val bands = IntArray(sw * sh)
+for (cy in 0 until sh) for (cx in 0 until sw) {
+    val u = cx / (sw - 1.0)
+    val v = cy / (sh - 1.0)
+    val e = bump(u, v, 0.30, 0.40, 0.25) +
+        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
+        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    bands[cx + cy * sw] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
+}
+val source = Img.generateRGB(sw, sh) { x, y -> palette[bands[x + y * sw]] }
+:::endfold
+
+// The one changed line: 3x3 windows of the source instead of its five colours. wrapY = false so
+// the model never learns that the top of the map sits above the bottom of it.
+val patterns = source.toBufferedImage().sliceIntoOverlappingPatterns(3, 3, wrapX = false, wrapY = false)
+val rules = patterns.toRules()
+
+val outW = 40
+val outH = 26
+
+// Twelve seeds, because one picture of a stochastic process is an anecdote. No pinning, no
+// re-weighting: this is the learned model exactly as `toRules()` handed it over.
+val seeds = listOf(1L, 3L, 5L, 7L, 9L, 11L, 12L, 17L, 23L, 42L, 101L, 2026L)
+val panels = mutableListOf<Pair<String, Img>>()
+var firstAttempt = 0
+for (seed in seeds) {
+    val solver = WfcSolver(outW, outH, rules, seed = seed)
+    val outcome = solver.solveWithRetries(maxAttempts = 30)
+    if (outcome.attempts == 1) firstAttempt++
+    val grid = solver.resolvedTileGridOrNull() ?: continue
+    panels.add("seed $seed" to patterns.toImg(grid, outW, outH).upscaleNearest(6))
+}
+
+// Why this figure has no ground constraint, read out of the model rather than asserted. The source's
+// corner is deep water, so that pixel identifies the band without re-deriving the palette's rounding.
+//
+// An explicit loop with a typed `px`, not `.first { ... .all { it == deepArgb } }`: a box's scope is
+// crowded enough that `all` inside a nested lambda whose receiver has no written-down type resolves
+// to something else entirely, and the error surfaces on a later line.
+val deepArgb: Int = source.toBufferedImage().getRGB(0, 0)
+var uniformDeep: Int = -1
+for (id in 0 until patterns.tileCount) {
+    val px: IntArray = patterns.patterns[id]
+    if (px.all { v -> v == deepArgb }) {
+        uniformDeep = id
+        break
+    }
+}
+
+val successors: String = (0..3).joinToString("  ") { d -> "dir " + d + " " + rules.allowedCount(d, uniformDeep) }
+display("model", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
+    "${patterns.tileCount} distinct 3x3 windows &middot; ${panels.size}/${seeds.size} seeds solved, " +
+    "$firstAttempt on the first attempt\n" +
+    "the all-deep window may be followed by: " + successors + "</pre>")
+
+display("main", montage(panels, columns = 4, cellSide = 300).toPngBytes())
+```
+
+![twelve WFC outputs from the same terrain source, each a coastline sweeping across the frame with a sand fringe and mottled forest and grass inland](assets/wfc_examples/terrain-overlapping.png)
+
+Twelve for twelve, ten of them on the first attempt, and every adjacent pair in every one of them is
+a pair the source contained — `WfcGallery` checks that for all twelve, along with the band-edge
+subset property.
+
+**They are coastlines, and they are not islands.** That distinction is the whole lesson, and it is
+worth being precise rather than apologetic about it. What the model reproduces is the source's local
+*grammar*: the bands appear in chain order, every land-water boundary carries a one-cell sand fringe,
+forest sits inside grass and never touches water. What it does not reproduce is the source's
+*composition* — the fact that all of this was arranged into one closed ring. Composition is global,
+and an adjacency table is definitionally local, so this is not a shortfall to be tuned away. It is
+the model working. A 40 × 26 output is a crop of a much larger world, and a coast running across a
+crop of a world is the correct answer.
+
+Measured against the source, the local statistics land where they should: mean coherence — the
+fraction of adjacent cell pairs holding the same band — is **0.850** across the twelve, against the
+source's 0.713 and the one-colour model's 0.468. It is *more* coherent than its own source, which is
+what you would expect from a model that has learned the interiors are large and the boundaries are
+thin, and is under no obligation to also put a shoreline in any particular place.
+
+The figure is deliberately unpinned, and the readout in the box says why:
+
+```
+the all-deep window may be followed by: dir 0 4  dir 1 2  dir 2 1  dir 3 1
+```
+
+South and west, the all-deep-water 3 × 3 window has **exactly one** legal successor — itself. For a
+window to sit south of it, that window's top two rows must be entirely deep, and this source's water
+band is mostly thinner than three cells, so no such window exists except the uniform one. Pin a
+single cell to it and propagation paints the entire grid deep; add a second pin anywhere on land and
+you get an instant contradiction, on every seed and every retry. A uniform window of a band thinner
+than the window is a trap, and `allowedCount` is how you find one before it costs you an afternoon.
+The 2 × 2 model has no such trap (its all-deep window has 2–4 successors per direction) but produces
+visibly shattered, one-cell-speckled coastlines, so 3 × 3 is the pick here.
+
+### Why 3 × 3 *windows* rather than 2 × 2 *tiles*?
+
+Both give a cell more context, and `sliceIntoUniqueTiles(2, 2)` looks like the cheaper way to get it
+— 36 tiles against 184 patterns. Do not, on a source like this one, and the reason is a trap worth
+knowing about in general.
+
+Bigger disjoint tiles mean most tiles are seen exactly once, at a sample edge, which leaves their
+mask in some direction empty. `fromSampleGrid` then widens each empty mask to "any tile may sit
+there" — and because adjacency has to stay symmetric, filling one mask must *also* tell every other
+tile that this one may sit on its far side. One empty mask therefore injects `2 × tileCount` pairs.
+That is not a flaw in the symmetric closure; it is the closure correctly revealing that "anything may
+sit east of `t`" is an enormous claim.
+
+On this source, 10 empty masks out of 144 produce a table of **282 observed pairs plus 704 invented
+ones** — 71% of the model is fallback rather than evidence, and outputs then contain band pairs the
+source never contained. At `1 × 1` nothing is empty and nothing is invented, which is exactly why the
+speckled figure above is still trustworthy as *evidence about the model* and a `2 × 2` version of it
+would not be.
+
+So: ask. `widenedMaskCount` says whether the fallback fired at all, `wasWidened(direction, tile)`
+says where, and `observedAllows` is `allows` restricted to what the sample actually showed — the
+predicate to assert a learned model against, since `allows` on a widened table permits a great deal
+it never saw. The inline rules view in [§8](#8-contradictions-seeds-and-reproducibility) paints
+invented pairs amber for the same reason, and `WfcGallery` pins both ends of this so the numbers
+above cannot quietly rot.
+
+## 3. Tiles with structure: the circuit set
+
+Context is one way to give the model more to work with. The other is to put the structure in the
+tiles themselves. When each tile carries internal art whose *edges* have to line up, the tile set
+encodes structure that a flat colour cannot, and the same solver produces something that looks
+constructed rather than grown.
+
+Nothing here is learned. This is an eight-tile set of circuit traces with rules derived from edge
+sockets — `b` may sit east of `a` exactly when `a`'s east socket matches `b`'s west socket. That is
+the original "simple tiled model", and it is about ten lines once the sockets are written down.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/circuit.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-circuit"}
 :::static
@@ -341,22 +502,27 @@ consequence of edge matching rather than something the generator tries to achiev
 doing the aesthetic work — blank is weighted 6 and the four-way cross 0.35, which is why the result
 reads as sparse circuitry rather than a dense maze.
 
-## 3. The overlapping model
+## 4. The overlapping model and absolute position
 
-The overlapping model changes what a tile *is*. Instead of cutting the source into disjoint tiles, it
-slides an N×M window over every position and collects the distinct windows it finds; each solver cell
-then stands for one whole window, and two windows may be neighbours only if they *agree on their
-overlap*. Because each cell now carries N×M pixels of context instead of one, the model sees local
-shape, not just local colour — and that is the difference between the archipelago above and something
-that keeps its source's forms.
+[§2](#2-learning-from-an-image-the-simple-tiled-model) used the overlapping model to fix a texture
+problem and left the mechanism at one paragraph. Here is the rest of it, and the limit that no amount
+of context removes.
 
-The trade is combinatorial. A 3×3 window over a 26×18 source can yield hundreds of distinct patterns
-where the simple-tiled model had five tiles, and both the rule-learning cost (it compares every
-pattern against every other) and the per-step entropy scan grow with that count.
+First the trade, which is combinatorial. A 3×3 window over a 26×18 source can yield hundreds of
+distinct patterns where the simple-tiled model had five tiles, and both the rule-learning cost (it
+compares every pattern against every other) and the per-step entropy scan grow with that count.
+Larger windows are not free and are not automatically better: they buy coherence and they cost
+variety, because a window big enough to contain a whole feature can only ever reproduce that feature
+verbatim.
 
-This source is built for the model: sky over soil, with flowers rooted in the soil. Every 3×3 window
-of it *says* something — "stem continues upward", "blossom sits on a stem", "stem meets soil" — which
-is what the overlapping model can preserve and the simple-tiled model cannot.
+And then the limit. §2's coastlines were a success at reproducing local grammar and made no attempt
+at global composition, because WFC's rules are **translation-invariant** — they say what may sit next
+to what, and cannot say where anything belongs. That is not a texture problem and context does not
+touch it. The only cure is to supply position yourself, from outside the model, with `forceTile`.
+
+This source is built to make that visible: sky over soil, with flowers rooted in the soil. Every 3×3
+window of it *says* something — "stem continues upward", "blossom sits on a stem", "stem meets soil" —
+so the model has plenty to preserve, and it will still cheerfully put the soil nowhere at all.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/overlapping.png" wait="2.0" capture="box" open-outputs="true" w="1200" name="wfc-overlapping"}
 :::static
@@ -452,7 +618,7 @@ One API note visible above: `reset()` clears the whole wave, forced cells includ
 conditions therefore have to be re-applied on every retry, which is what `solveWithRetries`'
 `prepare` block is for.
 
-## 4. Neighborhoods beyond von Neumann
+## 5. Neighborhoods beyond von Neumann
 
 `WfcNeighborhood` is a set of relative offsets plus the guarantee that every offset has its opposite
 in the set. `VonNeumann` is four offsets; `Moore` is eight; `chebyshev(r)` and `manhattan(r)` generate
@@ -517,7 +683,7 @@ cardinals, and moving to Moore changes the mean branching factor from 2.80 to 2.
 barely at all. A wider neighborhood costs `directionCount` bitset intersections per propagation step
 and buys you nothing unless the source has something to say along those offsets.
 
-## 5. Watching the collapse
+## 6. Watching the collapse
 
 `step()` is public and does exactly one WFC iteration: choose the lowest-entropy undecided cell,
 collapse it, propagate to a fixed point, return the new status. Everything the solver knows is
@@ -782,7 +948,7 @@ cyan in the entropy panel — no possibilities left, and therefore no entropy �
 failure to a coordinate immediately. Reading `WfcStatus.Contradiction` off a `println` tells you only
 that something went wrong somewhere.
 
-## 6. Not pixels: WFC on a scalar field
+## 7. Not pixels: WFC on a scalar field
 
 Nothing in the solver knows what a pixel is. It works on integer tile IDs, and the image helpers are
 a convenience layered on top — so the same machinery runs on a row-major `FloatArray` via
@@ -871,19 +1037,65 @@ val patternGrid: IntArray = patternSolver.resolvedTileGridOrNull()
     ?: throw IllegalStateException("pattern model ended " + patternSolver.status)
 val patternHeights: FloatArray = patterns.render(patternGrid, outW, outH)
 
+// And the same pattern set closed under the symmetries of the square. A heightfield has no up, so
+// a rotated legal arrangement is also legal -- expandSymmetry says exactly that, and it is the one
+// line that turns the banded result below into terrain.
+//
+// Three seeds rather than one, because the claim is about the ensemble: each field keeps a grain,
+// and what symmetry closure removes is every field having the SAME grain. One panel cannot show that.
+val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
+val symSeeds = listOf(5L, 23L, 42L)
+val symFields = mutableListOf<Pair<Long, FloatArray>>()
+for (seed in symSeeds) {
+    val solver = WfcSolver(outW, outH, symmetric.toRules(), seed = seed)
+    solver.solveWithRetries(maxAttempts = 30)
+    val grid: IntArray = solver.resolvedTileGridOrNull()
+        ?: throw IllegalStateException("symmetric model, seed " + seed + ", ended " + solver.status)
+    symFields.add(seed to symmetric.render(grid, outW, outH))
+}
+val symHeights: FloatArray = symFields[0].second
+
 val tiledField = floatsToImg(tiledHeights, outW, outH)
 val patternField = floatsToImg(patternHeights, outW, outH)
+// The contour panel is taken from seed 23, the middle one below, so it can be matched to its field.
+val symField = floatsToImg(symFields[1].second, outW, outH)
 
-display("stats", "<div style='font:13px/1.6 monospace;padding:8px'>" +
-    "${tiles.tileCount} levels &middot; ${patterns.tileCount} distinct 3x3 value patterns<br>" +
-    "1x1 tiles:  ${tiledOutcome.attempts} attempt(s), mean ${"%.2f".format(tiledHeights.average())}, " +
-    "max ${"%.2f".format(tiledField.max())}<br>" +
-    "3x3 patterns: ${patternOutcome.attempts} attempt(s), mean ${"%.2f".format(patternHeights.average())}, " +
-    "max ${"%.2f".format(patternField.max())}</div>")
+// Mean |difference| between neighbours along rows vs down columns. One number per axis is all it
+// takes to say "banded" out loud instead of pointing at the picture.
+fun grain(v: FloatArray, w: Int, h: Int): Pair<Double, Double> {
+    var hs = 0.0
+    var vs = 0.0
+    var hn = 0
+    var vn = 0
+    for (y in 0 until h) for (x in 0 until w) {
+        if (x + 1 < w) { hs += kotlin.math.abs(v[x + y * w] - v[x + 1 + y * w]); hn++ }
+        if (y + 1 < h) { vs += kotlin.math.abs(v[x + y * w] - v[x + (y + 1) * w]); vn++ }
+    }
+    return (hs / hn) to (vs / vn)
+}
+
+val plainGrain = grain(patternHeights, outW, outH)
+val symLines = symFields.joinToString("\n") { entry ->
+    val g = grain(entry.second, outW, outH)
+    "3x3 + D4 seed " + entry.first.toString().padEnd(3) +
+        " grain along rows ${"%.3f".format(g.first)} / down columns ${"%.3f".format(g.second)}" +
+        ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
+}
+
+display("stats", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
+    "${tiles.tileCount} levels; ${patterns.tileCount} distinct 3x3 windows -> " +
+    "${symmetric.tileCount} once closed under D4\n" +
+    "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
+    "${tiledOutcome.attempts} attempt(s)\n" +
+    "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
+    "${"%.3f".format(plainGrain.second)}" +
+    ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
+    symLines + "</pre>")
 
 // Terraced levels contour into blocky steps, so smooth before extracting geometry. This is the whole
-// point of ending up in a FloatArray rather than in pixels: iso-contours are FLines.
-val smooth = patternField.gaussianBlur(1.2)
+// point of ending up in a FloatArray rather than in pixels: iso-contours are FLines. Contour the D4
+// field -- the banded one has nothing worth contouring.
+val smooth = symField.gaussianBlur(1.2)
 val contours = ArrayList<afield.graphics.FLine>()
 for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
     for (line in smooth.isoContourFLines(iso)) {
@@ -893,17 +1105,20 @@ for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
     }
 }
 
-showImgGrid(
-    "source 26x18, 6 levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(20),
-    "1x1 tiles, border pinned" to tiledField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
-    "3x3 value patterns, unpinned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
-    columns = 1,
-    cellSide = 640
+val panels = mutableListOf(
+    "source 26x18, 6 levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(14),
+    "1x1 tiles, border pinned" to tiledField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9),
+    "3x3 patterns, as learned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9)
 )
+for (entry in symFields) {
+    panels.add("3x3 + D4, seed ${entry.first}" to
+        floatsToImg(entry.second, outW, outH).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(9))
+}
+showImgGrid(*panels.toTypedArray(), columns = 3, cellSide = 400)
 lines(contours, channel = "contours", w = 900.0, h = 560.0, fitToSize = true)
 ```
 
-![the six-level source field, a speckled 1x1-tile result with the border pinned, and a horizontally banded 3x3-pattern result](assets/wfc_examples/scalar-field.png)
+![the six-level source field, a speckled 1x1-tile result, a horizontally banded 3x3-pattern result, and three 3x3+D4 results showing plateaus and basins with no shared direction, above a panel of iso-contour FLines](assets/wfc_examples/scalar-field.png)
 
 Same solver, same rules machinery, no pixels anywhere — and the two float paths fail in
 characteristically different ways, which is the useful part.
@@ -918,24 +1133,85 @@ That is not a bug either: over most of a concentric source, a 3 × 3 window says
 vertically and is constant horizontally", because the wide top and bottom of the island contribute far
 more windows than its curved left and right edges do. The mean absolute difference between adjacent
 values makes it precise — the `1 × 1` result is isotropic (0.100 along rows, 0.112 down them) while the
-`3 × 3` result is anisotropic by a factor of fourteen (0.008 along rows, 0.112 down them). The model reproduced the statistically dominant
-local arrangement and tiled the plane with it. More context buys you more coherence, not global
-composition — the same lesson as §2, one level up.
+`3 × 3` result is anisotropic by a factor of fourteen (0.008 along rows, 0.112 down them). The model
+reproduced the statistically dominant local arrangement and tiled the plane with it.
+
+### Taking the orientation out of the model
+
+That diagnosis contains its own fix, and it is the bottom row of the figure. If the banding is there
+because the model learned *which way up the source was*, then take orientation out of the model.
+
+`expandSymmetry` closes a pattern set under the symmetry group of the square: every window plus its
+three rotations, each with its mirror, deduplicated, with each pattern's observed weight shared out
+across its orbit so the expansion does not change how likely any arrangement is. One line, applied to
+the pattern set rather than the solver:
+
+```kotlin
+val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
+```
+
+The stripes become plateaus, basins and ridges — something you would accept as a heightfield. On this
+source it takes 180 distinct windows to 541, and both the rule-learning cost (every pattern compared
+against every other) and the per-step entropy scan grow with that count. It is not `×8`: variants that
+coincide are deduplicated, and an already-symmetric window contributes nothing new.
+
+Three seeds are shown rather than one, and the per-seed numbers in the box are the reason. The banded
+model sits at 14.6× on every seed; the D4 model comes out at 2.8×, 1.5× and 1.3×, and — the part a
+single panel cannot show — the direction of what grain is left is different each time.
+
+Two numbers, because they measure different things and only one of them is the headline:
+
+| | ensemble anisotropy | per-output median | 
+| --- | --- | --- |
+| `3 × 3` as learned | **8.1×** | 14.6× |
+| `3 × 3` closed under D4 | **1.4×** | 1.9× |
+| the source itself | — | 2.1× |
+
+*Ensemble* anisotropy averages row-grain and column-grain across eight seeds and then divides: it
+asks whether the model has a systematic preferred direction. That is what D4 removes, and it removes
+nearly all of it. *Per-output* anisotropy takes the ratio within each field and then takes the median:
+it asks whether any single field is directionless. That lands at 1.9×, right at the source's own
+2.1× — which is the correct outcome rather than a shortfall. Terrain has ridges, and ridges have
+directions; what was wrong before was not that each field had a grain but that *every* field had the
+*same* grain. Worth separating deliberately, because averaging the two roughnesses before dividing
+reports a flattering `1.0×` for a model whose every individual output is still strongly banded, and
+that is a mistake this page made before the gallery caught it.
+
+Reach for `WfcSymmetry.None` — the default — whenever up is real: §4's flowers grow upward, and a
+model free to rotate them would grow them sideways out of the soil. Reach for `All` for heightfields,
+masks, noise and terrain. `Rotations` and `Reflections` are the in-between cases; a source with a
+left-right symmetry but a genuine up wants `Reflections` alone.
+
+More context buys coherence, symmetry closure buys isotropy, and neither buys global composition —
+the same limit as §2, two levels up.
 
 The `contours` channel is the payoff, and the reason to end up in a `FloatArray` at all: four
-iso-levels of the blurred result, extracted with `isoContourFLines` and drawn as
+iso-levels of the blurred seed-23 field, extracted with `isoContourFLines` and drawn as
 [`FLine`s](fline_examples.md). Those are not a picture of geometry, they are geometry — the same
 values `fitInto`, transform, animate and export like anything drawn by hand. A WFC-synthesised
 `FloatArray` is equally a heightfield, a mask, a weight map or a displacement.
 
-Three practical notes. Quantising is not optional, because `sliceIntoUniqueTiles2D` dedupes on exact
+It is also the clearest argument for the symmetry pass. Contour the banded field and you get a stack
+of near-parallel horizontal lines; contour this one and you get closed loops, saddles and a ridge
+running between two basins — a topographic map, from a constraint solver that has never been told
+what a hill is.
+
+Four practical notes. Quantising is not optional, because `sliceIntoUniqueTiles2D` dedupes on exact
 float equality; the number of levels is your tile alphabet and therefore your cost knob. Pinning the
 whole border of the *pattern* model over-constrains it into a contradiction — a corner would have to
-satisfy the ring in both directions at once — which is why only the tiled model is pinned here. And
+satisfy the ring in both directions at once — which is why only the tiled model is pinned here.
 `sliceIntoOverlappingPatterns2D` grows fast: six levels over a 26 × 18 source already gives 180
-distinct 3 × 3 windows, and rule learning compares every pattern against every other.
+distinct 3 × 3 windows, and rule learning compares every pattern against every other. And
+`expandSymmetry` multiplies exactly that number, so it is the one knob here that can turn a
+comfortable model into a slow one — measure before reaching for `All` on a large pattern set.
 
-## 7. Contradictions, seeds and reproducibility
+This is the section to steal from if you want WFC to produce something other than pictures. The
+output is a `FloatArray`, and nothing downstream cares that a constraint solver made it: it is
+equally a heightfield to displace geometry with, a mask to composite through, a weight map to drive a
+particle system, or — as here — a thing to contour into `FLine`s and then draw, animate and export
+like anything you laid out by hand.
+
+## 8. Contradictions, seeds and reproducibility
 
 Propagation can empty a cell's possibility set. When that happens the solver sets
 `WfcStatus.Contradiction` and stops, and there is no undo stack to unwind to the choice that doomed
@@ -1028,7 +1304,7 @@ caught it; the fallback now widens both directions at once.
 ### Looking at the rules
 
 `WfcRules` implements `ToHTML` for the same reason `WfcSolver` does, but the failures it exists to
-show are different — and they are three that a `println` cannot show you at all:
+show are different — and they are four that a `println` cannot show you at all:
 
 - an **empty mask**: a `(direction, tile)` pair with no legal neighbour whatsoever. That is not a
   strict rule, it is an unsatisfiable one the moment the tile is placed off an edge.
@@ -1037,6 +1313,8 @@ show are different — and they are three that a `println` cannot show you at al
   table lets the solver emit a pair its own rules forbid — the bug above.
 - a **zero weight**: a tile that is in the model and can never be chosen. `fromSampleGrid` hands one
   out, silently, to every tile ID its sample never contained.
+- an **invented pair**: adjacency that exists only because the widening fallback filled an empty
+  mask. Legal, enforced, and not evidence of anything — the distinction §2 measured.
 
 Each is marked in the picture and stated in the header, so the before and after of
 `allowMissingAnything()` is visible rather than inferred.
@@ -1086,8 +1364,20 @@ The strict set's magenta rows are the whole story of why it deadlocks, in the pl
 information actually lives — one row per tile with nowhere to go, in each direction. After
 `allowMissingAnything()` the same matrices have no magenta at all and the header still says
 `symmetric`: every previously empty mask became "anything", *and* every tile it now admits was told in
-turn that it may sit on the other side. The learned set is the third case — its matrices are fine and
-the fault is in the weights strip, where tile 2 sits off the ramp because it can never be chosen.
+turn that it may sit on the other side.
+
+They do not, however, turn **teal**. They turn amber, and the header says why: `4 widened masks → 8
+observed + 20 invented pairs (71% of the table)`. Four authored constraints went in and the finished
+model is mostly not them. That is the same 71% §2 measured on a real source, from the same cause and
+at a much smaller scale, and it is the honest reading of what the fallback did — it did not repair
+the rules, it replaced most of them. Reach for it when an unplaceable edge tile is the actual
+problem, and read the header afterwards.
+
+The learned set is the last two cases at once. Its fault is in the weights strip, where tile 2 sits
+off the ramp because the sample never contained it and it can therefore never be chosen — and
+because it never appeared, all four of its masks were empty, so widening them leaves that model 87%
+invented. A tile the sample never showed does not merely fail to contribute; it dilutes everything
+the sample did show.
 
 ## Recipes
 
@@ -1098,11 +1388,39 @@ happens to contain every legal pair, and far easier to debug.
 
 **Reach for the overlapping model** when you have a small picture whose *look* you want more of and
 no natural tile decomposition. Start at `3 × 3` and only go up if the output loses structure you care
-about; pattern count, and therefore rule-learning cost, grows fast.
+about; pattern count, and therefore rule-learning cost, grows fast. This is also the first thing to
+try when a learned model gives you correct speckle, as in §2 — more context per cell is what turns
+speckle into shape.
+
+**Prefer overlapping windows to bigger disjoint tiles** when you want that context. Both work in
+principle; only one of them keeps the model honest. Disjoint tiles above `1 × 1` are mostly seen once
+each, at a sample edge, and the widening fallback then invents the majority of the adjacency table —
+71% of it on §2's terrain source. Check `widenedMaskCount` before trusting a learned model, and
+assert against `observedAllows` rather than `allows` when what you want to know is "did this reuse
+the source's structure".
+
+**Reach for `expandSymmetry` whenever the thing you are generating has no up.** Heightfields, masks,
+noise, terrain, cave systems. WFC learns orientation along with content, so on a source with any
+directional bias at all it will find that bias and tile the plane with it — the horizontal stripes in
+§7 are what that looks like. `WfcSymmetry.All` costs pattern count (180 → 541 there) and buys you a
+model that has no opinion about which way up you are. Leave it at `None` when up is real.
 
 **Reach for a wider neighborhood** only when you can name the offset that carries the structure you
 are losing. Diagonal features need `Moore`; a two-cell rhythm needs `chebyshev(2)` or a bespoke
-offset set. If you cannot name it, widening will cost time and change nothing.
+offset set. If you cannot name it, widening will cost time and change nothing — and on a source with
+a majority phase it is actively counterproductive, because the extra constraints reinforce whichever
+phase nucleates first rather than teaching the model anything new.
+
+**Do not expect global composition from any of it.** Band ordering, fringe widths, "this never
+touches that" — all local, all learnable. "Water covers a quarter of the map, in one connected
+region" is not, at any window size or neighborhood radius. Supply it with `forceTile` or accept that
+you are generating a crop of a larger world.
+
+**Before pinning a cell in an overlapping model, check what that pattern can be followed by.** A
+uniform window — all one colour — is a trap when the band it came from is thinner than the window:
+`allowedCount` will show it has itself as its only successor in some direction, so pinning one cell
+to it floods the whole grid and any second pin contradicts. Pin a window that contains a boundary
+instead, or use a smaller window.
 
 **When it deadlocks**, do not reach for more retries first. Print the branching factor
 (`allowedCount`) and look for a mask with one entry or none, check `findAsymmetry()`, and ask whether
@@ -1150,3 +1468,11 @@ The figures on this page are rendered and *verified* by
 adjacent pair is an allowed pair, that the adjacency relation is symmetric, that the output is not
 degenerate, and — for the terrain figures — that the set of terrain edges in the output is a subset
 of the set in the source.
+
+Three of its checks exist because of claims made in prose above, and would otherwise be the kind of
+sentence that quietly stops being true. §2's twelve coastlines must all solve, must use only pairs
+the source contained (`observedAllows`, not merely `allows`), and must come out more coherent than
+both the one-colour model and the source itself; the all-deep window must still have exactly one
+southward successor, or the paragraph explaining why that figure is unpinned is wrong; and the
+widening audit pins 1 × 1 at zero invented pairs and 2 × 2 at more invented than observed, which is
+the note in §2 stated as a test.

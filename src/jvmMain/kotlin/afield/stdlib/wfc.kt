@@ -246,7 +246,7 @@ private fun wrapIndex(value: Int, size: Int): Int {
     return if (r < 0) r + size else r
 }
 
-private fun patternWeights(tileCount: Int, samplePatternIds: IntArray?): DoubleArray {
+private fun weightsFromSampleIds(tileCount: Int, samplePatternIds: IntArray?): DoubleArray {
     val weights = DoubleArray(tileCount)
     if (samplePatternIds == null) {
         java.util.Arrays.fill(weights, 1.0)
@@ -282,9 +282,10 @@ private fun widenEmptyMasksSymmetrically(
     neighborhood: WfcNeighborhood,
     tileCount: Int,
     wordCount: Int
-) {
+): Array<BooleanArray> {
     val all = LongArray(wordCount)
     all.fillAllBits(tileCount)
+    val widened = Array(neighborhood.directionCount) { BooleanArray(tileCount) }
 
     // Collect first: widening allowed[opposite(d)][s] below can un-empty a mask we have not tested.
     val emptyDirections = ArrayList<Int>()
@@ -307,6 +308,7 @@ private fun widenEmptyMasksSymmetrically(
         val direction = emptyDirections[i]
         val tile = emptyTiles[i]
         allowed[direction][tile].copyFrom(all)
+        widened[direction][tile] = true
         val opposite = neighborhood.opposite(direction)
         var s = 0
         while (s < tileCount) {
@@ -315,7 +317,12 @@ private fun widenEmptyMasksSymmetrically(
         }
         i++
     }
+    return widened
 }
+
+/** Deep copy of an adjacency table, for keeping the pre-widening state around. */
+private fun copyAllowed(allowed: Array<Array<LongArray>>): Array<Array<LongArray>> =
+    Array(allowed.size) { d -> Array(allowed[d].size) { t -> allowed[d][t].copyOf() } }
 
 private fun intPatternsOverlap(
     a: IntArray,
@@ -375,7 +382,14 @@ class WfcRules private constructor(
     val weights: DoubleArray,
     val neighborhood: WfcNeighborhood,
     /** allowed[direction][tile] is a bitset of tile IDs allowed in that direction from tile. */
-    val allowed: Array<Array<LongArray>>
+    val allowed: Array<Array<LongArray>>,
+    /**
+     * `[direction][tile]` = this mask was empty and got filled in by the widening fallback, or null
+     * when no widening happened (the overwhelmingly common case, and then observed == allowed).
+     */
+    private val widenedMasks: Array<BooleanArray>? = null,
+    /** [allowed] as it stood *before* widening, or null when nothing was widened. */
+    private val observedAllowed: Array<Array<LongArray>>? = null
 ) : afield.ToHTML {
     val wordCount: Int = wordsFor(tileCount)
 
@@ -435,9 +449,87 @@ class WfcRules private constructor(
         return allowed[direction][a].countBits()
     }
 
+    // ------------------------------------------------------------------------------------------
+    // Observed vs invented adjacency
+    //
+    // [fromSampleGrid] widens any `(direction, tile)` mask its sample left empty to "any tile may
+    // sit there", because a tile the sample only ever showed at its own edge would otherwise be
+    // unplaceable. That fallback is often what you want and it is *never* what you want silently:
+    // it fabricates adjacencies the sample never contained, and — because adjacency has to stay
+    // symmetric — filling one mask also tells every other tile that this one may sit on its far
+    // side. One empty mask therefore injects `2 x tileCount` pairs, so a handful of them can invent
+    // most of the table. Measured on the terrain source behind `wfc_examples.md`: at 1x1 tiles no
+    // mask is empty and nothing is invented, while at 2x2 tiles 10 of 144 masks are empty and the
+    // resulting table is 282 observed pairs plus 704 invented ones.
+    //
+    // None of that is visible in [allows], which is the problem. These four are how a caller — and
+    // the figure gallery — can hold the model to what the sample actually showed.
+    // ------------------------------------------------------------------------------------------
+
+    /** Did the widening fallback fill in `allowed[direction][tile]` because the sample left it empty? */
+    fun wasWidened(direction: Int, tile: Int): Boolean {
+        require(direction in 0 until neighborhood.directionCount) {
+            "direction $direction outside 0 until ${neighborhood.directionCount}"
+        }
+        require(tile in 0 until tileCount) { "tile $tile outside 0 until $tileCount" }
+        return widenedMasks?.get(direction)?.get(tile) ?: false
+    }
+
+    /** How many `(direction, tile)` masks the widening fallback filled in; 0 when it never fired. */
+    val widenedMaskCount: Int
+        get() = widenedMasks?.sumOf { row -> row.count { it } } ?: 0
+
+    /**
+     * [allows], restricted to what the sample actually contained — false for a pair that exists
+     * only because of the widening fallback.
+     *
+     * This is the predicate to assert a *learned* model against. [allows] is the right question for
+     * "is this output legal", since the solver enforces the widened table; this is the right
+     * question for "did the output reuse the source's structure", which the widened table cannot
+     * answer because it permits pairs the source never showed.
+     */
+    fun observedAllows(direction: Int, a: Int, b: Int): Boolean {
+        val table = observedAllowed ?: return allows(direction, a, b)
+        require(direction in 0 until neighborhood.directionCount) {
+            "direction $direction outside 0 until ${neighborhood.directionCount}"
+        }
+        require(a in 0 until tileCount) { "tile $a outside 0 until $tileCount" }
+        require(b in 0 until tileCount) { "tile $b outside 0 until $tileCount" }
+        return table[direction][a].containsBit(b)
+    }
+
+    /**
+     * How many allowed pairs exist only because of widening, and how many the sample showed.
+     *
+     * Returned as a pair of `(observed, invented)` counts over all directions, so a caller can
+     * print the ratio that says how much of this table is evidence and how much is fallback.
+     */
+    fun observedAndInventedPairCounts(): Pair<Int, Int> {
+        var observed = 0
+        var invented = 0
+        var d = 0
+        while (d < neighborhood.directionCount) {
+            var a = 0
+            while (a < tileCount) {
+                var b = 0
+                while (b < tileCount) {
+                    if (allows(d, a, b)) {
+                        if (observedAllows(d, a, b)) observed++ else invented++
+                    }
+                    b++
+                }
+                a++
+            }
+            d++
+        }
+        return observed to invented
+    }
+
     override fun toString(): String =
         "WfcRules($tileCount tiles, ${neighborhood.directionCount} directions" +
-            (if (findAsymmetry() == null) "" else ", ASYMMETRIC") + ")"
+            (if (findAsymmetry() == null) "" else ", ASYMMETRIC") +
+            (if (widenedMaskCount == 0) "" else ", $widenedMaskCount widened mask" +
+                (if (widenedMaskCount == 1) "" else "s")) + ")"
 
     /**
      * The rule set's own inline view: one adjacency matrix per direction plus the weights strip, with
@@ -500,9 +592,17 @@ class WfcRules private constructor(
 
             // Defensive fallback: if a direction was never observed for a tile, allow all tiles there.
             // This keeps edge-only sample tiles from becoming unusable in unconstrained output regions.
-            widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
+            //
+            // Snapshot the table first, but only when the fallback is actually going to fire —
+            // keeping the observed table costs a second copy of every bitset, and for the common
+            // case (no empty mask, so nothing invented) there is nothing to distinguish it from.
+            val anyEmpty = (0 until neighborhood.directionCount).any { d ->
+                (0 until tileCount).any { t -> allowed[d][t].isEmptyBits() }
+            }
+            val observed = if (anyEmpty) copyAllowed(allowed) else null
+            val widened = widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
 
-            return WfcRules(tileCount, weights, neighborhood, allowed)
+            return WfcRules(tileCount, weights, neighborhood, allowed, if (anyEmpty) widened else null, observed)
         }
 
         fun fromOverlappingIntPatterns(
@@ -522,7 +622,7 @@ class WfcRules private constructor(
             }
 
             val wordCount = wordsFor(tileCount)
-            val weights = patternWeights(tileCount, samplePatternIds)
+            val weights = weightsFromSampleIds(tileCount, samplePatternIds)
             val allowed = Array(neighborhood.directionCount) { Array(tileCount) { LongArray(wordCount) } }
 
             var d = 0
@@ -562,7 +662,7 @@ class WfcRules private constructor(
             }
 
             val wordCount = wordsFor(tileCount)
-            val weights = patternWeights(tileCount, samplePatternIds)
+            val weights = weightsFromSampleIds(tileCount, samplePatternIds)
             val allowed = Array(neighborhood.directionCount) { Array(tileCount) { LongArray(wordCount) } }
 
             var d = 0
@@ -621,7 +721,14 @@ class WfcRules private constructor(
             require(tileCount > 0) { "tileCount must be positive, got $tileCount" }
             val builder = WfcRulesBuilder(tileCount, neighborhood)
             builder.block()
-            return WfcRules(tileCount, builder.weightSnapshot(), neighborhood, builder.allowedSnapshot())
+            return WfcRules(
+                tileCount,
+                builder.weightSnapshot(),
+                neighborhood,
+                builder.allowedSnapshot(),
+                builder.widenedSnapshot(),
+                builder.observedSnapshot()
+            )
         }
     }
 }
@@ -641,6 +748,8 @@ class WfcRulesBuilder internal constructor(
     private val wordCount = wordsFor(tileCount)
     private val weights = DoubleArray(tileCount) { 1.0 }
     private val allowed = Array(neighborhood.directionCount) { Array(tileCount) { LongArray(wordCount) } }
+    private var widened: Array<BooleanArray>? = null
+    private var observed: Array<Array<LongArray>>? = null
 
     /**
      * Set the relative frequency of [tile]. Weights bias both which tile a collapse picks and the
@@ -700,9 +809,16 @@ class WfcRulesBuilder internal constructor(
      * Widening stays **symmetric**: saying "anything may sit east of `t`" also tells every one of
      * those tiles that `t` may sit to *their* west. Doing only half of that produces rules the
      * solver cannot enforce — see `widenEmptyMasksSymmetrically`.
+     *
+     * What it filled in is recorded, so the finished rules can still be asked what you actually
+     * authored: see [WfcRules.wasWidened] and [WfcRules.observedAllows].
      */
     fun allowMissingAnything() {
-        widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
+        if (observed == null) observed = copyAllowed(allowed)
+        val justWidened = widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
+        val soFar = widened
+        widened = if (soFar == null) justWidened
+        else Array(soFar.size) { d -> BooleanArray(tileCount) { t -> soFar[d][t] || justWidened[d][t] } }
     }
 
     private fun requireTile(tile: Int) {
@@ -713,6 +829,11 @@ class WfcRulesBuilder internal constructor(
 
     internal fun allowedSnapshot(): Array<Array<LongArray>> =
         Array(allowed.size) { d -> Array(tileCount) { t -> allowed[d][t].copyOf() } }
+
+    internal fun widenedSnapshot(): Array<BooleanArray>? =
+        widened?.let { w -> Array(w.size) { d -> w[d].copyOf() } }
+
+    internal fun observedSnapshot(): Array<Array<LongArray>>? = observed?.let { copyAllowed(it) }
 }
 
 /**
@@ -1135,6 +1256,139 @@ fun WfcSolver.solveWithRetries(maxAttempts: Int = 16, prepare: WfcSolver.() -> U
     }
 }
 
+/**
+ * Which symmetries of the square a learned pattern set should be closed under.
+ *
+ * WFC learns from *observed* windows, so it learns your source's orientation along with its content.
+ * That is right when the source has a real up — sky over soil, text, a tileset drawn with lighting
+ * from one side. It is wrong, and quite badly wrong, when the source is a sample of something with
+ * no preferred direction, because the model then reproduces whichever orientation the source
+ * happened to contain *most* of and tiles the plane with it.
+ *
+ * The classic symptom is in [`wfc_examples.md`](../wfc_examples.md) §7: a concentric island, sliced
+ * into 3×3 windows, generates horizontal stripes. Nothing is broken — the wide top and bottom of a
+ * concentric shape contribute far more "changes vertically, constant horizontally" windows than its
+ * narrow left and right edges contribute the reverse, so that is the arrangement the model believes
+ * in. Closing the pattern set under [All] takes the anisotropy from 7.7× to 1.0× and turns the
+ * stripes into plateaus and basins.
+ *
+ * Use [None] when up matters. Use [All] for heightfields, masks, noise, terrain — anything where a
+ * rotated copy of a legal arrangement is also legal. [Rotations] and [Reflections] are there for the
+ * in-between cases: a source with a mirror symmetry but a real up wants [Reflections] alone.
+ *
+ * The cost is pattern count, which drives both rule learning (every pattern is compared against
+ * every other) and the per-step entropy scan: on that same source, 180 patterns become 541 under
+ * [All]. It is not `×8` — variants that coincide are deduplicated, and a window that is already
+ * symmetric contributes nothing new.
+ *
+ * @see FloatOverlappingTileSet.expandSymmetry
+ * @see PngOverlappingTileSet.expandSymmetry
+ */
+enum class WfcSymmetry(
+    /** How many 90° rotations to include, 1 (identity only) or 4. */
+    internal val rotations: Int,
+    /** Whether each rotation also contributes its mirror image. */
+    internal val reflect: Boolean
+) {
+    /** Patterns exactly as observed. The default everywhere, and correct when the source has an up. */
+    None(1, false),
+
+    /** Each pattern plus its mirror image. For a source with left-right symmetry but a real up. */
+    Reflections(1, true),
+
+    /** Each pattern plus its three 90° rotations. */
+    Rotations(4, false),
+
+    /** The full symmetry group of the square: four rotations, each with its mirror. Eight variants. */
+    All(4, true);
+
+    /** How many variants of one pattern this generates, before deduplication. */
+    val variantCount: Int get() = rotations * (if (reflect) 2 else 1)
+}
+
+/** One 90° clockwise rotation of a square row-major pattern. */
+private fun rotatePatternInts(p: IntArray, n: Int): IntArray {
+    val out = IntArray(n * n)
+    for (y in 0 until n) for (x in 0 until n) out[(n - 1 - y) + x * n] = p[x + y * n]
+    return out
+}
+
+/** Mirror a row-major pattern left-to-right. Works for non-square patterns too. */
+private fun mirrorPatternInts(p: IntArray, w: Int, h: Int): IntArray {
+    val out = IntArray(w * h)
+    for (y in 0 until h) for (x in 0 until w) out[(w - 1 - x) + y * w] = p[x + y * w]
+    return out
+}
+
+private fun rotatePatternFloats(p: FloatArray, n: Int): FloatArray {
+    val out = FloatArray(n * n)
+    for (y in 0 until n) for (x in 0 until n) out[(n - 1 - y) + x * n] = p[x + y * n]
+    return out
+}
+
+private fun mirrorPatternFloats(p: FloatArray, w: Int, h: Int): FloatArray {
+    val out = FloatArray(w * h)
+    for (y in 0 until h) for (x in 0 until w) out[(w - 1 - x) + y * w] = p[x + y * w]
+    return out
+}
+
+/**
+ * The shared body of both `expandSymmetry` implementations, over an opaque pattern type.
+ *
+ * Kept generic because the only thing that differs between the int and float cases is how a pattern
+ * is rotated, mirrored and hashed — and getting the *weight* arithmetic wrong in two places
+ * independently is exactly the kind of thing that produces a subtly wrong model twice.
+ *
+ * Weight handling is the part worth stating. A pattern observed `k` times contributes `k / v` to
+ * each of its `v` variants, so the expansion is weight-preserving: the total stays `k`, and a
+ * pattern does not become eight times more likely merely because it has eight distinct orientations.
+ * Variants that coincide accumulate, which is why an already-symmetric window keeps its full weight
+ * instead of being diluted.
+ *
+ * @return the deduplicated variant list, its weights, and `oldId -> newId` for the identity variants
+ */
+private fun <P> expandPatternsUnderSymmetry(
+    patterns: Array<P>,
+    baseWeights: DoubleArray,
+    symmetry: WfcSymmetry,
+    rotate: (P) -> P,
+    mirror: (P) -> P,
+    key: (P) -> Any
+): Triple<List<P>, DoubleArray, IntArray> {
+    val index = HashMap<Any, Int>()
+    val out = ArrayList<P>()
+    val weights = ArrayList<Double>()
+    val remap = IntArray(patterns.size)
+
+    for (i in patterns.indices) {
+        val variants = ArrayList<P>(symmetry.variantCount)
+        var current = patterns[i]
+        var r = 0
+        while (r < symmetry.rotations) {
+            variants.add(current)
+            if (symmetry.reflect) variants.add(mirror(current))
+            current = rotate(current)
+            r++
+        }
+        val share = baseWeights[i] / variants.size
+        for ((v, variant) in variants.withIndex()) {
+            val k = key(variant)
+            val at = index[k]
+            if (at == null) {
+                index[k] = out.size
+                // The identity variant is always first, so this is where oldId lands.
+                if (v == 0) remap[i] = out.size
+                out.add(variant)
+                weights.add(share)
+            } else {
+                if (v == 0) remap[i] = at
+                weights[at] = weights[at] + share
+            }
+        }
+    }
+    return Triple(out, weights.toDoubleArray(), remap)
+}
+
 /** A fixed-size tile atlas extracted from a PNG. Pixels are ARGB ints. */
 class PngTileSet(
     val tileWidth: Int,
@@ -1185,12 +1439,26 @@ class PngOverlappingTileSet(
     val patterns: Array<IntArray>,
     val sampleIds: IntArray,
     val sampleWidthInPatterns: Int,
-    val sampleHeightInPatterns: Int
+    val sampleHeightInPatterns: Int,
+    /**
+     * Explicit per-pattern weights, or null to count occurrences in [sampleIds] as usual.
+     *
+     * Set by [expandSymmetry], whose extra variants were never *observed* anywhere in the sample and
+     * so have no occurrence count to derive a weight from — counting would hand every one of them a
+     * zero weight and quietly make them unchoosable.
+     */
+    val patternWeights: DoubleArray? = null
 ) {
     val tileCount: Int get() = patterns.size
 
-    fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules =
-        WfcRules.fromOverlappingIntPatterns(patterns, patternWidth, patternHeight, sampleIds, neighborhood)
+    fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules {
+        val rules = WfcRules.fromOverlappingIntPatterns(
+            patterns, patternWidth, patternHeight,
+            if (patternWeights == null) sampleIds else null, neighborhood
+        )
+        patternWeights?.let { it.copyInto(rules.weights) }
+        return rules
+    }
 
     fun render(
         patternIds: IntArray,
@@ -1378,12 +1646,20 @@ class FloatOverlappingTileSet(
     val patterns: Array<FloatArray>,
     val sampleIds: IntArray,
     val sampleWidthInPatterns: Int,
-    val sampleHeightInPatterns: Int
+    val sampleHeightInPatterns: Int,
+    /** Explicit per-pattern weights, or null to count occurrences in [sampleIds]; see [PngOverlappingTileSet.patternWeights]. */
+    val patternWeights: DoubleArray? = null
 ) {
     val tileCount: Int get() = patterns.size
 
-    fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules =
-        WfcRules.fromOverlappingFloatPatterns(patterns, patternWidth, patternHeight, sampleIds, neighborhood)
+    fun toRules(neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann): WfcRules {
+        val rules = WfcRules.fromOverlappingFloatPatterns(
+            patterns, patternWidth, patternHeight,
+            if (patternWeights == null) sampleIds else null, neighborhood
+        )
+        patternWeights?.let { it.copyInto(rules.weights) }
+        return rules
+    }
 
     fun render(
         patternIds: IntArray,
@@ -1511,6 +1787,61 @@ fun FloatArray.sliceIntoOverlappingPatterns2D(
     }
 
     return FloatOverlappingTileSet(patternWidth, patternHeight, prototypes.toTypedArray(), sampleIds, sw, sh)
+}
+
+/**
+ * Close this pattern set under [symmetry], so the model stops caring which way up the source was.
+ *
+ * Returns a **new** set whose patterns are the deduplicated orbit of the originals, with weights
+ * shared out so the expansion does not change how likely any observed arrangement is (see
+ * [WfcSymmetry] for what this is for and what it costs). `sampleIds` is remapped, so the returned
+ * set still renders and reports as the original did; [patternWeights] is populated, so [toRules]
+ * uses the shared-out weights rather than re-counting occurrences.
+ *
+ * ```
+ * val patterns = source.sliceIntoOverlappingPatterns2D(w, h, 3, 3)
+ *     .expandSymmetry(WfcSymmetry.All)      // <- terrain has no up
+ * ```
+ *
+ * Rotations require square patterns; reflections do not. [WfcSymmetry.None] returns `this`.
+ */
+fun FloatOverlappingTileSet.expandSymmetry(symmetry: WfcSymmetry): FloatOverlappingTileSet {
+    if (symmetry == WfcSymmetry.None) return this
+    require(symmetry.rotations == 1 || patternWidth == patternHeight) {
+        "${symmetry.name} needs square patterns to rotate, got ${patternWidth}x$patternHeight"
+    }
+    val base = patternWeights ?: weightsFromSampleIds(tileCount, sampleIds)
+    val (expanded, weights, remap) = expandPatternsUnderSymmetry(
+        patterns, base, symmetry,
+        rotate = { rotatePatternFloats(it, patternWidth) },
+        mirror = { mirrorPatternFloats(it, patternWidth, patternHeight) },
+        key = { FloatArrayKey(it) }
+    )
+    return FloatOverlappingTileSet(
+        patternWidth, patternHeight, expanded.toTypedArray(),
+        IntArray(sampleIds.size) { remap[sampleIds[it]] },
+        sampleWidthInPatterns, sampleHeightInPatterns, weights
+    )
+}
+
+/** [FloatOverlappingTileSet.expandSymmetry] for ARGB pattern sets; see its KDoc and [WfcSymmetry]. */
+fun PngOverlappingTileSet.expandSymmetry(symmetry: WfcSymmetry): PngOverlappingTileSet {
+    if (symmetry == WfcSymmetry.None) return this
+    require(symmetry.rotations == 1 || patternWidth == patternHeight) {
+        "${symmetry.name} needs square patterns to rotate, got ${patternWidth}x$patternHeight"
+    }
+    val base = patternWeights ?: weightsFromSampleIds(tileCount, sampleIds)
+    val (expanded, weights, remap) = expandPatternsUnderSymmetry(
+        patterns, base, symmetry,
+        rotate = { rotatePatternInts(it, patternWidth) },
+        mirror = { mirrorPatternInts(it, patternWidth, patternHeight) },
+        key = { IntArrayKey(it) }
+    )
+    return PngOverlappingTileSet(
+        patternWidth, patternHeight, expanded.toTypedArray(),
+        IntArray(sampleIds.size) { remap[sampleIds[it]] },
+        sampleWidthInPatterns, sampleHeightInPatterns, weights
+    )
 }
 
 private class IntArrayKey(private val data: IntArray) {

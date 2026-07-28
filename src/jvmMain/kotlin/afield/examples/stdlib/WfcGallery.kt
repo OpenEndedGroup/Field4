@@ -1,5 +1,6 @@
 package afield.examples.stdlib
 
+import afield.stdlib.FloatOverlappingTileSet
 import afield.stdlib.Img
 import afield.stdlib.PngTileSet
 import afield.stdlib.WFC_EAST
@@ -8,6 +9,8 @@ import afield.stdlib.WfcNeighborhood
 import afield.stdlib.WfcRules
 import afield.stdlib.WfcSolver
 import afield.stdlib.WfcStatus
+import afield.stdlib.WfcSymmetry
+import afield.stdlib.expandSymmetry
 import afield.stdlib.colormap
 import afield.stdlib.floatsToImg
 import afield.stdlib.gaussianBlur
@@ -359,6 +362,115 @@ object WfcGallery {
         if (asymmetry == null) println("[wfc-gallery] ok  $label: adjacency relation is symmetric")
     }
 
+    /**
+     * The stronger form of [checkOutputSatisfiesRules]: every adjacent pair must be a pair the
+     * *sample actually contained*, not merely one the widened table permits.
+     *
+     * These come apart exactly when [WfcRules.fromSampleGrid]'s fallback fires, and then they come
+     * apart badly — see [WfcRules.observedAllows]. Asserting the weak form against a widened model
+     * is close to asserting nothing, because widening a single mask makes that whole row legal.
+     * A learned model should satisfy this; [maxInvented] exists only so a figure that deliberately
+     * relies on the fallback can say so out loud rather than quietly passing the weak check.
+     */
+    fun checkOutputUsesObservedPairsOnly(
+        label: String,
+        rules: WfcRules,
+        grid: IntArray,
+        w: Int,
+        h: Int,
+        maxInvented: Int = 0
+    ) {
+        var invented = 0
+        var firstDetail = ""
+        for (y in 0 until h) for (x in 0 until w) {
+            val a = grid[x + y * w]
+            for (d in 0 until rules.neighborhood.directionCount) {
+                val off = rules.neighborhood.offset(d)
+                val nx = x + off.dx
+                val ny = y + off.dy
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue
+                val b = grid[nx + ny * w]
+                if (!rules.observedAllows(d, a, b)) {
+                    if (invented == 0) {
+                        firstDetail = "tile $a at ($x, $y) sits beside $b at ($nx, $ny) in direction $d, " +
+                            "a pair the sample never contained"
+                    }
+                    invented++
+                }
+            }
+        }
+        check(
+            invented <= maxInvented,
+            "$label: $invented adjacent pair(s) exist only because of the widening fallback " +
+                "(allowed at most $maxInvented) — $firstDetail"
+        )
+        val (observedPairs, inventedPairs) = rules.observedAndInventedPairCounts()
+        println(
+            "[wfc-gallery] ok  $label: $invented output pair(s) unobserved (limit $maxInvented); " +
+                "rule table is $observedPairs observed + $inventedPairs invented, " +
+                "${rules.widenedMaskCount} widened mask(s)"
+        )
+    }
+
+    /**
+     * The widening fallback, measured across disjoint tile sizes — the axis nothing else covers.
+     *
+     * Every learned figure on the page uses one tile per terrain band, where no mask is ever empty
+     * and the fallback never fires. Step up to 2x2 tiles and most tiles are seen once, at a sample
+     * edge, and the fallback invents the majority of the adjacency table. This pins both ends of
+     * that so the page's claim about it cannot rot: 1x1 must be pure evidence, and 2x2 must still
+     * be mostly invention (if that ever stops being true the fallback has been changed and the
+     * page's numbers need rewriting).
+     */
+    private fun checkWideningAudit() {
+        val sw = 26
+        val sh = 18
+        val source = terrainTiledImg(sw, sh)
+
+        val oneByOne = source.toBufferedImage().sliceIntoUniqueTiles(8, 8).toRules()
+        val (obs1, inv1) = oneByOne.observedAndInventedPairCounts()
+        check(
+            oneByOne.widenedMaskCount == 0 && inv1 == 0,
+            "widening audit: one tile per band should need no widening, got " +
+                "${oneByOne.widenedMaskCount} widened mask(s) and $inv1 invented pair(s)"
+        )
+        println("[wfc-gallery] ok  widening audit: 1x1 tiles -> $obs1 observed pairs, 0 invented")
+
+        // 16x16 pixels per cell = a 2x2 block of the 8x8 terrain tiles.
+        val twoByTwo = source.toBufferedImage().sliceIntoUniqueTiles(16, 16).toRules()
+        val (obs2, inv2) = twoByTwo.observedAndInventedPairCounts()
+        check(
+            twoByTwo.widenedMaskCount > 0 && inv2 > obs2,
+            "widening audit: 2x2 tiles should be mostly invented adjacency, got " +
+                "${twoByTwo.widenedMaskCount} widened mask(s), $obs2 observed vs $inv2 invented"
+        )
+        // ... and the fallback must not have broken the invariant the solver depends on.
+        checkSymmetric("widening audit (2x2 tiles)", twoByTwo)
+        println(
+            "[wfc-gallery] ok  widening audit: 2x2 tiles -> ${twoByTwo.tileCount} tiles, " +
+                "${twoByTwo.widenedMaskCount} widened mask(s), $obs2 observed + $inv2 invented pairs " +
+                "(${100 * inv2 / (obs2 + inv2)}% of the table)"
+        )
+
+        // Hand-authored rules record it too, so `allowMissingAnything()` is auditable after the fact.
+        val authored = wfcRules(tileCount = 3) {
+            allow(WFC_EAST, 0, 1)
+            allow(WFC_SOUTH, 0, 1)
+        }
+        check(authored.widenedMaskCount == 0, "widening audit: hand-authored rules must not widen by default")
+        val relaxed = wfcRules(tileCount = 3) {
+            allow(WFC_EAST, 0, 1)
+            allow(WFC_SOUTH, 0, 1)
+            allowMissingAnything()
+        }
+        check(relaxed.widenedMaskCount > 0, "widening audit: allowMissingAnything() did not record what it widened")
+        check(
+            relaxed.observedAllows(WFC_EAST, 0, 1) && !relaxed.observedAllows(WFC_EAST, 1, 0),
+            "widening audit: observedAllows should keep the authored pair and reject the invented one"
+        )
+        println("[wfc-gallery] ok  widening audit: allowMissingAnything() recorded ${relaxed.widenedMaskCount} widened mask(s)")
+    }
+
     /** The unordered set of terrain pairs that touch (east or south) in a terrain grid. */
     fun terrainPairs(terrain: IntArray, w: Int, h: Int): Set<Pair<Int, Int>> {
         val pairs = HashSet<Pair<Int, Int>>()
@@ -474,6 +586,8 @@ object WfcGallery {
             check(outcome.solved, "$label: not solved after ${outcome.attempts} attempts")
             val grid = solver.resolvedTileGridOrNull() ?: return null
             checkOutputSatisfiesRules(label, model, grid, w, h)
+            // One tile per band, so nothing is widened and the strong form must hold exactly.
+            checkOutputUsesObservedPairsOnly(label, model, grid, w, h)
             checkStructureReused(label, source = map, sw = sw, sh = sh,
                 output = IntArray(grid.size) { terrainOfId[grid[it]] }, ow = w, oh = h)
             return grid
@@ -515,6 +629,121 @@ object WfcGallery {
             columns = 1,
             cellSide = 700
         ).savePng(File(outDir, "wfc-simple-tiled.png").absolutePath)
+    }
+
+    /** Fraction of 4-adjacent cell pairs that hold the same value — "how blobby is this". */
+    fun coherence(grid: IntArray, w: Int, h: Int): Double {
+        var same = 0
+        var total = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            if (x + 1 < w) { total++; if (grid[x + y * w] == grid[x + 1 + y * w]) same++ }
+            if (y + 1 < h) { total++; if (grid[x + y * w] == grid[x + (y + 1) * w]) same++ }
+        }
+        return same.toDouble() / total
+    }
+
+    /**
+     * The section-2 payoff: the *same* terrain source the 1x1 model turned to speckle, read by the
+     * overlapping model, which reproduces the source's coastline grammar across every seed.
+     *
+     * What this asserts is the page's claim, which is deliberately narrower than "it looks like the
+     * source". The output is not an island and cannot be — an island is global composition and the
+     * model has no representation of it. What the model *does* hold is the source's local language:
+     * bands in chain order, a sand fringe between land and water, forest interior to grass. So the
+     * checks are (a) every seed solves, (b) every adjacent pair is one the source contained, and
+     * (c) the result is materially more coherent than the 1x1 model on the same source — which is
+     * the difference between "correct speckle" and "a coastline".
+     *
+     * It also pins the reason the figure is unpinned. A uniform 3x3 window of a band thinner than
+     * three cells can only ever be followed by itself, so pinning one propagates it across the whole
+     * grid and any second pin is an instant contradiction. That is why section 2 shows this model
+     * free rather than with a ground constraint, and it is checkable via [WfcRules.allowedCount].
+     */
+    private fun figureTerrainOverlapping(outDir: File) {
+        val sw = 26
+        val sh = 18
+        val source = terrainPixelImg(sw, sh)
+        val map = terrainMap(sw, sh)
+        val patterns = source.toBufferedImage().sliceIntoOverlappingPatterns(3, 3, wrapX = false, wrapY = false)
+        val rules = patterns.toRules()
+        checkSymmetric("terrain overlapping", rules)
+        check(patterns.tileCount > 100, "terrain overlapping: expected a rich 3x3 pattern set, got ${patterns.tileCount}")
+
+        // The uniform-window trap, stated as a number rather than as a story. The deep band is
+        // thinner than three cells almost everywhere, so no window has two full deep columns and a
+        // non-deep third — leaving the all-deep window with itself as its only southward successor.
+        val uniformDeep = (0 until patterns.tileCount)
+            .first { id -> patterns.patterns[id].all { it == TERRAIN_COLORS[DEEP] } }
+        val southward = rules.allowedCount(WFC_SOUTH, uniformDeep)
+        check(
+            southward == 1,
+            "terrain overlapping: the all-deep 3x3 window has $southward southward successor(s); " +
+                "the page says it has exactly one (itself), which is why pinning it floods the grid"
+        )
+        println(
+            "[wfc-gallery] ok  terrain overlapping: all-deep window #$uniformDeep may be followed by " +
+                "$southward tile southward — pinning it would flood the output"
+        )
+
+        // The band a pattern stands for is the band of its origin pixel.
+        val bandOfPattern = IntArray(patterns.tileCount) { id ->
+            val argb = patterns.patterns[id][0]
+            TERRAIN_COLORS.indexOfFirst { it == argb }
+        }
+        check(bandOfPattern.none { it < 0 }, "terrain overlapping: a pattern's origin pixel is not a terrain colour")
+
+        val w = 40
+        val h = 26
+        val seeds = longArrayOf(1, 3, 5, 7, 9, 11, 12, 17, 23, 42, 101, 2026)
+        val panels = ArrayList<Pair<String, Img>>()
+        var coherenceSum = 0.0
+        var firstAttemptCount = 0
+
+        for (seed in seeds) {
+            val solver = WfcSolver(w, h, rules, seed = seed)
+            val outcome = solver.solveWithRetries(maxAttempts = 30)
+            check(outcome.solved, "terrain overlapping seed $seed: not solved after ${outcome.attempts} attempts")
+            if (outcome.attempts == 1) firstAttemptCount++
+            val grid = solver.resolvedTileGridOrNull() ?: continue
+            checkOutputSatisfiesRules("terrain overlapping seed $seed", rules, grid, w, h)
+            // The overlapping model never widens, so the strong form is exact here.
+            checkOutputUsesObservedPairsOnly("terrain overlapping seed $seed", rules, grid, w, h)
+            val terrain = IntArray(grid.size) { bandOfPattern[grid[it]] }
+            checkStructureReused("terrain overlapping seed $seed", map, sw, sh, terrain, w, h)
+            coherenceSum += coherence(terrain, w, h)
+            panels.add("seed $seed" to patterns.toImg(grid, w, h).upscaleNearest(6))
+        }
+        check(panels.size == seeds.size, "terrain overlapping: only ${panels.size} of ${seeds.size} seeds produced a figure")
+
+        // The comparison the section is built on: the same source, one tile per band, is speckle.
+        val flatTiles = terrainTiledImg(sw, sh).toBufferedImage().sliceIntoUniqueTiles(8, 8)
+        val flatSolver = WfcSolver(w, h, flatTiles.toRules(), seed = 12L)
+        check(flatSolver.solveWithRetries(maxAttempts = 30).solved, "terrain overlapping: the 1x1 baseline did not solve")
+        val flatGrid = flatSolver.resolvedTileGridOrNull() ?: return
+        val flatCoherence = coherence(flatGrid, w, h)
+        val meanCoherence = coherenceSum / panels.size
+        val sourceCoherence = coherence(map, sw, sh)
+        check(
+            meanCoherence > flatCoherence * 1.5,
+            "terrain overlapping: mean coherence ${"%.3f".format(meanCoherence)} is not materially above " +
+                "the 1x1 model's ${"%.3f".format(flatCoherence)} — the section's whole claim"
+        )
+        check(
+            meanCoherence > sourceCoherence,
+            "terrain overlapping: mean coherence ${"%.3f".format(meanCoherence)} fell below the source's " +
+                "${"%.3f".format(sourceCoherence)}; the page claims it reaches or exceeds it"
+        )
+        println(
+            "[wfc-gallery] ok  terrain overlapping: ${panels.size}/${seeds.size} seeds solved " +
+                "($firstAttemptCount on the first attempt), mean coherence ${"%.3f".format(meanCoherence)} " +
+                "vs source ${"%.3f".format(sourceCoherence)} vs 1x1 ${"%.3f".format(flatCoherence)}"
+        )
+
+        montage(
+            listOf("source ${sw}x$sh, ${patterns.tileCount} 3x3 patterns" to source.upscaleNearest(6)) + panels,
+            columns = 4,
+            cellSide = 330
+        ).savePng(File(outDir, "wfc-terrain-overlapping.png").absolutePath)
     }
 
     /**
@@ -816,6 +1045,66 @@ object WfcGallery {
             "scalar: a uniformly-lowest 3x3 window exists, so the page's note about it is wrong"
         )
 
+        // The section's payoff: the same 3x3 pattern set, closed under the symmetries of the square.
+        // The banding is an artefact of the source's orientation statistics, so removing orientation
+        // from the model should remove the banding -- and this asserts that it does, in the same
+        // roughness numbers the banding was diagnosed with.
+        val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
+        val symmetricRules = symmetric.toRules()
+        checkSymmetric("scalar 3x3 + D4", symmetricRules)
+        check(
+            symmetric.tileCount > patterns.tileCount,
+            "scalar 3x3 + D4: expansion produced no new patterns (${symmetric.tileCount})"
+        )
+        // Weight-preserving: sharing a pattern's weight across its orbit must not change the total.
+        val beforeTotal = (0 until patterns.tileCount).sumOf { patterns.toRules().weights[it] }
+        val afterTotal = symmetric.patternWeights!!.sum()
+        check(
+            kotlin.math.abs(beforeTotal - afterTotal) < 1e-6,
+            "scalar 3x3 + D4: expansion changed total weight from $beforeTotal to $afterTotal"
+        )
+
+        // Isotropy has to be measured over an ENSEMBLE, not one output, and the distinction is not
+        // pedantic -- it is the difference between two opposite conclusions. Averaging horizontal
+        // and vertical roughness across seeds and then dividing tells you whether the model has a
+        // systematic preferred direction. Taking the ratio per output and then averaging tells you
+        // whether any single output is directionless. The first number is the one D4 fixes; the
+        // second stays near the source's own anisotropy, because a heightfield with no local grain
+        // at all is not the goal and is not what the source looks like either.
+        fun ensembleRoughness(rules: WfcRules, set: FloatOverlappingTileSet, seeds: LongArray):
+            Triple<Double, Double, List<Double>> {
+            var hSum = 0.0
+            var vSum = 0.0
+            val perSeed = ArrayList<Double>()
+            for (seed in seeds) {
+                val s = WfcSolver(w, h, rules, seed = seed)
+                val outcome = s.solveWithRetries(maxAttempts = 30)
+                check(outcome.solved, "scalar ensemble seed $seed: not solved after ${outcome.attempts} attempts")
+                val g = s.resolvedTileGridOrNull() ?: continue
+                checkOutputSatisfiesRules("scalar ensemble seed $seed", rules, g, w, h)
+                val (rh, rv) = roughness(set.render(g, w, h), w, h)
+                hSum += rh
+                vSum += rv
+                perSeed.add(maxOf(rh, rv) / maxOf(1e-6, minOf(rh, rv)))
+            }
+            return Triple(hSum / seeds.size, vSum / seeds.size, perSeed.sorted())
+        }
+
+        val ensembleSeeds = longArrayOf(1, 3, 5, 7, 9, 11, 17, 23)
+        val (plainEH, plainEV, plainPerSeed) = ensembleRoughness(patternRules, patterns, ensembleSeeds)
+        val (symEH, symEV, symPerSeed) = ensembleRoughness(symmetricRules, symmetric, ensembleSeeds)
+        val plainEnsemble = maxOf(plainEH, plainEV) / maxOf(1e-6, minOf(plainEH, plainEV))
+        val symEnsemble = maxOf(symEH, symEV) / maxOf(1e-6, minOf(symEH, symEV))
+        val plainMedian = plainPerSeed[plainPerSeed.size / 2]
+        val symMedian = symPerSeed[symPerSeed.size / 2]
+
+        val symSolver = WfcSolver(w, h, symmetricRules, seed = 5L)
+        val symOutcome = symSolver.solveWithRetries(maxAttempts = 30)
+        check(symOutcome.solved, "scalar 3x3 + D4: not solved after ${symOutcome.attempts} attempts")
+        val symGrid = symSolver.resolvedTileGridOrNull() ?: return
+        checkOutputSatisfiesRules("scalar 3x3 + D4", symmetricRules, symGrid, w, h)
+        val symHeights = symmetric.render(symGrid, w, h)
+
         val tiledSolver = WfcSolver(w, h, tileRules, seed = 5L)
         val tiledOutcome = tiledSolver.solveWithRetries(maxAttempts = 30) {
             for (x in 0 until w) { forceTile(x, 0, lowestTile); forceTile(x, h - 1, lowestTile) }
@@ -853,11 +1142,51 @@ object WfcGallery {
             "[wfc-gallery] ok  scalar: 1x1 roughness h=${"%.3f".format(tiledH)} v=${"%.3f".format(tiledV)}; " +
                 "3x3 h=${"%.3f".format(patternH)} v=${"%.3f".format(patternV)} (horizontally banded)"
         )
+
+        // The page's two claims about D4, asserted as the two different measurements they are.
+        //
+        // 1. The systematic bias goes away. This is the real effect and it is large.
+        check(
+            plainEnsemble > 4.0,
+            "scalar: the unexpanded 3x3 model shows only ${"%.1f".format(plainEnsemble)}x ensemble " +
+                "anisotropy; the page's whole diagnosis assumes it is strongly and consistently banded"
+        )
+        check(
+            symEnsemble < 2.0,
+            "scalar 3x3 + D4: expected the systematic direction preference to be gone, got " +
+                "${"%.1f".format(symEnsemble)}x across ${ensembleSeeds.size} seeds"
+        )
+        // 2. Individual outputs keep a local grain, at roughly the source's own level. The page says
+        //    so explicitly, so the day that stops being true the page is wrong and should fail.
+        val (sourceH, sourceV) = roughness(source, sw, sh)
+        val sourceRatio = maxOf(sourceH, sourceV) / maxOf(1e-6, minOf(sourceH, sourceV))
+        check(
+            symMedian < plainMedian / 3.0,
+            "scalar 3x3 + D4: per-output anisotropy barely improved (${"%.1f".format(plainMedian)}x -> " +
+                "${"%.1f".format(symMedian)}x median)"
+        )
+        check(
+            symMedian in 1.2..(sourceRatio * 2.0),
+            "scalar 3x3 + D4: per-output anisotropy ${"%.1f".format(symMedian)}x is outside the range the " +
+                "page claims — around the source's own ${"%.1f".format(sourceRatio)}x, neither flat nor banded"
+        )
+        val (symH, symV) = roughness(symHeights, w, h)
+        check(
+            symH > 0.02 && symV > 0.02,
+            "scalar 3x3 + D4: output is too flat to be terrain (h=${"%.3f".format(symH)} v=${"%.3f".format(symV)})"
+        )
+        println(
+            "[wfc-gallery] ok  scalar: D4 expansion ${patterns.tileCount} -> ${symmetric.tileCount} patterns; " +
+                "ensemble anisotropy ${"%.1f".format(plainEnsemble)}x -> ${"%.1f".format(symEnsemble)}x, " +
+                "per-output median ${"%.1f".format(plainMedian)}x -> ${"%.1f".format(symMedian)}x " +
+                "(source ${"%.1f".format(sourceRatio)}x)"
+        )
         println("[wfc-gallery] ok  scalar: ${patterns.tileCount} 3x3 value patterns; " +
             "means ${"%.2f".format(tiledHeights.average())} vs ${"%.2f".format(patternHeights.average())}")
 
-        // The FLine bridge the section exists for.
-        val contours = floatsToImg(patternHeights, w, h).gaussianBlur(1.2).isoContourFLines(0.35)
+        // The FLine bridge the section exists for -- taken off the D4 field, which is the one the
+        // page now ends on and the only one whose contours are worth extracting.
+        val contours = floatsToImg(symHeights, w, h).gaussianBlur(1.2).isoContourFLines(0.35)
         check(contours.isNotEmpty(), "scalar: no iso-contours extracted from the synthesised field")
         println("[wfc-gallery] ok  scalar: ${contours.size} iso-contour FLine(s) at 0.35")
 
@@ -865,7 +1194,8 @@ object WfcGallery {
             listOf(
                 "source ${sw}x$sh, $levels levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(4),
                 "1x1 tiles, border pinned" to floatsToImg(tiledHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3),
-                "3x3 value patterns" to floatsToImg(patternHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3)
+                "3x3 value patterns" to floatsToImg(patternHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3),
+                "3x3 + D4 symmetry" to floatsToImg(symHeights, w, h).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(3)
             ),
             columns = 1,
             cellSide = 640
@@ -935,8 +1265,10 @@ object WfcGallery {
         )
         outDir.mkdirs()
 
+        checkWideningAudit()
         figureCircuit(outDir)
         figureSimpleTiled(outDir)
+        figureTerrainOverlapping(outDir)
         figureOverlapping(outDir)
         figureNeighborhood(outDir)
         figureCollapse(outDir)

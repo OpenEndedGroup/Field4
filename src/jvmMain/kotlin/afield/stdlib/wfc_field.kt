@@ -621,22 +621,43 @@ fun wfcSolverHtml(solver: WfcSolver): String {
                 "colour = the tile a cell settled on, a stable hue per id, <i>not</i> the tileset's own " +
                     "colours: $tileNames &middot; dark grey = still undecided"
             )
-        ).joinToString("\n")
+        )
     } catch (t: Throwable) {
-        "<div style=\"$WFC_NOTE_STYLE\">view unavailable: $t</div>"
+        listOf("<div style=\"$WFC_NOTE_STYLE\">view unavailable: $t</div>")
     }
 
     return """
         <div style="font-family:monospace;font-size:11px;line-height:1.4">
           $header
-          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
-        $panels
-          </div>
+        ${wfcPanelGridHtml(panels)}
         </div>
     """.trimIndent()
 }
 
 private const val WFC_NOTE_STYLE = "color:#8a90a0;margin-top:3px"
+
+/**
+ * The panel container: a grid of a **fixed** column count, deliberately not `flex-wrap`.
+ *
+ * A box sizes an HTML output by measuring the fragment's laid-out extent, and a wrapping flex row
+ * makes that measurement depend on the width it happened to be measured at. Measure three panels
+ * somewhere narrow enough to fit two and the container reports the height of two rows; render it
+ * wide and you get one row of panels above an equal expanse of empty black, which is what both
+ * `wfc_examples.md` figures used to show. A fixed column count has the same height at every width,
+ * so there is nothing to get stale.
+ *
+ * Capped at three so a many-direction rule set still wraps onto further rows instead of growing one
+ * enormous line; the wrapping is just done by the grid, at a point that does not depend on layout.
+ */
+private fun wfcPanelGridHtml(panels: List<String>): String {
+    val columns = panels.size.coerceIn(1, 3)
+    return """
+        <div style="display:grid;grid-template-columns:repeat($columns, max-content);
+                    gap:10px;margin-top:5px;justify-content:start;align-items:start">
+        ${panels.joinToString("\n")}
+        </div>
+    """.trimIndent()
+}
 
 /** Format a scale endpoint: integer counts as integers, entropies to three places. */
 private fun wfcNum(v: Float): String =
@@ -734,6 +755,19 @@ const val WFC_ALLOWED_COLOR: Int = 0x21908C
 /** Packed `0xRRGGBB` for a disallowed pair — the same near-black as an undecided cell. */
 const val WFC_DISALLOWED_COLOR: Int = WFC_UNDECIDED_COLOR
 
+/**
+ * Packed `0xRRGGBB` for a pair that is allowed but was never *observed* — amber.
+ *
+ * A pair the widening fallback invented is legal as far as the solver is concerned and is not
+ * evidence of anything as far as the sample is concerned, and those are different enough to be
+ * different colours. Amber because it has to be outside both of the other two categories at once:
+ * [WFC_ALLOWED_COLOR] teal, which it would otherwise be indistinguishable from, and
+ * [WFC_CONTRADICTION_COLOR] magenta, which means the opposite thing (a mask with *nothing* in it).
+ * Before this existed, widening turned an alarming all-magenta row into a reassuring all-teal one
+ * and the picture said the problem had been fixed rather than papered over.
+ */
+const val WFC_WIDENED_COLOR: Int = 0xE0A33A
+
 /** How many direction matrices [wfcRulesHtml] draws before it stops and says how many it skipped. */
 private const val WFC_MAX_RULE_PANELS = 8
 
@@ -745,6 +779,11 @@ private const val WFC_MAX_RULE_PANELS = 8
  * whole row in [WFC_CONTRADICTION_COLOR] when tile `a` has **no** legal neighbour in this direction
  * — an empty mask, which is a contradiction waiting for that tile to be placed rather than a merely
  * strict rule.
+ *
+ * A pair that is allowed only because the widening fallback invented it is [WFC_WIDENED_COLOR]
+ * amber rather than teal — see [WfcRules.observedAllows]. That is the difference between a rule the
+ * sample taught and a rule the fallback assumed, and on anything but the smallest tile alphabet the
+ * second can outnumber the first several times over.
  */
 fun WfcRules.adjacencyImg(direction: Int): Img {
     require(direction in 0 until neighborhood.directionCount) {
@@ -757,8 +796,9 @@ fun WfcRules.adjacencyImg(direction: Int): Img {
         for (b in 0 until n) {
             val packed = when {
                 empty -> WFC_CONTRADICTION_COLOR
-                allows(direction, a, b) -> WFC_ALLOWED_COLOR
-                else -> WFC_DISALLOWED_COLOR
+                !allows(direction, a, b) -> WFC_DISALLOWED_COLOR
+                observedAllows(direction, a, b) -> WFC_ALLOWED_COLOR
+                else -> WFC_WIDENED_COLOR
             }
             writePacked(out, (a * n + b) * 3, packed)
         }
@@ -824,21 +864,39 @@ fun wfcRulesHtml(rules: WfcRules): String {
         parts += "<b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">$zeroWeights tile" +
             "${wfcS(zeroWeights)} of weight 0</b> (can never be chosen)"
     }
+    // The widening fallback is the one of the three that leaves no trace in the picture unless it
+    // is named: after it fires, the mask it filled looks like any other permissive rule.
+    val widenedMasks = rules.widenedMaskCount
+    if (widenedMasks > 0) {
+        val (observedPairs, inventedPairs) = rules.observedAndInventedPairCounts()
+        val share = if (observedPairs + inventedPairs == 0) 0
+        else 100 * inventedPairs / (observedPairs + inventedPairs)
+        parts += "<b style=\"color:#${"%06x".format(WFC_WIDENED_COLOR)}\">$widenedMasks widened mask" +
+            "${wfcS(widenedMasks)}</b> &rarr; $observedPairs observed + $inventedPairs invented pair" +
+            "${wfcS(inventedPairs)} ($share% of the table)"
+    }
     val header = "<div style=\"color:#c8cee0\">${parts.joinToString(" &middot; ")}</div>"
 
     val panels = try {
         val matrices = (0 until shown).map { d ->
             val offset = rules.neighborhood.offset(d)
+            val hasEmptyRow = (0 until n).any { rules.allowedCount(d, it) == 0 }
+            val hasInvented = (0 until n).any { a ->
+                (0 until n).any { b -> rules.allows(d, a, b) && !rules.observedAllows(d, a, b) }
+            }
+            val emptyNote = if (!hasEmptyRow) "" else
+                " &middot; a fully <b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">magenta</b>" +
+                    " row is an empty mask"
+            val widenedNote = if (!hasInvented) "" else
+                " &middot; <b style=\"color:#${"%06x".format(WFC_WIDENED_COLOR)}\">amber</b> = allowed but never" +
+                    " observed, invented by the widening fallback"
             wfcPanelHtml(
                 rules.adjacencyImg(d),
                 "direction $d (${offset.dx}, ${offset.dy})",
                 null,
                 "row = tile, column = the neighbour that may sit at (${offset.dx}, ${offset.dy}) from it &middot; " +
                     "<b style=\"color:#${"%06x".format(WFC_ALLOWED_COLOR)}\">teal</b> = allowed, dark = not" +
-                    if ((0 until n).any { rules.allowedCount(d, it) == 0 }) {
-                        " &middot; a fully <b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">magenta</b>" +
-                            " row is an empty mask"
-                    } else ""
+                    emptyNote + widenedNote
             )
         }
         val w = rules.weightsImg()
@@ -865,9 +923,7 @@ fun wfcRulesHtml(rules: WfcRules): String {
     return """
         <div style="font-family:monospace;font-size:11px;line-height:1.4">
           $header
-          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
-        ${panels.joinToString("\n")}
-          </div>
+        ${wfcPanelGridHtml(panels)}
           $skipped
         </div>
     """.trimIndent()
