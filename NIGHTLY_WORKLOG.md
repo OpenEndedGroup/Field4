@@ -212,6 +212,24 @@ The third pass (`b35fe91c`) covered `shaders.kt`, `stacksl.kt`, `linalg.kt`, `st
   and fails, two commits after `86edb81b` made null mean "leave this value alone" — with the code's own
   inline comment saying the opposite of the KDoc six lines above it.
 
+A fourth pass (`0b72639c`) took the files none of the others reached — `interactionnets.kt`,
+`FileManager.kt`, `saved.kt`, `plotly.kt`, and `jsonparsing.kt` / `props.kt`, which came back clean
+claim-by-claim. Three more code defects, and the first of them is the sharpest illustration of the
+whole night:
+
+- `PairContext.axis` promised "(1, 0) for a coincident pair rather than being NaN" and the guard read
+  `if (max(delta.length(), 0.0001f) < 1e-4f)` — **the floor compared against itself**, so the fallback
+  was unreachable and a coincident pair normalised a zero vector into `(NaN, NaN)`. Reachable from the
+  file's own documented usage, because `NetBuilder.node`'s `at` defaults to the origin. Proving it took
+  three attempts: the beta rule computes the NaN and never uses it, so the test only discriminates once
+  it fires a *duplication* rule, which is the one that throws its new nodes apart with
+  `branchImpulse`. Pre-fix: "node rootL came out of the rewrite with velocity ((NaN, NaN))".
+- `saved.kt` promised atomic writes in three places and passed `File.safeSave`'s default
+  `atomic = false` at both call sites — and the non-atomic path *renames the existing file away* before
+  writing, so an interruption left nothing at the path at all. Both call sites now pass `atomic = true`.
+- The three rule-builder `node(name, …)` overloads each `require`d a unique name against an
+  identity-keyed `NodeRef`, so the check never fired and three `@throws` clauses were false.
+
 `imgFromFile`'s inline `@param` (`9bfbbd9f`) was the only KDoc in `afield.stdlib` /
 `afield.visualization` publishing a block tag as prose; a scan also confirmed no block *starts* with a
 tag, which would publish an empty summary while the worklist called the symbol undocumented.
@@ -221,9 +239,9 @@ tag, which would publish an empty summary while the worklist called the symbol u
 Verified:
 
 - `./gradlew compileKotlinJvm compileTestKotlinJvm` — green, no new warnings.
-- `./gradlew jvmTest` — **513 tests, 0 failures** (501 on the base; 12 new). Every new case was
+- `./gradlew jvmTest` — **514 tests, 0 failures** (501 on the base; 13 new). Every new case was
   watched failing on the pre-fix code first, with the failure text recorded: "got NaN", "got [0.75,
-  0.7425]", "measured 1.000000× (quiet peak 0.7389438601763199, loud peak 0.73894386017632)",
+  0.7425]", "node rootL came out of the rewrite with velocity ((NaN, NaN))", "measured 1.000000× (quiet peak 0.7389438601763199, loud peak 0.73894386017632)",
   "sampleZeroCrossings said 0.75", "expected 5 unit slots, domain was Domain(0..4)", "got
   0.03333333333333333", "point (0.0, 0.0, 0.0) is NaN along axis 0".
 - `./gradlew checkKDocAttachment` — **32 findings → 0**, over 625 files and 6767 blocks, plus a
@@ -261,7 +279,8 @@ Not verified, honestly:
 - `deflateCovariance`'s unscaled deflation is now described accurately but not fixed; a proper
   `λ·vvᵀ` deflation would change which minor axis is which for some clouds and I had no way to
   validate that visually tonight.
-- Roughly two thirds of the campaign's 1550 blocks have now been read against the code. The unread
+- Every file the campaign touched has now had at least one pass over it, but "a pass" is not "every
+  block": roughly two thirds of the 1550 blocks have been read against the code. The unread
   remainder is mostly `Functions.kt`'s prose (the numeric claims in it *were* probed),
   `FunctionGraphBrowser.kt`, `numpy`/`timeseries` beyond what the passes covered, and `keyframer.kt`'s
   HTML rendering.
