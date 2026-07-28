@@ -27,7 +27,7 @@ you drew by hand.
 
 ## The value type
 
-```
+```diffstatic {data-lang=kotlin}
 TriMesh(positions, indices, normals = null, uvs = null, colors = null)
 ```
 
@@ -357,7 +357,7 @@ minimum angle is where that shows up first.
 and the crease set is correctly empty, while on a faceted or CSG solid the creases are exactly the
 silhouette you would have drawn by hand. Once you have `FLine`s, everything else in Field applies:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 lines(mesh.toFLines(MeshLines.CREASES, creaseAngleDegrees = 30.0))
 ```
 
@@ -442,7 +442,7 @@ The global check is **Gauss–Bonnet**: the integral of Gaussian curvature over 
 exactly 2πχ. No local sign error or area-weighting bug survives it, which makes it the single best
 assertion to put in a test.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val k = mesh.gaussianCurvature()
 val areas = mesh.mixedVertexAreas()
 val total = (0 until mesh.vertexCount).sumOf { k[it] * areas[it] }   // == 2 * PI * chi
@@ -469,7 +469,7 @@ must sum to the box's own volume.
 
 ![48 Voronoi cells as solids, the interior cells shrunk to 0.6 and exploded into separate crystals](assets/mesh_gallery/08-voronoi-bridge.png)
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val lattice = Voronoi3d.build(sites, clipPadding = 0.15f)
 val total = lattice.cells.sumOf { abs(it.toTriMesh(shrink = 1.0).signedVolume()) }
 // total agrees with the clip box's volume to ~1e-8 relative

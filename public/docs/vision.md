@@ -79,7 +79,7 @@ A program has three explicit parts, in three places:
 | **geometry** | `geometry { … }` in the box's Kotlin, which runs *in the headset* |
 | **uniforms** | the `uniforms=` list on the box's `// {{ visionmetal }}` marker |
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 // {{ visionmetal uniforms=phase,amount,tint }}
 onStart {
     geometry {

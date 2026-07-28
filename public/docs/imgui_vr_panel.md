@@ -16,7 +16,7 @@ title, body text, `Click me` button, `show grid` checkbox, `gain` slider, and th
 
 The whole thing is a chain of pieces Field already had, wired into one loop:
 
-```
+```diffstatic {data-lang=text}
 Dear ImGui frame
       │  drawn into
       ▼
@@ -57,14 +57,14 @@ off-screen so nothing hovers.
 
 Run the interactive desktop preview — move the mouse to aim the ray, left-click to press:
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew runImGuiVrPanelDemo
 ```
 
 Or run the automated smoke, which builds the whole pipeline on a real Vulkan window and checks that
 a ray aimed at the panel centre lands exactly at its centre:
 
-```bash
+```diffstatic {data-lang=bash}
 python3 tools/run_field_tests.py --id examples.four.imgui-vr-panel-smoke
 ```
 

@@ -20,7 +20,7 @@ that gap with a small, honest, dependency-free core.
 
 The whole family is built on one value type, [`Img`](imaging.md#imaging-kt-img):
 
-```
+```diffstatic {data-lang=kotlin}
 val photo  = imgFromFile("cat.png")        // 3-channel sRGB-ish floats in 0..1
 val gray   = photo.luma()                  // 1 channel
 val edges  = gray.sobelMagnitude()         // 1 channel
@@ -464,7 +464,7 @@ correspondences (DLT + RANSAC), and pyramidal Lucas–Kanade optical flow.
 This is the part of the imaging family that relates *two* pictures rather than transforming one.
 The through-line is:
 
-```
+```diffstatic {data-lang=kotlin}
 val pts   = a.goodFeaturesToTrack(120)                 // where is there anything to track?
 val flow  = opticalFlowLK(a, b, pts)                   // where did each of those go?
 val fit   = findHomographyRansac(flow.sourcePoints(), flow.targetPoints())

@@ -389,7 +389,7 @@ other per-sample filter in the toolkit.
 The one-spectrum example is also a loadable transcript. Replay it into a fresh Field with the agent
 backdoor and the box computes and draws its own spectrum with no other setup:
 
-```
+```diffstatic {data-lang=bash}
 field_run_transcript dev_docs/agents/transcripts/spectral_examples.yaml
 ```
 

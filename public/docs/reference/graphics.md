@@ -1531,7 +1531,7 @@ the `…Into` variants let a hot loop reuse one.
 - No dependencies beyond the Kotlin stdlib and Field's own generated linalg. No GPU, no AWT, no
   model-format libraries.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val ball = icosphereMesh(subdivisions = 3, radius = 1.0)
 val shell = ball.scaled(1.0, 0.6, 1.0).withVertexNormals()
 println("${shell.triangleCount} tris, volume ${shell.signedVolume()}")
@@ -1642,7 +1642,7 @@ Four bridges:
     Voronoi diagram and not turn it into geometry; now it can.
  4. **Field lines → mesh.** `tubeMesh` on an `FLine`, so a drawn stroke becomes a solid.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val cells = voronoi3d(List(24) { vec(rand(-1, 1), rand(-1, 1), rand(-1, 1)) })
 val solid = cells.toTriMesh(shrink = 0.9)   // every cell, shrunk toward its own site
 showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
@@ -1722,7 +1722,7 @@ vertex, and you cannot have both a shared vertex and two normals. Rather than si
 the seam (breaking watertightness) or silently average across the crease (rounding it off), these
 ship with **no** normals, and you pick:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 boxMesh().flatShaded()          // one normal per triangle: hard edges, 3 verts per tri
 boxMesh().shadedNormals(35.0)   // split only where faces disagree by > 35 degrees
 boxMesh().withVertexNormals()   // one averaged normal per shared vertex: rounded corners
@@ -1786,7 +1786,7 @@ Both directions, no dependencies, and honest about what each format can carry:
    so in its KDoc rather than silently welding for you — welding needs a tolerance, and choosing
    one for you is exactly the kind of guess that loses a hairline feature.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val mesh = icosphereMesh(3)
 File("/tmp/ball.obj").writeText(mesh.toObj())
 File("/tmp/ball.stl").writeBytes(mesh.toStlBinary())
@@ -1832,7 +1832,7 @@ Gauss-Bonnet (`Σ K_v A_v = 2π χ`) to float precision on a closed mesh, which 
 [`MeshBvh`](graphics.md#mesh-measure-kt-meshbvh) exists because the useful queries are all `O(n)` without it and `O(log n)` with it. It is
 a plain median-split bounding-volume hierarchy over triangles, built once, then:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val bvh = mesh.bvh()
 bvh.raycast(vec(0, 0, -5), vec(0, 0, 1))?.let { println("hit at ${it.point}") }
 bvh.closestPoint(vec(2, 0, 0))                 // nearest surface point + distance
@@ -1936,7 +1936,7 @@ can use. In rough order of how often you will reach for them:
    cost-ordered queue with lazy invalidation, the link condition (so a collapse cannot make the
    mesh non-manifold) and a normal-flip veto (so it cannot turn the mesh inside out locally).
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val fine = icosphereMesh(4)                       // 5120 triangles
 val coarse = fine.decimate(400)                   // 400, and still a sphere
 val smooth = coarse.taubinSmooth(iterations = 20) // volume preserved to within ~1%
@@ -1989,7 +1989,7 @@ This is the 3D counterpart of `contours.kt`. There, a [`ScalarField2D`](graphics
 The two files are deliberately parallel, and reading the 2D one first is the fastest way to
 understand this one.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val body = sdfSmoothUnion(
     sdfSphere(0.8),
     sdfBox(vec(1.4, 0.25, 0.25)),
@@ -2101,7 +2101,7 @@ and a two-holed shape reports `-2` and `2`. That single number catches a startli
 generator bugs — a duplicated seam, a missing cap, an unwelded march — because all of them change
 it.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val t = torusMesh(48, 24)
 val topo = t.topology()
 println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.isWatertight}")

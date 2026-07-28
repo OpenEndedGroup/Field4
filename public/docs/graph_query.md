@@ -178,7 +178,7 @@ the group.
 
 Modulation and suppliers work the same way across the whole set:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 // one shared LFO added on top of every cutoff
 (rig matches "**/cutoff").modulate(sine * 40f, mode = ParamModulationMode.ADD)
 

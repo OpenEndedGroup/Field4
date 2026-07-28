@@ -286,7 +286,7 @@ geometry, and the frame clock all keep running.
 
 For the curious, a Kotlin/JS box compiles in two K2 phases, entirely in-process:
 
-```
+```diffstatic {data-lang=text}
 source.kt  --( -Xir-produce-klib-file )-->  <module>.klib
 <module>.klib  --( -Xir-produce-js, -Xinclude, -Xir-dce )-->  <module>.js  (plain, tree-shaken)
 ```

@@ -18,7 +18,7 @@ one in a box shows the picture, not `Img@3f1a2b`.
 
 ## The value type
 
-```
+```diffstatic {data-lang=kotlin}
 Img(width, height, channels, data)
 ```
 
@@ -39,7 +39,7 @@ Three choices worth knowing about, because they change what the numbers mean:
 
 Build one from a function, a file, a `BufferedImage`, PNG bytes or a plain `FloatArray`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val ramp   = Img.generate(64, 64) { x, _ -> x / 63f }
 val photo  = imgFromFile("cat.png")            // javax.imageio under the hood
 val fromGl = floatsToImg(heights, w, h)        // a heightfield, a spectrogram, any scalar grid
@@ -445,7 +445,7 @@ obvious question that raises is whether you should just use OpenCV instead. So t
 carries a benchmark that puts the two side by side, in the same JVM, on the same pixels:
 `tools/imaging-bench`, run with
 
-```bash
+```diffstatic {data-lang=bash}
 ./gradlew :tools:imaging-bench:jmh
 ```
 

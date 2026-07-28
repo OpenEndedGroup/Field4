@@ -31,7 +31,7 @@ The filter carries a mean state `x` (a `DoubleArray`) and a covariance `p` (a
 `Matrix`, which is just `typealias Matrix = Array<DoubleArray>`). You construct it
 with an initial guess and an initial covariance, then alternate two calls:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val ukf = UnscentedKalmanFilter(
     initialState = doubleArrayOf(1.0, 0.96, 0.92),   // your best initial guess
     initialCovariance = diag(0.08, 0.08, 0.08),      // how unsure you are of it
@@ -87,7 +87,7 @@ or `kappa` up.
 build inline. Every example defines a one-liner for diagonal matrices — there is
 no library `diag`, it is small enough to keep in the box:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 fun diag(vararg values: Double): Matrix =
     Array(values.size) { r -> DoubleArray(values.size) { c -> if (r == c) values[r] else 0.0 } }
 ```
@@ -318,7 +318,7 @@ unknown parameter, a regime that can switch — reach for `UKFParticleFilter`. E
 particle is a `UKFParticle` pairing a `UnscentedKalmanFilter` with a *hypothesis*
 of type `H` and a `logWeight`:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 UKFParticle(
     ukf = UnscentedKalmanFilter(/* ... */),
     hypothesis = MackeyGlassHypothesis(beta = 0.3),
