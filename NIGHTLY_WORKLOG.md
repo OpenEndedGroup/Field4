@@ -227,7 +227,9 @@ Verified:
   "sampleZeroCrossings said 0.75", "expected 5 unit slots, domain was Domain(0..4)", "got
   0.03333333333333333", "point (0.0, 0.0, 0.0) is NaN along axis 0".
 - `./gradlew checkKDocAttachment` — **32 findings → 0**, over 625 files and 6767 blocks, plus a
-  demonstrated catch-then-restore.
+  demonstrated catch-then-restore. `--args=--verbose` lists the 84 exempted sites and why: 52 file
+  overviews, 29 enum constants, 3 file headers above `package`. Runtime is about a second, which is why
+  it can live in `check` unconditionally.
 - `./gradlew checkCodebaseReference` — green after each regeneration.
 - `./gradlew check --dry-run` — lists `:checkCodebaseReference` and `:checkKDocAttachment`, so the
   wiring is real.
