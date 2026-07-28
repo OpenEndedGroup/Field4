@@ -519,12 +519,19 @@ amounts to produce:
 
 | figure | how |
 |---|---|
-| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, regenerated every build |
+| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output |
 | `assets/mesh_gallery/*.png` (four figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id mesh.gallery --port 9700` |
 
-The distinction matters: the fences can never go stale, because a change that breaks them breaks the
-docs build. The four gallery figures are real renders from real code, but they are committed PNGs and
-would need the test re-run to reflect a change. The gallery is a FIELD_TEST rather than a script, so
+The distinction is smaller than it looks, and neither route notices on its own when the code moves
+underneath it. A `diffstatic_runner` fence is re-executed only when the build decides its capture is out
+of date, and that decision comes from a fixed digest list — `RUNNER_DIGEST_SOURCE_FILES` in
+`public/docs_hooks.py` — which covers the runner's own machinery and **no stdlib source at all**. So
+editing `mesh_*.kt` leaves every digest unchanged, an incremental build is a cache hit, and the fences
+are not re-run. The four gallery figures are committed PNGs with the same property: they need
+`mesh.gallery` re-run to reflect a change. Read both routes as "real output, as of when it was taken",
+and regenerate deliberately after changing the family — `FIELD_DOCS_RUNNER_MODE=always` for the fences,
+the FIELD_TEST for the gallery. What *does* guard the family is the gallery itself: it is a FIELD_TEST
+rather than a script, so
 it **fails** if the invariants break — if a generator stops being watertight, if a marched sphere's
 volume error stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops
 matching 2πχ, or if the Voronoi cells stop tiling their clip box.

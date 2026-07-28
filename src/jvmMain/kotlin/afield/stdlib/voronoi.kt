@@ -360,17 +360,7 @@ object Voronoi3d {
         return true
     }
 
-    private fun insideAll(p: Vec3, planes: List<PlaneSpec>, eps: Float): Boolean {
-        for (spec in planes) {
-            if (side(spec.plane, p) > eps) return false
-        }
-        return true
-    }
-
     private fun side(plane: Plane3, p: Vec3): Float = dot(plane.normal, p) - plane.d
-
-    private fun intersectPlanes(a: Plane3, b: Plane3, c: Plane3, eps: Float): Vec3? =
-        intersectPlanes(a, b, c, eps, 0f, null)
 
     /**
      * Where three planes meet, or `null` if they are too close to parallel to say.
