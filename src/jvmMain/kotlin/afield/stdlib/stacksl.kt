@@ -270,9 +270,10 @@ data class StackSLSweep(
      * guide lines on each channel's extremes, the first and last input/output pair, and a
      * per-channel avg/min/median/max table.
      *
-     * The vertical scale is fitted to the data (plus 8%), not fixed to `0..1`, and non-finite samples
-     * are dropped from both the lines and the statistics — so a NaN run shows as a gap and an
-     * all-NaN channel reports NaN rather than vanishing.
+     * The vertical scale is fitted to the data (plus 8%), not fixed to `0..1`, and non-finite samples are
+     * dropped from both the lines and the statistics. Dropped, not gapped: each channel is one polyline, so
+     * a NaN run is drawn straight across rather than broken, and it is the avg/min/median/max table (an
+     * all-NaN channel reports NaN there rather than vanishing) that tells you it happened.
      */
     override fun toHTML(): String = stackSLSweepHtml(this)
 

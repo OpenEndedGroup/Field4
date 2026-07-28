@@ -1782,11 +1782,12 @@ user-facing entry points are the macro placeholders `Box.moduleHere`, `Box.compu
 `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
 into the real `_moduleHere`-family call.
 
-Before compilation every stage goes through `preprocess`, which resolves `#include`s against
-other boxes' shader properties (with cycle detection and `#line` fixups), against built-in
-includes such as the field probe, field stats and quantile warp, and against registered include
-roots — `registerShaderFilesystemIncludeRoot` for a directory and `registerLygiaIncludeRoot` /
-`shaderCachedUrlIncludeRootResolver` for URL-fetched, disk-cached libraries. It also expands
+Before compilation every stage goes through `preprocess`, which resolves `{% include %}` template
+tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
+built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
+`registerShaderFilesystemIncludeRoot` for a directory, `registerLygiaIncludeRoot` /
+`shaderCachedUrlIncludeRootResolver` for URL-fetched, disk-cached libraries — are **not** reachable
+from here: they are resolved by shaderc during compilation, from a real `#include` only. It also expands
 `{% copyPC %}` (copying a previous stage's push-constant block) and stackAuto template slots
 compiled from StackSL via `stackAutoShaderSource`.
 

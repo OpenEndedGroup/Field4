@@ -427,7 +427,9 @@ fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4 = Vec4(
  * A colour from classic hue / saturation / lightness.
  *
  * Hue may be a fraction of a turn (`0.33`) or degrees (`120`) — a magnitude above 1 is divided by
- * 360 — and either way it wraps, so `hsl(1.25, …)` and `hsl(450, …)` are the same hue. Saturation
+ * 360, and then wrapped. Note what that rule costs at the boundary: `1.25` is *above* 1, so it is read
+ * as 1.25 **degrees** and lands on red, not a quarter turn round. Keep turns strictly below 1 and
+ * degrees at 1 or above. Saturation
  * and lightness are 0..1 and clamped; `l = 0.5` is the fully saturated band, 0 is black and 1 white.
  *
  * The HSL cube is treated as linear light and then encoded to sRGB, the same final step [okhsl]

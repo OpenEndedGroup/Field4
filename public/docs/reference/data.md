@@ -1118,10 +1118,12 @@ come back as [`VecNeighbor2`](data.md#smile-neighbors-kt-vecneighbor2) / [`VecNe
 true Euclidean distance, radius results sorted nearest-first.
 
 `VecNNMode.APPROXIMATE` (the default) builds an LSH alongside the KD-tree and silently degrades
-to exact mode, with a message on stderr, if LSH construction fails. Either mode falls back to a
-brute-force scan whenever the backing index returns too few candidates, so answers stay correct
-but a query can cost `O(n log n)`. [`VecNNBuildOptions`](data.md#smile-neighbors-kt-vecnnbuildoptions) tunes the LSH parameters and can forbid
-duplicate points.
+to exact mode, with a message on stderr, if LSH construction fails. The brute-force fallbacks are
+narrower than they sound and do **not** make approximate mode correct: `kNearest` tops up an answer
+that came back *short*, and `withinRadius` only runs one when the structure returns *nothing at all*,
+so a full-length or merely-incomplete LSH answer is passed straight through. Ask for
+`VecNNMode.EXACT` when the answer has to be right. [`VecNNBuildOptions`](data.md#smile-neighbors-kt-vecnnbuildoptions) tunes the LSH parameters and
+can forbid duplicate points.
 
 `src/jvmMain/kotlin/afield/stdlib/smile_neighbors.kt`
 

@@ -297,6 +297,48 @@ class DocumentedBehaviourTest {
         assertEquals(0.0, source.tile(0).eval(0.1), "a count of zero or less is the constant zero")
     }
 
+    /**
+     * `obbBounds` documents a box that is "`center + extents[i] * axes[i]` on each axis, with `extents` as
+     * half-widths" — which is only a *bounding* box if the centre is the middle of the projections. It used
+     * the cloud's **centroid**, so any skewed cloud got a box that did not contain its own input: for
+     * x = 0, 0, 0, 10 the centroid is 2.5 and the half-width 5, leaving the point at 10 outside.
+     */
+    @Test
+    fun orientedBoundsContainTheirPoints() {
+        val skewed = listOf(
+            Vec3(0f, 0f, 0f), Vec3(0f, 0.1f, 0f), Vec3(0f, -0.1f, 0f), Vec3(10f, 0f, 0f)
+        )
+        val box = skewed.obbBounds()
+        skewed.forEach { p ->
+            val rel = Vec3(p).sub(Vec3(box.center))
+            (0..2).forEach { axis ->
+                val along = box.axes[axis].dot(rel)
+                assertTrue(
+                    abs(along) <= box.extents[axis] + 1e-3f,
+                    "point $p is ${abs(along)} along axis $axis, outside the half-width ${box.extents[axis]}"
+                )
+            }
+        }
+        // …and it must still be tight: the long axis is half of the 10-unit spread, not more.
+        assertTrue(
+            abs(box.extents[0] - 5f) < 1e-3f,
+            "the dominant half-width of a 10-unit spread is 5, got ${box.extents[0]}"
+        )
+    }
+
+    /**
+     * `String.times` documents "zero or fewer gives the empty string". A negative count reached
+     * `StringBuilder(this.length * ln)` first, which throws `NegativeArraySizeException` for any non-empty
+     * receiver — so the documented case was the one case that crashed.
+     */
+    @Test
+    fun stringTimesNonPositiveIsEmpty() {
+        assertEquals("", "ab" * 0)
+        assertEquals("", "ab" * -1)
+        assertEquals("", "ab" * -1000)
+        assertEquals("ababab", "ab" * 3)
+    }
+
     /** Asserts sampled positions match [expected] to within floating-point slack, reporting both lists. */
     private fun assertPositions(expected: List<Double>, actual: DoubleArray, message: String) {
         val ok = expected.size == actual.size && expected.indices.all { abs(expected[it] - actual[it]) < 1e-9 }

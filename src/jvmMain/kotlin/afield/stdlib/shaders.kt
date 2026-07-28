@@ -55,11 +55,12 @@ import java.util.Locale
  * `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
  * into the real `_moduleHere`-family call.
  *
- * Before compilation every stage goes through [preprocess], which resolves `#include`s against
- * other boxes' shader properties (with cycle detection and `#line` fixups), against built-in
- * includes such as the field probe, field stats and quantile warp, and against registered include
- * roots — [registerShaderFilesystemIncludeRoot] for a directory and [registerLygiaIncludeRoot] /
- * [shaderCachedUrlIncludeRootResolver] for URL-fetched, disk-cached libraries. It also expands
+ * Before compilation every stage goes through [preprocess], which resolves `{% include %}` template
+ * tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
+ * built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
+ * [registerShaderFilesystemIncludeRoot] for a directory, [registerLygiaIncludeRoot] /
+ * [shaderCachedUrlIncludeRootResolver] for URL-fetched, disk-cached libraries — are **not** reachable
+ * from here: they are resolved by shaderc during compilation, from a real `#include` only. It also expands
  * `{% copyPC %}` (copying a previous stage's push-constant block) and stackAuto template slots
  * compiled from StackSL via [stackAutoShaderSource].
  *
@@ -1200,10 +1201,12 @@ class ShaderFieldAutoController(
     /**
      * Do one control step, returning the controller's output, or `null` if there was nothing to do.
      *
-     * `null` means one of two boring things: the probe has produced no *new* snapshot since the last
-     * tick (compared by identity, so a frame with no dispatch is skipped rather than double-counted),
-     * or the snapshot has fewer than `config.minSamples` scalar samples. Neither is an error, and
-     * neither advances [tickCount].
+     * Two of the reasons are boring: the probe has produced no *new* snapshot since the last tick
+     * (compared by identity, so a frame with no dispatch is skipped rather than double-counted), or the
+     * snapshot has fewer than `config.minSamples` samples. The third is not — a probe recording anything
+     * other than **scalars** yields no scalar batch at all, so a shader probing a `vec2`/`vec3`/`vec4`
+     * makes this a permanent silent no-op with [tickCount] stuck at 0. None of the three is an error, and
+     * none advances [tickCount].
      *
      * When it does run: samples go into the controller, the resulting parameters go to the `apply`
      * lambda *before* the diagnostics are drawn, and the display channel is refreshed. Call it on the
@@ -4146,7 +4149,9 @@ private fun buildStackAutoShaderPreamble(box: Box?): String {
  * untyped `Structure.<name>` accessor, so the `m.push["name"]` form works without any of this.
  *
  * @param resolvesToCall the runtime function the call site becomes — `_moduleHere` or `_shadertoyHere`
- * @param args the call site's argument text; up to three fragments are concatenated onto the call
+ * @param args the call site's argument text, as PSI siblings after the callee; the first is appended to
+ * the call, and a second or third (a trailing lambda) is appended after it — `args[1]` of three, which is
+ * only the whitespace before a lambda, is dropped
  * @param box the owning box, used only to discover its `stack.auto` slot names; `null` skips those
  */
 fun insertForShader(

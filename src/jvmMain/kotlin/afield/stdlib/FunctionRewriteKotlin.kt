@@ -63,10 +63,9 @@ class SourceBackedFnRewriteNumberExpression(
      *
      * The first call compiles, under a lock, and later calls reuse the compiled lambda. A result that is
      * neither null nor a `Number` is a hard error naming the offending source — a snippet ending in a
-     * `println` or an assignment throws rather than being quietly ignored. Note that a *live* block which
-     * returns null does not short-circuit: it falls through to the source-hydration path, which for a
-     * block-backed expression has no source to compile and fails. Return the current value instead of null
-     * from those.
+     * `println` or an assignment throws rather than being quietly ignored. A live block is called directly
+     * and its null is returned as-is, so returning null from one really does mean "leave this value alone";
+     * only the *absence* of a block sends the call down the source-hydration path.
      */
     override fun invoke(context: FnRewriteNumberContext): Double? {
         // A live block returning null means "leave this value alone", so only the absence of a
@@ -190,9 +189,9 @@ fun fnRewriteNumberExpression(
  * A rewrite-number evaluator written as an ordinary Kotlin lambda over [FnRewriteNumberContext], with no
  * compilation involved — the typed alternative to a string of source.
  *
- * The block runs directly, so it can close over anything in scope. One catch: returning null does **not**
- * mean "leave this value alone". A null sends the call down the source-hydration path, and since a block-built
- * expression carries no source that path fails. Return the current `value` for the cases you want to skip.
+ * The block runs directly, so it can close over anything in scope, and returning null from it means "leave
+ * this value alone" — the node is visited, nothing is written, and the walk carries on. Returning the current
+ * `value` instead is equivalent but records a change.
  */
 fun fnRewriteNumber(block: FnRewriteNumberContext.() -> Number?): SourceBackedFnRewriteNumberExpression =
     SourceBackedFnRewriteNumberExpression(
@@ -232,8 +231,8 @@ fun Functions.Fn.previewRewriteKotlin(
 ): FnRewritePreview = previewRewrite(spec, kotlinRewriteOptions(preserveSharing, box))
 
 /**
- * [Functions.Fn.rewriteChecked] with the live box's Kotlin evaluator wired in — refuses a spec whose parse
- * produced any error, and applies the Kotlin right-hand sides otherwise.
+ * [Functions.Fn.rewriteChecked] with the live box's Kotlin evaluator wired in — throws for a spec whose
+ * parse produced any error, rather than applying whatever rules happened to parse.
  *
  * Throws `IllegalArgumentException` with the diagnostics attached. It checks the *rewrite language* only:
  * the Kotlin inside `@{...}` is compiled lazily at the first node that matches, so a snippet that does not

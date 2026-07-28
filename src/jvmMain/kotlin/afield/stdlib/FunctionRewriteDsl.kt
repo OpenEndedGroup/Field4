@@ -21,17 +21,11 @@ package afield.stdlib
  */
 
 /**
- * Tiny string layer over the graph-copy API.
+ * Everything one matched node can tell a right-hand side about itself.
  *
- * This is deliberately not a second implementation of graph rewriting. It
- * parses forgiving "selector => action" rules, then delegates to the same
- * [Functions.Fn.rewriteGraph] machinery used by Kotlin callers. The optional
- * [FnRewriteOptions.kotlinNumberContext] is where KotlinInterface2 can be
- * threaded in for expressions such as `${'$'}{value * 1.1 + depth}` without
- * making this file depend directly on the live-code compiler. The selector side
- * is deliberately more structural than magical: `saw.frequency`, `role=amplitude`,
- * `parent=fbm param=gain`, and slash-separated path selectors with single-node
- * and recursive wildcards match the copied node with its occurrence path.
+ * Handed to a [FnRewriteNumberExpression] — an `@{...}` snippet or a [fnRewriteNumber] block — so the new
+ * value can be computed from the old one and from where it sits: the current `value`, the node's op and
+ * parameter name, its depth, and its occurrence path. Immutable, one instance per visited node.
  */
 data class FnRewriteNumberContext(
     /**
@@ -383,8 +377,11 @@ fun Functions.Fn.previewRewrite(
 }
 
 /**
- * Rejects malformed specs before applying any valid rules that happen to remain.
+ * [Functions.Fn.rewrite], but a malformed spec throws instead of quietly applying whatever rules parsed.
  *
+ * Note the order: the rewrite is *run* first and its result discarded if the program had an error, because
+ * the diagnostics come out of the same pass. So a `@{...}` right-hand side may well have been compiled and
+ * evaluated before the throw — that is fine for pure expressions and worth knowing for anything else.
  * Throws `IllegalArgumentException` carrying [FnRewriteProgram.diagnosticText] when the program has any
  * error. Only errors: a warning — the usual one being an `op=` target the `OpRegistry` does not know —
  * passes through here and then quietly does nothing at the nodes it matches, so check a preview too if

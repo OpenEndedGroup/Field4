@@ -760,14 +760,16 @@ point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` 
 scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
 of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
 gets `obbBounds` (PCA by power iteration, an explicit approximation — the code says so),
-`convexHull` and `convexHullPeelingMedian`, which go through the QuickHull3D library and
-return the input unchanged if the hull cannot be built. [`Cuboid`](math.md#linalg-kt-cuboid) is a separate plain 3D
+`convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
+hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
+centre of what is left — a single point, not a cloud. [`Cuboid`](math.md#linalg-kt-cuboid) is a separate plain 3D
 box-with-size type used for layout-style union / inset / intersects work.
 
 These vector types are mutable and most operations mutate the receiver, so copy first
-(`Vec3(existing)`) when you need to keep the original. Swizzles and the `invoke`, `%=` and
-`len` operators are deliberately absent here: they are generated for every float vector into
-`Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`.
+(`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
+and `len` operators are deliberately absent here: they are generated for every float vector into
+`Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [`Quat`](math.md#linalg-kt-quat) and
+[`DualQuat`](math.md#linalg-kt-dualquat) is defined here, because no generator emits those.
 
 `src/jvmMain/kotlin/afield/stdlib/linalg.kt`
 
@@ -1239,7 +1241,7 @@ The window functions themselves, as plain `DoubleArray`s you multiply a frame by
 | <code class="highlight"><span class="k">fun</span> <span class="nf">rectangular</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | All ones — i.e. no window. The `periodic` distinction does not apply, so there is no such parameter. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">hann</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">periodic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The raised-cosine window: `0.5 - 0.5·cos(2πi/d)`, zero at both ends, and the default worth reaching for. Symmetric unless `periodic` is true. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">hamming</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">periodic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | `0.54 - 0.46·cos(2πi/d)` — like `hann` but it does **not** reach zero at the ends, which is what buys its slightly better resolution and slightly worse far-field leakage. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">blackman</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">periodic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The three-term `0.42 - 0.5·cos(w) + 0.08·cos(2w)` window: the strongest leakage suppression here, and the widest main lobe, so two frequencies closer than about twice `hann`'s separation blur into one. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">blackman</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">periodic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The three-term `0.42 - 0.5·cos(w) + 0.08·cos(2w)` window: the strongest leakage suppression here, and the widest main lobe — about 1.5 times `hann`'s null-to-null width, so two frequencies Hann would just separate blur into one here. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">coherentGain</span><span class="p">(</span><span class="n">window</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Coherent gain (mean) of a window — used to compensate amplitude when a window is applied. |
 
 ### Spectrum { #spectral-kt-spectrum }
@@ -1319,7 +1321,7 @@ The mel scale and its triangular filter bank — frequency re-spaced the way hea
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">hzToMel</span><span class="p">(</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Hz to mels, `2595·log10(1 + hz/700)`. Monotonic, 0 at 0 Hz, and defined for negative input too. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">hzToMel</span><span class="p">(</span><span class="n">hz</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Hz to mels, `2595·log10(1 + hz/700)`. Monotonic and 0 at 0 Hz. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">melToHz</span><span class="p">(</span><span class="n">mel</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Mels back to Hz — the exact inverse of `hzToMel`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">filterBank</span><span class="p">(</span><span class="n">magnitude</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">numBands</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">26</span><span class="p">,</span> <span class="n">minHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">maxHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">sampleRate</span> <span class="p">/</span> <span class="mf">2.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | Apply a triangular mel filter bank to a one-sided magnitude spectrum, returning `numBands` mel-band energies spanning `minHz`..`maxHz`. |
 
