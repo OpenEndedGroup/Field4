@@ -245,3 +245,227 @@ page regressed.
 - Baseline `stdlib.wfc.smoke` PASS on warm build, port 9740.
 - Ports used: 9740 (test JVM), 9741 (docs runner). 9477 left alone.
 - Disk at start 48 GiB free, 46 GiB at the end — no ENOSPC risk to the captures.
+
+---
+
+# Second pass — making the state live-codeable
+
+Picking the branch up at `a16859ed`. The first pass shipped the page; this pass closes its
+named follow-up and then goes after the thing the page could only *describe*: that WFC
+state is worth looking at. Everything below is mine unless it says otherwise; the first
+pass's claims are carried over as written and were not re-derived, except where a suite
+listed here re-ran them.
+
+## 1. The full docs build — the first pass's own follow-up (done, twice)
+
+`tools/build_zensical_docs.py --strict`, site-wide, port 9477 confirmed free first.
+
+**Run A, at `a16859ed` (the branch as the first pass left it):** `No issues found`,
+`checked 67 page(s), 553 asset ref(s)`, runner summary
+`regenerated=13 skipped=283 (cache_hits=9 reused_existing=274 missing=0 failures=0)`,
+elapsed 174 s, whole build ~8 min. All nine `wfc_examples` assets were **cache hits**, so
+the page's committed captures still match the code that made them. No other page broke.
+
+That is the first pass's stated gap closed: nothing else regressed.
+
+Eleven *other* pages' assets came back modified — the force-recapture and `ui drive`
+figures, which have no cache entry and so regenerate every build. That churn is not mine
+and I reverted it rather than committing it (`git checkout -- public/docs/assets`).
+
+**Run B, after all of tonight's work:** see the Verification section below.
+
+## 2. `WfcSolver` and `WfcRules` draw themselves
+
+The luxurious-`.h` theme, applied to a solver whose whole interest is its intermediate
+state. Both types now implement `ToHTML`. **`ValueVisualizer.kt` was not touched** — the
+sibling branch `nightly/2026-07-27/2-imaging-inline-visualizers` is rewriting it, and this
+branch must merge cleanly against that.
+
+Where the code lives matters: `wfc.kt` gains exactly two one-line `override fun toHTML() =
+…` bodies and keeps its "integer tile IDs and nothing else" footprint; every pixel is in
+`wfc_field.kt`, which was already the bridge file.
+
+**The solver view** (`wfcSolverHtml`) — three panels, one pixel per solver cell, so screen
+pixel `(x·f, y·f)` really is cell `(x, y)`:
+
+| panel | colour | scale |
+| --- | --- | --- |
+| possibilities left | tiles still possible in that cell | viridis, fixed `1` (decided) … `tileCount` |
+| entropy | weighted Shannon entropy, nats — what the solver actually sorts on | magma, fixed `0` … `fullSetEntropy()` |
+| decided tiles | the tile a cell settled on, stable golden-angle hue per id | dark grey = undecided |
+
+plus a header (status, `368/816 cells decided (45.1%)`, untouched count, contradiction
+count, last observation) and a labelled gradient swatch under each heatmap.
+
+**The rules view** (`wfcRulesHtml`) — one adjacency matrix per direction (row = tile,
+column = the neighbour that may sit at that offset, teal = allowed) plus the weights strip,
+organised around the three failures a `println` cannot show and an
+`Array<Array<LongArray>>` actively hides: an **empty mask** (whole row magenta — that is
+unsatisfiable, not strict), an **asymmetry** (header, via `findAsymmetry()` — the check
+that caught the first pass's real bug), and a **zero weight** (off the ramp, because a tile
+that can never be chosen is not the same as a rare one; `fromSampleGrid` hands one out
+silently to any tile ID its sample never contained).
+
+**Range policy**, following the discipline the 2026-07-27 branch established:
+
+- every scale is **named in the caption** with both endpoints in units;
+- domains are **fixed by meaning, not by the frame** — auto-ranging makes an animated
+  collapse appear to stand still, because the ends of the ramp move with the data;
+- non-finite and off-scale values are **excluded from the statistics and marked**, never
+  clamped onto an end where they read as a legitimate extreme. Two real cases, not
+  hypothetical ones: a cell with **zero** possibilities (clamped onto `1..N` it lands at the
+  *decided* end, so the one failure you must see reads as success) and **NaN** entropy,
+  which is reachable because `fromSampleGrid` gives weight 0 to unseen tiles and a cell
+  whose only survivor has weight 0 has genuinely undefined entropy;
+- a **degenerate domain** (no finite values, or zero width) is drawn mid-ramp and declared
+  flat rather than divided by zero.
+
+New public API in `wfc_field.kt`: `WfcHeatmap`, `possibilityCountHeatmap`/`Img`,
+`entropyGrid`, `WfcRules.fullSetEntropy`, `entropyHeatmap`/`Img`, `resolvedTileImg`,
+`wfcTileColor`, `wfcSolverHtml`, `WfcRules.adjacencyImg`, `WfcRules.weightsImg`,
+`wfcRulesHtml`, `WFC_CONTRADICTION_COLOR`, `WFC_UNDEFINED_COLOR`, `WFC_UNDECIDED_COLOR`,
+`WFC_ALLOWED_COLOR`, `WFC_DISALLOWED_COLOR`; `toString()` on both `WfcSolver` and
+`WfcRules`.
+
+## 3. Verified to pixels, not to compilation
+
+**Decode-and-sample.** `WfcSmokeTest` grew 7 → 12 cases. Every visual assertion pulls the
+base64 out of the HTML the view *actually emits*, decodes it with `ImageIO`, and reads the
+pixel for a named cell:
+
+- a decided cell reads as the decided end of **both** ramps; an untouched cell as the open
+  end; and a decided cell is asserted *not* to be within 24/255 of the untouched colour,
+  which is what an inverted or auto-ranged scale would produce;
+- a contradicted cell reads as `WFC_CONTRADICTION_COLOR` in the count panel and
+  `WFC_UNDEFINED_COLOR` in the entropy panel, and *not* as the decided end;
+- NaN entropy from a zero-weight tile is the marker, not the ramp floor, and the domain is
+  still `0..ln 2` — i.e. the NaN was excluded from the stats;
+- a degenerate `1..1` domain is `flat` and mid-ramp;
+- in the rules view, an allowed pair is teal at `(b, a)`, an empty mask is magenta across
+  the **whole row** rather than three ordinary dark cells, a zero weight is the marker, and
+  the header's density line (`22.2% of pairs allowed`) is checked against the pixels' own
+  model;
+- panels are asserted to be exactly `width × height` pixels, and `toHTML()` is asserted
+  equal to the free function, so the docs page and a live box cannot drift apart.
+
+**The assertions bite.** Replacing the non-finite guard with `if (false)` (and dropping the
+flat branch) makes `stdlib.wfc.smoke` fail — `IllegalArgumentException: Cannot round NaN
+value` from `heatmapOf`, caught at the contradiction case. Kotlin's `roundToInt()` throws on
+NaN rather than returning 0, so without the guard the visualizer does not merely mislead, it
+takes the panel out; `wfcSolverHtml` also catches per-panel and degrades to the header, so a
+box's whole output survives either way. Guard restored, suite green.
+
+**Eyeballed, and it changed the design.** The first captured figure showed the count panel in
+`magma`, whose mid-ramp pink sits a shade from the contradiction magenta — a perfectly
+healthy collapse frontier read as *a field of contradictions*. A marker colour is only a
+marker if it is outside its own ramp, so counts moved to viridis (no pink, magenta marker)
+and entropy to magma (no cyan, cyan marker). The rule, the reason, and the mistake are all
+recorded in the code and on the page. I also narrowed the panels once so the triptych fits
+one row. Nothing about that was visible from a passing test.
+
+**Docs.** Two new captures, both looked at: `inline-view.png` (a 34×24 solver at 45% beside
+a contradicted 6×6) in a new subsection of §5, and `inline-rules.png` (strict → widened →
+learned) in §7 where rule debugging belongs. Each fence prints a read-back channel so the
+picture can be checked against the numbers it was drawn from, and I did: `368/816 decided`,
+entropy `0..1.318` nats with 0 undefined, one cell with no possibilities left; `22.2%` /
+`77.8%` / `88.9%` of pairs allowed, 4 empty masks then 0, 1 tile of weight 0. The strict
+set's four magenta rows are one per direction, which is what its authored pairs imply.
+
+## 4. The demo transcript, replayed and extended
+
+`dev_docs/agents/transcripts/wfc_worked_example.yaml` gains an eighth box, "8 — The
+solver's own inline view": a solver stepped to 45% and an over-constrained 6×6 that
+contradicts, each handed to `display()` as `solver.h` and nothing else — no colormap call,
+no montage, no channel plumbing. That contrast is the point of the box.
+
+Replayed through the real engine, not type-checked by inspection:
+`examples.demo-transcript.exec` PASSes over all 27 transcripts (`applied=18` for this one,
+no diagnostics), and with `AFIELD_DEMO_TRANSCRIPT_VERBOSE=1` the new box's own output reads
+
+```
+WfcSolver(34x24, 5 tiles, Running, 368/816 decided)
+  entropy range drawn: 0 .. 1.318 nats, 0 cell(s) undefined
+WfcSolver(6x6, 3 tiles, Contradiction, 5/36 decided)
+  cells with no possibilities left: 1
+```
+
+— cell-for-cell what the docs capture of the same code shows. Committed starting point
+regenerated (8 boxes) and the materializer drift guard passes; the gallery page and the
+corpus README say eight and say what the box is for.
+
+## 5. Also done
+
+- Removed a dead `WfcSolver.resolvedCellCount()` extension in `wfc_field.kt`: the class has
+  a member of the same name, a member always wins, so nothing could reach it. It was the
+  branch's only Kotlin warning, which the 6am AI-CI loop would otherwise have triaged.
+- `public/docs/reference/{data,index,visualization}.md` and `dev_docs/kdoc_worklist.md`
+  regenerated for the new API; `docs.codebase-reference.generate` passes.
+
+## Verification — this pass
+
+Every line below I ran tonight, after the changes:
+
+- **`--tag stdlib` — 11/11 PASS**, including `stdlib.wfc.smoke` (12 cases),
+  `stdlib.wfc.gallery` and `docs.codebase-reference.generate`.
+- **`--tag agents` — 7/7 PASS**, including `examples.demo-transcript.exec` over all 27
+  transcripts and `examples.agent-transcripts.materialize`.
+- **`stdlib.wfc.smoke` fails as designed** when the non-finite guard is removed (above).
+- **`tools/check_doc_assets.py` — OK, 557 asset refs across 67 nav pages.**
+- **Site-wide `build_zensical_docs.py --strict`, twice.** Run A at `a16859ed`: `No issues
+  found`, 553 refs, `failures=0 missing=0`, all nine wfc assets cache hits. Run B after all
+  of tonight's changes: `No issues found`, `checked 67 page(s), 557 asset ref(s)`,
+  `OK — every referenced asset is committed`, runner summary
+  `regenerated=4 skipped=294 (cache_hits=294 reused_existing=0 missing=0 failures=0)`,
+  elapsed 66.7 s — and **all eleven** `wfc_examples` assets, both new captures included,
+  came back as cache hits. Neither run broke any other page; both left the same handful of
+  never-cached force/`ui drive` figures on other pages dirty, and I reverted that churn
+  rather than committing it.
+- Two figures and one re-captured figure read by eye against the page's own prose.
+- Ports: 9742–9749 for test JVMs, 9477 for docs builds. Disk 45 GiB free throughout.
+
+## Not verified / carried over
+
+- The first pass's "Not verified" list stands except for its first item, which this pass
+  closed. Its mp4 static tail and its un-reviewed `kdoc_worklist.md` diff are unchanged.
+- **`scalar-field.png` and `contradiction.png` were re-captured** — inserting a fence shifts
+  the block index their cache key includes. `contradiction.png` is byte-identical bar 154
+  edge-antialiasing pixels (max delta 7, measured). `scalar-field.png` differs by a vertical
+  layout shift; I read the new one and it shows exactly what the page claims (6 levels, 180
+  patterns, 1×1 mean 0.26 speckle, 3×3 mean 0.61 horizontal bands, iso-contour `FLine`s) but
+  I did not diff it region by region against the old one.
+- **The views were never opened in a live editor by hand.** They were exercised through the
+  docs runner (a real browser rendering a real box's output) and through the transcript
+  harness, which is the same path, but nobody clicked anything.
+- **No dark/light-theme check.** The panels hardcode dark-mode greys, like `Img.toHTML` does.
+- **The `h`/`h2` distinction is untested here.** Only `.h` is used.
+
+## Risks
+
+One line: the only edits outside the WFC family are generated reference pages, and the two
+`ToHTML` implementations are additive — but they do change what an *existing* box shows when
+it evaluates a `WfcSolver` or `WfcRules`, from a property tree to a picture, and `wfc.kt`
+now names one symbol in `wfc_field.kt` (so the two files must ship together, which they
+always have).
+
+## Recommendation
+
+**Merge.** The first pass's own named follow-up is closed with a clean site-wide build, and
+the extension is the branch's thesis carried one step further: the page argues WFC state is
+worth looking at, and now looking at it costs one expression. Both views are verified the
+strong way — decoded PNGs, sampled pixels, and a mutation demonstrated to break the suite —
+and the design changed *because* I looked at the output, which is the evidence that the
+looking was real. The demo was replayed and its output matches the figures cell for cell.
+
+Nothing here is half-finished: I stopped after the rules view rather than starting a third
+generative mode or backtracking, because either would have been code without an eyeballed
+picture by the end of the night, and that is worse than stopping.
+
+## Execution log — second pass
+
+- Started from `a16859ed`; commits `a54c1a82` (solver view + tests), `bbbf1cf9` (docs
+  section + captures + reference), `73e83b70` (transcript box), `e99efda9` (rules view + §7
+  + warning cleanup).
+- Ports: 9742/9743/9744/9745/9746/9747/9748/9749 test JVMs, 9477 docs. No sibling worktree
+  touched; every command was worktree-scoped.
+- `df -h /` reported 45 GiB free at the start and 44 GiB at the end — the two full docs
+  builds account for the difference; no ENOSPC risk to any capture.
