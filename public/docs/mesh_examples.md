@@ -99,13 +99,21 @@ showMeshGrid(
     "sdfBox(…).twisted(0.35)" to twistedMesh,
     "shell(0.07) — closed, chi = 4" to closedShell,
     "…cut open by sdfPlane" to cutaway,
-    columns = 3,
-    cellWidth = 300,
+    columns = 2,
+    cellWidth = 320,
 )
 :::endfold
 ```
 
-![Six marched solids: a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open by a half-space](assets/mesh_examples/modelling.png)
+![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each captioned with its own vertex and triangle counts, Euler characteristic, genus, watertightness and volume](assets/mesh_examples/modelling.png)
+
+Read the captions rather than the shapes and the whole story is there. The sharp union encloses
+**2.2135**; the filleted one **2.2690**, because a fillet only ever *adds* material — that is a
+property you can assert rather than eyeball. Drilling through drops it to **1.8805** and takes χ from
+2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell reports **χ = 4**, which is
+exactly right and initially surprising — a shell is *two* nested closed surfaces, an outer and an
+inner, and 2 + 2 = 4. Cutting it with a half-space glues them into one surface again (χ = 2) and
+halves the *z* extent, from 1.739 to 0.870, which is how you know the cut actually happened.
 
 `showMeshGrid(...)` is the fastest way to see a whole pipeline: captioned panels side by side, each
 one rasterised by the same CPU renderer the inline card uses — perspective, z-buffer, two-light
@@ -163,18 +171,29 @@ println("drilled sphere: ${drilled.summary()}")
 val gyroid = marchingCubes(sdfGyroid(4.0, 0.3), boundsAround(radius = 1.0), 56)
 println("gyroid: ${gyroid.summary()}")
 :::fold draw the coarse and fine spheres beside the two harder shapes
+val coarse = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), 16)
+val fine = marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), 64)
+fun err(m: TriMesh) = "%.2f%%".format(100.0 * abs(m.signedVolume() - exact) / exact)
 showMeshGrid(
-    "sdfSphere marched at 16" to marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), 16),
-    "…at 64" to marchingCubes(sdfSphere(1.0), boundsAround(radius = 1.4), 64),
+    "marched at 16 — volume off by ${err(coarse)}" to coarse,
+    "…at 64 — off by ${err(fine)}" to fine,
     "sdfSubtract(sphere, cylinder) — genus 1" to drilled,
-    "sdfGyroid(4.0, 0.3)" to gyroid,
+    "sdfGyroid(4.0, 0.3) — one sheet, many handles" to gyroid,
     columns = 2,
-    cellWidth = 380,
+    cellWidth = 340,
 )
 :::endfold
 ```
 
-![Marched sphere at two resolutions beside a drilled solid and a gyroid, with the convergence table printed below](assets/mesh_examples/convergence.png)
+![A marched sphere at resolution 16 and at 64 beside a drilled solid and a gyroid; each panel is captioned with its counts, Euler characteristic, genus and volume, and the two spheres also carry their volume error against 4/3 pi](assets/mesh_examples/convergence.png)
+
+The two spheres are the same field at two grid resolutions: **1544 triangles and a volume of
+4.1124** at 16, **24920 and 4.1840** at 64, against an analytic 4/3 π = 4.18879. Both are watertight
+with χ = 2, and the error falls from **1.82% to 0.11%** — roughly the O(*h*²) you should demand of a
+marcher, and the printed table in the box carries all four resolutions. The drilled solid is the
+topology point: it looks like a sphere from most angles and reports **χ = 0, genus 1**. The gyroid is
+the honest edge case — **χ = −20, genus 4, and *open*, with 20 boundary loops**, because the surface
+runs out of the sampling box rather than closing inside it. The card says so rather than pretending.
 
 **Why the surface is closed at all** is worth one paragraph, because plain marching cubes leaks and
 the leak is invisible until you count. Two cubes sharing a face can each pick a different
@@ -247,10 +266,20 @@ showMeshGrid(
 :::endfold
 ```
 
-![Icosahedron subdivided three times, then a noisy ball smoothed two ways: the Laplacian result is visibly smaller than the Taubin one](assets/mesh_examples/process.png)
+![An icosahedron and its first and third Loop subdivisions, then a lumpy noisy ball and the same ball smoothed by 30 Laplacian and 30 Taubin iterations; the Laplacian result is visibly the smaller of the two and each panel is captioned with its volume and extent](assets/mesh_examples/process.png)
 
 Put the two results in one frame, as the last two panels do, and the Laplacian ball is unmistakably
-the smaller of the two. The printed volumes say the same thing without needing your eye.
+the smaller of the two — but the captions are what make it a measurement rather than an impression.
+The noisy input encloses **2.1293** across an extent of 1.701. Thirty Laplacian iterations at λ = 0.6
+leave **1.1509** across 1.301: it has thrown away **46% of the volume**. Thirty Taubin iterations of
+the same λ, with μ = −0.63, leave **2.1840** across 1.631 — within about 3% of the clean ball this
+noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. That is the whole
+argument for Taubin in two numbers.
+
+Subdivision has its own quiet lesson in the top row. The volume falls 1.2985 → 0.8518 → … → 0.7490
+and does *not* stop at the sphere the icosahedron's vertices sit on, because Loop subdivision
+converges on the **Loop limit surface**, not on whatever you imagined the control mesh approximated.
+The steps shrink geometrically and χ never moves off 2.
 
 Both smoothers take `cotangent = true` for the cotangent-weighted Laplacian, which is the right
 choice on an irregular triangulation because it weights by the geometry rather than by valence, and
@@ -284,7 +313,7 @@ for (target in listOf(2000, 600, 150)) {
     println("%6d %6d %11.5f %11.1f   %s".format(
         target, small.triangleCount, deviation,
         small.quality().minAngleDegrees, small.isWatertight()))
-    budgets.add("decimate($target)" to small)
+    budgets.add("decimate($target) — deviation ${"%.4f".format(deviation)}" to small)
 }
 :::fold draw the original beside the three budgets
 showMeshGrid(
@@ -293,12 +322,20 @@ showMeshGrid(
     budgets[1].first to budgets[1].second,
     budgets[2].first to budgets[2].second,
     columns = 2,
-    cellWidth = 360,
+    cellWidth = 340,
 )
 :::endfold
 ```
 
-![A 5120-triangle icosphere beside its 2000-, 600- and 150-triangle decimations, all still round and watertight, with the deviation table printed below](assets/mesh_examples/decimate.png)
+![A 5120-triangle icosphere beside its 2000-, 600- and 150-triangle decimations; all three are still recognisably round and watertight with chi = 2, and each caption carries the budget, the symmetric deviation from the original, and the volume](assets/mesh_examples/decimate.png)
+
+Every budget is hit **exactly** — 2000, 600 and 150 triangles — and all three stay watertight at
+χ = 2, which is the link condition doing its job. The volume drifts from 2.1400 down to 2.1252,
+2.0860 and 2.0724 (the collapses cut corners off a convex solid, so it can only lose). The number to
+budget against is the deviation in each caption: **0.0047** at 2000 triangles, **0.0166** at 600 and
+**0.0326** at 150, on a ball of radius 0.8 — so a 34× reduction costs you about 4% of the radius. It
+is worth noticing that the deviation grows *slower* than the triangle count falls, which is the
+entire reason decimation is worth doing.
 
 `quality()` is the other half of that judgement: minimum and mean triangle angle, aspect ratio,
 degenerate count. A decimator that hits its budget by producing slivers has not helped you, and the
@@ -376,12 +413,17 @@ showMeshGrid(
     "torusMesh(14, 8) — creases to keep" to ring,
     "icosphereMesh(3) via STL, welded" to viaStl.weld(1e-5),
     columns = 3,
-    cellWidth = 300,
+    cellWidth = 250,
 )
 :::endfold
 ```
 
-![A helical tube swept along an FLine, a coarse torus, and an icosphere that has been through a binary STL round trip](assets/mesh_examples/bridges.png)
+![A helical tube swept along an FLine with no visible twisting, a coarse 14x8 torus, and an icosphere that has been through a binary STL round trip and been welded back; all three captioned as watertight](assets/mesh_examples/bridges.png)
+
+The coil is the frame test: 4320 triangles, watertight, χ = 2, and no twist anywhere along the helix
+even though the path's curvature swings through vertical twice. The round-tripped sphere comes back
+at **642 vertices, watertight, χ = 2, volume 1.4244** — the same 642 vertices it started with, after
+having been flattened to 3840 unshared ones by the STL writer and welded back.
 
 ## Measuring and querying
 
