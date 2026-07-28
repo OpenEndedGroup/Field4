@@ -61,7 +61,7 @@ Note that `allow` is **directional and symmetric**: `allow(WFC_EAST, a, b)` says
 undirected "these two may touch" is that call in both orders, which is a two-line helper rather than
 a built-in, because the directional form is the one you need the moment tiles stop being symmetric.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/by-hand.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true name="wfc-by-hand"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/by-hand.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-by-hand"}
 :::static
 val SEA = 0
 val SAND = 1
@@ -122,7 +122,7 @@ showImgGrid("22x14 cells, seed 12" to img.upscaleNearest(26), columns = 1, cellS
 :::endfold
 ```
 
-![](assets/wfc_examples/by-hand.png)
+![a sea region and a grass region separated by a one-cell sand coastline, with the adjacency table beside it](assets/wfc_examples/by-hand.png)
 
 Sand appears exactly where it has to: as a one-cell-wide coastline wherever sea meets grass, because
 that is the only arrangement the table permits. Nowhere does sea touch grass. The solver was not told
@@ -148,7 +148,7 @@ how often each tile occurred becomes its weight.
 The tile size can be `1 × 1`, which is the clearest way to meet the model: a tile is then just a
 colour, and "learning the rules" is literally "note which colours were seen touching".
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/simple-tiled.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true name="wfc-simple-tiled"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/simple-tiled.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-simple-tiled"}
 :::static
 :::fold build the source: three gaussian bumps minus a lake, quantised into five terrain bands
 fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
@@ -238,7 +238,7 @@ showImgGrid(
 )
 ```
 
-![](assets/wfc_examples/simple-tiled.png)
+![the island source above two WFC outputs: learned weights lose all water, sand boosted x10 restores lakes with deep cores ringed by shallow](assets/wfc_examples/simple-tiled.png)
 
 This is the result most WFC introductions quietly skip, and it is worth reading carefully.
 
@@ -273,7 +273,7 @@ circuit traces, and rules derived from edge sockets rather than from a sample �
 `a` exactly when `a`'s east socket matches `b`'s west socket. This is the original "simple tiled
 model", and it is only about ten lines once the sockets are written down.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/circuit.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true name="wfc-circuit"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/circuit.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-circuit"}
 :::static
 // Sockets per tile, in WFC_NORTH, WFC_EAST, WFC_SOUTH, WFC_WEST order. 1 = a trace leaves this edge.
 val sockets = listOf(
@@ -333,7 +333,7 @@ display("counts", "<div style='font:13px/1.6 monospace;padding:8px'>" +
     "${grid.count { it == 0 }} blank of ${grid.size} cells</div>")
 ```
 
-![](assets/wfc_examples/circuit.png)
+![the eight-tile socket atlas above a 34x22 WFC output in which every circuit trace connects with no dangling ends](assets/wfc_examples/circuit.png)
 
 Every trace connects. There are no dangling ends anywhere in the output, and there cannot be: a live
 socket on one tile is only ever adjacent to a live socket on the next, so "wires join up" is a
@@ -358,7 +358,7 @@ This source is built for the model: sky over soil, with flowers rooted in the so
 of it *says* something — "stem continues upward", "blossom sits on a stem", "stem meets soil" — which
 is what the overlapping model can preserve and the simple-tiled model cannot.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/overlapping.png" wait="2.0" capture="box" open-outputs="true" w="1200" embed=true name="wfc-overlapping"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/overlapping.png" wait="2.0" capture="box" open-outputs="true" w="1200" name="wfc-overlapping"}
 :::static
 val SKY = Triple(0.75f, 0.86f, 0.94f)
 val SOIL = Triple(0.42f, 0.29f, 0.16f)
@@ -431,7 +431,7 @@ showImgGrid(
 )
 ```
 
-![](assets/wfc_examples/overlapping.png)
+![the flower source, then the same rules with no ground constraint producing rootless flowers, then with ground and sky pinned producing flowers rooted in soil](assets/wfc_examples/overlapping.png)
 
 Three things in one picture.
 
@@ -463,7 +463,7 @@ observes more relations in the source and then enforces more of them in the outp
 Whether that matters depends entirely on whether the source has structure along the new offsets. Both
 halves of the following figure are the same code with one argument changed.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/neighborhoods.png" wait="2.0" capture="box" open-outputs="true" w="1200" embed=true name="wfc-neighborhoods"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/neighborhoods.png" wait="2.0" capture="box" open-outputs="true" w="1200" name="wfc-neighborhoods"}
 :::static
 // Diagonal stripes two cells wide. Colour depends on (x + y) mod 4, so along the anti-diagonal
 // offset (1, -1) the colour never changes, while east and south change only half the time.
@@ -500,7 +500,7 @@ showImgGrid(
 )
 ```
 
-![](assets/wfc_examples/neighborhoods.png)
+![diagonal stripe source, a von Neumann result that is noise, and a Moore result that reproduces the stripes exactly](assets/wfc_examples/neighborhoods.png)
 
 The von Neumann model learns nothing at all from this source. Sweeping east it observes every
 possible pair — `A-A`, `A-B`, `B-B`, `B-A` — because a two-wide stripe means the colour changes on
@@ -529,7 +529,7 @@ by averaging each cell's remaining possibilities, so an undecided cell is a blur
 become and a decided one is itself; `possibilityCountImg` gives the remaining option count per cell
 as a scalar field to colour-map.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/collapse-frames.png" wait="3.0" capture="box" open-outputs="true" w="1200" embed=true name="wfc-collapse-frames"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/collapse-frames.png" wait="3.0" capture="box" open-outputs="true" w="1200" name="wfc-collapse-frames"}
 :::static
 :::fold section 2's terrain source, with section 2's re-weighted model
 fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
@@ -599,7 +599,7 @@ display("main", vstack(
 ).toPngBytes())
 ```
 
-![](assets/wfc_examples/collapse-frames.png)
+![seven frames of the wave collapsing from flat grey haze to a finished map, above the same frames as a possibility-count heatmap showing the propagating frontier](assets/wfc_examples/collapse-frames.png)
 
 The top row is the wave; the bottom row is the possibility count on the same frames, `magma`-mapped
 with an explicit `lo = 0f, hi = tileCount` so the colours mean the same thing in every frame. (Left
@@ -690,7 +690,7 @@ sequence of calls give byte-identical output — that part is guaranteed, and th
 But reproducibility is a property of the whole *session*, not of each attempt: the third attempt after
 two contradictions is not the same as a fresh solver's first attempt.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/contradiction.png" wait="1.5" capture="box" open-outputs="true" w="1200" embed=true name="wfc-contradiction"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/contradiction.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-contradiction"}
 :::static
 // Over-constrained on purpose: a strict 0 -> 1 -> 2 chain and nothing else. Hand-authored rules do
 // NOT get the widening that fromSampleGrid applies, so "nothing may sit east of tile 2" stands.
@@ -750,7 +750,7 @@ showImgGrid(
 :::endfold
 ```
 
-![](assets/wfc_examples/contradiction.png)
+![a report showing over-constrained rules deadlocking and widened rules solving, above three seeded outputs where two share a seed and match](assets/wfc_examples/contradiction.png)
 
 The two seed-42 panels are identical and seed 43 is not, which is the whole of the reproducibility
 contract. The text panel is the more useful half: it shows *why* the strict rules deadlock — nothing

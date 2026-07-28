@@ -78,6 +78,8 @@ object DemoTranscriptExecSmokeTest {
         "vision_geometry_desk_preview",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
+        // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
+        "wfc_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
