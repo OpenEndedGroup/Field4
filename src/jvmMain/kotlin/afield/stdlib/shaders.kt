@@ -923,9 +923,13 @@ fun registerShaderFilesystemIncludeRoot(root: String, directory: String) {
  * re-run of the box does not accumulate stale registrations, and it is why `.display(…)` belongs on
  * the end of every call rather than being set up once.
  *
- * Read-back happens off the render thread and is throttled by `probe.maxDisplayHz`, so a slow front
- * end cannot stall the GPU. The probe's buffer is bound into a module's parameters when that module
- * is built or reloaded, so calling this *after* the module exists needs a reload to take effect.
+ * Read-back happens off the render thread. Two different throttles are involved and only one is
+ * unconditional: the *display dispatch* is always limited to `probe.maxDisplayHz`, but the GPU→CPU
+ * *read* is limited only in the plain `.display(…)` case. Turn on continuous reads, register an
+ * `onSnapshot` callback, or use no display channel at all, and `shouldReadSnapshot` returns true every
+ * frame — so an `onSnapshot` that does real work is on the read path at full frame rate and can cost
+ * you. The probe's buffer is bound into a module's parameters when that module is built or reloaded,
+ * so calling this *after* the module exists needs a reload to take effect.
  *
  * @param samples reservoir size pulled back to the CPU; clamped to 1..262144 by the probe
  * @param binding SSBO binding for `FieldProbeBuffer` — must match what the include declares
