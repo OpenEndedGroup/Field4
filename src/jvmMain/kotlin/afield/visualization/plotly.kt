@@ -279,8 +279,8 @@ fun Plot.darkMode(): Plot {
 }
 
 /**
- * Render a `Plot` to an inline HTML fragment: one `div` with a fresh random id, plus a script that
- * calls `Plotly.react` on it. Not an iframe and not a whole document — this is exactly what a box
+ * Render a `Plot` to an inline HTML fragment: a plain wrapper `div` around the plot's own `div`, which
+ * carries a fresh random id and a script that calls `Plotly.react` on it. Not an iframe and not a whole document — this is exactly what a box
  * output does with a `Plot`, so the result drops straight into the editor's output pane.
  *
  * The host page must already have the Plotly library loaded. If it does not, the script logs

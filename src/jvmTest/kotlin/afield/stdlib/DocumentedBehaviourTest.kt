@@ -339,6 +339,48 @@ class DocumentedBehaviourTest {
         assertEquals("ababab", "ab" * 3)
     }
 
+    /**
+     * `PairContext.axis` is documented as falling back to `(1, 0)` "for a coincident pair rather than being
+     * NaN". The guard read `if (max(delta.length(), 0.0001f) < 1e-4f)` — the floor compared against itself,
+     * so the fallback was unreachable and a coincident pair normalized a zero vector into `(NaN, NaN)`,
+     * which reached the impulse and then the positions permanently. Two nodes at the origin is not a corner
+     * case: `NetBuilder.node`'s `at` defaults to `Vec2()`, so every `net { }` written without positions
+     * starts stacked.
+     */
+    @Test
+    fun coincidentPairDoesNotPoisonTheLayoutWithNaN() {
+        // Lambda.duplicatedConstantDemo's wiring, with every position left at the default origin. The
+        // duplication rule is one that throws its new nodes apart with ctx.branchImpulse, which is where a
+        // NaN axis becomes a NaN velocity.
+        val stacked = net {
+            val rootL = node(Lambda.ROOT, id = "rootL")
+            val rootR = node(Lambda.ROOT, id = "rootR")
+            val dup = node(Lambda.DUP, id = "dup")
+            val constant = node(Lambda.CONST, id = "k")
+            dup.principal to constant.principal
+            dup.aux(0) to rootL.principal
+            dup.aux(1) to rootR.principal
+        }
+        val reducer = Reducer(Lambda.rules())
+        assertTrue(reducer.step(stacked), "the stacked net must still have a reducible pair")
+        stacked.nodes.forEach { node ->
+            val v = stacked.velocityOf(node)
+            assertTrue(
+                v.x.isFinite() && v.y.isFinite(),
+                "node ${node.id} came out of the rewrite with velocity ($v)"
+            )
+        }
+        // The impulse only reaches the coordinates through the layout, which is where a NaN becomes permanent.
+        stacked.relax(8)
+        stacked.nodes.forEach { node ->
+            val p = stacked.positionOf(node)
+            assertTrue(
+                p.x.isFinite() && p.y.isFinite(),
+                "node ${node.id} was left at ($p) after relaxing a net built with no positions"
+            )
+        }
+    }
+
     /** Asserts sampled positions match [expected] to within floating-point slack, reporting both lists. */
     private fun assertPositions(expected: List<Double>, actual: DoubleArray, message: String) {
         val ok = expected.size == actual.size && expected.indices.all { abs(expected[it] - actual[it]) < 1e-9 }
