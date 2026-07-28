@@ -209,7 +209,8 @@ object FFT {
  *
  * `RECTANGULAR` is no window at all: the narrowest main lobe, and the worst leakage, so a loud tone
  * spatters energy right across the spectrum. `HANN` is the sane default. `HAMMING` is similar with a
- * slightly narrower lobe and a higher first sidelobe. `BLACKMAN` suppresses leakage hardest at the cost of
+ * slightly narrower main lobe and a **lower** first sidelobe (about -47 dB against Hann's -31 dB), paid for
+ * with a far-field skirt that decays more slowly. `BLACKMAN` suppresses leakage hardest at the cost of
  * the widest lobe — reach for it when you need to see something quiet next to something loud.
  */
 enum class WindowType { RECTANGULAR, HANN, HAMMING, BLACKMAN }
@@ -217,7 +218,8 @@ enum class WindowType { RECTANGULAR, HANN, HAMMING, BLACKMAN }
 /**
  * The window functions themselves, as plain `DoubleArray`s you multiply a frame by.
  *
- * Every one of them takes a `periodic` flag that is **false by default**, meaning symmetric — the right
+ * All but [rectangular], which has nothing to taper, take a `periodic` flag that is **false by default**,
+ * meaning symmetric — the right
  * choice for filter design and for looking at a single frame. Pass `true` for the periodic form, which is
  * the correct one for STFT analysis where frames overlap and are expected to sum smoothly; the difference
  * is one sample in the divisor and it matters more than it looks.
@@ -259,7 +261,8 @@ object Windows {
 
     /**
      * The three-term `0.42 - 0.5·cos(w) + 0.08·cos(2w)` window: the strongest leakage suppression here, and
-     * the widest main lobe, so two frequencies closer than about twice [hann]'s separation blur into one.
+     * the widest main lobe — about 1.5 times [hann]'s null-to-null width, so two frequencies Hann would just
+     * separate blur into one here.
      */
     fun blackman(n: Int, periodic: Boolean = false): DoubleArray {
         if (n <= 1) return DoubleArray(n) { 1.0 }
@@ -534,8 +537,9 @@ fun istft(spec: Spectrogram): DoubleArray {
  * Single numbers that describe the *shape* of a spectrum — brightness, spread, where the energy stops —
  * for driving something from a sound without looking at every bin.
  *
- * Everything here takes a **one-sided magnitude** spectrum (as from `Spectrum.magnitudeOneSided`) plus the
- * sample rate, and returns Hz where the answer is a frequency. The bin width is derived as
+ * Most of it takes a **one-sided magnitude** spectrum (as from `Spectrum.magnitudeOneSided`) plus the
+ * sample rate, and returns Hz where the answer is a frequency — but not all: [flux] and [flatness] need no
+ * sample rate, and [rms] and [energy] take a *time-domain* buffer instead of a spectrum. The bin width is derived as
  * `sampleRate / (2·(n-1))`, so passing a two-sided spectrum by mistake silently halves every frequency it
  * reports rather than failing. An empty spectrum gives 0.0 throughout instead of NaN.
  */
@@ -673,7 +677,12 @@ object SpectralFeatures {
  * [hzToMel] and [melToHz] are the scale itself, in the standard `2595·log10(1 + hz/700)` form.
  */
 object Mel {
-    /** Hz to mels, `2595·log10(1 + hz/700)`. Monotonic, 0 at 0 Hz, and defined for negative input too. */
+    /**
+     * Hz to mels, `2595·log10(1 + hz/700)`. Monotonic and 0 at 0 Hz.
+     *
+     * Defined down to but not including -700 Hz: exactly -700 gives -infinity and anything below it NaN,
+     * which is the log's domain rather than a guard this adds.
+     */
     fun hzToMel(hz: Double): Double = 2595.0 * log10(1.0 + hz / 700.0)
 
     /** Mels back to Hz — the exact inverse of [hzToMel]. */

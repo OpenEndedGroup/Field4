@@ -1675,10 +1675,11 @@ class AdaptiveCompander(
  *
  * [attack] and [release] are per-sample coefficients in `0..1` (larger = faster) doing double duty:
  * they smooth the envelope, and they smooth the gain's approach to whatever the envelope asks for. The
- * gain is held in `0..maxGain`, and during exact silence it is frozen rather than allowed to run away,
- * so the gain you had before a gap is the gain that greets the next sample. Being a pure multiplier it
- * will happily amplify noise up to [targetLevel] if you give it nothing else — gate first with
- * [NoiseGate] if that matters.
+ * gain is held in `0..maxGain`, which is the only thing stopping it running away: the envelope decays
+ * *multiplicatively*, so a gap of exact zeros never quite reaches zero and the gain keeps climbing
+ * toward [maxGain] at the [release] rate for as long as the silence lasts. Expect a gap to be followed
+ * by a loud sample, and being a pure multiplier it will happily amplify noise up to [targetLevel] if
+ * you give it nothing else — gate first with [NoiseGate] if either matters.
  */
 class AGC(
     /** The envelope level the gain chases, in the same linear units as your signal. */
@@ -1951,14 +1952,13 @@ class DCBlocker(var r: Float = 0.995f) : FloatFilter {
  */
 class PeakDetector(var decay: Float = 0.99f) : FloatFilter {
     private var peak = 0f
-    /** The held peak after [value]: its magnitude if that is a new high, otherwise the previous peak decayed once. */
+    /** The held peak after [value]: its magnitude if that is a new high, otherwise the previous peak decayed once — but never less than the magnitude in hand. */
     override fun invoke(value: Float): Float {
         val absVal = abs(value)
-        if (absVal > peak) {
-            peak = absVal
-        } else {
-            peak *= decay
-        }
+        // The floor is the point. Decaying unconditionally whenever the sample was not a *new* high put the
+        // output below the sample it was supposedly enveloping, and made a constant input sawtooth between
+        // `A` and `A * decay` forever: A > A is false, so it decayed, and then A > A*decay re-latched.
+        peak = maxOf(absVal, peak * decay)
         return peak
     }
 }
@@ -1991,9 +1991,10 @@ class SchmittTrigger(var lowThreshold: Float, var highThreshold: Float) : FloatF
  * an isolated outlier completely instead of spreading it over its neighbourhood, and it leaves real edges
  * where they are instead of smearing them into ramps.
  *
- * With an even `windowSize` the two middle samples are averaged, so the output can be a value that never
- * appeared in the input; with an odd one it is always an actual sample. Before the window fills, the
- * median is taken over however many samples have arrived. The cost is a copy and a sort every sample, so
+ * Before the window fills, the median is taken over however many samples have arrived — and the parity that
+ * decides whether two middle samples are averaged is that *count*, not `windowSize`, so even an odd window
+ * can return a value that never appeared in the input until it has filled. Once full, an even `windowSize`
+ * always averages and an odd one always returns an actual sample. The cost is a copy and a sort every sample, so
  * keep the window small — this is not the filter to run with a window of ten thousand — and remember it
  * delays the signal by roughly half the window.
  */
@@ -2153,10 +2154,14 @@ class StreamingWhitener(var alpha: Float = 0.01f, var epsilon: Float = 1e-5f) : 
  * The centroids are kept in order, so the answer is `-1f` for the lower cluster and `+1f` for the upper. Set
  * `interpolate` to get the sample's position between them mapped onto `-1..1` instead — a soft membership,
  * and not clamped, so a sample outside the pair reads beyond `±1`. Warm-up is unusual: the first sample seeds
- * the low centroid and the filter returns 0 until a second, *different* value arrives to seed the other, so a
- * stream that starts with a run of identical samples stays silent for exactly that long. If the two centroids
- * ever converge to within 1e-5, the interpolated output falls back to 0. `alpha` is the per-sample learning
- * rate: small enough to be stable, large enough to follow drift.
+ * *a* centroid — not necessarily the lower one, since the pair is put in order the moment the second value
+ * arrives and a lower second value therefore takes the low slot — and the filter returns 0 until a second,
+ * *different* value arrives, so a stream that starts with a run of identical samples stays silent for exactly
+ * that long. If the two centroids ever converge to within 1e-5, the interpolated output falls back to 0.
+ * `alpha` is the per-sample learning rate in `0..1`: small enough to be stable, large enough to follow drift.
+ * Keep it there — the nearer centroid moves by `alpha` times its distance to the sample, which cannot carry it
+ * past the other one for any `alpha` at or below 2, and the label is decided from the distances *before* that
+ * move, so an `alpha` above 2 would report the two clusters the wrong way round.
  */
 class BimodalThresholder(var alpha: Float = 0.05f, var interpolate: Boolean = false) : FloatFilter {
     private var c1 = 0f
@@ -2211,8 +2216,9 @@ class BimodalThresholder(var alpha: Float = 0.05f, var interpolate: Boolean = fa
 }
 
 /**
- * Reports where the current sample ranks within the last `windowSize` samples: the fraction of the window
- * lying strictly below it. Completely distribution-free — no mean, no standard deviation, no fitted law — so a
+ * Reports where the current sample ranks within the last `windowSize` samples: the fraction of the *rest* of
+ * the window lying strictly below it. (The current sample is in the window but can never count itself, so the
+ * denominator is one less than the fill level and a new high reads exactly 1.0.) Completely distribution-free — no mean, no standard deviation, no fitted law — so a
  * heavy-tailed or lopsided signal cannot mislead it, and one wild outlier moves the output by exactly one rank.
  *
  * By default the rank is mapped onto `-1..1`, where 0 is the middle of the window; clear
@@ -2227,8 +2233,8 @@ class PercentileThresholder(val windowSize: Int = 100, var mapToMinusOneToOne: B
     private var count = 0
 
     /**
-     * The fraction of the window strictly below [value] — mapped onto `-1..1`, or left as `0..1` when
-     * `mapToMinusOneToOne` is false.
+     * The fraction of the rest of the window strictly below [value] — mapped onto `-1..1`, or left as `0..1`
+     * when `mapToMinusOneToOne` is false.
      */
     override fun invoke(value: Float): Float {
         buffer[index] = value
@@ -2259,8 +2265,9 @@ class PercentileThresholder(val windowSize: Int = 100, var mapToMinusOneToOne: B
  * anything whose timing you would rather state in milliseconds than in samples.
  *
  * Because the times are in milliseconds, [sampleRate] has to match the rate you are actually pushing samples
- * at — it is the only thing converting one into the other, and the 44100 default will make a 5 ms attack
- * behave like minutes on a 60 Hz control signal. Everything else is in dB relative to a full-scale magnitude
+ * at — it is the only thing converting one into the other. Left at the 44100 default on a 60 Hz control
+ * signal, the 5 ms attack becomes 220 samples and so behaves like 3.7 *seconds*, and the 50 ms release like
+ * a little over half a minute. Everything else is in dB relative to a full-scale magnitude
  * of 1, and the envelope is floored at −100 dB (a linear 1e-5) so silence cannot ask for infinite gain. The
  * knee is quadratic and centred on the threshold, spanning [kneeWidthDb] in total. Worth knowing for hot
  * loops: the two coefficients are re-derived with an `exp()` each on every sample rather than cached when the
@@ -2308,13 +2315,19 @@ class DynamicRangeCompressor(
         val envelopeDb = linearToDb(envelope)
 
         val overDb = envelopeDb - thresholdDb
-        val gainReductionDb = if (overDb < -kneeWidthDb / 2f) {
-            0f
-        } else if (overDb > kneeWidthDb / 2f) {
-            overDb * (1f - 1f / ratio)
-        } else {
-            val x = overDb + kneeWidthDb / 2f
-            (1f - 1f / ratio) * (x * x) / (2f * kneeWidthDb)
+        val halfKnee = kneeWidthDb / 2f
+        val slope = 1f - 1f / ratio
+        val gainReductionDb = when {
+            // A zero-width knee has no quadratic to evaluate: the `else` branch would compute 0 / (2 * 0) and
+            // hand back NaN for any sample sitting exactly on the threshold — which silence does, since the
+            // envelope floors at exactly -100 dB.
+            kneeWidthDb <= 0f -> if (overDb > 0f) overDb * slope else 0f
+            overDb < -halfKnee -> 0f
+            overDb > halfKnee -> overDb * slope
+            else -> {
+                val x = overDb + halfKnee
+                slope * (x * x) / (2f * kneeWidthDb)
+            }
         }
 
         val gainDb = makeupGainDb - gainReductionDb

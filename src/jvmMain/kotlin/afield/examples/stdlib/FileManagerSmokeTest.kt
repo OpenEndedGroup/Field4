@@ -62,6 +62,7 @@ object FileManagerSmokeTest {
             require(sameFilePath(explicit.file, implicit)) { "Expected %document/foo.json to match implicit current directory" }
             require(sameFilePath(explicit.path.toFile(), implicit)) { "Expected .path to return a Path" }
             require(explicit.absolutePath == implicit.absolutePath) { "Expected .absolutePath to return absolute string" }
+            @Suppress("DEPRECATION") // the point of the assertion is that the deprecated typo alias still works
             require(explicit.abslutePath == implicit.absolutePath) { "Expected .abslutePath typo alias to work" }
         }
     }

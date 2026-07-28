@@ -27,13 +27,11 @@ import kotlin.math.min
  */
 
 /**
- * Structural metadata for [Functions.Fn].
+ * One child of a [FnGraphNode], tagged with the **role** it plays in its parent rather than a position.
  *
- * The evaluator closure remains the authoritative implementation of a function;
- * this graph is a best-effort recipe attached alongside it. Nodes that know how
- * to rebuild themselves can participate fully in deep-copy and rewrite passes.
- * Nodes that cannot rebuild safely are still inspectable, but copy as opaque
- * evaluators so we do not pretend to understand arbitrary user lambdas.
+ * `"source"`, `"frequency"`, `"overlap"` and so on. Addressing children by role is what lets a rule say
+ * "the frequency of this oscillator" without counting arguments, and what lets a transmutation move a
+ * child from one slot to another; see [FnGraphNode.child].
  */
 data class FnGraphEdge(
     val role: String,
@@ -182,7 +180,8 @@ data class FnGraphSnapshotEdge(
  *
  * A **graph, not a tree** — a subgraph reached twice appears once with two edges into it, because identity is what is
  * de-duplicated. That is the honest shape of an `Fn` built with shared sub-expressions, and it is why this is the right
- * thing to serialise or diff, where `graphText` and `graphSvg` re-expand and mark repeats instead.
+ * thing to serialise or diff: `graphText` and `graphSvg` instead *mark* a repeat and stop there, which is legible but
+ * not a structure you can walk.
  */
 data class FnGraphSnapshot(
     val nodes: List<FnGraphSnapshotNode>,
@@ -207,9 +206,10 @@ fun Functions.Fn.graphNode(): FnGraphNode =
  * Rebuilds this function from its graph, bottom-up, offering every node to [edit] on the way — the single traversal every
  * other rewrite in this family is written in terms of.
  *
- * With the default no-op edit it is a genuine deep copy: nothing is shared with the original, so mutating one leaves the
- * other alone. Nodes whose graph carries no `rebuild` recipe are copied as **opaque evaluators wrapping the original**,
- * which means they still compute the same thing but their internals are gone from the copy.
+ * With the default no-op edit every *rebuildable* node is reconstructed, so editing or rewriting the copy cannot reach
+ * back into the original. It is not a copy all the way down, though: a node whose graph carries no `rebuild` recipe is
+ * copied as an **opaque evaluator wrapping the original**, which computes the same thing but keeps a live reference to
+ * it and has no internals left in the copy.
  *
  * [preserveSharing] defaults to true here — a subgraph reached twice is copied once and the result reused, keeping the
  * copy's structure (and its evaluation cost) the same as the original's. Turn it off, as [rewriteGraph] does, when each
@@ -383,7 +383,9 @@ fun Functions.Fn.slideCopy(amount: Number, preserveSharing: Boolean = true): Fun
  * it really is, which is what makes it the right input for diffing two versions of an expression.
  *
  * [maxDepth] stops the descent, but the node at the limit is still emitted — just without its children — so a truncated
- * snapshot looks like a leaf rather than announcing itself. Depth is per path, not per node.
+ * snapshot looks like a leaf rather than announcing itself. Because nodes are de-duplicated by identity and the *first*
+ * visit decides, the depth that truncates a shared subgraph is the depth it was first reached at: a later, shallower
+ * path to the same node does not re-expand it.
  */
 fun Functions.Fn.graphSnapshot(maxDepth: Int = 32): FnGraphSnapshot {
     val ids = IdentityHashMap<Functions.Fn, Int>()
@@ -448,8 +450,10 @@ fun Functions.Fn.graphText(maxDepth: Int = 12): String {
         val assigned = nextId++
         seen[fn] = assigned
         out.append(prefix).append("#").append(assigned).append(" ").append(lineFor(fn)).append('\n')
+        // Only announce truncation when something was actually truncated: the marker used to print for any
+        // node at the depth limit, including a leaf with no children to hide.
         if (depth >= maxDepth) {
-            out.append(prefix).append("  ...\n")
+            if (fn.graphNode().children.isNotEmpty()) out.append(prefix).append("  ...\n")
             return
         }
         fn.graphNode().children.forEachIndexed { index, edge ->
@@ -471,9 +475,10 @@ fun Functions.Fn.graphText(maxDepth: Int = 12): String {
  * constants and unevaluable nodes simply get no sparkline, and an exception during sampling is swallowed as a gap in the
  * line rather than propagated.
  *
- * A repeated subgraph is **expanded again** here (outlined more brightly to mark it), unlike [graphSnapshot], so this is a
- * tree view of a graph and a heavily shared expression can get wide. The returned SVG grows past [width] rather than
- * clipping. Set `sparklines = false` when the evaluation cost matters — it is one full evaluation per node per call.
+ * A repeated subgraph is drawn as a single childless card, outlined more brightly to mark it — so sharing reads as a
+ * stub rather than as a second copy, and a heavily shared expression comes out *narrower* than its evaluation cost
+ * suggests. ([graphFLineMap] is the one that really does expand every occurrence.) The returned SVG grows past [width]
+ * rather than clipping. Set `sparklines = false` when the evaluation cost matters — it is one full evaluation per node per call.
  */
 fun Functions.Fn.graphSvg(
     width: Int = 960,

@@ -59,7 +59,7 @@ and anything needing a model file.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">toBufferedImage</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">BufferedImage</span></code> | Convert to a `BufferedImage` for AWT drawing / `ImageIO`. Samples are clamped to `0..1` and quantised to 8 bits at this point (and only at this point). A 1-channel image becomes gray RGB. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">toPngBytes</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | Encode straight to PNG bytes with **no AWT** (via `PngEncoder`) — the path a box uses to put a picture in its own output, and the path `Img.toHTML` uses for its thumbnail. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">savePng</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code> | Write this image to `path` as a PNG (creating parent directories). Returns the file. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">imgFromFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Load an image from a file path. @param channels see `BufferedImage.toImg`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">imgFromFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Loads an image from a file path, straight through `ImageIO` — the path is used verbatim and does **not** go through `FileManager`, so a workspace-relative spec will not resolve here. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">imgFromBytes</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Decode an image from in-memory encoded bytes (PNG/JPEG/… — whatever `ImageIO` handles). |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">floatsToImg</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Wrap a plain `FloatArray` of scalars as a 1-channel image — the bridge from the rest of the stdlib (a heightfield, a spectrogram frame stack, a `DoubleArray` reduction) into imaging. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">doublesToImg</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `floatsToImg` for doubles. |
@@ -578,6 +578,35 @@ The result of a sparse optical-flow run.
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## imaging_simd.kt { #imaging-simd-kt }
+
+The SIMD span kernels the imaging filters are built out of.
+
+### Why this file exists
+
+The scalar filter layer reads every sample through `Img.get`, which per multiply-add costs a
+range check, a channel clamp and a `when` over [`Border`](imaging.md#imaging-kt-border). That is correct and readable, and it is
+also unvectorizable: C2 cannot hoist a branch whose outcome depends on the loop index out of the
+inner loop, so a 3-tap Sobel pays three bounds-checked calls per sample.
+
+The fix is not to make the accessor faster — it is to stop calling it in the interior. Because
+[`Img`](imaging.md#imaging-kt-img) stores samples interleaved (`data[(y * width + x) * channels + c]`), *both* passes of a
+separable convolution address contiguous memory:
+
+- **Vertical.** For a fixed output row, tap `t` reads the whole of source row `y + t - r`. The
+  border decision is therefore *per row*, not per pixel: resolve the row index once and the
+  entire row is a straight span. Every row takes the fast path.
+- **Horizontal.** Adding `(t - r) * channels` to a flat index moves to the same channel of the
+  pixel `t - r` columns over. So for a fixed tap the whole interior of a row is, again, a
+  straight span — only the `r` columns at each end need the general accessor.
+
+Which reduces a separable convolution to one primitive, applied once per tap: `dst += w * src`
+over a contiguous span. That is `axpy`, and it is what this file provides.
+
+### On FMA
+
+`axpy` uses a fused multiply-add: one rounding per tap instead of two. Results therefore differ
+from the scalar reference in the last ulp — more accurate, not less, but not bit-identical.
+The filter tests assert agreement to `1e-5f`, which is four orders of magnitude above this.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_simd.kt`
 

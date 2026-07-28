@@ -370,8 +370,9 @@ inline operator fun <T> Int.invoke(to: (Int) -> T): List<T> = (0 until this).map
  * **inclusive**, and collects the results.
  *
  * The parameterise-a-curve loop: `20 alphas { a -> vec(cos(a * 2 * PI), sin(a * 2 * PI)) }` closes exactly,
- * because the last value really is 1.0. Beware `1 alphas { }`, which divides by zero and hands the block a
- * single `Infinity`; the no-argument [alphas] does not have that edge.
+ * because the last value really is 1.0. Beware `1 alphas { }`: it divides zero by zero and hands the block
+ * a single **NaN** — which will not be caught by an `isInfinite` guard. The no-argument [alphas] does not
+ * have that edge.
  */
 inline infix fun <T> Int.alphas(to: (Double) -> T): List<T> = (0 until this).map { to(it / (this - 1.0)) }
 
@@ -381,8 +382,8 @@ inline infix fun <T> Int.alphas(to: (Double) -> T): List<T> = (0 until this).map
  * `for (a in 20.alphas())` when you want the fractions themselves rather than a mapped list. Nothing is
  * allocated per element, and the `size` is known up front, so it can drive a buffer allocation.
  *
- * Two edges to know: `1.alphas()` yields a single `0.0` (rather than the `Infinity` the infix `alphas`
- * would give), and a negative count yields nothing instead of throwing.
+ * Two edges to know: `1.alphas()` yields a single `0.0` (rather than the NaN the infix `alphas` would
+ * give), and a negative count yields nothing instead of throwing.
  */
 fun Int.alphas(): SizedIterable<Double> {
     val n = this.coerceAtLeast(0)
@@ -403,6 +404,9 @@ fun Int.alphas(): SizedIterable<Double> {
 
 /** `"ab" * 3` — the string repeated [ln] times. Zero or fewer gives the empty string. */
 operator fun String.times(ln: Int): String {
+    // Not just an early-out: `StringBuilder(negative)` throws NegativeArraySizeException before the loop
+    // runs, so without this `"ab" * -1` crashed instead of returning the documented empty string.
+    if (ln <= 0) return ""
 
     var s = StringBuilder(this.length * ln)
     val thisString = this // why has this@String stopped working?
@@ -555,8 +559,10 @@ operator fun Matrix4f.set(n: Int, v: Float) {
  * Builds a 4×4 transform from any combination of a starting matrix, a translation, a rotation and a scale —
  * everything optional, so `mat4()` is the identity.
  *
- * Applied in the order scale, then rotate; [base] is **copied**, never modified. The translation is *set*,
- * not composed: whatever [base] had in its translation column is replaced by [t], and the rotation does not
+ * Composed as `base · S · R`, so a point is **rotated first and scaled afterwards** — with a non-uniform
+ * [s] that is visibly not the same as scaling in the object's own frame, so the argument order here is not
+ * the order the transforms apply in. [base] is **copied**, never modified. The translation is *set*, not
+ * composed: whatever [base] had in its translation column is replaced by [t], and the rotation does not
  * turn [t]. So this builds a pose ("here, facing this way, this big") rather than concatenating transforms —
  * for that, multiply matrices yourself.
  */
@@ -572,8 +578,9 @@ fun mat4(base: Matrix4f? = null, t: Vector3f? = null, r: Quaternionf? = null, s:
  * Builds a 3×3 matrix from an optional starting matrix, rotation and scale — the linear part of [mat4], for
  * normals and 2D transforms.
  *
- * Applied scale then rotate, with [base] copied rather than modified. The `t` parameter is accepted and
- * **ignored**: a 3×3 matrix has nowhere to put a translation. Use [mat4] if you need one.
+ * Composed as `base · S · R` — like [mat4], so a point is rotated first and scaled afterwards — with
+ * [base] copied rather than modified. The `t` parameter is accepted and **ignored**: a 3×3 matrix has
+ * nowhere to put a translation. Use [mat4] if you need one.
  */
 fun mat3(base: Matrix3f? = null, t: Vector3f? = null, r: Quaternionf? = null, s: Vector3f? = null): Matrix3f {
     var m = base?.duplicate() ?: Matrix3f()
@@ -589,7 +596,8 @@ fun mat3(base: Matrix3f? = null, t: Vector3f? = null, r: Quaternionf? = null, s:
  * chain.
  *
  * The vertex-writing idiom: `buf.add(x, y).add(x2, y2)`. Running past the limit throws with a message that
- * reports the limit in **two-float groups**, so "limit 512x2" means 512 more of these calls, not 512 floats.
+ * reports the buffer's **whole limit in two-float groups** — "limit 512x2" means the buffer holds 512 pairs
+ * in total, not that 512 more calls were available (by then, none were).
  */
 fun FloatBuffer.add(x: Float, y: Float): FloatBuffer {
     try {

@@ -34,8 +34,10 @@ typealias Matrix = Array<DoubleArray>
  * optimal for a genuinely Gaussian state, which is the usual assumption. [jitter] is the diagonal nudge
  * added when a Cholesky factorisation fails, not a modelling parameter.
  *
- * @throws IllegalArgumentException unless `alpha > 0`, `beta >= 0` and `jitter > 0`. Note that `kappa` is
- * **not** checked, and a sufficiently negative one makes the sigma-point scaling degenerate.
+ * @throws IllegalArgumentException unless `alpha > 0`, `beta >= 0`, `jitter > 0` and `kappa` is finite.
+ * `kappa` cannot be fully checked here — the sigma-point scaling needs `n + kappa > 0` and the state
+ * dimension `n` is not known until [UnscentedKalmanFilter] is built — so a sufficiently negative one is
+ * caught there instead, with a message that names the arithmetic.
  */
 data class UKFOptions(
     val alpha: Double = 0.5,
@@ -47,6 +49,9 @@ data class UKFOptions(
         require(alpha > 0.0) { "alpha must be > 0" }
         require(beta >= 0.0) { "beta must be >= 0" }
         require(jitter > 0.0) { "jitter must be > 0" }
+        // A NaN kappa passes every inequality below it and then propagates silently through every
+        // sigma point into the estimate, which is the hardest possible way to notice a typo.
+        require(kappa.isFinite()) { "kappa must be finite, found $kappa" }
     }
 }
 
@@ -285,7 +290,8 @@ class UnscentedKalmanFilter(
         val c = n + lambda
 
         require(c > 0.0) {
-            "n + lambda must be positive. Try increasing alpha or kappa."
+            "sigma-point scaling n + lambda must be positive, but alpha^2 * (n + kappa) = $c for " +
+                "n = $n, alpha = ${options.alpha}, kappa = ${options.kappa}. Try increasing alpha or kappa."
         }
 
         val scaledCov = scale(covariance, c)
@@ -316,7 +322,8 @@ class UnscentedKalmanFilter(
         val c = n + lambda
 
         require(c > 0.0) {
-            "n + lambda must be positive. Try increasing alpha or kappa."
+            "sigma-point scaling n + lambda must be positive, but alpha^2 * (n + kappa) = $c for " +
+                "n = $n, alpha = ${options.alpha}, kappa = ${options.kappa}. Try increasing alpha or kappa."
         }
 
         val count = 2 * n + 1

@@ -17,9 +17,12 @@ import kotlin.math.sqrt
  * clamped to `[0,1]` with alpha last, so the results drop straight into FLine colours and uniforms.
  *
  * [rgb] / [rgba] accept either 0..1 or 0..255 components — the scale is inferred per call from
- * whether any component exceeds 1 — and [rgb255] forces the 0..255 reading. [hsl] is ordinary HSL;
- * [okhsl] and [okhsv] are the Oklab-based equivalents, which hold perceived lightness far steadier
- * across hue. Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
+ * whether any component exceeds 1 — and [rgb255] forces the 0..255 reading. [hsl] is HSL with the
+ * usual cube geometry, but the result is encoded through the sRGB transfer function on the way out,
+ * so it is *not* interchangeable with CSS `hsl()` — see [hsl] for what that costs. [okhsl] and
+ * [okhsv] are the Oklab-based equivalents; of the two only [okhsl] holds perceived lightness steady
+ * across hue, because [okhsv] scales `v` against the per-hue gamut cusp exactly as HSV always has.
+ * Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
  * by 360) and is wrapped either way.
  *
  * For sets: [hueSetHsl], [hueSetOkhsl] and [hueSetOkhsv] (aliased [hslSet], [okhslSet], [okhsvSet])
@@ -427,13 +430,18 @@ fun rgb255(r: Number, g: Number, b: Number, a: Number = 255f): Vec4 = Vec4(
  * A colour from classic hue / saturation / lightness.
  *
  * Hue may be a fraction of a turn (`0.33`) or degrees (`120`) — a magnitude above 1 is divided by
- * 360 — and either way it wraps, so `hsl(1.25, …)` and `hsl(450, …)` are the same hue. Saturation
+ * 360, and then wrapped. Note what that rule costs at the boundary: `1.25` is *above* 1, so it is read
+ * as 1.25 **degrees** and lands on red, not a quarter turn round. Keep turns strictly below 1 and
+ * degrees at 1 or above. Saturation
  * and lightness are 0..1 and clamped; `l = 0.5` is the fully saturated band, 0 is black and 1 white.
  *
  * The HSL cube is treated as linear light and then encoded to sRGB, the same final step [okhsl]
- * takes, so the pure hues match CSS's `hsl()` but mid-greys come out lighter than CSS would give.
- * If you want perceptually even lightness across hues — a ramp where the yellow does not jump out
- * of the row — use [okhsl].
+ * takes. That makes this *not* CSS's `hsl()`: any component that lands strictly between 0 and 1 is
+ * gamma-shifted upwards, so `hsl(30, 1, 0.5)` is `(1, 0.735, 0)` where CSS gives `(1, 0.502, 0)`,
+ * and `hsl(0, 0, 0.5)` is `0.735` grey rather than `0.5`. Only colours whose every component is
+ * exactly 0 or 1 survive unchanged — the six 60°-multiple corners at `l = 0.5`, plus black and
+ * white — because those are the fixed points of the transfer. If you want perceptually even
+ * lightness across hues — a ramp where the yellow does not jump out of the row — use [okhsl].
  */
 fun hsl(h: Number, s: Number, l: Number, a: Number = 1f): Vec4 {
     val linear = hslToSrgb(hue01(h), clamp01(n(s)), clamp01(n(l)))

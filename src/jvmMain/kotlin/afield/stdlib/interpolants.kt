@@ -178,8 +178,10 @@ private class SmoothInterpolant<T>(
  * Wraps a target-producing lambda so that reading it *eases toward* the target instead of jumping
  * there — the one-word way to take the snap out of a value assignment.
  *
- * `m.color = smoothTo { rgb(1, 0, 0) }` reaches red over the next 100 evaluations instead of on the
- * next frame. Give [time] in **seconds** for a wall-clock ease (measured with `System.nanoTime`, so
+ * `m.color = smoothTo { rgb(1, 0, 0) }` eases to red across the next hundred evaluations instead of
+ * arriving on the next frame. Counted exactly: the first evaluation reports the starting value unmoved
+ * (`0/100`) and the hundred-and-first is the first to report the target, so `steps` is the number of
+ * *increments*, not of readings. Give [time] in **seconds** for a wall-clock ease (measured with `System.nanoTime`, so
  * it is frame-rate independent), or leave it null and let [steps] count evaluations. [time] wins if
  * both are given.
  *

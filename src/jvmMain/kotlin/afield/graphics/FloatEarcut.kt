@@ -13,12 +13,6 @@ object FloatEarcut {
      * @param dim  is the number of coordinates per vertice in the input array
      * @return List containing groups of three vertice indices in the resulting array forms a triangle.
      */
-    /**
-     * Triangulates the given polygon
-     *
-     * @param data is a flat array of vertice coordinates like [x0,y0, x1,y1, x2,y2, ...].
-     * @return List containing groups of three vertice indices in the resulting array forms a triangle.
-     */
     @JvmOverloads
     fun earcut(data: FloatArray, holeIndices: IntArray? = null, dim: Int = 2): MutableList<Int> {
         val hasHoles = holeIndices != null && holeIndices.size > 0

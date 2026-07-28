@@ -320,8 +320,8 @@ object FileManager {
     private val namedDirectories = ConcurrentHashMap<String, Path>()
     private val version = AtomicLong(0)
 
-    /** How many lookups [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] keeps before dropping the oldest. Applied on the next
-     * lookup, so lowering it does not retroactively trim what is already there. */
+    /** How many lookups [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] keeps before dropping the oldest. Applied to the
+     * whole list on the next lookup, so lowering it *does* trim the history already recorded. */
     var maxAccessHistoryEntries: Int = 1024
 
     /**
@@ -372,7 +372,14 @@ object FileManager {
         add(name, directory)
     }
 
-    /** The directory registered under this name, or null. The `%` prefix is optional — `get("x")` and `get("%x")` agree. */
+    /**
+     * The directory registered under this name, or null if nothing is registered under it. The `%` prefix is
+     * optional — `get("x")` and `get("%x")` agree.
+     *
+     * A name is *validated*, not merely looked up, so this throws rather than returning null for a malformed
+     * one and for the two reserved names the resolver owns: `FileManager["document"]` and
+     * `FileManager["project"]` are `IllegalArgumentException`, not null.
+     */
     operator fun get(name: String): Path? = namedDirectory(name)
 
     /** [add] from a string path, with `~` expanded first. */
@@ -469,9 +476,14 @@ val String.absolutePath: String
 /**
  * A **misspelling** of [absolutePath] that works anyway.
  *
- * Kept so that box code which typed it once keeps running. Prefer [absolutePath] in anything new; this exists only
- * for compatibility and does nothing different.
+ * Kept so that box code which typed it once keeps running, and deprecated rather than removed for the same reason:
+ * a live-coded document is a file on someone's disk, not a call site that can be recompiled. Does nothing different.
  */
+@Deprecated(
+    "Misspelling of absolutePath, kept only so existing box code keeps running.",
+    ReplaceWith("absolutePath"),
+    DeprecationLevel.WARNING
+)
 val String.abslutePath: String
     get() = absolutePath
 

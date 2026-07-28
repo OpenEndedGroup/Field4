@@ -28,7 +28,11 @@ object KDocExtractor {
         "public", "private", "internal", "protected",
         "open", "final", "abstract", "sealed", "data", "enum", "annotation", "value",
         "inline", "suspend", "tailrec", "operator", "infix", "external", "override",
-        "const", "lateinit", "companion", "inner"
+        "const", "lateinit", "companion", "inner",
+        // `actual`/`expect` are ordinary modifiers to Kotlin but were missing here, so every
+        // documented `actual fun` in a platform source set had its KDoc slid onto the next
+        // declaration (caught by afield.docs.KDocAttachmentGuard).
+        "actual", "expect"
     )
     
     /**
@@ -153,9 +157,16 @@ object KDocExtractor {
     }
     
     /**
-     * Parse a declaration line to extract type and name
+     * The declaration a single source line declares, as `kind to name`, or null if this line is not
+     * a declaration this parser can see.
+     *
+     * `internal` rather than private because it is the *definition* of which KDoc blocks attach:
+     * [extractKDocs] walks forward from a comment until this returns non-null, so a line it cannot
+     * read is silently skipped and the comment slides onto whatever parses next.
+     * [afield.docs.KDocAttachmentGuard] calls it directly to find those sites before they publish a
+     * wrong caption, and must therefore ask exactly the same question this scan asks.
      */
-    private fun parseDeclaration(line: String): Pair<String, String>? {
+    internal fun parseDeclaration(line: String): Pair<String, String>? {
         var s = line.trimStart()
         if (s.isEmpty()) return null
         if (s.startsWith("package ") || s.startsWith("import ")) return null
@@ -180,7 +191,10 @@ object KDocExtractor {
         }
         if (idx >= tokens.size) return null
         
-        var keyword = tokens[idx]
+        // `constructor(` carries its parameter list with no space, so the keyword has to be cut at the
+        // first `(`; no declaration keyword contains one, and a line that is really a call still fails
+        // the whitelist below.
+        var keyword = tokens[idx].substringBefore('(')
         var remainder = s.substringAfter(keyword, "").trimStart()
 
         // `fun interface Foo` declares a SAM interface, not a function. Treating it as unparseable
@@ -199,17 +213,26 @@ object KDocExtractor {
                 Regex("^(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)")
                     .find(remainder)?.groupValues?.get(1)?.let { unwrapIdentifier(it) }
             }
+            // A `typealias` is a declaration the reference emits (it is in the generator's TYPE_KINDS),
+            // so failing to parse it here dropped its KDoc *and* slid the prose onto the next symbol —
+            // which is what `linalg.kt`'s Vec2/Vec3/Vec4/Quat aliases were doing until 2026-07-28.
+            "typealias" -> parseQualifiedName(remainder.substringBefore("=").trim())
             "val", "var" -> {
                 val head = propertyNameHead(remainder)
                 parseQualifiedName(head)
             }
+            // A secondary constructor carries no name of its own on its line. It is recognised anyway,
+            // as itself, so that a KDoc written above one *stops* here instead of sliding onto the next
+            // real declaration; no consumer looks up a symbol called `constructor`.
+            "constructor" -> "constructor"
             else -> null
         } ?: return null
-        
+
         if (name.isBlank()) return null
-        
+
         return when (keyword) {
-            "class", "interface", "object", "fun", "val", "var" -> keyword to name
+            "class", "interface", "object", "fun", "val", "var", "typealias", "constructor" ->
+                keyword to name
             else -> null
         }
     }

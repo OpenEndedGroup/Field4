@@ -393,7 +393,14 @@ fun Img.savePng(path: String): File {
     return f
 }
 
-/** Load an image from a file path. @param channels see [BufferedImage.toImg]. */
+/**
+ * Loads an image from a file path, straight through `ImageIO` — the path is used verbatim and does **not**
+ * go through `FileManager`, so a workspace-relative spec will not resolve here.
+ *
+ * @param channels how many channels the result should have; see [BufferedImage.toImg] for what null means
+ * @throws IllegalArgumentException when nothing is at [path]
+ * @throws IllegalStateException when `ImageIO` cannot decode what is
+ */
 fun imgFromFile(path: String, channels: Int? = null): Img {
     val f = File(path)
     require(f.isFile) { "no such image file: ${f.absolutePath}" }

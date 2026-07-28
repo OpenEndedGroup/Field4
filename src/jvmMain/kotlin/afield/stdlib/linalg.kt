@@ -28,14 +28,16 @@ import kotlin.math.min
  * scalar with a smaller vector — and `quat` / `dualquat` do the same for rotations. Collections
  * of vectors gain `center`, `median` / `medianVec` and `aabbBounds` in 2D, 3D and 4D; 3D also
  * gets `obbBounds` (PCA by power iteration, an explicit approximation — the code says so),
- * `convexHull` and `convexHullPeelingMedian`, which go through the QuickHull3D library and
- * return the input unchanged if the hull cannot be built. [Cuboid] is a separate plain 3D
+ * `convexHull`, which goes through the QuickHull3D library and returns the input unchanged if the
+ * hull cannot be built, and `convexHullPeelingMedian`, which peels hulls away and returns the
+ * centre of what is left — a single point, not a cloud. [Cuboid] is a separate plain 3D
  * box-with-size type used for layout-style union / inset / intersects work.
  *
  * These vector types are mutable and most operations mutate the receiver, so copy first
- * (`Vec3(existing)`) when you need to keep the original. Swizzles and the `invoke`, `%=` and
- * `len` operators are deliberately absent here: they are generated for every float vector into
- * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`.
+ * (`Vec3(existing)`) when you need to keep the original. Swizzles and the *vector* `invoke`, `%=`
+ * and `len` operators are deliberately absent here: they are generated for every float vector into
+ * `Swizzles.kt` and `VectorOperators.kt` by `tools/linalg-generator`. `%=` for [Quat] and
+ * [DualQuat] is defined here, because no generator emits those.
  */
 
 /**
@@ -314,13 +316,18 @@ fun Collection<Vec3>.aabbBounds(): AxisAlignedBoundingBox3D {
  * Bounds that turn with the data: an [OrientedBoundingBox] whose axes come from a PCA of the point
  * cloud, so an elongated diagonal cluster gets a tight box where [aabbBounds] would get a loose one.
  *
- * The box is `center + extents[i] * axes[i]` on each axis, with `extents` as **half**-widths. Axes are
- * ordered most-spread first.
+ * The box is `center + extents[i] * axes[i]` on each axis, with `extents` as **half**-widths, and it
+ * really does contain every input point: the centre is the middle of the projections rather than the
+ * cloud's centroid, which for a skewed cloud is not the same place. Axes are ordered most-spread first.
  *
- * An **approximation**: the eigenvectors come from ten steps of power iteration with deflation, not a
- * real eigendecomposition, so a cloud with two nearly equal principal spreads can come back with axes
- * that are stable in extent but arbitrary in which is which. Fine for fitting a crate round a mesh;
- * not a basis to build a coordinate frame on. Empty input gives the identity axes and zero extents.
+ * An **approximation**: the eigenvectors come from ten steps of power iteration with an *unscaled*
+ * deflation, not a real eigendecomposition. The first axis is reliable; the second comes out of a
+ * Gram-Schmidt residual against it, and for a strongly elongated cloud that residual is small enough
+ * that which of the two minor axes is which is close to arbitrary. Fine for fitting a crate round a
+ * mesh; not a basis to build a coordinate frame on. A collinear or near-collinear cloud has no second
+ * principal direction at all; some perpendicular is substituted (its extent is zero either way) rather
+ * than letting the normalisation of a zero-length residual put NaN into the result. Empty input gives the
+ * identity axes and zero extents.
  */
 fun Collection<Vec3>.obbBounds(): OrientedBoundingBox {
     if (isEmpty()) {
@@ -367,18 +374,27 @@ fun Collection<Vec3>.obbBounds(): OrientedBoundingBox {
     // 3) Power iteration to find dominant eigenvector (simple approach)
     // For production, use proper eigenvalue decomposition. This is a quick approximation.
     val axes = Array(3) { Vec3() }
-    axes[0] = dominantEigenvector(cov) ?: Vec3(1f, 0f, 0f)
+    axes[0] = dominantEigenvector(cov)?.takeIf { it.isFinite() } ?: Vec3(1f, 0f, 0f)
 
-    // Deflate and find second eigenvector (orthogonal to first)
+    // Deflate and find second eigenvector (orthogonal to first).
+    // The orthogonalised residual can be zero-length — a collinear or near-collinear cloud has no second
+    // principal direction to find — and normalizing that gives NaN, which used to reach the extents and,
+    // through them, every coordinate the caller read back. Any orthogonal direction will do there: the
+    // extent along it is zero either way.
     deflateCovariance(cov, axes[0])
-    axes[1] = dominantEigenvector(cov) ?: Vec3(0f, 1f, 0f)
-    axes[1].sub(axes[1].dot(axes[0]) * axes[0]).normalize()
+    val second = dominantEigenvector(cov) ?: Vec3(0f, 1f, 0f)
+    second.sub(second.dot(axes[0]) * axes[0])
+    axes[1] = if (second.length() > 1e-6f && second.isFinite()) second.normalize() else anyPerpendicular(axes[0])
 
     // Third is cross product
     axes[2] = Vec3(axes[0]).cross(axes[1])
 
-    // 4) Project all points onto each axis to find extents
+    // 4) Project all points onto each axis to find extents *and* where the box's centre has to sit.
+    // The centroid is not the middle of the projections unless the cloud is symmetric, so taking
+    // half-widths about the centroid produced a box that did not contain its own input: for
+    // x = 0, 0, 0, 10 the centroid is 2.5, the half-width 5, and the point at 10 fell outside it.
     val extents = FloatArray(3)
+    val offsets = FloatArray(3)
     for (i in 0..2) {
         var minProj = Float.POSITIVE_INFINITY
         var maxProj = Float.NEGATIVE_INFINITY
@@ -389,10 +405,14 @@ fun Collection<Vec3>.obbBounds(): OrientedBoundingBox {
             if (proj > maxProj) maxProj = proj
         }
         extents[i] = (maxProj - minProj) / 2f
+        offsets[i] = (maxProj + minProj) / 2f
     }
 
+    val boxCenter = Vec3(center)
+    for (i in 0..2) boxCenter.add(offsets[i] * axes[i])
+
     return OrientedBoundingBox(
-        center = center,
+        center = boxCenter,
         axes = axes,
         extents = extents
     )
@@ -412,6 +432,23 @@ private fun dominantEigenvector(cov: Array<FloatArray>): Vec3? {
         v = av
     }
     return v
+}
+
+/** Whether every component is a real number — a power iteration on a degenerate cloud can produce NaN. */
+private fun Vec3.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
+
+/**
+ * Some unit vector at right angles to [a], chosen by crossing with whichever basis axis [a] leans on least
+ * so the cross product is never degenerate.
+ */
+private fun anyPerpendicular(a: Vec3): Vec3 {
+    val basis = when (minOf(kotlin.math.abs(a.x), kotlin.math.abs(a.y), kotlin.math.abs(a.z))) {
+        kotlin.math.abs(a.x) -> Vec3(1f, 0f, 0f)
+        kotlin.math.abs(a.y) -> Vec3(0f, 1f, 0f)
+        else -> Vec3(0f, 0f, 1f)
+    }
+    val out = Vec3(a).cross(basis)
+    return if (out.length() > 1e-9f) out.normalize() else Vec3(0f, 1f, 0f)
 }
 
 private fun deflateCovariance(cov: Array<FloatArray>, v: Vec3) {
@@ -740,8 +777,10 @@ operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, V
  *
  * Radians, not degrees — `quat(PI / 2)` is a quarter turn. The default axis is `+z`, the one that turns
  * things in the screen plane, and the default angle is no rotation at all, so bare `quat()` is the
- * identity. The axis is used as given and is expected to be unit length; a scaled axis yields a
- * quaternion that is not a pure rotation.
+ * identity. The axis is **normalised for you** — `setAngleAxis` divides through by its length — so
+ * `quat(a, vec(0, 0, 5))` gives exactly the same unit quaternion as `quat(a, vec(0, 0, 1))`, and a
+ * merely scaled axis can never produce a non-rotation. The one case to avoid is a zero-length axis:
+ * that divides by zero and every component comes back `NaN`.
  */
 fun quat(angle: Number = 0.0, axis: Vector3f = vec(0, 0, 1)) =
     Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
@@ -774,9 +813,12 @@ fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
  * the corner-and-extent form that layout arithmetic wants, and it is the type behind Field's
  * box-packing and region work rather than anything geometric. Every operation returns a new `Cuboid`.
  *
- * The size fields are taken as given and never checked, so a negative `w`, `h` or `d` is representable
- * and makes [intersects] and [inside] quietly answer false; [inset] by more than half the size is the
- * usual way to end up with one.
+ * The size fields are taken as given and never checked, so a negative `w`, `h` or `d` is representable,
+ * and it breaks the two tests in *opposite* directions. [inside] gets more permissive: it asks
+ * `x + w < end`, and a negative width shrinks `x + w`, so it answers true more readily rather than
+ * less. [intersects] gets permanently false: it asks `point.x >= x && point.x <= x + w`, which with
+ * `x + w < x` is unsatisfiable for every point. [inset] by more than half the size is the usual way to
+ * end up with one.
  */
 class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Float, val d: Float) {
 

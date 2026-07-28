@@ -419,13 +419,35 @@ object StdlibReferenceGenerator {
         if (!sawGap) return null
 
         val body = lines.subList(start, end + 1).joinToString("\n")
-        val cleaned = stripKDocMarkers(body)
+        val cleaned = dropBlockTags(stripKDocMarkers(body))
         if (cleaned.isBlank()) return null
         // The KDocExtractor attaches this same block to the next declaration; remember which one so
         // the declaration's own row stays empty rather than echoing the file overview.
         val attachedTo = (probe + 1).takeIf { probe < lines.size }
         return cleaned to attachedTo
     }
+
+    /**
+     * [text] with its trailing KDoc block tags (`@see`, `@param`, `@throws`, …) removed.
+     *
+     * A symbol's summary is only ever its first paragraph, so tags never reach the page that way; a
+     * file overview is printed whole, and `imaging_simd.kt`'s `@see` lines were rendering literally as
+     * body text. Only tags at the *end* of the block are dropped, which is where KDoc puts them —
+     * anything else would silently swallow prose.
+     */
+    private fun dropBlockTags(text: String): String {
+        val lines = text.split("\n").toMutableList()
+        var cut = lines.size
+        for (i in lines.indices.reversed()) {
+            val trimmed = lines[i].trim()
+            if (trimmed.isEmpty()) continue
+            if (BLOCK_TAG.containsMatchIn(trimmed)) { cut = i; continue }
+            break
+        }
+        return lines.subList(0, cut).joinToString("\n").trimEnd()
+    }
+
+    private val BLOCK_TAG = Regex("""^@(param|return|throws|exception|see|since|sample|author|constructor|receiver|property|suppress)\b""")
 
     private fun stripKDocMarkers(block: String): String =
         block.split("\n").joinToString("\n") { raw ->

@@ -713,10 +713,14 @@ class FLinesAndJavaShapes {
             return pathFlattener.length()
         }
 
+        /**
+         * The cursor's current position as a **distance along the line**, in the same units as
+         * [lengthD].
+         *
+         * Written above the property rather than above its `get()`: a KDoc on an accessor attaches to
+         * nothing (the extractor cannot parse `get() = …`) and slid this description onto [setD].
+         */
         val d: Float
-            /**
-             * get current position as distance along line.
-             */
             get() = pathFlattener.dotToLength(index + alpha)
 
         /**
@@ -729,12 +733,15 @@ class FLinesAndJavaShapes {
             return this
         }
 
+        /**
+         * The cursor's current position in `node.t` format: 0 is the start of the line, 1 is the first
+         * node, and 1.5 is roughly — but certainly not exactly — half way between the first and second.
+         *
+         * The inexactness matters. `evalLinear(x, y, alpha)` parameterizes a linear segment evenly, but
+         * `evalCubic(x, c1, c2, y, alpha)` does not, so `alpha = 0.5` is not the half-way point by
+         * distance. If you care about even distribution use the much slower but accurate [d] / [setD].
+         */
         val t: Float
-            /**
-             * Get current position in node.t format (so 0 is the start of the line, 1 is the first node 1.5 is roughly (but certainly not exactly) half-way between the first and second node, and
-             * so on. The key trouble here is that while evalLinear(x,y, alpha) parameterizes linear segments evently, evalCubic(x, c1, c2, y, alpha) certainly doesn't and alpha=0.5 doesn't mean
-             * half-way along in terms of distance. If you can about even distribution use the much slower but accurate setD and getD.
-             */
             get() = index + alpha
 
         /**

@@ -151,8 +151,10 @@ sealed interface KValue {
 
     /**
      * Rebuild the live Kotlin value this entry stands for — the load half of the round trip.
-     * Quaternion-shaped values are re-normalised on the way out, numbers regain their [NumKind] type,
-     * and a [SourceBlock] becomes a `SourceBackedBlock` that has not compiled anything yet.
+     * A [DualQuat] and a [CameraPoseValue] are re-normalised on the way out, because a rigid transform that
+     * has drifted is a broken transform; a plain [Quat] deliberately is **not** (see its own note — it may be
+     * standing in for something that is not a rotation). Numbers regain their [NumKind] type, and a
+     * [SourceBlock] becomes a `SourceBackedBlock` that has not compiled anything yet.
      */
     fun toAny(): Any = when (this) {
         is Num -> when (kind) {
@@ -1058,7 +1060,10 @@ private fun kotlinNumberLiteral(value: Number): String =
                 f.isNaN() -> "Float.NaN"
                 f == Float.POSITIVE_INFINITY -> "Float.POSITIVE_INFINITY"
                 f == Float.NEGATIVE_INFINITY -> "Float.NEGATIVE_INFINITY"
-                else -> value.toString()
+                // The `f` suffix is what keeps the round trip honest. Without it a captured Float came back as
+                // `1.5`, a *Double* literal, and since coerceEditedValue deliberately does not re-coerce
+                // numbers the pasted code stored a Double where the capture held a Float.
+                else -> value.toString() + "f"
             }
         }
         is Double -> {

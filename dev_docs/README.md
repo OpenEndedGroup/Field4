@@ -25,6 +25,9 @@
 - [`ai/DOCS_SEARCH_FEATURE.md`](./ai/DOCS_SEARCH_FEATURE.md)
 - [`stdlib/GENERATED_LINALG_ARCHITECTURE.md`](./stdlib/GENERATED_LINALG_ARCHITECTURE.md) — generated linear-algebra source and storage architecture
 - [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
+- [`kdoc_reference_contract.md`](./kdoc_reference_contract.md) — how a KDoc block reaches the completion panel and `public/docs/reference/`, which declaration forms the extractor can and cannot see, and what `checkKDocAttachment` enforces
+- [`stdlib_behaviour_changes.md`](./stdlib_behaviour_changes.md) — the running ledger of `afield.stdlib` fixes that change what already-written box code *computes*, with the caller sweep behind each one
+- [`docs_capture_staleness.md`](./docs_capture_staleness.md) — why an ordinary docs build cannot detect a stale capture and how to make it one (`FIELD_DOCS_RUNNER_MODE=always`), how to tell real staleness from run-to-run capture jitter, and the 54 `functions_examples` captures still stale from 2026-07-14
 - [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
 - [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
 

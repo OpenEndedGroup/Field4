@@ -1623,22 +1623,25 @@ class PythonInterface {
             return process.exitValue() to output
         }
 
-        /**
-         * Resolve JEP configuration from a venv directory.
-         *
-         * Given a venv root (e.g. `/path/to/project/.venv`), this:
-         * 1. Locates the `libjep` native library inside the venv's site-packages
-         * 2. Finds the python executable
-         * 3. Configures [MainInterpreter] accordingly
-         *
-         * Set via:
-         * - system property `-Dafield.python.venv=/path/to/.venv`
-         * - env var `FIELD_PYTHON_VENV=/path/to/.venv`
-         */
+        // Once, at class-init: JEP's library path and init params are process-global and have to be set
+        // before the first interpreter exists.
         init {
             configurePythonFromBestCandidate()
         }
 
+        /**
+         * Points JEP at the first Python in [pythonConfigChoices] order that actually has a `libjep`
+         * inside it.
+         *
+         * For a venv root (`/path/to/project/.venv`) that means locating the `libjep` native library in
+         * the venv's site-packages, finding the interpreter beside it, and configuring
+         * [MainInterpreter] accordingly. The two explicit overrides, tried first:
+         * - system property `-Dafield.python.venv=/path/to/.venv`
+         * - env var `FIELD_PYTHON_VENV=/path/to/.venv`
+         *
+         * Never throws. Field has to start without Python, so a total failure only leaves
+         * `pythonConfigAvailable` false and a `pythonConfigMessage` naming what was tried.
+         */
         private fun configurePythonFromBestCandidate() {
             val attempts = pythonConfigChoices()
             val failures = mutableListOf<String>()

@@ -549,9 +549,10 @@ object StatsDependence {
  * x grid symmetric about zero — the textbook case where [pearson] reads about 0 while the dependence is
  * in fact total, so [StatsDependence.chatterjeeXi] and [StatsDependence.distanceCorrelation] read high.
  *
- * The three rank coefficients side with Pearson here and print about 0: the parabola is a function but
- * not a monotone one, and monotone is all any of them can see. The MIC-like score, which bins rather
- * than ranks, is the other one that notices.
+ * The two *monotone* rank coefficients, [StatsDependence.spearman] and [StatsDependence.kendallTauB], side
+ * with Pearson here and print about 0: the parabola is a function but not a monotone one, and monotone is
+ * all either of them can see. `chatterjeeXi` ranks too but is not looking for monotonicity, so it reads
+ * high with dCor — as does the MIC-like score, which bins rather than ranks.
  */
 fun main() {
     val n = 400

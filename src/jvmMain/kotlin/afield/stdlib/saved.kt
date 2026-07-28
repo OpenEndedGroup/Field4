@@ -44,7 +44,9 @@ inline fun <reified T> toJSONFile(file: File, value: T) {
         file.parentFile?.mkdirs()
         @Suppress("UNCHECKED_CAST")
         val serializer = FieldJson.serializersModule.serializer(typeOf<T>()) as KSerializer<T>
-        file.safeSave(FieldJson.encodeToString(serializer, value))
+        // atomic = true because the KDoc promises it, and because the non-atomic path renames the
+        // existing file to a backup *before* writing: an interruption there leaves nothing at the path.
+        file.safeSave(FieldJson.encodeToString(serializer, value), atomic = true)
     } catch (t: Throwable) {
         throw SerializationException(
             "Couldn't save to ${file.absolutePath}: ${t.message}",
@@ -110,7 +112,9 @@ class SavedJsonValue<T>(
      * on. A file that cannot be decoded throws rather than falling back to the default.
      *
      * @throws kotlinx.serialization.SerializationException if the existing file cannot be decoded
-     * @throws IllegalArgumentException if there is no initialised box and session to derive a path from
+     * @throws IllegalStateException when there is no active [Box] context at all
+ * @throws IllegalArgumentException when there is a box but it has no initialised session to derive a path
+ * from
      */
     override fun getValue(thisRef: Any?, property: KProperty<*>): T {
         if (!loaded) {
@@ -149,7 +153,7 @@ class SavedJsonValue<T>(
     private fun save(file: File, value: T, property: KProperty<*>) {
         try {
             file.parentFile?.mkdirs()
-            file.safeSave(FieldJson.encodeToString(serializer, value))
+            file.safeSave(FieldJson.encodeToString(serializer, value), atomic = true)
         } catch (t: Throwable) {
             throw SerializationException(
                 "Couldn't save '${property.name}' to ${file.absolutePath}: ${t.message}",

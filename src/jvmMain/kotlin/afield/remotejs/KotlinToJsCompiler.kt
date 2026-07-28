@@ -378,8 +378,7 @@ object KotlinToJsCompiler {
      * The snippet is a normal Kotlin file: it may declare `external` values/functions to reach the
      * head's runtime (THREE, A-Frame, Field browser JS), and should contain a `fun main()` — the
      * plain module self-invokes `main` on eval.
-     */
-    /**
+     *
      * @param cacheDir persistent incremental-compilation cache. When set, the stdlib IC cache is
      *   built once and reused across compiles (and the box cache is reused when [moduleName] is
      *   stable, i.e. re-editing the same box) — the main per-edit latency lever. Pass a stable,

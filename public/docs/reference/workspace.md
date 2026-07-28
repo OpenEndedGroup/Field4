@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-2 source file(s), 77 public symbol(s), 71 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+2 source file(s), 77 public symbol(s), 74 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -190,12 +190,18 @@ A named property bag attached to a box — somewhere to hang state that belongs 
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">Vec2h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec2h</span></code>
 
+A pair of 16-bit half floats, for packed vertex attributes and uniforms. Half the bytes of a [`Vec2`](math.md#linalg-kt-vec2), a fraction of the precision — see `ByteBuffer.putf16` for the range.
+
 ### Vec3h { #stdlib-kt-vec3h }
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">Vec3h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec3h</span></code>
 
+Three 16-bit half floats — the packed transit form of a `Vec3` for GPU buffers.
+
 ### Vec4h { #stdlib-kt-vec4h }
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">Vec4h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec4h</span></code>
+
+Four 16-bit half floats — the packed transit form of a [`Vec4`](math.md#linalg-kt-vec4), and enough precision for a colour.
 
 </div>

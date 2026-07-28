@@ -191,7 +191,8 @@ internal data class Motion(var velocity: Vec2 = Vec2())
  * [energy] (clamped at or above 0 by every operation here) drives node radius and is what the energy-biased
  * schedulers in [PairSelectors] compare; [hue] drives colour and is a 0..1 turn, wrapped at render time rather
  * than here, so it may drift far outside that range; [age] is bumped by [Net.incrementAges] in whatever unit
- * you pass it; [phase] is carried and split but nothing in this file interprets it, so it is yours.
+ * you pass it; [phase] is carried and split and read by nothing here except the renderer's fallback port
+ * angle for a node with no connected neighbours, so it is otherwise yours.
  *
  * Mutable and **shared by reference** through a rewrite unless you copy it — [copyDeep], [evolved] and [split]
  * are the three ways to get a fresh one, and [Net.create] copies whatever state you hand it.
@@ -684,8 +685,9 @@ class Net internal constructor(
     fun averageAge(): Double = if (nodes.isEmpty()) 0.0 else nodes.sumOf { it.state.age } / nodes.size.toDouble()
 
     /**
-     * Draws the net: one [FLine] per edge and per node, coloured and sized from each node's [NodeState], plus a
-     * velocity streak per moving node.
+     * Draws the net: one [FLine] per edge, and several per node — a filled disc and a stroked ring sized and
+     * coloured from its [NodeState], a spoke per port, a point per port, a halo when the node is half of an
+     * active pair, and a streak when it is moving.
      *
      * The picture the whole file is for — hand it to `lines(...)` or [Box.showInteractionNet]. Active pairs are
      * drawn emphatically (thicker, brighter) so a redex is visible before it fires; node radius follows `energy`,
@@ -1076,7 +1078,10 @@ class FragmentBuilder {
         impulse: Vec2 = Vec2()
     ): NodeRef {
         val ref = NodeRef(name)
-        require(ref !in fragment.nodeSpecs) { "Duplicate fragment node name: $name" }
+        // By name, not by ref: NodeRef is identity-keyed on purpose, so `ref !in map` compares a
+        // freshly built instance against the map's keys and never matches — the duplicate check was
+        // dead code, and a repeated name quietly produced two separate nodes.
+        require(fragment.nodeSpecs.keys.none { it.name == name }) { "Duplicate fragment node name: $name" }
         fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
@@ -1433,7 +1438,10 @@ class RewriteBuilder internal constructor(private val ctx: PairContext) {
         impulse: Vec2 = Vec2()
     ): NodeRef {
         val ref = NodeRef(name)
-        require(ref !in result.fragment.nodeSpecs) { "Duplicate rewrite node name: $name" }
+        // By name, not by ref: NodeRef is identity-keyed on purpose, so `ref !in map` compares a
+        // freshly built instance against the map's keys and never matches — the duplicate check was
+        // dead code, and a repeated name quietly produced two separate nodes.
+        require(result.fragment.nodeSpecs.keys.none { it.name == name }) { "Duplicate rewrite node name: $name" }
         result.fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
@@ -1600,7 +1608,10 @@ class AutoRuleBuilder internal constructor(private val ctx: PairContext) {
         impulse: Vec2 = Vec2()
     ): NodeRef {
         val ref = NodeRef(name)
-        require(ref !in fragment.nodeSpecs) { "Duplicate rewrite node name: $name" }
+        // By name, not by ref: NodeRef is identity-keyed on purpose, so `ref !in map` compares a
+        // freshly built instance against the map's keys and never matches — the duplicate check was
+        // dead code, and a repeated name quietly produced two separate nodes.
+        require(fragment.nodeSpecs.keys.none { it.name == name }) { "Duplicate rewrite node name: $name" }
         fragment.nodeSpecs[ref] = NodeSpec(type, type.name.lowercase(), at, state.copyDeep(), Vec2(impulse))
         return ref
     }
@@ -1800,7 +1811,12 @@ data class PairCandidate(val pair: ActivePair, val match: RuleMatch, val context
  * state. Returning null ends the run even though reactions remain.
  */
 fun interface PairSelector {
-    /** Choose the reaction to fire, or null to stop. [candidates] is never empty when this is called. */
+    /**
+     * Choose the reaction to fire, or null to stop.
+     *
+     * [candidates] **can be empty** — a net in normal form, or one where no rule matches, calls this with
+     * nothing to choose from — so index into it only after checking. [PairSelectors.random] is the model.
+     */
     fun select(net: Net, candidates: List<PairCandidate>): PairCandidate?
 }
 
@@ -1862,8 +1878,10 @@ object PairSelectors {
  * seeded at the collision's centre so they visibly emerge from it rather than appearing at the origin.
  *
  * Two side effects worth knowing, both in every step: every node's age is incremented, and the layout moves. And two
- * defensive skips: a passthrough or a reconnection whose target port is already occupied is **silently dropped** rather
- * than throwing, so a rule that double-books a port loses a wire quietly.
+ * defensive skips: a passthrough is dropped when either end is already connected, and a reconnection when its
+ * *outside* peer is — so a rule that double-books an outside port loses a wire quietly. The reconnection's own
+ * new port is not checked, so a rule that wires a freshly built port internally and then reconnects it does
+ * throw, out of [Net.connect].
  *
  * Use [step] or [stepDetailed] once per frame to watch it happen, [reduce] to run to normal form. There is a second
  * constructor taking one of the stock [ActivationOrder]s in place of a [PairSelector], for when you want a named
@@ -1961,8 +1979,12 @@ class Reducer(
         val pa = net.positionOf(first)
         val pb = net.positionOf(second)
         val delta = pb - pa
+        // Test the *unfloored* length. Comparing the floored `max(length, 0.0001f)` against 1e-4f is the
+        // same literal against itself, so the fallback was dead code and a coincident pair — every node in
+        // a `net { }` built without positions starts at the origin — normalized a zero vector into
+        // (NaN, NaN), which then reached the impulse, the velocities and the positions for good.
         val deltaLength = max(delta.length(), 0.0001f)
-        val axis = if (deltaLength < 1e-4f) vec(1.0, 0.0) else Vec2(delta).normalize()
+        val axis = if (delta.length() < 1e-4f) vec(1.0, 0.0) else Vec2(delta).normalize()
         val normal = vec(-axis.y, axis.x)
         return PairContext(
             first = first,
@@ -2249,7 +2271,11 @@ private fun interactionSummaryCard(title: String, body: String): String = """
  * with linear vs nonlinear lambda fragments, although it is not yet the full Lafont/Lamping story.
  */
 object Lambda {
-    /** Application. `aux(0)` is the function, `aux(1)` the argument; its principal port meets a [LAM] to beta-reduce. */
+    /**
+     * Application. Its **principal** port is where the function arrives — that is what meets a [LAM] to
+     * beta-reduce — `aux(1)` is the argument, and `aux(0)` is where the result comes back out (the beta rule
+     * wires the lambda's body to it).
+     */
     val APP = Types.agent("APP", 2)
 
     /** Abstraction. `aux(0)` is the binder (where the argument arrives), `aux(1)` the body. */
@@ -2587,7 +2613,8 @@ object Lambda {
     }
 
     /**
-     * A tiny nonlinear sketch: the lambda body is demanded twice through DUP.
+     * A tiny nonlinear sketch: a single [CONST] is demanded by two roots through a [DUP], so the rewrite
+     * system has to copy it. No [LAM] and no body — [betaBridgeDemo] is the one with those.
      * This is not a full term encoder, but it gives the rewrite system something resource-sensitive to do.
      */
     fun duplicatedConstantDemo(): Net = net {

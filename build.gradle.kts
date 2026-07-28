@@ -1037,8 +1037,24 @@ tasks.register<JavaExec>("checkCodebaseReference") {
 // staleness is caught by an ordinary build rather than only by the docs.codebase-reference.generate
 // FIELD_TEST, which needs the test catalog to be run. Fix a failure with:
 //   ./gradlew generateCodebaseReference
+// A KDoc block that the extractor cannot attach to the declaration below it is *not* caught by the
+// byte-exact guard above: the generated page stays well-formed, it just carries the wrong prose (or
+// none at all), because the extractor slides an unattachable block onto whatever declaration parses
+// next. That shipped a wrong row on 2026-07-26. Fix a failure by moving the block — see
+// dev_docs/kdoc_reference_contract.md.
+tasks.register<JavaExec>("checkKDocAttachment") {
+    group = "verification"
+    description = "Fails if a KDoc block in src/ does not attach to the declaration it sits above — the silent failure that publishes one symbol's prose under another's name. Pass --args=--verbose to list the known-benign sites too."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.KDocAttachmentGuard")
+}
+
 tasks.named("check") {
     dependsOn("checkCodebaseReference")
+    dependsOn("checkKDocAttachment")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
