@@ -2,6 +2,13 @@
 
 package afield.stdlib
 
+import afield.rectsl.Colormaps
+import java.util.Base64
+import kotlin.math.ln
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+
 /**
  * The bridge from Wave Function Collapse into the things Field already displays.
  *
@@ -11,7 +18,7 @@ package afield.stdlib
  * [Img], and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
  * `ToHTML` thumbnail a box shows when you evaluate a value.
  *
- * Two kinds of view:
+ * Three kinds of view:
  *
  *  1. **The result.** [PngTileSet.toImg], [PngOverlappingTileSet.toImg] and their `Float`
  *     counterparts turn a solved tile grid into an image. Pair them with
@@ -23,6 +30,11 @@ package afield.stdlib
  *     `while (solver.step() == WfcStatus.Running)` loop and you have the collapse itself as a
  *     sequence of frames — which is by far the most informative thing you can look at when rules
  *     are not behaving.
+ *  3. **The solver, inline.** [wfcSolverHtml] is the body of [WfcSolver]'s own `ToHTML`, so simply
+ *     *evaluating* a solver in a box — or `solver.h` — draws its current state: uncertainty,
+ *     entropy, what has been decided, where it broke. Nothing to set up, no tile set needed. See
+ *     [WfcSolver.possibilityCountHeatmapImg], [WfcSolver.entropyHeatmapImg] and
+ *     [WfcSolver.resolvedTileImg] for the three panels on their own.
  *
  * Because a solved cell has exactly one possibility, `waveToImg` on a [WfcStatus.Solved] solver is
  * the finished output: the animation's last frame and the result are the same picture, by
@@ -255,3 +267,453 @@ fun WfcSolver.resolvedCellCount(): Int {
 /** [resolvedCellCount] as a `0..1` fraction — a progress read-out for a `step()` loop. */
 fun WfcSolver.resolvedFraction(): Double =
     resolvedCellCount().toDouble() / (width.toDouble() * height.toDouble())
+
+// ==============================================================================================
+// The solver, inline — WfcSolver's own ToHTML
+// ==============================================================================================
+
+/*
+ * Everything below is the body of [WfcSolver.toHTML]. It lives here, not in `wfc.kt`, so that the
+ * solver file keeps its "integer tile IDs and nothing else" footprint: `wfc.kt` names exactly one
+ * symbol from this file, [wfcSolverHtml], and inherits every pixel of the view from here.
+ *
+ * Range-policy discipline, which is the whole difference between a heatmap and a lie:
+ *
+ *  - Every colour scale is **named in the caption**, with its two endpoints spelled out in the
+ *    units of the thing being shown. A picture whose scale is a mystery is decoration.
+ *  - Domains are **fixed by meaning, not by the frame**: possibilities left runs `1..tileCount`,
+ *    entropy runs `0..` the full-set entropy. Auto-ranging per frame makes an animation of a
+ *    collapse appear to stand still, because the ends of the ramp move with the data.
+ *  - Values with no place on the scale — NaN, infinities, an emptied possibility set — are
+ *    **excluded from the statistics and painted a marker colour** ([WFC_UNDEFINED_COLOR],
+ *    [WFC_CONTRADICTION_COLOR]), never clamped onto an end of the ramp where they would read as a
+ *    legitimate extreme. The caption says how many there were.
+ *  - A **degenerate domain** (no finite values at all, or a zero-width range) is drawn mid-ramp and
+ *    declared flat, rather than dividing by zero and painting whatever falls out.
+ *  - A marker is only a marker if it is **outside its own ramp**. The count panel is viridis
+ *    (purple → teal → yellow) because its marker is magenta; the entropy panel is magma
+ *    (black → pink → cream) because its marker is cyan. Drawing counts in magma — the first thing
+ *    tried — put mid-ramp pinks a shade away from [WFC_CONTRADICTION_COLOR] and made a perfectly
+ *    healthy collapse frontier read as a field of contradictions. Only looking at it caught that.
+ */
+
+/** Packed `0xRRGGBB` of the contradiction marker — magenta, matching [PngTileSet.waveToImg]. */
+val WFC_CONTRADICTION_COLOR: Int = packRgb(WFC_CONTRADICTION_R, WFC_CONTRADICTION_G, WFC_CONTRADICTION_B)
+
+/** Packed `0xRRGGBB` of the "this value has no place on the scale" marker — cyan. NaN, or infinite. */
+const val WFC_UNDEFINED_COLOR: Int = 0x00D9FF
+
+/** Packed `0xRRGGBB` drawn for a cell that is still undecided in [WfcSolver.resolvedTileImg] — dark grey. */
+const val WFC_UNDECIDED_COLOR: Int = 0x23262E
+
+/**
+ * A colour-mapped scalar-per-cell field, together with the range policy that produced it — so a
+ * caption can state the scale rather than implying one.
+ *
+ * @property img one RGB pixel per cell, row-major, same shape as the solver grid
+ * @property lo sample value at the dark end of the ramp
+ * @property hi sample value at the bright end
+ * @property finiteCount cells whose value landed on the scale
+ * @property nonFiniteCount cells painted the marker colour instead (NaN or infinite)
+ * @property flat `true` when the domain was degenerate and every finite cell was drawn mid-ramp
+ * @property colormap the [Colormaps] name used
+ */
+class WfcHeatmap internal constructor(
+    val img: Img,
+    val lo: Float,
+    val hi: Float,
+    val finiteCount: Int,
+    val nonFiniteCount: Int,
+    val flat: Boolean,
+    val colormap: String
+) {
+    override fun toString(): String =
+        "WfcHeatmap(${img.width}x${img.height}, $colormap ${"%.3f".format(lo)}..${"%.3f".format(hi)}" +
+            (if (flat) ", flat" else "") + (if (nonFiniteCount > 0) ", $nonFiniteCount non-finite" else "") + ")"
+}
+
+/** Pack three `0..1` channels the way [Img.toPngBytes] quantises them, so the two agree exactly. */
+private fun packRgb(r: Float, g: Float, b: Float): Int = (q8(r) shl 16) or (q8(g) shl 8) or q8(b)
+
+private fun q8(v: Float): Int = (v.coerceIn(0f, 1f) * 255f + 0.5f).toInt().coerceIn(0, 255)
+
+private fun writePacked(out: FloatArray, di: Int, packed: Int) {
+    out[di] = ((packed shr 16) and 0xff) / 255f
+    out[di + 1] = ((packed shr 8) and 0xff) / 255f
+    out[di + 2] = (packed and 0xff) / 255f
+}
+
+/**
+ * Colour-map one scalar per cell under an explicit range policy. The workhorse behind
+ * [WfcSolver.possibilityCountHeatmap] and [WfcSolver.entropyHeatmap]; see the note above for the
+ * rules it follows.
+ *
+ * @param requestedLo/[requestedHi] the fixed domain; `null` (or non-finite) falls back to the
+ *   finite min/max of [values]
+ * @param markerColor packed `0xRRGGBB` for cells whose value is not finite
+ */
+private fun heatmapOf(
+    values: FloatArray,
+    width: Int,
+    height: Int,
+    colormap: String,
+    requestedLo: Float?,
+    requestedHi: Float?,
+    markerColor: Int
+): WfcHeatmap {
+    require(values.size == width * height) {
+        "heatmap needs one value per cell: ${width * height} expected, ${values.size} given"
+    }
+    var finite = 0
+    var vmin = Float.POSITIVE_INFINITY
+    var vmax = Float.NEGATIVE_INFINITY
+    for (v in values) if (v.isFinite()) {
+        finite++
+        if (v < vmin) vmin = v
+        if (v > vmax) vmax = v
+    }
+    val lo = requestedLo?.takeIf { it.isFinite() } ?: if (finite > 0) vmin else 0f
+    val hi = requestedHi?.takeIf { it.isFinite() } ?: if (finite > 0) vmax else 0f
+    val span = hi - lo
+    val flat = finite == 0 || !span.isFinite() || span <= 1e-12f
+
+    val lut = Array(256) { Colormaps.sample(colormap, it / 255.0) }
+    val out = FloatArray(width * height * 3)
+    for (p in values.indices) {
+        val di = p * 3
+        val v = values[p]
+        if (!v.isFinite()) {
+            writePacked(out, di, markerColor)
+        } else {
+            val t = if (flat) 0.5 else ((v - lo) / span).coerceIn(0f, 1f).toDouble()
+            val c = lut[(t * 255.0).roundToInt().coerceIn(0, 255)]
+            out[di] = c.r.toFloat()
+            out[di + 1] = c.g.toFloat()
+            out[di + 2] = c.b.toFloat()
+        }
+    }
+    return WfcHeatmap(Img(width, height, 3, out), lo, hi, finite, values.size - finite, flat, colormap)
+}
+
+/**
+ * Uncertainty as a picture: one pixel per cell, coloured by how many tiles are still possible there.
+ *
+ * The domain is fixed at `1 .. rules.tileCount` — decided at the dark end, untouched at the bright
+ * end — so successive frames of a collapse are directly comparable. A cell with **zero**
+ * possibilities is a contradiction, not "even more decided than decided"; it is taken off the scale
+ * and painted [WFC_CONTRADICTION_COLOR], because clamping it to the low end would render the one
+ * failure mode you most need to see as a success.
+ */
+fun WfcSolver.possibilityCountHeatmap(colormap: String = "viridis"): WfcHeatmap {
+    val counts = possibilityCountGrid()
+    val values = FloatArray(counts.size) { if (counts[it] <= 0) Float.NaN else counts[it].toFloat() }
+    return heatmapOf(
+        values, width, height, colormap,
+        1f, max(1, rules.tileCount).toFloat(),
+        WFC_CONTRADICTION_COLOR
+    )
+}
+
+/** [possibilityCountHeatmap] as just the image. */
+fun WfcSolver.possibilityCountHeatmapImg(colormap: String = "viridis"): Img =
+    possibilityCountHeatmap(colormap).img
+
+/**
+ * The **weighted Shannon entropy** of every cell, in nats, row-major — the quantity the solver
+ * itself minimises when it picks the next cell to observe, unlike the raw count from
+ * [possibilityCountGrid].
+ *
+ * For a cell whose remaining tiles have weights `wᵢ` and `S = Σwᵢ`, this is
+ * `ln S − (Σ wᵢ ln wᵢ) / S`: zero when one tile remains, largest when every tile does, and
+ * sensitive to *which* tiles remain rather than only how many.
+ *
+ * Returns [Float.NaN] where the entropy is genuinely undefined: an emptied possibility set (a
+ * contradiction), or a cell whose every remaining tile has weight zero — which is reachable, since
+ * [WfcRules.fromSampleGrid] gives weight zero to any tile the sample never contained. Callers must
+ * not treat that NaN as a small number; see [entropyHeatmap].
+ */
+fun WfcSolver.entropyGrid(): FloatArray {
+    val scratch = IntArray(max(1, rules.tileCount))
+    val out = FloatArray(width * height)
+    var y = 0
+    while (y < height) {
+        var x = 0
+        while (x < width) {
+            val n = possibilitiesAt(x, y, scratch)
+            out[x + y * width] = if (n == 0) Float.NaN else {
+                var sum = 0.0
+                var sumLog = 0.0
+                var k = 0
+                while (k < n) {
+                    val w = rules.weights[scratch[k]]
+                    if (w > 0.0) {
+                        sum += w
+                        sumLog += w * ln(w)
+                    }
+                    k++
+                }
+                if (sum <= 0.0) Float.NaN else (ln(sum) - sumLog / sum).toFloat()
+            }
+            x++
+        }
+        y++
+    }
+    return out
+}
+
+/**
+ * The entropy of a cell in which *every* tile is still possible — the top of the [entropyHeatmap]
+ * scale, and the value [WfcSolver.entropyGrid] returns for an untouched cell.
+ *
+ * [Double.NaN] if no tile has a positive weight, in which case entropy is undefined everywhere.
+ */
+fun WfcRules.fullSetEntropy(): Double {
+    var sum = 0.0
+    var sumLog = 0.0
+    for (w in weights) if (w > 0.0) {
+        sum += w
+        sumLog += w * ln(w)
+    }
+    return if (sum <= 0.0) Double.NaN else ln(sum) - sumLog / sum
+}
+
+/**
+ * [entropyGrid] colour-mapped over a fixed `0 ..` [WfcRules.fullSetEntropy] domain — decided cells
+ * dark, wide-open cells bright, and cells whose entropy is undefined painted
+ * [WFC_UNDEFINED_COLOR] and excluded from the range rather than clamped to the "decided" end.
+ */
+fun WfcSolver.entropyHeatmap(colormap: String = "magma"): WfcHeatmap {
+    val full = rules.fullSetEntropy()
+    return heatmapOf(
+        entropyGrid(), width, height, colormap,
+        0f, if (full.isFinite()) full.toFloat() else null,
+        WFC_UNDEFINED_COLOR
+    )
+}
+
+/** [entropyHeatmap] as just the image. */
+fun WfcSolver.entropyHeatmapImg(colormap: String = "magma"): Img = entropyHeatmap(colormap).img
+
+/**
+ * A stable, tileset-independent display colour for tile id [tile], packed `0xRRGGBB`.
+ *
+ * Hues walk the golden angle so that consecutive ids are maximally far apart and any two runs agree
+ * — the same tile is the same colour in every frame and every session. These are emphatically *not*
+ * the tileset's own colours (the solver has never seen them); they say "this cell decided on tile 3"
+ * and nothing more. For the real pixels, use [PngTileSet.toImg].
+ */
+fun wfcTileColor(tile: Int): Int {
+    val h = ((tile * 0.6180339887498949) % 1.0 + 1.0) % 1.0
+    return hsvPacked(h, 0.62, 0.95)
+}
+
+private fun hsvPacked(h: Double, s: Double, v: Double): Int {
+    val i = (h * 6.0).toInt()
+    val f = h * 6.0 - i
+    val p = v * (1 - s)
+    val q = v * (1 - f * s)
+    val t = v * (1 - (1 - f) * s)
+    val (r, g, b) = when (i % 6) {
+        0 -> Triple(v, t, p)
+        1 -> Triple(q, v, p)
+        2 -> Triple(p, v, t)
+        3 -> Triple(p, q, v)
+        4 -> Triple(t, p, v)
+        else -> Triple(v, p, q)
+    }
+    return packRgb(r.toFloat(), g.toFloat(), b.toFloat())
+}
+
+/**
+ * What the solver has actually decided: one pixel per cell, [wfcTileColor] where the cell has
+ * collapsed to a single tile, [WFC_UNDECIDED_COLOR] where it has not, [WFC_CONTRADICTION_COLOR]
+ * where its possibility set is empty.
+ *
+ * This is the complement of [possibilityCountHeatmapImg] — that one shows how much freedom is left,
+ * this one shows what was spent. Together they read as "where is it working, and on what".
+ */
+fun WfcSolver.resolvedTileImg(): Img {
+    val out = FloatArray(width * height * 3)
+    var y = 0
+    while (y < height) {
+        var x = 0
+        while (x < width) {
+            val p = x + y * width
+            val count = possibilityCountAt(x, y)
+            val packed = when {
+                count == 0 -> WFC_CONTRADICTION_COLOR
+                count == 1 -> wfcTileColor(resolvedTileAt(x, y))
+                else -> WFC_UNDECIDED_COLOR
+            }
+            writePacked(out, p * 3, packed)
+            x++
+        }
+        y++
+    }
+    return Img(width, height, 3, out)
+}
+
+/** Longest side, in CSS pixels, of each panel in [wfcSolverHtml]. */
+private const val WFC_PANEL_MAX_SIDE = 156
+
+/**
+ * The inline view of a solver — the body of [WfcSolver]'s `ToHTML`, so that evaluating a solver in
+ * a box (or `solver.h`) shows the collapse rather than a reflective property tree.
+ *
+ * Three panels, each one pixel per solver cell (browser-scaled with `image-rendering: pixelated`,
+ * so screen pixel `(x·f, y·f)` really is cell `(x, y)`):
+ *
+ *  1. **possibilities left** — [possibilityCountHeatmap], viridis over a fixed `1..tileCount`
+ *  2. **entropy** — [entropyHeatmap], magma over a fixed `0..`[WfcRules.fullSetEntropy]
+ *  3. **decided tiles** — [resolvedTileImg], a stable hue per tile id
+ *
+ * plus a header carrying status, the collapse percentage, any contradiction count, and the last
+ * observation. Each panel's caption names its colour scale and both endpoints in units, and reports
+ * how many cells fell off the scale; see the range-policy note at the top of this section.
+ *
+ * Never throws: a solver mid-mutation on another thread degrades to the header line alone rather
+ * than taking out the box's whole output.
+ */
+fun wfcSolverHtml(solver: WfcSolver): String {
+    val cells = solver.width * solver.height
+    var resolved = 0
+    var contradictions = 0
+    var untouched = 0
+    val counts = try {
+        solver.possibilityCountGrid()
+    } catch (t: Throwable) {
+        return wfcHeaderHtml(solver, 0, 0, 0, 0) + "\n<div style=\"$WFC_NOTE_STYLE\">state unavailable: $t</div>"
+    }
+    for (c in counts) when {
+        c <= 0 -> contradictions++
+        c == 1 -> resolved++
+        c >= solver.rules.tileCount -> untouched++
+    }
+    val header = wfcHeaderHtml(solver, cells, resolved, contradictions, untouched)
+
+    val panels = try {
+        val count = solver.possibilityCountHeatmap()
+        val entropy = solver.entropyHeatmap()
+        val tileNames = (0 until min(6, solver.rules.tileCount)).joinToString(" ") { tile ->
+            "<span style=\"color:#${"%06x".format(wfcTileColor(tile))}\">&#9632;$tile</span>"
+        } + if (solver.rules.tileCount > 6) " <span style=\"color:#8a90a0\">&hellip;</span>" else ""
+        listOf(
+            wfcPanelHtml(
+                count.img,
+                "possibilities left",
+                rampLegendHtml(count.colormap, wfcNum(count.lo), wfcNum(count.hi)),
+                "colour = tiles still possible in that cell, ${count.colormap} " +
+                    "${wfcNum(count.lo)} (decided) &hellip; ${wfcNum(count.hi)} (untouched)" +
+                    wfcFlatNote(count) +
+                    if (count.nonFiniteCount > 0) {
+                        " &middot; <b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">magenta</b> " +
+                            "= 0 possible, a contradiction (${count.nonFiniteCount} cell${wfcS(count.nonFiniteCount)}, off scale)"
+                    } else ""
+            ),
+            wfcPanelHtml(
+                entropy.img,
+                "entropy",
+                rampLegendHtml(entropy.colormap, wfcNum(entropy.lo), wfcNum(entropy.hi)),
+                "colour = weighted Shannon entropy in nats, ${entropy.colormap} " +
+                    "${wfcNum(entropy.lo)} (decided) &hellip; ${wfcNum(entropy.hi)} (every tile possible)" +
+                    wfcFlatNote(entropy) +
+                    if (entropy.nonFiniteCount > 0) {
+                        " &middot; <b style=\"color:#${"%06x".format(WFC_UNDEFINED_COLOR)}\">cyan</b> = undefined " +
+                            "(no possibilities left, or every remaining tile has weight 0) in " +
+                            "${entropy.nonFiniteCount} cell${wfcS(entropy.nonFiniteCount)}, excluded from the range"
+                    } else ""
+            ),
+            wfcPanelHtml(
+                solver.resolvedTileImg(),
+                "decided tiles",
+                null,
+                "colour = the tile a cell settled on, a stable hue per id, <i>not</i> the tileset's own " +
+                    "colours: $tileNames &middot; dark grey = still undecided"
+            )
+        ).joinToString("\n")
+    } catch (t: Throwable) {
+        "<div style=\"$WFC_NOTE_STYLE\">view unavailable: $t</div>"
+    }
+
+    return """
+        <div style="font-family:monospace;font-size:11px;line-height:1.4">
+          $header
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+        $panels
+          </div>
+        </div>
+    """.trimIndent()
+}
+
+private const val WFC_NOTE_STYLE = "color:#8a90a0;margin-top:3px"
+
+/** Format a scale endpoint: integer counts as integers, entropies to three places. */
+private fun wfcNum(v: Float): String =
+    if (v == v.toInt().toFloat() && kotlin.math.abs(v) < 1e6f) v.toInt().toString() else "%.3f".format(v)
+
+private fun wfcS(n: Int): String = if (n == 1) "" else "s"
+
+private fun wfcFlatNote(h: WfcHeatmap): String = when {
+    h.finiteCount == 0 -> " &middot; no cell has a value on this scale"
+    h.flat -> " &middot; the range is flat, so every cell is drawn mid-ramp"
+    else -> ""
+}
+
+private fun wfcHeaderHtml(solver: WfcSolver, cells: Int, resolved: Int, contradictions: Int, untouched: Int): String {
+    val statusColor = when (solver.status) {
+        WfcStatus.Solved -> "#7ec96f"
+        WfcStatus.Contradiction -> "#${"%06x".format(WFC_CONTRADICTION_COLOR)}"
+        else -> "#c8cee0"
+    }
+    val pct = if (cells == 0) 0.0 else 100.0 * resolved / cells
+    val obs = solver.lastObservation
+    val parts = ArrayList<String>()
+    parts += "WfcSolver ${solver.width}&times;${solver.height} &middot; ${solver.rules.tileCount} tiles"
+    parts += "<b style=\"color:$statusColor\">${solver.status}</b>"
+    if (cells > 0) parts += "$resolved/$cells cells decided (${"%.1f".format(pct)}%)"
+    if (untouched > 0) parts += "$untouched untouched"
+    if (contradictions > 0) {
+        parts += "<b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">" +
+            "$contradictions contradicted</b>"
+    }
+    if (obs != null) parts += "last observed (${obs.x}, ${obs.y}) &rarr; tile ${obs.tile}"
+    return "<div style=\"color:#c8cee0\">${parts.joinToString(" &middot; ")}</div>"
+}
+
+private fun wfcPanelHtml(img: Img, title: String, legend: String?, caption: String): String {
+    val longest = max(img.width, img.height)
+    val scale =
+        if (longest > WFC_PANEL_MAX_SIDE) WFC_PANEL_MAX_SIDE.toDouble() / longest
+        else max(1, WFC_PANEL_MAX_SIDE / longest).toDouble()
+    val dw = max(1, (img.width * scale).roundToInt())
+    val dh = max(1, (img.height * scale).roundToInt())
+    val b64 = Base64.getEncoder().encodeToString(img.toPngBytes())
+    return """
+        <div style="width:${max(dw, 160)}px">
+          <div style="color:#c8cee0;margin-bottom:2px">$title</div>
+          <img src="data:image/png;base64,$b64" width="$dw" height="$dh"
+               style="image-rendering:pixelated;border:1px solid #3a3f4b;border-radius:3px;display:block"/>
+          ${legend ?: ""}
+          <div style="$WFC_NOTE_STYLE">$caption</div>
+        </div>
+    """.trimIndent()
+}
+
+/** A gradient swatch of colormap [name] with its two endpoints labelled, so the scale is readable. */
+private fun rampLegendHtml(name: String, loLabel: String, hiLabel: String): String {
+    val stops = (0..8).joinToString(", ") { i ->
+        val c = Colormaps.sample(name, i / 8.0)
+        val r = (c.r * 255).roundToInt().coerceIn(0, 255)
+        val g = (c.g * 255).roundToInt().coerceIn(0, 255)
+        val b = (c.b * 255).roundToInt().coerceIn(0, 255)
+        "rgb($r,$g,$b) ${i * 100 / 8}%"
+    }
+    return """
+        <div style="margin-top:3px">
+          <div style="height:6px;border-radius:2px;background:linear-gradient(to right, $stops)"></div>
+          <div style="display:flex;justify-content:space-between;color:#8a90a0;font-size:10px">
+            <span>$loLabel</span><span>$hiLabel</span>
+          </div>
+        </div>
+    """.trimIndent()
+}

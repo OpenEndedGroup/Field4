@@ -21,6 +21,10 @@ import kotlin.math.ln
  * Notes:
  * - The WFC solver operates only on integer tile IDs and constraints.
  * - PNG/FloatArray simple-tiled and overlapping helpers are intentionally separate from the core.
+ * - The one concession to the rest of Field: [WfcSolver] implements [afield.ToHTML], so evaluating a
+ *   solver in a box draws the collapse instead of a reflective property tree. Every pixel of that
+ *   view lives in `wfc_field.kt` ([afield.stdlib.wfcSolverHtml]); this file names it once, in
+ *   [WfcSolver.toHTML], and depends on nothing else outside itself.
  */
 
 const val WFC_NORTH: Int = 0
@@ -728,7 +732,7 @@ class WfcSolver(
     val rules: WfcRules,
     seed: Long = 1L,
     private val noise: Double = 1e-6
-) {
+) : afield.ToHTML {
     private val random = SplittableRandom(seed)
     private val cellCount = width * height
     private val wordCount = rules.wordCount
@@ -876,6 +880,20 @@ class WfcSolver(
         }
         return out
     }
+
+    override fun toString(): String =
+        "WfcSolver(${width}x$height, ${rules.tileCount} tiles, $status, " +
+            "${resolvedCellCount()}/$cellCount decided)"
+
+    /**
+     * The solver's own inline view, so that evaluating it in a box — or `solver.h` — shows the
+     * collapse: remaining possibilities per cell, entropy, what has been decided, and any
+     * contradiction, each panel captioned with the colour scale that produced it.
+     *
+     * Delegates to [afield.stdlib.wfcSolverHtml] in `wfc_field.kt`; see its KDoc for the panels and
+     * the range policy. This is the only line in this file that looks outside it.
+     */
+    override fun toHTML(): String = wfcSolverHtml(this)
 
     private fun index(x: Int, y: Int): Int {
         require(x in 0 until width && y in 0 until height)
