@@ -61,7 +61,25 @@ typealias Vec3 = Vector3f
  * copy with `Vec2(existing)` when you want a non-mutating workflow.
  */
 typealias Vec2 = Vector2f
+/**
+ * Field's rotation alias, backed by the generated mutable [Quaternionf] — a rotation with no
+ * position, and no gimbal lock.
+ *
+ * Build one with `quat(angle, axis)`, where the angle is in **radians**. Multiplying a `Vec3` by a
+ * `Quat` rotates the vector (`p * q`), composing two quaternions composes their rotations, and `%=`
+ * assigns one in place. Unit length is what makes a quaternion a rotation, so `normalize()` after
+ * accumulating a long chain of them.
+ */
 typealias Quat = Quaternionf
+
+/**
+ * Field's rigid-transform alias, backed by the generated mutable [DualQuaternionf] — a rotation *and*
+ * a translation in one value.
+ *
+ * Build one with `dualquat(rotation, translation)`. The reason to prefer this over a `Matrix4f` is
+ * that dual quaternions interpolate: blending two of them gives a sensible intermediate pose, where
+ * blending two matrices does not. Multiplying a `Vec3` by one applies the whole transform.
+ */
 typealias DualQuat = DualQuaternionf
 
 /**
@@ -87,7 +105,10 @@ data class AxisAlignedBoundingBox2D(
     val min: Vec2,
     val max: Vec2
 ) {
+    /** Width and height of the box, as `max - min`. Zero on both axes for a single point. */
     val size: Vec2 get() = Vec2(max).sub(min)
+
+    /** The midpoint of the box — not the centroid of the points it was built from. */
     val center: Vec2 get() = Vec2(min).add(size.mul(0.5f, Vec2()))
 }
 
@@ -101,7 +122,10 @@ data class AxisAlignedBoundingBox3D(
     val min: Vec3,
     val max: Vec3
 ) {
+    /** Width, height and depth of the box, as `max - min`. */
     val size: Vec3 get() = Vec3(max).sub(min)
+
+    /** The midpoint of the box — not the centroid of the points it was built from. */
     val center: Vec3 get() = Vec3(min).add(size.mul(0.5f, Vec3()))
 }
 
@@ -115,18 +139,41 @@ data class AxisAlignedBoundingBox4D(
     val min: Vec4,
     val max: Vec4
 ) {
+    /** Extent of the box on each of the four axes, as `max - min`. */
     val size: Vec4 get() = Vec4(max).sub(min)
+
+    /** The midpoint of the box — not the centroid of the points it was built from. */
     val center: Vec4 get() = Vec4(min).add(size.mul(0.5f, Vec4()))
 }
 
+/**
+ * The member of [a] nearest this point by Euclidean distance.
+ *
+ * A linear scan, so fine for a handful of candidates and the wrong tool for thousands per frame —
+ * build a `Vec3NNIndex` (`smile_neighbors.kt`) for that. **Throws** if [a] is empty, and returns the
+ * element itself, not a copy, so mutating the result mutates the collection's point.
+ */
 fun Vec3.closest(a: Iterable<Vec3>) = a.minByOrNull { this.distance(it) }!!
+
+/** The member of [a] nearest this point in 4D. Linear scan; **throws** if [a] is empty. */
 fun Vec4.closest(a: Iterable<Vec4>) = a.minByOrNull { this.distance(it) }!!
+
+/**
+ * The member of [a] nearest this point in the plane. Linear scan; **throws** if [a] is empty, and the
+ * result is the collection's own instance rather than a copy.
+ */
 fun Vec2.closest(a: Iterable<Vec2>) = a.minByOrNull { this.distance(it) }!!
 
 // ============================================================================
 // Collection<Vec2> extensions
 // ============================================================================
 
+/**
+ * The centroid — the plain mean of every point, in a fresh [Vec2].
+ *
+ * Returns `(0, 0)` for an empty collection rather than throwing. The mean is pulled around by
+ * outliers; [medianVec] is the robust alternative when a few stray points should not move the answer.
+ */
 fun Collection<Vec2>.center(): Vec2 {
     if (isEmpty()) return Vec2(0f, 0f)
     val sum = Vec2(0f, 0f)
@@ -134,6 +181,13 @@ fun Collection<Vec2>.center(): Vec2 {
     return sum.mul(1f / size)
 }
 
+/**
+ * The median of one component across the collection: [index] 0 for x, 1 for y.
+ *
+ * Even-sized collections get the mean of the two middle values, so the result need not be one of the
+ * input coordinates. **Throws** `IllegalArgumentException` for an index outside `0..1`, and on an empty
+ * collection. Sorts a copy per call, so [medianVec] is two sorts, not one.
+ */
 @JvmName("medianVec2")
 fun Collection<Vec2>.median(index: Int = 0): Float {
     require(index in 0..1) { "index must be 0 (x) or 1 (y)" }
@@ -146,12 +200,22 @@ fun Collection<Vec2>.median(index: Int = 0): Float {
     }
 }
 
+/**
+ * The component-wise median, as a point — the outlier-resistant answer to "where is this cloud".
+ *
+ * Each axis is medianed independently, so the result is generally **not** one of the input points and
+ * need not lie inside their convex hull. That is usually fine for centring something on a noisy blob;
+ * when it is not, [center] is the true mean.
+ */
 fun Collection<Vec2>.medianVec(): Vec2 {
     return Vec2(median(0), median(1))
 }
 
 /**
- * Compute axis-aligned bounds as an AxisAlignedBoundingBox2D.
+ * Axis-aligned bounds of the points, as an [AxisAlignedBoundingBox2D].
+ *
+ * One pass, no allocation per point. An empty collection gives a degenerate box at the origin rather
+ * than an exception — check `isEmpty()` first if that would be indistinguishable from real data.
  */
 @JvmName("aabbBoundsVec2")
 fun Collection<Vec2>.aabbBounds(): AxisAlignedBoundingBox2D {
@@ -173,6 +237,11 @@ fun Collection<Vec2>.aabbBounds(): AxisAlignedBoundingBox2D {
 // Collection<Vec3> extensions
 // ============================================================================
 
+/**
+ * The centroid — the plain mean of every point, in a fresh [Vec3]. `(0, 0, 0)` when empty.
+ *
+ * See [medianVec] or [convexHullPeelingMedian] when outliers must not drag the answer around.
+ */
 fun Collection<Vec3>.center(): Vec3 {
     if (isEmpty()) return Vec3(0f, 0f, 0f)
     val sum = Vec3(0f, 0f, 0f)
@@ -180,6 +249,12 @@ fun Collection<Vec3>.center(): Vec3 {
     return sum.mul(1f / size)
 }
 
+/**
+ * The median of one component: [index] 0 for x, 1 for y, 2 for z.
+ *
+ * Even-sized collections get the mean of the two middle values. **Throws** for an index outside
+ * `0..2`, and on an empty collection.
+ */
 @JvmName("medianVec3")
 fun Collection<Vec3>.median(index: Int = 0): Float {
     require(index in 0..2) { "index must be 0 (x), 1 (y), or 2 (z)" }
@@ -200,12 +275,20 @@ fun Collection<Vec3>.median(index: Int = 0): Float {
     }
 }
 
+/**
+ * The component-wise median, as a point — robust to outliers, and generally **not** one of the input
+ * points, since each axis is medianed independently. [center] is the true mean.
+ */
 fun Collection<Vec3>.medianVec(): Vec3 {
     return Vec3(median(0), median(1), median(2))
 }
 
 /**
- * Compute axis-aligned bounds as an AxisAlignedBoundingBox3D.
+ * Axis-aligned bounds of the points, as an [AxisAlignedBoundingBox3D] — the cheap bounding volume,
+ * one pass and no rotation.
+ *
+ * Degenerate box at the origin when empty. [obbBounds] is the version that turns with the data, at
+ * considerably more cost.
  */
 @JvmName("aabbBoundsVec3")
 fun Collection<Vec3>.aabbBounds(): AxisAlignedBoundingBox3D {
@@ -228,11 +311,16 @@ fun Collection<Vec3>.aabbBounds(): AxisAlignedBoundingBox3D {
 }
 
 /**
- * Compute oriented bounding box (OBB) using PCA.
+ * Bounds that turn with the data: an [OrientedBoundingBox] whose axes come from a PCA of the point
+ * cloud, so an elongated diagonal cluster gets a tight box where [aabbBounds] would get a loose one.
  *
- * @return OrientedBoundingBox with center, axes, and extents
+ * The box is `center + extents[i] * axes[i]` on each axis, with `extents` as **half**-widths. Axes are
+ * ordered most-spread first.
  *
- * The OBB is defined by: center + extent[i] * axes[i] for each axis i.
+ * An **approximation**: the eigenvectors come from ten steps of power iteration with deflation, not a
+ * real eigendecomposition, so a cloud with two nearly equal principal spreads can come back with axes
+ * that are stable in extent but arbitrary in which is which. Fine for fitting a crate round a mesh;
+ * not a basis to build a coordinate frame on. Empty input gives the identity axes and zero extents.
  */
 fun Collection<Vec3>.obbBounds(): OrientedBoundingBox {
     if (isEmpty()) {
@@ -335,9 +423,14 @@ private fun deflateCovariance(cov: Array<FloatArray>, v: Vec3) {
 }
 
 /**
- * Compute convex hull of Vec3 points using QuickHull3D.
+ * The vertices of the 3D convex hull, via QuickHull3D — the points on the outside, with the interior
+ * ones dropped.
  *
- * @return List of Vec3 points forming the convex hull (may be reordered)
+ * Vertices only, in the library's own order, with no faces or winding; and they are fresh [Vec3]s, not
+ * the receiver's instances. Fewer than four points, or a degenerate cloud QuickHull cannot triangulate
+ * (all coplanar, all collinear, duplicates), returns **the input unchanged** rather than throwing — so
+ * a result the same size as the input means "hull, or gave up", and the two are not distinguishable
+ * from the return value alone.
  */
 fun List<Vec3>.convexHull(): List<Vec3> {
     if (size < 4) return this.toList()  // Need at least 4 non-coplanar points
@@ -362,13 +455,17 @@ fun List<Vec3>.convexHull(): List<Vec3> {
 }
 
 /**
- * Compute convex hull peeling median.
+ * A deeply outlier-resistant centre: strip the convex hull off the cloud [peelSteps] times, then take
+ * the mean of whatever is left.
  *
- * Iteratively removes the convex hull from the point set until a small core remains.
- * Returns the center of the final core set.
+ * Each peel discards every point on the current outside, so a handful of far-flung strays are gone by
+ * the second round and cannot influence the answer at all — unlike [center], which averages them in,
+ * or [medianVec], which is per-axis. Stops early once four or fewer points remain (and returns
+ * [center] outright at that size), so on a small or hollow cloud this quietly degrades to the mean.
  *
- * @param peelSteps Maximum number of peeling iterations (default 5)
- * @return Median-like point from iterative convex hull peeling
+ * Costs one [convexHull] per peel; expensive enough to keep out of a per-frame path on a large cloud.
+ *
+ * @param peelSteps how many hulls to strip at most, default 5
  */
 fun List<Vec3>.convexHullPeelingMedian(peelSteps: Int = 5): Vec3 {
     if (isEmpty()) return Vec3(0f, 0f, 0f)
@@ -403,7 +500,10 @@ fun List<Vec3>.convexHullPeelingMedian(peelSteps: Int = 5): Vec3 {
 // ============================================================================
 
 /**
- * Wrap a collection of Vec3 as points for QuickHull3D convex hull computation.
+ * Flattens the points into the packed `[x0, y0, z0, x1, …]` `DoubleArray` that QuickHull3D and other
+ * plain-array libraries expect.
+ *
+ * A copy, in iteration order, three doubles per point — `Float` precision widened, not gained.
  */
 fun Collection<Vec3>.asQuickHullPoints(): DoubleArray {
     val points = DoubleArray(size * 3)
@@ -420,6 +520,12 @@ fun Collection<Vec3>.asQuickHullPoints(): DoubleArray {
 // Collection<Vec4> extensions
 // ============================================================================
 
+/**
+ * The component-wise mean of every element, in a fresh [Vec4]. `(0, 0, 0, 0)` when empty.
+ *
+ * Note that on a collection of *colours* this averages alpha along with the channels, which is rarely
+ * the blend you meant.
+ */
 fun Collection<Vec4>.center(): Vec4 {
     if (isEmpty()) return Vec4(0f, 0f, 0f, 0f)
     val sum = Vec4(0f, 0f, 0f, 0f)
@@ -427,6 +533,12 @@ fun Collection<Vec4>.center(): Vec4 {
     return sum.mul(1f / size)
 }
 
+/**
+ * The median of one component: [index] 0 for x, 1 for y, 2 for z, 3 for w.
+ *
+ * Even-sized collections get the mean of the two middle values. **Throws** for an index outside
+ * `0..3`, and on an empty collection.
+ */
 @JvmName("medianVec4")
 fun Collection<Vec4>.median(index: Int = 0): Float {
     require(index in 0..3) { "index must be 0 (x), 1 (y), 2 (z), or 3 (w)" }
@@ -449,12 +561,15 @@ fun Collection<Vec4>.median(index: Int = 0): Float {
     }
 }
 
+/** The component-wise median across all four axes, as one [Vec4]. Robust to outliers; see [medianVec]
+ * on `Collection<Vec2>` for why the result is generally not one of the inputs. */
 fun Collection<Vec4>.medianVec(): Vec4 {
     return Vec4(median(0), median(1), median(2), median(3))
 }
 
 /**
- * Compute axis-aligned bounds as an AxisAlignedBoundingBox4D.
+ * Axis-aligned bounds on all four axes, as an [AxisAlignedBoundingBox4D]. One pass; degenerate box at
+ * the origin when empty.
  */
 @JvmName("aabbBoundsVec4")
 fun Collection<Vec4>.aabbBounds(): AxisAlignedBoundingBox4D {
@@ -481,15 +596,24 @@ fun Collection<Vec4>.aabbBounds(): AxisAlignedBoundingBox4D {
 }
 
 
+/** This 2D double vector lifted into 3D with `z = 0`, as a new mutable vector. */
 val Vector2dc.v3: Vector3d
     get() = Vector3d(this.x(), this.y(), 0.0)
 
+/** This 3D double vector with its z **dropped**, as a new mutable 2D vector — a projection, not a copy. */
 val Vector3dc.v2: Vector2d
     get() = Vector2d(this.x(), this.y())
 
+/**
+ * This [Vec2] lifted into 3D with `z = 0`, as a new mutable vector.
+ *
+ * The idiomatic way to hand a planar point to something that wants a `Vec3`. Reading it allocates, so
+ * hoist it out of a tight loop.
+ */
 val Vector2fc.v3: Vector3f
     get() = Vector3f(this.x(), this.y(), 0.0f)
 
+/** This [Vec3] with its z **dropped**, as a new mutable [Vec2] — flattening, not a perspective divide. */
 val Vector3fc.v2: Vector2f
     get() = Vector2f(this.x(), this.y())
 
@@ -516,56 +640,152 @@ fun vec(v: Vector3fc) = Vector3f(v)
 /** Copies a 4D vector into a new mutable [Vec4]. */
 fun vec(v: Vector4fc) = Vector4f(v)
 
+/** A [Vec3] from a [Vec2] and a z — the "give this planar point a height" constructor. Copies [v]. */
 fun vec(v: Vec2, z: Number) = Vector3f(v.x, v.y, z.toFloat())
+
+/** A [Vec3] from a leading scalar and a [Vec2] tail, GLSL's `vec3(x, yz)`. Note the argument order. */
 fun vec(x : Number, yz: Vec2) = Vector3f(x.toFloat(), yz.x, yz.y)
+
+/**
+ * A [Vec4] from a leading scalar and a [Vec3] tail, GLSL's `vec4(x, yzw)`.
+ *
+ * Watch the order if you are reaching for this to add alpha to a colour: the scalar goes in **front**,
+ * so this is `vec(alpha, rgb)`, not `vec(rgb, alpha)`.
+ */
 fun vec(x: Number, yzw: Vec3) = Vector4f(x.toFloat(), yzw.x, yzw.y, yzw.z)
 
 // The vector `invoke` (copy-with-changes and copy-then-block), `%=` (remAssign) and `len` rescale
 // are generated for every float heap vector into afield.stdlib.VectorOperators.kt by
 // tools/linalg-generator. The transform types keep their hand-written in-place assignment below.
 
+/**
+ * `q %= other` — overwrite this rotation **in place** with another's, keeping the same instance.
+ *
+ * The point of it is exactly that it does not allocate and does not rebind: anything already holding a
+ * reference to `q` (a uniform, a mesh property) sees the new value. `q = other` would swap the
+ * reference instead, and those holders would keep the old rotation.
+ */
 operator fun Quat.remAssign(a: Quat) {
     this.set(a)
 }
 
+/** `t %= other` — overwrite this rigid transform **in place**, for the same reasons as [Quat.remAssign]. */
 operator fun DualQuat.remAssign(a: DualQuat) {
     this.set(a)
 }
 
+/**
+ * Cross product as an infix operator: `a x b`, a vector perpendicular to both, right-handed.
+ *
+ * Returns a **new** vector and leaves both operands alone, unlike the `cross` method it wraps, which
+ * writes into its receiver. Length is `|a||b|sin θ`, so normalize if you wanted just the direction, and
+ * it collapses to zero for parallel inputs.
+ */
 infix fun Vector3f.x(b: Vector3f) = Vector3f(this).cross(b)
 
 
+/** Scales the vector by a number, into a new [Vec3]. Neither operand is touched. */
 operator fun Vector3fc.times(s: Number): Vector3f = mul(s.toFloat(), Vector3f())
 
+/** `2 * v` — scalar on the left, so the arithmetic reads the way it does on paper. New [Vec3]. */
 operator fun Number.times(s: Vector3fc): Vector3f = s.mul(this.toFloat(), Vector3f())
+
+/** `2 * v` with the scalar on the left, for [Vec2]. New vector; operands untouched. */
 operator fun Number.times(s: Vector2fc): Vector2f = s.mul(this.toFloat(), Vector2f())
+
+/** `2 * v` with the scalar on the left, for [Vec4]. New vector; operands untouched. */
 operator fun Number.times(s: Vector4fc): Vector4f = s.mul(this.toFloat(), Vector4f())
 
+/** True if any component of this 3D double vector is `NaN` — the check `==` cannot do for you. */
 fun Vector3dc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
+
+/** True if either component of this 2D double vector is `NaN`. */
 fun Vector2dc.isNaN() = this.x().isNaN() || this.y().isNaN()
 
+/**
+ * True if any component of this [Vec3] is `NaN`.
+ *
+ * Worth a guard before handing geometry to a renderer or a solver: one `NaN` point silently poisons
+ * bounds, centroids and normals, and `NaN != NaN` means an equality check will not find it. Does not
+ * test for infinities.
+ */
 fun Vector3fc.isNaN() = this.x().isNaN() || this.y().isNaN() || this.z().isNaN()
+
+/** True if either component of this [Vec2] is `NaN`. Infinities are not covered. */
 fun Vector2fc.isNaN() = this.x().isNaN() || this.y().isNaN()
 
+/** `p * q` — the point rotated by the quaternion, into a new [Vec3]. Neither operand is modified. */
 operator fun Vector3fc.times(v: Quaternionfc): Vector3f = v.transform(this, Vector3f())
+
+/**
+ * `p * q` for a planar point: rotates `(x, y, 0)` by the quaternion and returns the xy of the result.
+ *
+ * Only a rotation about z keeps the point in the plane; with any other axis this is the **projection**
+ * of the rotated point, so it can shorten, and a 90° tilt collapses it to the origin.
+ */
 operator fun Vector2fc.times(v: Quaternionfc): Vector2fc =
     v.transform(Vector3f(x(), y(), 0f), Vector3f()).xy
+
+/**
+ * `p * t` — the point moved by the rigid transform (rotate then translate), into a new [Vec3].
+ *
+ * Unlike the quaternion overload this shifts position as well as direction, so do not use it on a
+ * normal or any other direction vector.
+ */
 operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, Vector3f())
 
 
+/**
+ * A rotation of [angle] **radians** about [axis], as a [Quat].
+ *
+ * Radians, not degrees — `quat(PI / 2)` is a quarter turn. The default axis is `+z`, the one that turns
+ * things in the screen plane, and the default angle is no rotation at all, so bare `quat()` is the
+ * identity. The axis is used as given and is expected to be unit length; a scaled axis yields a
+ * quaternion that is not a pure rotation.
+ */
 fun quat(angle: Number = 0.0, axis: Vector3f = vec(0, 0, 1)) =
     Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
 
+/**
+ * A rigid transform from a rotation and a translation — the everyday [DualQuat] constructor.
+ *
+ * Both arguments default to "nothing", so bare `dualquat()` is the identity pose. Order of application
+ * when transforming a point is rotate, then translate.
+ */
 fun dualquat(
     rotation: Quaternionfc = Quaternionf(),
     translation: Vector3fc = vec(0, 0, 0)
 ) = DualQuaternionf(rotation, translation)
 
+/**
+ * A [DualQuat] from its raw real and dual parts, normalized on the way out.
+ *
+ * The low-level constructor, for when you already hold the two quaternions of the algebra — for a
+ * rotation plus a translation, which is what most callers have, use the other overload; passing a
+ * *translation* as `dual` here will not do what you want.
+ */
 fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
     DualQuaternionf(real, dual).normalize()
 
+/**
+ * An axis-aligned 3D box held as a corner plus a size — `x, y, z` and `w, h, d` — and immutable.
+ *
+ * Deliberately *not* the same shape as [AxisAlignedBoundingBox3D], which stores two corners: this is
+ * the corner-and-extent form that layout arithmetic wants, and it is the type behind Field's
+ * box-packing and region work rather than anything geometric. Every operation returns a new `Cuboid`.
+ *
+ * The size fields are taken as given and never checked, so a negative `w`, `h` or `d` is representable
+ * and makes [intersects] and [inside] quietly answer false; [inset] by more than half the size is the
+ * usual way to end up with one.
+ */
 class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Float, val d: Float) {
 
+    /**
+     * The smallest cuboid containing both this one and [r] — with a null [r] treated as "nothing", so
+     * this is safe to fold over a nullable accumulator.
+     *
+     * Note that it unions the *bounds*: the result covers the gap between two distant boxes too.
+     */
     fun union(r: Cuboid?): Cuboid {
         if (r == null) return this
         val minx = min(r.x, x)
@@ -581,28 +801,47 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         )
     }
 
+    /** A copy moved in x and y only, leaving z where it was. Size is unchanged. */
     fun translate(by: Vector2d): Cuboid {
         return Cuboid((x + by.x).toFloat(), (y + by.y).toFloat(), z, w, h, d)
     }
 
+    /** A copy moved on all three axes. Size is unchanged. */
     fun translate(by: Vector3d): Cuboid {
         return Cuboid((x + by.x).toFloat(), (y + by.y).toFloat(), (z + by.z).toFloat(), w, h, d)
     }
 
+    /**
+     * Does this box contain [point]? **Closed** on every side, so a point exactly on a face or corner
+     * counts as inside — two boxes sharing a face therefore both claim the points on it.
+     */
     fun intersects(point: Vector3d): Boolean {
         return (point.x >= x && point.x <= x + w) && point.y >= y && point.y <= (y + h) && point.z >= z && point.z <= (z + d)
     }
 
+    /**
+     * Do the two boxes overlap in volume? **Open** here, unlike the point overload: boxes that merely
+     * touch — one's face flush against the other's — do *not* intersect, which is what you want when
+     * packing things edge to edge.
+     */
     fun intersects(r: Cuboid): Boolean {
         return ((r.x < this.x + this.w) && r.w + r.x > this.x && r.y < this.y + this.h && r.y + r.h > this.y && r.z < this.z + this.d && r.z + r.d > this.z)
     }
 
 
+    /** `Cuboid{x=… y=… z=… w=… h=… d=…}` — the corner and the size, for debugging. */
     override fun toString(): String {
         return "Cuboid{" + "x=" + x + ", y=" + y + ", z=" + z + ", w=" + w + ", h=" + h + ", d=" + d + '}'
     }
 
 
+    /**
+     * A copy shrunk by [by] on **every** side: the corner moves in by that much and each dimension
+     * loses twice it. Negative values grow the box instead.
+     *
+     * Not clamped — insetting a 10-unit box by 6 gives a width of −2, which no `intersects` call will
+     * ever be true for. Check the size yourself if the amount is data-driven.
+     */
     fun inset(by: Double): Cuboid {
         return Cuboid(
             (x + by).toFloat(),
@@ -614,22 +853,36 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         )
     }
 
+    /**
+     * Does the box's x span cover the coordinate [x]? Half-open — `[this.x, this.x + w)` — so
+     * neighbouring spans laid end to end claim each coordinate exactly once.
+     */
     fun intersectsX(x: Double): Boolean {
         return (x >= this.x && x < this.x + this.w)
     }
 
+    /** Is the box's x span **entirely within** `start..end`? Containment, not overlap; y and z are ignored. */
     fun inside(start: Double, end: Double): Boolean {
         return this.x >= start && this.x + this.w < end
     }
 
+    /**
+     * Turns a normalized position in the box into a world one: `(0,0,0)` is the corner and `(1,1,1)` the
+     * far corner.
+     *
+     * Unclamped, so values outside `0..1` land outside the box, which is often what you want for a
+     * margin. The inverse of the fraction you would compute by hand as `(p - corner) / size`.
+     */
     fun convert(x: Double, y: Double, z: Double): Vector3d {
         return Vector3d(this.x + x * this.w, this.y + y * this.h, this.z + z * this.d)
     }
 
+    /** An identical copy. `Cuboid` is immutable, so this is only needed for identity, not for safety. */
     fun duplicate(): Cuboid {
         return Cuboid(x, y, z, w, h, d)
     }
 
+    /** Value equality on all six fields — exact `Float` comparison, so arithmetic drift will fail it. */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -646,6 +899,7 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
         return true
     }
 
+    /** Consistent with [equals]: all six fields, so a `Cuboid` is safe as a map key. */
     override fun hashCode(): Int {
         var result = x.hashCode()
         result = 31 * result + y.hashCode()
@@ -658,6 +912,10 @@ class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Floa
 
 
     companion object {
+        /**
+         * Null-tolerant [union] for folding: null in either position means "nothing", and two nulls
+         * give null. `boxes.fold(null as Cuboid?) { acc, b -> Cuboid.union(acc, b) }` is the idiom.
+         */
         fun union(r: Cuboid?, rect: Cuboid?): Cuboid? {
             if (r == null) return rect
             if (rect == null) return r

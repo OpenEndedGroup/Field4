@@ -29,6 +29,13 @@ import kotlin.random.Random as KotlinRandom
 private const val STDLIB_RANDOM_PROPERTY = "__stdlib_random"
 private const val STDLIB_RANDOM_SEED_PROPERTY = "__stdlib_random_seed"
 private const val STDLIB_NOISE_PHASE_PROPERTY = "__stdlib_noise_phase"
+/**
+ * The seed every box's generator starts from, and the seed [setRandomSeed] undoes.
+ *
+ * It is `1L` — a fixed value on purpose, so that a freshly re-run box produces the same "random"
+ * sketch as it did last time. Pass a seed of your own to [setRandomSeed] when you want a different
+ * draw, or `null` for an unpredictable one.
+ */
 const val STDLIB_RANDOM_DEFAULT_SEED: Long = 1L
 private val fallbackStdlibRandom = Random(STDLIB_RANDOM_DEFAULT_SEED)
 private var fallbackStdlibSeed: Long = STDLIB_RANDOM_DEFAULT_SEED
@@ -75,10 +82,23 @@ private fun currentStdlibRandom(): Random {
     return box?.stdlibRandom() ?: fallbackStdlibRandom
 }
 
+/**
+ * A uniform sample from `[0, 1)` — zero possible, one not — drawn from the current box's generator.
+ *
+ * Repeatable: the box's generator is reseeded to [STDLIB_RANDOM_DEFAULT_SEED] the first time it is
+ * touched, so the same box re-run gives the same sequence back. [setRandomSeed] is how you pick a
+ * different one.
+ */
 fun random(): Double {
     return currentStdlibRandom().nextDouble()
 }
 
+/**
+ * A standard-normal sample (mean 0, standard deviation 1) from the current box's generator.
+ *
+ * Unbounded, though about 99.7% of draws land in `-3..3`; scale and offset it yourself for another
+ * mean and spread. Repeatable on the same terms as [random].
+ */
 fun randomGaussian(): Double {
     return currentStdlibRandom().nextGaussian()
 }
@@ -96,6 +116,14 @@ fun KotlinRandom.nextGaussian(): Double {
         kotlin.math.cos(2.0 * kotlin.math.PI * u2)
 }
 
+/**
+ * Reseeds the current box's generator and resets its noise phase to 0, returning the seed used.
+ *
+ * With no argument a seed is drawn unpredictably — the way to get a *different* sketch each run —
+ * and the return value is how you find out which one you got, so you can pass it back to reproduce
+ * the version you liked. Everything downstream restarts: [random], [randomGaussian], the `noise`
+ * jitter and, through the seed, [noise1D] and the `perlinNoise` extensions.
+ */
 fun setRandomSeed(seed: Long? = null): Long {
     val chosenSeed = seed ?: KotlinRandom.Default.nextLong()
     val box = Box.context.get()
@@ -109,13 +137,28 @@ fun setRandomSeed(seed: Long? = null): Long {
     return chosenSeed
 }
 
+/**
+ * Where along its noise curve this box currently is — the default `phase` [noise1D] samples at.
+ *
+ * Starts at 0 and only moves when you move it, with [noiseForward] or [setNoisePhase]; nothing
+ * advances it for you, so a box that never advances the phase gets the same noise value every frame.
+ */
 fun noisePhase(): Float = currentStdlibPhase()
 
+/**
+ * Advances this box's noise phase by [delta] and returns the new phase.
+ *
+ * The usual once-per-frame call for animated noise. [delta] is in the same units as [noise1D]'s
+ * `frequency` argument divides — one whole unit is one lattice cell of the noise, so around
+ * `0.01..0.05` per frame reads as a slow drift and 1.0 as unrelated values frame to frame. Negative
+ * deltas run the noise backwards.
+ */
 fun noiseForward(delta: Float): Float {
     val next = currentStdlibPhase() + delta
     return setStdlibPhase(next)
 }
 
+/** Jumps this box's noise phase straight to [phase], returning it. Use to drive noise from a clock. */
 fun setNoisePhase(phase: Float): Float = setStdlibPhase(phase)
 
 private fun fade(t: Float): Float {
@@ -137,7 +180,19 @@ private fun hash1D(seed: Long, x: Int): Int {
     return h and 255
 }
 
-// Repeatable 1D Perlin-style noise driven by the current stdlib seed and a phase you can advance.
+/**
+ * Repeatable 1D Perlin-style noise: smooth, continuous, and roughly in `-1..1`.
+ *
+ * Unlike [random] this is a *function* of its [phase] rather than a stream — sample the same phase
+ * twice and you get the same number, and nearby phases give nearby numbers. One unit of phase is one
+ * lattice cell, [frequency] multiplies the phase before sampling (so `frequency = 4` gives four times
+ * the wiggle per unit), and the default phase is the box's own [noisePhase].
+ *
+ * The curve is fixed by the box's random seed, so [setRandomSeed] gives you a different one.
+ * [seedOffset] and [extraHash] pick *independent* curves off the same seed, which is how you get one
+ * noise channel per thing you are animating without them moving in lockstep; the `perlinNoise`
+ * extensions use `seedOffset` exactly that way, one channel per vector component.
+ */
 fun noise1D(
     phase: Float = currentStdlibPhase(),
     seedOffset: Long = 0L,
@@ -174,6 +229,19 @@ private fun sampleNoiseChannels(
     return out
 }
 
+/**
+ * Adds smooth [noise1D] wander to this point **in place**, one independent channel per component,
+ * and returns the same instance.
+ *
+ * Each component is offset by up to `±amplitude` (the noise is roughly `-1..1` before scaling). The
+ * receiver is mutated, so `p.perlinNoise(4f)` moves `p` — copy it first if you needed the original.
+ *
+ * [phaseAdvance] is applied to the box's shared [noisePhase] *after* sampling, so a chain of calls in
+ * one frame all read the same phase; pass it on one call per frame (or use [noiseForward] yourself)
+ * to animate. [seedOffset] shifts which noise channels are used, so two points that should wander
+ * differently need different offsets — spaced by at least 2 here, since this call consumes channels
+ * `seedOffset` and `seedOffset + 1`.
+ */
 fun Vector2f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: Float = 1f, seedOffset: Long = 0L, extraHash: Long = 0L): Vector2f {
     val n = sampleNoiseChannels(2, amplitude, phaseAdvance, frequency, seedOffset, extraHash)
     this.x += n[0]
@@ -181,6 +249,11 @@ fun Vector2f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: 
     return this
 }
 
+/**
+ * Adds smooth [noise1D] wander to this point **in place** — three independent channels, one per
+ * component — and returns the same instance. Conventions exactly as the `Vector2f` overload; this one
+ * consumes noise channels `seedOffset` through `seedOffset + 2`.
+ */
 fun Vector3f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: Float = 1f, seedOffset: Long = 0L, extraHash: Long = 0L): Vector3f {
     val n = sampleNoiseChannels(3, amplitude, phaseAdvance, frequency, seedOffset, extraHash)
     this.x += n[0]
@@ -189,6 +262,11 @@ fun Vector3f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: 
     return this
 }
 
+/**
+ * Adds smooth [noise1D] wander to all four components **in place**, one independent channel each, and
+ * returns the same instance. Conventions as the `Vector2f` overload. Note that on a colour this
+ * wanders alpha too, which is rarely what you want — jitter the `Vector3f` and rebuild the alpha.
+ */
 fun Vector4f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: Float = 1f, seedOffset: Long = 0L, extraHash: Long = 0L): Vector4f {
     val n = sampleNoiseChannels(4, amplitude, phaseAdvance, frequency, seedOffset, extraHash)
     this.x += n[0]
@@ -198,6 +276,15 @@ fun Vector4f.perlinNoise(amplitude: Float, phaseAdvance: Float = 0f, frequency: 
     return this
 }
 
+/**
+ * Jitters this point **in place** by an independent uniform draw per component and returns the same
+ * instance.
+ *
+ * Each component moves by up to `±d/2` — [d] is the full width of the jitter box, not the radius —
+ * so `p.noise(10)` scatters within 10 units across. Unlike [perlinNoise] this is white noise from
+ * [random], with no continuity between calls: a point jittered every frame flickers rather than
+ * drifts. The receiver is mutated.
+ */
 fun Vector2f.noise(d: Number) : Vector2f {
     val rng = currentStdlibRandom()
     val scale = d.toFloat()
@@ -206,6 +293,10 @@ fun Vector2f.noise(d: Number) : Vector2f {
     return this
 }
 
+/**
+ * Jitters all three components **in place** by up to `±d/2` each, uniformly and independently, and
+ * returns the same instance. As the `Vector2f` overload: white noise, not smooth wander.
+ */
 fun Vector3f.noise(d: Number) : Vector3f {
     val rng = currentStdlibRandom()
     val scale = d.toFloat()
@@ -215,6 +306,10 @@ fun Vector3f.noise(d: Number) : Vector3f {
     return this
 }
 
+/**
+ * Jitters all four components **in place** by up to `±d/2` each, uniformly and independently, and
+ * returns the same instance. As the `Vector2f` overload — including alpha, if this is a colour.
+ */
 fun Vector4f.noise(d: Number) : Vector4f {
     val rng = currentStdlibRandom()
     val scale = d.toFloat()

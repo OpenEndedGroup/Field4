@@ -42,6 +42,21 @@ import kotlin.math.*
 
 
 
+/**
+ * The batch dependence coefficients: hand any of these two equal-length `DoubleArray`s and get one
+ * number back per notion of "related" — [pearson] for linear association, [spearman] and
+ * [kendallTauB] for monotone association on ranks, [chatterjeeXi] for "is y a function of x",
+ * [distanceCorrelation] for dependence of any shape, [micTicNaive] for a grid mutual-information scan.
+ *
+ * Every entry point runs the same validation first: the two arrays must be the same length and at
+ * least two long, or it throws `IllegalArgumentException`. Nothing here filters non-finite input, so a
+ * single NaN in either array propagates straight into the result. Variances and covariances are the
+ * population (divide by n) forms, which cancels out of a correlation anyway.
+ *
+ * The rank-based members all sort by value with a stable tie-break on the original index:
+ * [ranksAverageTies] hands tied values their average rank, while the private helper inside
+ * [micTicNaive] uses plain order ranks, which is all its equipartition binning needs.
+ */
 object StatsDependence {
 
     // -------------------------
@@ -77,6 +92,15 @@ object StatsDependence {
 
     // Average-rank ties:
     // returns ranks in [1..n] with average ranks for tied values.
+    /**
+     * Ranks in 1..n, smallest value first, with tied values sharing the average of the positions they
+     * occupy: `3, 1, 4, 1, 5` comes back as `3.0, 1.5, 4.0, 1.5, 5.0`, since the two 1s sit at positions
+     * 1 and 2. The result therefore always sums to n(n+1)/2 whatever the input looks like.
+     *
+     * Ties are broken by original index, so the ordering is stable and the ranks do not depend on the
+     * sort's internals. Equality is exact `Double` comparison — values a hair apart count as distinct
+     * and get consecutive ranks rather than a shared average. O(n log n); [spearman] is built on it.
+     */
     fun ranksAverageTies(values: DoubleArray): DoubleArray {
         val n = values.size
         // sortedWith returns a new list; index through that, never through the unsorted 0..n-1.
@@ -110,6 +134,16 @@ object StatsDependence {
     // -------------------------
     // Pearson
     // -------------------------
+    /**
+     * Pearson's product-moment correlation, in -1..1: 1 is a perfect increasing straight line, -1 a
+     * perfect decreasing one, and 0 means no *linear* relationship — which is emphatically not the same
+     * as no relationship, as the symmetric parabola in [main] demonstrates.
+     *
+     * Returns NaN, not 0, when either array has zero variance (every value identical), because the
+     * coefficient is genuinely undefined there; note that [distanceCorrelation] answers 0.0 in the same
+     * situation. Throws if the arrays differ in length or hold fewer than two points. O(n), one pass
+     * each for the means and one for the covariance.
+     */
     fun pearson(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
         val mx = mean(x)
@@ -124,6 +158,16 @@ object StatsDependence {
     // -------------------------
     // Spearman (Pearson on ranks)
     // -------------------------
+    /**
+     * Spearman's rank correlation — [pearson] applied to each array's [ranksAverageTies], which puts a
+     * monotone-but-curved relationship at ±1 where Pearson reads less: exactly +1 for any strictly
+     * increasing pair, exactly -1 for any strictly decreasing one, whatever curve connects them.
+     *
+     * Monotone is the whole of what it sees, so a symmetric parabola reads 0 here just as it does under
+     * [pearson] — reach for [chatterjeeXi] or [distanceCorrelation] for non-monotone shapes. Ties pull
+     * the magnitude in from ±1 by way of the shared average ranks, and NaN comes back when either array
+     * is constant, since every rank is then identical and [pearson] has no variance to divide by.
+     */
     fun spearman(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
         val rx = ranksAverageTies(x)
@@ -138,6 +182,16 @@ object StatsDependence {
     //
     // This handles ties (tau-b). If all x or all y are identical -> NaN.
     // -------------------------
+    /**
+     * Kendall's tau-b, in -1..1: concordant minus discordant pairs over all pairs, corrected for ties in
+     * either variable. Like [spearman] it measures monotone rather than linear association, and the two
+     * agree in sign throughout; tau-b is the more conservative of the pair in magnitude.
+     *
+     * Returns NaN when the tie-adjusted denominator collapses — all x identical, or all y identical.
+     * Pairs tied in *both* variables are counted apart and excluded from the correction, which is what
+     * makes this tau-b rather than tau-a or tau-c. O(n²) time with no allocation, so it is fine for a
+     * few thousand points and hopeless for a long signal.
+     */
     fun kendallTauB(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
         val n = x.size
@@ -185,6 +239,17 @@ object StatsDependence {
     // For continuous y (no ties), this reduces to:
     // 1 - 3 * sum |rank(y_{i+1}) - rank(y_i)| / (n^2 - 1)
     // -------------------------
+    /**
+     * Chatterjee's xi, which is **asymmetric on purpose**: it measures how nearly `y` is a *function* of
+     * `x`, so swapping the arguments asks a different question and returns a different number. Near 0 for
+     * independence, near 1 when y is a noiseless function of x — including a non-monotone one such as a
+     * parabola, where [pearson] reads 0 and [kendallTauB] not much more.
+     *
+     * Values are asymptotically in 0..1, but the finite-sample form used here can come out slightly
+     * negative for small n, so do not clamp it and call it a probability. Ties in either variable go
+     * through the tie-aware form, x-ties break by index, and when every y is identical the denominator
+     * vanishes and it returns 0.0. O(n log n) — the cheap one to reach for on a long series.
+     */
     fun chatterjeeXi(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
         val n = x.size
@@ -235,6 +300,10 @@ object StatsDependence {
         return 1.0 - (numerator / denominator)
     }
 
+    /**
+     * Short alias for [chatterjeeXi], for when the formula rather than the surname is what you have in
+     * mind. Same asymmetry: the first argument is the predictor.
+     */
     fun xi(x: DoubleArray, y: DoubleArray): Double = chatterjeeXi(x, y)
 
     // -------------------------
@@ -250,6 +319,18 @@ object StatsDependence {
     //
     // Complexity O(n^2) memory O(n^2). For large n, you'd want streaming or blocks.
     // -------------------------
+    /**
+     * Székely–Rizzo distance correlation, in 0..1 — and unlike [pearson] it is 0 *only* for genuine
+     * independence, which is what makes it the one to reach for when you do not want to guess the shape
+     * of the relationship first. It is symmetric in its arguments and never negative, so it tells you how
+     * much dependence there is and nothing at all about direction.
+     *
+     * Returns 0.0 rather than NaN when either array is constant, and the result is clamped into 0..1 to
+     * absorb floating-point overshoot. Scalar inputs only here, though the coefficient is defined for
+     * vectors. O(n²) in time and, more painfully, in memory: it materialises two full n×n distance
+     * matrices, which puts the practical ceiling at a few thousand points.
+     * [RollingDistanceCorrelation] is the streaming alternative.
+     */
     fun distanceCorrelation(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
         val n = x.size
@@ -348,6 +429,11 @@ object StatsDependence {
     // MIC-like score = max normalized MI across grids with xBins*yBins <= B
     // TIC-like score = sum normalized MI across those grids
     // -------------------------
+    /**
+     * What [micTicNaive] reports: the best (`mic`) and the summed (`tic`) normalized mutual-information
+     * score across every grid it scanned, plus the `bestXBins` × `bestYBins` grid that produced the
+     * maximum. Read the caveat on [micTicNaive] before trusting any of the four.
+     */
     data class MineLikeResult(
         val mic: Double,
         val tic: Double,
@@ -355,6 +441,18 @@ object StatsDependence {
         val bestYBins: Int
     )
 
+    /**
+     * A MIC/TIC-style scan: bin x and y onto every grid whose cell count fits a budget, score normalized
+     * mutual information on each, and report the maximum and the sum. Unlike the correlation
+     * coefficients above it is blind to the *shape* of the relationship, so a parabola or a sine scores
+     * about as high as a straight line — which is the point of reaching for it.
+     *
+     * It is not MICe/TICe, and the header comment in this file is emphatic about it: this is an
+     * equipartition-by-order grid approximation, good for intuition, and it will not reproduce published
+     * numbers. Small samples read high because the mutual-information estimate is biased upward on a
+     * sparse grid, so compare scores at one n rather than across sizes. `bMax` caps the product of the
+     * two bin counts, defaulting to floor(n^0.6) and never less than 4.
+     */
     fun micTicNaive(
         x: DoubleArray,
         y: DoubleArray,
@@ -446,6 +544,15 @@ object StatsDependence {
     }
 }
 
+/**
+ * A scratch demo rather than part of the API: prints every coefficient in this file for `y = x²` over an
+ * x grid symmetric about zero — the textbook case where [pearson] reads about 0 while the dependence is
+ * in fact total, so [StatsDependence.chatterjeeXi] and [StatsDependence.distanceCorrelation] read high.
+ *
+ * The three rank coefficients side with Pearson here and print about 0: the parabola is a function but
+ * not a monotone one, and monotone is all any of them can see. The MIC-like score, which bins rather
+ * than ranks, is the other one that notices.
+ */
 fun main() {
     val n = 400
     val x = DoubleArray(n) { i ->
@@ -464,6 +571,20 @@ fun main() {
     println("TIC~:     " + mine.tic)
 }
 
+/**
+ * Distance correlation over a sliding window, maintained incrementally: `push` a sample pair, get the
+ * current 0..1 coefficient back, at O(w) work per sample for a window of w rather than the O(w²) rebuild
+ * [StatsDependence.distanceCorrelation] would charge you.
+ *
+ * There is no warm-up gate. The first `push` returns null, and from the second onwards you get a real
+ * coefficient over however few samples are in the window so far — genuine values, but noisy until the
+ * window fills, so count pushes yourself if you want to ignore them. `windowSize` must be at least 2 or
+ * construction throws. Once full, each `push` evicts the oldest pair. There is no reset: build a new
+ * instance, since unlike [RollingXiCorrelation] this has no `clear`.
+ *
+ * The maintained row sums, grand sums and cross sums are only ever added to and subtracted from, never
+ * recomputed, so a very long run accumulates floating-point drift that a batch call would not have.
+ */
 class RollingDistanceCorrelation(private val windowSize: Int) {
     init {
         require(windowSize >= 2) { "windowSize must be >= 2" }
@@ -518,6 +639,11 @@ class RollingDistanceCorrelation(private val windowSize: Int) {
 
     /**
      * Current distance correlation (no mutation).
+     *
+     * Null until the window holds two samples; otherwise a value in 0..1, computed from the maintained
+     * sums rather than from a rebuilt distance matrix. Returns 0.0, as the batch version does, when
+     * either variable is constant across the window, and the result is clamped into 0..1 to absorb the
+     * numerical error the incremental sums accumulate.
      */
     fun current(): Double? {
         if (n < 2) return null
@@ -656,6 +782,16 @@ class RollingDistanceCorrelation(private val windowSize: Int) {
     }
 }
 
+/**
+ * Chatterjee's xi over a sliding window, recomputed from scratch on every push — no incremental trickery,
+ * just [StatsDependence.chatterjeeXi] over the window's current contents, which costs O(w log w) per
+ * sample and is exactly as trustworthy as the batch answer.
+ *
+ * It carries the batch function's asymmetry: the first argument of [push] is the predictor, so pushing
+ * (x, y) answers "how nearly is y a function of x". `windowSize` must be at least 2 or construction
+ * throws; the first push returns null, and thereafter you get xi over however many samples have arrived,
+ * the window filling before it starts evicting the oldest. [clear] empties it.
+ */
 class RollingXiCorrelation(private val windowSize: Int) {
     init {
         require(windowSize >= 2) { "windowSize must be >= 2" }
@@ -667,6 +803,13 @@ class RollingXiCorrelation(private val windowSize: Int) {
     private var head = 0
     private var tail = 0
 
+    /**
+     * Push one (x, y) sample — evicting the oldest if the window is already full — and return xi over the
+     * window as it now stands, or null while fewer than two samples have arrived.
+     *
+     * This recomputes from scratch rather than updating anything, so the cost is O(w log w) in the window
+     * size on every call, not amortised away.
+     */
     fun push(x: Double, y: Double): Double? {
         if (n == windowSize) {
             head = (head + 1) % windowSize
@@ -681,6 +824,11 @@ class RollingXiCorrelation(private val windowSize: Int) {
         return current()
     }
 
+    /**
+     * Xi over the window's current contents without pushing anything, or null while fewer than two samples
+     * have arrived. Copies the window out in arrival order first; since [StatsDependence.chatterjeeXi]
+     * sorts by x itself, that order only decides how x-ties break.
+     */
     fun current(): Double? {
         if (n < 2) return null
 
@@ -694,6 +842,10 @@ class RollingXiCorrelation(private val windowSize: Int) {
         return StatsDependence.chatterjeeXi(x, y)
     }
 
+    /**
+     * Forget every buffered sample. The next [push] starts a fresh window and returns null again, exactly
+     * as it did on a new instance.
+     */
     fun clear() {
         n = 0
         head = 0

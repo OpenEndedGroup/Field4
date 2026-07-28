@@ -25,28 +25,72 @@ import afield.Box
 
 /** One swept value of a numeric node and the final signal it produces. */
 data class FnGraphSweepPoint(
+    /** The value substituted at the swept node — the node is replaced by a plain constant holding it. */
     val value: Double,
+    /** The *whole root* sampled with that substitution in place, on the trace's shared abscissae. */
     val samples: DoubleArray
 )
 
+/**
+ * One occurrence of the graph, sampled three ways on the root's time-base — and, if it is a number and
+ * you asked for sweeps, once more per swept value.
+ *
+ * The three signals answer three different questions, and confusing them is the usual mistake:
+ * [local] is this subgraph on its own, [muted] is the finished function with this occurrence neutralised,
+ * and [effect] is `final - muted`, a **counterfactual** rather than an additive share — it carries every
+ * transformation between here and the root, so under a clip or a divide it will not sum with its
+ * siblings. All three arrays are the length of [FnGraphTrace.xs] and may hold non-finite entries where
+ * the function is undefined or threw.
+ */
 data class FnGraphTraceNode(
+    /** Child indices from the root; empty is the root itself, which the trace does include. */
     val path: List<Int>,
+    /** The role of the edge this occurrence hangs from, or null at the root. */
     val role: String?,
+    /** The op name, as the sidebar labels it. */
     val op: String,
+    /** The occurrence's own function name, if it had one. */
     val name: String?,
+    /** The occurrence's own domain, which can be narrower than the domain actually plotted. */
     val domain: Functions.Domain,
+    /** This subgraph sampled directly at the root's abscissae, ignoring everything above it. */
     val local: DoubleArray,
+    /**
+     * The rebuilt root with just this occurrence replaced by a neutral constant — `0.0`, or `1.0` when it
+     * is the right-hand side of a divide. Muting the root itself therefore flatlines the whole trace.
+     */
     val muted: DoubleArray,
+    /** `final - muted`, index by index, and non-finite wherever either side was. The contextual effect. */
     val effect: DoubleArray,
+    /** True when this node carries a numeric `value` and is tagged as a number — the sweepable nodes. */
     val numeric: Boolean = false,
+    /** That numeric value, or null for anything else. */
     val value: Double? = null,
+    /**
+     * The value sweep behind the browser's sensitivity view. Empty unless the node is [numeric] *and*
+     * the caller asked for `sensitivitySteps` above zero — the trace does not sweep by default, though
+     * [Functions.Fn.graphBrowseHtml] does.
+     */
     val sensitivity: List<FnGraphSweepPoint> = emptyList()
 )
 
+/**
+ * A whole graph sampled on one shared time-base: the abscissae, the finished signal, and one
+ * [FnGraphTraceNode] per visible occurrence.
+ *
+ * The non-HTML form, and the one to reach for from a test or an agent. Nodes are in depth-first order
+ * with the root first, and the list is simply **truncated** at `maxNodes` rather than pruned cleverly,
+ * so a wide graph loses its later branches without saying so. Not cheap: every node costs one rebuild of
+ * the whole root and two samplings of the grid, and every sweep step another rebuild and sampling.
+ */
 data class FnGraphTrace(
+    /** The domain actually plotted, after an infinite or empty one was widened into something finite. */
     val domain: Functions.Domain,
+    /** The shared abscissae every array in the trace is indexed by. */
     val xs: DoubleArray,
+    /** The unmodified root sampled at [xs] — the gray curve the browser always keeps on screen. */
     val final: DoubleArray,
+    /** One entry per sampled occurrence, root first. */
     val nodes: List<FnGraphTraceNode>
 )
 
@@ -133,18 +177,40 @@ private fun Functions.Fn.graphSweepFinal(
 
 /** One rewrite step: the signal before and after applying a single rule, on the shared axis. */
 data class FnRewriteStage(
+    /** What the step is called: the rule's name, or the raw spec line for the string-DSL form. */
     val label: String,
+    /** The signal as it stood before this rule — i.e. after every earlier stage, since they accumulate. */
     val before: DoubleArray,
+    /** The signal after this rule. */
     val after: DoubleArray,
+    /** `after - before`, non-finite wherever either side was. */
     val delta: DoubleArray,
+    /**
+     * Whether the rule really changed the graph, judged structurally rather than by the samples — a rule
+     * that matched nothing, or whose transmutation was refused, reports false and the stepper labels it
+     * `no-op`. A structural change with a flat [delta] is perfectly possible, and interesting.
+     */
     val changed: Boolean
 )
 
+/**
+ * A rewrite watched one rule at a time: the shared abscissae, the signal before anything ran, the signal
+ * at the end, and a [FnRewriteStage] per rule.
+ *
+ * Stages are **cumulative**, not independent — stage n runs on the output of stage n-1, which is what
+ * makes the stepper in [rewriteBrowseHtml] read as a story rather than a set of alternatives. Sampling is
+ * NaN-safe throughout, so an out-of-domain or throwing evaluation lands as a gap rather than an exception.
+ */
 data class FnRewriteTrace(
+    /** The domain actually plotted, after an infinite or empty one was widened into something finite. */
     val domain: Functions.Domain,
+    /** The shared abscissae every array here is indexed by. */
     val xs: DoubleArray,
+    /** The receiver sampled before any rule ran. */
     val original: DoubleArray,
+    /** The function every stage ended on, sampled again at [xs] — the same signal the last stage's `after` holds. */
     val finalSamples: DoubleArray,
+    /** One stage per rule, in the order they were applied. */
     val stages: List<FnRewriteStage>
 )
 
@@ -174,7 +240,16 @@ fun Functions.Fn.graphRewriteTrace(
     return FnRewriteTrace(plotDomain, xs, original, sampleGraphBrowse(current, xs), stages)
 }
 
-/** String-DSL convenience: one stage per meaningful rule line, applied cumulatively with [Functions.Fn.rewrite]. */
+/**
+ * String-DSL convenience: one stage per meaningful rule line, applied cumulatively with [Functions.Fn.rewrite].
+ *
+ * "Meaningful" is decided lexically: comments are stripped and any line without an arrow is dropped, so the
+ * `#fnrewrite` header disappears and several rules separated by semicolons on one line become one stage.
+ * Two things are worth knowing before trusting the picture. It goes through plain [Functions.Fn.rewrite],
+ * so diagnostics are discarded — a misspelt rule simply produces a no-op stage — and a Kotlin `@{...}`
+ * right-hand side has no evaluator here and is **not applied**, even though `rewriteKotlin` would have
+ * applied it.
+ */
 fun Functions.Fn.graphRewriteTrace(
     spec: String,
     sampleDomain: Functions.Domain? = null,
@@ -238,7 +313,19 @@ private fun graphBrowseMuteReplacement(context: FnGraphCopyContext): Functions.F
     return Functions.c(neutral, context.domain)
 }
 
-/** Interactive occurrence browser with final, local, muted, and contextual-effect traces. */
+/**
+ * Interactive occurrence browser with final, local, muted, and contextual-effect traces.
+ *
+ * Returns a **self-contained** `iframe` whose `srcdoc` is the entire browser: no external script, no
+ * stylesheet, no callback to Field, just inlined CSS, a canvas and one JSON payload. That payload is the
+ * whole of [graphTrace] written out as numbers, so the string is big — on the order of `samples` times
+ * `maxNodes` times (three, plus one per sensitivity step) doubles, which is megabytes for a large graph
+ * with sweeps on. The cost to produce it is the trace's: two full samplings of a rebuilt root per node,
+ * plus one per sweep step. Generate it on an edit, not on a frame.
+ *
+ * Unlike [graphTrace], sensitivity sweeps are **on by default** here, and they are the bulk of that work —
+ * pass `sensitivitySteps = 0` for the cheap version, at the cost of an empty sensitivity view.
+ */
 fun Functions.Fn.graphBrowseHtml(
     sampleDomain: Functions.Domain? = null,
     samples: Int = 512,
@@ -474,6 +561,16 @@ canvas { display:block; width:100%; height:100%; cursor:crosshair; }
 """.trimIndent()
 }
 
+/**
+ * Builds the occurrence browser and displays it in the current box, returning the function unchanged so it
+ * can sit mid-chain.
+ *
+ * Requires an active `Box.context` and throws `IllegalStateException` without one — use
+ * [graphBrowseHtml] anywhere that is not inside a running box. Displaying to the same [channel] again
+ * replaces the previous browser rather than stacking a second one, which is what makes this pleasant to
+ * re-run while editing. Sensitivity sweeps are left at their default, so read [graphBrowseHtml] on cost
+ * before putting this anywhere that runs repeatedly.
+ */
 @JvmName("browseGraphCurrentBox")
 fun Functions.Fn.browseGraph(
     channel: String = "graph",
@@ -489,6 +586,14 @@ fun Functions.Fn.browseGraph(
     return this
 }
 
+/**
+ * [graphBrowseHtml] taking a Kotlin range — `0.0..2.0` — instead of a `Functions.Domain`, for the common
+ * case of plotting over something other than the function's own domain.
+ *
+ * The range only chooses the x-axis; it does not clip or re-domain the function, so a sample outside the
+ * function's real domain arrives as a gap in the line. This overload does not expose `sensitivitySteps`,
+ * so the sweeps stay at their default and so does their cost.
+ */
 fun Functions.Fn.graphBrowseHtml(
     sampleDomain: ClosedRange<*>,
     samples: Int = 512,
@@ -498,6 +603,12 @@ fun Functions.Fn.graphBrowseHtml(
     maxNodes: Int = 32
 ): String = graphBrowseHtml(Functions.domain(sampleDomain) as Functions.Domain?, samples, heightPx, title, maxDepth, maxNodes)
 
+/**
+ * [browseGraph] over an explicit range: `f.browseGraph(0.0..2.0)`.
+ *
+ * The range comes first here, so the channel has to be named if you want to change it — the two overloads
+ * are told apart by that first argument, and `browseGraph("graph")` still means the channel.
+ */
 @JvmName("browseGraphCurrentBoxRange")
 fun Functions.Fn.browseGraph(
     sampleDomain: ClosedRange<*>,
@@ -509,7 +620,13 @@ fun Functions.Fn.browseGraph(
     maxNodes: Int = 32
 ): Functions.Fn = browseGraph(channel, Functions.domain(sampleDomain), samples, heightPx, title, maxDepth, maxNodes)
 
-/** Steppable before/after/delta lanes for a rewrite, all on the shared time-base. */
+/**
+ * Steppable before/after/delta lanes for a rewrite, all on the shared time-base.
+ *
+ * The same self-contained `iframe` treatment as [Functions.Fn.graphBrowseHtml] — inlined CSS, one canvas,
+ * one JSON payload — but far smaller, since it carries three arrays per stage rather than a sweep per node.
+ * The trace has already been computed by this point, so this call is only string building.
+ */
 fun FnRewriteTrace.rewriteBrowseHtml(
     heightPx: Int = 460,
     title: String = "Fn rewrite"
@@ -608,7 +725,14 @@ canvas { display:block; width:100%; height:100%; cursor:crosshair; }
 """.trimIndent()
 }
 
-/** Compute and display before/after rewrite lanes for a plain-DSL [spec] in the current box. */
+/**
+ * Compute and display before/after rewrite lanes for a plain-DSL [spec] in the current box.
+ *
+ * Returns the receiver, **not** the rewritten function — this is a way of looking, not a way of editing;
+ * call [Functions.Fn.rewrite] when you want to keep the result. Needs an active `Box.context` and throws
+ * `IllegalStateException` without one, and inherits [Functions.Fn.graphRewriteTrace]'s caveat that a Kotlin
+ * `@{...}` action is not applied on this path.
+ */
 fun Functions.Fn.browseRewrite(
     spec: String,
     channel: String = "rewrite",
@@ -622,7 +746,13 @@ fun Functions.Fn.browseRewrite(
     return this
 }
 
-/** Display before/after rewrite lanes for programmatic [rules] in the current box. */
+/**
+ * Display before/after rewrite lanes for programmatic [rules] in the current box.
+ *
+ * One stage per rule, each rule getting a single bottom-up pass — no fixed-point iteration, so a rule set
+ * that only converges after several passes will look half-finished here. Returns the receiver unchanged and
+ * throws `IllegalStateException` without an active `Box.context`.
+ */
 fun Functions.Fn.browseRewrite(
     rules: List<FnGraphRule>,
     channel: String = "rewrite",

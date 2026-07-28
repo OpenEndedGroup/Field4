@@ -32,25 +32,66 @@ import kotlin.math.*
  * for handfuls of control points, not thousands.
  */
 
+/**
+ * A radial basis function: how strongly a control point still counts at distance `r` from the x
+ * being evaluated.
+ *
+ * A `fun interface`, so a bespoke kernel is just a lambda. `r` is always non-negative — the fitter
+ * passes `abs(x - xi)` — and a kernel is *not* required to decay: the polynomial and thin-plate
+ * kernels grow without bound with distance, which is normal for interpolation and only surprising
+ * if you were expecting a bump-shaped weight. [RbfKernels] holds the ready-made family.
+ */
 fun interface RbfKernel {
+    /** The kernel's value at radius [r]. [r] is never negative; the result may be any sign. */
     fun eval(r: Double): Double
 }
 
+/**
+ * The ready-made [RbfKernel] family behind `Functions.rbf`: four parameter-free kernels as values,
+ * and four shape-parameter kernels as factories.
+ *
+ * [thinPlate] is the default for `rbf` and the usual choice for smooth scattered-data
+ * interpolation. The `epsilon` / `c` shape parameters are in the same units as x, so a kernel tuned
+ * for control points a few units apart behaves very differently on points a thousand apart —
+ * a badly-scaled shape parameter is the most common cause of a wild-looking fit.
+ */
 object RbfKernels {
+    /** `r` itself: interpolation degenerates to straight segments between neighbouring points. */
     val linear = RbfKernel { r -> r }
+
+    /** `r²`. Grows quickly with distance, so distant control points pull hard on the fit. */
     val quadratic = RbfKernel { r -> r * r }
+
+    /** `r³`. The stiffest of the polynomial kernels; smooth, but prone to overshoot far from data. */
     val cubic = RbfKernel { r -> r * r * r }
+
+    /**
+     * The thin-plate spline kernel `r²·ln r`, with the removable singularity at `r = 0` defined as
+     * zero. The default for `Functions.rbf`, and the one to reach for first: it needs no shape
+     * parameter, so it cannot be mis-scaled. Note that it is *negative* for `r < 1`.
+     */
     val thinPlate = RbfKernel { r -> if (r == 0.0) 0.0 else r * r * ln(r) }
 
+    /**
+     * A Gaussian bump `exp(-(εr)²)` — the one genuinely local kernel here, so influence dies away
+     * within roughly `1/ε` of each control point.
+     *
+     * [epsilon] is an inverse width in x units: too large and the fit collapses to spikes at the
+     * control points with near-zero in between; too small and the interpolation matrix becomes
+     * badly conditioned.
+     */
     fun gaussian(epsilon: Double = 1.0) = RbfKernel { r ->
         val v = epsilon * r
         kotlin.math.exp(-(v * v))
     }
 
+    /** `sqrt(r² + c²)` — a softened [linear], rounded off near `r = 0` over a width of about [c]. */
     fun multiquadric(c: Double = 1.0) = RbfKernel { r -> sqrt(r * r + c * c) }
 
+    /** `1 / sqrt(r² + c²)` — decays with distance, so the fit stays local-ish; [c] sets the width. */
     fun inverseMultiquadric(c: Double = 1.0) = RbfKernel { r -> 1.0 / sqrt(r * r + c * c) }
 
+    /** `1 / (r² + c²)` — the fastest-decaying of the inverse kernels; [c] sets the width. */
     fun inverseQuadratic(c: Double = 1.0) = RbfKernel { r -> 1.0 / (r * r + c * c) }
 }
 
@@ -89,6 +130,22 @@ private fun solveRbfLinearSystem(aIn: Array<DoubleArray>, bIn: DoubleArray): Dou
     return b
 }
 
+/**
+ * The scattered-data fitter behind `Functions.rbf`: given control points anywhere on the x axis,
+ * solve once for the kernel weights that reproduce them, then evaluate anywhere.
+ *
+ * Construction is **eager and cubic** — it builds and solves a dense n×n system in the constructor —
+ * so this is sized for handfuls of control points, not thousands. With `smoothing = 0.0` the result
+ * passes exactly through every point; a positive [smoothing] is added to the matrix diagonal as a
+ * ridge term, which trades exactness for a calmer curve. If [base] is given, the fit is applied to
+ * the *residual* against it, so the base function supplies the trend and the kernels only correct it.
+ *
+ * Two things to know. Each [Functions.Sample]'s `w` scales the right-hand side only, not the matrix
+ * row, so `w = 0` asks the fit to pass through zero at that x rather than ignoring the point. And a
+ * singular system — most easily produced by two control points at the same x — is not reported: the
+ * solver skips the degenerate pivot and leaves that weight at whatever the elimination had reached,
+ * so the fit silently misses those points instead of throwing.
+ */
 class RbfInterpolator(
     private val points: List<Functions.Sample>,
     private val kernel: RbfKernel,
@@ -118,6 +175,15 @@ class RbfInterpolator(
         }
     }
 
+    /**
+     * The fitted value at [x] — the base function (if any) plus every control point's weighted
+     * kernel contribution.
+     *
+     * Defined for every real x, inside the control points' span or not: there is no clamping and no
+     * domain check here, so far outside the data the answer is whatever the kernel extrapolates to,
+     * which for the polynomial and thin-plate kernels diverges. Cost is linear in the number of
+     * control points per call.
+     */
     fun eval(x: Double): Double {
         var sum = base?.eval(x) ?: 0.0
         for (i in weights.indices) {
@@ -139,35 +205,86 @@ object Functions {
     private const val TAU = Math.PI * 2.0
 
     // Closed range for 1D functions. Supports infinite and empty ranges.
+    /**
+     * The interval an [Fn] is meant to be sampled over: **closed at both ends**, possibly infinite,
+     * possibly empty.
+     *
+     * `Domain(0.0, 1.0)` contains both 0 and 1 — [contains] and [containsInclusive] are the same
+     * thing, there is no half-open variant. Emptiness is encoded rather than represented separately:
+     * any domain whose `max < min` (or either end NaN) is empty, which is what [EMPTY] — literally
+     * `Domain(1.0, 0.0)` — is. That matters because [intersect] of two disjoint domains produces
+     * such a value rather than null, and because almost every transformer here returns an empty
+     * domain *unchanged* instead of trying to move it.
+     *
+     * Domains are values: nothing mutates, every operation returns a new one. Use [ALL] for
+     * functions that are genuinely unbounded (the oscillators default to it); samplers that need a
+     * finite window to walk will preview such a domain over a small fallback rather than fail.
+     */
     public data class Domain(val min: Double, val max: Double) : ClosedRange<Double> {
+        /** [min], under the name `ClosedRange` uses. */
         override val start: Double
             get() = min
+
+        /** [max], under the name `ClosedRange` uses — and inclusive, as that name promises. */
         override val endInclusive: Double
             get() = max
 
         // avoid jvm name collision with ClosedRange.isEmpty()
+        /**
+         * True when this domain holds no points at all: `max < min`, or either end NaN.
+         *
+         * The leading underscore is not style, it is a JVM signature clash with
+         * `ClosedRange.isEmpty()`; read it as the ordinary `isEmpty`. Almost every method here
+         * short-circuits on it, so an empty domain propagates quietly rather than throwing.
+         */
         val _isEmpty: Boolean
             get() = min.isNaN() || max.isNaN() || max < min
 
+        /**
+         * True only for a domain that is non-empty *and* bounded at both ends — the condition for
+         * being able to walk it at a fixed sample count or step. [ALL] is not finite.
+         */
         val isFinite: Boolean
             get() = min.isFinite() && max.isFinite() && !_isEmpty
 
+        /**
+         * `max - min`, and exactly `0.0` for an empty domain rather than a negative number.
+         *
+         * A point domain also has length zero, so length alone does not distinguish "one point" from
+         * "no points" — ask [_isEmpty] for that. Infinite for [ALL].
+         */
         val length: Double
             get() = if (_isEmpty) 0.0 else max - min
 
+        /** The midpoint, or NaN if the domain is empty. Infinite domains give a NaN or infinite centre. */
         val center: Double
             get() = if (_isEmpty) Double.NaN else (min + max) * 0.5
 
+        /** Whether [x] lies in the domain, **both endpoints included**. Always false when empty. */
         fun containsInclusive(x: Double): Boolean = !_isEmpty && x >= min && x <= max
 
+        /** Whether [value] lies in the domain, endpoints included — an alias of [containsInclusive]. */
         override fun contains(value: Double): Boolean = containsInclusive(value)
 
+        /** Grows the domain by [amount] at *each* end, so the length increases by twice that. An empty domain is returned unchanged. */
         fun expand(amount: Double): Domain = if (_isEmpty) this else Domain(min - amount, max + amount)
 
+        /**
+         * Shrinks the domain by [amount] at each end. Over-shrinking is not clamped: it produces a
+         * `max < min` domain, which is simply empty. An empty domain is returned unchanged.
+         */
         fun shrink(amount: Double): Domain = if (_isEmpty) this else Domain(min + amount, max - amount)
 
+        /** Slides both ends by [dx], keeping the length. An empty domain is returned unchanged. */
         fun shift(dx: Double): Domain = if (_isEmpty) this else Domain(min + dx, max + dx)
 
+        /**
+         * Scales the domain by [s] about the point [about] — which defaults to the **origin**, not to
+         * the domain's own centre, so `scale(2.0)` on `1.0..2.0` gives `2.0..4.0`.
+         *
+         * A negative [s] flips the interval; the result is re-ordered so `min <= max` either way. An
+         * empty domain is returned unchanged.
+         */
         fun scale(s: Double, about: Double = 0.0): Domain {
             if (_isEmpty) return this
             val a = (min - about) * s + about
@@ -175,10 +292,28 @@ object Functions {
             return if (a <= b) Domain(a, b) else Domain(b, a)
         }
 
+        /**
+         * The x at normalized position [alpha]: 0 gives [min], 1 gives [max]. NaN for an empty domain.
+         *
+         * Not clamped — an alpha outside 0..1 extrapolates past the ends — and NaN or infinite for an
+         * unbounded domain, which is why the samplers resolve infinite domains to a finite preview
+         * window before calling this.
+         */
         fun lerp(alpha: Double): Double = if (_isEmpty) Double.NaN else min + length * alpha
 
+        /**
+         * The inverse of [lerp]: where [x] sits in the domain as a fraction, 0 at [min] and 1 at [max].
+         *
+         * Not clamped, so an x outside the domain gives a negative alpha or one above 1. Degenerate
+         * cases collapse to `0.0` rather than NaN: both an empty domain and a single-point domain
+         * (which has no width to divide by) answer zero everywhere.
+         */
         fun alphaOf(x: Double): Double = if (_isEmpty || length == 0.0) 0.0 else (x - min) / length
 
+        /**
+         * [x] pulled to the nearest point in the domain — the CLAMP edge behaviour. An empty domain
+         * has nothing to clamp to, so it returns [x] untouched.
+         */
         fun clamp(x: Double): Double {
             if (_isEmpty) return x
             return when {
@@ -188,6 +323,13 @@ object Functions {
             }
         }
 
+        /**
+         * [x] folded into the domain by repetition — the WRAP edge behaviour, so leaving [max] re-enters
+         * at [min] with a discontinuity.
+         *
+         * Negative offsets wrap correctly (unlike a bare `%`). Returns [x] untouched when there is
+         * nothing to wrap into: an empty domain, a point domain, or an infinite one.
+         */
         fun wrap(x: Double): Double {
             if (_isEmpty) return x
             val len = length
@@ -197,6 +339,12 @@ object Functions {
             return min + u
         }
 
+        /**
+         * [x] folded into the domain by mirroring — the MIRROR edge behaviour, so the value turns
+         * around at each end instead of jumping, giving a continuous ping-pong of period `2 * length`.
+         *
+         * Returns [x] untouched for an empty, point, or infinite domain.
+         */
         fun reflect(x: Double): Double {
             if (_isEmpty) return x
             val len = length
@@ -207,12 +355,26 @@ object Functions {
             return if (u <= len) min + u else max - (u - len)
         }
 
+        /**
+         * The overlap of the two domains — the rule the arithmetic operators use, so `f + g` is
+         * defined only where both are.
+         *
+         * Disjoint domains do not give null or throw: the result is a `max < min` domain, which is
+         * simply empty. If either input is empty that empty one is returned.
+         */
         fun intersect(other: Domain): Domain {
             if (this._isEmpty) return this
             if (other._isEmpty) return other
             return Domain(max(min, other.min), min(max, other.max))
         }
 
+        /**
+         * The smallest domain covering both — the rule the timeline and list combinators use to work
+         * out their overall extent.
+         *
+         * This is a bounding hull, not a set union: a gap between two disjoint domains is swallowed.
+         * An empty operand is ignored, so it acts as an identity here.
+         */
         fun union(other: Domain): Domain {
             if (this._isEmpty) return other
             if (other._isEmpty) return this
@@ -220,13 +382,25 @@ object Functions {
         }
 
         companion object {
+            /** The whole real line. What the oscillators and other unbounded generators default to. */
             val ALL = Domain(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)
+
+            /** `0.0..1.0`, both ends included — the normalized interval most of this toolkit assumes. */
             val UNIT = Domain(0.0, 1.0)
+
+            /** The domain user-facing constructors default to. Currently the same value as [UNIT]. */
             val DEFAULT = UNIT
+
+            /** A canonical empty domain (`Domain(1.0, 0.0)`). Any `max < min` domain is equally empty. */
             val EMPTY = Domain(1.0, 0.0)
 
+            /** A domain from two endpoints in either order — unlike the constructor, this sorts them, so it never accidentally produces an empty domain. */
             fun of(a: Double, b: Double): Domain = if (a <= b) Domain(a, b) else Domain(b, a)
+
+            /** The single-point domain `x..x`: not empty, but of zero [length]. */
             fun point(x: Double): Domain = Domain(x, x)
+
+            /** A domain of half-width [radius] either side of [center], so its [length] is twice the radius. A negative radius produces an empty domain. */
             fun centered(center: Double, radius: Double): Domain = Domain(center - radius, center + radius)
         }
 
@@ -248,11 +422,23 @@ object Functions {
      * numeric [ClosedRange] values and convert them with [toDomain].
      */
     operator fun Double.rangeTo(end: Double): Domain = Domain.of(this, end)
+
+    /** `a..b` as a [Domain] inside a `Functions` scope. The endpoints are sorted, so a descending range is not empty. */
     operator fun Double.rangeTo(end: Number): Domain = Domain.of(this, end.toDouble())
+
+    /** `a..b` as a [Domain] inside a `Functions` scope. The endpoints are sorted, so a descending range is not empty. */
     operator fun Number.rangeTo(end: Double): Domain = Domain.of(this.toDouble(), end)
 
+    /** Converts any numeric [ClosedRange] — including Kotlin's `IntRange`, which member operators would otherwise claim — into a [Domain]. Throws if the endpoints are not numbers. */
     fun domain(range: ClosedRange<*>): Domain = range.toDomain()
 
+    /**
+     * This numeric range as a [Domain], with the endpoints sorted.
+     *
+     * The bridge every DSL entry point uses for its `ClosedRange` overload, so `0..1` (an `IntRange`)
+     * and `0.0..1.0` arrive as the same domain. Throws [IllegalArgumentException] if an endpoint is
+     * not a [Number].
+     */
     fun ClosedRange<*>.toDomain(): Domain =
         Domain.of(rangeEndpoint(start), rangeEndpoint(endInclusive))
 
@@ -260,14 +446,52 @@ object Functions {
         (value as? Number)?.toDouble()
             ?: throw IllegalArgumentException("Functions domains need numeric range endpoints, got $value")
 
+    /**
+     * What happens when a sampler asks for an x outside an [Fn]'s domain.
+     *
+     * `ZERO` is the default everywhere and does not literally mean zero — it means "use the caller's
+     * `outside` value", which merely defaults to `0.0`. The other three re-enter the domain instead:
+     * `CLAMP` holds the nearest endpoint, `WRAP` repeats the domain (discontinuous at the seam), and
+     * `MIRROR` folds back and forth (continuous, period twice the domain length).
+     */
     enum class EdgeMode { ZERO, CLAMP, WRAP, MIRROR }
 
+    /**
+     * How a table of samples is reconstructed between its entries, for `toFn` and [resample].
+     *
+     * `NEAREST` gives a staircase, `LINEAR` straight segments, `CUBIC` a Catmull-Rom curve through the
+     * samples. `CUBIC` needs neighbours that a sample near either end does not have, and duplicates the
+     * edge sample rather than extrapolating.
+     */
     enum class Interpolation { NEAREST, LINEAR, CUBIC }
 
+    /**
+     * The shape of a pulse's rise and fall ramps in the `pulseTrain` family.
+     *
+     * `HARD` is an instantaneous step, `LINEAR` a straight ramp, `SMOOTH` a smoothstep, `SINE` a raised
+     * cosine, and `EXP` an exponential whose bend is set by that factory's separate `curve` argument.
+     * These shape only the *edges*; the body of the pulse is a [PulseProfile].
+     */
     enum class PulseEdge { HARD, LINEAR, SMOOTH, SINE, EXP }
 
+    /**
+     * The envelope across the *body* of one pulse in the `pulseTrain` family, evaluated over the duty
+     * portion of each cycle.
+     *
+     * `RECT` is flat (the classic rectangular pulse); `TRIANGLE`, `SINE` and `HANN` taper to zero at
+     * both ends of the pulse; `GAUSSIAN` is a bump whose width comes from that factory's separate
+     * `profileSigma` argument, and never quite reaches zero. Profile and [PulseEdge] multiply, so a
+     * tapering profile with soft edges tapers twice.
+     */
     enum class PulseProfile { RECT, TRIANGLE, SINE, HANN, GAUSSIAN }
 
+    /**
+     * How time is paced when `stretch` maps one interval onto another: `LINEAR` at constant speed,
+     * `SMOOTHSTEP` and `SMOOTHERSTEP` easing in and out so the source is played slowly at the ends and
+     * quickly through the middle.
+     *
+     * The endpoints still line up exactly in all three cases; only the traversal between them differs.
+     */
     enum class StretchShape { LINEAR, SMOOTHSTEP, SMOOTHERSTEP }
 
     /** Rectifier polarity for the [rectify] waveshaping transform: half-wave clamps the
@@ -319,14 +543,40 @@ object Functions {
     // Common enum entries are re-exported here so `with(Functions)` reads like a
     // small DSL (`blend = ADD`, `profile = HANN`) instead of exposing every
     // internal enum path. Ambiguous entries such as CLAMP/WRAP stay qualified.
+    /** [PulseEdge.HARD], re-exported so `edge = HARD` reads as DSL inside `with(Functions)`. */
     val HARD: PulseEdge get() = PulseEdge.HARD
+
+    /** [PulseEdge.SMOOTH], re-exported so `edge = SMOOTH` reads as DSL inside `with(Functions)`. */
     val SMOOTH: PulseEdge get() = PulseEdge.SMOOTH
+
+    /** [PulseEdge.EXP], re-exported so `edge = EXP` reads as DSL inside `with(Functions)`. */
     val EXP: PulseEdge get() = PulseEdge.EXP
+
+    /** [PulseProfile.RECT], re-exported so `profile = RECT` reads as DSL inside `with(Functions)`. */
     val RECT: PulseProfile get() = PulseProfile.RECT
+
+    /**
+     * [PulseProfile.TRIANGLE], re-exported so `profile = TRIANGLE` reads as DSL — note that this is the
+     * pulse *profile*, not the [triangle] oscillator that shares the word.
+     */
     val TRIANGLE: PulseProfile get() = PulseProfile.TRIANGLE
+
+    /**
+     * [PulseProfile.HANN], re-exported so `profile = HANN` reads as DSL — the pulse profile, distinct
+     * from the standalone [hannWindow] function.
+     */
     val HANN: PulseProfile get() = PulseProfile.HANN
+
+    /**
+     * [PulseProfile.GAUSSIAN], re-exported so `profile = GAUSSIAN` reads as DSL — the pulse profile,
+     * distinct from the standalone [gaussian] bump function.
+     */
     val GAUSSIAN: PulseProfile get() = PulseProfile.GAUSSIAN
+
+    /** [Interpolation.NEAREST], re-exported so `interpolation = NEAREST` reads as DSL. */
     val NEAREST: Interpolation get() = Interpolation.NEAREST
+
+    /** [Interpolation.CUBIC], re-exported so `interpolation = CUBIC` reads as DSL. */
     val CUBIC: Interpolation get() = Interpolation.CUBIC
 
     /**
@@ -350,10 +600,29 @@ object Functions {
         val graph: FnGraphNode? = null,
         private val evalFn: (Double) -> Double
     ) {
+        /**
+         * The value of this function at [x], computed on the spot — nothing here is cached.
+         *
+         * The domain is **not** checked: an x outside it is simply passed to the underlying closure,
+         * which will usually answer something (an oscillator keeps oscillating), but for a
+         * table-backed or interpolating function may be extrapolated nonsense. Use [evalSafe] when the
+         * domain is meant to be respected. Cost is the cost of the whole graph beneath this node, so
+         * evaluating a deep stack in a tight loop is genuinely expensive.
+         */
         fun eval(x: Double): Double = evalFn(x)
 
+        /** `f(x)` — call syntax for [eval], with the same lack of domain checking. */
         operator fun invoke(x: Double): Double = evalFn(x)
 
+        /**
+         * The value at [x], with an explicit policy for x outside the domain — the domain-respecting
+         * counterpart to [eval] and what every sampler in this file uses internally.
+         *
+         * Inside the domain (endpoints included) this is exactly [eval]. Outside, [edge] decides:
+         * `ZERO` returns [outside] verbatim, `CLAMP` evaluates at the nearest endpoint, `WRAP` and
+         * `MIRROR` fold x back in. Note that an empty domain contains nothing, so it always yields
+         * [outside] under the default edge mode.
+         */
         fun evalSafe(x: Double, outside: Double = 0.0, edge: EdgeMode = EdgeMode.ZERO): Double {
             if (domain.containsInclusive(x)) return evalFn(x)
             return when (edge) {
@@ -364,6 +633,14 @@ object Functions {
             }
         }
 
+        /**
+         * A copy of this function that claims [newDomain], **relabelling only** — the evaluator is
+         * reused untouched, so the same x still gives the same value.
+         *
+         * This is what widens or narrows the window a sampler will walk, not what rescales the signal:
+         * for that (playing the whole source across a new interval) use `stretch`. Returns a new [Fn];
+         * nothing mutates. Recorded in the graph as an `over` node.
+         */
         fun withDomain(newDomain: Domain): Fn = Fn(
             newDomain,
             name,
@@ -376,7 +653,13 @@ object Functions {
             ),
             evalFn
         )
+        /** A copy claiming this numeric range as its domain, relabelling only — see [withDomain]. */
         fun withDomain(newDomain: ClosedRange<*>): Fn = withDomain(Functions.domain(newDomain))
+
+        /**
+         * A copy carrying [newName], which is what plot titles, `toString` and the graph renderers
+         * display. Purely cosmetic — it changes no value — and passing null clears the name.
+         */
         fun withName(newName: String?): Fn = Fn(
             domain,
             newName,
@@ -626,6 +909,16 @@ object Functions {
         eval
     )
 
+    /**
+     * Wraps an arbitrary Kotlin lambda as an [Fn] — the escape hatch for anything the library's own
+     * combinators cannot express.
+     *
+     * The lambda is called lazily, once per sample, and is trusted completely: it may be discontinuous,
+     * unbounded, or slow. The one real cost is structural. The node this produces is tagged *opaque*,
+     * because a closure cannot describe how to rebuild itself, so the graph-rewrite and evolution
+     * machinery can inspect it but never edit inside it, and a deep copy keeps the original closure
+     * rather than reconstructing it. Prefer a real combinator where one exists.
+     */
     fun fn(
         domain: Domain = Domain.DEFAULT,
         name: String? = null,
@@ -636,6 +929,7 @@ object Functions {
         node("lambda", label = name ?: "lambda", tags = setOf("opaque"))
     ) { x -> eval(x) }
 
+    /** Wraps an arbitrary Kotlin lambda as an [Fn] over the given numeric range — see [fn]; the node is opaque to graph rewriting. */
     fun fn(
         domain: ClosedRange<*>,
         name: String? = null,
@@ -643,6 +937,15 @@ object Functions {
     ): Fn = fn(domain.toDomain(), name, eval)
 
     // Base functions
+    /**
+     * A constant function: [value] everywhere, over [domain] (`0.0..1.0` by default).
+     *
+     * The workhorse literal of the toolkit — every factory that accepts a `Number` where an [Fn] is
+     * expected wraps it like this. Note the deliberate asymmetry with [Number.c]: `c(0.5)` is a real
+     * constant *function* and therefore carries the default bounded domain, which will shrink the
+     * domain of anything it is combined with; `0.5.c` is a parameter signal over [Domain.ALL] and will
+     * not.
+     */
     fun c(value: Number, domain: Domain = Domain.DEFAULT): Fn {
         val v = value.toDouble()
         return graphFn(
@@ -683,24 +986,49 @@ object Functions {
     // `c(0.5)` is a real public constant and therefore has the default domain.
     // `0.5.c` is intentionally a parameter signal: it should not shrink the
     // domain of the function it is configuring.
+    /**
+     * This number as a **parameter signal**: a constant over [Domain.ALL], so using it to configure a
+     * function will not shrink that function's domain.
+     *
+     * That unbounded domain is the whole point of the distinction from [c]. Domains intersect when
+     * functions combine, so `sin(frequency = c(2.0))` would clip the oscillator to `0.0..1.0`, whereas
+     * `sin(frequency = 2.0.c)` leaves it alone. Reach for `2.0.c` whenever the number is a knob rather
+     * than a signal in its own right.
+     */
     val Number.c: Fn
         get() = param(this)
 
+    /** A constant function: [value] everywhere, over the given numeric range. See [c]. */
     fun c(value: Number, domain: ClosedRange<*>): Fn =
         c(value, domain.toDomain())
 
+    /** A constant function: [value] everywhere. A spelled-out alias of [c], for code that would rather read as prose. */
     fun constant(value: Number, domain: Domain = Domain.DEFAULT): Fn =
         c(value, domain)
 
+    /** A constant function: [value] everywhere. A spelled-out alias of [c], for code that would rather read as prose. */
     fun constant(value: Number, domain: ClosedRange<*>): Fn =
         c(value, domain)
 
+    /** The constant zero over [domain] — the additive identity, and what the list combinators return for an empty list. */
     fun zero(domain: Domain = Domain.DEFAULT): Fn = c(0.0, domain)
+
+    /** The constant one over [domain] — the multiplicative identity, handy as the `1` in expressions like `one(d) - f`. */
     fun one(domain: Domain = Domain.DEFAULT): Fn = c(1.0, domain)
 
+    /** The constant zero over the given numeric range. */
     fun zero(domain: ClosedRange<*>): Fn = zero(domain.toDomain())
+
+    /** The constant one over the given numeric range. */
     fun one(domain: ClosedRange<*>): Fn = one(domain.toDomain())
 
+    /**
+     * `f(x) = x`: the raw coordinate as a signal, named `x` in graphs and plots.
+     *
+     * The thing to modulate with when you want a parameter to depend on position — `sin(frequency =
+     * identity() * 8.0)` sweeps frequency across the domain. Over the default `0.0..1.0` it coincides
+     * with `ramp(0.0, 1.0)`, but it keeps that identity for any domain rather than renormalizing.
+     */
     fun identity(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(
             domain,
@@ -740,21 +1068,46 @@ object Functions {
         }
     }
 
+    /**
+     * A **value ramp**: a straight line whose value travels from `start` to `end` as x sweeps the
+     * domain. Endpoints may be plain numbers or signals; the `Any` overloads throw for anything that is
+     * neither. For the opposite reading — normalizing an x-window onto 0..1 — use [remap].
+     */
     fun ramp(
         start: Fn = param(0.0),
         end: Fn = param(1.0),
         domain: ClosedRange<*>
     ): Fn = ramp(start, end, domain.toDomain())
 
+    /**
+     * A **value ramp**: a straight line whose value travels from `start` to `end` as x sweeps the
+     * domain. Endpoints may be plain numbers or signals; the `Any` overloads throw for anything that is
+     * neither. For the opposite reading — normalizing an x-window onto 0..1 — use [remap].
+     */
     fun ramp(start: Number, end: Number, domain: Domain = Domain.DEFAULT): Fn =
         ramp(param(start), param(end), domain)
 
+    /**
+     * A **value ramp**: a straight line whose value travels from `start` to `end` as x sweeps the
+     * domain. Endpoints may be plain numbers or signals; the `Any` overloads throw for anything that is
+     * neither. For the opposite reading — normalizing an x-window onto 0..1 — use [remap].
+     */
     fun ramp(start: Number, end: Number, domain: ClosedRange<*>): Fn =
         ramp(start, end, domain.toDomain())
 
+    /**
+     * A **value ramp**: a straight line whose value travels from `start` to `end` as x sweeps the
+     * domain. Endpoints may be plain numbers or signals; the `Any` overloads throw for anything that is
+     * neither. For the opposite reading — normalizing an x-window onto 0..1 — use [remap].
+     */
     fun ramp(start: Any, end: Any, domain: Domain = Domain.DEFAULT): Fn =
         ramp(asParam(start, "start"), asParam(end, "end"), domain)
 
+    /**
+     * A **value ramp**: a straight line whose value travels from `start` to `end` as x sweeps the
+     * domain. Endpoints may be plain numbers or signals; the `Any` overloads throw for anything that is
+     * neither. For the opposite reading — normalizing an x-window onto 0..1 — use [remap].
+     */
     fun ramp(start: Any, end: Any, domain: ClosedRange<*>): Fn =
         ramp(start, end, domain.toDomain())
 
@@ -789,24 +1142,57 @@ object Functions {
         }
     }
 
+    /**
+     * A **domain normalizer**: `(x - from) / (to - from)`, so an x in the window `from..to` reads out as
+     * a 0..1 alpha. Not clamped — x outside the window gives an alpha outside 0..1 — and a zero-width
+     * window answers `0.0` rather than dividing by zero. The value-travelling counterpart is [ramp].
+     */
     fun remap(
         from: Fn = param(0.0),
         to: Fn = param(1.0),
         domain: ClosedRange<*>
     ): Fn = remap(from, to, domain.toDomain())
 
+    /**
+     * A **domain normalizer**: `(x - from) / (to - from)`, so an x in the window `from..to` reads out as
+     * a 0..1 alpha. Not clamped — x outside the window gives an alpha outside 0..1 — and a zero-width
+     * window answers `0.0` rather than dividing by zero. The value-travelling counterpart is [ramp].
+     */
     fun remap(from: Number, to: Number, domain: Domain = Domain.DEFAULT): Fn =
         remap(param(from), param(to), domain)
 
+    /**
+     * A **domain normalizer**: `(x - from) / (to - from)`, so an x in the window `from..to` reads out as
+     * a 0..1 alpha. Not clamped — x outside the window gives an alpha outside 0..1 — and a zero-width
+     * window answers `0.0` rather than dividing by zero. The value-travelling counterpart is [ramp].
+     */
     fun remap(from: Number, to: Number, domain: ClosedRange<*>): Fn =
         remap(from, to, domain.toDomain())
 
+    /**
+     * A **domain normalizer**: `(x - from) / (to - from)`, so an x in the window `from..to` reads out as
+     * a 0..1 alpha. Not clamped — x outside the window gives an alpha outside 0..1 — and a zero-width
+     * window answers `0.0` rather than dividing by zero. The value-travelling counterpart is [ramp].
+     */
     fun remap(from: Any, to: Any, domain: Domain = Domain.DEFAULT): Fn =
         remap(asParam(from, "from"), asParam(to, "to"), domain)
 
+    /**
+     * A **domain normalizer**: `(x - from) / (to - from)`, so an x in the window `from..to` reads out as
+     * a 0..1 alpha. Not clamped — x outside the window gives an alpha outside 0..1 — and a zero-width
+     * window answers `0.0` rather than dividing by zero. The value-travelling counterpart is [ramp].
+     */
     fun remap(from: Any, to: Any, domain: ClosedRange<*>): Fn =
         remap(from, to, domain.toDomain())
 
+    /**
+     * A hard step: `0` below [edge], `1` from [edge] onwards — the Heaviside function, inclusive at the
+     * threshold itself.
+     *
+     * [edge] may be a signal, in which case it is sampled at the same x being tested, so a moving
+     * threshold is compared against the position it occupies right there. For a soft version use
+     * [smoothStep].
+     */
     fun step(edge: Fn = param(0.0), domain: Domain = Domain.DEFAULT): Fn {
         val d = intersectDomains(domain, edge)
         return graphFn(
@@ -820,15 +1206,27 @@ object Functions {
         ) { x -> if (x >= edge.eval(x)) 1.0 else 0.0 }
     }
 
+    /** A hard step: `0` below `edge`, `1` from `edge` onwards, the threshold itself included. The soft version is [smoothStep]. */
     fun step(edge: Fn = param(0.0), domain: ClosedRange<*>): Fn =
         step(edge, domain.toDomain())
 
+    /** A hard step: `0` below `edge`, `1` from `edge` onwards, the threshold itself included. The soft version is [smoothStep]. */
     fun step(edge: Number, domain: Domain = Domain.DEFAULT): Fn =
         step(param(edge), domain)
 
+    /** A hard step: `0` below `edge`, `1` from `edge` onwards, the threshold itself included. The soft version is [smoothStep]. */
     fun step(edge: Number, domain: ClosedRange<*>): Fn =
         step(edge, domain.toDomain())
 
+    /**
+     * A soft step in **x**: `0` up to `edge0`, `1` from `edge1` on, and the classic `3t² - 2t³` ease
+     * between them.
+     *
+     * The two edges are sorted internally, so passing them the wrong way round produces a rising step
+     * rather than a falling one; if they coincide it degenerates to a hard [step]. Output is clamped to
+     * 0..1 outside the transition, and both edges may be signals. Note that this shapes position — to
+     * ease a *value* that is already normalized, use `Fn.ease`.
+     */
     fun smoothStep(edge0: Fn = param(0.0), edge1: Fn = param(1.0), domain: Domain = Domain.DEFAULT): Fn {
         val d = intersectDomains(domain, edge0, edge1)
         return graphFn(
@@ -853,18 +1251,23 @@ object Functions {
         }
     }
 
+    /** A soft step in x: `0` up to `edge0`, `1` from `edge1` on, `3t² - 2t³` between. The edges are sorted, so their order does not matter; equal edges give a hard [step]. */
     fun smoothStep(edge0: Fn = param(0.0), edge1: Fn = param(1.0), domain: ClosedRange<*>): Fn =
         smoothStep(edge0, edge1, domain.toDomain())
 
+    /** A soft step in x: `0` up to `edge0`, `1` from `edge1` on, `3t² - 2t³` between. The edges are sorted, so their order does not matter; equal edges give a hard [step]. */
     fun smoothStep(edge0: Number, edge1: Number, domain: Domain = Domain.DEFAULT): Fn =
         smoothStep(param(edge0), param(edge1), domain)
 
+    /** A soft step in x: `0` up to `edge0`, `1` from `edge1` on, `3t² - 2t³` between. The edges are sorted, so their order does not matter; equal edges give a hard [step]. */
     fun smoothStep(edge0: Number, edge1: Number, domain: ClosedRange<*>): Fn =
         smoothStep(edge0, edge1, domain.toDomain())
 
+    /** A soft step in x: `0` up to `edge0`, `1` from `edge1` on, `3t² - 2t³` between. The edges are sorted, so their order does not matter; equal edges give a hard [step]. */
     fun smoothStep(edge0: Any, edge1: Any, domain: Domain = Domain.DEFAULT): Fn =
         smoothStep(asParam(edge0, "edge0"), asParam(edge1, "edge1"), domain)
 
+    /** A soft step in x: `0` up to `edge0`, `1` from `edge1` on, `3t² - 2t³` between. The edges are sorted, so their order does not matter; equal edges give a hard [step]. */
     fun smoothStep(edge0: Any, edge1: Any, domain: ClosedRange<*>): Fn =
         smoothStep(edge0, edge1, domain.toDomain())
 
@@ -892,6 +1295,11 @@ object Functions {
         }
     }
 
+    /**
+     * Interpolates from [from] to [to] across the domain with a named [Easing] — the eased sibling of
+     * [ramp], and the usual way to write a piece of procedural motion. An unbounded domain is previewed
+     * over a finite window, so the alpha stays meaningful.
+     */
     fun tween(
         from: Number,
         to: Number,
@@ -899,6 +1307,11 @@ object Functions {
         easing: Easing = Easing.SMOOTHSTEP
     ): Fn = tween(param(from), param(to), domain, easing)
 
+    /**
+     * Interpolates from [from] to [to] across the domain with a named [Easing] — the eased sibling of
+     * [ramp], and the usual way to write a piece of procedural motion. An unbounded domain is previewed
+     * over a finite window, so the alpha stays meaningful.
+     */
     fun tween(
         from: Number,
         to: Number,
@@ -922,6 +1335,17 @@ object Functions {
             else shapeAlpha(value, easing)
         }
 
+    /**
+     * A sine oscillator: `offset + amplitude · sin(2π · frequency · x + phase)`.
+     *
+     * [frequency] is in **cycles per unit x** — one turn per unit at `frequency = 1.0`, so it is only
+     * Hz if x happens to be seconds. [phase] is in **radians**, which is the trap in this family: the
+     * [saw] / [triangle] / [square] oscillators take a phase measured in x units instead. Every
+     * parameter may itself be an [Fn], which is how vibrato, tremolo and FM are written here.
+     *
+     * The domain defaults to [Domain.ALL] and is intersected with the parameters' domains, so passing a
+     * bounded constant (`c(2.0)` rather than `2.0` or `2.0.c`) will silently clip the oscillator.
+     */
     fun sin(
         frequency: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -948,6 +1372,7 @@ object Functions {
         }
     }
 
+    /** A sine oscillator, `offset + amplitude · sin(2π · frequency · x + phase)`: [frequency] in cycles per unit x, [phase] in radians. Any parameter may be a signal. */
     fun sin(
         frequency: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -956,6 +1381,14 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = sin(frequency, phase, amplitude, offset, domain.toDomain())
 
+    /**
+     * A cosine oscillator: `offset + amplitude · cos(2π · frequency · x + phase)` — [sin] shifted a
+     * quarter turn, so it starts at its peak rather than at zero.
+     *
+     * [frequency] is in **cycles per unit x** and [phase] in **radians**, unlike the
+     * [saw] / [triangle] / [square] family whose phase is measured in x units. Any parameter may be a
+     * signal. The domain defaults to [Domain.ALL] and is intersected with the parameters' domains.
+     */
     fun cos(
         frequency: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -982,6 +1415,7 @@ object Functions {
         }
     }
 
+    /** A cosine oscillator, `offset + amplitude · cos(2π · frequency · x + phase)`: [frequency] in cycles per unit x, [phase] in radians. Any parameter may be a signal. */
     fun cos(
         frequency: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -990,6 +1424,15 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = cos(frequency, phase, amplitude, offset, domain.toDomain())
 
+    /**
+     * A rising sawtooth: a straight ramp from `-amplitude` to `+amplitude` across each [period], then an
+     * instantaneous jump back down.
+     *
+     * Bipolar, and specified by **period, not frequency** — [period] is a width in x units, and [phase]
+     * is an offset in those same units (so a phase of one period is a whole cycle). That is the opposite
+     * convention to [sin], whose phase is in radians. The period's sign is ignored, and a period of zero
+     * degenerates to just [offset]. Any parameter may be a signal.
+     */
     fun saw(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1022,6 +1465,7 @@ object Functions {
         }
     }
 
+    /** A rising sawtooth from `-amplitude` to `+amplitude` across each [period], then a jump back. [period] is a width in x units and [phase] an offset in those units, not radians. */
     fun saw(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1030,6 +1474,14 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = saw(period, phase, amplitude, offset, domain.toDomain())
 
+    /**
+     * A triangle wave: linear up from `-amplitude` to `+amplitude` over the first half of each [period],
+     * linear back down over the second — continuous everywhere, unlike [saw].
+     *
+     * Bipolar, and specified by **period, not frequency**: [period] is a width in x units and [phase] an
+     * offset in those same units, not radians as in [sin]. The period's sign is ignored, and a period of
+     * zero degenerates to just [offset]. Any parameter may be a signal.
+     */
     fun triangle(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1062,6 +1514,7 @@ object Functions {
         }
     }
 
+    /** A triangle wave: linear up then linear down across each [period], continuous throughout. [period] is a width in x units and [phase] an offset in those units, not radians. */
     fun triangle(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1070,6 +1523,16 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = triangle(period, phase, amplitude, offset, domain.toDomain())
 
+    /**
+     * A square wave: `+amplitude` for the first [duty] fraction of each [period] and `-amplitude` for the
+     * rest.
+     *
+     * **Bipolar, not a 0/1 gate** — for a unipolar pulse with shaped edges reach for [pulseTrain]
+     * instead. [duty] is a fraction clamped to 0..1 (0.5 gives the symmetric wave), [period] is a width
+     * in x units, and [phase] an offset in those same units rather than radians. A period of zero
+     * degenerates to just [offset]. Any parameter may be a signal, so a swept duty is pulse-width
+     * modulation.
+     */
     fun square(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1104,6 +1567,7 @@ object Functions {
         }
     }
 
+    /** A bipolar square wave: `+amplitude` for the first [duty] fraction of each [period], `-amplitude` for the rest. [period] and [phase] are in x units; [duty] is clamped to 0..1. */
     fun square(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1113,6 +1577,30 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = square(period, phase, duty, amplitude, offset, domain.toDomain())
 
+    /**
+     * The general pulse generator: one shaped pulse per [period], with control over width, edges,
+     * body profile and per-cycle jitter. Where [square] gives you a bipolar two-level wave, this gives
+     * you an envelope you can actually design.
+     *
+     * **Unipolar by default** — the output runs from [offset] to `offset + amplitude`, which is what
+     * makes it useful as a gate or an envelope. Set `bipolar = true` to map that onto
+     * `offset ± amplitude` instead.
+     *
+     * The units are the thing to get right. [period] and [phase] are widths and offsets in x units (not
+     * a frequency and not radians — see [pulseTrainHz] if you would rather specify frequency). [duty] is
+     * the fraction of each period the pulse occupies, clamped to 0..1. [rise] and [fall], though, are
+     * absolute widths **in x units**, converted internally to fractions of the period; if together they
+     * would exceed the duty window they are scaled down proportionally to fit, so asking for edges
+     * longer than the pulse quietly gives you a pulse that is all edge. [edge] shapes those ramps
+     * ([curve] only bites for `EXP`), while [profile] shapes the body ([profileSigma] only bites for
+     * `GAUSSIAN`) — the two multiply, so a tapering profile with soft edges tapers twice.
+     *
+     * [jitter] displaces each cycle by up to half a jitter-fraction of a period either way, chosen by
+     * hashing the cycle index against [seed], so it is random-looking but exactly reproducible.
+     * [dutyMod], [ampMod] and [phaseMod] are additive, multiplicative and additive modulation inputs
+     * layered on top of the corresponding parameters, which is how PWM and tremolo are patched in. A
+     * [period] of zero degenerates to just [offset].
+     */
     fun pulseTrain(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1204,6 +1692,11 @@ object Functions {
         }
     }
 
+    /**
+     * The general pulse generator: one shaped pulse per [period], unipolar from [offset] to
+     * `offset + amplitude` unless [bipolar] is set. [period], [phase], [rise] and [fall] are all in x
+     * units; [duty] is a fraction clamped to 0..1. See the primary overload for the full conventions.
+     */
     fun pulseTrain(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1225,6 +1718,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrain(period, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * The general pulse generator: one shaped pulse per [period], unipolar from [offset] to
+     * `offset + amplitude` unless [bipolar] is set. [period], [phase], [rise] and [fall] are all in x
+     * units; [duty] is a fraction clamped to 0..1. See the primary overload for the full conventions.
+     */
     fun pulseTrain(
         period: Number,
         phase: Number = 0.0,
@@ -1246,6 +1744,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = pulseTrain(param(period), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
+    /**
+     * The general pulse generator: one shaped pulse per [period], unipolar from [offset] to
+     * `offset + amplitude` unless [bipolar] is set. [period], [phase], [rise] and [fall] are all in x
+     * units; [duty] is a fraction clamped to 0..1. See the primary overload for the full conventions.
+     */
     fun pulseTrain(
         period: Number,
         phase: Number = 0.0,
@@ -1267,6 +1770,12 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrain(period, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * The general pulse generator, taking each parameter as either a number or an [Fn] and throwing for
+     * anything else: one shaped pulse per [period], unipolar from [offset] to `offset + amplitude`
+     * unless [bipolar] is set. [period], [phase], [rise] and [fall] are in x units; [duty] is a fraction
+     * clamped to 0..1. See the primary overload for the full conventions.
+     */
     fun pulseTrain(
         period: Any,
         phase: Any = 0.0,
@@ -1307,6 +1816,12 @@ object Functions {
         domain
     )
 
+    /**
+     * The general pulse generator, taking each parameter as either a number or an [Fn] and throwing for
+     * anything else: one shaped pulse per [period], unipolar from [offset] to `offset + amplitude`
+     * unless [bipolar] is set. [period], [phase], [rise] and [fall] are in x units; [duty] is a fraction
+     * clamped to 0..1. See the primary overload for the full conventions.
+     */
     fun pulseTrain(
         period: Any,
         phase: Any = 0.0,
@@ -1328,6 +1843,16 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrain(period, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] specified by absolute pulse **width** rather than duty fraction — the form you want
+     * when the pulse should keep its length while the period changes.
+     *
+     * [width] is in x units, and the duty is derived as `width / period` clamped to 0..1, so a width
+     * larger than the period simply saturates at a fully-open gate. Everything else behaves exactly as
+     * in [pulseTrain], and a [period] of zero still gives just [offset]. One graph caveat: the derived
+     * duty child is a synthesised node whose own rebuild recipe is dropped, so a rewrite can replace it
+     * but cannot keep rewriting inside it indefinitely.
+     */
     fun pulseTrainWidth(
         period: Fn = param(1.0),
         width: Fn = param(0.5),
@@ -1394,6 +1919,11 @@ object Functions {
         )
     }
 
+    /**
+     * [pulseTrain] specified by absolute pulse [width] in x units instead of a duty fraction; the duty is
+     * derived as `width / period`, clamped to 0..1, so an over-wide pulse saturates rather than wrapping.
+     * See [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainWidth(
         period: Number,
         width: Number = 0.5,
@@ -1415,6 +1945,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = pulseTrainWidth(param(period), param(width), param(phase), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
+    /**
+     * [pulseTrain] specified by absolute pulse [width] in x units instead of a duty fraction; the duty is
+     * derived as `width / period`, clamped to 0..1, so an over-wide pulse saturates rather than wrapping.
+     * See [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainWidth(
         period: Number,
         width: Number = 0.5,
@@ -1436,6 +1971,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainWidth(period, width, phase, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] specified by absolute pulse [width] in x units instead of a duty fraction, taking each
+     * parameter as either a number or an [Fn] and throwing for anything else. The duty is derived as
+     * `width / period`, clamped to 0..1. See [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainWidth(
         period: Any,
         width: Any = 0.5,
@@ -1476,6 +2016,11 @@ object Functions {
         domain
     )
 
+    /**
+     * [pulseTrain] specified by absolute pulse [width] in x units instead of a duty fraction, taking each
+     * parameter as either a number or an [Fn] and throwing for anything else. The duty is derived as
+     * `width / period`, clamped to 0..1. See [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainWidth(
         period: Any,
         width: Any = 0.5,
@@ -1497,6 +2042,15 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainWidth(period, width, phase, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] driven by **frequency** instead of period, for when repetition rate is the natural way
+     * to think about it.
+     *
+     * The period is derived as `1 / frequency`, so [frequency] is in cycles per unit x — Hz only if x is
+     * seconds. A frequency of zero yields a zero period and therefore just [offset], rather than an
+     * infinity. Everything else, including the x-unit meaning of [rise] and [fall], is exactly
+     * [pulseTrain].
+     */
     fun pulseTrainHz(
         frequency: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1563,6 +2117,11 @@ object Functions {
         )
     }
 
+    /**
+     * [pulseTrain] driven by [frequency] in cycles per unit x rather than by period; the period is derived
+     * as `1 / frequency`, and a frequency of zero degenerates to just [offset]. See [pulseTrain] for the
+     * remaining conventions.
+     */
     fun pulseTrainHz(
         frequency: Number,
         phase: Number = 0.0,
@@ -1584,6 +2143,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = pulseTrainHz(param(frequency), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
+    /**
+     * [pulseTrain] driven by [frequency] in cycles per unit x rather than by period; the period is derived
+     * as `1 / frequency`, and a frequency of zero degenerates to just [offset]. See [pulseTrain] for the
+     * remaining conventions.
+     */
     fun pulseTrainHz(
         frequency: Number,
         phase: Number = 0.0,
@@ -1605,6 +2169,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainHz(frequency, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] driven by [frequency] in cycles per unit x rather than by period, taking each parameter
+     * as either a number or an [Fn] and throwing for anything else. The period is derived as
+     * `1 / frequency`, and a frequency of zero degenerates to just [offset].
+     */
     fun pulseTrainHz(
         frequency: Any,
         phase: Any = 0.0,
@@ -1645,6 +2214,11 @@ object Functions {
         domain
     )
 
+    /**
+     * [pulseTrain] driven by [frequency] in cycles per unit x rather than by period, taking each parameter
+     * as either a number or an [Fn] and throwing for anything else. The period is derived as
+     * `1 / frequency`, and a frequency of zero degenerates to just [offset].
+     */
     fun pulseTrainHz(
         frequency: Any,
         phase: Any = 0.0,
@@ -1666,6 +2240,15 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainHz(frequency, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] with a repeating per-cycle amplitude pattern — an accent rhythm rather than an even
+     * train.
+     *
+     * Cycle *n* is scaled by `pattern[n mod pattern.size]`, so `doubleArrayOf(1.0, 0.0, 0.5, 0.0)` plays
+     * loud, silent, half, silent and repeats. Cycle numbering follows x and wraps correctly for negative
+     * x. An **empty pattern returns the constant zero** over the domain rather than an unpatterned train,
+     * which is worth knowing if the pattern is computed. Everything else behaves as [pulseTrain].
+     */
     fun pulseTrainPattern(
         pattern: DoubleArray,
         period: Fn = param(1.0),
@@ -1760,6 +2343,11 @@ object Functions {
         }
     }
 
+    /**
+     * [pulseTrain] with a repeating per-cycle amplitude pattern: cycle *n* is scaled by
+     * `pattern[n mod pattern.size]`. An empty pattern returns the constant zero over the domain. See
+     * [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainPattern(
         pattern: DoubleArray,
         period: Number,
@@ -1782,6 +2370,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = pulseTrainPattern(pattern, param(period), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), param(jitter), seed, bipolar, param(dutyMod), param(ampMod), param(phaseMod), domain)
 
+    /**
+     * [pulseTrain] with a repeating per-cycle amplitude pattern: cycle *n* is scaled by
+     * `pattern[n mod pattern.size]`. An empty pattern returns the constant zero over the domain. See
+     * [pulseTrain] for the remaining conventions.
+     */
     fun pulseTrainPattern(
         pattern: DoubleArray,
         period: Number,
@@ -1804,6 +2397,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainPattern(pattern, period, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * [pulseTrain] with a repeating per-cycle amplitude pattern, taking each parameter as either a number
+     * or an [Fn] and throwing for anything else: cycle *n* is scaled by `pattern[n mod pattern.size]`, and
+     * an empty pattern returns the constant zero over the domain.
+     */
     fun pulseTrainPattern(
         pattern: DoubleArray,
         period: Any,
@@ -1846,6 +2444,11 @@ object Functions {
         domain
     )
 
+    /**
+     * [pulseTrain] with a repeating per-cycle amplitude pattern, taking each parameter as either a number
+     * or an [Fn] and throwing for anything else: cycle *n* is scaled by `pattern[n mod pattern.size]`, and
+     * an empty pattern returns the constant zero over the domain.
+     */
     fun pulseTrainPattern(
         pattern: DoubleArray,
         period: Any,
@@ -1868,6 +2471,16 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseTrainPattern(pattern, period, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, jitter, seed, bipolar, dutyMod, ampMod, phaseMod, domain.toDomain())
 
+    /**
+     * A train of narrow Gaussian bumps — [pulseTrainWidth] pre-set to a `GAUSSIAN` profile with smooth
+     * edges, which is as close as a continuously-sampleable function gets to a Dirac comb.
+     *
+     * One bump every [period], each [width] wide in x units — the default 0.02 is deliberately narrow.
+     * [sigma] is the bump's relative width *within* that window, and because a Gaussian never actually
+     * reaches zero the bumps always have faint tails. [jitter] displaces each bump by a fraction of a
+     * period, deterministically from [seed]. Unipolar: the output runs from [offset] to
+     * `offset + amplitude`.
+     */
     fun impulseTrain(
         period: Fn = param(1.0),
         phase: Fn = param(0.0),
@@ -1893,6 +2506,11 @@ object Functions {
         domain = domain
     )
 
+    /**
+     * A train of narrow Gaussian bumps, one [width] wide (in x units) every [period] — [pulseTrainWidth]
+     * pre-set to a `GAUSSIAN` profile. Unipolar, from [offset] to `offset + amplitude`; the bumps never
+     * quite reach zero between them.
+     */
     fun impulseTrain(
         period: Number,
         phase: Number = 0.0,
@@ -1905,6 +2523,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = impulseTrain(param(period), param(phase), param(width), param(amplitude), param(offset), param(sigma), param(jitter), seed, domain)
 
+    /**
+     * A train of narrow Gaussian bumps, one [width] wide (in x units) every [period] — [pulseTrainWidth]
+     * pre-set to a `GAUSSIAN` profile. Unipolar, from [offset] to `offset + amplitude`; the bumps never
+     * quite reach zero between them.
+     */
     fun impulseTrain(
         period: Number,
         phase: Number = 0.0,
@@ -1917,6 +2540,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = impulseTrain(period, phase, width, amplitude, offset, sigma, jitter, seed, domain.toDomain())
 
+    /**
+     * A train of narrow Gaussian bumps, one [width] wide (in x units) every [period], taking each
+     * parameter as either a number or an [Fn] and throwing for anything else. Unipolar, from [offset] to
+     * `offset + amplitude`.
+     */
     fun impulseTrain(
         period: Any,
         phase: Any = 0.0,
@@ -1939,6 +2567,11 @@ object Functions {
         domain
     )
 
+    /**
+     * A train of narrow Gaussian bumps, one [width] wide (in x units) every [period], taking each
+     * parameter as either a number or an [Fn] and throwing for anything else. Unipolar, from [offset] to
+     * `offset + amplitude`.
+     */
     fun impulseTrain(
         period: Any,
         phase: Any = 0.0,
@@ -1951,6 +2584,15 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = impulseTrain(period, phase, width, amplitude, offset, sigma, jitter, seed, domain.toDomain())
 
+    /**
+     * A **finite** burst of [count] pulses beginning at [start] — a [pulseTrain] gated to a window instead
+     * of running forever.
+     *
+     * The window is `start` to `start + period * count`, inclusive at both ends, and the pulses inside it
+     * are phase-locked to [start] (the [phase] argument is added on top of that). Outside the window the
+     * value is [offset], which is only zero if you left [offset] at its default. A [count] of zero or less
+     * gives the constant zero over the domain, and a [period] of zero gives just [offset].
+     */
     fun pulseBurst(
         count: Int,
         period: Fn = param(1.0),
@@ -2014,6 +2656,11 @@ object Functions {
         }
     }
 
+    /**
+     * A finite burst of [count] pulses beginning at [start], with [offset] everywhere outside the window
+     * `start .. start + period * count`. A [count] of zero or less gives the constant zero over the domain.
+     * See [pulseTrain] for the shaping conventions.
+     */
     fun pulseBurst(
         count: Int,
         period: Number,
@@ -2031,6 +2678,11 @@ object Functions {
         domain: Domain = Domain.ALL
     ): Fn = pulseBurst(count, param(period), param(start), param(phase), param(duty), param(amplitude), param(offset), param(rise), param(fall), edge, param(curve), profile, param(profileSigma), domain)
 
+    /**
+     * A finite burst of [count] pulses beginning at [start], with [offset] everywhere outside the window
+     * `start .. start + period * count`. A [count] of zero or less gives the constant zero over the domain.
+     * See [pulseTrain] for the shaping conventions.
+     */
     fun pulseBurst(
         count: Int,
         period: Number,
@@ -2048,6 +2700,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseBurst(count, period, start, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, domain.toDomain())
 
+    /**
+     * A finite burst of [count] pulses beginning at [start], taking each parameter as either a number or an
+     * [Fn] and throwing for anything else. [offset] applies everywhere outside the window
+     * `start .. start + period * count`; a [count] of zero or less gives the constant zero.
+     */
     fun pulseBurst(
         count: Int,
         period: Any,
@@ -2080,6 +2737,11 @@ object Functions {
         domain
     )
 
+    /**
+     * A finite burst of [count] pulses beginning at [start], taking each parameter as either a number or an
+     * [Fn] and throwing for anything else. [offset] applies everywhere outside the window
+     * `start .. start + period * count`; a [count] of zero or less gives the constant zero.
+     */
     fun pulseBurst(
         count: Int,
         period: Any,
@@ -2097,6 +2759,16 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = pulseBurst(count, period, start, phase, duty, amplitude, offset, rise, fall, edge, curve, profile, profileSigma, domain.toDomain())
 
+    /**
+     * A Gaussian bump: `amplitude · exp(-½ ((x - mean) / sigma)²)` — peak [amplitude] at [mean], down to
+     * about 0.61 of the peak one [sigma] away, and never quite zero anywhere.
+     *
+     * The obvious envelope for "one event, softly", and the shape behind [gaussianWindow] and the
+     * `GAUSSIAN` pulse profile. Two conventions to note. A [sigma] of zero yields the constant **zero**
+     * rather than an infinite spike. And the domain here defaults to `0.0..1.0`, not [Domain.ALL], so with
+     * the default `mean = 0.0` you see only the bump's right-hand half — centre it (`mean = 0.5`) or widen
+     * the domain.
+     */
     fun gaussian(
         mean: Fn = param(0.0),
         sigma: Fn = param(1.0),
@@ -2120,6 +2792,11 @@ object Functions {
         }
     }
 
+    /**
+     * A Gaussian bump: `amplitude · exp(-½ ((x - mean) / sigma)²)`, peaking at [mean] and never quite
+     * reaching zero. A [sigma] of zero gives the constant zero, and the domain defaults to `0.0..1.0`
+     * rather than the whole line.
+     */
     fun gaussian(
         mean: Number,
         sigma: Number = 1.0,
@@ -2127,6 +2804,11 @@ object Functions {
         domain: Domain = Domain.DEFAULT
     ): Fn = gaussian(param(mean), param(sigma), param(amplitude), domain)
 
+    /**
+     * A Gaussian bump: `amplitude · exp(-½ ((x - mean) / sigma)²)`, peaking at [mean] and never quite
+     * reaching zero. A [sigma] of zero gives the constant zero, and the domain defaults to `0.0..1.0`
+     * rather than the whole line.
+     */
     fun gaussian(
         mean: Number,
         sigma: Number = 1.0,
@@ -2134,6 +2816,11 @@ object Functions {
         domain: ClosedRange<*>
     ): Fn = gaussian(mean, sigma, amplitude, domain.toDomain())
 
+    /**
+     * A Gaussian bump peaking at [mean], taking each parameter as either a number or an [Fn] and throwing
+     * for anything else. A [sigma] of zero gives the constant zero; the bump never quite reaches zero
+     * elsewhere.
+     */
     fun gaussian(
         mean: Any,
         sigma: Any = 1.0,
@@ -2141,6 +2828,11 @@ object Functions {
         domain: Domain = Domain.DEFAULT
     ): Fn = gaussian(asParam(mean, "mean"), asParam(sigma, "sigma"), asParam(amplitude, "amplitude"), domain)
 
+    /**
+     * A Gaussian bump peaking at [mean], taking each parameter as either a number or an [Fn] and throwing
+     * for anything else. A [sigma] of zero gives the constant zero; the bump never quite reaches zero
+     * elsewhere.
+     */
     fun gaussian(
         mean: Any,
         sigma: Any = 1.0,
@@ -2149,6 +2841,16 @@ object Functions {
     ): Fn = gaussian(mean, sigma, amplitude, domain.toDomain())
 
     // Array helpers
+    /**
+     * Turns a table of samples into a continuous [Fn], reading between the entries with the chosen
+     * [interpolation].
+     *
+     * The samples are laid out **evenly** across [domain], which defaults to `0.0 .. size - 1` — one unit
+     * of x per array entry, so the domain is not `0..1` unless you ask for it. Both endpoints are hit
+     * exactly. Outside the domain the result is [outside] flat, with no clamping or extrapolation and no
+     * regard for [EdgeMode]; an empty array is [outside] everywhere. `CUBIC` interpolation duplicates the
+     * end samples where it has no neighbour to work with, so the curve flattens slightly at the edges.
+     */
     fun DoubleArray.toFn(
         domain: Domain = Domain.of(0.0, (size - 1).toDouble()),
         interpolation: Interpolation = Interpolation.LINEAR,
@@ -2173,18 +2875,28 @@ object Functions {
         }
     }
 
+    /** A table of samples as a continuous [Fn], spread evenly across the given range and reading [outside] beyond it. See the [Domain] overload of `toFn`. */
     fun DoubleArray.toFn(
         domain: ClosedRange<*>,
         interpolation: Interpolation = Interpolation.LINEAR,
         outside: Double = 0.0
     ): Fn = toFn(domain.toDomain(), interpolation, outside)
 
+    /**
+     * A list of numbers as a continuous [Fn], spread evenly across [domain] (by default `0.0 .. size - 1`)
+     * and reading [outside] beyond it. Copies the list into a `DoubleArray` first, so later mutation of the
+     * list does not affect the function.
+     */
     fun List<Number>.toFn(
         domain: Domain = Domain.of(0.0, (size - 1).toDouble()),
         interpolation: Interpolation = Interpolation.LINEAR,
         outside: Double = 0.0
     ): Fn = this.map { it.toDouble() }.toDoubleArray().toFn(domain, interpolation, outside)
 
+    /**
+     * A list of numbers as a continuous [Fn], spread evenly across the given range and reading [outside]
+     * beyond it. Copies the list first, so later mutation of the list does not affect the function.
+     */
     fun List<Number>.toFn(
         domain: ClosedRange<*>,
         interpolation: Interpolation = Interpolation.LINEAR,
@@ -2229,9 +2941,30 @@ object Functions {
             )
     }
 
+    /**
+     * Evaluates this function at an explicit list of coordinates, returning one value per entry in the
+     * same order.
+     *
+     * Domain-respecting: each sample goes through `evalSafe`, so [edge] and [outside] decide what happens
+     * for an x outside the domain. Use this when the sample positions are irregular — for an even grid,
+     * [toDoubleArray] is more direct.
+     */
     fun Fn.sampleAt(xs: DoubleArray, edge: EdgeMode = EdgeMode.ZERO, outside: Double = 0.0): DoubleArray =
         DoubleArray(xs.size) { i -> evalSafe(xs[i], outside, edge) }
 
+    /**
+     * Samples this function at [count] evenly-spaced points over [sampleDomain] — the workhorse for
+     * getting numbers out.
+     *
+     * With `includeEnd = true` (the default) the samples span the domain **inclusively**, so the first is
+     * at `min`, the last exactly at `max`, and the spacing is `length / (count - 1)`. With `includeEnd =
+     * false` the spacing is `length / count` and the last sample stops one step short of `max`, which is
+     * what you want for anything that will be tiled or wrapped.
+     *
+     * Sampling respects the domain via [edge] and [outside]. A [count] of zero or less gives an empty
+     * array; an empty domain gives [count] copies of [outside]; and an unbounded domain is previewed over a
+     * small finite window rather than failing.
+     */
     fun Fn.toDoubleArray(
         count: Int,
         sampleDomain: Domain = domain,
@@ -2251,6 +2984,7 @@ object Functions {
         }
     }
 
+    /** Samples this function at [count] evenly-spaced points over the given range; `includeEnd` decides whether the last sample lands exactly on the upper bound. */
     fun Fn.toDoubleArray(
         count: Int,
         sampleDomain: ClosedRange<*>,
@@ -2259,6 +2993,15 @@ object Functions {
         outside: Double = 0.0
     ): DoubleArray = toDoubleArray(count, sampleDomain.toDomain(), includeEnd, edge, outside)
 
+    /**
+     * Samples this function every [step] units across [sampleDomain], letting the domain's width decide how
+     * many samples that is.
+     *
+     * The sign of [step] is ignored — sampling always runs upward from `min`. A step of zero gives an empty
+     * array, and note the asymmetry with the count-based overload: here an **empty domain also gives an
+     * empty array**, rather than a run of [outside] values. `includeEnd` adds the sample landing on `max`
+     * when the width divides evenly.
+     */
     fun Fn.toDoubleArray(
         step: Double,
         sampleDomain: Domain = domain,
@@ -2275,6 +3018,7 @@ object Functions {
         return toDoubleArray(count, sweep, includeEnd, edge, outside)
     }
 
+    /** Samples this function every [step] units across the given range; the step's sign is ignored and a step of zero gives an empty array. */
     fun Fn.toDoubleArray(
         step: Double,
         sampleDomain: ClosedRange<*>,
@@ -2309,6 +3053,11 @@ object Functions {
         }
     }
 
+    /**
+     * Samples this function at [count] evenly-spaced points over the given range as `Vec2(x, value)` pairs.
+     * Note that the coordinates are narrowed to `Float` on the way out, so this is for feeding drawing and
+     * overlay APIs rather than for numerics.
+     */
     fun Fn.toVec2List(
         count: Int,
         sampleDomain: ClosedRange<*>,
@@ -2895,6 +3644,11 @@ canvas {
 """.trimIndent()
     }
 
+    /**
+     * Renders an interactive plot of this function as a self-contained HTML iframe, sampling over the given
+     * range. Non-finite samples — including anything that throws while being evaluated, which is caught and
+     * turned into a gap — are drawn as breaks in the curve rather than spikes.
+     */
     fun Fn.plotHtml(
         sampleDomain: ClosedRange<*>,
         samples: Int = 1024,
@@ -2926,6 +3680,10 @@ canvas {
             fontFamily = fontFamily
         )
 
+    /**
+     * Renders an interactive plot of this function as a self-contained HTML iframe over the given x range,
+     * with an explicit y range instead of one fitted to the data. Non-finite samples are drawn as gaps.
+     */
     fun Fn.plotHtml(
         sampleDomain: ClosedRange<*>,
         samples: Int = 1024,
@@ -2957,6 +3715,15 @@ canvas {
             fontFamily = fontFamily
         )
 
+    /**
+     * Draws this function into the **currently executing box**, on the given output [channel], and returns
+     * the function unchanged so it can sit mid-chain.
+     *
+     * Convenient inside a box and useless outside one: with no active box context this throws
+     * [IllegalStateException] rather than quietly doing nothing. Reach for `Box.plot(fn)` when you have the
+     * box in hand instead of relying on the ambient one. Re-plotting on the same channel replaces the
+     * previous output.
+     */
     @JvmName("plotCurrentBox")
     fun Fn.plot(
         channel: String = "plot",
@@ -2989,6 +3756,10 @@ canvas {
         return this
     }
 
+    /**
+     * Draws this function into the currently executing box over an explicit x range, returning the function
+     * unchanged. Throws [IllegalStateException] if there is no active box context.
+     */
     @JvmName("plotCurrentBoxRange")
     fun Fn.plot(
         sampleDomain: ClosedRange<*>,
@@ -3015,6 +3786,10 @@ canvas {
             outside = outside
         )
 
+    /**
+     * Draws this function into the currently executing box over explicit x *and* y ranges, returning the
+     * function unchanged. Throws [IllegalStateException] if there is no active box context.
+     */
     @JvmName("plotCurrentBoxRangeYRange")
     fun Fn.plot(
         sampleDomain: ClosedRange<*>,
@@ -3041,6 +3816,12 @@ canvas {
             outside = outside
         )
 
+    /**
+     * Draws [fn] into **this** box on the given output [channel], returning [fn] unchanged.
+     *
+     * The explicit-receiver form, and the one to prefer: unlike `Fn.plot`, it needs no ambient box context
+     * and so cannot throw for the want of one. Re-plotting on the same channel replaces the previous output.
+     */
     fun Box.plot(
         fn: Fn,
         channel: String = "plot",
@@ -3071,6 +3852,7 @@ canvas {
         return fn
     }
 
+    /** Draws [fn] into this box over an explicit x range, returning [fn] unchanged. Needs no ambient box context. */
     fun Box.plot(
         fn: Fn,
         sampleDomain: ClosedRange<*>,
@@ -3098,6 +3880,7 @@ canvas {
             outside = outside
         )
 
+    /** Draws [fn] into this box over explicit x *and* y ranges, returning [fn] unchanged. Needs no ambient box context. */
     fun Box.plot(
         fn: Fn,
         sampleDomain: ClosedRange<*>,
@@ -3125,6 +3908,11 @@ canvas {
             outside = outside
         )
 
+    /**
+     * Plots [fn] into the currently executing box — the prefix spelling of `Fn.plot`, for when `plot(f)`
+     * reads better than `f.plot()`. Returns [fn] unchanged, and throws [IllegalStateException] if there is
+     * no active box context.
+     */
     fun plot(
         fn: Fn,
         channel: String = "plot",
@@ -3150,6 +3938,10 @@ canvas {
         outside = outside
     )
 
+    /**
+     * Plots [fn] into the currently executing box over an explicit x range. Returns [fn] unchanged; throws
+     * [IllegalStateException] if there is no active box context.
+     */
     fun plot(
         fn: Fn,
         sampleDomain: ClosedRange<*>,
@@ -3177,6 +3969,10 @@ canvas {
             outside = outside
         )
 
+    /**
+     * Plots [fn] into the currently executing box over explicit x *and* y ranges. Returns [fn] unchanged;
+     * throws [IllegalStateException] if there is no active box context.
+     */
     fun plot(
         fn: Fn,
         sampleDomain: ClosedRange<*>,
@@ -3205,6 +4001,18 @@ canvas {
         )
 
     // Streaming helpers
+    /**
+     * A movable read head over an [Fn]: remembers where it is and how far to move, so a caller can pull
+     * values one at a time instead of asking for an array.
+     *
+     * The one **mutable** thing in this file — [x] and [step] are `var`s, and every `next` advances the head
+     * — so a cursor is not safe to share across threads and not a value you can pass around casually. It
+     * starts at the beginning of the function's domain (or, for an unbounded domain, of the finite preview
+     * window) with a step of 1.0, which is rarely the step you want for a function living on `0.0..1.0`.
+     *
+     * Sampling is *not* domain-checked: walk past the end and you get whatever the underlying evaluator
+     * says, not [Domain] edge handling.
+     */
     class FunctionCursor(
         val fn: Fn,
         var x: Double = fn.domain.finiteSweep().min,
@@ -3213,6 +4021,7 @@ canvas {
         /** Samples at the current position without advancing. */
         fun peek(): Double = fn.eval(x)
 
+        /** The value at the current position, then advances by [step]. The value returned is the one *before* the move. */
         fun next(): Double {
             val value = fn.eval(x)
             x += step
@@ -3225,6 +4034,10 @@ canvas {
             return sampleX to next()
         }
 
+        /**
+         * The next [count] values, advancing one [step] between each — so the head ends up [count] steps
+         * further on. A count of zero returns an empty array and moves nothing; a negative count throws.
+         */
         fun next(count: Int): DoubleArray {
             require(count >= 0) { "count must be non-negative" }
             val out = DoubleArray(count)
@@ -3240,13 +4053,20 @@ canvas {
             return this
         }
 
+        /** Jumps the head to an absolute [position], ignoring [step], and returns this cursor for chaining. Not clamped to the domain. */
         fun seek(position: Double): FunctionCursor {
             x = position
             return this
         }
 
+        /** Sends the head back to the start of the function's domain — or to an explicit [position]. Leaves [step] alone. */
         fun reset(position: Double = fn.domain.finiteSweep().min): FunctionCursor = seek(position)
 
+        /**
+         * A second, independent cursor over the same function, by default at this one's position and step.
+         * Useful for looking ahead without disturbing where you are, since [next] on the original would move
+         * it.
+         */
         fun copy(x: Double = this.x, step: Double = this.step): FunctionCursor = FunctionCursor(fn, x, step)
 
         override fun toString(): String = prettySummary(
@@ -3257,8 +4077,20 @@ canvas {
         )
     }
 
+    /**
+     * A [FunctionCursor] over this function, positioned at the start of its domain with a step of 1.0 unless
+     * told otherwise. Note that a step of 1.0 across a `0.0..1.0` function covers the whole thing in one
+     * move — set [step] deliberately.
+     */
     fun Fn.cursor(start: Double = domain.finiteSweep().min, step: Double = 1.0): FunctionCursor = FunctionCursor(this, start, step)
 
+    /**
+     * An **infinite** lazy sequence of values, starting at [start] and advancing by [step] forever.
+     *
+     * It never terminates and never checks the domain, so it must be bounded by the caller (`take`,
+     * `takeWhile`, …) — collecting it directly will hang. The default step of 1.0 is coarse for a function
+     * living on `0.0..1.0`.
+     */
     fun Fn.stream(start: Double = domain.finiteSweep().min, step: Double = 1.0): Sequence<Double> = sequence {
         var x = start
         while (true) {
@@ -3267,6 +4099,15 @@ canvas {
         }
     }
 
+    /**
+     * A **finite** lazy sequence of values across [domain], one every [step] — the terminating counterpart to
+     * the `start`-based overload.
+     *
+     * A negative [step] walks *downward* from `max` to `min`, which is the only way to read a function
+     * backwards here. `includeEnd` decides whether the far endpoint is emitted when the width divides
+     * evenly. Yields nothing at all for an empty domain, an infinite one, or a step of zero — rather than
+     * looping forever.
+     */
     fun Fn.stream(domain: Domain, step: Double = 1.0, includeEnd: Boolean = true): Sequence<Double> = sequence {
         if (domain._isEmpty) return@sequence
         if (!domain.length.isFinite() || step == 0.0) return@sequence
@@ -3301,6 +4142,10 @@ canvas {
         }
     }
 
+    /**
+     * An **infinite** lazy sequence of `(x, value)` pairs from [start], advancing by [step] — [stream] when
+     * you need to know where each sample came from. Never terminates, so bound it with `take`.
+     */
     fun Fn.streamWithX(start: Double = domain.finiteSweep().min, step: Double = 1.0): Sequence<Pair<Double, Double>> = sequence {
         var x = start
         while (true) {
@@ -3309,14 +4154,44 @@ canvas {
         }
     }
 
+    /**
+     * How a timeline chunk maps a position on the timeline into its source function's own coordinates.
+     *
+     * `DIRECT` is one-for-one, so the source plays at its natural rate and a chunk longer than the source
+     * simply runs off the end (where the chunk's `edge` takes over). `STRETCH` fits the source's whole domain
+     * to the chunk's, time-scaling it. `CLAMP`, `WRAP` and `MIRROR` are `DIRECT` with the over-run folded
+     * back in — freeze on the last value, loop, or ping-pong respectively.
+     */
     enum class ChunkMapMode { DIRECT, STRETCH, CLAMP, WRAP, MIRROR }
 
+    /**
+     * How a timeline chunk combines with whatever earlier chunks have already contributed at that x.
+     *
+     * `REPLACE` crossfades toward the chunk by its weight, so a weight of 1 overwrites and a windowed chunk
+     * blends. `ADD` sums the weighted chunk on top. `MULTIPLY` scales the running value by the chunk, fading
+     * toward 1 (a no-op) as the weight drops. Chunks are applied in the order they were placed.
+     */
     enum class ChunkBlend { REPLACE, ADD, MULTIPLY }
 
+    /** [ChunkBlend.ADD], re-exported so `blend = ADD` reads as DSL inside `with(Functions)`. */
     val ADD: ChunkBlend get() = ChunkBlend.ADD
+
+    /** [ChunkBlend.REPLACE], re-exported so `blend = REPLACE` reads as DSL inside `with(Functions)`. */
     val REPLACE: ChunkBlend get() = ChunkBlend.REPLACE
+
+    /** [ChunkBlend.MULTIPLY], re-exported so `blend = MULTIPLY` reads as DSL inside `with(Functions)`. */
     val MULTIPLY: ChunkBlend get() = ChunkBlend.MULTIPLY
 
+    /**
+     * One placement on a timeline: which function, which slice of it, where that slice goes, and how it is
+     * mapped and blended once it gets there.
+     *
+     * This is the record [TimelineBuilder] accumulates and [TimelineGraph] plays back. `sourceDomain` is the
+     * part of the source being used and `domain` is the destination interval on the timeline — the two need
+     * not be the same length, which is what [ChunkMapMode] is for. `window` is evaluated on a normalized
+     * 0..1 alpha across the chunk (so a `hannWindow()` fades it in and out), while `gain` is evaluated in
+     * *timeline* coordinates; the two multiply into the blend weight.
+     */
     data class TimelineChunk(
         val source: Fn,
         val sourceDomain: Domain = source.domain,
@@ -3335,6 +4210,7 @@ canvas {
             return ((globalX - domain.min) / len).coerceIn(0.0, 1.0)
         }
 
+        /** Whether this chunk occupies the timeline position [globalX], both ends of its destination interval included. */
         fun contains(globalX: Double): Boolean = domain.containsInclusive(globalX)
 
         private fun mapToSource(globalX: Double): Double {
@@ -3348,6 +4224,14 @@ canvas {
             }
         }
 
+        /**
+         * The blend weight of this chunk at timeline position [globalX]: the window sampled at the chunk's own
+         * 0..1 alpha, times the gain sampled in timeline coordinates.
+         *
+         * Exactly `0.0` outside the chunk, and `1.0` inside it when neither window nor gain was given. The
+         * result is *not* clamped here — a gain above one is honoured — though `REPLACE` and `MULTIPLY`
+         * blending will clamp it when they use it.
+         */
         fun weightAt(globalX: Double): Double {
             if (!contains(globalX)) return 0.0
             val shaped = window?.evalSafe(alpha(globalX), outside = 0.0, edge = EdgeMode.CLAMP) ?: 1.0
@@ -3355,6 +4239,14 @@ canvas {
             return shaped * g
         }
 
+        /**
+         * The source's contribution at timeline position [globalX], or **null** if this chunk has nothing to
+         * say there — either [globalX] is outside it, or its `sourceDomain` is empty.
+         *
+         * Null is meaningfully different from zero: [TimelineGraph] uses it to decide whether *any* chunk was
+         * active, and falls back to its `outside` value when none was. The mapped source coordinate is read
+         * through `evalSafe`, so the chunk's own `edge` and `outside` govern any over-run.
+         */
         fun sampleAt(globalX: Double): Double? {
             if (!contains(globalX) || sourceDomain._isEmpty) return null
             val sourceX = mapToSource(globalX)
@@ -3373,13 +4265,24 @@ canvas {
         )
     }
 
+    /**
+     * A finished arrangement: a list of [TimelineChunk]s that can be evaluated as one signal, or turned into
+     * an [Fn].
+     *
+     * Chunks are applied in list order, each blending onto the running value per its own [ChunkBlend], and
+     * they may freely overlap. Where **no** chunk is active the result is [outside] — and note that [outside]
+     * is also the starting value the first chunk blends onto, so a non-zero outside shows through an `ADD`
+     * arrangement as a DC offset. Immutable: the chunk list is copied on construction.
+     */
     class TimelineGraph(
         chunks: List<TimelineChunk>,
         val outside: Double = 0.0,
         val defaultDomain: Domain = Domain.point(0.0)
     ) {
+        /** The placements, in the order they are blended. A copy taken at construction, so it never changes underfoot. */
         val chunks: List<TimelineChunk> = chunks.toList()
 
+        /** The extent of the whole arrangement: the hull of every chunk's destination interval, or [defaultDomain] if there are no chunks. Gaps between chunks are inside this domain, and read as [outside]. */
         val domain: Domain = run {
             var d = Domain.EMPTY
             for (chunk in this.chunks) {
@@ -3395,6 +4298,10 @@ canvas {
                 ChunkBlend.MULTIPLY -> base * blend(1.0, sample, clamp01(weight))
             }
 
+        /**
+         * The arranged value at timeline position [x]: every chunk that covers [x], blended in placement
+         * order. Returns [outside] where no chunk covers [x] — including gaps in the middle of the timeline.
+         */
         fun eval(x: Double): Double {
             var value = outside
             var active = false
@@ -3407,6 +4314,7 @@ canvas {
             return if (active) value else outside
         }
 
+        /** `graph(x)` — call syntax for [eval]. */
         operator fun invoke(x: Double): Double = eval(x)
 
         private fun graphChildren(): List<FnGraphEdge> = buildList {
@@ -3428,6 +4336,13 @@ canvas {
             return TimelineGraph(rebuilt, outside, defaultDomain)
         }
 
+        /**
+         * This arrangement as an ordinary [Fn], so it can be composed, sampled and drawn like anything else.
+         *
+         * Defaults to the arrangement's own [domain]; pass a narrower one to crop or a wider one to expose the
+         * [outside] value beyond the chunks. Every chunk's source, window and gain becomes a graph child, so
+         * the result is rewritable rather than opaque.
+         */
         fun asFn(
             name: String = "timeline",
             domain: Domain = this.domain
@@ -3441,6 +4356,15 @@ canvas {
             rebuild = { children -> rebuildWithChildren(children).asFn(name, domain) }
         ) { x -> eval(x) }
 
+        /**
+         * This arrangement as an [Fn] **delayed** by [offset]: reading at x returns what the timeline holds at
+         * `x - offset`, and the reported domain slides with it.
+         *
+         * The mechanism behind look-back and feedback effects — a positive offset lets a later part of an
+         * arrangement listen to an earlier one. Because everything here stays a pure function there is no
+         * latch state and no runaway loop; the cost is that the earlier material is genuinely re-evaluated on
+         * every sample.
+         */
         fun tap(offset: Double = 0.0, name: String = "timelineTap"): Fn {
             val tapDomain = if (domain._isEmpty) domain else domain.shift(offset)
             return graphFn(
@@ -3461,6 +4385,19 @@ canvas {
         )
     }
 
+    /**
+     * The receiver inside `timeline { }`: a moving cursor, a set of named marks, and the placement verbs
+     * ([Fn.place], [Fn.overlap], [Fn.splice], [repeatToFit], [stretchToFit]) that lay functions out in time.
+     *
+     * The model is a tape head. Each placement lands at the [cursor] by default and moves it to the end of
+     * what was placed, so consecutive `place()` calls butt up against each other; [advance], [rewind],
+     * [moveTo] and [moveToMark] reposition it by hand when you want a gap or an overlap. This is genuinely
+     * mutable and single-threaded — build the arrangement, then call [build] to freeze it into an [Fn].
+     *
+     * A placement's duration defaults to the source's own domain length, falling back to `1.0` when that is
+     * zero or infinite (which is what an oscillator will give you), and is always taken as a magnitude, so a
+     * negative duration does not run backwards.
+     */
     class TimelineBuilder(
         start: Double = 0.0,
         private val outside: Double = 0.0
@@ -3469,6 +4406,7 @@ canvas {
         private val marks = LinkedHashMap<String, Double>()
         private val startAt = start
 
+        /** Where the next placement will land, in timeline coordinates. Read-only from outside; use [moveTo], [advance] or [rewind] to change it. */
         var cursor: Double = start
             private set
 
@@ -3482,33 +4420,44 @@ canvas {
             return if (!d.isFinite()) defaultDurationFor(sourceDomain) else kotlin.math.abs(d)
         }
 
+        /** Remembers the current [cursor] under [name] so [moveToMark] can come back to it, and returns that position. Re-marking an existing name overwrites it. */
         fun mark(name: String): Double {
             marks[name] = cursor
             return cursor
         }
 
+        /** Remembers an explicit position under [name] without moving the cursor, and returns it. Re-marking an existing name overwrites it. */
         fun mark(name: String, at: Double): Double {
             marks[name] = at
             return at
         }
 
+        /** The position stored under [name], or null if nothing was marked with that name. */
         fun marker(name: String): Double? = marks[name]
 
+        /** Moves the cursor to an absolute timeline position and returns it. Positions before the timeline's start are allowed. */
         fun moveTo(x: Double): Double {
             cursor = x
             return cursor
         }
 
+        /**
+         * Moves the cursor to the mark [name], plus an optional [offset], and returns the new position.
+         * **An unknown name is not an error** — the cursor simply stays where it is and the offset is applied
+         * to that, so a typo shifts your arrangement rather than failing loudly.
+         */
         fun moveToMark(name: String, offset: Double = 0.0): Double {
             cursor = (marks[name] ?: cursor) + offset
             return cursor
         }
 
+        /** Moves the cursor [by] units later (or earlier, if negative) and returns the new position — the way to leave a gap between placements. */
         fun advance(by: Double): Double {
             cursor += by
             return cursor
         }
 
+        /** Moves the cursor [by] units earlier and returns the new position. Exactly `advance(-by)`. */
         fun rewind(by: Double): Double = advance(-by)
 
         private fun insertChunk(
@@ -3550,6 +4499,14 @@ canvas {
             "outside" to prettyNumber(outside)
         )
 
+        /**
+         * Places [source] so that it **loops** to fill [duration], however long the source itself is.
+         *
+         * The same as `place(mapMode = WRAP)`: the source keeps its natural rate and simply wraps round its own
+         * domain as often as needed, so the joins are hard cuts unless the source happens to meet itself. Use
+         * [stretchToFit] instead to fill the duration by time-scaling a single pass. Advances the cursor by
+         * default, and returns the placement.
+         */
         fun repeatToFit(
             source: Fn,
             duration: Double,
@@ -3575,6 +4532,13 @@ canvas {
             advanceCursor = advanceCursor
         )
 
+        /**
+         * Places [source] **time-scaled** so exactly one pass of it fills [duration].
+         *
+         * The same as `place(mapMode = STRETCH)`: one traversal, faster or slower than the source's natural
+         * rate. Contrast [repeatToFit], which loops the source at its own rate instead. Advances the cursor by
+         * default, and returns the placement.
+         */
         fun stretchToFit(
             source: Fn,
             duration: Double,
@@ -3716,14 +4680,35 @@ canvas {
             )
         }
 
+        /**
+         * Freezes the placements made **so far** into an [Fn], optionally delayed by [offset].
+         *
+         * A genuine snapshot: chunks placed after this call do not appear in it, which is what makes it usable
+         * mid-build as an input to later material. Does not move the cursor or otherwise disturb the build.
+         */
         fun snapshot(offset: Double = 0.0, name: String = "timelineSnapshot"): Fn {
             val graph = buildGraph()
             return graph.tap(offset, name)
         }
 
+        /**
+         * The arrangement so far, delayed by [delay] — a signal that, at any x, reads what the timeline held
+         * [delay] earlier. The idiom for echo and call-and-response between parts of one arrangement, and a
+         * [snapshot] under a more suggestive name.
+         */
         fun lookBack(delay: Double, name: String = "timelineLookBack"): Fn =
             snapshot(offset = delay, name = name)
 
+        /**
+         * The basic placement verb: puts this function on the timeline at [at] (the cursor by default) and, by
+         * default, moves the cursor to the end of it.
+         *
+         * [duration] defaults to the source's own domain length, or `1.0` if that is zero or infinite.
+         * [sourceDomain] chooses which slice of the source is used; [mapMode] decides how it is fitted to the
+         * destination; [window] fades it (evaluated on a 0..1 alpha across the placement) and [gain] scales it
+         * (evaluated in timeline coordinates). Pass `advanceCursor = false` to layer something without
+         * disturbing where the tape head sits. Returns the [TimelineChunk] it created.
+         */
         fun Fn.place(
             at: Double = cursor,
             duration: Double? = null,
@@ -3749,6 +4734,15 @@ canvas {
             advanceCursor = advanceCursor
         )
 
+        /**
+         * Places this function starting [amount] units **before** [at], so it crossfades with whatever is
+         * already there, windowed by a Hann curve unless you say otherwise.
+         *
+         * The overlap is clamped to the placement's own duration, so asking to overlap by more than the material
+         * lasts is honoured only as far as it can be. Note that the effective overlap is decided by sampling
+         * around the join, which matters when [amount] is a signal. Always advances the cursor, and returns the
+         * placement.
+         */
         fun Fn.overlap(
             amount: Number,
             at: Double = cursor,
@@ -3774,6 +4768,11 @@ canvas {
             gain = gain
         )
 
+        /**
+         * Places this function starting [amount] units before [at], crossfading with what is already there under
+         * a Hann window by default. With a signal-valued [amount] the overlap actually used is sampled around
+         * the join itself, so a modulated overlap varies from join to join. Always advances the cursor.
+         */
         fun Fn.overlap(
             amount: Fn,
             at: Double = cursor,
@@ -3799,6 +4798,15 @@ canvas {
             gain = gain
         )
 
+        /**
+         * Drops this function in as an **insert** that starts [lookBack] units before the cursor, fading in and
+         * out so it sits over the existing material rather than butting against it.
+         *
+         * Time-scaled (`STRETCH`) by default and `REPLACE`-blended, with a [spliceWindow] built from [fadeIn] and
+         * [fadeOut] — each a fraction of the insert's length, clamped to 0..1. Unlike every other placement verb
+         * here, this **does not advance the cursor** by default, so the following placement still lands where you
+         * were. Returns the placement.
+         */
         fun Fn.splice(
             lookBack: Number,
             duration: Double? = null,
@@ -3824,6 +4832,11 @@ canvas {
             advanceCursor = advanceCursor
         )
 
+        /**
+         * Drops this function in as an insert starting [lookBack] units before the cursor, time-scaled and faded
+         * at both ends. Signal-valued arguments are sampled where they matter — the look-back at the cursor, the
+         * fades at the insert's own start and end. **Does not advance the cursor** by default.
+         */
         fun Fn.splice(
             lookBack: Fn,
             duration: Double? = null,
@@ -3849,20 +4862,39 @@ canvas {
             advanceCursor = advanceCursor
         )
 
+        /** The placements made so far, as a copy — safe to hold on to while the build continues. */
         fun chunks(): List<TimelineChunk> = chunks.toList()
 
+        /**
+         * Freezes the placements so far into a [TimelineGraph], for when you want the chunk structure rather than
+         * an [Fn]. An arrangement with no chunks gets a single-point domain at the builder's start.
+         */
         fun buildGraph(): TimelineGraph = TimelineGraph(
             chunks = chunks,
             outside = outside,
             defaultDomain = Domain.point(startAt)
         )
 
+        /**
+         * Freezes the arrangement into an [Fn] spanning every placement — the usual last line of a `timeline { }`
+         * block. Pass [domain] to crop or extend that span; gaps and anything beyond the chunks read as the
+         * builder's `outside` value.
+         */
         fun build(name: String = "timeline", domain: Domain? = null): Fn {
             val graph = buildGraph()
             return graph.asFn(name = name, domain = domain ?: graph.domain)
         }
     }
 
+    /**
+     * A fade-in / fade-out window: `1.0` through the middle, smoothstepped down to `0.0` at whichever ends you
+     * asked to fade.
+     *
+     * [fadeIn] and [fadeOut] are **fractions of the domain**, not x distances, and are clamped to 0..1 — so
+     * `0.15` fades over the first and last fifteen percent. A fade of zero means no fade at that end, giving a
+     * hard edge. Unlike [hannWindow] this is flat in between, which is what makes it right for splicing material
+     * in without dipping its middle.
+     */
     fun spliceWindow(
         fadeIn: Double = 0.15,
         fadeOut: Double = fadeIn,
@@ -3885,6 +4917,10 @@ canvas {
         }
     }
 
+    /**
+     * Runs a [TimelineBuilder] block and returns the resulting [TimelineGraph] — [timeline] when you want the
+     * chunk structure to inspect or re-blend, rather than a finished [Fn].
+     */
     fun timelineGraph(
         start: Double = 0.0,
         outside: Double = 0.0,
@@ -3895,6 +4931,15 @@ canvas {
         return builder.buildGraph()
     }
 
+    /**
+     * Arranges functions in time and returns the result as one [Fn] — the main entry point for composition
+     * across x, as opposed to the arithmetic that stacks signals on top of each other.
+     *
+     * Inside the block you have a [TimelineBuilder]: place material with `place()`, `overlap()`, `splice()`,
+     * `repeatToFit()` and `stretchToFit()`, and move the cursor with `advance()`, `mark()` and `moveToMark()`.
+     * The resulting domain spans everything placed, and [outside] is what gaps and the world beyond the
+     * arrangement read as.
+     */
     fun timeline(
         start: Double = 0.0,
         outside: Double = 0.0,
@@ -4102,6 +5147,15 @@ canvas {
         name: String = "sequence"
     ): Fn = sequence(param(overlap), edge, outside, name)
 
+    /**
+     * Places each function once, in list order, with a signal-valued [overlap] so each join can be crossfaded
+     * by a different amount — the overlap in force at a join is sampled around that join.
+     *
+     * Each function gets a slot as long as its own domain (or `1.0` if that is empty or unbounded) and is
+     * time-scaled into it. The result **always starts at x = 0**, whatever the sources' own domains were.
+     * Overlapping joins are additive under a smootherstep fade, so two overlapping slots sum where they meet.
+     * An empty list gives a zero function over an empty domain.
+     */
     fun List<Fn>.sequence(
         overlap: Fn,
         edge: EdgeMode = EdgeMode.ZERO,
@@ -4123,6 +5177,14 @@ canvas {
         ) { x -> sampleSequencePlacements(placements, x, edge, outside) }
     }
 
+    /**
+     * Plays the list in order and then **repeats forever**, wrapping the last join back onto the first item so
+     * the loop is seamless when [overlap] is positive.
+     *
+     * Slot durations come from each function's own domain as in [sequence], and the result starts at x = 0 with
+     * an unbounded domain by default — pass a finite `domain` if you want it bounded. Below the start it reads
+     * [outside]. An empty list gives a zero function over an empty domain.
+     */
     fun List<Fn>.sequenceLoop(
         overlap: Number = 0.0,
         domain: Domain = Domain.of(0.0, Double.POSITIVE_INFINITY),
@@ -4131,6 +5193,11 @@ canvas {
         name: String = "sequenceLoop"
     ): Fn = sequenceLoop(param(overlap), domain, edge, outside, name)
 
+    /**
+     * Plays the list in order and repeats forever, wrapping the final join onto the first item, with a
+     * signal-valued [overlap] sampled around each join. Unbounded above by default; below the start it reads
+     * [outside]. An empty list gives a zero function over an empty domain.
+     */
     fun List<Fn>.sequenceLoop(
         overlap: Fn,
         domain: Domain = Domain.of(0.0, Double.POSITIVE_INFINITY),
@@ -4151,6 +5218,15 @@ canvas {
         ) { x -> sequenceLoopValue(parts, seed = null, x = x, overlap = overlap, edge = edge, outside = outside) }
     }
 
+    /**
+     * Plays every function exactly once, in an order shuffled from [seed] — a permutation, so nothing is
+     * repeated and nothing dropped.
+     *
+     * Deterministic: the same seed and the same list always give the same order. Otherwise identical to
+     * [sequence], including the slot durations and the additive crossfades at the joins. [shuffle] is the same
+     * function under a friendlier name; [randomPermuteLoop] re-shuffles on every pass instead of stopping after
+     * one.
+     */
     fun List<Fn>.randomPermute(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4159,6 +5235,10 @@ canvas {
         name: String = "randomPermute"
     ): Fn = randomPermute(seed, param(overlap), edge, outside, name)
 
+    /**
+     * Plays every function exactly once in an order shuffled deterministically from [seed], with a
+     * signal-valued [overlap] sampled around each join. A permutation — nothing repeated, nothing dropped.
+     */
     fun List<Fn>.randomPermute(
         seed: Long = 0L,
         overlap: Fn,
@@ -4182,6 +5262,15 @@ canvas {
         ) { x -> sequenced.eval(x) }
     }
 
+    /**
+     * Loops forever, **re-shuffling the order on every pass** — so each cycle contains all the material exactly
+     * once, but in a different arrangement.
+     *
+     * The permutation for cycle *n* is derived from [seed] and *n*, so the whole infinite stream is reproducible.
+     * The cycle length is fixed (computed from the unshuffled slots), which keeps the loop period stable while
+     * the contents move around. Reads [outside] below the start; an empty list gives a zero function over an
+     * empty domain.
+     */
     fun List<Fn>.randomPermuteLoop(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4191,6 +5280,11 @@ canvas {
         name: String = "randomPermuteLoop"
     ): Fn = randomPermuteLoop(seed, param(overlap), domain, edge, outside, name)
 
+    /**
+     * Loops forever, re-shuffling the order on every pass from [seed] and the cycle number, with a signal-valued
+     * [overlap] sampled around each join. Every cycle contains all the material once; the cycle length stays
+     * fixed as the contents are reordered.
+     */
     fun List<Fn>.randomPermuteLoop(
         seed: Long = 0L,
         overlap: Fn,
@@ -4213,6 +5307,15 @@ canvas {
         ) { x -> sequenceLoopValue(parts, seed = seed, x = x, overlap = overlap, edge = edge, outside = outside) }
     }
 
+    /**
+     * Fills an endless run of **fixed-length slots**, choosing an item at random for each one — so items repeat,
+     * items get skipped, and the rhythm stays regular.
+     *
+     * This is the difference from [randomPermuteLoop]: there the material is reordered but each pass is complete,
+     * here every slot is an independent draw. [slot] is the slot length in x units, defaulting to the longest
+     * item's duration, and every chosen item is time-scaled to fit it. The choice for slot *n* is hashed from
+     * [seed] and *n*, so the stream is reproducible and randomly seekable. Reads [outside] below the start.
+     */
     fun List<Fn>.randomSequence(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4223,6 +5326,11 @@ canvas {
         name: String = "randomSequence"
     ): Fn = randomSequence(seed, param(overlap), slot?.let { param(it) }, domain, edge, outside, name)
 
+    /**
+     * Fills an endless run of slots, choosing an item at random for each, with a signal-valued [slot] length —
+     * so the pulse of the sequence can itself be modulated. Items repeat and are skipped freely; each choice is
+     * hashed from [seed] and the slot index, and each chosen item is time-scaled to the slot.
+     */
     fun List<Fn>.randomSequence(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4233,6 +5341,11 @@ canvas {
         name: String = "randomSequence"
     ): Fn = randomSequence(seed, param(overlap), slot, domain, edge, outside, name)
 
+    /**
+     * Fills an endless run of fixed-length slots, choosing an item at random for each, with a signal-valued
+     * [overlap] sampled around each join. Items repeat and are skipped freely; every chosen item is time-scaled
+     * to the slot length.
+     */
     fun List<Fn>.randomSequence(
         seed: Long = 0L,
         overlap: Fn,
@@ -4243,6 +5356,11 @@ canvas {
         name: String = "randomSequence"
     ): Fn = randomSequence(seed, overlap, param(slot), domain, edge, outside, name)
 
+    /**
+     * Fills an endless run of slots, choosing an item at random for each, with both [overlap] and [slot] length
+     * as signals. [slot] defaults to the longest item's duration; each chosen item is time-scaled to fit, and
+     * each choice is hashed from [seed] and the slot index so the stream is reproducible.
+     */
     fun List<Fn>.randomSequence(
         seed: Long = 0L,
         overlap: Fn,
@@ -4279,6 +5397,15 @@ canvas {
         }
     }
 
+    /**
+     * [randomSequence] with a thumb on the scale: each item's chance of being drawn is proportional to its
+     * weight.
+     *
+     * Weights line up positionally with the list, may be plain numbers or signals (sampled at the x being
+     * evaluated, so the odds can drift over the piece), and are relative — they need not sum to one. A weight
+     * that is missing, non-finite or not positive counts as zero, and **if every weight is zero the draw falls
+     * back to a uniform choice** rather than going silent.
+     */
     fun List<Fn>.weightedSequence(
         weights: List<Any>,
         seed: Long = 0L,
@@ -4290,6 +5417,11 @@ canvas {
         name: String = "weightedSequence"
     ): Fn = weightedSequence(weights, seed, param(overlap), slot?.let { param(it) }, domain, edge, outside, name)
 
+    /**
+     * [randomSequence] with per-item weights deciding the odds, and a signal-valued [overlap]. Weights are
+     * positional and relative, may be numbers or signals, and count as zero when missing or not positive; if all
+     * of them are zero the draw falls back to a uniform choice.
+     */
     fun List<Fn>.weightedSequence(
         weights: List<Any>,
         seed: Long = 0L,
@@ -4342,6 +5474,11 @@ canvas {
         }
     }
 
+    /**
+     * [randomSequence] with per-item weights deciding the odds. Weights line up positionally with the list and
+     * are relative rather than normalized; a weight of zero (or a missing one) excludes that item, and if every
+     * weight is zero the draw falls back to a uniform choice.
+     */
     fun List<Fn>.weightedSequence(
         weights: DoubleArray,
         seed: Long = 0L,
@@ -4353,6 +5490,11 @@ canvas {
         name: String = "weightedSequence"
     ): Fn = weightedSequence(weights.toList(), seed, overlap, slot, domain, edge, outside, name)
 
+    /**
+     * [randomSequence] with per-item weights deciding the odds, and a signal-valued [overlap]. Weights are
+     * positional and relative; a zero or missing weight excludes that item, and if all are zero the draw falls
+     * back to a uniform choice.
+     */
     fun List<Fn>.weightedSequence(
         weights: DoubleArray,
         seed: Long = 0L,
@@ -4364,6 +5506,10 @@ canvas {
         name: String = "weightedSequence"
     ): Fn = weightedSequence(weights.toList(), seed, overlap, slot, domain, edge, outside, name)
 
+    /**
+     * Plays every function once in a shuffled order — the friendlier name for [randomPermute], with identical
+     * behaviour. Deterministic from [seed], and note that it shuffles *once*: use [shuffleLoop] to keep going.
+     */
     fun List<Fn>.shuffle(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4372,6 +5518,10 @@ canvas {
         name: String = "shuffle"
     ): Fn = shuffle(seed, param(overlap), edge, outside, name)
 
+    /**
+     * Plays every function once in a shuffled order, with a signal-valued [overlap] — an alias of
+     * [randomPermute] with identical behaviour.
+     */
     fun List<Fn>.shuffle(
         seed: Long = 0L,
         overlap: Fn,
@@ -4380,6 +5530,11 @@ canvas {
         name: String = "shuffle"
     ): Fn = randomPermute(seed, overlap, edge, outside, name)
 
+    /**
+     * Loops forever, re-shuffling on every pass — the friendlier name for [randomPermuteLoop], with identical
+     * behaviour. Each cycle plays all the material once, in a fresh order derived from [seed] and the cycle
+     * number.
+     */
     fun List<Fn>.shuffleLoop(
         seed: Long = 0L,
         overlap: Number = 0.0,
@@ -4389,6 +5544,10 @@ canvas {
         name: String = "shuffleLoop"
     ): Fn = shuffleLoop(seed, param(overlap), domain, edge, outside, name)
 
+    /**
+     * Loops forever, re-shuffling on every pass, with a signal-valued [overlap] — an alias of
+     * [randomPermuteLoop] with identical behaviour.
+     */
     fun List<Fn>.shuffleLoop(
         seed: Long = 0L,
         overlap: Fn,
@@ -4398,6 +5557,14 @@ canvas {
         name: String = "shuffleLoop"
     ): Fn = randomPermuteLoop(seed, overlap, domain, edge, outside, name)
 
+    /**
+     * Plays the list forwards and then backwards, once — an out-and-back gesture rather than a loop.
+     *
+     * By default the turning points are *not* repeated: `[a, b, c]` plays `a b c b a`, since playing `c` twice in
+     * a row at the top of the arc rarely reads as intended. Pass `includeEndsTwice = true` for `a b c c b a`.
+     * Lists of one or two items always double their ends, there being no interior to drop. The result is a
+     * [sequence], so the same slot durations and additive crossfades apply.
+     */
     fun List<Fn>.palindrome(
         overlap: Number = 0.0,
         includeEndsTwice: Boolean = false,
@@ -4406,6 +5573,11 @@ canvas {
         name: String = "palindrome"
     ): Fn = palindrome(param(overlap), includeEndsTwice, edge, outside, name)
 
+    /**
+     * Plays the list forwards then backwards once, with a signal-valued [overlap]. The turning points are not
+     * repeated unless [includeEndsTwice] is set — `[a, b, c]` gives `a b c b a` — and lists of one or two items
+     * always double their ends.
+     */
     fun List<Fn>.palindrome(
         overlap: Fn,
         includeEndsTwice: Boolean = false,
@@ -4428,6 +5600,14 @@ canvas {
         ) { x -> sequenced.eval(x) }
     }
 
+    /**
+     * Cycles through the list **in order**, one item per fixed-length [slot], forever — the deterministic
+     * counterpart to [randomSequence].
+     *
+     * Unlike [sequenceLoop], every item gets the same slot length regardless of its own domain, and is
+     * time-scaled to fit; unlike [randomSequence], the order is strict rotation. [slot] is in x units. The cycle
+     * starts at the domain's lower bound, and anything before that reads [outside].
+     */
     fun List<Fn>.roundRobin(
         slot: Number,
         overlap: Number = 0.0,
@@ -4437,6 +5617,11 @@ canvas {
         name: String = "roundRobin"
     ): Fn = roundRobin(param(slot), param(overlap), domain, edge, outside, name)
 
+    /**
+     * Cycles through the list in order, one item per [slot], forever, with [slot] and [overlap] as signals — so
+     * the rotation's pulse can itself be modulated. Every item is time-scaled to the current slot length;
+     * anything before the domain's lower bound reads [outside].
+     */
     fun List<Fn>.roundRobin(
         slot: Fn,
         overlap: Fn = param(0.0),
@@ -4490,6 +5675,14 @@ canvas {
         }
     }
 
+    /**
+     * Sums every function in the list at each x — layering rather than sequencing, and the list form of `a + b + c`.
+     *
+     * The domain is the **union** of the members' domains, so a member that is silent (or rather, absent) over part
+     * of that span contributes [outside] there under the given [edge] mode, not its extrapolated value. An empty
+     * list gives a zero function over an empty domain. Beware the obvious: stacking many signals of amplitude one
+     * gives a signal of amplitude many — see [average] if you want the level kept.
+     */
     fun List<Fn>.stack(
         edge: EdgeMode = EdgeMode.ZERO,
         outside: Double = 0.0,
@@ -4508,6 +5701,14 @@ canvas {
         ) { x -> sumOf { it.evalSafe(x, outside = outside, edge = edge) } }
     }
 
+    /**
+     * The mean of every function in the list at each x — [stack] divided by the list size, so layering many signals
+     * keeps the level of one.
+     *
+     * The divisor is the **whole list size**, not the number of members actually defined at that x, so over a span
+     * where only some members reach the average is correspondingly quieter rather than renormalized. An empty list
+     * gives a zero function over an empty domain.
+     */
     fun List<Fn>.average(
         edge: EdgeMode = EdgeMode.ZERO,
         outside: Double = 0.0,
@@ -4526,6 +5727,14 @@ canvas {
         ) { x -> stacked.eval(x) / size.toDouble() }
     }
 
+    /**
+     * Switches between the functions: at each x, [selector] names an index and that member alone is heard.
+     *
+     * The selector's value is **rounded** to the nearest whole number and clamped to the list, so it never goes out
+     * of range — but it also switches abruptly, with an audible step wherever it crosses a half-integer. Use [morph]
+     * for the crossfading version. The domain is the union of the members' and the selector's, and members are read
+     * with [outside] / [edge] outside their own.
+     */
     fun List<Fn>.select(
         selector: Fn,
         edge: EdgeMode = EdgeMode.ZERO,
@@ -4548,6 +5757,14 @@ canvas {
         }
     }
 
+    /**
+     * Crossfades along the list: [selector] gives a *fractional* index, and the two neighbouring members are blended
+     * by its fractional part with a smootherstep ease — the continuous counterpart to [select].
+     *
+     * The selector is clamped to `0 .. lastIndex`, so it cannot run off either end, and a selector of exactly 2.0
+     * gives member two untouched. A single-member list is returned as-is. The domain is the union of the members' and
+     * the selector's.
+     */
     fun List<Fn>.morph(
         selector: Fn,
         edge: EdgeMode = EdgeMode.ZERO,
@@ -4578,15 +5795,30 @@ canvas {
         }
     }
 
+    /**
+     * A **reusable** function-to-function operation: a transform you can name, hold on to, compose with others,
+     * and then apply to any number of sources.
+     *
+     * The difference from calling an `Fn` extension directly is only reuse — `gain(0.5)` builds a transform, while
+     * `f.scaleY(0.5)` applies one on the spot. Transforms chain with [then] or `/` and are applied with `f / t`,
+     * `f through t` or `t(f)`. Nothing is evaluated when a transform is built or composed; the work happens when
+     * it meets a source, and even then only lazily, when the resulting function is sampled.
+     */
     data class FnTransform(
         val name: String,
         private val applyFn: (Fn) -> Fn
     ) {
+        /** Applies this transform to [source], returning the new function. `t(f)` — the prefix spelling of `f / t`. */
         operator fun invoke(source: Fn): Fn = applyFn(source)
 
+        /**
+         * Composes left-to-right: `a then b` applies `a` first, then `b` to its result — reading order, not
+         * mathematical composition order. The names concatenate, so the pipeline is legible in a plot title.
+         */
         infix fun then(next: FnTransform): FnTransform =
             FnTransform("$name then ${next.name}") { source -> next(this(source)) }
 
+        /** Composes left-to-right, exactly [then], so a pipeline can be written `a / b / c`. */
         operator fun div(next: FnTransform): FnTransform = then(next)
     }
 
@@ -4597,85 +5829,133 @@ canvas {
      */
     infix fun Fn.over(domain: Domain): Fn = withDomain(domain)
 
+    /** `f over (0.0..2.0)` — relabels the function's domain without touching its values, exactly `withDomain`. To *rescale* the function into a new interval use `stretch`. */
     infix fun Fn.over(range: ClosedRange<*>): Fn =
         over(range.toDomain())
 
+    /** `f stretch (0.0..2.0)` — replays this function's whole current domain across the target interval, rescaling time rather than relabelling it. Requires both domains to be finite. */
     infix fun Fn.stretch(domain: Domain): Fn =
         stretch(domain, from = this.domain)
 
+    /** `f stretch (0.0..2.0)` — replays this function's whole current domain across the target interval, rescaling time rather than relabelling it. Requires both domains to be finite. */
     infix fun Fn.stretch(range: ClosedRange<*>): Fn =
         stretch(range.toDomain())
 
+    /** `f through gain(0.5)` — applies an [FnTransform], for when the infix word reads better than the slash. */
     infix fun Fn.through(transform: FnTransform): Fn = transform(this)
 
+    /** `f pipe gain(0.5)` — applies an [FnTransform]; a synonym of [through]. */
     infix fun Fn.pipe(transform: FnTransform): Fn = transform(this)
 
+    /**
+     * `f / gain(0.5)` — applies an [FnTransform] to this function.
+     *
+     * The house spelling for a transform pipeline. Do not confuse it with `f / g`, dividing one function by
+     * another: the right-hand type decides which operator you get, so a transform on the right is application and a
+     * function on the right is arithmetic.
+     */
     operator fun Fn.div(transform: FnTransform): Fn = transform(this)
 
+    /** A transform that widens a function's domain to the whole real line, so it stops constraining anything it is combined with. Values are untouched. */
     val all: FnTransform = FnTransform("all") { source ->
         source.withDomain(Domain.ALL)
     }
 
+    /**
+     * A reusable transform that replays a source's whole domain across [to], rescaling time — the [FnTransform] form of
+     * `Fn.stretch`.
+     *
+     * [from] defaults to whatever domain the source turns out to have, which is what makes one transform applicable to
+     * several sources. [shape] paces the traversal: `LINEAR` at constant speed, the smoothstep variants easing in and out.
+     * Both domains must be finite — this throws for an unbounded source, so widen or bound it first.
+     */
     fun stretch(to: Domain, from: Domain? = null, shape: StretchShape = StretchShape.LINEAR): FnTransform =
         FnTransform("stretch") { source ->
             source.stretch(to, from = from ?: source.domain, shape = shape)
         }
 
+    /** A reusable transform replaying a source's domain across the given range, rescaling time. Both domains must be finite or it throws. */
     fun stretch(to: ClosedRange<*>, from: Domain? = null, shape: StretchShape = StretchShape.LINEAR): FnTransform =
         stretch(to.toDomain(), from, shape)
 
+    /** [stretch] with a smoothstep pacing: the endpoints still line up, but the source is played slowly at the ends and quickly through the middle. */
     fun stretchSmooth(to: Domain, from: Domain? = null): FnTransform =
         stretch(to, from, StretchShape.SMOOTHSTEP)
 
+    /** [stretch] with a smoothstep pacing: the endpoints still line up, but the source is played slowly at the ends and quickly through the middle. */
     fun stretchSmooth(to: ClosedRange<*>, from: Domain? = null): FnTransform =
         stretchSmooth(to.toDomain(), from)
 
+    /** [stretch] with a smootherstep pacing — like [stretchSmooth] but with zero acceleration as well as zero velocity at the ends. */
     fun stretchSmoother(to: Domain, from: Domain? = null): FnTransform =
         stretch(to, from, StretchShape.SMOOTHERSTEP)
 
+    /** [stretch] with a smootherstep pacing — like [stretchSmooth] but with zero acceleration as well as zero velocity at the ends. */
     fun stretchSmoother(to: ClosedRange<*>, from: Domain? = null): FnTransform =
         stretchSmoother(to.toDomain(), from)
 
+    /**
+     * [stretch] with the pacing given by a function rather than a named shape: [warp] maps normalized progress through the
+     * target onto normalized progress through the source.
+     *
+     * So `warp` is read on 0..1 and should return 0..1 — an identity ramp reproduces a plain linear stretch, and anything
+     * monotonic gives an arbitrary time-warp. It is evaluated with clamped edges, falling back to the un-warped progress
+     * outside its own domain, and nothing forces it to be monotonic: a warp that goes backwards will play the source
+     * backwards for a while.
+     */
     fun stretchBy(to: Domain, warp: Fn, from: Domain? = null): FnTransform =
         FnTransform("stretchBy") { source ->
             source.stretchBy(to, warp, from = from ?: source.domain)
         }
 
+    /** [stretch] onto the given range with the pacing given by [warp], a function read on 0..1 mapping target progress to source progress. */
     fun stretchBy(to: ClosedRange<*>, warp: Fn, from: Domain? = null): FnTransform =
         stretchBy(to.toDomain(), warp, from)
 
+    /** A reusable transform that delays a source by [amount], positive being later. A constant delay carries the domain with it. */
     fun delay(amount: Number): FnTransform = delay(param(amount))
 
+    /** A reusable transform delaying a source by [amount]; a signal-valued amount makes it a time warp rather than a delay, and leaves the domain alone. */
     fun delay(amount: Fn): FnTransform = FnTransform("delay") { source ->
         source.delay(amount)
     }
 
+    /** A reusable transform scaling a source's values by [amount] — `f / gain(0.5)` is `f * 0.5`. */
     fun gain(amount: Number): FnTransform = gain(param(amount))
 
+    /** A reusable transform scaling a source's values by [amount]; a signal-valued amount is an amplitude envelope. Note that a *bounded* amount will crop the source's domain. */
     fun gain(amount: Fn): FnTransform = FnTransform("gain") { source ->
         source * amount
     }
 
+    /** A reusable transform adding [amount] to a source's values — a DC offset. */
     fun bias(amount: Number): FnTransform = bias(param(amount))
 
+    /** A reusable transform adding [amount] to a source's values. A signal-valued amount is a drifting offset; a bounded one will crop the source's domain. */
     fun bias(amount: Fn): FnTransform = FnTransform("bias") { source ->
         source + amount
     }
 
+    /** A reusable transform hard-clipping a source symmetrically to `±threshold`. Named to avoid colliding with `Fn.clip`. */
     fun clipAt(threshold: Number): FnTransform = clipAt(param(threshold))
 
+    /** A reusable transform hard-clipping a source symmetrically to `±threshold`, which may itself be a signal. */
     fun clipAt(threshold: Fn): FnTransform = FnTransform("clip") { source ->
         source.clip(threshold)
     }
 
+    /** A reusable transform saturating a source through a normalized `tanh` curve; [amount] is drive, not a ceiling. Named to avoid colliding with `Fn.softClip`. */
     fun softClipBy(amount: Number): FnTransform = softClipBy(param(amount))
 
+    /** A reusable transform saturating a source through a normalized `tanh` curve, with a possibly signal-valued drive [amount]. */
     fun softClipBy(amount: Fn): FnTransform = FnTransform("softClip") { source ->
         source.softClip(amount)
     }
 
+    /** A reusable sample-and-hold: reads the source only every [step] and holds each value until the next. Stateless, so it stays freely sampleable. */
     fun hold(step: Number): FnTransform = hold(param(step))
 
+    /** A reusable sample-and-hold on a grid of [step], which may itself be a signal. Stateless, so it stays freely sampleable. */
     fun hold(step: Fn): FnTransform = FnTransform("hold") { source ->
         source.sampleHold(step)
     }
@@ -5232,24 +6512,49 @@ canvas {
     private fun timelineStartFor(source: Fn): Double =
         if (source.domain.isFinite) source.domain.min else 0.0
 
+    /**
+     * `a then b` — plays this function and then [next], butted end to end with no crossfade.
+     *
+     * A two-item [timeline] in one operator. The arrangement starts at this function's own domain minimum (or at zero if
+     * that is unbounded), and each function occupies a slot as long as its own domain, falling back to `1.0` where that is
+     * empty or infinite. For a crossfaded join use `overlapping`.
+     */
     infix fun Fn.then(next: Fn): Fn =
         TimelineBuilder(start = timelineStartFor(this)).apply {
             this@then.place()
             next.place()
         }.build(name = "then")
 
+    /**
+     * The half-finished middle of `a overlapping 0.2 with b` — it carries the first function and the overlap until the
+     * `with` arrives.
+     *
+     * Not something to hold on to: nothing is arranged until [with] is called, and the value on its own does nothing.
+     */
     data class OverlapStart(val first: Fn, val amount: Fn) {
+        /** Completes the phrase, arranging the two functions with the recorded overlap. Equivalent to `first.overlapWith(next, amount)`. */
         infix fun with(next: Fn): Fn = first.overlapWith(next, amount)
     }
 
+    /** `a overlapping 0.2 with b` — begins a crossfaded join; the overlap is in x units, and nothing happens until `with` supplies the second function. */
     infix fun Fn.overlapping(amount: Number): OverlapStart = OverlapStart(this, param(amount))
 
+    /** `a overlapping f with b` — begins a crossfaded join with a signal-valued overlap, sampled around the join itself. Nothing happens until `with` supplies the second function. */
     infix fun Fn.overlapping(amount: Fn): OverlapStart = OverlapStart(this, amount)
 
+    /** Plays this function then [next], their join crossfaded over [amount] x units — the call-syntax form of `a overlapping amount with next`. */
     fun Fn.overlapping(amount: Number, next: Fn): Fn = overlapWith(next, amount)
 
+    /** Plays this function then [next] with a signal-valued crossfade [amount] — the call-syntax form of `a overlapping amount with next`. */
     fun Fn.overlapping(amount: Fn, next: Fn): Fn = overlapWith(next, amount)
 
+    /**
+     * Plays this function then [next], with [next] starting [amount] units early so the two crossfade under a Hann [window].
+     *
+     * The overlap is in x units and is limited by the length of the material, so asking for more than [next] lasts gets you
+     * as much as there is. [blend] decides how the overlapping region combines — `REPLACE` (the default) crossfades, `ADD`
+     * sums.
+     */
     fun Fn.overlapWith(
         next: Fn,
         amount: Number,
@@ -5257,6 +6562,11 @@ canvas {
         window: Fn = hannWindow(Domain.DEFAULT)
     ): Fn = overlapWith(next, param(amount), blend, window)
 
+    /**
+     * Plays this function then [next] starting [amount] units early, crossfading under a Hann [window]. With a signal-valued
+     * [amount] the overlap actually used is sampled around the join itself. [blend] decides how the overlapping region
+     * combines.
+     */
     fun Fn.overlapWith(
         next: Fn,
         amount: Fn,
@@ -5267,6 +6577,16 @@ canvas {
         next.overlap(amount = amount, blend = blend, window = window)
     }.build(name = "overlap")
 
+    /**
+     * Samples this function into a drawable [FLine] polyline: `x` becomes `xOffset + x * xScale` and the value becomes
+     * `yOffset + value * yScale`.
+     *
+     * The bridge from signal to graphics, and the reason a function stack can be designed by eye. Two conventions matter.
+     * The mapping is applied as written, with **no y flip** — in a screen space where y grows downward, pass a negative
+     * [yScale] to get a graph the right way up. And sampling here is *not* domain-checked: values come from raw
+     * evaluation, so a [sampleDomain] wider than the function's own may pick up extrapolated nonsense. A [samples] of zero
+     * or less, or an empty domain, gives an empty line; an unbounded domain is previewed over a finite window.
+     */
     fun Fn.toFLine(
         sampleDomain: Domain = domain,
         samples: Int = 256,
@@ -5292,6 +6612,10 @@ canvas {
         return line
     }
 
+    /**
+     * Samples this function over the given range into a drawable [FLine], mapping x through `xOffset + x * xScale` and the
+     * value through `yOffset + value * yScale`. No y flip is applied — negate [yScale] for a y-down screen space.
+     */
     fun Fn.toFLine(
         sampleDomain: ClosedRange<*>,
         samples: Int = 256,
@@ -5312,6 +6636,14 @@ canvas {
         )
 
     // Algebra and composition
+    /**
+     * Adds two functions pointwise — mixing, in signal terms.
+     *
+     * The result's domain is the **intersection** of the two, so adding something bounded to an unbounded
+     * oscillator crops the oscillator. That is the single most common surprise in this file: use `2.0.c` or `all`
+     * rather than `c(2.0)` for values that are meant to be knobs. Lazy, like everything else here — nothing is
+     * evaluated until the sum is sampled.
+     */
     operator fun Fn.plus(other: Fn): Fn {
         val domain = combinedDomain(this, other)
         return graphFn(
@@ -5321,6 +6653,7 @@ canvas {
         ) { x -> this.eval(x) + other.eval(x) }
     }
 
+    /** Subtracts [other] from this function pointwise. The result's domain is the intersection of the two. */
     operator fun Fn.minus(other: Fn): Fn {
         val domain = combinedDomain(this, other)
         return graphFn(
@@ -5330,6 +6663,10 @@ canvas {
         ) { x -> this.eval(x) - other.eval(x) }
     }
 
+    /**
+     * Multiplies two functions pointwise — windowing, enveloping and ring modulation are all this operator. The
+     * result's domain is the intersection of the two.
+     */
     operator fun Fn.times(other: Fn): Fn {
         val domain = combinedDomain(this, other)
         return graphFn(
@@ -5339,6 +6676,13 @@ canvas {
         ) { x -> this.eval(x) * other.eval(x) }
     }
 
+    /**
+     * Divides this function by [other] pointwise. The result's domain is the intersection of the two.
+     *
+     * No guard against a zero divisor: where [other] is zero the result is an infinity or NaN, which sampling and
+     * plotting will show as a gap rather than an error. Note the overload next door — a transform on the right of
+     * `/` means "apply this transform" instead.
+     */
     operator fun Fn.div(other: Fn): Fn {
         val domain = combinedDomain(this, other)
         return graphFn(
@@ -5348,19 +6692,38 @@ canvas {
         ) { x -> this.eval(x) / other.eval(x) }
     }
 
+    /** Adds a constant to every value — a DC offset. The number becomes an unbounded parameter signal, so this never shrinks the domain. */
     operator fun Fn.plus(value: Number): Fn = this + param(value)
 
+    /** Subtracts a constant from every value. The number becomes an unbounded parameter signal, so this never shrinks the domain. */
     operator fun Fn.minus(value: Number): Fn = this - param(value)
 
+    /** Scales every value by a constant — gain. The number becomes an unbounded parameter signal, so this never shrinks the domain. */
     operator fun Fn.times(value: Number): Fn = this * param(value)
 
+    /** Divides every value by a constant. The number becomes an unbounded parameter signal, so this never shrinks the domain. */
     operator fun Fn.div(value: Number): Fn = this / param(value)
 
+    /** `2.0 + f` — a constant plus a function, which is the same as `f + 2.0`. */
     operator fun Number.plus(f: Fn): Fn = f + this
+
+    /** `1.0 - f` — a constant minus a function, in that order (not the same as `f - 1.0`), which is how an inverted envelope is written. */
     operator fun Number.minus(f: Fn): Fn = param(this) - f
+
+    /** `2.0 * f` — a constant times a function, which is the same as `f * 2.0`. */
     operator fun Number.times(f: Fn): Fn = f * this
+
+    /** `1.0 / f` — a constant divided by a function, in that order; the way to write a reciprocal. Unguarded where `f` is zero. */
     operator fun Number.div(f: Fn): Fn = param(this) / f
 
+    /**
+     * Applies an arbitrary lambda to this function's **value**, leaving its domain alone — the general-purpose
+     * waveshaper.
+     *
+     * The escape hatch when no named shaper fits, and lazy like everything else: the lambda runs once per sample. The
+     * cost is structural, as with [fn] — the node is tagged as a lambda, so a rewrite can replace the whole thing but
+     * cannot see inside the transform.
+     */
     fun Fn.mapY(newName: String? = name, transform: (Double) -> Double): Fn =
         graphFn(
             domain,
@@ -5374,6 +6737,14 @@ canvas {
             )
         ) { x -> transform(eval(x)) }
 
+    /**
+     * Applies an arbitrary lambda to the **coordinate** before evaluating — the general-purpose time warp, the
+     * counterpart to [mapY].
+     *
+     * The lambda maps the x being asked about to the x actually looked up, so it runs "backwards" from how a time
+     * shift reads: to delay by two, return `x - 2`. [newDomain] declares where the result is valid, since only the
+     * caller knows what the warp did to the extent. The node is opaque to rewriting, as with [mapY].
+     */
     fun Fn.mapX(newName: String? = name, newDomain: Domain = domain, transform: (Double) -> Double): Fn =
         graphFn(
             newDomain,
@@ -5483,6 +6854,14 @@ canvas {
         return g.numbers["value"]?.takeIf { it.isFinite() }
     }
 
+    /**
+     * Slides this function along x by [dx]: positive values move it **later** (`f.shift(2.0)` evaluates `f(x - 2)`).
+     *
+     * A constant shift carries the domain with it, so the function's support genuinely moves. A *signal-valued* [dx]
+     * has no single offset to move by, so the domain falls back to the intersection of the operands' domains and the
+     * effect becomes a time warp rather than a delay. [delay] is the same operation under a name that suits audio
+     * better.
+     */
     fun Fn.shift(dx: Fn = param(0.0)): Fn {
         // A constant delay slides the whole signal, so its domain slides with it. A signal-valued
         // dx has no single offset, so we fall back to intersecting the operands' domains.
@@ -5495,8 +6874,18 @@ canvas {
         ) { x -> eval(x - dx.eval(x)) }
     }
 
+    /** Slides this function along x by [dx], positive being later. A constant shift moves the domain with it. */
     fun Fn.shift(dx: Number): Fn = shift(param(dx))
 
+    /**
+     * Scales this function along x about the point [about] — `scaleX(2.0)` makes it twice as wide, and therefore
+     * half as fast.
+     *
+     * [about] defaults to the **origin**, not to the function's own centre, so scaling something that lives on
+     * `1.0..2.0` also moves it. A scale of zero collapses everything onto the value at [about] rather than dividing
+     * by zero. The domain is not rescaled to match — this changes the lookup, not the declared extent. See [faster]
+     * and [slower] for the reciprocal-free spellings.
+     */
     fun Fn.scaleX(scale: Fn = param(1.0), about: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, scale, about)
         return graphFn(
@@ -5514,36 +6903,61 @@ canvas {
         }
     }
 
+    /** Scales this function along x about [about] — bigger is wider and slower. [about] defaults to the origin, not the function's centre; a scale of zero collapses to the value at [about]. */
     fun Fn.scaleX(scale: Number, about: Number = 0.0): Fn =
         scaleX(param(scale), param(about))
 
+    /** Scales this function along x about [about], taking either argument as a number or an [Fn] and throwing for anything else. [about] defaults to the origin. */
     fun Fn.scaleX(scale: Any, about: Any = 0.0): Fn =
         scaleX(asParam(scale, "scale"), asParam(about, "about"))
 
+    /** Plays this function [factor] times faster about [about] — `faster(2.0)` runs at double speed. The factor's magnitude is used and floored just above zero, so it can never invert or stall. */
     fun Fn.faster(factor: Number = 2.0, about: Number = 0.0): Fn {
         return faster(param(factor), param(about))
     }
 
+    /** Plays this function [factor] times faster about [about], taking either argument as a number or an [Fn] and throwing for anything else. */
     fun Fn.faster(factor: Any, about: Any = 0.0): Fn =
         faster(asParam(factor, "factor"), asParam(about, "about"))
 
+    /**
+     * Plays this function [factor] times faster about [about] — the musician's spelling of `scaleX(1 / factor)`.
+     *
+     * The factor is taken as a magnitude and clamped just above zero before being inverted, so a zero or negative
+     * factor cannot stall or reverse the function; use [reverse] for that. A signal-valued factor makes this a
+     * continuous tape-speed warp. [about] defaults to the origin.
+     */
     fun Fn.faster(factor: Fn, about: Fn = param(0.0)): Fn {
         val safe = factor.mapY("fasterFactor") { abs(it).coerceAtLeast(1e-9) }
         return scaleX(one(safe.domain) / safe, about).withName("faster")
     }
 
+    /** Plays this function [factor] times slower about [about] — `slower(2.0)` stretches it by two. The factor's magnitude is used and floored just above zero. */
     fun Fn.slower(factor: Number = 2.0, about: Number = 0.0): Fn {
         return slower(param(factor), param(about))
     }
 
+    /** Plays this function [factor] times slower about [about], taking either argument as a number or an [Fn] and throwing for anything else. */
     fun Fn.slower(factor: Any, about: Any = 0.0): Fn =
         slower(asParam(factor, "factor"), asParam(about, "about"))
 
+    /**
+     * Plays this function [factor] times slower about [about] — the musician's spelling of `scaleX(factor)`, and the
+     * inverse of [faster].
+     *
+     * The factor is taken as a magnitude and clamped just above zero, so it cannot reverse or freeze the function. A
+     * signal-valued factor makes this a continuous tape-speed warp. [about] defaults to the origin, not the
+     * function's centre.
+     */
     fun Fn.slower(factor: Fn, about: Fn = param(0.0)): Fn {
         val safe = factor.mapY("slowerFactor") { abs(it).coerceAtLeast(1e-9) }
         return scaleX(safe, about).withName("slower")
     }
 
+    /**
+     * Scales this function's **values** by [scale] — gain. Identical to `f * scale`, spelled as a method for chaining;
+     * a signal-valued scale is an amplitude envelope.
+     */
     fun Fn.scaleY(scale: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, scale)
         return graphFn(
@@ -5553,8 +6967,13 @@ canvas {
         ) { x -> eval(x) * scale.eval(x) }
     }
 
+    /** Scales this function's values by [scale] — gain. The same as `f * scale`, spelled as a method for chaining. */
     fun Fn.scaleY(scale: Number): Fn = scaleY(param(scale))
 
+    /**
+     * Shifts this function's **values** by [offset] — a DC bias, moving the signal up or down without touching its
+     * timing. Identical to `f + offset`, spelled as a method for chaining.
+     */
     fun Fn.offsetY(offset: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, offset)
         return graphFn(
@@ -5564,8 +6983,17 @@ canvas {
         ) { x -> eval(x) + offset.eval(x) }
     }
 
+    /** Shifts this function's values by [offset] — a DC bias. The same as `f + offset`, spelled as a method for chaining. */
     fun Fn.offsetY(offset: Number): Fn = offsetY(param(offset))
 
+    /**
+     * Plays this function **backwards**, mirrored about [about] — which defaults to the centre of its own domain, so a
+     * bounded function reverses in place.
+     *
+     * Note that default: on an unbounded function the domain centre is not a finite number, so pass [about]
+     * explicitly there. The declared domain is not moved, only the lookup, and reversing twice about the same point
+     * gets you back where you started.
+     */
     fun Fn.reverse(about: Fn = param(domain.center)): Fn {
         val d = intersectDomains(domain, about)
         return graphFn(
@@ -5578,14 +7006,25 @@ canvas {
         }
     }
 
+    /** Plays this function backwards, mirrored about the coordinate [about]. Unlike the no-argument form there is no reliance on a finite domain centre. */
     fun Fn.reverse(about: Number): Fn = reverse(param(about))
 
+    /** Negates every value, turning the signal upside down. This flips it in **value**; [reverse] flips it in time. */
     fun Fn.flip(): Fn = mapY(name) { -it }
 
+    /** The absolute value of the signal — full-wave rectification, folding the negative half upward. `rectify(FULL)` is the same shape as a first-class, rewritable graph node. */
     fun Fn.abs(): Fn = mapY(name) { kotlin.math.abs(it) }
 
+    /** The sign of the signal: `-1`, `0` or `+1`. A hard three-level comparator — everything about the magnitude is discarded. */
     fun Fn.sign(): Fn = mapY(name) { kotlin.math.sign(it) }
 
+    /**
+     * Raises every value to the power [exponent], which may itself be a signal.
+     *
+     * Unguarded: a negative value under a fractional exponent gives NaN, and a negative value under a negative
+     * exponent can give an infinity. On a 0..1 envelope an exponent above one pulls it downward (a slower attack) and
+     * one below pushes it up.
+     */
     fun Fn.pow(exponent: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, exponent)
         return graphFn(
@@ -5595,10 +7034,18 @@ canvas {
         ) { x -> eval(x).pow(exponent.eval(x)) }
     }
 
+    /** Raises every value to the power [exponent]. Unguarded, so negative values under fractional exponents give NaN. */
     fun Fn.pow(exponent: Number): Fn = pow(param(exponent))
 
+    /** `e` to the power of every value. Grows fast: a signal reaching 10 comes out above 22000, so expect to scale afterwards. */
     fun Fn.exp(): Fn = mapY(name) { kotlin.math.exp(it) }
 
+    /**
+     * The logarithm of every value, in base [base] (natural by default), computed as `ln(v) / ln(base)`.
+     *
+     * Unguarded in the usual ways: a value of zero gives negative infinity, a negative value NaN, and a [base] of 1
+     * divides by zero. Fine for compressing a positive signal; check the range first if the signal can cross zero.
+     */
     fun Fn.log(base: Fn = param(Math.E)): Fn {
         val d = intersectDomains(domain, base)
         return graphFn(
@@ -5608,8 +7055,17 @@ canvas {
         ) { x -> ln(eval(x)) / ln(base.eval(x)) }
     }
 
+    /** The logarithm of every value in base [base]. Zero gives negative infinity and negative values NaN. */
     fun Fn.log(base: Number): Fn = log(param(base))
 
+    /**
+     * Holds every value inside `min .. max`, hard — an asymmetric limiter, defaulting to the `-1 .. 1` range the rest
+     * of the shaping family assumes.
+     *
+     * Clips with a corner, so anything that reaches a bound flattens against it and gains harmonics. Use [softClip]
+     * for a rounded knee, or [fold] to reflect rather than flatten. Both bounds may be signals; passing them the wrong
+     * way round is not corrected here, and Kotlin's `coerceIn` will throw for an inverted range.
+     */
     fun Fn.clamp(min: Fn = param(-1.0), max: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, min, max)
         return graphFn(
@@ -5623,10 +7079,19 @@ canvas {
         ) { x -> eval(x).coerceIn(min.eval(x), max.eval(x)) }
     }
 
+    /** Holds every value inside `min .. max`, hard-clipped at both bounds. An inverted range throws rather than being sorted. */
     fun Fn.clamp(min: Number, max: Number): Fn = clamp(param(min), param(max))
 
+    /** Holds every value inside `min .. max`, taking either bound as a number or an [Fn] and throwing for anything else. */
     fun Fn.clamp(min: Any, max: Any): Fn = clamp(asParam(min, "min"), asParam(max, "max"))
 
+    /**
+     * Hard-clips the signal symmetrically to `±threshold` — [clamp] for the common case where the limit is the same
+     * either side.
+     *
+     * A corner, not a knee: the flattened peaks are what give clipping its brightness. [softClip] rounds it,
+     * [saturate] rounds it without a hard ceiling, and [fold] reflects instead of flattening.
+     */
     fun Fn.clip(threshold: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, threshold)
         return graphFn(
@@ -5639,8 +7104,16 @@ canvas {
         }
     }
 
+    /** Hard-clips the signal symmetrically to `±threshold`, with a corner rather than a knee. */
     fun Fn.clip(threshold: Number): Fn = clip(param(threshold))
 
+    /**
+     * Rectifies the signal: half-wave clamps the negative excursion to zero, full-wave reflects it upward (`|x|`).
+     *
+     * Note the default. The no-argument form is **half**-wave, kept that way for the sake of code written before this
+     * became a first-class node — whereas the `Functions.rectify(mode)` transform defaults to full-wave. Full-wave
+     * doubles the apparent frequency of a symmetric signal and leaves a DC offset behind.
+     */
     fun Fn.rectify(mode: RectifyMode = RectifyMode.HALF): Fn {
         // First-class waveshaper (like `clip`/`fold`/`chebyshev`) so the graph-rewrite /
         // evolve / transmutation system can reach it. The mode rides as a string tag on
@@ -5666,6 +7139,14 @@ canvas {
         }
     }
 
+    /**
+     * Saturates the signal through a `tanh` curve, normalized so that an input of ±1 still comes out at ±1 — a soft
+     * knee where [clip] has a corner.
+     *
+     * [amount] is drive, not a threshold: larger values bend the curve harder and push the signal toward a square,
+     * while small values approach a straight line. Because of the normalization the range is preserved for a signal
+     * already inside ±1, which is what makes it safe to stack. An [amount] of zero collapses the signal to zero.
+     */
     fun Fn.softClip(amount: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, amount)
         return graphFn(
@@ -5678,8 +7159,17 @@ canvas {
         }
     }
 
+    /** Saturates the signal through a normalized `tanh` curve; [amount] is drive rather than a threshold, and ±1 in still gives ±1 out. An amount of zero collapses the signal to zero. */
     fun Fn.softClip(amount: Number): Fn = softClip(param(amount))
 
+    /**
+     * A west-coast wavefolder: passes the signal through untouched while it stays inside `±threshold`, and **reflects**
+     * it back each time it crosses — so pushing harder adds folds rather than flattening the peaks.
+     *
+     * Continuous, odd-symmetric, always bounded to `±threshold`, and equal to the input near zero. The interesting
+     * knob is not the threshold but the gain going in: `(f * 4.0).fold(1.0)` folds four times as much as `f.fold(1.0)`.
+     * A threshold of zero or less gives the constant zero.
+     */
     fun Fn.fold(threshold: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, threshold)
         return graphFn(
@@ -5699,8 +7189,18 @@ canvas {
         }
     }
 
+    /** A wavefolder: the signal passes through inside `±threshold` and reflects back each time it crosses. Drive it with gain rather than by lowering the threshold; a threshold of zero or less gives the constant zero. */
     fun Fn.fold(threshold: Number): Fn = fold(param(threshold))
 
+    /**
+     * The harmonic-generating Chebyshev waveshaper: pushing a unit-amplitude cosine through order *n* yields the *n*-th
+     * harmonic.
+     *
+     * Two things follow from the trig form it is evaluated in. The drive is **clamped to ±1** first, since the
+     * polynomial diverges outside the unit interval — so scale the signal into range before this, not after. And
+     * [order] is genuinely continuous, not stepwise: an animated order glides between harmonics rather than jumping
+     * between them. Negative orders are clamped away, being mirror images of the positive ones.
+     */
     fun Fn.chebyshev(order: Fn = param(2.0)): Fn {
         val d = intersectDomains(domain, order)
         return graphFn(
@@ -5724,10 +7224,20 @@ canvas {
         }
     }
 
+    /** The Chebyshev waveshaper of whole-number [order]: a unit cosine in gives that harmonic out. The drive is clamped to ±1 first. */
     fun Fn.chebyshev(order: Int): Fn = chebyshev(param(order))
 
+    /** The Chebyshev waveshaper of [order], which need not be a whole number — the shaper is continuous in the order. The drive is clamped to ±1 first. */
     fun Fn.chebyshev(order: Number): Fn = chebyshev(param(order.toDouble()))
 
+    /**
+     * Wraps every value into `min .. max` by repetition instead of clipping it — the value-domain sibling of
+     * `Domain.wrap`.
+     *
+     * Where [clamp] flattens an over-range signal, this jumps it to the other end, which is discontinuous by design and
+     * exactly what you want for phase accumulation or a deliberately glitchy shaper. The bounds are sorted internally,
+     * so their order does not matter; a zero-width range passes values through untouched.
+     */
     fun Fn.wrapY(min: Fn = param(-1.0), max: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, min, max)
         return graphFn(
@@ -5744,10 +7254,20 @@ canvas {
         }
     }
 
+    /** Wraps every value into `min .. max` by repetition rather than clipping — discontinuous by design. The bounds are sorted, so their order does not matter. */
     fun Fn.wrapY(min: Number, max: Number): Fn = wrapY(param(min), param(max))
 
+    /** Wraps every value into `min .. max` by repetition, taking either bound as a number or an [Fn] and throwing for anything else. */
     fun Fn.wrapY(min: Any, max: Any): Fn = wrapY(asParam(min, "min"), asParam(max, "max"))
 
+    /**
+     * Bakes an out-of-domain policy into the function itself, so plain [Fn.eval] behaves the way [Fn.evalSafe] would
+     * have with these arguments.
+     *
+     * Useful when a function is about to be handed to something that will not pass an [EdgeMode] along — a
+     * `withEdge(CLAMP)` function holds its endpoint values forever instead of extrapolating, and a `withEdge(WRAP)`
+     * one repeats. The declared domain is unchanged; only what happens outside it is.
+     */
     fun Fn.withEdge(edge: EdgeMode, outside: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, outside)
         return graphFn(
@@ -5762,8 +7282,16 @@ canvas {
         ) { x -> evalSafe(x, outside.eval(x), edge) }
     }
 
+    /** Bakes an out-of-domain policy into the function, so plain evaluation clamps, wraps, mirrors or returns [outside] without the caller having to ask. */
     fun Fn.withEdge(edge: EdgeMode, outside: Number): Fn = withEdge(edge, param(outside))
 
+    /**
+     * Snaps the signal to [levels] evenly-spaced steps — a staircase quantiser.
+     *
+     * It works in the `-1 .. 1` range: values are normalized from that span, floored to a step, and mapped back, so a
+     * signal outside ±1 is clamped to the top or bottom step. Fewer than two levels gives the constant zero. Compare
+     * [bitCrush], which is the same idea counted in bits, and `quantizeX`, which steps *time* rather than value.
+     */
     fun Fn.quantize(levels: Fn): Fn {
         // First-class staircase quantiser. `levels` rides as a numeric `param` child so the
         // node round-trips and is transmutable; behaviour is identical to the old opaque
@@ -5783,8 +7311,16 @@ canvas {
         }
     }
 
+    /** Snaps the signal to [levels] evenly-spaced steps across `-1 .. 1`. Fewer than two levels gives the constant zero; values beyond ±1 land on the end steps. */
     fun Fn.quantize(levels: Int): Fn = quantize(param(levels))
 
+    /**
+     * Snaps the signal to `2^bits - 1` steps across `-1 .. 1` — [quantize] counted in bits, for when the digital-audio
+     * idiom is what you mean.
+     *
+     * Because the count is exponential, the audible difference lives in the low numbers: 3 bits is coarse, 8 already
+     * near-transparent. Zero bits or fewer gives the constant zero, and a signal outside ±1 lands on the end steps.
+     */
     fun Fn.bitCrush(bits: Fn): Fn {
         // First-class bit-crusher (graph op "crush", matching the `crush(bits)` transform).
         // `bits` rides as a numeric `param` child; behaviour is identical to the old opaque
@@ -5805,13 +7341,30 @@ canvas {
         }
     }
 
+    /** Snaps the signal to `2^bits - 1` steps across `-1 .. 1`. Zero bits or fewer gives the constant zero. */
     fun Fn.bitCrush(bits: Int): Fn = bitCrush(param(bits))
 
+    /**
+     * Blends this function with [other] by [amount] — 0 is all of this one, 1 is all of [other], 0.5 an even mix.
+     *
+     * A value-domain crossfade applied at every x, unlike [crossfade], which switches over at a place along x. The
+     * amount is **not clamped**, so values outside 0..1 extrapolate past either function; a signal-valued amount makes
+     * this a continuous morph.
+     */
     fun Fn.mix(other: Fn, amount: Fn = param(0.5)): Fn =
         this * (param(1.0) - amount) + other * amount
 
+    /** Blends this function with [other] by [amount]: 0 is all of this one, 1 all of [other]. Not clamped, so values outside 0..1 extrapolate. */
     fun Fn.mix(other: Fn, amount: Number): Fn = mix(other, param(amount))
 
+    /**
+     * Hands over from this function to [other] **at a place along x**: this one before [center], [other] after, with a
+     * smootherstep transition [width] wide straddling the centre.
+     *
+     * A width of zero or less is a hard cut exactly at [center] (this function is used up to it, [other] from it on).
+     * Contrast [mix], which blends by amount everywhere rather than switching at a position. Both [center] and [width]
+     * may be signals.
+     */
     fun Fn.crossfade(other: Fn, center: Fn = param(0.0), width: Fn = param(0.0)): Fn {
         val domain = combinedDomain(this, other).intersect(center.domain).intersect(width.domain)
         return graphFn(
@@ -5835,12 +7388,20 @@ canvas {
         }
     }
 
+    /** Hands over from this function to [other] at [center], easing across a transition [width] wide. A width of zero or less is a hard cut. */
     fun Fn.crossfade(other: Fn, center: Number, width: Number): Fn =
         crossfade(other, param(center), param(width))
 
+    /** Hands over from this function to [other] at [center] over a transition [width] wide, taking either as a number or an [Fn] and throwing for anything else. */
     fun Fn.crossfade(other: Fn, center: Any, width: Any): Fn =
         crossfade(other, asParam(center, "center"), asParam(width, "width"))
 
+    /**
+     * Gates the function to [range]: inside it (both ends included) the original values, outside it [outside].
+     *
+     * Note what this does *not* do — the function's declared domain is left alone, so `cut` narrows what you hear
+     * without narrowing what a sampler will walk. [trim] and [slice] are the same operation under different names.
+     */
     fun Fn.cut(range: Domain, outside: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, outside)
         return graphFn(
@@ -5855,34 +7416,53 @@ canvas {
         ) { x -> if (range.containsInclusive(x)) eval(x) else outside.eval(x) }
     }
 
+    /** Gates the function to [range], reading [outside] beyond it. The declared domain is unchanged. */
     fun Fn.cut(range: Domain, outside: Number): Fn = cut(range, param(outside))
 
+    /** Gates the function to [range], reading [outside] beyond it. The declared domain is unchanged. */
     fun Fn.cut(range: ClosedRange<*>, outside: Fn = param(0.0)): Fn =
         cut(range.toDomain(), outside)
 
+    /** Gates the function to [range], reading [outside] beyond it. The declared domain is unchanged. */
     fun Fn.cut(range: ClosedRange<*>, outside: Number): Fn =
         cut(range.toDomain(), param(outside))
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.trim(range: Domain, outside: Fn = param(0.0)): Fn = cut(range, outside)
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.trim(range: Domain, outside: Number): Fn = trim(range, param(outside))
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.trim(range: ClosedRange<*>, outside: Fn = param(0.0)): Fn =
         trim(range.toDomain(), outside)
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.trim(range: ClosedRange<*>, outside: Number): Fn =
         trim(range.toDomain(), param(outside))
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.slice(range: Domain, outside: Fn = param(0.0)): Fn = cut(range, outside)
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.slice(range: Domain, outside: Number): Fn = slice(range, param(outside))
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.slice(range: ClosedRange<*>, outside: Fn = param(0.0)): Fn =
         slice(range.toDomain(), outside)
 
+    /** Gates the function to [range], reading [outside] beyond it — a synonym of [cut]. The declared domain is unchanged. */
     fun Fn.slice(range: ClosedRange<*>, outside: Number): Fn =
         slice(range.toDomain(), param(outside))
 
+    /**
+     * Substitutes [replacement] for this function over [range], keeping the original everywhere else — a patch, where
+     * [cut] is a gate.
+     *
+     * The result's domain is the **union** of the two, so a replacement reaching past the original extends it. Nothing
+     * is faded at the seams: expect a discontinuity at each end of [range] unless the two functions happen to agree
+     * there.
+     */
     fun Fn.replace(range: Domain, replacement: Fn): Fn {
         val domain = this.domain.union(replacement.domain)
         return graphFn(
@@ -5897,11 +7477,25 @@ canvas {
         ) { x -> if (range.containsInclusive(x)) replacement.eval(x) else eval(x) }
     }
 
+    /** Substitutes [replacement] for this function over [range] and keeps the original elsewhere. The result's domain is the union of the two, and the seams are not faded. */
     fun Fn.replace(range: ClosedRange<*>, replacement: Fn): Fn =
         replace(range.toDomain(), replacement)
 
+    /**
+     * Multiplies this function by [window] — spelled as a method to make the intent ("apply an envelope") obvious.
+     * Exactly `this * window`, which means the result's domain is the **intersection** of the two, so a bounded window
+     * crops an unbounded signal.
+     */
     fun Fn.window(window: Fn): Fn = this * window
 
+    /**
+     * Amplitude modulation: scales this function by `bias + depth * mod`.
+     *
+     * The [bias] of 1 is what makes this tremolo rather than ring modulation — the carrier stays audible and the
+     * modulator only varies its level. Drop the bias to zero (or use [ringMod]) for the harsher, carrier-cancelling
+     * version. With `depth = 1` and a bipolar modulator the level swings between 0 and 2, so expect to pull the gain
+     * down or the depth to 0.5.
+     */
     fun Fn.amplitudeMod(mod: Fn, depth: Fn = param(1.0), bias: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, mod, depth, bias)
         return graphFn(
@@ -5916,12 +7510,21 @@ canvas {
         ) { x -> eval(x) * (bias.eval(x) + depth.eval(x) * mod.eval(x)) }
     }
 
+    /** Amplitude modulation: scales this function by `bias + depth * mod`. The default bias of 1 keeps the carrier present, making this tremolo rather than ring modulation. */
     fun Fn.amplitudeMod(mod: Fn, depth: Number, bias: Number = 1.0): Fn =
         amplitudeMod(mod, param(depth), param(bias))
 
+    /** Amplitude modulation by `bias + depth * mod`, taking [depth] and [bias] as numbers or [Fn]s and throwing for anything else. */
     fun Fn.amplitudeMod(mod: Fn, depth: Any, bias: Any = 1.0): Fn =
         amplitudeMod(mod, asParam(depth, "depth"), asParam(bias, "bias"))
 
+    /**
+     * Ring modulation: multiplies this function by `depth * mod`, with **no bias term** — so wherever the modulator
+     * crosses zero the carrier disappears entirely.
+     *
+     * That is the difference from [amplitudeMod], and the reason ring modulation sounds metallic rather than
+     * pulsing: the carrier's own frequency is cancelled and replaced by sum and difference tones.
+     */
     fun Fn.ringMod(mod: Fn, depth: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, mod, depth)
         return graphFn(
@@ -5936,8 +7539,17 @@ canvas {
         ) { x -> eval(x) * (depth.eval(x) * mod.eval(x)) }
     }
 
+    /** Ring modulation: multiplies this function by `depth * mod` with no bias, so the carrier vanishes wherever the modulator crosses zero. */
     fun Fn.ringMod(mod: Fn, depth: Number): Fn = ringMod(mod, param(depth))
 
+    /**
+     * Warps **time** by the modulator: evaluates this function at `x + depth * mod(x)` instead of at x.
+     *
+     * The time-domain counterpart to [ringMod]'s value-domain multiplication, and the mechanism behind vibrato, phase
+     * modulation and [turbulence]. Note that the modulator is sampled at the *original* x, not the warped one, so this
+     * is a single displacement rather than a recursive one. Nothing prevents the warp from running the lookup
+     * backwards if [depth] is large enough.
+     */
     fun Fn.warp(mod: Fn, depth: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, mod, depth)
         return graphFn(
@@ -5951,8 +7563,18 @@ canvas {
         ) { x -> eval(x + depth.eval(x) * mod.eval(x)) }
     }
 
+    /** Warps time by the modulator, evaluating this function at `x + depth * mod(x)` — vibrato and phase modulation in one operator. */
     fun Fn.warp(mod: Fn, depth: Number): Fn = warp(mod, param(depth))
 
+    /**
+     * Quantises the **coordinate** to a grid of [step], so the function is only ever read at grid positions — a
+     * staircase in time rather than in value.
+     *
+     * Rounds **down** to the grid (a floor, not a nearest), and the grid is anchored at the origin. Because the grid
+     * position can fall outside the domain, [mode] says what to do then — `CLAMP` by default rather than the usual
+     * `ZERO`. A step of zero passes x straight through. Very close to [sampleHold], which adds an offset and always
+     * reads the raw evaluator.
+     */
     fun Fn.quantizeX(step: Fn = param(1.0), mode: EdgeMode = EdgeMode.CLAMP): Fn {
         val d = intersectDomains(domain, step)
         return graphFn(
@@ -5973,9 +7595,18 @@ canvas {
         }
     }
 
+    /** Quantises the coordinate to a grid of [step], flooring to the grid so the function reads as a staircase in time. A step of zero passes x through unchanged. */
     fun Fn.quantizeX(step: Number, mode: EdgeMode = EdgeMode.CLAMP): Fn =
         quantizeX(param(step), mode)
 
+    /**
+     * Sample-and-hold: reads the function only at multiples of [step] (offset by [offset]) and holds each value until
+     * the next one — the classic stepped-random or arpeggio effect.
+     *
+     * The grid is anchored at [offset] and rounds **down**, so the value at a grid point is held forward, not
+     * backward. A [step] of zero passes the function through untouched. Purely stateless: nothing is latched between
+     * calls, so it can be sampled in any order. [hold] is the transform spelling.
+     */
     fun Fn.sampleHold(step: Fn = param(1.0), offset: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, step, offset)
         return graphFn(
@@ -5997,20 +7628,42 @@ canvas {
         }
     }
 
+    /** Sample-and-hold: reads the function only at multiples of [step] from [offset] and holds each value until the next. Stateless; a step of zero is a no-op. */
     fun Fn.sampleHold(step: Number, offset: Number = 0.0): Fn =
         sampleHold(param(step), param(offset))
 
+    /** Sample-and-hold on a grid of [step] from [offset], taking either as a number or an [Fn] and throwing for anything else. */
     fun Fn.sampleHold(step: Any, offset: Any = 0.0): Fn =
         sampleHold(asParam(step, "step"), asParam(offset, "offset"))
 
+    /**
+     * Phase modulation — displaces the read position by `depth * mod(x)`. **Exactly [warp]**, under the name the synth
+     * literature uses; there is no separate integration step here.
+     */
     fun Fn.phaseMod(mod: Fn, depth: Fn = param(1.0)): Fn = warp(mod, depth)
 
+    /** Phase modulation — displaces the read position by `depth * mod(x)`. Exactly [warp], under a synth-flavoured name. */
     fun Fn.phaseMod(mod: Fn, depth: Number): Fn = phaseMod(mod, param(depth))
 
+    /**
+     * Frequency modulation — displaces the read position by `depth * mod(x)`.
+     *
+     * Be aware that this is **the same operation as [warp] and [phaseMod]**, not true frequency modulation: proper FM
+     * would displace by the modulator's *integral*. For a slow modulator the two are indistinguishable; for a fast one
+     * they are not.
+     */
     fun Fn.frequencyMod(mod: Fn, depth: Fn = param(1.0)): Fn = warp(mod, depth)
 
+    /** Frequency modulation — displaces the read position by `depth * mod(x)`. The same operation as [warp] and [phaseMod], not an integrating FM. */
     fun Fn.frequencyMod(mod: Fn, depth: Number): Fn = frequencyMod(mod, param(depth))
 
+    /**
+     * A gentle saturator, `v / (1 + |v * amount|)` — compresses large values toward ±1 without ever quite reaching a
+     * ceiling, so nothing is ever truly flat-topped.
+     *
+     * Softer than [softClip] and, unlike it, **not normalized**: a signal already inside ±1 comes out quieter, so
+     * expect to make the gain back up. An [amount] of zero collapses the signal to zero rather than leaving it alone.
+     */
     fun Fn.saturate(amount: Fn = param(1.0)): Fn {
         val d = intersectDomains(domain, amount)
         return graphFn(
@@ -6024,8 +7677,17 @@ canvas {
         }
     }
 
+    /** A gentle saturator, `v / (1 + |v * amount|)`: compresses toward ±1 without a hard ceiling, and without normalizing, so it also loses level. An amount of zero gives zero. */
     fun Fn.saturate(amount: Number): Fn = saturate(param(amount))
 
+    /**
+     * Displaces the read position by a random amount of up to half [amount] either way — a deterministic wobble in
+     * time.
+     *
+     * The randomness is hashed from [seed] and `floor(x)`, so the displacement is **constant across each unit-wide
+     * band of x** and jumps at every integer. That is fine for coarse humanization and wrong if you wanted smooth
+     * drift — for that, warp with a noise function instead.
+     */
     fun Fn.jitterX(amount: Fn = param(0.0), seed: Long = 0L): Fn {
         val d = intersectDomains(domain, amount)
         return graphFn(
@@ -6044,8 +7706,18 @@ canvas {
         }
     }
 
+    /** Displaces the read position by up to half [amount] either way, hashed from [seed] and `floor(x)` — so the displacement is constant within each unit band of x. */
     fun Fn.jitterX(amount: Number, seed: Long = 0L): Fn = jitterX(param(amount), seed)
 
+    /**
+     * Loops this function every [period] from [origin], forever — a periodic tiling of whatever the function does in one
+     * period's worth of x.
+     *
+     * The lookup wraps, so what repeats is the slice `origin .. origin + period`, not necessarily the function's whole
+     * domain; the joins are hard cuts unless the slice happens to meet itself. The result claims [domainOverride] —
+     * the whole line by default, which is what makes the repetition unbounded. [origin] defaults to the start of the
+     * function's own domain, and a [period] of zero leaves the function alone.
+     */
     fun Fn.repeat(
         period: Fn = param(1.0),
         origin: Fn = param(domain.finiteSweep().min),
@@ -6070,12 +7742,21 @@ canvas {
         }
     }
 
+    /** Loops this function every [period] from [origin], forever, with hard cuts at the joins. The result claims [domainOverride] — the whole line by default. */
     fun Fn.repeat(period: Number, origin: Number = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         repeat(param(period), param(origin), domainOverride)
 
+    /** Loops this function every [period] from [origin], taking either as a number or an [Fn] and throwing for anything else. */
     fun Fn.repeat(period: Any, origin: Any = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         repeat(asParam(period, "period"), asParam(origin, "origin"), domainOverride)
 
+    /**
+     * Tiles this function every [period] from [origin], **alternating forwards and backwards** — so the result is
+     * continuous at the joins where plain [repeat] would cut.
+     *
+     * The full pattern is therefore `2 * period` long even though the reflection happens every [period]. Claims
+     * [domainOverride], the whole line by default; a [period] of zero leaves the function alone.
+     */
     fun Fn.mirrorRepeat(
         period: Fn = param(1.0),
         origin: Fn = param(domain.finiteSweep().min),
@@ -6103,12 +7784,22 @@ canvas {
         }
     }
 
+    /** Tiles this function every [period] from [origin], alternating forwards and backwards so the joins are continuous. The full pattern is twice the period long. */
     fun Fn.mirrorRepeat(period: Number, origin: Number = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         mirrorRepeat(param(period), param(origin), domainOverride)
 
+    /** Tiles this function every [period] from [origin] with alternating direction, taking either as a number or an [Fn] and throwing for anything else. */
     fun Fn.mirrorRepeat(period: Any, origin: Any = domain.finiteSweep().min, domainOverride: Domain = Domain.ALL): Fn =
         mirrorRepeat(asParam(period, "period"), asParam(origin, "origin"), domainOverride)
 
+    /**
+     * Repeats this function exactly [count] times from [origin] and is **zero outside** that span — the finite
+     * counterpart to [repeat].
+     *
+     * [period] defaults to the function's own domain length, so `f.tile(3)` gives three copies of f back to back.
+     * A [count] of zero or less gives the constant zero, and a period of zero makes it zero everywhere. Note the
+     * asymmetry with [pulseBurst]: outside the span this is genuinely zero, not an offset value.
+     */
     fun Fn.tile(count: Int, period: Fn = param(domain.finiteSweep().length), origin: Fn = param(domain.finiteSweep().min)): Fn {
         if (count <= 0) return zero(domain)
         val base = repeat(period, origin, domainOverride = Domain.ALL)
@@ -6131,12 +7822,23 @@ canvas {
         }
     }
 
+    /** Repeats this function [count] times every [period] from [origin], and is zero outside that span. A count of zero or less gives the constant zero. */
     fun Fn.tile(count: Int, period: Number, origin: Number = domain.finiteSweep().min): Fn =
         tile(count, param(period), param(origin))
 
+    /** Repeats this function [count] times from [origin] and is zero outside, taking [period] and [origin] as numbers or [Fn]s and throwing for anything else. */
     fun Fn.tile(count: Int, period: Any, origin: Any = domain.finiteSweep().min): Fn =
         tile(count, asParam(period, "period"), asParam(origin, "origin"))
 
+    /**
+     * Substitutes [value] for the function beyond [left] units below its domain and [right] units above it — a border of
+     * silence around the material, with the original passed through in between.
+     *
+     * The padding widths are measured **outward from the function's own domain**, and note the sense of the test: inside
+     * the padded band the original evaluator is still called, so what you get there is whatever it extrapolates, not
+     * [value]. Only beyond the padding does [value] take over. The declared domain is not widened to include the
+     * padding.
+     */
     fun Fn.pad(left: Fn = param(0.0), right: Fn = param(0.0), value: Fn = param(0.0)): Fn {
         val d = intersectDomains(domain, left, right, value)
         return graphFn(
@@ -6154,16 +7856,27 @@ canvas {
         }
     }
 
+    /** Substitutes [value] beyond [left] units below the domain and [right] above it; inside that padded band the original evaluator still applies. */
     fun Fn.pad(left: Number, right: Number = 0.0, value: Number = 0.0): Fn =
         pad(param(left), param(right), param(value))
 
+    /** Substitutes [value] beyond the padded band, taking each argument as a number or an [Fn] and throwing for anything else. */
     fun Fn.pad(left: Any, right: Any = 0.0, value: Any = 0.0): Fn =
         pad(asParam(left, "left"), asParam(right, "right"), asParam(value, "value"))
 
+    /** Delays the function by [amount], positive being later — exactly [shift], under the name that suits time-series and audio. A constant delay moves the domain with it. */
     fun Fn.delay(amount: Fn = param(0.0)): Fn = shift(amount)
 
+    /** Delays the function by [amount], positive being later — exactly [shift]. A constant delay moves the domain with it. */
     fun Fn.delay(amount: Number): Fn = delay(param(amount))
 
+    /**
+     * Sums [repeats] progressively quieter copies of the function, each [delay] further on — a feed-forward echo.
+     *
+     * Not a feedback delay line: there is no recursion and no state, just a finite sum, so the tail length is fixed by
+     * [repeats] rather than by how long [decay] takes to die away. The cost is that every sample evaluates the source
+     * `repeats + 1` times, which compounds through a stack. A [decay] above 1 makes the echoes grow rather than fade.
+     */
     fun Fn.echo(delay: Fn = param(1.0), decay: Fn = param(0.5), repeats: Int = 4): Fn {
         val d = intersectDomains(domain, delay, decay)
         return graphFn(
@@ -6188,12 +7901,21 @@ canvas {
         }
     }
 
+    /** Sums [repeats] progressively quieter copies, each [delay] further on — a finite feed-forward echo with no feedback or state. A decay above 1 grows instead of fading. */
     fun Fn.echo(delay: Number, decay: Number = 0.5, repeats: Int = 4): Fn =
         echo(param(delay), param(decay), repeats)
 
+    /** A finite feed-forward echo of [repeats] copies, taking [delay] and [decay] as numbers or [Fn]s and throwing for anything else. */
     fun Fn.echo(delay: Any, decay: Any = 0.5, repeats: Int = 4): Fn =
         echo(asParam(delay, "delay"), asParam(decay, "decay"), repeats)
 
+    /**
+     * The numerical derivative, by central difference over ±[step].
+     *
+     * Approximate, and the accuracy is yours to manage: too large a [step] smooths real detail away, too small a one
+     * loses precision to floating-point cancellation. The domain shrinks by [step] at each end, since the difference
+     * needs room either side. Discontinuities come out as tall spikes rather than infinities.
+     */
     fun Fn.derivative(step: Double = 1e-3): Fn {
         val newDomain = domain.shrink(step)
         return graphFn(
@@ -6211,6 +7933,14 @@ canvas {
         }
     }
 
+    /**
+     * The running integral from [origin] to x, by rectangle summation in steps of [step].
+     *
+     * **Expensive, and the cost grows with distance**: each evaluation walks the whole way from [origin], so at the
+     * default step of 0.001 a sample one unit away costs a thousand evaluations of the source, and sampling a plot of it
+     * costs that again for every point. Integrating backwards from [origin] works and yields the negated area. Accuracy
+     * is first-order only — halving [step] roughly halves the error, and doubles the cost.
+     */
     fun Fn.integral(step: Double = 1e-3, origin: Double = domain.finiteSweep().min): Fn =
         graphFn(
             domain,
@@ -6237,6 +7967,15 @@ canvas {
             acc
         }
 
+    /**
+     * Convolves this function with [kernel], approximated by [samples] rectangles across the kernel's domain.
+     *
+     * The result's domain is the sum of the two domains (the usual widening), or the whole line if either is unbounded.
+     * Costs [samples] evaluations of *both* functions per output sample, so a 64-tap convolution inside a plot is
+     * already tens of thousands of evaluations. With `normalize = true` the result is divided by the kernel's summed
+     * weight, which keeps the level when the kernel is a blur rather than an impulse response. A kernel domain that is
+     * empty or unbounded yields zero.
+     */
     fun Fn.convolve(
         kernel: Fn,
         samples: Int = 64,
@@ -6275,12 +8014,27 @@ canvas {
         }
     }
 
+    /**
+     * Cross-correlates this function with [kernel] — [convolve] with the kernel reversed about its own centre, which is
+     * the difference between "how does this respond to that" and "how much does this look like that".
+     *
+     * Never normalized, so the result scales with both signals' amplitudes; peaks mark where the pattern matches best
+     * rather than giving a bounded similarity score. Same cost profile as [convolve].
+     */
     fun Fn.correlate(
         kernel: Fn,
         samples: Int = 64,
         kernelDomain: Domain = kernel.domain
     ): Fn = convolve(kernel.reverse(param(kernelDomain.center)), samples, kernelDomain, normalize = false)
 
+    /**
+     * A box smoother: the mean of the function over a [window]-wide span centred on each x.
+     *
+     * The window is **centred**, so this smooths symmetrically and does not lag the way a causal filter would — and it
+     * therefore reads [window]/2 into the future, which matters if the source is only defined up to a point. A window of
+     * zero passes the function through unchanged. Costs [samples] evaluations per output sample; [lowPass] is the
+     * transform spelling, and [blur] is the Gaussian-weighted alternative.
+     */
     fun Fn.movingAverage(window: Fn = param(1.0), samples: Int = 64): Fn {
         val d = intersectDomains(domain, window)
         return graphFn(
@@ -6307,9 +8061,18 @@ canvas {
         }
     }
 
+    /** A centred box smoother: the mean over a [window]-wide span around each x. A window of zero is a no-op; costs [samples] evaluations per sample. */
     fun Fn.movingAverage(window: Number, samples: Int = 64): Fn =
         movingAverage(param(window), samples)
 
+    /**
+     * A Gaussian smoother of standard deviation [sigma] — softer than [movingAverage], with no ringing, and the usual
+     * choice for taking the edge off a curve.
+     *
+     * The kernel is truncated at ±3 sigma and its weights are normalized, so the level is preserved. Centred, so it
+     * reads symmetrically into the future as well as the past. A [sigma] of zero passes the function through unchanged.
+     * Costs [samples] evaluations of the source per output sample.
+     */
     fun Fn.blur(sigma: Fn = param(1.0), samples: Int = 64): Fn {
         val d = intersectDomains(domain, sigma)
         return graphFn(
@@ -6338,37 +8101,71 @@ canvas {
         }
     }
 
+    /** A Gaussian smoother of standard deviation [sigma], truncated at ±3 sigma and normalized so the level is kept. A sigma of zero is a no-op. */
     fun Fn.blur(sigma: Number, samples: Int = 64): Fn =
         blur(param(sigma), samples)
 
     // Windows
+    /**
+     * The Hann window: a raised cosine reaching **zero at both ends** of [domain] and 1 at the centre.
+     *
+     * The default fade for anything that has to be spliced or overlapped, since its ends meet zero smoothly. Multiply it
+     * onto a signal (`f * hannWindow(d)`, or `f.window(...)`) to shape it. Evaluated on the normalized position within
+     * [domain] and clamped, so outside the domain it holds at zero or one rather than going negative. Where you want a
+     * flat middle rather than a single peak, use [spliceWindow].
+     */
     fun hannWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "hann", "hannWindow", rebuild = { hannWindow(domain) }) { x ->
             val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.5 - 0.5 * kotlin.math.cos(TAU * t)
         }
 
+    /** The Hann window over the given range: a raised cosine, zero at both ends and 1 at the centre. */
     fun hannWindow(domain: ClosedRange<*>): Fn =
         hannWindow(domain.toDomain())
 
+    /**
+     * The Hamming window: like [hannWindow], but stopping at **0.08 rather than zero** at the ends.
+     *
+     * That non-zero pedestal is the whole difference — better sidelobe behaviour for spectral work, and a small
+     * discontinuity if you use it to splice, where Hann would have faded away cleanly.
+     */
     fun hammingWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "hamming", "hammingWindow", rebuild = { hammingWindow(domain) }) { x ->
             val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.54 - 0.46 * kotlin.math.cos(TAU * t)
         }
 
+    /** The Hamming window over the given range — a raised cosine that stops at 0.08 rather than zero at the ends. */
     fun hammingWindow(domain: ClosedRange<*>): Fn =
         hammingWindow(domain.toDomain())
 
+    /**
+     * The Blackman window: a three-term cosine taper, narrower in the middle than [hannWindow] and with markedly lower
+     * spectral sidelobes.
+     *
+     * Reaches zero at both ends. The trade is the usual one — cleaner spectrum, wider main lobe, so it discards more of
+     * the material it is applied to.
+     */
     fun blackmanWindow(domain: Domain = Domain.DEFAULT): Fn =
         graphFn(domain, "blackman", "blackmanWindow", rebuild = { blackmanWindow(domain) }) { x ->
             val t = clamp01(domain.finiteSweep().alphaOf(x))
             0.42 - 0.5 * kotlin.math.cos(TAU * t) + 0.08 * kotlin.math.cos(TAU * 2.0 * t)
         }
 
+    /** The Blackman window over the given range — a three-term cosine taper reaching zero at both ends, with low spectral sidelobes. */
     fun blackmanWindow(domain: ClosedRange<*>): Fn =
         blackmanWindow(domain.toDomain())
 
+    /**
+     * A Gaussian window centred in [domain], with [sigma] measured as a **fraction of the domain** rather than in x
+     * units.
+     *
+     * At the default `sigma = 0.4` the ends have fallen to about 0.46 — nowhere near zero, because a Gaussian never
+     * reaches it. That is the trap: for splicing or overlap-add use a smaller sigma or reach for [hannWindow], which
+     * genuinely closes. Not clamped outside the domain, so the tails continue to decay there. A sigma of zero gives the
+     * constant zero.
+     */
     fun gaussianWindow(domain: Domain = Domain.DEFAULT, sigma: Fn = param(0.4)): Fn {
         val d = intersectDomains(domain, sigma)
         return graphFn(
@@ -6385,12 +8182,15 @@ canvas {
         }
     }
 
+    /** A Gaussian window centred in [domain], with [sigma] as a fraction of the domain's width. It never reaches zero at the ends — use [hannWindow] if you need it to. */
     fun gaussianWindow(domain: Domain = Domain.DEFAULT, sigma: Number): Fn =
         gaussianWindow(domain, param(sigma))
 
+    /** A Gaussian window centred in the given range, with [sigma] as a fraction of its width. It never reaches zero at the ends. */
     fun gaussianWindow(domain: ClosedRange<*>, sigma: Fn = param(0.4)): Fn =
         gaussianWindow(domain.toDomain(), sigma)
 
+    /** A Gaussian window centred in the given range, with [sigma] as a fraction of its width. It never reaches zero at the ends. */
     fun gaussianWindow(domain: ClosedRange<*>, sigma: Number): Fn =
         gaussianWindow(domain.toDomain(), param(sigma))
 
@@ -6460,6 +8260,15 @@ canvas {
         return blend(v0, v1, u)
     }
 
+    /**
+     * White noise: an independent random value in `-amplitude .. amplitude` for each cell of width `1 / frequency`,
+     * with a hard jump between cells.
+     *
+     * [frequency] is a **cell count per unit x**, not a spectral bandwidth — raising it makes the noise finer, not
+     * brighter in any filtered sense. Piecewise constant and therefore discontinuous by nature; [valueNoise] is the
+     * smooth relative. Wholly deterministic: the value at a given x depends only on [seed] and the cell index, so it is
+     * reproducible and randomly seekable, with no state and no generator to advance. Domain defaults to `0.0..1.0`.
+     */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6482,6 +8291,7 @@ canvas {
         }
     }
 
+    /** White noise: an independent random value in `±amplitude` per cell of width `1 / frequency`, jumping between cells. Deterministic in [seed] and position, so it is reproducible and seekable. */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6489,6 +8299,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = whiteNoise(seed, param(frequency), param(amplitude), domain)
 
+    /** White noise: an independent random value in `±amplitude` per cell of width `1 / frequency`, jumping between cells. Deterministic in [seed] and position, so it is reproducible and seekable. */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6496,6 +8307,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = whiteNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** White noise: an independent random value in `±amplitude` per cell of width `1 / frequency`, jumping between cells. Deterministic in [seed] and position, so it is reproducible and seekable. */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6503,6 +8315,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = whiteNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** White noise per cell of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6510,6 +8323,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = whiteNoise(seed, asParam(frequency, "frequency"), asParam(amplitude, "amplitude"), domain)
 
+    /** White noise per cell of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun whiteNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6517,6 +8331,15 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = whiteNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /**
+     * Smooth value noise: a random value per lattice cell of width `1 / frequency`, **interpolated** between cells with
+     * a smootherstep, so the result is continuous and gently wandering rather than jumping.
+     *
+     * The default workhorse for organic variation, and the basis of [fbm]. Range is roughly `±amplitude`, reaching the
+     * extremes only where a lattice point happens to. [frequency] is lattice cells per unit x, so it sets the wavelength
+     * of the wobble. Deterministic in [seed] and position — no state, freely seekable. [perlinNoise] is the
+     * gradient-based alternative, which looks subtly different and is quieter. Domain defaults to `0.0..1.0`.
+     */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6538,6 +8361,7 @@ canvas {
         }
     }
 
+    /** Smooth value noise: a random value per lattice cell of width `1 / frequency`, interpolated between cells so the result is continuous. Range roughly `±amplitude`; deterministic in [seed] and position. */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6545,6 +8369,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = valueNoise(seed, param(frequency), param(amplitude), domain)
 
+    /** Smooth value noise: a random value per lattice cell of width `1 / frequency`, interpolated between cells so the result is continuous. Range roughly `±amplitude`; deterministic in [seed] and position. */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6552,6 +8377,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = valueNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** Smooth value noise: a random value per lattice cell of width `1 / frequency`, interpolated between cells so the result is continuous. Range roughly `±amplitude`; deterministic in [seed] and position. */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6559,6 +8385,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = valueNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** Smooth value noise on a lattice of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6566,6 +8393,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = valueNoise(seed, asParam(frequency, "frequency"), asParam(amplitude, "amplitude"), domain)
 
+    /** Smooth value noise on a lattice of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun valueNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6573,6 +8401,15 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = valueNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /**
+     * One-dimensional Perlin-style **gradient** noise: each lattice point of width `1 / frequency` carries a random
+     * slope rather than a random height, so the curve passes through zero at every lattice point and bulges between them.
+     *
+     * The practical differences from [valueNoise] are worth knowing. It is **quieter** — the useful range is closer to
+     * `±amplitude/2` — and it never strays far from zero, which makes it well behaved as a modulation source but a poor
+     * choice when you want the full range. This being one dimension, the "gradients" are only ±1, so the result is
+     * simpler than a 2D Perlin field. Deterministic in [seed] and position; domain defaults to `0.0..1.0`.
+     */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6594,6 +8431,7 @@ canvas {
         }
     }
 
+    /** Perlin-style gradient noise on a lattice of width `1 / frequency`: zero at every lattice point, bulging between them, and quieter than [valueNoise] at the same amplitude. */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6601,6 +8439,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = perlinNoise(seed, param(frequency), param(amplitude), domain)
 
+    /** Perlin-style gradient noise on a lattice of width `1 / frequency`: zero at every lattice point, bulging between them, and quieter than [valueNoise] at the same amplitude. */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Number,
@@ -6608,6 +8447,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = perlinNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** Perlin-style gradient noise on a lattice of width `1 / frequency`: zero at every lattice point, bulging between them, and quieter than [valueNoise] at the same amplitude. */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6615,6 +8455,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = perlinNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /** Perlin-style gradient noise on a lattice of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6622,6 +8463,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = perlinNoise(seed, asParam(frequency, "frequency"), asParam(amplitude, "amplitude"), domain)
 
+    /** Perlin-style gradient noise on a lattice of width `1 / frequency`, taking [frequency] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun perlinNoise(
         seed: Long = 0L,
         frequency: Any,
@@ -6629,6 +8471,16 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = perlinNoise(seed, frequency, amplitude, domain.toDomain())
 
+    /**
+     * Fractal Brownian motion: [octaves] layers of [valueNoise] summed, each layer [lacunarity] times finer and [gain]
+     * times quieter than the last — noise with detail at several scales at once.
+     *
+     * The result is **normalized by the summed layer amplitudes**, so it stays within roughly `±amplitude` however many
+     * octaves you add; adding octaves buys detail, not level. The defaults (lacunarity 2, gain 0.5) are the classic
+     * halving pair, giving the familiar 1/f look; raising the gain toward 1 makes it rougher, lowering it smoother.
+     * Cost is linear in [octaves], and an octave count below one is treated as one. Each layer uses a different seed
+     * derived from [seed], so the whole thing is deterministic. Domain defaults to `0.0..1.0`.
+     */
     fun fbm(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6670,6 +8522,7 @@ canvas {
         }
     }
 
+    /** Fractal Brownian motion: [octaves] layers of [valueNoise], each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude` however many octaves you add. */
     fun fbm(
         seed: Long = 0L,
         frequency: Number,
@@ -6680,6 +8533,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = fbm(seed, param(frequency), param(amplitude), octaves, param(lacunarity), param(gain), domain)
 
+    /** Fractal Brownian motion: [octaves] layers of [valueNoise], each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude` however many octaves you add. */
     fun fbm(
         seed: Long = 0L,
         frequency: Number,
@@ -6690,6 +8544,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbm(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /** Fractal Brownian motion over [octaves] layers of [valueNoise], taking the numeric parameters as numbers or [Fn]s and throwing for anything else. */
     fun fbm(
         seed: Long = 0L,
         frequency: Any,
@@ -6700,6 +8555,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = fbm(seed, asParam(frequency, "frequency"), asParam(amplitude, "amplitude"), octaves, asParam(lacunarity, "lacunarity"), asParam(gain, "gain"), domain)
 
+    /** Fractal Brownian motion over [octaves] layers of [valueNoise], taking the numeric parameters as numbers or [Fn]s and throwing for anything else. */
     fun fbm(
         seed: Long = 0L,
         frequency: Any,
@@ -6710,6 +8566,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbm(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /** Fractal Brownian motion: [octaves] layers of [valueNoise], each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude` however many octaves you add. */
     fun fbm(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6720,6 +8577,14 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbm(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /**
+     * Fractal Brownian motion built from [perlinNoise] layers instead of [valueNoise] ones — [fbm] with a different grain.
+     *
+     * Same structure and same normalization, so the range stays near `±amplitude` however many [octaves] you stack. The
+     * character differs: because each Perlin layer is zero at its lattice points and quieter overall, the sum reads
+     * smoother and less blocky, at the cost of a narrower effective range. Cost is linear in [octaves]; deterministic in
+     * [seed]. Domain defaults to `0.0..1.0`.
+     */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6761,6 +8626,7 @@ canvas {
         }
     }
 
+    /** Fractal Brownian motion built from [perlinNoise] layers: [octaves] of them, each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude`. */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Number,
@@ -6771,6 +8637,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = fbmPerlin(seed, param(frequency), param(amplitude), octaves, param(lacunarity), param(gain), domain)
 
+    /** Fractal Brownian motion built from [perlinNoise] layers: [octaves] of them, each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude`. */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Number,
@@ -6781,6 +8648,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbmPerlin(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /** Fractal Brownian motion over [octaves] layers of [perlinNoise], taking the numeric parameters as numbers or [Fn]s and throwing for anything else. */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Any,
@@ -6791,6 +8659,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = fbmPerlin(seed, asParam(frequency, "frequency"), asParam(amplitude, "amplitude"), octaves, asParam(lacunarity, "lacunarity"), asParam(gain, "gain"), domain)
 
+    /** Fractal Brownian motion over [octaves] layers of [perlinNoise], taking the numeric parameters as numbers or [Fn]s and throwing for anything else. */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Any,
@@ -6801,6 +8670,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbmPerlin(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /** Fractal Brownian motion built from [perlinNoise] layers: [octaves] of them, each [lacunarity] times finer and [gain] times quieter. Normalized, so the range stays near `±amplitude`. */
     fun fbmPerlin(
         seed: Long = 0L,
         frequency: Fn = param(1.0),
@@ -6811,6 +8681,15 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = fbmPerlin(seed, frequency, amplitude, octaves, lacunarity, gain, domain.toDomain())
 
+    /**
+     * A random walk: the accumulated sum of one random increment of up to `±amplitude` per [step] of x — Brownian
+     * motion, wandering without any tendency to return.
+     *
+     * Unbounded by construction, so its excursion grows with the square root of distance and it is not a drop-in
+     * substitute for a noise generator. **The cost is the thing to watch**: because it stays a pure function it re-sums
+     * every increment from the origin on each evaluation, so a sample at x costs `x / step` hashes — sampling far from
+     * zero, or with a small step, is quadratic in practice. A [step] of zero gives zero. Deterministic in [seed].
+     */
     fun randomWalk(
         seed: Long = 0L,
         step: Fn = param(1.0),
@@ -6846,6 +8725,7 @@ canvas {
         }
     }
 
+    /** A random walk: the accumulated sum of one increment of up to `±amplitude` per [step] of x. Unbounded, and costs `x / step` hashes per evaluation — expensive far from zero. */
     fun randomWalk(
         seed: Long = 0L,
         step: Number,
@@ -6853,6 +8733,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = randomWalk(seed, param(step), param(amplitude), domain)
 
+    /** A random walk: the accumulated sum of one increment of up to `±amplitude` per [step] of x. Unbounded, and costs `x / step` hashes per evaluation — expensive far from zero. */
     fun randomWalk(
         seed: Long = 0L,
         step: Number,
@@ -6860,6 +8741,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = randomWalk(seed, step, amplitude, domain.toDomain())
 
+    /** A random walk: the accumulated sum of one increment of up to `±amplitude` per [step] of x. Unbounded, and costs `x / step` hashes per evaluation — expensive far from zero. */
     fun randomWalk(
         seed: Long = 0L,
         step: Fn = param(1.0),
@@ -6867,6 +8749,7 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = randomWalk(seed, step, amplitude, domain.toDomain())
 
+    /** A random walk accumulating one increment per [step], taking [step] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun randomWalk(
         seed: Long = 0L,
         step: Any,
@@ -6874,6 +8757,7 @@ canvas {
         domain: Domain = Domain.DEFAULT
     ): Fn = randomWalk(seed, asParam(step, "step"), asParam(amplitude, "amplitude"), domain)
 
+    /** A random walk accumulating one increment per [step], taking [step] and [amplitude] as numbers or [Fn]s and throwing for anything else. */
     fun randomWalk(
         seed: Long = 0L,
         step: Any,
@@ -6881,12 +8765,32 @@ canvas {
         domain: ClosedRange<*>
     ): Fn = randomWalk(seed, step, amplitude, domain.toDomain())
 
+    /**
+     * One `(x, y)` observation, with an optional weight — the currency of the scattered-data and sampling APIs here.
+     *
+     * [w] is only consulted by the RBF fitter, and there it scales the right-hand side of the fit rather than the row, so
+     * a weight of zero asks the curve to pass through **zero** at that x rather than ignoring the point. Everything else
+     * in this file ignores it.
+     */
     data class Sample(val x: Double, val y: Double, val w: Double = 1.0)
 
+    /** Builds a control-point list from `x to y` pairs, all with weight 1 — the terse way to hand-write input for [rbf] and friends. */
     fun points(vararg pairs: Pair<Double, Double>): List<Sample> = pairs.map { Sample(it.first, it.second) }
 
+    /** Observes this function at the given coordinates, as `(x, value)` [Sample]s. Not domain-checked: each point is a raw evaluation, so coordinates outside the domain may be extrapolated. */
     fun Fn.samplesAt(xs: DoubleArray): List<Sample> = xs.map { Sample(it, eval(it)) }
 
+    /**
+     * Rescales the function so that its observed range lands on `targetMin .. targetMax` — normalization by
+     * measurement.
+     *
+     * The measurement is the caveat. The range is **estimated once, at construction**, from [samples] pseudo-random
+     * probes across [sampleDomain]; the affine map is then fixed. So a peak the probes happened to miss will overshoot
+     * the target range, which is what [clamp] is there to contain. Raising [samples] tightens the estimate at a
+     * proportional up-front cost. Edge cases are quiet rather than loud: if no finite sample can be taken the function
+     * is returned unchanged, and if the observed range is zero the result is the constant [targetMin]. Deterministic in
+     * [seed].
+     */
     fun Fn.autoScale(
         sampleDomain: Domain = domain,
         samples: Int = 256,
@@ -6921,6 +8825,10 @@ canvas {
         }
     }
 
+    /**
+     * Rescales the function so its observed range lands on `targetMin .. targetMax`, measuring over the given range. The
+     * range is estimated once from [samples] probes, so unmeasured peaks can overshoot unless [clamp] is set.
+     */
     fun Fn.autoScale(
         sampleDomain: ClosedRange<*>,
         samples: Int = 256,
@@ -6930,6 +8838,15 @@ canvas {
         clamp: Boolean = false
     ): Fn = autoScale(sampleDomain.toDomain(), samples, seed, targetMin, targetMax, clamp)
 
+    /**
+     * Standardizes the function to zero mean and unit standard deviation — `(v - mean) / sd`, with both estimated from
+     * [samples] pseudo-random probes at construction.
+     *
+     * Unlike [autoScale] this does not bound the output: a signal with outliers will still have them, now measured in
+     * standard deviations. The estimate is fixed once and the probes may miss things, as there. A signal whose measured
+     * deviation is below [epsilon] is treated as constant and becomes the constant **zero**; if no finite sample can be
+     * taken at all the function is returned unchanged. Deterministic in [seed].
+     */
     fun Fn.zNormalize(
         sampleDomain: Domain = domain,
         samples: Int = 256,
@@ -6952,6 +8869,10 @@ canvas {
         ) { x -> (eval(x) - stats.mean) / std }
     }
 
+    /**
+     * Standardizes the function to zero mean and unit standard deviation, measuring over the given range. A signal whose
+     * measured deviation is below [epsilon] becomes the constant zero.
+     */
     fun Fn.zNormalize(
         sampleDomain: ClosedRange<*>,
         samples: Int = 256,
@@ -6959,6 +8880,16 @@ canvas {
         epsilon: Double = 1e-9
     ): Fn = zNormalize(sampleDomain.toDomain(), samples, seed, epsilon)
 
+    /**
+     * Histogram equalization: pushes every value through the function's own cumulative distribution, so the output is
+     * spread **uniformly** across `targetMin .. targetMax` however lopsidedly the input was distributed.
+     *
+     * The move to make when a signal is technically in range but spends all its time near one end. Where [autoScale] is
+     * an affine stretch, this is monotone but non-linear, and it will happily flatten a peak in order to even out the
+     * distribution. The CDF is estimated from [samples] probes into [bins] buckets — **lazily**, on the first evaluation,
+     * then cached for the life of the function, so the cost is paid once but not at construction. If the estimate cannot
+     * be built the original value is passed through untouched. Deterministic in [seed].
+     */
     fun Fn.whitenCdf(
         sampleDomain: Domain = domain,
         samples: Int = 2048,
@@ -7028,6 +8959,11 @@ canvas {
         }
     }
 
+    /**
+     * Histogram equalization over the given range: values are pushed through the function's own estimated CDF so the
+     * output is spread uniformly across `targetMin .. targetMax`. Monotone but non-linear, and estimated lazily on first
+     * use.
+     */
     fun Fn.whitenCdf(
         sampleDomain: ClosedRange<*>,
         samples: Int = 2048,
@@ -7038,6 +8974,13 @@ canvas {
         clamp: Boolean = true
     ): Fn = whitenCdf(sampleDomain.toDomain(), samples, bins, seed, targetMin, targetMax, clamp)
 
+    /**
+     * [count] evenly-spaced observations across [sampleDomain], as `(x, value)` [Sample]s.
+     *
+     * With `includeEnd = true` the first and last land exactly on the bounds; with false the last stops one step short,
+     * which is what you want for anything cyclic. Returns an empty list for a count of zero or less, or an empty domain,
+     * and previews an unbounded domain over a finite window. Values are raw evaluations, not domain-checked.
+     */
     fun Fn.sampleUniform(count: Int, sampleDomain: Domain = domain, includeEnd: Boolean = true): List<Sample> {
         if (count <= 0 || sampleDomain._isEmpty) return emptyList()
         val sweep = sampleDomain.finiteSweep()
@@ -7050,9 +8993,18 @@ canvas {
         }
     }
 
+    /** [count] evenly-spaced observations across the given range, as [Sample]s. `includeEnd` decides whether the last one lands on the upper bound. */
     fun Fn.sampleUniform(count: Int, sampleDomain: ClosedRange<*>, includeEnd: Boolean = true): List<Sample> =
         sampleUniform(count, sampleDomain.toDomain(), includeEnd)
 
+    /**
+     * [count] observations, one per equal cell, each displaced from its cell centre by up to half [jitter] of a cell width
+     * — stratified sampling, which covers the domain evenly while avoiding the aliasing a regular grid produces.
+     *
+     * [jitter] is a **fraction of the cell width**, not an x distance, so `1.0` lets a sample reach its cell's edges and
+     * `0.0` reduces this to cell-centred uniform sampling. Positions are clamped inside the domain and deterministic in
+     * [seed]. Returns an empty list for a count of zero or less, or an empty domain.
+     */
     fun Fn.sampleJittered(count: Int, sampleDomain: Domain = domain, jitter: Double = 0.25, seed: Long = 0L): List<Sample> {
         if (count <= 0 || sampleDomain._isEmpty) return emptyList()
         val sweep = sampleDomain.finiteSweep()
@@ -7066,9 +9018,17 @@ canvas {
         }
     }
 
+    /** [count] stratified observations across the given range, one per cell, displaced by up to half [jitter] of a cell width. Deterministic in [seed]. */
     fun Fn.sampleJittered(count: Int, sampleDomain: ClosedRange<*>, jitter: Double = 0.25, seed: Long = 0L): List<Sample> =
         sampleJittered(count, sampleDomain.toDomain(), jitter, seed)
 
+    /**
+     * [count] observations at pseudo-random positions across [sampleDomain] — unstratified, so expect clumps and gaps;
+     * [sampleJittered] is usually the better-behaved choice.
+     *
+     * Deterministic in [seed], so the same seed gives the same positions. The samples come out in generation order, which
+     * is **not sorted by x**. Returns an empty list for a count of zero or less, or an empty domain.
+     */
     fun Fn.sampleRandom(count: Int, sampleDomain: Domain = domain, seed: Long = 0L): List<Sample> {
         if (count <= 0 || sampleDomain._isEmpty) return emptyList()
         val sweep = sampleDomain.finiteSweep()
@@ -7079,9 +9039,19 @@ canvas {
         }
     }
 
+    /** [count] observations at pseudo-random positions across the given range, unstratified and not sorted by x. Deterministic in [seed]. */
     fun Fn.sampleRandom(count: Int, sampleDomain: ClosedRange<*>, seed: Long = 0L): List<Sample> =
         sampleRandom(count, sampleDomain.toDomain(), seed)
 
+    /**
+     * Observations concentrated where [density] is high, by rejection sampling — the way to sample a signal more closely
+     * in the regions you care about.
+     *
+     * [density] is read as a probability and **clamped to 0..1**, so it is a relative likelihood rather than a
+     * distribution to be normalized; a density of zero over a region excludes it entirely. Because acceptance is random,
+     * this **may return fewer than [count] samples**: it gives up after [maxRejects] attempts, which a sparse density
+     * function will reach. Positions are not sorted by x. Deterministic in [seed].
+     */
     fun Fn.sampleByDensity(
         count: Int,
         sampleDomain: Domain = domain,
@@ -7106,6 +9076,10 @@ canvas {
         return out
     }
 
+    /**
+     * Observations concentrated where [density] is high, by rejection sampling over the given range. May return fewer than
+     * [count] samples, since it gives up after [maxRejects] attempts.
+     */
     fun Fn.sampleByDensity(
         count: Int,
         sampleDomain: ClosedRange<*>,
@@ -7114,6 +9088,15 @@ canvas {
         maxRejects: Int = 10000
     ): List<Sample> = sampleByDensity(count, sampleDomain.toDomain(), density, seed, maxRejects)
 
+    /**
+     * Finds where the function crosses zero, walking [sampleDomain] in steps of [step] and linearly interpolating the
+     * crossing between the two straddling samples. Every returned [Sample] has a y of exactly `0.0`.
+     *
+     * A **sign-change** detector, so its blind spots follow from that: a curve that touches zero without passing through
+     * is missed, and two crossings inside one [step] cancel out and are missed as well. The interpolation assumes the
+     * function is roughly straight across a step, so a coarse step misplaces the crossing. Default step is a 128th of the
+     * domain.
+     */
     fun Fn.sampleZeroCrossings(sampleDomain: Domain = domain, step: Double = sampleDomain.finiteSweep().length / 128.0): List<Sample> {
         if (sampleDomain._isEmpty || step == 0.0) return emptyList()
         val sweep = sampleDomain.finiteSweep()
@@ -7135,9 +9118,19 @@ canvas {
         return out
     }
 
+    /** Finds sign changes across the given range in steps of [step], interpolating each crossing. Tangential touches, and pairs of crossings closer together than one step, are missed. */
     fun Fn.sampleZeroCrossings(sampleDomain: ClosedRange<*>, step: Double = sampleDomain.toDomain().length / 128.0): List<Sample> =
         sampleZeroCrossings(sampleDomain.toDomain(), step)
 
+    /**
+     * Finds the [count] most prominent **local maxima**, by three-point comparison on a grid of [step].
+     *
+     * Two things to know. It looks only for maxima, so troughs are never returned — negate the function to find those. But
+     * the candidates are then ranked by **absolute** value, so on a signal that dips well below zero a deep-but-still-local
+     * maximum can outrank a shallow positive one. Resolution is limited by [step] (a 256th of the domain by default):
+     * peaks narrower than that are missed, and a reported position is only accurate to one step. The result is ordered by
+     * prominence, not by x.
+     */
     fun Fn.samplePeaks(count: Int, sampleDomain: Domain = domain, step: Double = sampleDomain.finiteSweep().length / 256.0): List<Sample> {
         if (count <= 0 || sampleDomain._isEmpty || step == 0.0) return emptyList()
         val sweep = sampleDomain.finiteSweep()
@@ -7159,12 +9152,15 @@ canvas {
         return candidates.sortedByDescending { kotlin.math.abs(it.y) }.take(count)
     }
 
+    /** Finds the [count] most prominent local maxima across the given range, on a grid of [step]. Maxima only — never troughs — and ranked by absolute value. */
     fun Fn.samplePeaks(count: Int, sampleDomain: ClosedRange<*>, step: Double = sampleDomain.toDomain().length / 256.0): List<Sample> =
         samplePeaks(count, sampleDomain.toDomain(), step)
 
+    /** The [RbfKernels] catalogue, re-exported so `RbfKernels.thinPlate` resolves inside `with(Functions)` without an import. */
     val RbfKernels: afield.stdlib.RbfKernels
         get() = afield.stdlib.RbfKernels
 
+    /** Builds an [afield.stdlib.RbfInterpolator] from inside a `Functions` scope, so `Sample` and `Fn` need no qualification. Solves its dense system eagerly — see that class for the sizing caveats. */
     fun RbfInterpolator(
         points: List<Sample>,
         kernel: RbfKernel,
@@ -7173,6 +9169,18 @@ canvas {
     ): afield.stdlib.RbfInterpolator =
         afield.stdlib.RbfInterpolator(points, kernel, smoothing, base)
 
+    /**
+     * Fits a smooth curve through scattered control points with radial basis functions — the tool for "make me a function
+     * that passes through these", where the points need not be evenly spaced or even sorted.
+     *
+     * With the default `smoothing = 0.0` the curve passes exactly through every point; a positive [smoothing] relaxes that
+     * in exchange for a calmer curve. If [base] is given the fit corrects *it* rather than starting from zero, so the base
+     * supplies the trend. The domain spans the control points (unioned with the base's).
+     *
+     * Two practical warnings. The fit is **solved eagerly** and costs the cube of the point count, so this is for tens of
+     * points, not thousands. And nothing constrains the curve outside the points' span — the default thin-plate kernel
+     * diverges there — so treat extrapolation as undefined. An empty point list returns [base], or the constant zero.
+     */
     fun rbf(points: List<Sample>, kernel: RbfKernel = RbfKernels.thinPlate, smoothing: Double = 0.0, base: Fn? = null): Fn {
         if (points.isEmpty()) return base ?: zero()
         val minX = points.minOf { it.x }
@@ -7191,28 +9199,53 @@ canvas {
         ) { x -> interp.eval(x) }
     }
 
+    /** [rbf] with the `r²` kernel — stiffer than thin-plate, and more prone to overshoot away from the data. */
     fun rbfQuadratic(points: List<Sample>, smoothing: Double = 0.0, base: Fn? = null): Fn =
         rbf(points, RbfKernels.quadratic, smoothing, base)
 
+    /** [rbf] with the `r³` kernel — the stiffest of the polynomial family, smooth through the points but wild beyond them. */
     fun rbfCubic(points: List<Sample>, smoothing: Double = 0.0, base: Fn? = null): Fn =
         rbf(points, RbfKernels.cubic, smoothing, base)
 
+    /** [rbf] with the thin-plate kernel — the same as the default, spelled out. The one to reach for first, since it has no shape parameter to mis-scale. */
     fun rbfThinPlate(points: List<Sample>, smoothing: Double = 0.0, base: Fn? = null): Fn =
         rbf(points, RbfKernels.thinPlate, smoothing, base)
 
+    /**
+     * Adds an RBF correction to this function so the result passes through [points] while otherwise following this
+     * function's shape — the "nudge this curve through my control points" operation.
+     *
+     * Only the *residual* against this function is fitted, so the further the points sit from it, the more the correction
+     * has to work. Same cost and extrapolation caveats as [rbf].
+     */
     fun Fn.rbf(points: List<Sample>, kernel: RbfKernel = RbfKernels.thinPlate, smoothing: Double = 0.0): Fn =
         rbf(points, kernel, smoothing, this)
 
+    /** Nudges this function through [points] with an RBF correction using the `r²` kernel. See [Fn.rbf]. */
     fun Fn.rbfQuadratic(points: List<Sample>, smoothing: Double = 0.0): Fn =
         rbf(points, RbfKernels.quadratic, smoothing, this)
 
+    /** Nudges this function through [points] with an RBF correction using the `r³` kernel. See [Fn.rbf]. */
     fun Fn.rbfCubic(points: List<Sample>, smoothing: Double = 0.0): Fn =
         rbf(points, RbfKernels.cubic, smoothing, this)
 
+    /** Nudges this function through [points] with a thin-plate RBF correction — the default kernel, spelled out. See [Fn.rbf]. */
     fun Fn.rbfThinPlate(points: List<Sample>, smoothing: Double = 0.0): Fn =
         rbf(points, RbfKernels.thinPlate, smoothing, this)
 
     // Granular synthesis
+    /**
+     * Granular resynthesis: chops the function into windowed grains of [grainSize] laid down every [spacing], and sums them
+     * back together.
+     *
+     * When spacing equals grain size and there is no jitter this is close to a no-op with a windowed ripple; the interesting
+     * territory is where they disagree — spacing shorter than the grain overlaps material, longer than it leaves gaps.
+     * [jitter] displaces each grain by a fraction of the spacing, hashed from [seed], so the texture is random-looking but
+     * reproducible. [overlap] is how many neighbouring grains either side are considered at each x, so it caps how much
+     * overlap can actually be heard: with the default of 1 only the immediate neighbours contribute, and heavy overlap needs
+     * a larger value. Grains are read from the source *at their own position*, so this reorders nothing by itself. Either a
+     * grain size or a spacing of zero passes the source through untouched.
+     */
     fun Fn.granular(
         grainSize: Fn = param(1.0),
         spacing: Fn = grainSize,
@@ -7268,6 +9301,10 @@ canvas {
         }
     }
 
+    /**
+     * Granular resynthesis into windowed grains of [grainSize] every [spacing], taking those and [jitter] as numbers or
+     * [Fn]s and throwing for anything else. [overlap] bounds how many neighbouring grains can be heard at once.
+     */
     fun Fn.granular(
         grainSize: Any,
         spacing: Any = grainSize,
@@ -7285,6 +9322,14 @@ canvas {
     )
 
     // Time-series style streaming filters
+    /**
+     * A **stateful** one-pole low-pass over the sampled function, as an infinite lazy sequence: `y += alpha * (x - y)`.
+     *
+     * This is the recursive filter the pure-function world cannot offer — which is why it returns a `Sequence` rather than an
+     * [Fn]: the result at each point depends on all the points before it, so it cannot be evaluated out of order or randomly
+     * seeked. [alpha] is clamped to 0..1, where 1 passes the signal straight through and small values smooth harder; it is a
+     * coefficient, not a cutoff frequency, and its meaning depends on [step]. Never terminates, so bound it with `take`.
+     */
     fun Fn.lowpassStream(alpha: Double, start: Double = domain.finiteSweep().min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
         var x = start
         var y = initial
@@ -7297,6 +9342,15 @@ canvas {
         }
     }
 
+    /**
+     * A **stateful** one-pole high-pass over the sampled function, as an infinite lazy sequence:
+     * `y = alpha * (y + x - xPrev)`.
+     *
+     * The recursive counterpart to [lowpassStream], and a `Sequence` for the same reason — each output depends on the whole
+     * history, so it cannot be sampled out of order. [alpha] is clamped to 0..1 and is a coefficient rather than a cutoff.
+     * Note that the previous input starts at zero regardless of [initial], so expect a transient in the first few values.
+     * Never terminates; bound it with `take`.
+     */
     fun Fn.highpassStream(alpha: Double, start: Double = domain.finiteSweep().min, step: Double = 1.0, initial: Double = 0.0): Sequence<Double> = sequence {
         var x = start
         var y = initial
@@ -7313,6 +9367,15 @@ canvas {
     }
 
     // Convenience builders for piecewise functions
+    /**
+     * Assembles a function from explicitly-placed pieces: at each x the **first** piece whose range contains it wins, and
+     * [default] covers everything no piece claims.
+     *
+     * First-match-wins means overlapping ranges are resolved by argument order, not by an error — handy for writing a
+     * general case first and then overriding a window of it, as long as the override comes earlier in the list. Ranges are
+     * inclusive at both ends, so at a shared boundary the earlier piece takes it. Nothing is faded between pieces; expect a
+     * discontinuity wherever neighbouring pieces disagree. The domain is the hull of the default and every piece.
+     */
     fun piecewise(default: Fn = zero(), vararg pieces: Pair<Domain, Fn>): Fn {
         val domain = pieces.fold(default.domain) { acc, (d, f) -> acc.union(d).union(f.domain) }
         return graphFn(

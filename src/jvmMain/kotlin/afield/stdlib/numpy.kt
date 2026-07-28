@@ -26,11 +26,30 @@ import java.util.zip.ZipInputStream
  * dtype kind ([NpyKind.OTHER]) throws. Element and byte counts must fit in an `Int`.
  */
 
+/**
+ * Which order to walk a multidimensional array in: `C` is row-major, last index varying fastest; `STORAGE`
+ * is however the file happens to hold it.
+ *
+ * They differ **only** for a Fortran-ordered array of rank 2 or more — for anything else the two are the
+ * same and the choice does not matter. `C` is the one that makes an array iterate the way the same array
+ * does in Python, and it is what the bulk conversions default to; `STORAGE` skips the remap and is cheaper
+ * when you do not care.
+ *
+ * Watch the defaults, which are **not** consistent across [NpyArray]: the per-element accessors
+ * ([NpyArray.getDouble], [NpyArray.linearIndex]) default to `STORAGE`, while the bulk conversions default to
+ * `C`. On Fortran-ordered data that means indexing and converting disagree unless you say which you want.
+ */
 enum class NpyLinearOrder {
     C,
     STORAGE
 }
 
+/**
+ * The byte order a dtype declares, from the `<`, `>`, `=` or `|` character in its descriptor.
+ *
+ * `NOT_APPLICABLE` is `|`, used for single-byte types where order is meaningless — bool, int8 — and is not
+ * an error. `NATIVE` is `=`, meaning whatever the writing machine used.
+ */
 enum class NpyByteOrder {
     LITTLE_ENDIAN,
     BIG_ENDIAN,
@@ -38,6 +57,12 @@ enum class NpyByteOrder {
     NOT_APPLICABLE
 }
 
+/**
+ * The family a dtype belongs to — what decides which conversion will accept it.
+ *
+ * `OTHER` is everything this reader does not decode: strings, datetimes, structured/record dtypes, objects.
+ * Having one is not an error — the array still reports its shape and its raw bytes — but converting it throws.
+ */
 enum class NpyKind {
     BOOL,
     SIGNED_INT,
@@ -47,19 +72,47 @@ enum class NpyKind {
     OTHER
 }
 
+/**
+ * A parsed NumPy dtype: the descriptor exactly as the file wrote it, plus the three things worth acting on —
+ * byte order, [kind], and bytes per element.
+ *
+ * [descriptor] is kept verbatim (`"<f8"`, `"|b1"`, `">c16"`) so an unsupported dtype can still be named in an
+ * error message rather than reduced to "unknown".
+ */
 data class NpyDType(
     val descriptor: String,
     val byteOrder: NpyByteOrder,
     val kind: NpyKind,
     val itemSize: Int
 ) {
+    /** Whether this dtype is one the reader can convert at all — anything but [NpyKind.OTHER]. */
     val isNumeric: Boolean
         get() = kind != NpyKind.OTHER
 }
 
+/**
+ * One array read out of a `.npy` file: the raw payload bytes, the shape, the Fortran-order flag and the
+ * dtype, with conversion to Kotlin arrays on demand.
+ *
+ * Deliberately not an ndarray — there is no arithmetic, no slicing and no writer. It is a decoder: get the
+ * numbers out with [asDoubleArray] and friends, or read single elements with [getDouble].
+ *
+ * The bulk conversions each require a matching [NpyKind] and throw otherwise, so a `float64` file will not
+ * quietly come back through [asBooleanArray]. They default to C order and remap Fortran-ordered data for
+ * you; the per-element accessors default to storage order instead, which is the inconsistency
+ * [NpyLinearOrder] warns about.
+ *
+ * @throws IllegalArgumentException on construction if the payload length does not match the shape and item
+ * size — i.e. a truncated or mis-described file is caught at read time rather than at first access
+ */
 class NpyArray internal constructor(
     shape: IntArray,
+    /** The dtype as declared in the file's header. */
     val dtype: NpyDType,
+    /**
+     * True when the payload is column-major, as NumPy writes for an array created with `order='F'` or produced
+     * by transposing. Only meaningful above rank 1.
+     */
     val fortranOrder: Boolean,
     private val rawBytes: ByteArray
 ) {
@@ -68,13 +121,17 @@ class NpyArray internal constructor(
     private val cStrides = computeStrides(dims, fortran = false)
     private val needsCOrderRemap = fortranOrder && dims.size > 1
 
+    /** The array's dimensions, outermost first — NumPy's `.shape`. Empty for a 0-d scalar array. */
     val shape: List<Int> = dims.toList()
 
+    /** How many dimensions there are — NumPy's `.ndim`. */
     val rank: Int
         get() = dims.size
 
+    /** Total number of elements, the product of [shape] — NumPy's `.size`. 1 for a 0-d array, not 0. */
     val elementCount: Int = elementCountOf(dims)
 
+    /** Size of the payload in bytes, `elementCount * dtype.itemSize` — NumPy's `.nbytes`. */
     val nbytes: Int
         get() = rawBytes.size
 
@@ -97,10 +154,22 @@ class NpyArray internal constructor(
         }
     }
 
+    /** A copy of the undecoded payload, exactly as it sat in the file. For handing to your own decoder. */
     fun copyBytes(): ByteArray = rawBytes.copyOf()
 
+    /**
+     * The flat offset of an element from its per-dimension indices, in **storage** order.
+     *
+     * The vararg form for readability: `a.linearIndex(2, 3)`. Note the storage default — on a Fortran-ordered
+     * array this is not the C-order offset; pass the order explicitly if that matters.
+     */
     fun linearIndex(vararg indices: Int): Int = linearIndex(indices, NpyLinearOrder.STORAGE)
 
+    /**
+     * The flat offset of an element from its indices, in the order you name. Defaults to **storage** order, not C.
+     *
+     * @throws IllegalArgumentException if the index count does not match [rank], or an index is out of bounds
+     */
     fun linearIndex(indices: IntArray, order: NpyLinearOrder = NpyLinearOrder.STORAGE): Int {
         val strides = when (order) {
             NpyLinearOrder.STORAGE -> storageStrides
@@ -109,8 +178,21 @@ class NpyArray internal constructor(
         return linearFromIndices(indices, strides, dims)
     }
 
+    /**
+     * One element as a `Double`, whatever its dtype — `a.getDouble(2, 3)`.
+     *
+     * The random-access read, for when you want a few values out of a large array rather than the whole thing.
+     * Integers and half floats are widened; a complex dtype yields its real part only. Indices are in
+     * **storage** order by default.
+     */
     fun getDouble(vararg indices: Int): Double = getDouble(indices, NpyLinearOrder.STORAGE)
 
+    /**
+     * One element as a `Double`, with the index order named. Defaults to **storage** order.
+     *
+     * Pass `NpyLinearOrder.C` to index a Fortran-ordered array the way you would in Python; the remap table is
+     * built once, lazily, and then reused.
+     */
     fun getDouble(indices: IntArray, order: NpyLinearOrder = NpyLinearOrder.STORAGE): Double {
         val linear = linearIndex(indices, order)
         val storageLinear = when {
@@ -120,6 +202,12 @@ class NpyArray internal constructor(
         return readElementAsDouble(storageLinear)
     }
 
+    /**
+     * The array as a `BooleanArray`, C order by default. **Only** for a `bool` dtype — anything else throws
+     * rather than being coerced, so a 0/1 integer array has to go through [asLongArray].
+     *
+     * Any non-zero byte is true, matching NumPy.
+     */
     fun asBooleanArray(order: NpyLinearOrder = NpyLinearOrder.C): BooleanArray {
         require(dtype.kind == NpyKind.BOOL) {
             "Cannot convert dtype=${dtype.descriptor} to BooleanArray"
@@ -130,6 +218,12 @@ class NpyArray internal constructor(
         return remapToCOrder(storage, order)
     }
 
+    /**
+     * The array as a `LongArray`, C order by default. For the signed integer dtypes and bool.
+     *
+     * A `uint64` whose values exceed `Long.MAX_VALUE` wraps to negative here — use [asULongArray] if the file
+     * might contain such values.
+     */
     fun asLongArray(order: NpyLinearOrder = NpyLinearOrder.C): LongArray {
         require(dtype.kind == NpyKind.BOOL || dtype.kind == NpyKind.SIGNED_INT || dtype.kind == NpyKind.UNSIGNED_INT) {
             "Cannot convert dtype=${dtype.descriptor} to LongArray"
@@ -141,6 +235,10 @@ class NpyArray internal constructor(
         return remapToCOrder(storage, order)
     }
 
+    /**
+     * The array as a `ULongArray`, C order by default — the unsigned counterpart of [asLongArray], and the one
+     * to use for a `uint64` that may run past the signed range.
+     */
     fun asULongArray(order: NpyLinearOrder = NpyLinearOrder.C): ULongArray {
         require(dtype.kind == NpyKind.BOOL || dtype.kind == NpyKind.SIGNED_INT || dtype.kind == NpyKind.UNSIGNED_INT) {
             "Cannot convert dtype=${dtype.descriptor} to ULongArray"
@@ -152,6 +250,13 @@ class NpyArray internal constructor(
         return remapToCOrder(storage, order)
     }
 
+    /**
+     * The array as a `DoubleArray`, C order by default — the workhorse conversion, and what most callers want.
+     *
+     * Accepts bool, every integer width and half/float/double, widening as needed. A **complex** dtype is
+     * refused rather than silently truncated to its real part; use [asComplexDoublePairs]. Note that a very
+     * large `int64` or `uint64` loses precision on the way into a `Double`, as always.
+     */
     fun asDoubleArray(order: NpyLinearOrder = NpyLinearOrder.C): DoubleArray {
         require(dtype.kind != NpyKind.COMPLEX) {
             "dtype=${dtype.descriptor} is complex; use asComplexDoublePairs()"
@@ -166,11 +271,25 @@ class NpyArray internal constructor(
         return remapToCOrder(storage, order)
     }
 
+    /**
+     * The array as a `FloatArray`, C order by default — [asDoubleArray] narrowed, for feeding a GPU buffer or
+     * Field's `Vec` types.
+     *
+     * Allocates the `DoubleArray` first and then narrows, so it costs twice the memory of the result at its peak,
+     * and values outside float range become infinities.
+     */
     fun asFloatArray(order: NpyLinearOrder = NpyLinearOrder.C): FloatArray {
         val doubles = asDoubleArray(order)
         return FloatArray(doubles.size) { i -> doubles[i].toFloat() }
     }
 
+    /**
+     * A complex array flattened to **interleaved real/imaginary pairs**: `2 * elementCount` doubles, real at even
+     * indices and imaginary at odd. C order by default.
+     *
+     * Only for `complex64` and `complex128`; anything else throws. Note the returned length is twice
+     * [elementCount], so index it as `out[i * 2]` and `out[i * 2 + 1]` rather than by element.
+     */
     fun asComplexDoublePairs(order: NpyLinearOrder = NpyLinearOrder.C): DoubleArray {
         require(dtype.kind == NpyKind.COMPLEX) {
             "Cannot convert dtype=${dtype.descriptor} to complex pairs"
@@ -289,6 +408,13 @@ class NpyArray internal constructor(
     }
 }
 
+/**
+ * The reader itself: `.npy` and `.npz` off disk, with the header parsing and dtype decoding behind it.
+ *
+ * Most callers want the top-level [npy] and [npz] functions instead — these are the same thing spelled out,
+ * for code that prefers an explicit namespace. Format versions 1 through 3 are accepted, and everything is
+ * read into memory at once, so a multi-gigabyte file is a multi-gigabyte allocation.
+ */
 object NumpyIO {
     private val magic = byteArrayOf(0x93.toByte(), 'N'.code.toByte(), 'U'.code.toByte(), 'M'.code.toByte(), 'P'.code.toByte(), 'Y'.code.toByte())
 
@@ -296,16 +422,33 @@ object NumpyIO {
     private val fortranRegex = Regex("""['"]fortran_order['"]\s*:\s*(True|False)""")
     private val shapeRegex = Regex("""['"]shape['"]\s*:\s*\(([^)]*)\)""")
 
+    /** Reads one `.npy` from a path. The path is used verbatim — it does **not** go through [FileManager]. */
     fun readNpy(path: String): NpyArray = readNpy(File(path))
 
+    /**
+     * Reads one `.npy` file into an [NpyArray].
+     *
+     * @throws IllegalArgumentException on a bad magic header, an unsupported format version, an undecodable dtype,
+     * or a payload whose length disagrees with the declared shape
+     */
     fun readNpy(file: File): NpyArray {
         file.inputStream().buffered().use { input ->
             return readNpy(input, file.absolutePath)
         }
     }
 
+    /** Reads a `.npz` archive from a path, keyed by member name with the `.npy` suffix removed. */
     fun readNpz(path: String): LinkedHashMap<String, NpyArray> = readNpz(File(path))
 
+    /**
+     * Reads every `.npy` member of a `.npz` archive, keyed by member name **without** the `.npy` suffix, in the
+     * order the zip stores them.
+     *
+     * Non-`.npy` members and directories are skipped silently, so an archive carrying extra files still reads. An
+     * archive with **no** `.npy` members throws rather than returning empty, and so does a duplicate key.
+     *
+     * Every member is decompressed and held in memory at once.
+     */
     fun readNpz(file: File): LinkedHashMap<String, NpyArray> {
         val out = linkedMapOf<String, NpyArray>()
 
@@ -443,12 +586,27 @@ object NumpyIO {
     }
 }
 
+/**
+ * Reads a `.npy` file — `npy("data.npy").asDoubleArray()` is the whole idiom.
+ *
+ * The path is passed straight to `File` and is **not** resolved through [FileManager], so a bare relative name is
+ * relative to the JVM's working directory rather than the document. Use `"data.npy".file` if you want Field's
+ * resolution.
+ */
 fun npy(path: String): NpyArray = NumpyIO.readNpy(path)
 
+/** Reads a `.npy` from a `File` — the overload to pair with `"data.npy".file`. */
 fun npy(file: File): NpyArray = NumpyIO.readNpy(file)
 
+/**
+ * Reads a `.npz` archive into a map of member name to array, preserving the archive's own order.
+ *
+ * Keys have the `.npy` suffix stripped, so `np.savez(f, xs=..., ys=...)` gives you `"xs"` and `"ys"`. Same
+ * working-directory caveat as [npy].
+ */
 fun npz(path: String): LinkedHashMap<String, NpyArray> = NumpyIO.readNpz(path)
 
+/** Reads a `.npz` archive from a `File`, keyed by member name with `.npy` stripped. */
 fun npz(file: File): LinkedHashMap<String, NpyArray> = NumpyIO.readNpz(file)
 
 private data class ParsedHeader(

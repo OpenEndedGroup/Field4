@@ -48,13 +48,52 @@ import kotlin.math.max
  * plot of the four output channels with per-channel min/median/max; [StackSLSweep.h] is that HTML.
  */
 
+/**
+ * This box's StackSL source text, the property every helper here defaults to. Inherited, so a box
+ * that has none falls back to the nearest ancestor that does — a parent can hold the program and its
+ * children compile variations of it.
+ *
+ * The type is nullable, so a box with no source anywhere up the graph reads `null` rather than
+ * throwing; the helpers below turn that into an empty program. Writing is always *local*: it
+ * shadows the ancestor's source for this box and everything below it instead of editing theirs.
+ */
 var Box.stackSL by Inheritance<String?>()
 
+/**
+ * A GLSL-safe identifier prefix unique to this box — `stacksl_` plus the first 12 characters of the
+ * box id with `-` turned into `_` (`stacksl_box` for a box with a blank id).
+ *
+ * This is the default `prefix` of [compileStackSL] and [stackSLToGlsl], and it is what keeps two
+ * boxes' generated functions from colliding when their GLSL ends up in one shader. Only 12
+ * characters of the id survive, so it is unique by convention rather than by construction.
+ */
 fun Box.stackSLPrefix(): String {
     val base = id.take(12).replace('-', '_').ifBlank { "box" }
     return "stacksl_$base"
 }
 
+/**
+ * Compile this box's StackSL to GLSL and hand back the whole result — generated source,
+ * diagnostics and the static analysis (stack depths, required helpers and samplers, dangling wires).
+ * This is the one to call when you care whether the program is actually valid.
+ *
+ * Pure host-side work: no device, no dispatch, nothing drawn. It does not throw on a bad program
+ * either — errors arrive as `ERROR` diagnostics, `result.ok` goes false, and `result.glsl` is still
+ * populated with whatever the compiler managed, so check `ok` before you use it.
+ *
+ * @param source defaults to this box's [stackSL] (or the empty program when nothing up the graph has one)
+ * @param prefix identifier prefix for every generated name, defaulting to [stackSLPrefix]
+ * @param entrypoint name of the StackSL definition to treat as the root; blank means `main`
+ * @param sampleTextures names of the textures `sample`/`gather` may read, in binding order
+ * @param tolerant downgrade the hard errors — unknown word, unknown modifier, out-of-range sampler
+ *   index, recursive definition — to warnings and emit a noop in their place, so half-typed source
+ *   still compiles while someone is editing
+ * @param declareSamplers emit the `uniform sampler2D` declarations; turn it off when the host shader
+ *   already declares them
+ * @param externalizeConstants hoist every numeric literal into a `<prefix>_wires` float array plus an
+ *   init function, recording each in `analysis.danglingWires` — how a compiled function gets retuned
+ *   or evolved without going back through the compiler
+ */
 fun Box.compileStackSL(
     source: String = stackSL ?: "",
     prefix: String = stackSLPrefix(),
@@ -76,6 +115,14 @@ fun Box.compileStackSL(
         )
     )
 
+/**
+ * [compileStackSL] with the diagnostics thrown away — just the GLSL, for pasting into a shader
+ * template or a `stack.auto` slot. Same defaults, same box-derived [stackSLPrefix].
+ *
+ * Because the diagnostics are dropped, a program with real errors comes back as GLSL that will fail
+ * at *shader* compile time somewhere else entirely, with no hint of the StackSL mistake behind it.
+ * When the source is anything but known-good, go through [compileStackSL] and check `ok`.
+ */
 fun Box.stackSLToGlsl(
     source: String = stackSL ?: "",
     prefix: String = stackSLPrefix(),
@@ -95,6 +142,23 @@ fun Box.stackSLToGlsl(
         externalizeConstants = externalizeConstants
     )
 
+/**
+ * Run one StackSL program on one input vector and get the `vec4` it leaves on the stack — the
+ * "what does this word actually do" probe, and how the StackSL examples check their arithmetic.
+ *
+ * [input] follows the StackSL calling convention `vec4(x, y, z_or_hash, time)`: `uv` reads `.xy`,
+ * `hash` reads `.z`, `time` reads `.w`. Evaluation is on the **GPU**, not emulated on the CPU, so
+ * this needs a live graphics context — [renderer] defaults to `fromContext()`, which searches the
+ * calling box and then its ancestors and throws `IllegalArgumentException` when there is none.
+ *
+ * Not a cheap call. Each invocation writes a host-visible buffer, submits a one-shot compute
+ * dispatch and blocks on a fence: a full CPU→GPU→CPU round trip for a single sample. Use [slSweep]
+ * when you want many. The compiled shader is cached per `Renderer`, but only for **one** source at a
+ * time, so alternating between two programs recompiles on every call.
+ *
+ * Throws `IllegalArgumentException` if the program has an `ERROR` diagnostic, or if it needs a
+ * texture sampler — neither this nor [slSweep] binds any texture, so `sample`/`gather` are out.
+ */
 fun slEval(
     source: String,
     input: Vector4fc,
@@ -102,6 +166,15 @@ fun slEval(
 ): Vec4 =
     StackSLEvalCache.forRenderer(renderer).run(source, listOf(input)).first()
 
+/**
+ * Compile a StackSL string to GLSL with no box and no device in sight — the standalone twin of
+ * [Box.stackSLToGlsl], for looking at the code a program generates.
+ *
+ * The only real difference is the default [prefix]: a flat `"stacksl"` rather than a per-box
+ * [Box.stackSLPrefix], so two independently-compiled programs will happily collide if you paste them
+ * into the same shader. Diagnostics are discarded here too, so an erroneous program still returns a
+ * string; use [Box.compileStackSL] or `StackSLCompiler.compile` when you need to know.
+ */
 fun slGlsl(
     source: String,
     prefix: String = "stacksl",
@@ -121,6 +194,18 @@ fun slGlsl(
         externalizeConstants = externalizeConstants
     )
 
+/**
+ * Evaluate a StackSL program across a line of inputs and return the whole response as a plottable
+ * [StackSLSweep] — the honest way to see what a word does to a range rather than to one number.
+ *
+ * The inputs are [samples] vectors interpolated linearly from `range.first` to `range.second`,
+ * **both endpoints included** (`samples = 1` evaluates the start only, and `samples` must be
+ * positive). Each is a `vec4(x, y, z_or_hash, time)` as in [slEval].
+ *
+ * All the samples go through a single compute dispatch, so this costs roughly one [slEval] no matter
+ * how many samples you ask for — always prefer it to a loop. Same GPU requirement, same caching, and
+ * the same refusal to run a program that needs a texture sampler.
+ */
 fun slSweep(
     source: String,
     range: Pair<Vector4fc, Vector4fc>,
@@ -139,17 +224,37 @@ fun slSweep(
     )
 }
 
+/**
+ * What [slSweep] measured: the inputs it used and the `vec4` the program returned for each, kept
+ * side by side so the response can be plotted or asserted on.
+ *
+ * It is a `ToHTML`, so evaluating one in a box draws the four output channels as an inline SVG plot
+ * with per-channel avg/min/median/max and markers on the extremes — see [toHTML] and [h]. The values
+ * are a plain snapshot: nothing here re-runs on the GPU, and nothing tracks later edits to [source].
+ */
 data class StackSLSweep(
+    /** The StackSL program that was evaluated, exactly as it was passed in. */
     val source: String,
+    /** The first input vector of the sweep — `range.first` as given to [slSweep]. */
     val start: Vec4,
+    /** The last input vector of the sweep; it *is* evaluated, the range being closed at both ends. */
     val end: Vec4,
+    /** Every input vector actually dispatched, in order, from [start] to [end] inclusive. */
     val inputs: List<Vec4>,
+    /** The program's output for each entry of [inputs], index for index. May contain NaN or infinity. */
     val values: List<Vec4>
 ) : ToHTML {
+    /** How many samples the sweep holds — the `samples` [slSweep] was asked for. */
     val size: Int get() = values.size
 
+    /** The output for sample [index]; throws `IndexOutOfBoundsException` past [size], as a list does. */
     operator fun get(index: Int): Vec4 = values[index]
 
+    /**
+     * One output channel across the whole sweep, as a list ready for a plot: `0` is x/r, `1` y/g, `2`
+     * z/b, `3` w/a. Any other index throws `IllegalArgumentException`. Non-finite samples are handed
+     * back as they are — it is the plot, not this, that filters them.
+     */
     fun channel(channel: Int): List<Float> = values.map {
         when (channel) {
             0 -> it.x
@@ -160,12 +265,23 @@ data class StackSLSweep(
         }
     }
 
+    /**
+     * The sweep drawn as a self-contained SVG plot: one polyline per output channel, dots and
+     * guide lines on each channel's extremes, the first and last input/output pair, and a
+     * per-channel avg/min/median/max table.
+     *
+     * The vertical scale is fitted to the data (plus 8%), not fixed to `0..1`, and non-finite samples
+     * are dropped from both the lines and the statistics — so a NaN run shows as a gap and an
+     * all-NaN channel reports NaN rather than vanishing.
+     */
     override fun toHTML(): String = stackSLSweepHtml(this)
 
+    /** A one-line summary — sample count plus the first and last output — for logs and assertions. */
     override fun toString(): String =
         "StackSLSweep(source=\"$source\", samples=$size, first=${values.firstOrNull()}, last=${values.lastOrNull()})"
 }
 
+/** The sweep's [StackSLSweep.toHTML] plot, for `display()` and anywhere else HTML is wanted. */
 val StackSLSweep.h: String
     get() = toHTML()
 

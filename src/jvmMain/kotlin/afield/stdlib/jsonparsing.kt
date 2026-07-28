@@ -24,17 +24,49 @@ import afield.macros.MacroRegistry.callRewrite
  * objects are not supported.
  */
 
+/**
+ * A node of a parsed JSON document — one of [JObject], [JArray], [JString], [JNumber], [JBool] or [JNull].
+ *
+ * Sealed, so a `when` over it is exhaustive without an `else`, which is the pleasant way to walk a document
+ * whose shape you do not know ahead of time. When you *do* know the shape, the `jsonParser` macro generates a
+ * typed data class instead and you never touch these.
+ */
 sealed interface JValue
+
+/** A JSON object. Field order is whatever the [Map] preserves, and a duplicate key keeps the last occurrence. */
 data class JObject(val fields: Map<String, JValue>) : JValue
+/** A JSON array, in document order. Mixed element types are fine — each item is just a [JValue]. */
 data class JArray(val items: List<JValue>) : JValue
+/** A JSON string, with escapes already decoded — so [value] is the real text, not the source form. */
 data class JString(val value: String) : JValue
+/**
+ * A JSON number, kept as **the raw digits** rather than converted.
+ *
+ * Deliberate: converting eagerly would decide for you between `Int`, `Long` and `Double` and could lose
+ * precision on a large integer or a high-precision decimal before you ever saw it. Call `raw.toDouble()`,
+ * `raw.toLong()` or `BigDecimal(raw)` according to what the field actually means.
+ */
 data class JNumber(val raw: String) : JValue
+/** A JSON `true` or `false`. */
 data class JBool(val value: Boolean) : JValue
+/** JSON `null`. A singleton, so `value === JNull` works as well as `is JNull`. */
 data object JNull : JValue
 
+/**
+ * Thrown by [parseJson] on malformed input, with the **character offset** in the message.
+ *
+ * The offset is what makes it useful on a long document — it points at where the reader gave up, which is
+ * normally at or just after the mistake.
+ */
 class JsonParseException(message: String) : RuntimeException(message)
 
 
+/**
+ * Registers the `jsonParser<Name>("schema")` macro. Called by Field during macro registration, not by you.
+ *
+ * @throws afield.macros.MacroRegistry.MacroExpansionProblem at expansion time if the call site does not have
+ * exactly a type argument and a schema string
+ */
 @RunsAt(macroRegistration)
 fun registerJsonParsingMacros() {
 
@@ -219,10 +251,42 @@ private class JsonReader(private val src: String) {
     }
 }
 
+/**
+ * Parses JSON text into a [JValue] tree. No external library, no reflection, no schema needed.
+ *
+ * The one to use when a document's shape is unknown or irregular; when it is known and regular, the
+ * `jsonParser<Name>("schema")` macro gives you a typed data class instead and is much less work to read.
+ *
+ * Numbers arrive as [JNumber] holding their raw digits rather than as a `Double`, so nothing is rounded before
+ * you choose a type.
+ *
+ * @throws JsonParseException on malformed input, naming the character offset
+ */
 fun parseJson(src: String): JValue = JsonReader(src).parse()
 
+/**
+ * Turns a terse schema string into Kotlin source for a data class with a `fromString` companion — the code
+ * generator behind the `jsonParser` macro.
+ *
+ * The schema language: `f`, `i` and `s` are the leaves (float, int, string); `[x...]` is a list of `x`;
+ * `[a, b]` is a `Pair`, and 2, 3 or 4 floats collapse to `Vec2`/`Vec3`/`Vec4` instead; and a trailing `...` in
+ * an object permits unknown JSON fields rather than rejecting the document. So
+ * `{name: s, at: [f, f], tags: [s...], ...}` generates a class with a `String`, a `Vec2`, a `List<String>` and
+ * tolerance for anything else the file carries.
+ *
+ * **Inline nested objects are not supported** — a field whose value is another `{…}` will not generate.
+ */
 object JsonSchemaGen {
 
+    /**
+     * Generates the Kotlin source for a data class named [className] that parses JSON matching [schemaText], with a
+     * `fromString` companion function.
+     *
+     * Returns source *text* — it compiles nothing. The `jsonParser` macro is what puts the result into a box's
+     * preamble; call this directly only when you want to read the code that would be generated.
+     *
+     * @throws IllegalArgumentException if the top-level schema is not an object
+     */
     fun generateSource(
         className: String,
         schemaText: String

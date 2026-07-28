@@ -25,6 +25,18 @@ import kotlin.random.Random
 
 typealias Matrix = Array<DoubleArray>
 
+/**
+ * The three sigma-point tuning constants of the unscented transform, plus the numerical fudge factor.
+ *
+ * You can usually leave these alone. [alpha] sets how far the sigma points spread from the mean — small
+ * keeps them close, which is the right instinct for a strongly nonlinear model; [kappa] is the secondary
+ * scaling, conventionally 0; [beta] weights the mean point's contribution to the covariance, and 2.0 is
+ * optimal for a genuinely Gaussian state, which is the usual assumption. [jitter] is the diagonal nudge
+ * added when a Cholesky factorisation fails, not a modelling parameter.
+ *
+ * @throws IllegalArgumentException unless `alpha > 0`, `beta >= 0` and `jitter > 0`. Note that `kappa` is
+ * **not** checked, and a sufficiently negative one makes the sigma-point scaling degenerate.
+ */
 data class UKFOptions(
     val alpha: Double = 0.5,
     val beta: Double = 2.0,
@@ -38,6 +50,18 @@ data class UKFOptions(
     }
 }
 
+/**
+ * How hard to jiggle particles apart immediately after resampling — the cure for a filter that has quietly
+ * collapsed onto a handful of identical clones.
+ *
+ * Systematic resampling copies good particles, so straight after it several particles are numerically
+ * *identical* and will stay identical forever, wasting the ensemble. Roughening adds a small independent
+ * Gaussian nudge to each resampled mean, scaled from the spread the particles actually have and shrinking
+ * as the particle count grows (`factor · stateRange · N^(-1/dim)`), so a big ensemble is perturbed less than
+ * a small one.
+ *
+ * @throws IllegalArgumentException unless `factor >= 0` and `minimumStdDev >= 0`
+ */
 data class RougheningOptions(
     /**
      * Usually something small, such as 0.02 to 0.20.
@@ -61,17 +85,43 @@ data class RougheningOptions(
     }
 }
 
+/**
+ * An unscented Kalman filter: it tracks a quantity you cannot measure directly, keeping a best guess [x] and
+ * an honest account [p] of how unsure it is.
+ *
+ * Unlike a plain Kalman filter it needs no derivatives — you hand [predict] and [update] ordinary lambdas
+ * for "how does the state evolve" and "what would I measure if the state were this", and it probes them at a
+ * spread of sigma points to work out the rest. That makes it the right tool when the model is nonlinear but
+ * still roughly unimodal; when it is genuinely multi-modal, wrap it in a [UKFParticleFilter].
+ *
+ * The cycle is [predict] once per time step, then [update] (or [updateWithLikelihood]) whenever a measurement
+ * arrives — predicting without updating is fine and simply widens [p]. Both mutate the filter in place; [x]
+ * and [p] are read-only from outside, and [stateCopy]/[covarianceCopy] are how you take a snapshot that will
+ * not change under you.
+ *
+ * **State dimension is limited to 1..3**, checked on construction: the determinant helper in this file only
+ * covers those sizes. The initial covariance is copied, so the array you pass is not retained.
+ *
+ * @throws IllegalArgumentException if the state dimension is outside 1..3, or the covariance is not square
+ * and of that dimension
+ */
 class UnscentedKalmanFilter(
     initialState: DoubleArray,
     initialCovariance: Matrix,
     val options: UKFOptions = UKFOptions()
 ) {
+    /** The current best estimate of the state. Replaced wholesale by each [predict] and [update]. */
     var x: DoubleArray = initialState.clone()
         private set
 
+    /**
+     * The current state covariance — how unsure the filter is, and in which directions the uncertainty is
+     * correlated. Grows on [predict], shrinks on [update].
+     */
     var p: Matrix = copy(initialCovariance)
         private set
 
+    /** The state dimension, fixed at construction and always in 1..3. */
     val dim: Int get() = x.size
 
     init {
@@ -79,6 +129,21 @@ class UnscentedKalmanFilter(
         validateSquare(initialCovariance, dim, "initialCovariance")
     }
 
+    /**
+     * Advances the estimate one time step through [transition], widening the covariance by [processNoise].
+     *
+     * [transition] is called once per sigma point (`2·dim + 1` times) and **must return a fresh array of the
+     * same dimension** — it is handed a clone, so mutating its argument is harmless, but returning the wrong
+     * size throws. It must be a pure function of the state: it is evaluated several times per step and the
+     * order is not something to depend on.
+     *
+     * [processNoise] is how much you believe the world changes on its own between steps, in state units
+     * squared. Too small and the filter becomes overconfident and stops believing new measurements; too large
+     * and it chases noise. It is the main thing to tune.
+     *
+     * @throws IllegalArgumentException if [processNoise] is not `dim × dim`, or [transition] returns the wrong
+     * dimension
+     */
     fun predict(
         processNoise: Matrix,
         transition: (DoubleArray) -> DoubleArray
@@ -108,6 +173,20 @@ class UnscentedKalmanFilter(
         p = symmetrize(pPred)
     }
 
+    /**
+     * Folds one measurement into the estimate, pulling [x] toward what was observed and shrinking [p].
+     *
+     * [observe] answers "if the state were this, what would the sensor read" — it is called once per sigma
+     * point and must return an array of the measurement's dimension, which need not match the state's. The
+     * measurement dimension is also limited to 1..3.
+     *
+     * [measurementNoise] is how much you distrust the sensor, in measurement units squared: raise it and the
+     * filter leans on its model, lower it and it follows the data. [updateWithLikelihood] is this same call
+     * with the log likelihood returned, which is what a particle filter needs.
+     *
+     * @throws IllegalArgumentException if the measurement dimension is outside 1..3, [measurementNoise] is not
+     * square of that dimension, or [observe] returns the wrong dimension
+     */
     fun update(
         measurement: DoubleArray,
         measurementNoise: Matrix,
@@ -194,8 +273,10 @@ class UnscentedKalmanFilter(
         }
     }
 
+    /** A snapshot of the current estimate that will not change when the filter next steps. */
     fun stateCopy(): DoubleArray = x.clone()
 
+    /** A snapshot of the current covariance, deep-copied row by row. */
     fun covarianceCopy(): Matrix = copy(p)
 
     private fun sigmaPoints(mean: DoubleArray, covariance: Matrix): List<DoubleArray> {
@@ -254,16 +335,48 @@ class UnscentedKalmanFilter(
     }
 }
 
+/**
+ * One hypothesis in a [UKFParticleFilter]: a whole [UnscentedKalmanFilter] for the continuous part of the
+ * state, a value of your own type [H] for the discrete part, and how much the filter currently believes it.
+ *
+ * The split is the point. Put in [hypothesis] what a Kalman filter cannot represent — which target this
+ * measurement belongs to, which of three gaits the walker is in, whether the sensor is currently occluded —
+ * and leave the smooth numbers to [ukf]. Each particle carries its own filter, so the estimate is a mixture
+ * of Gaussians rather than one.
+ *
+ * [logWeight] is a **log** weight, so weights multiply by addition and never underflow to zero the way a long
+ * run of raw likelihoods would; the filter normalises them, so only differences between particles matter, not
+ * the absolute value. Both it and [hypothesis] are mutable and are updated in place as the filter runs.
+ */
 data class UKFParticle<H>(
     val ukf: UnscentedKalmanFilter,
     var hypothesis: H,
     var logWeight: Double
 )
 
+/**
+ * A particle filter whose particles each carry an [UnscentedKalmanFilter] — for tracking something whose
+ * state is partly smooth and partly a discrete guess that might be wrong.
+ *
+ * A plain UKF has exactly one answer and cannot hold "either the target turned left, or it stopped". This can:
+ * each particle pursues its own hypothesis, [updateWithLikelihood] scores every one against the same
+ * measurement, and the ones whose story fits keep their weight while the others fade. Call [predict] then an
+ * update each step, and [resampleIfNeeded] after, or the whole ensemble's weight ends up on one particle.
+ *
+ * [copyHypothesis] is how a hypothesis is duplicated at resampling time; it defaults to handing back the same
+ * reference, which is correct for an immutable [H] and **quietly wrong for a mutable one** — two particles
+ * would then share and clobber each other's hypothesis. Pass a real copy function if [H] is mutable.
+ *
+ * @throws IllegalArgumentException if constructed with no particles
+ */
 class UKFParticleFilter<H>(
     initialParticles: List<UKFParticle<H>>,
     private val copyHypothesis: (H) -> H = { it }
 ) {
+    /**
+     * The live ensemble, in no meaningful order. Read it to summarise the estimate; the list itself is replaced
+     * by resampling, and the particles in it are mutated in place by every step.
+     */
     var particles: MutableList<UKFParticle<H>> = initialParticles.toMutableList()
         private set
 
@@ -272,8 +385,20 @@ class UKFParticleFilter<H>(
         normalizeLogWeights()
     }
 
+    /** How many particles the ensemble holds. Constant unless you resample, which preserves it. */
     val size: Int get() = particles.size
 
+    /**
+     * Advances every particle one time step, each through its own hypothesis.
+     *
+     * [transition] and [processNoise] both see the particle's hypothesis, so different particles can genuinely
+     * follow different dynamics — that is the whole reason to use this over a single UKF. Weights are untouched
+     * here; prediction alone cannot tell you which hypothesis is right.
+     *
+     * [evolveHypothesis], if given, runs **before** the state step and is where a discrete hypothesis changes —
+     * a mode switching, an age counter ticking, a random jump. Return a new value rather than mutating, since
+     * a mutable hypothesis may be shared with other particles after resampling.
+     */
     fun predict(
         processNoise: (UKFParticle<H>) -> Matrix,
         transition: (hypothesis: H, state: DoubleArray) -> DoubleArray,
@@ -292,6 +417,17 @@ class UKFParticleFilter<H>(
         }
     }
 
+    /**
+     * Scores every particle against the same measurement: each one's own UKF absorbs it, and its log weight
+     * gains that particle's log likelihood — so hypotheses that predicted the measurement well gain ground on
+     * those that did not.
+     *
+     * Both lambdas receive the particle's [UKFParticle.hypothesis], which is the whole point: a particle
+     * believing the target is occluded can answer with a different observation model, or a wider noise, than one
+     * that does not. Weights are renormalised before returning, so they always sum to 1 in the linear domain.
+     *
+     * This is where the ensemble degenerates over time — follow it with [resampleIfNeeded].
+     */
     fun update(
         measurement: DoubleArray,
         measurementNoise: (UKFParticle<H>) -> Matrix,
@@ -311,6 +447,13 @@ class UKFParticleFilter<H>(
         normalizeLogWeights()
     }
 
+    /**
+     * The particles' weights as ordinary probabilities summing to 1, in the same order as [particles] — for
+     * taking a weighted mean of the ensemble, or for drawing it.
+     *
+     * Renormalises as a side effect. Each call allocates and exponentiates, so hold the result rather than
+     * calling it per particle.
+     */
     fun weights(): DoubleArray {
         normalizeLogWeights()
         return DoubleArray(particles.size) { i ->
@@ -318,6 +461,13 @@ class UKFParticleFilter<H>(
         }
     }
 
+    /**
+     * How many particles are *effectively* still contributing: `1 / Σw²`, which is the particle count when the
+     * weights are equal and approaches 1 as one particle takes over.
+     *
+     * The health reading for the filter. Watch it fall after a few updates — that fall is why resampling exists,
+     * and [resampleIfNeeded] compares exactly this against a fraction of the population.
+     */
     fun effectiveSampleSize(): Double {
         val w = weights()
 
@@ -330,8 +480,17 @@ class UKFParticleFilter<H>(
     }
 
     /**
-     * Returns true if resampling happened. If roughening is supplied, roughening is applied
-     * immediately after resampling, using the pre-resampling state spread as the scale reference.
+     * Resamples only if the ensemble has degenerated — [effectiveSampleSize] below [thresholdFraction] of the
+     * particle count — and reports whether it did.
+     *
+     * The call to make once per step after updating. Resampling every step throws away diversity for no reason;
+     * never resampling ends with all the weight on one particle. The 0.5 default means "when half the ensemble
+     * has effectively stopped counting".
+     *
+     * Supply [roughening] and the resampled particles are immediately jiggled apart, scaled from the spread the
+     * particles had **before** resampling — without it, duplicated particles stay numerically identical forever.
+     *
+     * @throws IllegalArgumentException if [thresholdFraction] is outside `0..1`
      */
     fun resampleIfNeeded(
         thresholdFraction: Double = 0.5,
@@ -349,6 +508,17 @@ class UKFParticleFilter<H>(
         return false
     }
 
+    /**
+     * Resamples unconditionally by systematic resampling: one uniform draw, then `n` evenly spaced strides
+     * through the cumulative weights, so a particle with weight `w` gets about `n·w` copies.
+     *
+     * Lower variance than drawing `n` independent samples, and only one random number per resample.
+     * [resampleIfNeeded] is normally what you want; call this directly when you have your own trigger.
+     *
+     * Every surviving particle gets a **fresh** [UnscentedKalmanFilter] built from a copy of the source's state
+     * and covariance, and its hypothesis goes through `copyHypothesis` — so a mutable [H] with the default
+     * identity copier ends up shared between clones. All weights are reset to uniform.
+     */
     fun resampleSystematic(
         random: Random = Random.Default,
         roughening: RougheningOptions? = null
@@ -418,6 +588,15 @@ class UKFParticleFilter<H>(
         }
     }
 
+    /**
+     * The filter's single best answer: every particle's state mean, averaged by weight.
+     *
+     * Worth remembering what this throws away — the ensemble is a *mixture*, and if two hypotheses disagree the
+     * weighted mean sits between them, at a value no particle believes. Check [effectiveSampleSize] or look at
+     * the spread in [estimateCovariance] before treating this as the answer.
+     *
+     * Assumes every particle's UKF has the same state dimension, taking it from the first.
+     */
     fun estimateMean(): DoubleArray {
         val w = weights()
         val dim = particles[0].ukf.dim
@@ -434,7 +613,12 @@ class UKFParticleFilter<H>(
     }
 
     /**
-     * Mixture covariance: weighted average of each UKF covariance plus covariance of UKF means.
+     * The uncertainty of the whole ensemble: the weighted average of the particles' own covariances **plus** the
+     * scatter of their means about [estimateMean].
+     *
+     * That second term is what makes this honest — it is how disagreement *between* hypotheses shows up as
+     * uncertainty rather than vanishing. A filter whose particles are individually confident but point in
+     * different directions reports a large covariance here, which is exactly right.
      */
     fun estimateCovariance(): Matrix {
         val w = weights()
