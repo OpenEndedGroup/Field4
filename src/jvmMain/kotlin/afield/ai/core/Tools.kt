@@ -74,7 +74,7 @@ data class AttachmentResponse(
     val relatedExamples: List<String> = emptyList()
 )
 
-/** Kotlin-only tools -------------------------------------------------------- */
+// Kotlin-only tools ---------------------------------------------------------
 
 /** Tool: list all definitions visible from the current Kotlin file (incl shaders). */
 @JsonClassDescription("List all definitions visible from the current Kotlin file, including associated shaders.")

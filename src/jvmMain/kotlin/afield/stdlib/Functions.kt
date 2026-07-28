@@ -498,11 +498,12 @@ object Functions {
      * negative excursion to zero; full-wave reflects it (|x|). */
     enum class RectifyMode { HALF, FULL }
 
-    /** Common normalized-time shapes for procedural motion and value tweening. */
     /**
-     * Named motion curves for [tween], [Fn.ease], and other alpha-shaping helpers.
-     * The `_IN`/`_OUT`/`_IN_OUT` families follow the conventional Penner easings so
-     * procedural animation reads the same here as in other motion toolkits.
+     * Named motion curves for [tween], [Fn.ease], and other alpha-shaping helpers — the common
+     * normalized-time shapes for procedural motion and value tweening.
+     *
+     * The `_IN`/`_OUT`/`_IN_OUT` families follow the conventional Penner easings so procedural
+     * animation reads the same here as in other motion toolkits.
      */
     enum class Easing {
         LINEAR,
@@ -9966,14 +9967,6 @@ canvas {
     }
 
     /**
-     * Resample a [Fn] at uniform intervals and return a new [Fn] backed by
-     * the sample table with the given [interpolation] mode.
-     *
-     * @param source       the function to resample
-     * @param sampleCount  number of uniform samples
-     * @param interpolation how to reconstruct between samples
-     */
-    /**
      * Produces a [Fn] that exactly matches the keyframe editor's native evaluation
      * (hold / linear / rational-bezier), by constructing a temporary
      * [KeyframeEvaluator] and sampling it.
@@ -10008,6 +10001,19 @@ canvas {
             .withName("keyframe-editor")
     }
 
+    /**
+     * Samples [source] at [sampleCount] uniform points across its own domain and returns a table-backed
+     * [Fn] that reconstructs between them with [interpolation].
+     *
+     * The point is cost, not fidelity: a deep graph re-evaluates its whole stack on every `eval`, and
+     * one pass through this collapses it to an array lookup. It is therefore lossy by construction —
+     * anything finer than the sample spacing is gone, and a source whose domain is empty or unbounded
+     * is returned untouched because there is nothing finite to walk. Endpoints are included.
+     *
+     * @param source the function to resample
+     * @param sampleCount number of uniform samples
+     * @param interpolation how to reconstruct between samples
+     */
     fun resample(
         source: Fn,
         sampleCount: Int = 256,

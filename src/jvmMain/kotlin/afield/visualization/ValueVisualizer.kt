@@ -719,21 +719,6 @@ object ValueVisualizer {
     }
 
     /**
-     * Renders an [Functions.Fn] as its usual reflective field tree, with a small,
-     * safe line plot appended below — the same spirit as [formatFLine]'s thumbnail.
-     *
-     * The reflective tree (domain / evalFn / graph) is kept verbatim via
-     * [formatDataClass]; the plot is a bonus that never replaces it. Rendering the
-     * plot is wrapped in [runCatching] so a misbehaving `evalFn` can only cost us
-     * the thumbnail, never the whole value display.
-     */
-    /**
-     * A [Functions.Domain] is fully described by its bounds, so render it compactly rather than
-     * as an 8-field reflective tree (center/length/isFinite/… are all redundant): an unbounded
-     * domain is just `Domain { ∞ }`, a point is `Domain { x }`, everything else `Domain { a..b }`
-     * (with ±∞ for a half-open end).
-     */
-    /**
      * Concise render of a [afield.stdlib.FnFitRun]: the RMSE it started at and landed on, the
      * budget it spent, and a sparkline of the whole loss trajectory — instead of dumping the
      * (often hundreds long) `steps`/`losses` arrays that the generic data-class renderer would.
@@ -759,6 +744,12 @@ object ValueVisualizer {
         }
     }
 
+    /**
+     * A [Functions.Domain] is fully described by its bounds, so render it compactly rather than
+     * as an 8-field reflective tree (center/length/isFinite/… are all redundant): an unbounded
+     * domain is just `Domain { ∞ }`, a point is `Domain { x }`, everything else `Domain { a..b }`
+     * (with ±∞ for a half-open end).
+     */
     private fun formatDomain(d: Functions.Domain): String {
         val inner = when {
             d._isEmpty -> "<span style='color: #888;'>∅</span>"
@@ -776,6 +767,15 @@ object ValueVisualizer {
         else -> formatNumericLiteral(v)
     }
 
+    /**
+     * Renders an [Functions.Fn] as its usual reflective field tree, with a small,
+     * safe line plot appended below — the same spirit as [formatFLine]'s thumbnail.
+     *
+     * The reflective tree (domain / evalFn / graph) is kept verbatim via
+     * [formatDataClass]; the plot is a bonus that never replaces it. Rendering the
+     * plot is wrapped in [runCatching] so a misbehaving `evalFn` can only cost us
+     * the thumbnail, never the whole value display.
+     */
     private fun formatFn(
         fn: Functions.Fn,
         depth: Int,
