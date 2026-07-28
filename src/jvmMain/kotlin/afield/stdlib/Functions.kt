@@ -941,11 +941,14 @@ object Functions {
     /**
      * A constant function: [value] everywhere, over [domain] (`0.0..1.0` by default).
      *
-     * The workhorse literal of the toolkit — every factory that accepts a `Number` where an [Fn] is
-     * expected wraps it like this. Note the deliberate asymmetry with [Number.c]: `c(0.5)` is a real
-     * constant *function* and therefore carries the default bounded domain, which will shrink the
-     * domain of anything it is combined with; `0.5.c` is a parameter signal over [Domain.ALL] and will
-     * not.
+     * The workhorse literal of the toolkit, and the one to reach for when the constant is a *signal* in
+     * its own right. Note the deliberate asymmetry with [Number.c]: `c(0.5)` is a real constant
+     * *function* and therefore carries the default bounded domain, which will shrink the domain of
+     * anything it is combined with; `0.5.c` is a parameter signal over [Domain.ALL] and will not. The
+     * factories in this file take the second route, **not** this one: a `Number` passed where an [Fn]
+     * is expected is wrapped as an unbounded parameter, precisely so that configuring a function does
+     * not clip it. So `sin(frequency = 2.0)` and `sin(frequency = 2.0.c)` agree, while
+     * `sin(frequency = c(2.0))` clips the oscillator to `0.0..1.0`.
      */
     fun c(value: Number, domain: Domain = Domain.DEFAULT): Fn {
         val v = value.toDouble()
@@ -5561,8 +5564,9 @@ canvas {
     /**
      * Plays the list forwards and then backwards, once — an out-and-back gesture rather than a loop.
      *
-     * By default the turning points are *not* repeated: `[a, b, c]` plays `a b c b a`, since playing `c` twice in
-     * a row at the top of the arc rarely reads as intended. Pass `includeEndsTwice = true` for `a b c c b a`.
+     * By default the turning point is *not* repeated: `[a, b, c]` plays `a b c b a`, since playing `c` twice in a row
+     * at the top of the arc rarely reads as intended. Pass `includeEndsTwice = true` for `a b c c b a`. Either way the
+     * gesture ends where it started, so an out-and-back of n items is 2n-1 slots long (2n with the ends doubled).
      * Lists of one or two items always double their ends, there being no interior to drop. The result is a
      * [sequence], so the same slot durations and additive crossfades apply.
      */
@@ -5575,8 +5579,8 @@ canvas {
     ): Fn = palindrome(param(overlap), includeEndsTwice, edge, outside, name)
 
     /**
-     * Plays the list forwards then backwards once, with a signal-valued [overlap]. The turning points are not
-     * repeated unless [includeEndsTwice] is set — `[a, b, c]` gives `a b c b a` — and lists of one or two items
+     * Plays the list forwards then backwards once, with a signal-valued [overlap]. The turning point — the last item —
+     * is not repeated unless [includeEndsTwice] is set, so `[a, b, c]` gives `a b c b a`, and lists of one or two items
      * always double their ends.
      */
     fun List<Fn>.palindrome(
@@ -5587,7 +5591,10 @@ canvas {
         name: String = "palindrome"
     ): Fn {
         if (isEmpty()) return zero(Domain.EMPTY).withName(name)
-        val tail = if (includeEndsTwice || size <= 2) asReversed() else dropLast(1).drop(1).asReversed()
+        // Drop only the turning point — the last item, which the return leg would otherwise repeat
+        // immediately — and keep the first, so the gesture actually comes home: `[a, b, c]` -> a b c b a.
+        // `dropLast(1).drop(1).asReversed()` dropped both ends and stopped a step short (a b c b).
+        val tail = if (includeEndsTwice || size <= 2) asReversed() else asReversed().drop(1)
         val sequenced = (this + tail).sequence(overlap, edge, outside, name)
         return graphFn(
             sequenced.domain,
@@ -5900,9 +5907,10 @@ canvas {
      * target onto normalized progress through the source.
      *
      * So `warp` is read on 0..1 and should return 0..1 — an identity ramp reproduces a plain linear stretch, and anything
-     * monotonic gives an arbitrary time-warp. It is evaluated with clamped edges, falling back to the un-warped progress
-     * outside its own domain, and nothing forces it to be monotonic: a warp that goes backwards will play the source
-     * backwards for a while.
+     * monotonic gives an arbitrary time-warp. It is evaluated with **clamped** edges, so a warp defined over less than
+     * 0..1 holds its nearest endpoint value for the rest of the traversal (which stalls the source there) rather than
+     * reverting to un-warped progress. Nothing forces it to be monotonic either: a warp that goes backwards will play
+     * the source backwards for a while.
      */
     fun stretchBy(to: Domain, warp: Fn, from: Domain? = null): FnTransform =
         FnTransform("stretchBy") { source ->
@@ -6829,9 +6837,16 @@ canvas {
     fun Fn.stretchSmoother(to: ClosedRange<*>, from: Domain = domain): Fn =
         stretchSmoother(to.toDomain(), from)
 
+    /**
+     * [stretch] onto [to] with the pacing given by [warp] rather than a named [StretchShape] — see the
+     * [Functions.stretchBy] transform for what a warp is and how it is read.
+     *
+     * `outside` is deliberately not passed to [Fn.evalSafe] here: under [EdgeMode.CLAMP] it is
+     * unreachable, so an `outside = alpha` argument only *looks* like an un-warped fallback.
+     */
     fun Fn.stretchBy(to: Domain, warp: Fn, from: Domain = domain): Fn =
         stretchMapped(from, to, name) { alpha ->
-            warp.evalSafe(alpha, outside = alpha, edge = EdgeMode.CLAMP)
+            warp.evalSafe(alpha, edge = EdgeMode.CLAMP)
         }
 
     fun Fn.stretchBy(to: ClosedRange<*>, warp: Fn, from: Domain = domain): Fn =
@@ -7973,9 +7988,12 @@ canvas {
      *
      * The result's domain is the sum of the two domains (the usual widening), or the whole line if either is unbounded.
      * Costs [samples] evaluations of *both* functions per output sample, so a 64-tap convolution inside a plot is
-     * already tens of thousands of evaluations. With `normalize = true` the result is divided by the kernel's summed
-     * weight, which keeps the level when the kernel is a blur rather than an impulse response. A kernel domain that is
-     * empty or unbounded yields zero.
+     * already tens of thousands of evaluations. A kernel domain that is empty or unbounded yields zero.
+     *
+     * With `normalize = false` this is an integral, so the result scales with the kernel's area — the right thing for an
+     * impulse response. With `normalize = true` it is the kernel-weighted **mean** of the source instead, which keeps
+     * the level for a blur: convolving a constant returns that constant, whatever the kernel's width or [samples].
+     * ([blur] is the same idea with a Gaussian built in.)
      */
     fun Fn.convolve(
         kernel: Fn,
@@ -8010,8 +8028,12 @@ canvas {
                 sum += eval(x - t) * k
                 weight += k
             }
-            val scaled = if (step == 0.0) sum else sum * step
-            if (normalize && weight != 0.0) scaled / weight else scaled
+            // Un-normalized this is an integral, so the rectangle width belongs in it. Normalized it is
+            // the kernel-weighted *mean* of the source, which must not carry the step: dividing the
+            // already-scaled sum by the unscaled weight left the result a factor of `step` small — a
+            // 63x drop at the default samples = 64 across a unit-wide kernel.
+            if (normalize) return@graphFn if (weight == 0.0) 0.0 else sum / weight
+            if (step == 0.0) sum else sum * step
         }
     }
 
@@ -8476,8 +8498,8 @@ canvas {
      * Fractal Brownian motion: [octaves] layers of [valueNoise] summed, each layer [lacunarity] times finer and [gain]
      * times quieter than the last — noise with detail at several scales at once.
      *
-     * The result is **normalized by the summed layer amplitudes**, so it stays within roughly `±amplitude` however many
-     * octaves you add; adding octaves buys detail, not level. The defaults (lacunarity 2, gain 0.5) are the classic
+     * The result is **normalized by the summed layer weights and then scaled by [amplitude]**, so it stays within
+     * roughly `±amplitude` however many octaves you add; adding octaves buys detail, not level. The defaults (lacunarity 2, gain 0.5) are the classic
      * halving pair, giving the familiar 1/f look; raising the gain toward 1 makes it rougher, lowering it smoother.
      * Cost is linear in [octaves], and an octave count below one is treated as one. Each layer uses a different seed
      * derived from [seed], so the whole thing is deterministic. Domain defaults to `0.0..1.0`.
@@ -8506,7 +8528,12 @@ canvas {
             longs = mapOf("seed" to seed),
             rebuild = { children -> fbm(seed, children[0], children[1], octaves, children[2], children[3], domain) }
         ) { x ->
-            var amp = amplitude.eval(x)
+            // The layer weights are accumulated at unit amplitude and the whole normalized sum is
+            // scaled by `amplitude` at the end. Accumulating *from* `amplitude` instead — which is what
+            // this did until 2026-07-28 — cancels it out of `sum / norm` exactly, so the parameter was
+            // inert while four KDoc blocks promised it set the output range.
+            val outputAmplitude = amplitude.eval(x)
+            var amp = 1.0
             var freq = frequency.eval(x)
             val lac = lacunarity.eval(x)
             val g = gain.eval(x)
@@ -8519,7 +8546,7 @@ canvas {
                 amp *= g
                 freq *= lac
             }
-            if (norm == 0.0) 0.0 else sum / norm
+            if (norm == 0.0) 0.0 else outputAmplitude * sum / norm
         }
     }
 
@@ -8610,7 +8637,12 @@ canvas {
             longs = mapOf("seed" to seed),
             rebuild = { children -> fbmPerlin(seed, children[0], children[1], octaves, children[2], children[3], domain) }
         ) { x ->
-            var amp = amplitude.eval(x)
+            // The layer weights are accumulated at unit amplitude and the whole normalized sum is
+            // scaled by `amplitude` at the end. Accumulating *from* `amplitude` instead — which is what
+            // this did until 2026-07-28 — cancels it out of `sum / norm` exactly, so the parameter was
+            // inert while four KDoc blocks promised it set the output range.
+            val outputAmplitude = amplitude.eval(x)
+            var amp = 1.0
             var freq = frequency.eval(x)
             val lac = lacunarity.eval(x)
             val g = gain.eval(x)
@@ -8623,7 +8655,7 @@ canvas {
                 amp *= g
                 freq *= lac
             }
-            if (norm == 0.0) 0.0 else sum / norm
+            if (norm == 0.0) 0.0 else outputAmplitude * sum / norm
         }
     }
 
@@ -9109,8 +9141,12 @@ canvas {
             val y = eval(x)
             if (prev == 0.0) out += Sample(x - step, 0.0)
             if (prev * y < 0.0) {
+                // `t` is the fraction of the step *from the left sample* at which the straight line
+                // through (x - step, prev) and (x, y) hits zero, so the crossing is `step * (1 - t)`
+                // back from x. Measuring it back from x directly — the original — is only right at
+                // t = 0.5 and mirrors every other crossing to the wrong side of its step.
                 val t = prev / (prev - y)
-                val xc = x - step * t
+                val xc = x - step * (1.0 - t)
                 out += Sample(xc, 0.0)
             }
             prev = y

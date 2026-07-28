@@ -205,9 +205,13 @@ class Vec2NNIndex internal constructor(
         }
 
         if (selected.size < kEff) {
-            bruteSortedIndices(query).forEach { idx ->
+            // A `for`, not a `forEach`: `return@forEach` is a *continue*, so the early exit this looks
+            // like never happened and the whole index was inserted before `take(kEff)` threw it away.
+            // The answer was right either way (a LinkedHashSet keeps the order the first kEff arrived
+            // in); the walk was just O(n) inserts long.
+            for (idx in bruteSortedIndices(query)) {
                 selected.add(idx)
-                if (selected.size >= kEff) return@forEach
+                if (selected.size >= kEff) break
             }
         }
 
@@ -349,9 +353,13 @@ class Vec3NNIndex internal constructor(
         }
 
         if (selected.size < kEff) {
-            bruteSortedIndices(query).forEach { idx ->
+            // A `for`, not a `forEach`: `return@forEach` is a *continue*, so the early exit this looks
+            // like never happened and the whole index was inserted before `take(kEff)` threw it away.
+            // The answer was right either way (a LinkedHashSet keeps the order the first kEff arrived
+            // in); the walk was just O(n) inserts long.
+            for (idx in bruteSortedIndices(query)) {
                 selected.add(idx)
-                if (selected.size >= kEff) return@forEach
+                if (selected.size >= kEff) break
             }
         }
 

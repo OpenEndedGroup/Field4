@@ -469,9 +469,14 @@ val String.absolutePath: String
 /**
  * A **misspelling** of [absolutePath] that works anyway.
  *
- * Kept so that box code which typed it once keeps running. Prefer [absolutePath] in anything new; this exists only
- * for compatibility and does nothing different.
+ * Kept so that box code which typed it once keeps running, and deprecated rather than removed for the same reason:
+ * a live-coded document is a file on someone's disk, not a call site that can be recompiled. Does nothing different.
  */
+@Deprecated(
+    "Misspelling of absolutePath, kept only so existing box code keeps running.",
+    ReplaceWith("absolutePath"),
+    DeprecationLevel.WARNING
+)
 val String.abslutePath: String
     get() = absolutePath
 

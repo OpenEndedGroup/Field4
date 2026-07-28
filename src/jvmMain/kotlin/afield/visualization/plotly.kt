@@ -10,7 +10,6 @@ import space.kscience.plotly.*
 import space.kscience.plotly.models.Dash
 import space.kscience.plotly.models.LegendOrientation
 import space.kscience.plotly.models.ScatterMode
-import space.kscience.plotly.models.SizeMode
 import space.kscience.plotly.models.ViolinPoints
 import space.kscience.plotly.models.XAnchor
 import space.kscience.plotly.models.YAnchor

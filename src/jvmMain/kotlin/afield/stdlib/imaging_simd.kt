@@ -38,6 +38,7 @@ import jdk.incubator.vector.VectorSpecies
  * @see convolveSeparable the main consumer
  * @see afield.four.synth.Buf the same idea for audio buffers
  */
+
 internal object ImgSimd {
 
     @JvmField
