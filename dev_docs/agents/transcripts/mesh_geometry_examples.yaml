@@ -22,7 +22,10 @@ description: >
     6. bridges      — 3D Voronoi cells turned into solids (their volumes summing to the clip box),
                       a tube swept along an FLine, wireframe/crease FLines drawn with lines(), and
                       an OBJ + STL round trip proving the coordinates survive.
-  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all six
+    7. inline view  — the one box that pushes nothing to its output: it ends on a TriMesh and lets the
+                      value visualizer draw it, which is what makes a mesh live-codeable. Shaded
+                      render plus the counts, closedness, chi/genus, area, signed volume and bounds.
+  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) to see all seven
   on screen, then change a resolution, a smoothing parameter or an SDF expression and re-run a box
   to watch it update live. Each `execute` op omits inline code, so it runs the box's stored `code`
   property. Executed end-to-end by examples.demo-transcript.exec.
@@ -399,12 +402,49 @@ operations:
           // The last line is the family's shape in one call: mesh in, FLines out, and the FLines go
           // to lines() like anything else you draw in Field.
           lines(ring.toFLines(MeshLines.EDGES))
+  - create:
+      box: mesh_inline_view
+      name: The inline view — evaluate a mesh, look at it
+      frame: { x: 80.0, y: 1400.0, w: 900.0, h: 420.0 }
+      properties:
+        code: |
+          // Every other box here pushes a picture to its output on purpose, with showMeshGrid. This one
+          // does not: it just *ends on a TriMesh*, and the value visualizer draws it. That is the whole
+          // point — a mesh is a value you can look at, the way a number or an Img is.
+          //
+          // What the card shows: the mesh through the same CPU rasterizer the docs gallery uses, from a
+          // fixed three-quarter view, with a depth-tested wireframe over two-light lambert shading; and
+          // beside it the facts that decide whether a mesh is usable — counts, whether it is closed and
+          // manifold, chi and genus, area, signed volume, and the bounding box. Back faces are culled as
+          // a GPU would cull them, so an OPEN mesh wound inside-out reads as holes. A closed one wound
+          // inside-out looks fine and reports a NEGATIVE volume instead; try `.flipped()` below.
+          //
+          // Above 40k triangles the picture is drawn from a decimation, and says so, while the numbers
+          // stay the real mesh's.
+
+          // Build something worth looking at: a sphere with a hole drilled through it, so the card has a
+          // genus to report, then smooth it so the drill rim is not a hard edge.
+          val drilled = marchingCubes(
+              sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
+              boundsAround(radius = 1.0),
+              48,
+          ).taubinSmooth(12)
+
+          println(drilled.summary())
+          println("the card below reports the same numbers; the drill added a handle, so genus is 1")
+          println()
+          println("try: replace the last line with `drilled.flipped()` — the picture will look identical")
+          println("     and the volume will go negative, which is the only thing that tells you")
+
+          // The last expression is the value the box shows. No display(), no showMesh, no lines().
+          drilled
   - execute: { box: mesh_primitives, property: code }
   - execute: { box: mesh_marching, property: code }
   - execute: { box: mesh_modelling, property: code }
   - execute: { box: mesh_process, property: code }
   - execute: { box: mesh_measure, property: code }
   - execute: { box: mesh_bridges, property: code }
+  - execute: { box: mesh_inline_view, property: code }
   - await:
       wait: pending
   - wait:

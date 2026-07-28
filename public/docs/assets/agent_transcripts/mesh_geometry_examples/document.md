@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. Marching cubes — a watertight surface from a field
@@ -394,9 +394,71 @@ showMeshGrid(
 )
 ```
 
-## 6. Primitives — welded, watertight, and χ = 2
+## 6. The inline view — evaluate a mesh, look at it
 
-<!-- field-box id="mesh_primitives" index="5" -->
+<!-- field-box id="mesh_inline_view" index="5" -->
+
+### Narrative
+
+From `code`
+
+Every other box here pushes a picture to its output on purpose, with showMeshGrid. This one
+does not: it just *ends on a TriMesh*, and the value visualizer draws it. That is the whole
+point — a mesh is a value you can look at, the way a number or an Img is.
+
+What the card shows: the mesh through the same CPU rasterizer the docs gallery uses, from a
+fixed three-quarter view, with a depth-tested wireframe over two-light lambert shading; and
+beside it the facts that decide whether a mesh is usable — counts, whether it is closed and
+manifold, chi and genus, area, signed volume, and the bounding box. Back faces are culled as
+a GPU would cull them, so an OPEN mesh wound inside-out reads as holes. A closed one wound
+inside-out looks fine and reports a NEGATIVE volume instead; try `.flipped()` below.
+
+Above 40k triangles the picture is drawn from a decimation, and says so, while the numbers
+stay the real mesh's.
+
+Build something worth looking at: a sphere with a hole drilled through it, so the card has a
+genus to report, then smooth it so the drill rim is not a hard edge.
+
+```edn [field-box id="mesh_inline_view" role="properties"]
+{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 900.0 420.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 30 "characters" 1683 "sha256" "c9bda1edd25fbb2d4f227966fa5fb5d08c772c15e4fca90b13e22a41609518c4"}]}
+```
+
+```kotlin [field-property box="mesh_inline_view" name="code" path="mesh_inline_view_code_.kt"]
+// Every other box here pushes a picture to its output on purpose, with showMeshGrid. This one
+// does not: it just *ends on a TriMesh*, and the value visualizer draws it. That is the whole
+// point — a mesh is a value you can look at, the way a number or an Img is.
+//
+// What the card shows: the mesh through the same CPU rasterizer the docs gallery uses, from a
+// fixed three-quarter view, with a depth-tested wireframe over two-light lambert shading; and
+// beside it the facts that decide whether a mesh is usable — counts, whether it is closed and
+// manifold, chi and genus, area, signed volume, and the bounding box. Back faces are culled as
+// a GPU would cull them, so an OPEN mesh wound inside-out reads as holes. A closed one wound
+// inside-out looks fine and reports a NEGATIVE volume instead; try `.flipped()` below.
+//
+// Above 40k triangles the picture is drawn from a decimation, and says so, while the numbers
+// stay the real mesh's.
+
+// Build something worth looking at: a sphere with a hole drilled through it, so the card has a
+// genus to report, then smooth it so the drill rim is not a hard edge.
+val drilled = marchingCubes(
+    sdfSubtract(sdfSphere(0.8), sdfCylinder(0.32, 2.0)),
+    boundsAround(radius = 1.0),
+    48,
+).taubinSmooth(12)
+
+println(drilled.summary())
+println("the card below reports the same numbers; the drill added a handle, so genus is 1")
+println()
+println("try: replace the last line with `drilled.flipped()` — the picture will look identical")
+println("     and the volume will go negative, which is the only thing that tells you")
+
+// The last expression is the value the box shows. No display(), no showMesh, no lines().
+drilled
+```
+
+## 7. Primitives — welded, watertight, and χ = 2
+
+<!-- field-box id="mesh_primitives" index="6" -->
 
 ### Narrative
 
@@ -409,7 +471,7 @@ closed genus-0 solid and 0 for a torus, and that single integer catches a duplic
 seam, a missing cap or an unwelded weld — all of which still look plausible in a render.
 
 ```edn [field-box id="mesh_primitives" role="properties"]
-{"id" "mesh_primitives" "index" 5 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 49 "characters" 2462 "sha256" "d252b0b419eed842632297130bc565e066441c26f8f895680f1a2a555c85bf99"}]}
+{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 49 "characters" 2462 "sha256" "d252b0b419eed842632297130bc565e066441c26f8f895680f1a2a555c85bf99"}]}
 ```
 
 ```kotlin [field-property box="mesh_primitives" name="code" path="mesh_primitives_code_.kt"]
