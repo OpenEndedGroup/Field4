@@ -249,6 +249,54 @@ class DocumentedBehaviourTest {
         assertTrue(abs(out - 0.1f) < 1e-3f, "0.1 is below -6 dB, so it must be left alone: $out")
     }
 
+    /**
+     * `movingAverage` is documented as "the mean of the function over a [window]-wide span", and the mean of a
+     * constant is that constant — at any sample count.
+     *
+     * It summed rectangles of width `window / (samples - 1)` over probes that include **both** endpoints and
+     * then divided by the window, which answers `samples / (samples - 1)` times the mean: exactly 2× at
+     * `samples = 2` and 1.6% high at the default 64. The visible consequence was that `f - f.movingAverage(w)`,
+     * the high-pass, did not return zero on a flat signal. Now a trapezoid, which is exact for a constant.
+     */
+    @Test
+    fun movingAverageOfAConstantIsThatConstant() = with(Functions) {
+        val flat = c(2.5, Domain.of(-10.0, 10.0))
+        listOf(1, 2, 3, 8, 64, 512).forEach { samples ->
+            val level = flat.movingAverage(1.0, samples).eval(0.0)
+            assertTrue(
+                abs(level - 2.5) < 1e-12,
+                "the mean of the constant 2.5 must be 2.5 at samples = $samples, got $level"
+            )
+        }
+        assertTrue(
+            abs(flat.eval(0.0) - flat.movingAverage(1.0, 64).eval(0.0)) < 1e-12,
+            "a high pass must leave nothing of a flat signal"
+        )
+        // A centred mean of a straight line is the line's own value — the other case a biased estimator breaks.
+        val ramp = fn(Domain.of(-5.0, 5.0), "ramp") { x -> x }
+        assertTrue(
+            abs(ramp.movingAverage(2.0, 64).eval(1.0) - 1.0) < 1e-9,
+            "the centred mean of a ramp at x = 1 is 1: got ${ramp.movingAverage(2.0, 64).eval(1.0)}"
+        )
+    }
+
+    /**
+     * `tile` documents "[count] copies of f back to back" and zero outside that span. It declared the *source's*
+     * domain rather than the span, so `f.tile(3)` claimed to be one copy long and plotting or sampling it showed
+     * a third of the material it had just built.
+     */
+    @Test
+    fun tileDeclaresTheSpanItFills() = with(Functions) {
+        val source = sin(4.0, domain = Domain.of(0.0, 0.25))
+        val tiled = source.tile(3)
+        assertEquals(0.0, tiled.domain.min, "the span starts at the origin")
+        assertTrue(abs(tiled.domain.max - 0.75) < 1e-12, "three 0.25-wide copies span 0..0.75, got ${tiled.domain}")
+        assertTrue(abs(tiled.eval(0.6) - tiled.eval(0.1)) < 1e-12, "the third copy repeats the first")
+        assertEquals(0.0, tiled.eval(-0.01), "zero before the span")
+        assertEquals(0.0, tiled.eval(0.76), "zero after it")
+        assertEquals(0.0, source.tile(0).eval(0.1), "a count of zero or less is the constant zero")
+    }
+
     /** Asserts sampled positions match [expected] to within floating-point slack, reporting both lists. */
     private fun assertPositions(expected: List<Double>, actual: DoubleArray, message: String) {
         val ok = expected.size == actual.size && expected.indices.all { abs(expected[it] - actual[it]) < 1e-9 }

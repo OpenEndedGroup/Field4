@@ -7834,11 +7834,25 @@ canvas {
      * [period] defaults to the function's own domain length, so `f.tile(3)` gives three copies of f back to back.
      * A [count] of zero or less gives the constant zero, and a period of zero makes it zero everywhere. Note the
      * asymmetry with [pulseBurst]: outside the span this is genuinely zero, not an offset value.
+     *
+     * The declared domain is the tiled span, so plotting or sampling the result covers all [count] copies. A
+     * signal-valued [period] or [origin] has no single span to declare, and there the source's own domain is kept.
      */
     fun Fn.tile(count: Int, period: Fn = param(domain.finiteSweep().length), origin: Fn = param(domain.finiteSweep().min)): Fn {
         if (count <= 0) return zero(domain)
         val base = repeat(period, origin, domainOverride = Domain.ALL)
-        val d = intersectDomains(domain, period, origin)
+        val literalPeriod = period.literalValue()?.let { kotlin.math.abs(it) }
+        val literalOrigin = origin.literalValue()
+        // The span the copies occupy *is* this function's extent — it is zero everywhere else by construction.
+        // Declaring the source's domain instead (the old behaviour) meant `f.tile(3)` claimed to be one copy
+        // long, so plotting or sampling it showed a third of the material it had just built.
+        val d = if (literalPeriod != null && literalOrigin != null &&
+            literalPeriod.isFinite() && literalPeriod > 0.0 && literalOrigin.isFinite()
+        ) {
+            Domain.of(literalOrigin, literalOrigin + literalPeriod * count.toDouble())
+        } else {
+            intersectDomains(domain, period, origin)
+        }
         return graphFn(
             d,
             "tile",
@@ -8074,8 +8088,10 @@ canvas {
      *
      * The window is **centred**, so this smooths symmetrically and does not lag the way a causal filter would — and it
      * therefore reads [window]/2 into the future, which matters if the source is only defined up to a point. A window of
-     * zero passes the function through unchanged. Costs [samples] evaluations per output sample; [lowPass] is the
-     * transform spelling, and [blur] is the Gaussian-weighted alternative.
+     * zero passes the function through unchanged, and so does a [samples] of one. The mean is a trapezoid estimate, so
+     * it is exact for a constant however few samples you take: smoothing a flat signal cannot change its level, which
+     * is what makes `f - f.movingAverage(w)` a usable high-pass. Costs [samples] evaluations per output sample;
+     * [lowPass] is the transform spelling, and [blur] is the Gaussian-weighted alternative.
      */
     fun Fn.movingAverage(window: Fn = param(1.0), samples: Int = 64): Fn {
         val d = intersectDomains(domain, window)
@@ -8090,16 +8106,22 @@ canvas {
             if (samples <= 0) return@graphFn 0.0
             val w = window.eval(x)
             if (w == 0.0) return@graphFn eval(x)
+            // One probe can only sensibly be the centre, and the trapezoid rule below would divide by zero.
+            if (samples == 1) return@graphFn eval(x)
             val half = w * 0.5
-            val step = if (samples == 1) 0.0 else w / (samples - 1).toDouble()
+            val step = w / (samples - 1).toDouble()
+            // Trapezoid, not a rectangle sum: the probes include *both* endpoints of the window, so counting
+            // each of them fully and dividing by the window width answered `samples / (samples - 1)` times the
+            // mean — 2x at samples = 2, and 1.6% high at the default 64, which no "mean" should ever be. Half
+            // weights at the ends make it exact for a constant at any sample count, as `blur` already was.
             var sum = 0.0
             var t = -half
             for (i in 0 until samples) {
-                sum += eval(x + t)
+                val v = eval(x + t)
+                sum += if (i == 0 || i == samples - 1) v * 0.5 else v
                 t += step
             }
-            val scaled = if (step == 0.0) sum else sum * step
-            if (w == 0.0) 0.0 else scaled / w
+            sum / (samples - 1).toDouble()
         }
     }
 
