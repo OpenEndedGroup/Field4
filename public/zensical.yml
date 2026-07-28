@@ -81,7 +81,11 @@ nav:
         - Boolean Network Music Examples: boolean_network_music_examples.md
         - Wave Function Collapse Examples: wfc_examples.md
 
+# Note: declaring this key at all replaces Zensical's DEFAULT_MARKDOWN_EXTENSIONS
+# wholesale (it is only a `config.get(..., DEFAULT)` fallback) — only `toc` and
+# `tables` are force-added. So anything we rely on has to be listed here.
 markdown_extensions:
+  - admonition                    # `!!! note` / `!!! warning` callouts
   - pymdownx.superfences:         # required extension
       custom_fences:
         - name: diff
