@@ -182,8 +182,8 @@ class NpyArray internal constructor(
      * One element as a `Double`, whatever its dtype — `a.getDouble(2, 3)`.
      *
      * The random-access read, for when you want a few values out of a large array rather than the whole thing.
-     * Integers and half floats are widened; a complex dtype yields its real part only. Indices are in
-     * **storage** order by default.
+     * Integers and half floats are widened; a complex dtype **throws** rather than quietly handing back its real
+     * part (use [asComplexDoublePairs]). Indices are in **storage** order by default.
      */
     fun getDouble(vararg indices: Int): Double = getDouble(indices, NpyLinearOrder.STORAGE)
 
@@ -219,10 +219,10 @@ class NpyArray internal constructor(
     }
 
     /**
-     * The array as a `LongArray`, C order by default. For the signed integer dtypes and bool.
+     * The array as a `LongArray`, C order by default. For bool and every integer dtype, signed or unsigned.
      *
-     * A `uint64` whose values exceed `Long.MAX_VALUE` wraps to negative here — use [asULongArray] if the file
-     * might contain such values.
+     * A `uint64` value past `Long.MAX_VALUE` **throws** rather than wrapping to a negative — silently changing
+     * the sign of a datum is worse than refusing it. Use [asULongArray] if the file might contain such values.
      */
     fun asLongArray(order: NpyLinearOrder = NpyLinearOrder.C): LongArray {
         require(dtype.kind == NpyKind.BOOL || dtype.kind == NpyKind.SIGNED_INT || dtype.kind == NpyKind.UNSIGNED_INT) {
@@ -275,8 +275,9 @@ class NpyArray internal constructor(
      * The array as a `FloatArray`, C order by default — [asDoubleArray] narrowed, for feeding a GPU buffer or
      * Field's `Vec` types.
      *
-     * Allocates the `DoubleArray` first and then narrows, so it costs twice the memory of the result at its peak,
-     * and values outside float range become infinities.
+     * Allocates the whole `DoubleArray` first and then narrows, so at the moment it returns both arrays are live
+     * and the peak cost is three times the result (`8n + 4n` bytes for a `4n`-byte answer). Values outside float
+     * range become infinities.
      */
     fun asFloatArray(order: NpyLinearOrder = NpyLinearOrder.C): FloatArray {
         val doubles = asDoubleArray(order)
@@ -428,8 +429,9 @@ object NumpyIO {
     /**
      * Reads one `.npy` file into an [NpyArray].
      *
-     * @throws IllegalArgumentException on a bad magic header, an unsupported format version, an undecodable dtype,
-     * or a payload whose length disagrees with the declared shape
+     * @throws IllegalArgumentException on a bad magic header, an unsupported format version or an undecodable dtype
+     * @throws java.io.EOFException when the payload is shorter than the declared shape needs. (Extra trailing bytes
+     * are ignored: the reader takes exactly as many as the header asks for.)
      */
     fun readNpy(file: File): NpyArray {
         file.inputStream().buffered().use { input ->

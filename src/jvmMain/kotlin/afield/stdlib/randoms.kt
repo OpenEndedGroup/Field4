@@ -148,10 +148,10 @@ fun noisePhase(): Float = currentStdlibPhase()
 /**
  * Advances this box's noise phase by [delta] and returns the new phase.
  *
- * The usual once-per-frame call for animated noise. [delta] is in the same units as [noise1D]'s
- * `frequency` argument divides — one whole unit is one lattice cell of the noise, so around
- * `0.01..0.05` per frame reads as a slow drift and 1.0 as unrelated values frame to frame. Negative
- * deltas run the noise backwards.
+ * The usual once-per-frame call for animated noise. [delta] is in phase units, and [noise1D] *multiplies*
+ * phase by its `frequency`, so one whole unit of delta is one lattice cell only at the default
+ * `frequency = 1f` — at `frequency = 4f` it is four. At that default, around `0.01..0.05` per frame reads
+ * as a slow drift and 1.0 as unrelated values frame to frame. Negative deltas run the noise backwards.
  */
 fun noiseForward(delta: Float): Float {
     val next = currentStdlibPhase() + delta
@@ -181,17 +181,23 @@ private fun hash1D(seed: Long, x: Int): Int {
 }
 
 /**
- * Repeatable 1D Perlin-style noise: smooth, continuous, and roughly in `-1..1`.
+ * Repeatable 1D Perlin-style noise: smooth, continuous, and bounded by **±0.5**.
+ *
+ * That half range is not a bug but it is a trap, so it is stated first: one-dimensional gradient noise
+ * with ±1 gradients peaks at 0.5 (midway between two lattice points that lean opposite ways), and nothing
+ * here re-normalises it. Double it if you want the full `-1..1`.
  *
  * Unlike [random] this is a *function* of its [phase] rather than a stream — sample the same phase
  * twice and you get the same number, and nearby phases give nearby numbers. One unit of phase is one
  * lattice cell, [frequency] multiplies the phase before sampling (so `frequency = 4` gives four times
  * the wiggle per unit), and the default phase is the box's own [noisePhase].
  *
- * The curve is fixed by the box's random seed, so [setRandomSeed] gives you a different one.
- * [seedOffset] and [extraHash] pick *independent* curves off the same seed, which is how you get one
- * noise channel per thing you are animating without them moving in lockstep; the `perlinNoise`
- * extensions use `seedOffset` exactly that way, one channel per vector component.
+ * The curve is fixed by the box's random seed, so [setRandomSeed] gives you a different one. [seedOffset]
+ * picks a different curve off that seed, which is how you get one noise channel per thing you are animating
+ * without them moving in lockstep; the `perlinNoise` extensions use it exactly that way, one channel per
+ * vector component. [extraHash] is **summed into the same scalar**, so it is a second way to spell the same
+ * offset rather than an independent axis — `seedOffset = 1` and `extraHash = 1` give the identical curve, and
+ * a non-zero `extraHash` will collide with a neighbouring component's channel.
  */
 fun noise1D(
     phase: Float = currentStdlibPhase(),
@@ -233,7 +239,7 @@ private fun sampleNoiseChannels(
  * Adds smooth [noise1D] wander to this point **in place**, one independent channel per component,
  * and returns the same instance.
  *
- * Each component is offset by up to `±amplitude` (the noise is roughly `-1..1` before scaling). The
+ * Each component is offset by up to `±amplitude/2`, because [noise1D] is bounded by ±0.5 before scaling. The
  * receiver is mutated, so `p.perlinNoise(4f)` moves `p` — copy it first if you needed the original.
  *
  * [phaseAdvance] is applied to the box's shared [noisePhase] *after* sampling, so a chain of calls in

@@ -168,6 +168,94 @@ class DocumentedBehaviourTest {
     }
 
     /**
+     * The step-based `toDoubleArray` documents that it samples "every `step` units" and that `includeEnd`
+     * "adds the sample landing on `max` **when the width divides evenly**".
+     *
+     * It handed its computed count to the *count*-based overload, which spaces its samples `len / (count - 1)`
+     * apart so that the last one lands on `max` — silently re-scaling the step whenever it did not divide the
+     * width: a step of 0.3 across `0.0..1.0` sampled at 0, 1/3, 2/3, 1. Sampling an identity function makes
+     * the positions observable, which is the only way to see this from outside.
+     */
+    @Test
+    fun stepSamplingReallyUsesTheStep() = with(Functions) {
+        val identity = fn(Domain.ALL, "x") { x -> x }
+        val unit = Domain.of(0.0, 1.0)
+
+        assertPositions(
+            listOf(0.0, 0.3, 0.6, 0.9),
+            identity.toDoubleArray(0.3, unit, includeEnd = true),
+            "a step of 0.3 across 0..1 must land on multiples of 0.3 and stop short of max"
+        )
+        assertPositions(
+            listOf(0.0, 0.3, 0.6),
+            identity.toDoubleArray(0.3, unit, includeEnd = false),
+            "includeEnd = false drops the sample that would land on max, it does not re-space the rest"
+        )
+        assertPositions(
+            listOf(0.0, 0.25, 0.5, 0.75, 1.0),
+            identity.toDoubleArray(0.25, unit, includeEnd = true),
+            "an evenly-dividing step must still land exactly on max"
+        )
+        assertEquals(
+            11,
+            identity.toDoubleArray(0.1, unit, includeEnd = true).size,
+            "1.0 / 0.1 is 10.000000000000002 in binary floating point; the endpoint must not be lost to that"
+        )
+        assertPositions(
+            listOf(0.0, 0.25, 0.5, 0.75, 1.0),
+            identity.toDoubleArray(-0.25, unit, includeEnd = true),
+            "the step's sign is documented as ignored"
+        )
+        assertEquals(0, identity.toDoubleArray(0.0, unit).size, "a step of zero is documented as empty")
+    }
+
+    /**
+     * A peak-hold envelope is documented as "always non-negative and never below the current sample's
+     * magnitude" — and `PeakDetector` decayed unconditionally whenever the sample was not a new high, so a
+     * *constant* input sawtoothed between `A` and `A · decay` forever.
+     */
+    @Test
+    fun peakDetectorNeverFallsBelowTheCurrentSample() {
+        val detector = PeakDetector(decay = 0.99f)
+        val outputs = (0 until 50).map { detector(0.75f) }
+        assertTrue(
+            outputs.all { abs(it - 0.75f) < 1e-6f },
+            "a constant 0.75 must hold at 0.75, got ${outputs.distinct()}"
+        )
+
+        val impulse = PeakDetector(decay = 0.5f)
+        assertEquals(1.0f, impulse(1.0f), "a new high latches immediately")
+        assertEquals(0.5f, impulse(0.0f), "silence after a peak decays by the retention factor")
+        assertEquals(0.4f, impulse(0.4f), "…but never below the sample in hand")
+    }
+
+    /**
+     * `DynamicRangeCompressor`'s `kneeWidthDb` is documented as "0 gives a hard knee". With no knee the
+     * quadratic knee branch evaluated `0 / (2 * 0)`, so a sample sitting exactly on the threshold — which
+     * silence does, because the envelope floors at exactly -100 dB — came out **NaN**.
+     */
+    @Test
+    fun hardKneeCompressorDoesNotProduceNaN() {
+        val hard = DynamicRangeCompressor(thresholdDb = -100f, ratio = 4f, kneeWidthDb = 0f)
+        val silent = hard(0f)
+        assertTrue(silent.isFinite(), "a hard knee at the envelope floor must not be NaN, got $silent")
+
+        // A hard knee is the un-smoothed straight line: no reduction below the threshold, the full ratio
+        // above it.
+        val quiet = DynamicRangeCompressor(thresholdDb = -6f, ratio = 4f, kneeWidthDb = 0f)
+        repeat(20000) { quiet(0.1f) }
+        val out = quiet(0.1f)
+        assertTrue(out.isFinite() && out > 0f, "a sub-threshold signal must pass through, got $out")
+        assertTrue(abs(out - 0.1f) < 1e-3f, "0.1 is below -6 dB, so it must be left alone: $out")
+    }
+
+    /** Asserts sampled positions match [expected] to within floating-point slack, reporting both lists. */
+    private fun assertPositions(expected: List<Double>, actual: DoubleArray, message: String) {
+        val ok = expected.size == actual.size && expected.indices.all { abs(expected[it] - actual[it]) < 1e-9 }
+        assertTrue(ok, "$message — expected $expected, got ${actual.toList()}")
+    }
+
+    /**
      * The largest absolute value [fn] takes over [samples] evenly spaced points of its domain.
      *
      * Asserts the domain is finite rather than falling back to a window: an `fbm` whose domain had

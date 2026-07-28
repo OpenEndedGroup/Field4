@@ -3001,10 +3001,12 @@ object Functions {
      * Samples this function every [step] units across [sampleDomain], letting the domain's width decide how
      * many samples that is.
      *
-     * The sign of [step] is ignored — sampling always runs upward from `min`. A step of zero gives an empty
-     * array, and note the asymmetry with the count-based overload: here an **empty domain also gives an
-     * empty array**, rather than a run of [outside] values. `includeEnd` adds the sample landing on `max`
-     * when the width divides evenly.
+     * The spacing really is [step]: a step that does not divide the width leaves the last sample short of
+     * `max` rather than stretching the spacing to reach it, so the resolution you asked for is the
+     * resolution you get. The sign of [step] is ignored — sampling always runs upward from `min`. A step
+     * of zero gives an empty array, and note the asymmetry with the count-based overload: here an
+     * **empty domain also gives an empty array**, rather than a run of [outside] values. `includeEnd`
+     * adds the sample landing on `max` when the width divides evenly.
      */
     fun Fn.toDoubleArray(
         step: Double,
@@ -3018,9 +3020,26 @@ object Functions {
         val sweep = sampleDomain.finiteSweep()
         val len = sweep.length
         val s = kotlin.math.abs(step)
-        val count = if (includeEnd) (floor(len / s) + 1).toInt() else floor(len / s).toInt()
-        return toDoubleArray(count, sweep, includeEnd, edge, outside)
+        // The count comes from the step, and then so do the *positions*. Handing the count to the
+        // count-based overload instead — which spaces its samples `len / (count - 1)` apart to land on
+        // `max` — silently re-scaled the step whenever it did not divide the width evenly: a step of 0.3
+        // across 0..1 sampled at 0, 1/3, 2/3, 1 rather than 0, 0.3, 0.6, 0.9.
+        val whole = floor(len / s + STEP_COUNT_EPSILON)
+        val count = (if (includeEnd) whole + 1.0 else whole).toInt()
+        if (count <= 0) return DoubleArray(0)
+        return DoubleArray(count) { i ->
+            // `min + s * i` can overshoot `max` by an ulp on the last sample of an evenly-dividing step,
+            // which under the default EdgeMode.ZERO would answer `outside` instead of the endpoint value.
+            evalSafe((sweep.min + s * i.toDouble()).coerceAtMost(sweep.max), outside, edge)
+        }
     }
+
+    /**
+     * Relative slack when turning a step into a sample count, so that a width which divides evenly in
+     * exact arithmetic (`1.0 / 0.1` is `10.000000000000002` in binary floating point) is not one sample
+     * short of the endpoint.
+     */
+    private const val STEP_COUNT_EPSILON = 1e-9
 
     /** Samples this function every [step] units across the given range; the step's sign is ignored and a step of zero gives an empty array. */
     fun Fn.toDoubleArray(
