@@ -274,3 +274,171 @@ Suggested follow-ups, in order of value:
 3. A `TriMesh` → `afield.four.modules.Mesh` GPU upload bridge; the packing is already written for the
    CPU rasterizer.
 4. Isotropic remeshing and geodesic distance were on the stretch list and did not land.
+
+---
+
+# Second pass — same night, same branch
+
+Picked up after the first pass finished in 91 minutes of a ~4-hour night. Three commits:
+`054ad73e`, `0557b398`, `78403b3c`. Nothing above this line was changed except two KDoc blocks whose
+claims stopped being true.
+
+## 1. `054ad73e` — the Voronoi T-junction, fixed where it is produced
+
+The first pass's one self-declared risk. It healed the defect in the mesh bridge; every other consumer
+of `VoronoiFace.polygon` still got face polygons with T-junctions, and the 3D Voronoi predates tonight.
+
+**Root cause — two of them, and both were needed.** An ablation putting either half back reproduces the
+defect, so this is not one fix with a spare.
+
+1. **Face membership was a distance test.** `buildFaces` asked "is this corner within `4 * eps` of that
+   plane?", and `eps` is `1e-4` of the *whole point cloud's* diagonal — 1.4e-3 for sites in the unit
+   cube. Where five sites are near-cospherical, four or more bisectors are nearly concurrent, and the
+   **real** corners near such a degeneracy are closer together than that tolerance. So every face
+   passing near the cluster claimed every corner in it. Measured, 72 sites at seed 31, cell 10: a
+   4.5e-3-long edge listed by **four** faces, and the two long edges radiating from its ends listed by
+   **one** each. That is the T-junction: one edge on one side of the seam, two on the other. It is worth
+   being precise that the first pass's diagnosis — "the clipper lists that corner on one face and drops
+   it as degenerate on the neighbour", a *missing* vertex — was the wrong way round. Nothing was
+   missing; faces were claiming corners that were not theirs.
+   Membership is now **combinatorial**: a corner records the set of planes whose triple produced it, and
+   a face's polygon is exactly the corners that record that plane. That is the incidence information the
+   distance test was trying to recover from geometry.
+2. **The inside test admitted points outside the cell.** `insideAll` allowed `side > eps`, and `eps`
+   (3.5e-4) is the same size as a degenerate corner cluster, so points genuinely outside the polyhedron
+   became corners of it. A candidate is now inside every half-space to within **its own uncertainty**,
+   which the solver computes: Cramer's rule spends `Float` precision on cancellation between the three
+   numerator terms, on a determinant that vanishes as the normals approach coplanar, and on the plane
+   offsets themselves — the last dominating when they cancel to nothing, which is exactly what sites
+   *on* a sphere do (`d = 0.5(|pj|² − |pi|²)` is 0 in exact arithmetic and ±6e-8 in `Float`, and the
+   corner they all pass through lands 1e-6 out).
+
+**Verified** by `VoronoiFaceTopologyTest`, 4 cases, whose invariant is exact **directed**-edge pairing:
+every ordered corner pair walked by one face and its reverse by exactly one other. That is the precise
+statement of "closed, consistently wound", and precisely what a T-junction breaks.
+
+```
+                                            before        after
+bounded cells failing        25 of 46 in one lattice   ->  4 of 465 over 24 lattices
+clipped cells failing               224 of 912 (all)   ->  12 of 447
+interior cells closing from their faces alone            22 of 36   ->  36 of 36
+cell volumes tiling the clip box                                       1e-4 relative
+4x4x4 cubic lattice (7 bisectors through every corner)   interior cells are unit cubes to 1e-4
+24 cospherical sites, 16 coplanar sites                  every cell closes
+```
+
+An honest note on a heuristic I wrote and deleted: I first also flagged "a corner lying in the interior
+of another face's edge". It over-reports — a legitimately very flat corner on a cell stretched against
+the clip box comes within 4e-4 of the cell's size of a non-incident edge, which is *nearer* than a real
+T-junction was. Directed-edge pairing has no such ambiguity.
+
+**What is left, and why I stopped there.** The residue is the same degeneracy in its last corner: a
+corner whose two computations are 6.7e-4 apart on a cell 1.18 across — wider than the error bound that
+explains it, so they stay two corners. Widening the bound costs more cells than it fixes; the sweep is
+in `conditionRadius`'s KDoc (offset-term factor 0/2/8/32 → 12/12/52/167 failures, and 0 loses the
+cospherical case, so 2 is the widest free value). Closing it properly means carrying the cell's
+combinatorics *through* the clipping instead of recovering them afterwards — a rewrite of the file, not
+a tolerance. Both counts are **ratcheted** in the test rather than asserted away.
+
+**The bridge workaround stays**, and this is a deliberate call rather than laziness: `toTriMesh`'s
+convex-hull repair is no longer *needed* for any interior cell of the lattices tested, but 4 of 465
+bounded cells and the wildly-conditioned clipped ones still want it. Its KDoc now carries the real
+numbers and points at the test. `healToConvexHull = false` shows the raw result.
+
+## 2. `0557b398` — the inline card, verified to pixels
+
+`TriMesh` already implemented `ToHTML`, so this deepened it rather than adding it: the card is now the
+render beside the facts that decide whether a mesh is usable — counts and components, watertight /
+manifold / open with its boundary-loop count, χ and genus, area, **signed** volume when closed, and the
+bounding box's size and position.
+
+Implemented as `ToHTML` on `TriMesh` in `mesh_field.kt`. **`ValueVisualizer.kt` is untouched**, so this
+merges cleanly against the unmerged `nightly/2026-07-27/2-imaging-inline-visualizers` branch.
+
+**Cost, since the mission asked plainly:** a 300x225 render at 2x supersampling (270k rasterized
+samples), one topology pass, one area/volume pass. Milliseconds on an icosphere. Above 40k triangles the
+*picture* runs on a 20k QEM decimation and says so; the numbers are always the real mesh's.
+
+**Verified to pixels, not to compilation.** `MeshVisualizerPixelTest`, 8 cases, decodes the base64 PNG
+back out of the emitted HTML with `ImageIO` and reads samples: the render is 300x225 with all four
+corners the declared background; 15–85% of the frame painted; the centre of a lit sphere 40 luminance
+above background; a blue sphere reads blue there; the top brighter than the bottom (shaded, not a
+silhouette fill); an open mesh wound inside-out loses its surface; a 200k-triangle marched sphere
+renders from its decimation and admits it; an empty mesh emits **no `<img>` at all**; a Voronoi cell off
+the fixed clipper reads watertight with χ=2 and draws.
+
+**Two of those tests began as failures that corrected the documentation.** "A mesh wound inside-out
+looks hollow" is false for a closed mesh: culling the front faces only reveals the far inner wall, and
+`VisionGeometryPreview.shade` deliberately flips an inward normal rather than painting it black. Measured:
+centre luminance 149.9 inverted against 148.9 upright, silhouettes equal to 0.02. So the *picture* cannot
+tell you — the `volume` row is the **signed** volume, and an inverted cube reports `-1.0000`. The KDoc now
+says that, and both halves are pinned.
+
+**Gallery panel `11-inline-visualizer`** (11 panels now). Every image in it is the card's *own* PNG,
+decoded out of the card's own HTML, with the card's own fact rows beneath — not a lookalike rendered
+alongside. **Eyeballed:** icosphere 642 verts / χ=2 / area 6.1282 / volume 1.4244; torus χ=0, genus 1,
+area 4.7451 against the analytic 4.776 and volume 0.5147 against 0.525; a marched gyroid reporting 4
+parts and 8 boundary loops; an open patch reporting one boundary loop, χ=1, and **no volume at all**.
+Panel `08-voronoi-bridge` improved for free: 72 of 72 cells closed, volumes summing to the clip box to
+**7.3e-09** relative, where the committed number was 1.79e-06.
+
+## 3. `78403b3c` — a seventh demo box
+
+The six existing boxes push pictures to their outputs with `showMeshGrid`. The new one deliberately does
+not: it builds a drilled, Taubin-smoothed solid and its last expression *is* the mesh, so the value
+visualizer draws it. It also teaches the thing the picture cannot show, and offers `.flipped()` as the
+experiment.
+
+## Verification — everything below was run tonight, not carried over
+
+| what | result |
+|---|---|
+| `./gradlew jvmTest` | **614 tests, 0 failures, 0 skipped, 57 classes, 67s** (was 602 / 55) |
+| `./gradlew checkCodebaseReference` | **ok — 4252 symbols across 9 pages**, no drift (no new public API) |
+| `mesh.gallery` (port 9700) | **PASS**, 11 panels, all regenerated into `dev_docs/assets/mesh_gallery/` |
+| `examples.demo-transcript.exec` (9701) | **PASS** — `applied=16, output lines=66`, **zero error-kind lines** |
+| `examples.agent-transcripts.materialize` (9702) | **PASS** twice: once writing the bundle, once as the drift guard |
+| new box's own numbers | `10080 verts, 20160 tris, chi=0, genus 1, watertight, area 10.1959, volume 1.6487` |
+| the demo's Voronoi box | 48 of 48 closed; volumes sum to the clip box to **1.40e-08** (was 1.79e-06) |
+| `df -h /` before the captures | 45 GiB free |
+
+**Carried over from the first pass, not re-verified tonight:** the ten pre-existing gallery panels were
+regenerated and the run's invariants passed, but I re-eyeballed only `08` and `11` — the other nine are
+the first pass's visual judgement. All the marching-cubes / decimation / smoothing / Gauss–Bonnet numbers
+quoted above the divider are its measurements, re-run green as part of the 614 but not re-read
+individually.
+
+## Not done, and why
+
+**No `public/docs/` worked-example page.** This was mission item 4 and it is the one thing missing. Doing
+it honestly means real `diffstatic` fences with real captures through the docs build, which on this
+machine is a slow, port-sensitive pipeline (see the docs-runner 9477 collision), and I reached the end of
+the budget with the first three items done deeply. A half-written page with hand-authored figures would
+be worse than none — an honest gap beats a fake. `dev_docs/MESH_GEOMETRY.md` and the 11 gallery panels
+are the material; panel `11` is the figure such a page should open with.
+
+**Stretch list untouched** (isotropic remeshing, geodesic distance, SDF booleans, a GPU/PLY bridge). None
+could have reached real, eyeballed output tonight, and half-finished exploratory code is worse than
+stopping.
+
+## Risks
+
+- **The Voronoi change is the real one.** It is pre-existing shared code, but the blast radius is small:
+  `voronoi3d` has exactly one non-test consumer in the tree (the mesh bridge) plus the gallery. Face
+  polygons for near-degenerate cells now legitimately contain small real edges that the old tolerance
+  smeared away, so a consumer that assumed "no edge shorter than eps" would see a change — nothing in
+  the tree does. Volumes are unchanged to 1e-8.
+- The 4-of-465 and 12-of-447 ratchets are ceilings, not zeroes. A future change that makes them worse
+  fails the test with the real numbers in the message.
+- The card runs a topology pass on every evaluation. Cheap, but it is per-evaluation work that did not
+  exist before on a value type; a pathological 500k-triangle mesh will be felt.
+
+## Recommendation: **merge**
+
+Unchanged from the first pass, and stronger. The branch's one self-declared risk is now a measured,
+mostly-closed defect with a 912-cell regression test instead of a known bug with a workaround; the
+inline view is verified by reading pixels rather than by compiling; the demo shows it. 614 tests green,
+both drift guards green, the demo replayed through the real engine.
+
+Follow-ups, in order: (1) the `public/docs/` page; (2) carry the cell combinatorics through Voronoi
+clipping and delete both ratchets; (3) the `TriMesh` → `afield.four` GPU upload bridge.
