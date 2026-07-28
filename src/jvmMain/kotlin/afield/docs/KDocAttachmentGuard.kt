@@ -115,6 +115,18 @@ object KDocAttachmentGuard {
         data class Benign(val reason: String, val at: Int) : Verdict
     }
 
+    /**
+     * Source roots this guard does not scan, as repository-relative path prefixes.
+     *
+     * `src/personal/` is gitignored (`.gitignore:226`) and exists only on the machine of whoever
+     * created it, so it is not part of the repository, is not read by the reference generator, and
+     * cannot be reproduced — or fixed — from another checkout. Scanning it made `./gradlew check` fail
+     * on un-committed sketch code: on the machine this guard was merged on it reported four blocks in
+     * `kiwi/MapType.kt`, `organic/fakeDivs.kt` and `pattern/polyheadra.kt`, none of which any commit
+     * could address. The guard is about what gets *published*, so repository source is the right scope.
+     */
+    private val EXCLUDED_ROOTS = listOf("src/personal/")
+
     @JvmStatic
     fun main(args: Array<String>) {
         val verbose = args.contains("--verbose")
@@ -127,6 +139,10 @@ object KDocAttachmentGuard {
 
         val files = sourceRoot.walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
+            .filterNot { file ->
+                val rel = repo.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+                EXCLUDED_ROOTS.any { rel.startsWith(it) }
+            }
             .sortedBy { it.absolutePath }
             .toList()
 
