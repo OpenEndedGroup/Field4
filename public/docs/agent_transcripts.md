@@ -54,6 +54,20 @@ land in the global basin. On execute it plots the target and the fitted curve an
 before→after summary with a loss-trajectory sparkline.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
+**mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
+independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
+cylinder and prints what each one is — welded, watertight, χ = 2. *Marching cubes* takes a sphere, a
+drilled sphere and a gyroid out of scalar fields and shows the surface converging on the analytic
+volume as the resolution doubles. *SDF modelling* writes a shape as an expression — primitives combined
+with union, difference and a smooth minimum — then meshes it. *Subdivide, smooth, decimate* runs one
+mesh through Loop subdivision, then Laplacian against Taubin (watch which one holds its volume), then
+QEM decimation to a triangle budget with the deviation that costs. *Curvature, rays, closest points,
+inside* queries a torus through the BVH and prints correctly-signed Gaussian curvature. *Bridges* turns
+`voronoi3d` cells into meshes, meshes into `FLine`s, and writes OBJ and STL. The last box needs no view
+code at all: it evaluates a `TriMesh` and lets its own `ToHTML` draw it — a shaded render beside the
+counts, χ, genus, area, volume and bounds. Every box is pure CPU and runs on its own.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/mesh_geometry_examples/metadata.edn)
+
 **wfc_worked_example** — The [Wave Function Collapse worked
 example](wfc_examples.md) as eight independent boxes: adjacency authored by hand with `wfcRules { }`
 and both phases pinned with `forceTile`; the simple-tiled model learned from an image, printing the
