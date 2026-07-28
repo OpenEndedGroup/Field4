@@ -1700,7 +1700,25 @@ object OperationTranscript {
 
     private fun describeMacroFailure(failure: Throwable): String {
         val detail = failure.message?.takeIf { it.isNotBlank() }
-        return if (detail == null) failure.javaClass.name else "${failure.javaClass.simpleName}: $detail"
+        if (detail != null) return "${failure.javaClass.simpleName}: $detail"
+        // A message-less throwable — ConcurrentModificationException, a bare NPE, the
+        // InterruptedException waitForMacroMillis works around — used to reduce to nothing but its
+        // class name, so a transcript replay failure reached CI with no way to locate it. Those are
+        // exactly the concurrency faults that need a frame, and they are the ones with no message.
+        return failure.javaClass.name + describeOrigin(failure)
+    }
+
+    /** First few non-JDK frames of [failure], for throwables that carry no message. */
+    private fun describeOrigin(failure: Throwable, frames: Int = 4): String {
+        val trace = failure.stackTrace ?: return ""
+        val interesting = trace.filterNot {
+            it.className.startsWith("java.") || it.className.startsWith("kotlin.")
+        }.take(frames)
+        val shown = if (interesting.isNotEmpty()) interesting else trace.take(frames).toList()
+        if (shown.isEmpty()) return ""
+        return shown.joinToString(prefix = " at ", separator = " <- ") {
+            "${it.className.substringAfterLast('.')}.${it.methodName}:${it.lineNumber}"
+        }
     }
 
     private fun waitForMacroMillis(millis: Long) {
