@@ -777,8 +777,10 @@ operator fun Vector3fc.times(v: DualQuaternionf): Vector3f = v.transform(this, V
  *
  * Radians, not degrees — `quat(PI / 2)` is a quarter turn. The default axis is `+z`, the one that turns
  * things in the screen plane, and the default angle is no rotation at all, so bare `quat()` is the
- * identity. The axis is used as given and is expected to be unit length; a scaled axis yields a
- * quaternion that is not a pure rotation.
+ * identity. The axis is **normalised for you** — `setAngleAxis` divides through by its length — so
+ * `quat(a, vec(0, 0, 5))` gives exactly the same unit quaternion as `quat(a, vec(0, 0, 1))`, and a
+ * merely scaled axis can never produce a non-rotation. The one case to avoid is a zero-length axis:
+ * that divides by zero and every component comes back `NaN`.
  */
 fun quat(angle: Number = 0.0, axis: Vector3f = vec(0, 0, 1)) =
     Quaternionf().setAngleAxis(angle.toFloat(), axis.x, axis.y, axis.z)
@@ -811,11 +813,12 @@ fun dualquat(real: Quaternionfc, dual: Quaternionfc) =
  * the corner-and-extent form that layout arithmetic wants, and it is the type behind Field's
  * box-packing and region work rather than anything geometric. Every operation returns a new `Cuboid`.
  *
- * The size fields are taken as given and never checked, so a negative `w`, `h` or `d` is representable
- * and quietly breaks the tests in the *permissive* direction — a negative width relaxes the strict
- * `x + w < end` comparison, so [inside] answers true more readily rather than less
- * and makes [intersects] and [inside] quietly answer false; [inset] by more than half the size is the
- * usual way to end up with one.
+ * The size fields are taken as given and never checked, so a negative `w`, `h` or `d` is representable,
+ * and it breaks the two tests in *opposite* directions. [inside] gets more permissive: it asks
+ * `x + w < end`, and a negative width shrinks `x + w`, so it answers true more readily rather than
+ * less. [intersects] gets permanently false: it asks `point.x >= x && point.x <= x + w`, which with
+ * `x + w < x` is unsatisfiable for every point. [inset] by more than half the size is the usual way to
+ * end up with one.
  */
 class Cuboid(val x: Float, val y: Float, val z: Float, val w: Float, val h: Float, val d: Float) {
 

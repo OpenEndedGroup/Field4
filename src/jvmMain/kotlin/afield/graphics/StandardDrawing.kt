@@ -170,12 +170,20 @@ fun linesOut(
 ) = linesOut(m.values, vertexData, colorData, samplesPerCubic)
 
 /**
- * Linearize stroke paths into a vertex stream and optional per-vertex colors.
+ * Linearize stroke paths into a vertex stream, plus an optional colour stream indexed *by node*.
  *
- * If provided, [vertexData] receives a stream of points with a segment id encoded
- * in the 4th component. A sentinel `(0,0,0,-1)` is written between lines.
+ * The two streams are not parallel and are not the same length. [vertexData] gets one entry per
+ * linearized sample — `samplesPerCubic` of them for every `CubicTo` — while [colorData] gets
+ * `FLine.colorsPer()` per line, which is one `Vec4` per *node*. They are joined through the 4th
+ * component of each vertex: it carries `inst + base`, where `base` accumulates `nodes.size` across
+ * lines, i.e. an index into the concatenated per-node colour array. Do not read it as a per-vertex
+ * colour or as a segment id.
  *
- * @return number of vertices written.
+ * A sentinel `(0,0,0,-1)` is written after *every* line, not between them, so N lines produce N
+ * sentinels including a trailing one — a consumer that stops at "between" will read one too many. A
+ * node-less `FLine` still contributes its sentinel and nothing else.
+ *
+ * @return number of vertices written, counting every sentinel — so samples + N, not samples.
  */
 fun linesOut(
     m: Collection<FLine>,
