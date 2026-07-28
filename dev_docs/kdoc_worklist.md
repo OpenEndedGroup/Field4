@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2375 of 4252 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2434 of 4310 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**275 undocumented entry points** (types, top-level functions and values) and 1487 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**264 undocumented entry points** (types, top-level functions and values) and 1495 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -12,35 +12,37 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
-| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 5 | 9 | 83% |
-| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 3 | 3 | 91% |
-| [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 48 | 83% |
-| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 1 | 38 | 42% |
+| [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 24% |
+| [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | mesh_examples | 17 | 46 | 0% |
+| [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
-| [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers | 1 | 1 | 77% |
+| [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
+| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 0 | 38 | 44% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples | 0 | 28 | 63% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 17 | 51% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
-| [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples | 0 | 10 | 85% |
+| [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples, wfc_examples | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers | 0 | 10 | 77% |
+| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 0 | 9 | 89% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
+| [wfc_field.kt](../src/jvmMain/kotlin/afield/stdlib/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 77% |
 | [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples | 0 | 6 | 82% |
+| [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
+| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 0 | 3 | 95% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 45 | 226 | 0% |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | — | 27 | 52 | 0% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | — | 26 | 120 | 3% |
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Graphics | — | 25 | 129 | 0% |
-| [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | — | 20 | 57 | 10% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
-| [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | — | 17 | 46 | 0% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | — | 14 | 152 | 5% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 12 | 9 | 25% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | — | 11 | 41 | 0% |
-| [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | — | 7 | 0 | 41% |
+| [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | — | 6 | 0 | 50% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Graphics | — | 5 | 38 | 0% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
 | [LazyValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt) | Visualization | — | 5 | 5 | 0% |
@@ -50,12 +52,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
-| [mesh_sdf.kt](../src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt) | Graphics | — | 1 | 0 | 97% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
-| [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | — | 0 | 5 | 89% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
 
@@ -63,17 +63,45 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `FnGraphRebuilder` | typealias | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:49` |
+| `Aabb3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:28` |
+| `Plane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:33` |
+| `VoronoiFace` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:38` |
+| `VoronoiCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:46` |
+| `VoronoiLattice` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:53` |
+| `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:436` |
+| `SupportSurface3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:441` |
+| `SupportSphere3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:445` |
+| `SupportPlane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:452` |
+| `CircularDirichletPatch3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:459` |
+| `SpherePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:466` |
+| `PlanePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:474` |
+| `CircularDirichletCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:482` |
+| `CircularDirichletDiagram3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:487` |
+| `WfcOffset` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:35` |
+| `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:737` |
+| `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:739` |
+| `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:741` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
-| `Vec4` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:47` |
-| `Vec3` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:55` |
-| `Vec2` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:63` |
-| `Quat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:73` |
-| `DualQuat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:83` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
-| `Vec2h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:881` |
-| `Vec3h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:884` |
-| `Vec4h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:887` |
+| `Voronoi3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:65` |
+| `CircularDirichlet3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
+| `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
+| `voronoi3d` | fun | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:60` |
+| `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1222` |
+| `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1262` |
+| `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1265` |
+| `loadPngOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1316` |
+| `savePng` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1325` |
+| `FloatArray.sliceIntoUniqueTiles2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1415` |
+| `FloatArray.sliceIntoOverlappingPatterns2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1462` |
+| `WFC_NORTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:30` |
+| `WFC_EAST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:31` |
+| `WFC_SOUTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:32` |
+| `WFC_WEST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:33` |
+| `WFC_VON_NEUMANN_NEIGHBORHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:154` |
+| `WFC_MOORE_NEIGHBORHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:155` |
+| `WFC_VON_NEUMANN_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:156` |
+| `WFC_MOORE_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:157` |
 | `Any.h` | val | `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt:2476` |
 | `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:37` |
 | `LeastSquaresOptions` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:26` |
@@ -155,33 +183,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ClusterLayerVizOptions` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:192` |
 | `Neighbor` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:287` |
 | `DynamicGraphSystem` | interface | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:289` |
-| `Vec3BreathingAnisotropicKnnSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:330` |
-| `Vec3FlowlineAdvectionGraphSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:399` |
-| `Vec3LocalTangentTriangulationSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:458` |
-| `Vec3PersistentProximityHysteresisSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:517` |
-| `Vec3SignalRoutingGraphSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:570` |
-| `Vec3AlphaEventHypergraphCollapseSystem` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:627` |
-| `DynamicPointKinetics` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:734` |
-| `DynamicPointProcess` | interface | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:752` |
-| `SpringMotionProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:864` |
-| `DirectedEdgeAdvectionProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:912` |
-| `DirectedTipGrowthProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:943` |
-| `MergeClosePointsProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:997` |
-| `SignalDiffusionAndChemotaxisProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1044` |
-| `AddNearLowDensityProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1100` |
-| `AddNearHighDensityProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1141` |
-| `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1185` |
-| `PruneIsolatedPointsProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1213` |
-| `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1235` |
-| `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1258` |
-| `FramesSigLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:47` |
-| `FramesSigMetadata` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:53` |
-| `FramesSigProduct` | interface | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:67` |
-| `FramesSigFloatProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:74` |
-| `FramesSigFloatVectorProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:91` |
-| `FramesSigTimedSample` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:109` |
-| `FramesSigProductInfo` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:118` |
-| `FramesSigDocument` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:126` |
-| `Sound2VecLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:347` |
 
-…and **155 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **144 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

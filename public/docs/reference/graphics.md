@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-22 source file(s), 1315 public symbol(s), 582 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 1315 public symbol(s), 584 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -995,9 +995,12 @@ Colour constructors for the stdlib. Everything here returns a `Vec4` of sRGB-enc
 clamped to `[0,1]` with alpha last, so the results drop straight into FLine colours and uniforms.
 
 `rgb` / `rgba` accept either 0..1 or 0..255 components — the scale is inferred per call from
-whether any component exceeds 1 — and `rgb255` forces the 0..255 reading. `hsl` is ordinary HSL;
-`okhsl` and `okhsv` are the Oklab-based equivalents, which hold perceived lightness far steadier
-across hue. Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
+whether any component exceeds 1 — and `rgb255` forces the 0..255 reading. `hsl` is HSL with the
+usual cube geometry, but the result is encoded through the sRGB transfer function on the way out,
+so it is *not* interchangeable with CSS `hsl()` — see `hsl` for what that costs. `okhsl` and
+`okhsv` are the Oklab-based equivalents; of the two only `okhsl` holds perceived lightness steady
+across hue, because `okhsv` scales `v` against the per-hue gamut cusp exactly as HSV always has.
+Hue may be given as a fraction of a turn or in degrees (magnitude above 1 is divided
 by 360) and is wrapped either way.
 
 For sets: `hueSetHsl`, `hueSetOkhsl` and `hueSetOkhsv` (aliased `hslSet`, `okhslSet`, `okhsvSet`)
@@ -1068,6 +1071,8 @@ is O(m^2) in the number of segments, so very high grid resolutions get expensive
 ### ScalarField2D { #contours-kt-scalarfield2d }
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">ScalarField2D</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code>
+
+Scalar field f(x, y) -> value. You can use a lambda or method reference, e.g. rbf::interpolate2D.
 
 ## fline_graph_connectivity.kt { #fline-graph-connectivity-kt }
 
@@ -1381,7 +1386,7 @@ The closed set of value types a `KeyframeScope.Key` can *persist*: numbers, vec2
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackSL</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> | StackSL source text, tagged as code rather than as a string so that it reloads as a [`StackSLString`](graphics.md#keyframer-kt-stackslstring) and interpolation steps it discretely instead of trying to blend it. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Str</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> | A plain `String`. |
 | <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SourceBlock</span><span class="p">(</span><span class="k">val</span> <span class="n">boxId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="nc">KValue</span></code> | A `SourceBackedBlock` reduced to the box it came from and its Kotlin source — the *live lambda* is not persisted. On load the block re-compiles its source in that box on first invocation, so a key restored into a document where the box is gone throws when the value is finally called. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">toAny</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code> | Rebuild the live Kotlin value this entry stands for — the load half of the round trip. Quaternion-shaped values are re-normalised on the way out, numbers regain their [`NumKind`](graphics.md#keyframer-kt-numkind) type, and a `SourceBlock` becomes a `SourceBackedBlock` that has not compiled anything yet. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toAny</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span></code> | Rebuild the live Kotlin value this entry stands for — the load half of the round trip. A [`DualQuat`](math.md#linalg-kt-dualquat) and a `CameraPoseValue` are re-normalised on the way out, because a rigid transform that has drifted is a broken transform; a plain [`Quat`](math.md#linalg-kt-quat) deliberately is **not** (see its own note — it may be standing in for something that is not a rotation). Numbers regain their [`NumKind`](graphics.md#keyframer-kt-numkind) type, and a `SourceBlock` becomes a `SourceBackedBlock` that has not compiled anything yet. |
 
 ### KeyDTO { #keyframer-kt-keydto }
 
@@ -1535,6 +1540,8 @@ display(shell.toFLines())            // draw its wireframe
 
 `src/jvmMain/kotlin/afield/stdlib/mesh.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-kt-functions }
 
 | Declaration | Summary |
@@ -1643,6 +1650,8 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-field-kt-functions }
 
 | Declaration | Summary |
@@ -1731,6 +1740,8 @@ facing `+y` — the difference is deliberate, a plane is a wall and a heightfiel
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-generate-kt-functions }
 
 | Declaration | Summary |
@@ -1784,6 +1795,8 @@ val back = objToTriMesh(File("/tmp/ball.obj").readText())
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_io.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-io-kt-functions }
 
 | Declaration | Summary |
@@ -1829,7 +1842,7 @@ bvh.signedDistance(vec(0.5f, 0, 0))            // negative inside
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt`
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [FLine examples (Field graphics)](../fline_examples.md)
 
 ### Top-level functions { #mesh-measure-kt-functions }
 
@@ -1935,6 +1948,8 @@ quads. Loop is the triangle scheme, and it is the one here.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_process.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-process-kt-functions }
 
 | Declaration | Summary |
@@ -2019,6 +2034,8 @@ corrupt the march.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`
 
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+
 ### Top-level functions { #mesh-sdf-kt-functions }
 
 | Declaration | Summary |
@@ -2063,6 +2080,8 @@ corrupt the march.
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">ScalarField3D</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Float</span></code>
 
+A scalar field in space: `f(x, y, z)`. For a signed distance function, negative is inside.
+
 ## mesh_topology.kt { #mesh-topology-kt }
 
 What a [`TriMesh`](graphics.md#mesh-kt-trimesh) *is*, as opposed to where it is: adjacency, boundaries, components,
@@ -2090,6 +2109,8 @@ println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.
 ```
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`
+
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #mesh-topology-kt-functions }
 
@@ -2432,11 +2453,12 @@ user-facing entry points are the macro placeholders `Box.moduleHere`, `Box.compu
 `MacroNotExpandedException` if actually called, because `MacroRegistry` is expected to rewrite it
 into the real `_moduleHere`-family call.
 
-Before compilation every stage goes through `preprocess`, which resolves `#include`s against
-other boxes' shader properties (with cycle detection and `#line` fixups), against built-in
-includes such as the field probe, field stats and quantile warp, and against registered include
-roots — `registerShaderFilesystemIncludeRoot` for a directory and `registerLygiaIncludeRoot` /
-`shaderCachedUrlIncludeRootResolver` for URL-fetched, disk-cached libraries. It also expands
+Before compilation every stage goes through `preprocess`, which resolves `{% include %}` template
+tags against other boxes' shader properties (with cycle detection and `#line` fixups) and against
+built-in includes such as the field probe, field stats and quantile warp. Registered include roots —
+`registerShaderFilesystemIncludeRoot` for a directory, `registerLygiaIncludeRoot` /
+`shaderCachedUrlIncludeRootResolver` for URL-fetched, disk-cached libraries — are **not** reachable
+from here: they are resolved by shaderc during compilation, from a real `#include` only. It also expands
 `{% copyPC %}` (copying a previous stage's push-constant block) and stackAuto template slots
 compiled from StackSL via `stackAutoShaderSource`.
 
@@ -2508,7 +2530,7 @@ generation-guarded async reload all key off it.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;moduleHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> | Macro expansion for `moduleHere(…)` — the entry point `MacroRegistry` calls when it finds one in a box's text. Delegates to `Box.macro_moduleHereWithDefaultShaders` with Field's stock vertex and fragment shaders as the fallbacks. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;moduleHereWithDefaultShaders</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">defaultVertexShader</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="n">defaultFragmentShader</span><span class="p">,</span> <span class="n">resolvesToCall</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#95;moduleHere&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> | The shared body of every graphics-module macro: seed the box's shader properties if it has none, preprocess and compile both stages *at expansion time*, and return the `Insert` that carries the generated typed bindings plus the rewritten call site. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;shadertoyHere</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code> | Macro expansion for `shadertoyHere(…)`: register the shadertoy template preambles on the box, then run the ordinary graphics expansion with the shadertoy vertex/fragment shaders as fallbacks and `_shadertoyHere` as the runtime call. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">insertForShader</span><span class="p">(</span><span class="n">vi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">fi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">resolvesToCall</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#95;moduleHere&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> | Turn a compiled vertex+fragment pair into the `Insert` that gives a box its typed graphics API: one `val Mesh.<name> by FromInput()` per vertex attribute, the `m.set { }` writer map, a generated Kotlin class per GLSL struct/UBO/SSBO layout, `stack.auto` string properties, and `Mesh`/`MeshGroup` accessors for every push-constant and UBO member. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">insertForShader</span><span class="p">(</span><span class="n">vi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">fi</span><span class="p">:</span> <span class="nc">Introspection</span><span class="p">,</span> <span class="n">resolvesToCall</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&#95;moduleHere&quot;</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span></code> | Turn a compiled vertex+fragment pair into the `Insert` that gives a box its typed graphics API: one `val Mesh.<name> by FromInput()` per vertex attribute, the `m.set { }` writer map, a generated Kotlin class per GLSL struct/UBO/SSBO layout, `stack.auto` string properties, and `Mesh`/`MeshGroup` accessors for every push-constant member. UBO members deliberately get *less* than that: the block itself becomes a `val ModulePointer.<name> by FromUniform()` and each member a `var Structure.<name>`, with no `Mesh`/`MeshGroup` accessor, so a UBO member is written through the uniform rather than per-mesh. (The compute and mesh-shader inserts do emit `Mesh.<uboName>`; this graphics path does not.) |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> | The runtime graphics-module builder for the trailing-lambda call site, `moduleHere { … }` after expansion. Resolves the `Renderer` from the ambient context — which means this box must be a descendant of the box that owns the window, or `fromContext()` finds nothing. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;moduleHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span> <span class="o">=</span> <span class="n">parameters</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> | Build this box's graphics module and store it as `box._shader` — the function every expanded `moduleHere` call actually ends up in. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">&#95;shadertoyHere</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Parameters</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> | The runtime shadertoy-module builder for the trailing-lambda call site. Resolves the `Renderer` from the ambient context, so the box must be a descendant of its renderer box. |
@@ -2532,7 +2554,7 @@ generation-guarded async reload all key off it.
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The fragment-stage GLSL for this box, as text — the shader tab you type into, and the *only* place a graphics module's fragment shader comes from (assignments inside a `moduleHere { }` lambda do not set it). |
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The vertex-stage GLSL for this box. Its `layout(location = …) in` declarations are the contract that generates the box's `Mesh` writers (`pos`, `col`, …), so changing an input here changes the Kotlin API of every box downstream of the next reload. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex&#95;fragment</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | One Slang source holding *both* the vertex and fragment stages, compiled twice (once per stage) by `slangc`. It beats `vertex`, `fragment`, `vertex_s` and `fragment_s` outright: when this is non-blank it is the source for both graphics stages. |
-| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">task</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The task-shader (amplification) stage GLSL of a mesh-shader pipeline. `meshModuleHere` needs `task`, `mesh` *and* `fragment` — there is no task-less mesh path here — and seeds a small `EmitMeshTasksEXT` default into all three if the box has none. |
+| <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">task</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The task-shader (amplification) stage GLSL of a mesh-shader pipeline. `meshModuleHere` needs `task`, `mesh` *and* `fragment` — there is no task-less mesh path here — and fills in whichever of the three the box is missing, each independently and each with its own stub: an `EmitMeshTasksEXT` amplifier here, a `SetMeshOutputsEXT` triangle emitter for `mesh`, and a constant-colour write for `fragment`. A box that already has a task shader keeps it and gets only the other two. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">mesh</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The mesh-shader stage GLSL, the stage that emits vertices and primitives directly (`SetMeshOutputsEXT` / `gl_MeshVerticesEXT`) instead of consuming a vertex buffer. Paired with `Box.task` and `Box.fragment` by `meshModuleHere`; note the name collides conceptually with `Mesh` the Kotlin draw object, which is unrelated. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">fragment&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Slang source for the fragment stage. When non-blank it wins over `Box.fragment` and is transpiled to GLSL by `slangc` before shaderc ever sees it, so compile errors arrive in Slang's `(line): error` format — which `numberFromErrorMessage` does understand. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">Box</span><span class="p">.</span><span class="n">vertex&#95;s</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Slang source for the vertex stage; wins over `Box.vertex` when non-blank. Prefer `Box.vertex_fragment` if you want the two stages to share declarations — two separate `_s` properties are transpiled independently and cannot see each other. |
@@ -2737,6 +2759,8 @@ The weighted contourer is renderer-oriented: it prefers stable, wound
 boundary loops over exact symbolic patch topology.
 
 `src/jvmMain/kotlin/afield/stdlib/voronoi.kt`
+
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #voronoi-kt-functions }
 
