@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-16 source file(s), 617 public symbol(s), 192 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+16 source file(s), 640 public symbol(s), 206 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1313,6 +1313,10 @@ What this implements:
 Notes:
 - The WFC solver operates only on integer tile IDs and constraints.
 - PNG/FloatArray simple-tiled and overlapping helpers are intentionally separate from the core.
+- The one concession to the rest of Field: [`WfcSolver`](data.md#wfc-kt-wfcsolver) implements [`afield.ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so evaluating a
+  solver in a box draws the collapse instead of a reflective property tree. Every pixel of that
+  view lives in `wfc_field.kt` (`afield.stdlib.wfcSolverHtml`); this file names it once, in
+  `WfcSolver.toHTML`, and depends on nothing else outside itself.
 
 `src/jvmMain/kotlin/afield/stdlib/wfc.kt`
 
@@ -1415,7 +1419,7 @@ Constants: `Running`, `Solved`, `Contradiction`.
 
 ### WfcSolver { #wfc-kt-wfcsolver }
 
-<code class="highlight"><span class="k">class</span> <span class="nf">WfcSolver</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">WfcRules</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">noise</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">class</span> <span class="nf">WfcSolver</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">WfcRules</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">noise</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">ToHTML</span></code>
 
 | Declaration | Summary |
 | --- | --- |
@@ -1433,6 +1437,8 @@ Constants: `Running`, `Solved`, `Contradiction`.
 | <code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedCellCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Cells collapsed to a single possibility — the WFC notion of "done" is all of them. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedTileGridOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The solver's own inline view, so that evaluating it in a box — or `solver.h` — shows the collapse: remaining possibilities per cell, entropy, what has been decided, and any contradiction, each panel captioned with the colour scale that produced it. |
 
 ### WfcOutcome { #wfc-kt-wfcoutcome }
 
@@ -1526,7 +1532,7 @@ no direct way to *look* at what it is doing. These extensions supply the missing
 [`Img`](imaging.md#imaging-kt-img), and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
 `ToHTML` thumbnail a box shows when you evaluate a value.
 
-Two kinds of view:
+Three kinds of view:
 
  1. **The result.** `PngTileSet.toImg`, `PngOverlappingTileSet.toImg` and their `Float`
     counterparts turn a solved tile grid into an image. Pair them with
@@ -1538,6 +1544,11 @@ Two kinds of view:
     `while (solver.step() == WfcStatus.Running)` loop and you have the collapse itself as a
     sequence of frames — which is by far the most informative thing you can look at when rules
     are not behaving.
+ 3. **The solver, inline.** `wfcSolverHtml` is the body of [`WfcSolver`](data.md#wfc-kt-wfcsolver)'s own `ToHTML`, so simply
+    *evaluating* a solver in a box — or `solver.h` — draws its current state: uncertainty,
+    entropy, what has been decided, where it broke. Nothing to set up, no tile set needed. See
+    `WfcSolver.possibilityCountHeatmapImg`, `WfcSolver.entropyHeatmapImg` and
+    `WfcSolver.resolvedTileImg` for the three panels on their own.
 
 Because a solved cell has exactly one possibility, `waveToImg` on a `WfcStatus.Solved` solver is
 the finished output: the animation's last frame and the result are the same picture, by
@@ -1562,5 +1573,39 @@ construction rather than by coincidence.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">possibilityCountImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `possibilityCountGrid` as a 1-channel [`Img`](imaging.md#imaging-kt-img), ready to colour-map. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">resolvedCellCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | How many cells have collapsed to exactly one possibility. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">resolvedFraction</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | `resolvedCellCount` as a `0..1` fraction — a progress read-out for a `step()` loop. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">possibilityCountHeatmap</span><span class="p">(</span><span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viridis&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcHeatmap</span></code> | Uncertainty as a picture: one pixel per cell, coloured by how many tiles are still possible there. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">possibilityCountHeatmapImg</span><span class="p">(</span><span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viridis&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `possibilityCountHeatmap` as just the image. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">entropyGrid</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> | The **weighted Shannon entropy** of every cell, in nats, row-major — the quantity the solver itself minimises when it picks the next cell to observe, unlike the raw count from `possibilityCountGrid`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcRules</span><span class="p">.</span><span class="nf">fullSetEntropy</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | The entropy of a cell in which *every* tile is still possible — the top of the `entropyHeatmap` scale, and the value `WfcSolver.entropyGrid` returns for an untouched cell. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">entropyHeatmap</span><span class="p">(</span><span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;magma&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcHeatmap</span></code> | `entropyGrid` colour-mapped over a fixed `0 ..` `WfcRules.fullSetEntropy` domain — decided cells dark, wide-open cells bright, and cells whose entropy is undefined painted `WFC_UNDEFINED_COLOR` and excluded from the range rather than clamped to the "decided" end. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">entropyHeatmapImg</span><span class="p">(</span><span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;magma&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `entropyHeatmap` as just the image. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">wfcTileColor</span><span class="p">(</span><span class="n">tile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | A stable, tileset-independent display colour for tile id `tile`, packed `0xRRGGBB`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">resolvedTileImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | What the solver has actually decided: one pixel per cell, `wfcTileColor` where the cell has collapsed to a single tile, `WFC_UNDECIDED_COLOR` where it has not, `WFC_CONTRADICTION_COLOR` where its possibility set is empty. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">wfcSolverHtml</span><span class="p">(</span><span class="n">solver</span><span class="p">:</span> <span class="nc">WfcSolver</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The inline view of a solver — the body of [`WfcSolver`](data.md#wfc-kt-wfcsolver)'s `ToHTML`, so that evaluating a solver in a box (or `solver.h`) shows the collapse rather than a reflective property tree. |
+
+### Top-level values { #wfc-field-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="nc">WFC&#95;CONTRADICTION&#95;COLOR</span><span class="p">:</span> <span class="nc">Int</span></code> | Packed `0xRRGGBB` of the contradiction marker — magenta, matching `PngTileSet.waveToImg`. |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;UNDEFINED&#95;COLOR</span><span class="p">:</span> <span class="nc">Int</span></code> | Packed `0xRRGGBB` of the "this value has no place on the scale" marker — cyan. NaN, or infinite. |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">WFC&#95;UNDECIDED&#95;COLOR</span><span class="p">:</span> <span class="nc">Int</span></code> | Packed `0xRRGGBB` drawn for a cell that is still undecided in `WfcSolver.resolvedTileImg` — dark grey. |
+
+### WfcHeatmap { #wfc-field-kt-wfcheatmap }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">WfcHeatmap</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">img</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">finiteCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">nonFiniteCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">flat</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+
+A colour-mapped scalar-per-cell field, together with the range policy that produced it — so a caption can state the scale rather than implying one.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">img</span><span class="p">:</span> <span class="nc">Img</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finiteCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nonFiniteCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">flat</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">colormap</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 </div>

@@ -673,6 +673,115 @@ loop {
 }
 ```
 
+### The solver's own inline view
+
+Everything above had to be *arranged*: pick a view, colour-map it, choose a range, montage it, push
+it to a channel. That is the right amount of work for a figure on a page and far too much for the
+thing you actually do a hundred times an hour while live coding, which is: look at the object.
+
+So `WfcSolver` implements `ToHTML`. Evaluating a solver — as a box's last expression, or via `.h`
+anywhere — draws its state instead of a reflective property tree. No tile set is needed, because none
+of these panels claims to show the tileset's colours:
+
+| panel | colour means | scale |
+| --- | --- | --- |
+| possibilities left | how many tiles are still possible in that cell | `viridis`, fixed `1` (decided) … `tileCount` (untouched) |
+| entropy | weighted Shannon entropy, in nats — the quantity the solver actually minimises | `magma`, fixed `0` … `rules.fullSetEntropy()` |
+| decided tiles | which tile a cell settled on, as a stable hue per id | dark grey where still undecided |
+
+The two heatmaps' domains are fixed by *meaning* rather than per frame, so successive looks at a
+running solver are comparable; auto-ranging is what makes an animated collapse appear to stand still.
+Values with nowhere to sit on a scale are taken off it and marked rather than clamped: a cell with
+**zero** possibilities is magenta in the count panel, because clamping 0 onto a `1..n` ramp would
+paint the one failure you need to see at the *decided* end and read as success. Entropy has a second
+such case — `fromSampleGrid` gives weight 0 to a tile the sample never contained, and a cell whose
+only survivor is such a tile has genuinely undefined entropy — drawn cyan, counted in the caption,
+and excluded from the range. Each caption names its colour scale and both endpoints in units, so a
+panel is never a picture whose meaning you have to guess.
+
+The two ramps are not interchangeable, and the reason is worth stating because only looking at the
+picture found it. A marker colour is only a marker if it is *outside* the ramp it sits on. The count
+panel was drawn in `magma` first — whose middle is pink, a shade away from the contradiction magenta —
+and a perfectly healthy collapse frontier read as a field of contradictions. Counts are therefore
+viridis (purple → teal → yellow, no pink) with a magenta marker, and entropy is magma (black → pink →
+cream, no cyan) with a cyan one.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/inline-view.png" wait="2.0" capture="box" open-outputs="true" w="1200" name="wfc-inline-view"}
+:::static
+:::fold section 2's terrain source, with section 2's re-weighted model
+fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
+    val dx = u - cx
+    val dy = v - cy
+    return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
+}
+val palette = listOf(
+    Triple(0.08f, 0.20f, 0.31f),
+    Triple(0.18f, 0.48f, 0.66f),
+    Triple(0.85f, 0.78f, 0.55f),
+    Triple(0.31f, 0.55f, 0.24f),
+    Triple(0.12f, 0.29f, 0.14f)
+)
+val bands = IntArray(26 * 18)
+for (cy in 0 until 18) for (cx in 0 until 26) {
+    val u = cx / 25.0
+    val v = cy / 17.0
+    val e = bump(u, v, 0.30, 0.40, 0.25) +
+        0.90 * bump(u, v, 0.70, 0.62, 0.21) +
+        0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+        0.62 * bump(u, v, 0.34, 0.44, 0.085)
+    bands[cx + cy * 26] = if (e < 0.16) 0 else if (e < 0.32) 1 else if (e < 0.44) 2 else if (e < 0.74) 3 else 4
+}
+val source = Img.generateRGB(26, 18) { x, y -> palette[bands[x + y * 26]] }
+val tiles = source.toBufferedImage().sliceIntoUniqueTiles(1, 1)
+val rules = tiles.toRules()
+val tileOfBand = IntArray(palette.size)
+for (i in bands.indices) tileOfBand[bands[i]] = tiles.sampleIds[i]
+rules.weights[tileOfBand[0]] *= 2.0
+rules.weights[tileOfBand[1]] *= 1.5
+rules.weights[tileOfBand[2]] *= 10.0
+:::endfold
+
+// Halfway through a collapse. `.h` is the fragment ToHTML returns, so this is exactly what the box
+// shows when its last expression is `solver` — nothing here is a special-purpose figure.
+val solver = WfcSolver(34, 24, rules, seed = 5L)
+while (solver.resolvedFraction() < 0.45 && solver.step() == WfcStatus.Running) { }
+display("a. mid-collapse", solver.h)
+
+// The same view of a failure. Section 7's over-constrained chain: nothing may sit east of tile 2, so
+// a 6x6 grid cannot be filled, and propagation empties a cell.
+val strict = wfcRules(tileCount = 3) {
+    allow(WFC_EAST, 0, 1)
+    allow(WFC_EAST, 1, 2)
+    allow(WFC_SOUTH, 0, 1)
+    allow(WFC_SOUTH, 1, 2)
+}
+val stuck = WfcSolver(6, 6, strict, seed = 1L)
+stuck.run()
+display("b. contradicted", stuck.h)
+
+// And the numbers the panels are drawn from, so the picture can be checked against them.
+display("c. read back", "<pre style='font:13px monospace;line-height:1.5'>" +
+    "mid-collapse: ${solver}\n" +
+    "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
+    " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
+    "contradicted: ${stuck}\n" +
+    "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}</pre>")
+```
+
+![two rows of three small heatmaps each: a 34x24 solver 45% through a collapse, with a dark decided mass, a teal speckled frontier and a bright yellow untouched region, and below it a contradicted 6x6 solver whose emptied cell is magenta in the count panel and cyan in the entropy panel](assets/wfc_examples/inline-view.png)
+
+The mid-collapse row shows the same story as the montage above, without having built one: the decided
+mass is dark in both heatmaps, the untouched region is bright, and the speckled band between them is
+the frontier — cells propagation has narrowed without deciding. The count and entropy panels are *not*
+redundant — a cell with three heavy options and a cell with three nearly-impossible ones have the
+same count and very different entropy, and it is entropy the solver sorts on, so the entropy panel is
+the one that predicts where it will work next. The decided-tiles panel is the answer to "on what?".
+
+The contradicted row is the case this view exists for. One cell is magenta in the count panel and
+cyan in the entropy panel — no possibilities left, and therefore no entropy — which localises the
+failure to a coordinate immediately. Reading `WfcStatus.Contradiction` off a `println` tells you only
+that something went wrong somewhere.
+
 ## 6. Not pixels: WFC on a scalar field
 
 Nothing in the solver knows what a pixel is. It works on integer tile IDs, and the image helpers are
