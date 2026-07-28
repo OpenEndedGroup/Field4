@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2141 of 4011 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2153 of 4011 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**274 undocumented entry points** (types, top-level functions and values) and 1482 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**264 undocumented entry points** (types, top-level functions and values) and 1481 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -12,12 +12,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
-| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 5 | 9 | 83% |
-| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 3 | 3 | 91% |
-| [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 48 | 83% |
-| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 1 | 38 | 42% |
+| [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers | 1 | 1 | 77% |
+| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 0 | 38 | 44% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples | 0 | 28 | 63% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
@@ -26,8 +24,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
 | [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers | 0 | 10 | 77% |
+| [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 0 | 9 | 89% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
 | [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples | 0 | 6 | 82% |
+| [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 0 | 3 | 95% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 45 | 226 | 0% |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | — | 27 | 52 | 0% |
@@ -40,7 +40,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 12 | 9 | 25% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | — | 11 | 41 | 0% |
-| [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | — | 7 | 0 | 41% |
+| [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | — | 6 | 0 | 50% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Graphics | — | 5 | 38 | 0% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
 | [LazyValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt) | Visualization | — | 5 | 5 | 0% |
@@ -61,17 +61,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `FnGraphRebuilder` | typealias | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:49` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
-| `Vec4` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:47` |
-| `Vec3` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:55` |
-| `Vec2` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:63` |
-| `Quat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:73` |
-| `DualQuat` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:83` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
-| `Vec2h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:881` |
-| `Vec3h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:884` |
-| `Vec4h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:887` |
 | `Any.h` | val | `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt:2476` |
 | `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:37` |
 | `LeastSquaresOptions` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:26` |
@@ -181,5 +172,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `FramesSigProductInfo` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:118` |
 | `FramesSigDocument` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:126` |
 | `Sound2VecLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:347` |
+| `Sound2VecManifest` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:352` |
+| `Sound2VecClip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:366` |
+| `Sound2VecAudioSubclip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:416` |
+| `Sound2VecDataset` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:429` |
+| `FeatureExtractor` | interface | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:235` |
+| `UniformQuantileFeatureExtractor` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:240` |
+| `ControllerConfig` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:255` |
+| `ControllerDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:301` |
+| `ControlOutput` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:314` |
 
-…and **154 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **144 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

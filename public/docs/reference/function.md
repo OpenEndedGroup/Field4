@@ -4,7 +4,7 @@
 
 The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. Build them, compose them, fit them, mutate them, and rewrite their graphs with user-authored patterns.
 
-10 source file(s), 345 public symbol(s), 228 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 345 public symbol(s), 229 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -316,6 +316,8 @@ Structural metadata for `Functions.Fn`.
 ### FnGraphRebuilder { #functiongraph-kt-fngraphrebuilder }
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">FnGraphRebuilder</span> <span class="o">=</span> <span class="p">(</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code>
+
+A node's recipe for putting itself back together: given the children in role order, return the equivalent `Functions.Fn`.
 
 ### FnGraphNode { #functiongraph-kt-fngraphnode }
 

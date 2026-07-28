@@ -578,6 +578,35 @@ The result of a sparse optical-flow run.
 
 ## imaging_simd.kt { #imaging-simd-kt }
 
+The SIMD span kernels the imaging filters are built out of.
+
+### Why this file exists
+
+The scalar filter layer reads every sample through `Img.get`, which per multiply-add costs a
+range check, a channel clamp and a `when` over [`Border`](imaging.md#imaging-kt-border). That is correct and readable, and it is
+also unvectorizable: C2 cannot hoist a branch whose outcome depends on the loop index out of the
+inner loop, so a 3-tap Sobel pays three bounds-checked calls per sample.
+
+The fix is not to make the accessor faster — it is to stop calling it in the interior. Because
+[`Img`](imaging.md#imaging-kt-img) stores samples interleaved (`data[(y * width + x) * channels + c]`), *both* passes of a
+separable convolution address contiguous memory:
+
+- **Vertical.** For a fixed output row, tap `t` reads the whole of source row `y + t - r`. The
+  border decision is therefore *per row*, not per pixel: resolve the row index once and the
+  entire row is a straight span. Every row takes the fast path.
+- **Horizontal.** Adding `(t - r) * channels` to a flat index moves to the same channel of the
+  pixel `t - r` columns over. So for a fixed tap the whole interior of a row is, again, a
+  straight span — only the `r` columns at each end need the general accessor.
+
+Which reduces a separable convolution to one primitive, applied once per tap: `dst += w * src`
+over a contiguous span. That is `axpy`, and it is what this file provides.
+
+### On FMA
+
+`axpy` uses a fused multiply-add: one rounding per tap instead of two. Results therefore differ
+from the scalar reference in the last ulp — more accurate, not less, but not bit-identical.
+The filter tests assert agreement to `1e-5f`, which is four orders of magnitude above this.
+
 `src/jvmMain/kotlin/afield/stdlib/imaging_simd.kt`
 
 </div>

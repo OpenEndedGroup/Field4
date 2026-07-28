@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-14 source file(s), 1074 public symbol(s), 348 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+14 source file(s), 1074 public symbol(s), 349 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1068,6 +1068,8 @@ is O(m^2) in the number of segments, so very high grid resolutions get expensive
 ### ScalarField2D { #contours-kt-scalarfield2d }
 
 <code class="highlight"><span class="k">typealias</span> <span class="nc">ScalarField2D</span> <span class="o">=</span> <span class="p">(</span><span class="nc">Double</span><span class="p">,</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code>
+
+Scalar field f(x, y) -> value. You can use a lambda or method reference, e.g. rbf::interpolate2D.
 
 ## fline_graph_connectivity.kt { #fline-graph-connectivity-kt }
 
