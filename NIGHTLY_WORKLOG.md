@@ -180,3 +180,122 @@ what happens in each case, the load-bearing blank line under a file overview, bo
 rule that cost a build on 2026-07-27: never write an opening or closing comment marker inside a KDoc,
 because Kotlin block comments nest. Linked from `dev_docs/README.md` and named in the guard's own
 failure message.
+
+### 6. Two further audit passes (`415472fd`, `b35fe91c`, `9bfbbd9f`)
+
+Kept going in the same spirit rather than stopping at the mission list. Method that worked best, and
+worth reusing: write a throwaway probe test that *prints measurements* of every falsifiable numeric
+claim in a file, run it, and read the numbers. It found `movingAverage` and the step sampler in
+minutes, and — as importantly — cleared 29 claims that reading alone would have left uncertain.
+
+The second pass (`415472fd`) found `movingAverage` was not a mean (the constant 1.0 came back as 2.0
+at `samples = 2`, 1.0158730158730158 at the default 64, so the high-pass identity `f -
+f.movingAverage(w)` returned −0.0159 on a flat signal), and `tile` declaring its source's domain
+rather than the span its copies occupy. Two apparent findings in that batch were **my own API
+misreadings**, recorded so the next pass does not chase them: `repeat`'s second argument is a period,
+not a count, and `softClip`'s `amount` is drive, not a threshold — both exactly as documented.
+
+The third pass (`b35fe91c`) covered `shaders.kt`, `stacksl.kt`, `linalg.kt`, `stdlib.kt`, `colors.kt`,
+`StandardDrawing.kt`, `FunctionGraph.kt`, both `FunctionRewrite` files, `spectral.kt` and
+`smile_neighbors.kt`: 22 claims, five of them code. The pick of them:
+
+- `obbBounds` returned a box that **did not contain its own points** (half-widths about the centroid),
+  and NaN'd its axes outright on a collinear cloud.
+- `graphics.pointsOut` threw `IndexOutOfBoundsException` for any `pointed` line containing a
+  `close()` — every rect and every arrowhead — because `FLine.Close` carries no coordinate. Its
+  `FLineMap` overload also forwarded colours into the point-size buffer.
+- `String.times`'s documented "zero or fewer gives the empty string" was the one case that threw.
+- `FnGraphEdge`'s entire KDoc described `FnGraphNode`. Worth noting: **the attachment guard cannot see
+  this** — the block parses and attaches perfectly, it is simply about the wrong thing. Guarding
+  attachment is not the same as guarding truth.
+- `fnRewriteNumber`'s KDoc still told readers that returning null falls through to source hydration
+  and fails, two commits after `86edb81b` made null mean "leave this value alone" — with the code's own
+  inline comment saying the opposite of the KDoc six lines above it.
+
+`imgFromFile`'s inline `@param` (`9bfbbd9f`) was the only KDoc in `afield.stdlib` /
+`afield.visualization` publishing a block tag as prose; a scan also confirmed no block *starts* with a
+tag, which would publish an empty summary while the worklist called the symbol undocumented.
+
+## Verification — what was checked, and how
+
+Verified:
+
+- `./gradlew compileKotlinJvm compileTestKotlinJvm` — green, no new warnings.
+- `./gradlew jvmTest` — **513 tests, 0 failures** (501 on the base; 12 new). Every new case was
+  watched failing on the pre-fix code first, with the failure text recorded: "got NaN", "got [0.75,
+  0.7425]", "measured 1.000000× (quiet peak 0.7389438601763199, loud peak 0.73894386017632)",
+  "sampleZeroCrossings said 0.75", "expected 5 unit slots, domain was Domain(0..4)", "got
+  0.03333333333333333", "point (0.0, 0.0, 0.0) is NaN along axis 0".
+- `./gradlew checkKDocAttachment` — **32 findings → 0**, over 625 files and 6767 blocks, plus a
+  demonstrated catch-then-restore.
+- `./gradlew checkCodebaseReference` — green after each regeneration.
+- `./gradlew check --dry-run` — lists `:checkCodebaseReference` and `:checkKDocAttachment`, so the
+  wiring is real.
+- The 17 regenerated docs captures — driven through the real pipeline and **looked at**, not just
+  counted.
+
+Not verified, honestly:
+
+- **`./gradlew check` as a whole does not pass on this branch, and did not on the base either**: it
+  fails in `:tools:linalg-bench:compileKotlin`, where a *generated* `Vectors.kt` under
+  `tools/linalg-bench/build/` cannot see `floatToHalfBits`. Nothing on this branch touches `tools/` or
+  linalg generation (the only `build.gradle.kts` change is the new task plus two `dependsOn` lines).
+  `checkKDocAttachment` ran and passed inside that same invocation; `checkCodebaseReference` was
+  reached and passed only when run directly, because the bench failure aborts the build first.
+- No GPU, window or Field-server test was run beyond the docs capture pass. `pointsOut`'s `Close`
+  guard is **not** covered by a regression test: the function has no in-repo caller (it is reached
+  from live-coded box code) and faking a `DynamicallyWriteable` GPU buffer for one assertion was not
+  worth the weight. It is a two-line guard that mirrors what the Skiko and SVG writers already do.
+- The `fbm` amplitude change was traced through every `fbm`/`fbmPerlin` call site in the repo and in
+  `public/docs`, and the 17 affected captures were regenerated. I did **not** re-run the full docs
+  build, so if any page outside `functions_examples.md` renders `fbm` with a non-default amplitude
+  through a path I did not grep, its capture is stale.
+- `deflateCovariance`'s unscaled deflation is now described accurately but not fixed; a proper
+  `λ·vvᵀ` deflation would change which minor axis is which for some clouds and I had no way to
+  validate that visually tonight.
+- Roughly two thirds of the campaign's 1550 blocks have now been read against the code. The unread
+  remainder is mostly `Functions.kt`'s prose (the numeric claims in it *were* probed),
+  `FunctionGraphBrowser.kt`, `numpy`/`timeseries` beyond what the passes covered, and `keyframer.kt`'s
+  HTML rendering.
+
+## Risks
+
+1. **`fbm` / `fbmPerlin` `amplitude` is a behaviour change** — the release note. Bit-identical at the
+   default `amplitude = 1.0` (the loop accumulates at unit amplitude and scales at the end, which is
+   the same arithmetic), and up to 100× different for an explicit non-default amplitude. Anything a
+   user has already built with `fbm(seed, freq, 0.3)` will get quieter noise — which is what the
+   parameter, the KDoc and the graph edge all always said it would do.
+2. **`convolve(normalize = true)` is a ~63× level change** at the defaults, in the direction of the
+   documented behaviour. `movingAverage` moves by 1.6% at the default sample count (2× at
+   `samples = 2`), and `Functions.lowPass` / `highPass` with it.
+3. **`palindrome` is one slot longer** for lists of three or more: `[a, b, c]` now spans 5 slots, not
+   4. Any timeline arithmetic downstream of a palindrome's domain shifts accordingly.
+4. **`tile`'s declared domain widened** to the span it fills, so `f.tile(n).plot()` now draws all of
+   it. One committed capture (`functions_examples.md:1652`, `transform-palette.png`) plots a `tile`
+   through other transforms and may be marginally stale; the `fbm`/`convolve` regeneration did not
+   cover it because that fence's own snippet did not change.
+5. `KDocExtractor.parseDeclaration` now recognises `typealias`, `actual`/`expect` and `constructor`.
+   That moves summaries onto symbols that previously had none — visible in the regenerated diff and in
+   the coverage count — and could in principle change a completion card somewhere. It cannot *remove*
+   a summary.
+6. The attachment guard is now in `check`. If someone writes a KDoc above a `get()` the build will
+   fail rather than silently publishing the wrong caption; that is the intent, and the failure message
+   names the file, line, offending text and the fix.
+
+## Recommendation
+
+**MERGE.** The guard is the durable half and it is cheap, honest and already green; the twelve
+regression tests pin claims that were wrong on `main` this morning; and every published page carrying
+a corrected claim has been regenerated, including the seventeen screenshots that the `fbm` and
+`convolve` fixes moved.
+
+Read the release note in risk 1 before merging — `fbm(…, amplitude = 0.3)` really does something
+different now — and if the `functions_examples.md` `transform-palette` figure matters, regenerate it
+(`rm` the PNG, then `FIELD_DOCS_RUNNER_PORT=<free> uv run --group docs python3
+tools/build_zensical_docs.py --page functions_examples --skip-build`).
+
+The obvious next piece of work, if the pattern is worth continuing: nothing here guards a KDoc that
+attaches perfectly and is simply *untrue*, which is what `FnGraphEdge` was. The two things that
+actually caught those tonight were (a) a probe test that prints measurements of every numeric claim in
+a file and (b) reading the implementation immediately below each block. The first of those could be
+generalised — a `DocumentedBehaviourTest` per file, growing as claims are checked.
