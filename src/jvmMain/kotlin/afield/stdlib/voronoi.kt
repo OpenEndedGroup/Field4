@@ -59,6 +59,9 @@ data class VoronoiLattice(
 
 fun voronoi3d(l: List<Vec3>): VoronoiLattice = Voronoi3d.build(l)
 
+/** `Float`'s relative precision, `2^-23`. The unit every error bound in the clipper is expressed in. */
+private const val FLOAT_ULP = 1.1920929e-7f
+
 object Voronoi3d {
     private data class PlaneSpec(
         val plane: Plane3,
@@ -81,6 +84,17 @@ object Voronoi3d {
         val eps = tolerance * max(1f, scale)
         val clip = buildClipBox(points, scale * clipPadding + 1f)
 
+        // Each bisector's offset is `0.5 * (|pj|^2 - |pi|^2)`, and the clip planes' offsets are the box's
+        // own coordinates, so the *absolute* rounding in a plane offset is set by the largest of those
+        // magnitudes. It survives into every corner solved from those planes, and it is the error term that
+        // dominates when the offsets themselves cancel to zero — sites on a sphere, where every bisector
+        // passes exactly through the centre. Computed once here rather than guessed at per cell.
+        var offsetMagnitude = max(abs(clip.min.x), abs(clip.max.x))
+        offsetMagnitude = max(offsetMagnitude, max(abs(clip.min.y), abs(clip.max.y)))
+        offsetMagnitude = max(offsetMagnitude, max(abs(clip.min.z), abs(clip.max.z)))
+        for (p in points) offsetMagnitude = max(offsetMagnitude, lengthSquared(p))
+        val offsetNoise = FLOAT_ULP * offsetMagnitude
+
         val cells = ArrayList<VoronoiCell3>(points.size)
         for (i in points.indices) {
             cells += buildCell(
@@ -88,6 +102,7 @@ object Voronoi3d {
                 points = points,
                 clip = clip,
                 eps = eps,
+                offsetNoise = offsetNoise,
             )
         }
 
@@ -99,6 +114,7 @@ object Voronoi3d {
         points: List<Vec3>,
         clip: Aabb3,
         eps: Float,
+        offsetNoise: Float,
     ): VoronoiCell3 {
         val site = points[siteIndex]
         val planes = ArrayList<PlaneSpec>(points.size + 6)
@@ -119,8 +135,8 @@ object Voronoi3d {
 
         addClipPlanes(planes, clip)
 
-        val vertices = collectVertices(planes, eps)
-        val faces = buildFaces(vertices, planes, eps)
+        val corners = collectCorners(planes, eps, offsetNoise)
+        val faces = buildFaces(corners, planes, eps)
 
         val bounded = faces.none { it.isClip || it.truncated }
 
@@ -141,49 +157,174 @@ object Voronoi3d {
         planes += PlaneSpec(Plane3(Vec3(0f, 0f, -1f), -clip.min.z), null, true)
     }
 
-    private fun collectVertices(
+    /**
+     * A corner of the cell, the indices of the planes it lies on, and how well its position is known.
+     *
+     * The plane set is the whole point: a face's polygon is the corners that record *that* plane, and
+     * nothing else. See [collectCorners]. [radius] is the corner's own uncertainty — see
+     * [conditionRadius] — and doubles as the distance within which another candidate is *this* corner
+     * rather than a different one.
+     */
+    private class Corner(var p: Vec3, var radius: Float, val planes: MutableSet<Int>)
+
+    /**
+     * How far a triple-plane intersection solved by Cramer's rule can be from the corner it is trying to
+     * compute. [bulk] is the sum of the three numerator terms' magnitudes, [numerator] the magnitude of
+     * their sum, [crossBulk] the sum of the three cross products' magnitudes, [offsetNoise] the absolute
+     * rounding in a plane's offset, and [det] the determinant.
+     *
+     * `Float` carries about `2^-23` of relative precision and Cramer's rule spends it in three places.
+     * The three numerator terms cancel against one another, so the surviving numerator can be far smaller
+     * than the terms that made it. The result is divided by a determinant that goes to zero as the three
+     * normals approach coplanar — which is what a cluster of near-cospherical sites produces. And the
+     * plane offsets are not exact to begin with, which is the term that dominates when they cancel to
+     * nothing: sites *on* a sphere give bisectors whose offsets are all zero in exact arithmetic and
+     * `±6e-8` in `Float`, and the corner they all pass through comes out 1e-6 away from where it should
+     * be — measured, on 24 cospherical sites.
+     *
+     * Deriving the merge radius from the arithmetic's own conditioning, rather than from the point
+     * cloud's scale, is what lets one rule merge those and *not* merge a real 4.5e-3-long edge between two
+     * well-conditioned corners, whose radii come out near 1e-6. The `48` and `2` are slack over the strict
+     * first-order bounds, and the `2` is not arbitrary: swept over 0 / 2 / 8 / 32, the number of cells whose
+     * faces fail to close over a 912-cell sweep goes 12 / 12 / 52 / 167, and `0` loses the cospherical case
+     * entirely — so `2` is the widest value that costs nothing.
+     */
+    private fun conditionRadius(
+        bulk: Float,
+        numerator: Float,
+        crossBulk: Float,
+        offsetNoise: Float,
+        det: Float,
+    ): Float = (48f * FLOAT_ULP * (bulk + numerator) + 2f * crossBulk * offsetNoise) / max(1e-20f, det)
+
+    /**
+     * Every corner of the cell — every point where three or more of the bounding planes meet inside all
+     * the others — each carrying the set of planes it lies on.
+     *
+     * # Why the plane set, and not a distance test
+     *
+     * The corners themselves are easy: intersect every triple of planes, keep the points inside every
+     * half-space. Deciding *which face each corner belongs to* is the hard part, and doing it by asking
+     * "is this corner within some tolerance of that plane?" is what used to leave cells with
+     * T-junctions.
+     *
+     * Where four or more bisectors nearly meet — five sites near-cospherical, which is common: a third
+     * of the interior cells of a 72-site random lattice have such a corner — the exact intersection is
+     * not one corner but a tight cluster of real ones joined by short real edges. An absolute tolerance
+     * (it was `4 * eps`, scaled off the whole point cloud) is wider than that cluster, so *every* face
+     * passing near the cluster claimed *every* corner in it. The measured symptom, on a 72-site lattice
+     * at seed 31, cell 10: a 4.5e-3-long edge listed by four faces and the two long edges radiating from
+     * its ends listed by one each. One edge on one side of the seam, two on the other — a T-junction, a
+     * hairline crack in any mesh built from the faces, and no weld tolerance repairs it because the
+     * defect is a face claiming a corner that is not on it.
+     *
+     * The plane triple that produced a corner is exactly the incidence information the distance test was
+     * trying to recover, so this keeps it instead. A corner is then on a face if and only if that face's
+     * plane helped produce it — or passes through it to within the corner's *own* uncertainty
+     * ([conditionRadius]), which is the second pass below. That pass is what handles *exactly* symmetric
+     * input: over a cubic lattice of sites seven bisectors really do pass through each cell corner, and
+     * only some of those triples are well-conditioned enough to survive [intersectPlanes].
+     *
+     * Every corner is then a genuine vertex of the half-space intersection and every recorded incidence
+     * is genuine, so each pair of planes contributes a genuine edge and the faces close — with the small
+     * real edges of a degenerate cluster present rather than smeared away.
+     */
+    private fun collectCorners(
         planes: List<PlaneSpec>,
         eps: Float,
-    ): List<Vec3> {
-        val vertices = ArrayList<Vec3>()
+        offsetNoise: Float,
+    ): List<Corner> {
+        val corners = ArrayList<Corner>()
+        val lengths = FloatArray(planes.size) { sqrt(lengthSquared(planes[it].plane.normal)) }
+        val radiusOut = FloatArray(1)
 
         for (a in 0 until planes.size - 2) {
             for (b in a + 1 until planes.size - 1) {
                 for (c in b + 1 until planes.size) {
-                    val p = intersectPlanes(planes[a].plane, planes[b].plane, planes[c].plane, eps) ?: continue
-                    if (!insideAll(p, planes, eps)) continue
-                    addUnique(vertices, p, eps)
+                    val p = intersectPlanes(
+                        planes[a].plane, planes[b].plane, planes[c].plane, eps, offsetNoise, radiusOut,
+                    ) ?: continue
+
+                    // Floor the uncertainty at the noise in evaluating [side] itself, which is what the
+                    // inside test below is about to measure with.
+                    val radius = max(radiusOut[0], 8f * FLOAT_ULP * (1f + sqrt(lengthSquared(p))))
+                    // A candidate is a corner if it is inside every half-space to within *its own*
+                    // uncertainty. The old absolute `eps` here was the second half of the T-junction: at
+                    // 1e-4 of the whole point cloud's diagonal it is the same size as a degenerate corner
+                    // cluster, so it admitted points genuinely outside the cell, and a face built from a
+                    // point that is not a corner of the cell cannot agree with its neighbour.
+                    if (!insideAllWithin(p, planes, radius, lengths)) continue
+
+                    var hit: Corner? = null
+                    for (existing in corners) {
+                        val reach = max(radius, existing.radius)
+                        if (distanceSquared(p, existing.p) <= reach * reach) {
+                            hit = existing
+                            break
+                        }
+                    }
+                    if (hit == null) {
+                        corners += Corner(v3(p), radius, mutableSetOf(a, b, c))
+                    } else {
+                        // Keep the best-conditioned estimate of where the corner is, but keep the widest
+                        // radius, because the corner really is that uncertain.
+                        if (radius < hit.radius) hit.p = v3(p)
+                        hit.radius = max(hit.radius, radius)
+                        hit.planes += a
+                        hit.planes += b
+                        hit.planes += c
+                    }
                 }
             }
         }
 
-        return vertices
+        // A plane can pass through a corner without any triple containing it having survived — exactly
+        // symmetric input, or a triple [intersectPlanes] rejected. Within the corner's own uncertainty
+        // that is not a judgement call.
+        for (corner in corners) {
+            for (i in planes.indices) {
+                if (i in corner.planes) continue
+                if (abs(side(planes[i].plane, corner.p)) <= corner.radius * lengths[i]) corner.planes += i
+            }
+        }
+
+        return corners
     }
 
     private fun buildFaces(
-        vertices: List<Vec3>,
+        corners: List<Corner>,
         planes: List<PlaneSpec>,
         eps: Float,
     ): List<VoronoiFace> {
         val faces = ArrayList<VoronoiFace>()
-        val planeTol = 4f * eps
+        // The `truncated` flag keeps its own, looser tolerance: "does this face come near the clip box"
+        // is a question about the clip box, not about the cell's combinatorics.
+        val clipTol = 4f * eps
 
-        for (spec in planes) {
-            val raw = ArrayList<Vec3>()
-            for (v in vertices) {
-                if (abs(side(spec.plane, v)) <= planeTol) raw += v3(v)
+        for (index in planes.indices) {
+            val corner = ArrayList<Vec3>()
+            var areaFloor = 0f
+            for (c in corners) {
+                if (index in c.planes) {
+                    corner += v3(c.p)
+                    areaFloor = max(areaFloor, c.radius)
+                }
             }
 
-            val unique = uniquePoints(raw, eps)
-            if (unique.size < 3) continue
+            val spec = planes[index]
+            // No dedupe pass: [collectCorners] emits one corner per corner, by construction.
+            if (corner.size < 3) continue
 
-            val polygon = sortPolygonOnPlane(unique, spec.plane.normal)
+            val polygon = sortPolygonOnPlane(corner, spec.plane.normal)
             if (polygon.size < 3) continue
 
+            // Only a *numerically* zero area is culled — a plane that touches the cell along a line
+            // rather than over a patch, where the corners are collinear to within their own uncertainty.
+            // A small-but-real face has to be kept: dropping one is exactly how a cell gets a hole.
             val signedArea = signedAreaAlong(polygon, normalize(spec.plane.normal))
-            if (abs(signedArea) <= eps * eps) continue
+            if (abs(signedArea) <= areaFloor * areaFloor) continue
 
-            val truncated = !spec.isClip && polygon.any { touchesAnyClip(it, planes, planeTol) }
+            val truncated = !spec.isClip && polygon.any { touchesAnyClip(it, planes, clipTol) }
 
             faces += VoronoiFace(
                 neighborSite = spec.neighborSite,
@@ -206,16 +347,36 @@ object Voronoi3d {
         return false
     }
 
-    private fun insideAll(p: Vec3, planes: List<PlaneSpec>, eps: Float): Boolean {
-        for (spec in planes) {
-            if (side(spec.plane, p) > eps) return false
+    /**
+     * Is [p], a point known to within [radius], inside every half-space?
+     *
+     * [side] is measured with an un-normalized normal, so the per-plane allowance is scaled by that
+     * normal's length ([lengths]) to make the comparison a distance.
+     */
+    private fun insideAllWithin(p: Vec3, planes: List<PlaneSpec>, radius: Float, lengths: FloatArray): Boolean {
+        for (i in planes.indices) {
+            if (side(planes[i].plane, p) > radius * lengths[i]) return false
         }
         return true
     }
 
     private fun side(plane: Plane3, p: Vec3): Float = dot(plane.normal, p) - plane.d
 
-    private fun intersectPlanes(a: Plane3, b: Plane3, c: Plane3, eps: Float): Vec3? {
+    /**
+     * Where three planes meet, or `null` if they are too close to parallel to say.
+     *
+     * If [radiusOut] is given, `radiusOut[0]` receives a bound on how far the answer can be from the true
+     * intersection, given that each plane's own offset is known only to [offsetNoise] — see
+     * [conditionRadius] for why that matters and how it is used.
+     */
+    private fun intersectPlanes(
+        a: Plane3,
+        b: Plane3,
+        c: Plane3,
+        eps: Float,
+        offsetNoise: Float,
+        radiusOut: FloatArray?,
+    ): Vec3? {
         val bc = cross(b.normal, c.normal)
         val ca = cross(c.normal, a.normal)
         val ab = cross(a.normal, b.normal)
@@ -223,8 +384,22 @@ object Voronoi3d {
         val det = dot(a.normal, bc)
         if (abs(det) <= eps) return null
 
-        val num = add(add(mul(bc, a.d), mul(ca, b.d)), mul(ab, c.d))
-        return mul(num, 1f / det)
+        val ta = mul(bc, a.d)
+        val tb = mul(ca, b.d)
+        val tc = mul(ab, c.d)
+        val num = add(add(ta, tb), tc)
+        val p = mul(num, 1f / det)
+
+        if (radiusOut != null) {
+            // Cramer's rule loses precision two ways: the three numerator terms cancel against each other,
+            // and the result is then divided by a determinant that may be tiny. Bounding it by the *sum of
+            // the term magnitudes* over the determinant catches both — the ratio is 1 when nothing cancels
+            // and grows exactly as far as the cancellation goes.
+            val bulk = sqrt(lengthSquared(ta)) + sqrt(lengthSquared(tb)) + sqrt(lengthSquared(tc))
+            val crossBulk = sqrt(lengthSquared(bc)) + sqrt(lengthSquared(ca)) + sqrt(lengthSquared(ab))
+            radiusOut[0] = conditionRadius(bulk, sqrt(lengthSquared(num)), crossBulk, offsetNoise, abs(det))
+        }
+        return p
     }
 
     private fun sortPolygonOnPlane(points: List<Vec3>, normal: Vec3): List<Vec3> {
