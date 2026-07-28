@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-15 source file(s), 589 public symbol(s), 166 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+16 source file(s), 617 public symbol(s), 192 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1316,10 +1316,14 @@ Notes:
 
 `src/jvmMain/kotlin/afield/stdlib/wfc.kt`
 
+**Used in:** [Wave Function Collapse examples](../wfc_examples.md)
+
 ### Top-level functions { #wfc-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">wfcRules</span><span class="p">(</span><span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">WfcRulesBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> | Hand-author WFC adjacency constraints; shorthand for `WfcRules.build`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">solveWithRetries</span><span class="p">(</span><span class="n">maxAttempts</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">prepare</span><span class="p">:</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcOutcome</span></code> | Run the solver to completion, restarting after a contradiction, up to `maxAttempts` times. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">BufferedImage</span><span class="p">.</span><span class="nf">sliceIntoUniqueTiles</span><span class="p">(</span><span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngTileSet</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">loadPngTiles</span><span class="p">(</span><span class="n">file</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">tileWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tileHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngTileSet</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">BufferedImage</span><span class="p">.</span><span class="nf">sliceIntoOverlappingPatterns</span><span class="p">(</span><span class="n">patternWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">patternHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">wrapX</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">wrapY</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">PngOverlappingTileSet</span></code> |  |
@@ -1378,6 +1382,26 @@ The learned model: tile weights plus directional adjacency masks.
 | <code class="highlight"><span class="k">val</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">allowed</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">Array</span><span class="p">&lt;</span><span class="nc">LongArray</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | allowed`direction` is a bitset of tile IDs allowed in that direction from tile. |
 | <code class="highlight"><span class="k">val</span> <span class="n">wordCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allows</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | May tile `b` sit at `direction` from tile `a`? |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">findAsymmetry</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The first `(direction, a, b)` where adjacency is *not* symmetric, or `null` when the rules are sound. Returned as a human-readable string because it is a diagnostic, not a control path. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allowedCount</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | How many tiles may sit at `direction` from `a` — the branching factor of the model. |
+
+### WfcRulesBuilder { #wfc-kt-wfcrulesbuilder }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">WfcRulesBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span><span class="p">)</span></code>
+
+Accumulates hand-authored WFC adjacency; see `WfcRules.build`, which is how you get one.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">weight</span><span class="p">(</span><span class="n">tile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> | Set the relative frequency of `tile`. Weights bias both which tile a collapse picks and the entropy that decides *which cell* to collapse next; they default to `1.0` (uniform). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">weights</span><span class="p">(</span><span class="k">vararg</span> <span class="n">values</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> | Set every tile weight at once, in tile-ID order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allow</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | Allow tile `b` to sit at `direction` from tile `a` — and, symmetrically, `a` at the opposite direction from `b`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allow</span><span class="p">(</span><span class="n">dx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">dy</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | `allow`, addressing the direction by its offset instead of its index. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allowAny</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">others</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | `allow(direction, a, b)` for every `b` in `others` — the common "a tolerates any of" case. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">allowMissingAnything</span><span class="p">(</span><span class="p">)</span></code> | Fill in "anything goes" for every `(direction, tile)` pair still left empty, which is the defensive fallback `WfcRules.fromSampleGrid` applies to sample tiles it only ever saw at an edge. Off by default for hand-authored rules, because there an empty mask is more often a typo than an intention. |
 
 ### WfcStatus { #wfc-kt-wfcstatus }
 
@@ -1400,14 +1424,25 @@ Constants: `Running`, `Solved`, `Contradiction`.
 | <code class="highlight"><span class="k">val</span> <span class="n">rules</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">status</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> |  |
 | <code class="highlight"><span class="k">var</span> <span class="n">lastObservation</span><span class="p">:</span> <span class="nc">WfcObservation</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">reset</span><span class="p">(</span><span class="p">)</span></code> | Return every cell to "any tile is still possible" and clear `status` and `lastObservation`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">possibilitiesAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">out</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">possibilityCountAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedTileAt</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">forceTile</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tile</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">step</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> | One visualizable WFC iteration: observe one cell, then fully propagate constraints. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="n">maxSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">Int</span><span class="p">.</span><span class="nc">MAX&#95;VALUE</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcStatus</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedCellCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | Cells collapsed to a single possibility — the WFC notion of "done" is all of them. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">resolvedTileGridOrNull</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span></code> |  |
+
+### WfcOutcome { #wfc-kt-wfcoutcome }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WfcOutcome</span><span class="p">(</span><span class="k">val</span> <span class="n">status</span><span class="p">:</span> <span class="nc">WfcStatus</span><span class="p">,</span> <span class="k">val</span> <span class="n">attempts</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
+
+What `solveWithRetries` ended up doing: the final `status` and how many attempts it took.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">solved</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ### PngTileSet { #wfc-kt-pngtileset }
 
@@ -1480,5 +1515,52 @@ Overlapping WFC patterns extracted from a row-major 2D FloatArray.
 | <code class="highlight"><span class="k">val</span> <span class="n">tileCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">toRules</span><span class="p">(</span><span class="n">neighborhood</span><span class="p">:</span> <span class="nc">WfcNeighborhood</span> <span class="o">=</span> <span class="nc">WfcNeighborhood</span><span class="p">.</span><span class="nc">VonNeumann</span><span class="p">)</span><span class="p">:</span> <span class="nc">WfcRules</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">patternIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+
+## wfc_field.kt { #wfc-field-kt }
+
+The bridge from Wave Function Collapse into the things Field already displays.
+
+`wfc.kt` is deliberately dependency-free — it knows about integer tile IDs, `BufferedImage` and
+`FloatArray`, and nothing else. That keeps the solver honest, but it means a box running WFC has
+no direct way to *look* at what it is doing. These extensions supply the missing hop into
+[`Img`](imaging.md#imaging-kt-img), and therefore into `Box.showImg`, `showImgGrid`, `montage`, `Img.colormap` and the
+`ToHTML` thumbnail a box shows when you evaluate a value.
+
+Two kinds of view:
+
+ 1. **The result.** `PngTileSet.toImg`, `PngOverlappingTileSet.toImg` and their `Float`
+    counterparts turn a solved tile grid into an image. Pair them with
+    `Img.upscaleNearest` — WFC output is pixels-as-pixels, and any filtering upscale destroys
+    exactly the local structure you were trying to show.
+ 2. **The process.** `PngTileSet.waveToImg` renders a *partially collapsed* solver by blending
+    each cell's still-possible tiles, and `WfcSolver.possibilityCountImg` exposes the
+    possibility count per cell as a scalar field to colour-map. Sample either one inside a
+    `while (solver.step() == WfcStatus.Running)` loop and you have the collapse itself as a
+    sequence of frames — which is by far the most informative thing you can look at when rules
+    are not behaving.
+
+Because a solved cell has exactly one possibility, `waveToImg` on a `WfcStatus.Solved` solver is
+the finished output: the animation's last frame and the result are the same picture, by
+construction rather than by coincidence.
+
+`src/jvmMain/kotlin/afield/stdlib/wfc_field.kt`
+
+**Used in:** [Wave Function Collapse examples](../wfc_examples.md)
+
+### Top-level functions { #wfc-field-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PngTileSet</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">tileIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render a solved simple-tiled grid as an RGB [`Img`](imaging.md#imaging-kt-img). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PngOverlappingTileSet</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">patternIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render a solved overlapping-pattern grid as an RGB [`Img`](imaging.md#imaging-kt-img). See `PngOverlappingTileSet.render`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatTileSet</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">tileIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidthInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeightInTiles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render a solved simple-tiled grid of scalars as a 1-channel [`Img`](imaging.md#imaging-kt-img). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FloatOverlappingTileSet</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">patternIds</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">outWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">outHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render a solved overlapping grid of scalars as a 1-channel [`Img`](imaging.md#imaging-kt-img). |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PngTileSet</span><span class="p">.</span><span class="nf">sampleToImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | The source image a tile set was learned from, as an [`Img`](imaging.md#imaging-kt-img) — useful next to the output. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PngTileSet</span><span class="p">.</span><span class="nf">waveToImg</span><span class="p">(</span><span class="n">solver</span><span class="p">:</span> <span class="nc">WfcSolver</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Render a solver **mid-collapse**: each cell is the average of the tiles still possible there. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PngOverlappingTileSet</span><span class="p">.</span><span class="nf">waveToImg</span><span class="p">(</span><span class="n">solver</span><span class="p">:</span> <span class="nc">WfcSolver</span><span class="p">,</span> <span class="n">originX</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">originY</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `PngTileSet.waveToImg` for the overlapping model: one output pixel per solver cell, averaging the origin pixel of every pattern still possible there. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">possibilityCountGrid</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span></code> | How many tiles are still possible in every cell, row-major — the solver's remaining uncertainty. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">possibilityCountImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `possibilityCountGrid` as a 1-channel [`Img`](imaging.md#imaging-kt-img), ready to colour-map. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">resolvedCellCount</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | How many cells have collapsed to exactly one possibility. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">WfcSolver</span><span class="p">.</span><span class="nf">resolvedFraction</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | `resolvedCellCount` as a `0..1` fraction — a progress read-out for a `step()` loop. |
 
 </div>

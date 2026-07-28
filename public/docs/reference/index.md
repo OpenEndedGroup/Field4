@@ -4,16 +4,16 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**4011 public symbols across 67 source files**, 2141 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**4040 public symbols across 68 source files**, 2168 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 14 | 1292 | 896 (69%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 15 | 589 | 166 (28%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Data](data.md) | 16 | 617 | 192 (31%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 14 | 1074 | 348 (32%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Imaging](imaging.md) | 6 | 254 | 208 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
+| [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [Function](function.md) | 10 | 345 | 228 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 4 | 227 | 215 (94%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
@@ -50,9 +50,9 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Functions.kt](math.md#functions-kt) | Math | 542 | 453 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [graph_connectivity.kt](graphics.md#graph-connectivity-kt) | Graphics | 82 | 52 | Self-contained graph / computational-geometry library over 2D and 3D point sets (`Vec2`/`Vec3`). | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
-| [imaging.kt](imaging.md#imaging-kt) | Imaging | 75 | 64 | CPU image / computer-vision family for the Field stdlib — the raster counterpart to the time-domain `timeseries.kt` and frequency-domain `spectral.kt` families. | [Imaging and computer vision](../imaging_examples.md) |
+| [imaging.kt](imaging.md#imaging-kt) | Imaging | 76 | 65 | CPU image / computer-vision family for the Field stdlib — the raster counterpart to the time-domain `timeseries.kt` and frequency-domain `spectral.kt` families. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md) |
 | [imaging_features.kt](imaging.md#imaging-features-kt) | Imaging | 49 | 38 | Edges, corners, lines, blobs and morphology for `Img` — the "find things in the picture" half of the stdlib imaging family (see `imaging.kt` for the value type and `imaging_filters.kt` for convolution and gradients). | [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
-| [imaging_field.kt](imaging.md#imaging-field-kt) | Imaging | 21 | 21 | What makes the imaging family *Field's* rather than a generic CV library: the bridges out of the raster and into the things Field already draws, colours and displays. | [Imaging and computer vision](../imaging_examples.md) |
+| [imaging_field.kt](imaging.md#imaging-field-kt) | Imaging | 21 | 21 | What makes the imaging family *Field's* rather than a generic CV library: the bridges out of the raster and into the things Field already draws, colours and displays. | [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md) |
 | [imaging_filters.kt](imaging.md#imaging-filters-kt) | Imaging | 56 | 46 | Convolution, smoothing, gradients and multiscale pyramids for `Img` — the filter half of the stdlib imaging family (see `imaging.kt` for the value type, `imaging_features.kt` for edges, corners and blobs). | [Imaging and computer vision](../imaging_examples.md) |
 | [imaging_geometry.kt](imaging.md#imaging-geometry-kt) | Imaging | 53 | 39 | Geometry and motion for `Img`: affine and perspective warps, homography estimation from point correspondences (DLT + RANSAC), and pyramidal Lucas–Kanade optical flow. | [Imaging and computer vision](../imaging_examples.md) |
 | [imaging_simd.kt](imaging.md#imaging-simd-kt) | Imaging | 0 | 0 |  |  |
@@ -91,7 +91,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [units.kt](math.md#units-kt) | Math | 47 | 12 | Physical units for Field's spreadsheet-style numbers. |  |
 | [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [voronoi.kt](graphics.md#voronoi-kt) | Graphics | 63 | 0 | Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi ("CircularDirichlet") for Kotlin + Field linalg. |  |
-| [wfc.kt](data.md#wfc-kt) | Data | 87 | 9 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. |  |
+| [wfc.kt](data.md#wfc-kt) | Data | 104 | 24 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
+| [wfc_field.kt](data.md#wfc-field-kt) | Data | 11 | 11 | The bridge from Wave Function Collapse into the things Field already displays. | [Wave Function Collapse examples](../wfc_examples.md) |
 
 </div>
 

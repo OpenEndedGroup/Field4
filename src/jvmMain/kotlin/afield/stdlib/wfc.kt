@@ -1079,13 +1079,25 @@ data class WfcOutcome(val status: WfcStatus, val attempts: Int) {
  * if (!outcome.solved) println("still stuck after ${outcome.attempts} attempts — loosen the rules")
  * ```
  *
+ * [WfcSolver.reset] clears the whole wave, boundary conditions included, so anything you pinned with
+ * [WfcSolver.forceTile] has to be re-applied on every attempt. That is what [prepare] is for — it
+ * runs on the fresh solver before each attempt, including the first:
+ *
+ * ```
+ * val outcome = solver.solveWithRetries { for (x in 0 until width) forceTile(x, height - 1, groundTile) }
+ * ```
+ *
  * If this needs a large [maxAttempts] to succeed, that is a signal about the *rules*, not the seed:
  * over-constrained adjacency, or an output much larger than the sample can consistently tile.
+ *
+ * @param prepare boundary conditions to (re-)apply before each attempt; may itself provoke a
+ *   contradiction, which simply costs that attempt
  */
-fun WfcSolver.solveWithRetries(maxAttempts: Int = 16): WfcOutcome {
+fun WfcSolver.solveWithRetries(maxAttempts: Int = 16, prepare: WfcSolver.() -> Unit = {}): WfcOutcome {
     require(maxAttempts >= 1) { "maxAttempts must be at least 1, got $maxAttempts" }
     var attempt = 1
     while (true) {
+        prepare()
         if (run() == WfcStatus.Solved) return WfcOutcome(WfcStatus.Solved, attempt)
         if (attempt >= maxAttempts) return WfcOutcome(status, attempt)
         attempt++

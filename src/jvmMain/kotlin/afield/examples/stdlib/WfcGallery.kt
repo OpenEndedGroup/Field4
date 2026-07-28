@@ -109,7 +109,10 @@ object WfcGallery {
             val v = y / (h - 1.0)
             val e = 1.00 * bump(u, v, 0.30, 0.40, 0.25) +
                 0.90 * bump(u, v, 0.70, 0.62, 0.21) +
-                0.55 * bump(u, v, 0.82, 0.22, 0.13)
+                0.55 * bump(u, v, 0.82, 0.22, 0.13) -
+                // An inland lake. Without it every water cell in the source sits on the map border,
+                // so water has very few observed contexts and a Moore neighborhood drops it entirely.
+                0.62 * bump(u, v, 0.34, 0.44, 0.085)
             out[x + y * w] = when {
                 e < 0.16 -> DEEP
                 e < 0.32 -> SHALLOW
@@ -176,6 +179,51 @@ object WfcGallery {
             }
         }
         return Img(outW, outH, 3, data)
+    }
+
+    // ==========================================================================================
+    // Overlapping-model source: flowers, where the structure is at the pixel scale
+    // ==========================================================================================
+
+    val SKY = 0xFFBEDCF0.toInt()
+    val SOIL = 0xFF6B4B2A.toInt()
+    val STEM = 0xFF3E8F3A.toInt()
+    val BLOSSOM = 0xFFE0566A.toInt()
+
+    /** Row at which soil starts in [flowersSource]; everything above it is sky, stem or blossom. */
+    const val FLOWERS_SOIL_TOP = 13
+
+    /**
+     * The overlapping model's source: sky over soil, with a few flowers rooted in the soil.
+     *
+     * Chosen because its structure lives at the *pixel* scale, which is what the overlapping model
+     * reads. The terrain map used for the simple-tiled figures is the wrong shape for it — its
+     * interiors are large flat regions, so most 3x3 windows say only "all grass" and the output
+     * collapses to a flat field with streak artefacts. A source whose every 3x3 window says
+     * something ("stem continues upward", "blossom sits on a stem", "stem meets soil") gives the
+     * model something worth preserving.
+     */
+    fun flowersSource(w: Int = 26, h: Int = 18): IntArray {
+        val out = IntArray(w * h) { if (it / w >= FLOWERS_SOIL_TOP) SOIL else SKY }
+        // (column, stem height) — kept apart so no two flowers touch, and clear of the wrap seam.
+        for ((x, height) in listOf(3 to 4, 8 to 6, 13 to 3, 18 to 5, 22 to 4)) {
+            for (y in (FLOWERS_SOIL_TOP - height) until FLOWERS_SOIL_TOP) out[x + y * w] = STEM
+            out[x + (FLOWERS_SOIL_TOP - height - 1) * w] = BLOSSOM
+        }
+        return out
+    }
+
+    /** [flowersSource] as an [Img]. */
+    fun flowersImg(w: Int = 26, h: Int = 18): Img = argbToImg(flowersSource(w, h), w, h)
+
+    private fun argbToImg(argb: IntArray, w: Int, h: Int): Img {
+        val data = FloatArray(w * h * 3)
+        for (i in argb.indices) {
+            data[i * 3] = ((argb[i] shr 16) and 0xff) / 255f
+            data[i * 3 + 1] = ((argb[i] shr 8) and 0xff) / 255f
+            data[i * 3 + 2] = (argb[i] and 0xff) / 255f
+        }
+        return Img(w, h, 3, data)
     }
 
     // ==========================================================================================
@@ -388,8 +436,8 @@ object WfcGallery {
     }
 
     private fun figureSimpleTiled(outDir: File) {
-        val sw = 22
-        val sh = 15
+        val sw = 26
+        val sh = 18
         val source = terrainTiledImg(sw, sh)
         val tiles = source.toBufferedImage().sliceIntoUniqueTiles(8, 8)
         check(tiles.tileCount == TERRAIN_COUNT, "simple-tiled: expected $TERRAIN_COUNT unique tiles, got ${tiles.tileCount}")
@@ -397,97 +445,263 @@ object WfcGallery {
 
         val rules = tiles.toRules()
         checkSymmetric("simple-tiled", rules)
-        // The tile IDs are discovery order, not terrain order, so map back through the sample.
-        val idOfTerrain = IntArray(TERRAIN_COUNT) { -1 }
+
+        // Tile IDs are discovery order, so map both ways through the sample grid.
         val map = terrainMap(sw, sh)
-        for (i in map.indices) idOfTerrain[map[i]] = tiles.sampleIds[i]
+        val idOfTerrain = IntArray(TERRAIN_COUNT) { -1 }
+        val terrainOfId = IntArray(tiles.tileCount) { -1 }
+        for (i in map.indices) {
+            idOfTerrain[map[i]] = tiles.sampleIds[i]
+            terrainOfId[tiles.sampleIds[i]] = map[i]
+        }
         check(idOfTerrain.none { it < 0 }, "simple-tiled: some terrain band never appeared in the source")
         check(
             !rules.allows(WFC_EAST, idOfTerrain[DEEP], idOfTerrain[GRASS]),
-            "simple-tiled: learned rules wrongly allow deep water east of grass"
+            "simple-tiled: learned rules wrongly allow grass east of deep water"
         )
 
         val w = 40
         val h = 26
-        val solver = WfcSolver(w, h, rules, seed = 7L)
-        val outcome = solver.solveWithRetries()
-        check(outcome.solved, "simple-tiled: not solved after ${outcome.attempts} attempts")
-        val grid = solver.resolvedTileGridOrNull() ?: return
-        checkOutputSatisfiesRules("simple-tiled", rules, grid, w, h)
-        checkNotDegenerate("simple-tiled", grid, rules.tileCount, minDistinct = 5, maxShare = 0.62)
 
-        val terrainOfId = IntArray(tiles.tileCount)
-        for (t in 0 until TERRAIN_COUNT) terrainOfId[idOfTerrain[t]] = t
-        checkStructureReused(
-            "simple-tiled",
-            source = map, sw = sw, sh = sh,
-            output = IntArray(grid.size) { terrainOfId[grid[it]] }, ow = w, oh = h
-        )
+        fun solveWith(model: WfcRules, label: String): IntArray? {
+            val solver = WfcSolver(w, h, model, seed = 12L)
+            val outcome = solver.solveWithRetries(maxAttempts = 30)
+            check(outcome.solved, "$label: not solved after ${outcome.attempts} attempts")
+            val grid = solver.resolvedTileGridOrNull() ?: return null
+            checkOutputSatisfiesRules(label, model, grid, w, h)
+            checkStructureReused(label, source = map, sw = sw, sh = sh,
+                output = IntArray(grid.size) { terrainOfId[grid[it]] }, ow = w, oh = h)
+            return grid
+        }
+
+        fun bandShare(grid: IntArray, band: Int): Int =
+            grid.count { terrainOfId[it] == band } * 100 / grid.size
+
+        val learned = solveWith(rules, "simple-tiled (learned weights)") ?: return
+
+        // The page's headline finding: with the learned weights this model is bistable and the
+        // water bands vanish completely, even though the source is ~28% water. If this ever stops
+        // being true the page's histogram and its whole argument are wrong, so assert it.
+        val sourceWater = map.count { it == DEEP || it == SHALLOW } * 100 / map.size
+        val learnedWater = bandShare(learned, DEEP) + bandShare(learned, SHALLOW)
+        check(sourceWater >= 20, "simple-tiled: source is only $sourceWater% water, expected ~28%")
+        check(learnedWater == 0, "simple-tiled: learned weights kept $learnedWater% water; the page claims 0%")
+        println("[wfc-gallery] ok  simple-tiled: source ${sourceWater}% water -> learned weights ${learnedWater}% water (bistable)")
+
+        // ... and that boosting the interface band rescues all five.
+        val reweighted = tiles.toRules()
+        reweighted.weights[idOfTerrain[DEEP]] *= 2.0
+        reweighted.weights[idOfTerrain[SHALLOW]] *= 1.5
+        reweighted.weights[idOfTerrain[SAND]] *= 10.0
+        val boosted = solveWith(reweighted, "simple-tiled (sand boosted)") ?: return
+        val boostedBands = (0 until TERRAIN_COUNT).count { bandShare(boosted, it) > 0 }
+        check(boostedBands == TERRAIN_COUNT, "simple-tiled: sand boost produced only $boostedBands of $TERRAIN_COUNT bands")
+        checkNotDegenerate("simple-tiled (sand boosted)", boosted, tiles.tileCount, minDistinct = 5, maxShare = 0.60)
+        println("[wfc-gallery] ok  simple-tiled: sand x10 restores all $TERRAIN_COUNT bands " +
+            "(deep ${bandShare(boosted, DEEP)}%, shallow ${bandShare(boosted, SHALLOW)}%, sand ${bandShare(boosted, SAND)}%, " +
+            "grass ${bandShare(boosted, GRASS)}%, forest ${bandShare(boosted, FOREST)}%)")
 
         montage(
             listOf(
-                "source ${sw}x$sh cells, ${tiles.tileCount} unique tiles" to source.upscaleNearest(2),
-                "WFC ${w}x$h cells, seed 7" to tiles.toImg(grid, w, h)
+                "source ${sw}x$sh" to source.upscaleNearest(2),
+                "learned weights" to tiles.toImg(learned, w, h),
+                "sand boosted x10" to tiles.toImg(boosted, w, h)
             ),
             columns = 1,
             cellSide = 700
         ).savePng(File(outDir, "wfc-simple-tiled.png").absolutePath)
-        println("[wfc-gallery] simple-tiled solved in ${outcome.attempts} attempt(s)")
+    }
+
+    /**
+     * Which output pixels are blossoms whose pixel directly below is not a stem.
+     *
+     * A 3x3 pattern that contains a blossom also contains whatever was under it in the source, and
+     * in the source that is always a stem. "Blossom sits on stem" is therefore a *local* relation
+     * the overlapping model can and must enforce, which makes it a real check on whether the model
+     * preserved the source's structure rather than just its colours.
+     */
+    fun floatingBlossoms(pixels: IntArray, w: Int, h: Int): Int {
+        var floating = 0
+        for (y in 0 until h) for (x in 0 until w) {
+            if (pixels[x + y * w] != BLOSSOM) continue
+            if (y + 1 >= h) continue
+            if (pixels[x + (y + 1) * w] != STEM) floating++
+        }
+        return floating
+    }
+
+    private fun imgToArgb(img: Img): IntArray {
+        val out = IntArray(img.width * img.height)
+        for (i in out.indices) {
+            val r = (img.data[i * 3] * 255f + 0.5f).toInt().coerceIn(0, 255)
+            val g = (img.data[i * 3 + 1] * 255f + 0.5f).toInt().coerceIn(0, 255)
+            val b = (img.data[i * 3 + 2] * 255f + 0.5f).toInt().coerceIn(0, 255)
+            out[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        return out
     }
 
     private fun figureOverlapping(outDir: File) {
-        val sw = 24
-        val sh = 16
-        val source = terrainPixelImg(sw, sh)
-        val patterns = source.toBufferedImage().sliceIntoOverlappingPatterns(3, 3, wrapX = false, wrapY = false)
-        check(patterns.tileCount > TERRAIN_COUNT, "overlapping: expected more patterns than terrain bands, got ${patterns.tileCount}")
+        val sw = 26
+        val sh = 18
+        val source = flowersImg(sw, sh)
+        val patterns = source.toBufferedImage().sliceIntoOverlappingPatterns(3, 3, wrapX = true, wrapY = false)
+        check(patterns.tileCount > 8, "overlapping: expected a rich pattern set, got ${patterns.tileCount}")
 
         val rules = patterns.toRules()
         checkSymmetric("overlapping", rules)
-        val w = 48
-        val h = 32
-        val solver = WfcSolver(w, h, rules, seed = 11L)
-        val outcome = solver.solveWithRetries(maxAttempts = 40)
-        check(outcome.solved, "overlapping: not solved after ${outcome.attempts} attempts")
+
+        // WFC has no notion of absolute position: the rules only say "soil may sit below sky", never
+        // "sky belongs at the top". Pinning the boundary is the classic WFC "ground" constraint.
+        val groundTile = (0 until patterns.tileCount).first { id -> patterns.patterns[id].all { it == SOIL } }
+        val skyTile = (0 until patterns.tileCount).first { id -> patterns.patterns[id].all { it == SKY } }
+
+        val w = 52
+        val h = 16
+
+        // Unpinned first, to show what translation-invariance actually costs.
+        val free = WfcSolver(w, h, rules, seed = 9L)
+        val freeOutcome = free.solveWithRetries(maxAttempts = 30)
+        check(freeOutcome.solved, "overlapping (free): not solved after ${freeOutcome.attempts} attempts")
+        val freeGrid = free.resolvedTileGridOrNull() ?: return
+        checkOutputSatisfiesRules("overlapping (free)", rules, freeGrid, w, h)
+
+        val solver = WfcSolver(w, h, rules, seed = 4L)
+        val outcome = solver.solveWithRetries(maxAttempts = 30) {
+            for (x in 0 until w) {
+                forceTile(x, h - 1, groundTile)
+                forceTile(x, 0, skyTile)
+            }
+        }
+        check(outcome.solved, "overlapping (grounded): not solved after ${outcome.attempts} attempts")
         val grid = solver.resolvedTileGridOrNull() ?: return
-        checkOutputSatisfiesRules("overlapping", rules, grid, w, h)
-        checkNotDegenerate("overlapping", grid, rules.tileCount, minDistinct = 8, maxShare = 0.72)
+        checkOutputSatisfiesRules("overlapping (grounded)", rules, grid, w, h)
+        checkNotDegenerate("overlapping (grounded)", grid, rules.tileCount, minDistinct = 8, maxShare = 0.72)
+
+        val result = patterns.toImg(grid, w, h)
+        val pixels = imgToArgb(result)
+        val floating = floatingBlossoms(pixels, w, h)
+        check(floating == 0, "overlapping: $floating blossom(s) float with no stem beneath them")
+        val blossoms = pixels.count { it == BLOSSOM }
+        check(blossoms >= 3, "overlapping: only $blossoms blossom(s) in the output, expected several")
+        val soilRow = (0 until w).count { pixels[it + (h - 1) * w] == SOIL }
+        check(soilRow == w, "overlapping: ground row is not all soil ($soilRow of $w)")
+        println("[wfc-gallery] ok  overlapping: $blossoms blossom(s), none floating, ground row intact")
 
         montage(
             listOf(
-                "source ${sw}x$sh px, ${patterns.tileCount} 3x3 patterns" to source.upscaleNearest(6),
-                "WFC ${w}x$h px, seed 11" to patterns.toImg(grid, w, h).upscaleNearest(6)
+                "source ${sw}x$sh px, ${patterns.tileCount} 3x3 patterns" to source.upscaleNearest(8),
+                "no ground constraint" to patterns.toImg(freeGrid, w, h).upscaleNearest(8),
+                "ground + sky pinned with forceTile" to result.upscaleNearest(8)
             ),
             columns = 1,
-            cellSide = 760
+            cellSide = 860
         ).savePng(File(outDir, "wfc-overlapping.png").absolutePath)
         println("[wfc-gallery] overlapping solved in ${outcome.attempts} attempt(s), ${patterns.tileCount} patterns")
     }
 
-    private fun figureNeighborhood(outDir: File) {
-        val sw = 22
-        val sh = 15
-        val source = terrainTiledImg(sw, sh)
-        val tiles = source.toBufferedImage().sliceIntoUniqueTiles(8, 8)
-        val panels = ArrayList<Pair<String, Img>>()
-        for ((label, nb) in listOf(
-            "von Neumann (4)" to WfcNeighborhood.VonNeumann,
-            "Moore (8)" to WfcNeighborhood.Moore,
-            "manhattan(2) (12)" to WfcNeighborhood.manhattan(2)
-        )) {
-            val rules = tiles.toRules(neighborhood = nb)
-            checkSymmetric("neighborhood $label", rules)
-            val w = 30
-            val h = 20
-            val solver = WfcSolver(w, h, rules, seed = 5L)
-            val outcome = solver.solveWithRetries(maxAttempts = 30)
-            check(outcome.solved, "neighborhood $label: not solved after ${outcome.attempts} attempts")
-            val grid = solver.resolvedTileGridOrNull() ?: continue
-            checkOutputSatisfiesRules("neighborhood $label", rules, grid, w, h)
-            panels.add("$label, ${outcome.attempts} attempt(s)" to tiles.toImg(grid, w, h))
-            println("[wfc-gallery] neighborhood $label: ${nb.directionCount} directions, ${outcome.attempts} attempt(s)")
+    /** Mean number of tiles allowed per (direction, tile) — the model's branching factor. */
+    fun meanBranching(rules: WfcRules): Double {
+        var total = 0L
+        var n = 0
+        for (d in 0 until rules.neighborhood.directionCount) for (t in 0 until rules.tileCount) {
+            total += rules.allowedCount(d, t)
+            n++
         }
-        montage(panels, columns = 1, cellSide = 620).savePng(File(outDir, "wfc-neighborhoods.png").absolutePath)
+        return total.toDouble() / n
+    }
+
+    val STRIPE_COLORS = intArrayOf(0xFF2B3F72.toInt(), 0xFFE8B44A.toInt())
+
+    /**
+     * Diagonal stripes two cells wide — a source built so the neighborhood choice provably matters.
+     *
+     * Colour depends on `(x + y) mod 4`, so along the anti-diagonal offset `(1, -1)` the value never
+     * changes, while along east and south it changes only half the time. A von Neumann model
+     * therefore observes every cardinal pair (`A-A`, `A-B`, `B-B`, `B-A`) and learns *nothing*: the
+     * stripes are invisible to it. A Moore model additionally observes `(1, -1)` — where the colour
+     * is constant — and that single extra constraint is enough to pin the stripes exactly.
+     */
+    fun diagonalStripeSource(w: Int, h: Int): IntArray =
+        IntArray(w * h) { i -> if (((i % w) + (i / w)) % 4 < 2) 0 else 1 }
+
+    /** [diagonalStripeSource] drawn as flat 8x8 tiles. */
+    fun diagonalStripeImg(w: Int, h: Int, tileSide: Int = 8): Img {
+        val map = diagonalStripeSource(w, h)
+        val outW = w * tileSide
+        val outH = h * tileSide
+        val argb = IntArray(outW * outH)
+        for (cy in 0 until h) for (cx in 0 until w) {
+            val color = STRIPE_COLORS[map[cx + cy * w]]
+            for (py in 0 until tileSide) for (px in 0 until tileSide) {
+                argb[(cy * tileSide + py) * outW + (cx * tileSide + px)] = color
+            }
+        }
+        return argbToImg(argb, outW, outH)
+    }
+
+    /** How many cells break "the anti-diagonal neighbour has the same tile" — 0 means clean stripes. */
+    fun antiDiagonalBreaks(grid: IntArray, w: Int, h: Int): Int {
+        var breaks = 0
+        for (y in 1 until h) for (x in 0 until w - 1) {
+            if (grid[x + y * w] != grid[(x + 1) + (y - 1) * w]) breaks++
+        }
+        return breaks
+    }
+
+    private fun figureNeighborhood(outDir: File) {
+        val panels = ArrayList<Pair<String, Img>>()
+
+        // Case 1: a terrain chain, where the diagonals are nearly implied by the cardinals.
+        val terrainTiles = terrainTiledImg(26, 18).toBufferedImage().sliceIntoUniqueTiles(8, 8)
+        for ((label, nb) in listOf(
+            "terrain, von Neumann (4)" to WfcNeighborhood.VonNeumann,
+            "terrain, Moore (8)" to WfcNeighborhood.Moore
+        )) {
+            val rules = terrainTiles.toRules(neighborhood = nb)
+            checkSymmetric(label, rules)
+            val solver = WfcSolver(30, 20, rules, seed = 5L)
+            val outcome = solver.solveWithRetries(maxAttempts = 30)
+            check(outcome.solved, "$label: not solved after ${outcome.attempts} attempts")
+            val grid = solver.resolvedTileGridOrNull() ?: continue
+            checkOutputSatisfiesRules(label, rules, grid, 30, 20)
+            val branching = meanBranching(rules)
+            panels.add("$label, branching ${"%.2f".format(branching)}" to terrainTiles.toImg(grid, 30, 20))
+            println(
+                "[wfc-gallery] $label: mean branching ${"%.2f".format(branching)} of ${rules.tileCount}, " +
+                    "${grid.toSortedSet().size} distinct tiles used"
+            )
+        }
+
+        // Case 2: diagonal stripes, where the (1, -1) offset is the whole story.
+        val stripeTiles = diagonalStripeImg(24, 16).toBufferedImage().sliceIntoUniqueTiles(8, 8)
+        check(stripeTiles.tileCount == 2, "stripes: expected 2 unique tiles, got ${stripeTiles.tileCount}")
+        val stripeBreaks = HashMap<String, Int>()
+        for ((label, nb) in listOf(
+            "stripes, von Neumann (4)" to WfcNeighborhood.VonNeumann,
+            "stripes, Moore (8)" to WfcNeighborhood.Moore
+        )) {
+            val rules = stripeTiles.toRules(neighborhood = nb)
+            checkSymmetric(label, rules)
+            val solver = WfcSolver(30, 20, rules, seed = 5L)
+            val outcome = solver.solveWithRetries(maxAttempts = 30)
+            check(outcome.solved, "$label: not solved after ${outcome.attempts} attempts")
+            val grid = solver.resolvedTileGridOrNull() ?: continue
+            checkOutputSatisfiesRules(label, rules, grid, 30, 20)
+            val breaks = antiDiagonalBreaks(grid, 30, 20)
+            stripeBreaks[label] = breaks
+            panels.add("$label, $breaks diagonal break(s)" to stripeTiles.toImg(grid, 30, 20))
+            println("[wfc-gallery] $label: $breaks anti-diagonal break(s) of ${29 * 19} pairs")
+        }
+
+        // The claim the figure makes: von Neumann cannot see the stripes, Moore reproduces them exactly.
+        val vn = stripeBreaks["stripes, von Neumann (4)"] ?: -1
+        val moore = stripeBreaks["stripes, Moore (8)"] ?: -1
+        check(moore == 0, "stripes/Moore: expected perfectly clean diagonals, got $moore break(s)")
+        check(vn > 100, "stripes/von Neumann: expected the stripes to be lost, got only $vn break(s)")
+
+        check(panels.size == 4, "neighborhood: expected 4 panels, got ${panels.size}")
+        montage(panels, columns = 2, cellSide = 460).savePng(File(outDir, "wfc-neighborhoods.png").absolutePath)
     }
 
     private fun figureCollapse(outDir: File) {

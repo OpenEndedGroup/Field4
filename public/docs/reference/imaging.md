@@ -4,7 +4,7 @@
 
 Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. Dependency-free CPU float math built on one value type, `Img`, with the separable-convolution core vectorized to roughly OpenCV's single-threaded speed. Every detector hands back geometry, so results go straight to `lines()`.
 
-6 source file(s), 254 public symbol(s), 208 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+6 source file(s), 255 public symbol(s), 209 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -49,7 +49,7 @@ and anything needing a model file.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md)
 
 ### Top-level functions { #imaging-kt-functions }
 
@@ -69,6 +69,7 @@ and anything needing a model file.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">crop</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">w</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">h</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Rectangular sub-image. Coordinates are clamped into range; the result is at least 1x1. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">pad</span><span class="p">(</span><span class="n">pad</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">border</span><span class="p">:</span> <span class="nc">Border</span> <span class="o">=</span> <span class="nc">Border</span><span class="p">.</span><span class="nc">CLAMP</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Grow the image by `pad` pixels on every side, filling from `border`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">resize</span><span class="p">(</span><span class="n">newWidth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">newHeight</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">areaAverage</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Resize to `newWidth x newHeight`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">upscaleNearest</span><span class="p">(</span><span class="n">factor</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Enlarge by an integer `factor` with **no interpolation** — every pixel becomes a crisp `factor x factor` block. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">scaleBy</span><span class="p">(</span><span class="n">factor</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">areaAverage</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Resize by a scale factor (both axes). See `resize`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">flipX</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Mirror left-right. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">flipY</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Mirror top-bottom. |
@@ -297,7 +298,7 @@ extractor works on image data with no glue.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_field.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md)
 
 ### Top-level functions { #imaging-field-kt-functions }
 
