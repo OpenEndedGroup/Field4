@@ -697,7 +697,7 @@ only ever rendered if someone asks for it.
 
 `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt`
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #valuevisualizer-kt-functions }
 

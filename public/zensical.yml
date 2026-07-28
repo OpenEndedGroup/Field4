@@ -79,6 +79,7 @@ nav:
         - Interaction Nets Examples: interaction_nets_examples.md
         - Boolean Networks Examples: boolean_networks_examples.md
         - Boolean Network Music Examples: boolean_network_music_examples.md
+        - Wave Function Collapse Examples: wfc_examples.md
 
 markdown_extensions:
   - pymdownx.superfences:         # required extension

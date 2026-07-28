@@ -21,6 +21,10 @@ import kotlin.math.ln
  * Notes:
  * - The WFC solver operates only on integer tile IDs and constraints.
  * - PNG/FloatArray simple-tiled and overlapping helpers are intentionally separate from the core.
+ * - The one concession to the rest of Field: [WfcSolver] implements [afield.ToHTML], so evaluating a
+ *   solver in a box draws the collapse instead of a reflective property tree. Every pixel of that
+ *   view lives in `wfc_field.kt` ([afield.stdlib.wfcSolverHtml]); this file names it once, in
+ *   [WfcSolver.toHTML], and depends on nothing else outside itself.
  */
 
 const val WFC_NORTH: Int = 0
@@ -258,6 +262,61 @@ private fun patternWeights(tileCount: Int, samplePatternIds: IntArray?): DoubleA
     return weights
 }
 
+/**
+ * Widen every empty `allowed[direction][tile]` mask to "any tile", **keeping the relation symmetric**.
+ *
+ * WFC's propagation is only sound if adjacency is a symmetric relation — that is, if
+ * `allowed[d][a]` contains `b` exactly when `allowed[opposite(d)][b]` contains `a`. Propagation only
+ * ever pushes constraints *outward* from a cell that changed, so if `allowed[EAST][a]` admits `b`
+ * while `allowed[WEST][b]` does not admit `a`, nothing in the solver will ever notice: the arc is
+ * checked in one direction only, and the solver can happily emit `a` with `b` to its east — a pair
+ * its own rules forbid when read the other way round.
+ *
+ * Naively assigning `allowed[d][t] = every tile` therefore *introduces* that asymmetry, because it
+ * says "anything may sit at `d` from `t`" without also telling each of those tiles that `t` may sit
+ * on their opposite side. So the widening has to be done in both directions at once, and the set of
+ * empty masks has to be collected up front — filling one mask can make another non-empty.
+ */
+private fun widenEmptyMasksSymmetrically(
+    allowed: Array<Array<LongArray>>,
+    neighborhood: WfcNeighborhood,
+    tileCount: Int,
+    wordCount: Int
+) {
+    val all = LongArray(wordCount)
+    all.fillAllBits(tileCount)
+
+    // Collect first: widening allowed[opposite(d)][s] below can un-empty a mask we have not tested.
+    val emptyDirections = ArrayList<Int>()
+    val emptyTiles = ArrayList<Int>()
+    var d = 0
+    while (d < neighborhood.directionCount) {
+        var t = 0
+        while (t < tileCount) {
+            if (allowed[d][t].isEmptyBits()) {
+                emptyDirections.add(d)
+                emptyTiles.add(t)
+            }
+            t++
+        }
+        d++
+    }
+
+    var i = 0
+    while (i < emptyDirections.size) {
+        val direction = emptyDirections[i]
+        val tile = emptyTiles[i]
+        allowed[direction][tile].copyFrom(all)
+        val opposite = neighborhood.opposite(direction)
+        var s = 0
+        while (s < tileCount) {
+            allowed[opposite][s].setBit(tile)
+            s++
+        }
+        i++
+    }
+}
+
 private fun intPatternsOverlap(
     a: IntArray,
     b: IntArray,
@@ -317,8 +376,76 @@ class WfcRules private constructor(
     val neighborhood: WfcNeighborhood,
     /** allowed[direction][tile] is a bitset of tile IDs allowed in that direction from tile. */
     val allowed: Array<Array<LongArray>>
-) {
+) : afield.ToHTML {
     val wordCount: Int = wordsFor(tileCount)
+
+    /**
+     * May tile [b] sit at [direction] from tile [a]?
+     *
+     * The same question [allowed] answers, without making you index a bitset by hand. Worth reaching
+     * for twice: to *inspect* a learned model — print the adjacency table and you can see what a
+     * sample image actually taught the solver, which is usually more informative than looking at the
+     * output — and to *check* one, since every adjacent pair in a solved grid must satisfy this.
+     */
+    fun allows(direction: Int, a: Int, b: Int): Boolean {
+        require(direction in 0 until neighborhood.directionCount) {
+            "direction $direction outside 0 until ${neighborhood.directionCount}"
+        }
+        require(a in 0 until tileCount) { "tile $a outside 0 until $tileCount" }
+        require(b in 0 until tileCount) { "tile $b outside 0 until $tileCount" }
+        return allowed[direction][a].containsBit(b)
+    }
+
+    /**
+     * The first `(direction, a, b)` where adjacency is *not* symmetric, or `null` when the rules are
+     * sound. Returned as a human-readable string because it is a diagnostic, not a control path.
+     *
+     * WFC propagates constraints outward from cells that changed, and it does so in one direction per
+     * arc. That is only sufficient if `allows(d, a, b) == allows(opposite(d), b, a)` for every triple:
+     * an asymmetric rule set has arcs the solver structurally cannot check, and it will cheerfully
+     * emit adjacent pairs its own rules forbid when read the other way round. Every factory in this
+     * file maintains the invariant; this is here for rules you build yourself, and for a test to
+     * assert against.
+     */
+    fun findAsymmetry(): String? {
+        var d = 0
+        while (d < neighborhood.directionCount) {
+            val opposite = neighborhood.opposite(d)
+            var a = 0
+            while (a < tileCount) {
+                var b = 0
+                while (b < tileCount) {
+                    if (allowed[d][a].containsBit(b) != allowed[opposite][b].containsBit(a)) {
+                        return "allows($d, $a, $b)=${allowed[d][a].containsBit(b)} but " +
+                            "allows($opposite, $b, $a)=${allowed[opposite][b].containsBit(a)}"
+                    }
+                    b++
+                }
+                a++
+            }
+            d++
+        }
+        return null
+    }
+
+    /** How many tiles may sit at [direction] from [a] — the branching factor of the model. */
+    fun allowedCount(direction: Int, a: Int): Int {
+        require(direction in 0 until neighborhood.directionCount)
+        require(a in 0 until tileCount)
+        return allowed[direction][a].countBits()
+    }
+
+    override fun toString(): String =
+        "WfcRules($tileCount tiles, ${neighborhood.directionCount} directions" +
+            (if (findAsymmetry() == null) "" else ", ASYMMETRIC") + ")"
+
+    /**
+     * The rule set's own inline view: one adjacency matrix per direction plus the weights strip, with
+     * the three things that silently break a solve — empty masks, asymmetry, zero weights — marked.
+     *
+     * Delegates to [afield.stdlib.wfcRulesHtml] in `wfc_field.kt`; see its KDoc.
+     */
+    override fun toHTML(): String = wfcRulesHtml(this)
 
     companion object {
         fun fromSampleGrid(
@@ -373,17 +500,7 @@ class WfcRules private constructor(
 
             // Defensive fallback: if a direction was never observed for a tile, allow all tiles there.
             // This keeps edge-only sample tiles from becoming unusable in unconstrained output regions.
-            val all = LongArray(wordCount)
-            all.fillAllBits(tileCount)
-            var d = 0
-            while (d < neighborhood.directionCount) {
-                var t = 0
-                while (t < tileCount) {
-                    if (allowed[d][t].isEmptyBits()) allowed[d][t].copyFrom(all)
-                    t++
-                }
-                d++
-            }
+            widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
 
             return WfcRules(tileCount, weights, neighborhood, allowed)
         }
@@ -467,8 +584,152 @@ class WfcRules private constructor(
 
             return WfcRules(tileCount, weights, neighborhood, allowed)
         }
+
+        /**
+         * Assemble rules from **hand-authored** adjacency, rather than learning them from a sample.
+         *
+         * Every other factory here infers what may touch what by looking at a sample grid or a set
+         * of overlapping patterns. That is the point of WFC, but it is a bad way to *learn* WFC:
+         * the constraints stay implicit in a picture. This factory is the explicit form — you name
+         * the tiles by integer ID and say which pairs may be neighbours:
+         *
+         * ```
+         * val rules = wfcRules(tileCount = 3) {
+         *     weight(SEA, 3.0)                  // sea is three times as likely as anything else
+         *     allow(WFC_EAST, SEA, SEA)         // sea may sit east of sea
+         *     allow(WFC_EAST, SEA, SAND)        // ... and sand east of sea
+         *     allow(WFC_EAST, SAND, GRASS)      // but grass never touches sea
+         * }
+         * ```
+         *
+         * Unlike [fromSampleGrid], **nothing is widened for you**: a `(direction, tile)` pair you
+         * never mention stays empty, which says "no tile may sit there at all". That is a real
+         * constraint (a tile with no legal east neighbour can only occur on the east edge) and
+         * sometimes a deliberate one, so it is left exactly as authored — but it is also the most
+         * common authoring mistake, and the usual symptom is an immediate
+         * [WfcStatus.Contradiction]. [WfcRulesBuilder.allowMissingAnything] opts in to the
+         * `fromSampleGrid` fallback if that is what you meant.
+         *
+         * @param tileCount how many distinct tile IDs exist; IDs are `0 until tileCount`
+         * @param neighborhood which relative offsets are constrained, default [WfcNeighborhood.VonNeumann]
+         */
+        fun build(
+            tileCount: Int,
+            neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann,
+            block: WfcRulesBuilder.() -> Unit
+        ): WfcRules {
+            require(tileCount > 0) { "tileCount must be positive, got $tileCount" }
+            val builder = WfcRulesBuilder(tileCount, neighborhood)
+            builder.block()
+            return WfcRules(tileCount, builder.weightSnapshot(), neighborhood, builder.allowedSnapshot())
+        }
     }
 }
+
+/**
+ * Accumulates hand-authored WFC adjacency; see [WfcRules.build], which is how you get one.
+ *
+ * Adjacency here is always **symmetric**, exactly as it is when learned from a sample: saying that
+ * `b` may sit east of `a` also says that `a` may sit west of `b`. You therefore only ever author
+ * half the directions of a [WfcNeighborhood] — for the default von Neumann set, east and south are
+ * enough.
+ */
+class WfcRulesBuilder internal constructor(
+    val tileCount: Int,
+    val neighborhood: WfcNeighborhood
+) {
+    private val wordCount = wordsFor(tileCount)
+    private val weights = DoubleArray(tileCount) { 1.0 }
+    private val allowed = Array(neighborhood.directionCount) { Array(tileCount) { LongArray(wordCount) } }
+
+    /**
+     * Set the relative frequency of [tile]. Weights bias both which tile a collapse picks and the
+     * entropy that decides *which cell* to collapse next; they default to `1.0` (uniform).
+     */
+    fun weight(tile: Int, weight: Double) {
+        requireTile(tile)
+        require(weight > 0.0) { "WFC tile weights must be positive, got $weight for tile $tile" }
+        weights[tile] = weight
+    }
+
+    /** Set every tile weight at once, in tile-ID order. */
+    fun weights(vararg values: Double) {
+        require(values.size == tileCount) { "expected $tileCount weights, got ${values.size}" }
+        var t = 0
+        while (t < values.size) {
+            weight(t, values[t])
+            t++
+        }
+    }
+
+    /**
+     * Allow tile [b] to sit at [direction] from tile [a] — and, symmetrically, [a] at the opposite
+     * direction from [b].
+     *
+     * @param direction an index into [neighborhood]; for the default von Neumann set that is one of
+     *   [WFC_NORTH], [WFC_EAST], [WFC_SOUTH], [WFC_WEST]
+     */
+    fun allow(direction: Int, a: Int, b: Int) {
+        require(direction in 0 until neighborhood.directionCount) {
+            "direction $direction outside 0 until ${neighborhood.directionCount}"
+        }
+        requireTile(a)
+        requireTile(b)
+        allowed[direction][a].setBit(b)
+        allowed[neighborhood.opposite(direction)][b].setBit(a)
+    }
+
+    /** [allow], addressing the direction by its offset instead of its index. */
+    fun allow(dx: Int, dy: Int, a: Int, b: Int) {
+        val direction = neighborhood.directionOf(dx, dy)
+        require(direction >= 0) { "offset ($dx, $dy) is not in $neighborhood" }
+        allow(direction, a, b)
+    }
+
+    /** `allow(direction, a, b)` for every `b` in [others] — the common "a tolerates any of" case. */
+    fun allowAny(direction: Int, a: Int, vararg others: Int) {
+        for (b in others) allow(direction, a, b)
+    }
+
+    /**
+     * Fill in "anything goes" for every `(direction, tile)` pair still left empty, which is the
+     * defensive fallback [WfcRules.fromSampleGrid] applies to sample tiles it only ever saw at an
+     * edge. Off by default for hand-authored rules, because there an empty mask is more often a
+     * typo than an intention.
+     *
+     * Widening stays **symmetric**: saying "anything may sit east of `t`" also tells every one of
+     * those tiles that `t` may sit to *their* west. Doing only half of that produces rules the
+     * solver cannot enforce — see `widenEmptyMasksSymmetrically`.
+     */
+    fun allowMissingAnything() {
+        widenEmptyMasksSymmetrically(allowed, neighborhood, tileCount, wordCount)
+    }
+
+    private fun requireTile(tile: Int) {
+        require(tile in 0 until tileCount) { "tile $tile outside 0 until $tileCount" }
+    }
+
+    internal fun weightSnapshot(): DoubleArray = weights.copyOf()
+
+    internal fun allowedSnapshot(): Array<Array<LongArray>> =
+        Array(allowed.size) { d -> Array(tileCount) { t -> allowed[d][t].copyOf() } }
+}
+
+/**
+ * Hand-author WFC adjacency constraints; shorthand for [WfcRules.build].
+ *
+ * ```
+ * val rules = wfcRules(tileCount = 2) {
+ *     allow(WFC_EAST, 0, 1)
+ *     allow(WFC_SOUTH, 0, 1)
+ * }
+ * ```
+ */
+fun wfcRules(
+    tileCount: Int,
+    neighborhood: WfcNeighborhood = WfcNeighborhood.VonNeumann,
+    block: WfcRulesBuilder.() -> Unit
+): WfcRules = WfcRules.build(tileCount, neighborhood, block)
 
 /** How many WFC steps between progress-bar samples, keeping the resolved-tile scan off the hot path. */
 private const val PROGRESS_STRIDE = 16
@@ -483,7 +744,7 @@ class WfcSolver(
     val rules: WfcRules,
     seed: Long = 1L,
     private val noise: Double = 1e-6
-) {
+) : afield.ToHTML {
     private val random = SplittableRandom(seed)
     private val cellCount = width * height
     private val wordCount = rules.wordCount
@@ -505,6 +766,18 @@ class WfcSolver(
         reset()
     }
 
+    /**
+     * Return every cell to "any tile is still possible" and clear [status] and [lastObservation].
+     *
+     * Deliberately **does not** reset the random stream: the solver's [SplittableRandom] is built
+     * once, from `seed`, and keeps going across resets. That is what makes a retry loop useful —
+     * `reset()` after a [WfcStatus.Contradiction] gives you a genuinely *different* attempt rather
+     * than replaying the one that just failed. See [solveWithRetries].
+     *
+     * Reproducibility is therefore a property of the whole *session*, not of each attempt: the same
+     * `seed` and the same sequence of calls give the same output, but the third attempt after two
+     * contradictions is not the same as a fresh solver's first attempt.
+     */
     fun reset() {
         val all = LongArray(wordCount)
         all.fillAllBits(rules.tileCount)
@@ -592,8 +865,14 @@ class WfcSolver(
         return status
     }
 
-    /** Cells collapsed to a single possibility — the WFC notion of "done" is all of them. */
-    private fun resolvedCellCount(): Int {
+    /**
+     * Cells collapsed to a single possibility — the WFC notion of "done" is all of them.
+     *
+     * Not monotonic in general: propagation can decide several cells at once, and this is a full
+     * scan rather than a maintained counter, so treat it as a progress read-out (see
+     * [afield.stdlib.resolvedFraction]) and not as a step count.
+     */
+    fun resolvedCellCount(): Int {
         var resolved = 0
         var cell = 0
         while (cell < cellCount) {
@@ -613,6 +892,20 @@ class WfcSolver(
         }
         return out
     }
+
+    override fun toString(): String =
+        "WfcSolver(${width}x$height, ${rules.tileCount} tiles, $status, " +
+            "${resolvedCellCount()}/$cellCount decided)"
+
+    /**
+     * The solver's own inline view, so that evaluating it in a box — or `solver.h` — shows the
+     * collapse: remaining possibilities per cell, entropy, what has been decided, and any
+     * contradiction, each panel captioned with the colour scale that produced it.
+     *
+     * Delegates to [afield.stdlib.wfcSolverHtml] in `wfc_field.kt`; see its KDoc for the panels and
+     * the range policy. This is the only line in this file that looks outside it.
+     */
+    override fun toHTML(): String = wfcSolverHtml(this)
 
     private fun index(x: Int, y: Int): Int {
         require(x in 0 until width && y in 0 until height)
@@ -791,6 +1084,54 @@ class WfcSolver(
             w++
         }
         return changed
+    }
+}
+
+/** What [solveWithRetries] ended up doing: the final [status] and how many attempts it took. */
+data class WfcOutcome(val status: WfcStatus, val attempts: Int) {
+    val solved: Boolean get() = status == WfcStatus.Solved
+}
+
+/**
+ * Run the solver to completion, restarting after a contradiction, up to [maxAttempts] times.
+ *
+ * This solver does not backtrack. When propagation empties some cell's possibility set the run is
+ * over — there is no undo stack to unwind to the choice that doomed it. The standard remedy, and the
+ * one the original WFC used, is simply to start again: contradictions are usually the product of an
+ * unlucky early choice, so a fresh attempt on the same rules very often succeeds.
+ *
+ * Restarting works because [WfcSolver.reset] keeps the random stream running (see its KDoc), so each
+ * attempt explores a different set of choices. A solver that has exhausted [maxAttempts] is left in
+ * whatever state its last attempt reached.
+ *
+ * ```
+ * val outcome = solver.solveWithRetries()
+ * if (!outcome.solved) println("still stuck after ${outcome.attempts} attempts — loosen the rules")
+ * ```
+ *
+ * [WfcSolver.reset] clears the whole wave, boundary conditions included, so anything you pinned with
+ * [WfcSolver.forceTile] has to be re-applied on every attempt. That is what [prepare] is for — it
+ * runs on the fresh solver before each attempt, including the first:
+ *
+ * ```
+ * val outcome = solver.solveWithRetries { for (x in 0 until width) forceTile(x, height - 1, groundTile) }
+ * ```
+ *
+ * If this needs a large [maxAttempts] to succeed, that is a signal about the *rules*, not the seed:
+ * over-constrained adjacency, or an output much larger than the sample can consistently tile.
+ *
+ * @param prepare boundary conditions to (re-)apply before each attempt; may itself provoke a
+ *   contradiction, which simply costs that attempt
+ */
+fun WfcSolver.solveWithRetries(maxAttempts: Int = 16, prepare: WfcSolver.() -> Unit = {}): WfcOutcome {
+    require(maxAttempts >= 1) { "maxAttempts must be at least 1, got $maxAttempts" }
+    var attempt = 1
+    while (true) {
+        prepare()
+        if (run() == WfcStatus.Solved) return WfcOutcome(WfcStatus.Solved, attempt)
+        if (attempt >= maxAttempts) return WfcOutcome(status, attempt)
+        attempt++
+        reset()
     }
 }
 

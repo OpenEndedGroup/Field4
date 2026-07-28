@@ -528,6 +528,34 @@ private fun Img.resizeArea(nw: Int, nh: Int): Img {
     return Img(nw, nh, channels, out)
 }
 
+/**
+ * Enlarge by an integer [factor] with **no interpolation** — every pixel becomes a crisp
+ * `factor x factor` block.
+ *
+ * [resize] and [scaleBy] both filter, which is right for photographs and wrong for anything whose
+ * pixels are meant to be *seen as pixels*: a tile grid, a Wave Function Collapse output, a mask, a
+ * small palettised sprite, a per-cell heatmap. Bilinear upsampling turns those into mush, and the
+ * structure you were trying to show is the first thing it destroys.
+ *
+ * @param factor how many output pixels per input pixel, per axis; must be at least 1
+ */
+fun Img.upscaleNearest(factor: Int): Img {
+    require(factor >= 1) { "upscale factor must be at least 1, got $factor" }
+    if (factor == 1) return copy()
+    val nw = width * factor
+    val nh = height * factor
+    val out = FloatArray(nw * nh * channels)
+    for (y in 0 until nh) {
+        val sy = y / factor
+        for (x in 0 until nw) {
+            val si = index(x / factor, sy, 0)
+            val di = (y * nw + x) * channels
+            for (c in 0 until channels) out[di + c] = data[si + c]
+        }
+    }
+    return Img(nw, nh, channels, out)
+}
+
 /** Resize by a scale factor (both axes). See [resize]. */
 fun Img.scaleBy(factor: Double, areaAverage: Boolean = true): Img {
     require(factor > 0.0) { "scale factor must be > 0, got $factor" }
