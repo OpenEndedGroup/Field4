@@ -2154,10 +2154,14 @@ class StreamingWhitener(var alpha: Float = 0.01f, var epsilon: Float = 1e-5f) : 
  * The centroids are kept in order, so the answer is `-1f` for the lower cluster and `+1f` for the upper. Set
  * `interpolate` to get the sample's position between them mapped onto `-1..1` instead — a soft membership,
  * and not clamped, so a sample outside the pair reads beyond `±1`. Warm-up is unusual: the first sample seeds
- * the low centroid and the filter returns 0 until a second, *different* value arrives to seed the other, so a
- * stream that starts with a run of identical samples stays silent for exactly that long. If the two centroids
- * ever converge to within 1e-5, the interpolated output falls back to 0. `alpha` is the per-sample learning
- * rate: small enough to be stable, large enough to follow drift.
+ * *a* centroid — not necessarily the lower one, since the pair is put in order the moment the second value
+ * arrives and a lower second value therefore takes the low slot — and the filter returns 0 until a second,
+ * *different* value arrives, so a stream that starts with a run of identical samples stays silent for exactly
+ * that long. If the two centroids ever converge to within 1e-5, the interpolated output falls back to 0.
+ * `alpha` is the per-sample learning rate in `0..1`: small enough to be stable, large enough to follow drift.
+ * Keep it there — the nearer centroid moves by `alpha` times its distance to the sample, which cannot carry it
+ * past the other one for any `alpha` at or below 2, and the label is decided from the distances *before* that
+ * move, so an `alpha` above 2 would report the two clusters the wrong way round.
  */
 class BimodalThresholder(var alpha: Float = 0.05f, var interpolate: Boolean = false) : FloatFilter {
     private var c1 = 0f
