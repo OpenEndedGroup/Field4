@@ -494,7 +494,7 @@ to recover from geometry. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 |---|---|
 | a shape from an equation | `marchingCubes(field, boundsAround(radius = r), resolution)` |
 | is this mesh usable? | `println(mesh.summary())` |
-| a mesh from a photo or a heightfield | `img.toHeightfieldMesh(...)` or `heightfieldMesh(nx, ny) { x, y -> h }` |
+| a mesh from a photo or a heightfield | `img.toHeightfieldMesh(scale = 0.25)` or `heightfieldMesh(nx, nz) { x, z -> h }` |
 | a lathed profile | `revolveMesh(profile, segments)` |
 | a swept tube along a path | `tubeMesh(fline, radius, sides, samples)` |
 | smooth without shrinking | `taubinSmooth(iterations = 30, lambda = 0.6, mu = -0.63)` |

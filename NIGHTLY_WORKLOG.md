@@ -442,3 +442,138 @@ both drift guards green, the demo replayed through the real engine.
 
 Follow-ups, in order: (1) the `public/docs/` page; (2) carry the cell combinatorics through Voronoi
 clipping and delete both ratchets; (3) the `TriMesh` → `afield.four` GPU upload bridge.
+
+---
+
+# Third pass — same night, same branch
+
+Picked up with the branch's one self-declared gap: **no public worked-example page**. Two commits,
+`ad2fcc14` and `9ab7aa07`, plus this section. **Nothing above this line was changed**, and no Kotlin
+source was touched at all (`git diff --stat 1a855bea..HEAD` is 11 files, all under `public/`).
+
+## What was written
+
+`public/docs/mesh_examples.md` — 560 lines — and its nav entry in `public/zensical.yml` under
+**Drawing From Data**, directly after `imaging_examples.md`, which is the page it is modelled on.
+
+It teaches by doing, in the order you would actually work in:
+
+1. **The value type** — flat `FloatArray`s and *why*: `Vec3` is mutable, so a mesh built out of
+   `Vec3`s is an aliasing bug, and every accessor therefore hands back a fresh one.
+2. **Modelling with a field** — a shape as an SDF expression, then `marchingCubes`.
+3. **Looking at what you got** — χ, genus, watertightness, and the marched volume against 4/3 π as
+   the resolution doubles. Includes the paragraph on *why* the surface is closed (asymptotic decider
+   + the exactly-on-the-iso-level nudge), because plain marching cubes leaks precisely there.
+4. **Subdivide, and smooth without shrinking** — Loop, then Laplacian versus Taubin with the volumes.
+5. **Decimate to a budget, and know the price** — QEM to three budgets, with the *symmetric*
+   deviation as the number that matters rather than the triangle count you asked for.
+6. **Drawing it, and writing it out** — the five `MeshLines` modes, `tubeMesh(FLine)`, and why OBJ
+   round-trips watertight where STL does not.
+7. **Measuring and querying** — curvature, Gauss–Bonnet, the BVH, `asSdf()` closing the loop.
+8. **Now do something you couldn't before** — the `voronoi3d` → `TriMesh` bridge, with the
+   cell-volumes-tile-the-clip-box check, and a short account of the `voronoi.kt` defect writing the
+   bridge turned up.
+9. **Recipes** (18 rows), **Where the pictures come from**, **Reference** (8 rows by area).
+
+## Figure route: **both**, live fences first, and the page says which is which
+
+**Route 1 for the five code fences.** They are `diffstatic_runner` fences, executed by the docs build
+with `capture="box" open-outputs="true"`, so the image under each one is that box's own output and
+regenerates every build. This was the mission's preferred route and it turned out cheap: the docs
+runner captured all five in **~30 s total** on a free port.
+
+**Route 2 for four figures** — `assets/mesh_gallery/{01-primitives, 08-voronoi-bridge,
+09-measure-and-query, 11-inline-visualizer}.png`, copied out of the committed `dev_docs/assets/
+mesh_gallery/` produced by the `mesh.gallery` FIELD_TEST. This is the pattern `imaging_examples.md`
+already ships (`assets/imaging_gallery/`) and `imgui_vr_panel.md` before it. **The page states the
+distinction explicitly** in *Where the pictures come from*: the fences cannot go stale because a
+change that breaks them breaks the docs build; the four gallery PNGs are real renders from real code
+but are committed captures that need the test re-run to reflect a change.
+
+Nothing on the page is hand-drawn, synthesised or hallucinated, and no fence contains code that was
+not executed.
+
+## What the captures changed about the page — twice
+
+**The captures corrected the prose, not the other way round.** Three builds, because reading the
+output twice found two real problems:
+
+1. **`open-outputs` frames the box's *image* channel, so `println` output is not in the picture.** The
+   first draft's alt-text promised "with the convergence table printed below" and "with the deviation
+   table printed below" — a reader would never see either. Fixed by moving the numbers that carry the
+   argument **into the `showMeshGrid` panel captions**, where they are part of the render: the volume
+   error against 4/3 π per resolution, and the symmetric QEM deviation per budget. That is strictly
+   better than prose, because the figure now proves its own claim.
+2. **A 3-column grid of long-captioned solids overruns the captured box width.** The third column's
+   numbers were being cut off mid-word in `modelling.png`. The modelling grid is 2×3 now; `bridges`
+   at 3×250 fits and was left alone.
+
+Every figure number quoted in the prose is read off the **committed capture**, not off an earlier run
+of similar code.
+
+## Verification — run tonight, in this worktree
+
+| what | result |
+|---|---|
+| `build_zensical_docs.py --page mesh_examples.md` (×3, port 9477 confirmed free each time) | **exit 0**; `regenerated`, then `cache_hits=5 missing=0 failures=0` |
+| all five captures **opened and read** | real content, correct silhouettes, plausible-and-checkable numbers; no blank/partial frames |
+| `check_doc_assets` (runs at the end of the docs build) | **OK — every referenced asset is committed**, 67 pages / 550 asset refs |
+| built HTML — `public/field4/mesh_examples/index.html` | exists; **all 9 `<img src>` resolve** to files present in the built site; 5 `code-diff-fence`s; 11 `<h2>`s; the `:::fold` payload pattern is byte-shaped exactly like `dough_dsp_sound`'s (the fold markers live inside `<pre><code>` for the client-side player — *not* a preprocessing failure, which I checked rather than assumed) |
+| nav | `imaging_examples/index.html` links to `mesh_examples` twice (nav + section index) |
+| `mesh.gallery` (port 9700) | **PASS** (6.7 s), no regression |
+| `examples.demo-transcript.exec`, `DEMO_TRANSCRIPT_ONLY=mesh_geometry_examples` (9701) | **PASS** (10.7 s) |
+| every API name and signature cited on the page | grep-confirmed against `mesh*.kt`; three were wrong in the first draft and were fixed — `MeshLines` has **five** modes not four (`FACES` was missing), `heightfieldMesh`'s second parameter is `nz` not `ny` and its lambda is `(Float, Float) -> Float`, and `toHeightfieldMesh` takes `scale` |
+| `git status` after all runs | clean — no test wrote into the tree |
+| `df -h /` | 44 GiB free before and after |
+
+**Not run, deliberately:** `generateCodebaseReference` / `checkCodebaseReference` and `jvmTest`. No
+Kotlin source, KDoc or public API changed in this pass — the diff is 11 files, all `public/` markdown,
+YAML and PNG — so both would be re-running the second pass's green result on identical inputs.
+
+**Real numbers now on the page, all read off the committed captures:**
+
+```
+marched sphere, boundsAround(1.4):  res 16 -> 1544 tris, volume 4.1124, off by 1.82%
+                                    res 64 -> 24920 tris, volume 4.1840, off by 0.11%   (4/3 pi = 4.18879)
+sdfUnion 2.2135 -> sdfSmoothUnion(k=0.3) 2.2690   (the fillet adds 0.0555, and can only add)
+drilled: chi 2 -> 0, genus 0 -> 1                 gyroid: chi=-20, genus 4, OPEN (20 loops)
+shell(0.07): chi=4 (two nested surfaces); cut by sdfPlane: chi=2, z extent 1.739 -> 0.870
+loopSubdivide volumes 1.2985 / 0.8518 / ... / 0.7490, chi=2 throughout
+noisy 2.1293 (extent 1.701) -> laplacian(30) 1.1509 (1.301) -> taubin(30) 2.1840 (1.631)
+    the Laplacian threw away 46% of the volume; Taubin held it to ~3% of the clean ball
+decimate 5120 -> 2000 / 600 / 150, exact, all watertight chi=2,
+    deviation 0.0047 / 0.0166 / 0.0326 on r=0.8  (34x fewer triangles for ~4% of the radius)
+tubeMesh(FLine, 18): 4320 tris, watertight, chi=2, no twist through two vertical swings
+icosphere(3, 0.7) -> binary STL (3840 soup verts) -> weld(1e-5) -> 642 verts, watertight, 1.4244
+```
+
+## Risks
+
+- **The four gallery figures are the staleness surface.** If someone changes a generator, the
+  curvature colour map, the inline card's layout or the Voronoi bridge, `mesh.gallery` will still
+  pass (its invariants are numeric) and the four committed PNGs on the public page will quietly
+  disagree with the code. The page names them and names the command that regenerates them, which is
+  the mitigation, not a fix. Converting them to `diffstatic_runner` fences is the obvious follow-up
+  and is now clearly cheap — 30 s for five captures.
+- **`process.png` is the only capture I did not regenerate after the caption change**, because its
+  fence content did not change and the runner correctly served it from cache. It is from the first of
+  the three builds. Same code, same engine, same night.
+- The page's prose numbers are pinned to captures that regenerate. A future change that alters, say,
+  the Taubin volume will update `process.png` silently and leave the prose saying 2.1840. Nothing
+  guards that — it is the standard cost of quoting a number in prose next to a live figure, and it is
+  the same exposure `imaging_examples.md` carries.
+- The "cut open by `sdfPlane`" panel is rendered from the closed side, so the wall thickness is not
+  visible *in the picture* — the prose points at the halved *z* extent and χ dropping 4 → 2 instead of
+  claiming the render shows it. Gallery panel `03-sdf-modelling` does show it, from a better angle.
+
+## Recommendation: **merge**
+
+The branch now has the public page it was missing, on the better of the two figure routes for the
+part that carries the argument, with the weaker route used only where re-capturing would have been
+expensive and labelled as such. The three verification runs that matter tonight — the docs build, the
+asset lint, and the two FIELD_TESTs — are green in this worktree, and reading the captures twice
+improved both the figures and the honesty of the captions rather than merely confirming them.
+
+Follow-ups, in order: (1) convert the four gallery figures to live fences (cheap, now measured);
+(2) carry the cell combinatorics through Voronoi clipping and delete both ratchets; (3) the `TriMesh`
+→ `afield.four` GPU upload bridge.
