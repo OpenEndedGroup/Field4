@@ -42,7 +42,7 @@ covers:
 Things it deliberately does not do, so you are not surprised:
 
 - **No backtracking.** A contradiction is terminal. The remedy is to start the attempt again, which
-  is what `solveWithRetries` does — see [§6](#6-contradictions-seeds-and-reproducibility).
+  is what `solveWithRetries` does — see [§7](#7-contradictions-seeds-and-reproducibility).
 - **No symmetry expansion.** Most tileset formats let you declare a tile and ask for its four
   rotations. Here, a rotated tile is a *different tile* that you supply and constrain yourself.
 - **2-D only**, and the *output* never wraps. `wrapX` / `wrapY` on `fromSampleGrid` affect how the
@@ -91,7 +91,7 @@ val solver = WfcSolver(width = 22, height = 14, rules = rules, seed = 12L)
 
 // Seed both phases: sea pinned down the left edge, grass down the right. Without this the field
 // simply phase-separates — with only a one-cell-wide legal interface between them, whichever of
-// the two nucleates first tends to fill the whole grid. (Section 6 shows that happening.)
+// the two nucleates first tends to fill the whole grid. (Section 7 shows that happening.)
 val outcome = solver.solveWithRetries {
     for (row in 0 until 14) {
         forceTile(0, row, SEA)
@@ -673,7 +673,158 @@ loop {
 }
 ```
 
-## 6. Contradictions, seeds and reproducibility
+## 6. Not pixels: WFC on a scalar field
+
+Nothing in the solver knows what a pixel is. It works on integer tile IDs, and the image helpers are
+a convenience layered on top — so the same machinery runs on a row-major `FloatArray` via
+`sliceIntoUniqueTiles2D` and `sliceIntoOverlappingPatterns2D`, and produces numbers rather than
+colours. That is the interesting direction in Field, because a scalar field is geometry waiting to
+happen: colour-map it, contour it, and the result is [`FLine`s](fline_examples.md) that go into the
+same drawing and export machinery as anything hand-drawn.
+
+The catch is that `sliceIntoUniqueTiles2D` dedupes on **exact float equality**, so a continuous field
+would yield one unique tile per distinct value. Quantise first; here to six levels, which is what
+makes "level *n* may only touch level *n±1*" a learnable rule.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/scalar-field.png" wait="2.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-scalar-field"}
+:::static
+:::fold build the source field: a sum of bumps quantised to six levels
+fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
+    val dx = u - cx
+    val dy = v - cy
+    return exp(-(dx * dx + dy * dy) / (2.0 * r * r))
+}
+
+val sw = 26
+val sh = 18
+val levels = 6
+val source = FloatArray(sw * sh)
+for (cy in 0 until sh) for (cx in 0 until sw) {
+    val u = cx / (sw - 1.0)
+    val v = cy / (sh - 1.0)
+    val e = (bump(u, v, 0.32, 0.42, 0.26) +
+        0.85 * bump(u, v, 0.70, 0.60, 0.22) +
+        0.50 * bump(u, v, 0.80, 0.24, 0.14)).coerceIn(0.0, 1.0)
+    // Quantise, or exact-float dedup gives one tile per distinct value instead of six.
+    source[cx + cy * sw] = (Math.round(e * (levels - 1)).toDouble() / (levels - 1)).toFloat()
+}
+:::endfold
+
+// Both float paths, on the same source. sliceIntoUniqueTiles2D is the FloatArray counterpart of
+// sliceIntoUniqueTiles(1, 1): one value per tile. sliceIntoOverlappingPatterns2D takes 3x3 windows
+// of *values* instead of colours.
+val tiles = source.sliceIntoUniqueTiles2D(sw, sh, tileWidth = 1, tileHeight = 1)
+val patterns = source.sliceIntoOverlappingPatterns2D(sw, sh, 3, 3, wrapX = false, wrapY = false)
+
+val outW = 40
+val outH = 26
+
+// The lowest level, found by value rather than by ID: IDs are discovery order. For the overlapping
+// set the equivalent is the 3x3 window that is uniformly at that level.
+var lowestTile = 0
+for (id in 0 until tiles.tileCount) {
+    if (tiles.tiles[id][0] < tiles.tiles[lowestTile][0]) lowestTile = id
+}
+// Not "the uniformly-lowest window": this source has no 3x3 block entirely at level 0, because the
+// lowest level only occupies a corner or two. The lowest window *on average* always exists.
+var lowestPattern = 0
+var lowestSum = Float.MAX_VALUE
+for (id in 0 until patterns.tileCount) {
+    var sum = 0f
+    for (v in patterns.patterns[id]) sum += v
+    if (sum < lowestSum) {
+        lowestSum = sum
+        lowestPattern = id
+    }
+}
+
+// Pin the border to the lowest level in both. Without it the field settles on whichever level
+// nucleates first, for exactly the reason section 2's terrain did; with it, the field has to rise
+// inward through the chain.
+val tiledSolver = WfcSolver(outW, outH, tiles.toRules(), seed = 5L)
+val tiledOutcome = tiledSolver.solveWithRetries(maxAttempts = 30) {
+    for (x in 0 until outW) { forceTile(x, 0, lowestTile); forceTile(x, outH - 1, lowestTile) }
+    for (y in 0 until outH) { forceTile(0, y, lowestTile); forceTile(outW - 1, y, lowestTile) }
+}
+// render() on a FloatTileSet gives back a FloatArray, not an image.
+// `throw`, not `error(...)`: a Field box has its own `error` in scope, and it does not return
+// Nothing, so the elvis would widen this to Any.
+val tiledGrid: IntArray = tiledSolver.resolvedTileGridOrNull()
+    ?: throw IllegalStateException("tiled model ended " + tiledSolver.status)
+val tiledHeights: FloatArray = tiles.render(tiledGrid, outW, outH)
+
+// The pattern model gets no pinning at all. Pinning the whole border to one window over-constrains
+// it into a contradiction (a corner has to satisfy the ring in both directions at once) -- and it
+// does not need the help: a 3x3 window of values already encodes what a slope looks like.
+val patternSolver = WfcSolver(outW, outH, patterns.toRules(), seed = 5L)
+val patternOutcome = patternSolver.solveWithRetries(maxAttempts = 30)
+val patternGrid: IntArray = patternSolver.resolvedTileGridOrNull()
+    ?: throw IllegalStateException("pattern model ended " + patternSolver.status)
+val patternHeights: FloatArray = patterns.render(patternGrid, outW, outH)
+
+val tiledField = floatsToImg(tiledHeights, outW, outH)
+val patternField = floatsToImg(patternHeights, outW, outH)
+
+display("stats", "<div style='font:13px/1.6 monospace;padding:8px'>" +
+    "${tiles.tileCount} levels &middot; ${patterns.tileCount} distinct 3x3 value patterns<br>" +
+    "1x1 tiles:  ${tiledOutcome.attempts} attempt(s), mean ${"%.2f".format(tiledHeights.average())}, " +
+    "max ${"%.2f".format(tiledField.max())}<br>" +
+    "3x3 patterns: ${patternOutcome.attempts} attempt(s), mean ${"%.2f".format(patternHeights.average())}, " +
+    "max ${"%.2f".format(patternField.max())}</div>")
+
+// Terraced levels contour into blocky steps, so smooth before extracting geometry. This is the whole
+// point of ending up in a FloatArray rather than in pixels: iso-contours are FLines.
+val smooth = patternField.gaussianBlur(1.2)
+val contours = ArrayList<afield.graphics.FLine>()
+for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
+    for (line in smooth.isoContourFLines(iso)) {
+        line.color = vec(0.30 + iso * 0.65, 0.95 - iso * 0.45, 0.40 + iso * 0.45, 0.95)
+        line.thickness = 1.6
+        contours.add(line)
+    }
+}
+
+showImgGrid(
+    "source 26x18, 6 levels" to floatsToImg(source, sw, sh).colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(20),
+    "1x1 tiles, border pinned" to tiledField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
+    "3x3 value patterns, unpinned" to patternField.colormap("viridis", lo = 0f, hi = 1f).upscaleNearest(13),
+    columns = 1,
+    cellSide = 640
+)
+lines(contours, channel = "contours", w = 900.0, h = 560.0, fitToSize = true)
+```
+
+![the six-level source field, a speckled 1x1-tile result with the border pinned, and a horizontally banded 3x3-pattern result](assets/wfc_examples/scalar-field.png)
+
+Same solver, same rules machinery, no pixels anywhere — and the two float paths fail in
+characteristically different ways, which is the useful part.
+
+The `1 × 1` tile model does what §2's terrain did: correct, and speckle. Pinning the border to the
+lowest level keeps it from plateauing, but a single value per cell carries no information about slope,
+so the interior is high-frequency noise with a mean of 0.26 against the source's smooth ramp.
+
+The `3 × 3` pattern model has context, and it clearly used it — the result is *smooth*, with coherent
+bands and a mean of 0.61. But they are **horizontal** bands, where the source was a concentric island.
+That is not a bug either: over most of a concentric source, a 3 × 3 window says "the level changes
+vertically and is constant horizontally", because the wide top and bottom of the island contribute far
+more windows than its curved left and right edges do. The model reproduced the statistically dominant
+local arrangement and tiled the plane with it. More context buys you more coherence, not global
+composition — the same lesson as §2, one level up.
+
+The `contours` channel is the payoff, and the reason to end up in a `FloatArray` at all: four
+iso-levels of the blurred result, extracted with `isoContourFLines` and drawn as
+[`FLine`s](fline_examples.md). Those are not a picture of geometry, they are geometry — the same
+values `fitInto`, transform, animate and export like anything drawn by hand. A WFC-synthesised
+`FloatArray` is equally a heightfield, a mask, a weight map or a displacement.
+
+Three practical notes. Quantising is not optional, because `sliceIntoUniqueTiles2D` dedupes on exact
+float equality; the number of levels is your tile alphabet and therefore your cost knob. Pinning the
+whole border of the *pattern* model over-constrains it into a contradiction — a corner would have to
+satisfy the ring in both directions at once — which is why only the tiled model is pinned here. And
+`sliceIntoOverlappingPatterns2D` grows fast: six levels over a 26 × 18 source already gives 180
+distinct 3 × 3 windows, and rule learning compares every pattern against every other.
+
+## 7. Contradictions, seeds and reproducibility
 
 Propagation can empty a cell's possibility set. When that happens the solver sets
 `WfcStatus.Contradiction` and stops, and there is no undo stack to unwind to the choice that doomed
@@ -793,6 +944,22 @@ filter, and whose first casualty is the pixel-scale structure the whole exercise
 **To debug rules, watch the wave.** `waveToImg` in a `step()` loop shows you where the solver ran out
 of room, and `possibilityCountImg` shows you which cells were over-constrained from the start.
 Magenta in a wave frame is a cell whose possibility set has been emptied.
+
+**Names and shapes that bite inside a Field box.** Every snippet on this page runs in one, and these
+four cost real time while it was being written — none of them are WFC-specific:
+
+- A **local `fun` nested inside a lambda** trips a K2 codegen assertion
+  (`IrFunctionImpl has no callableId`). Declare helpers at the top level of the box.
+- A **named function that touches the box's implicit `Box` receiver** — and `println` does — cannot be
+  code-generated either (`No mapping for symbol: SCRIPT_IMPLICIT_RECEIVER`). Keep helpers pure and
+  return a value, or declare them as `fun Box.foo()`.
+- **A box's scope is crowded.** `h`, `sky` and `error` all resolve to something Field already defines
+  ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
+  `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
+- **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
+  need two channels. And `showImg(img, caption = …)` is two `display` calls, so in a *recording* it
+  produces frames where the caption has landed and the image has not — draw the label into the raster
+  with `montage` instead.
 
 ## The loadable demo
 
