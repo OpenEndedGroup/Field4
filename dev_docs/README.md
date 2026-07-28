@@ -26,6 +26,7 @@
 - [`stdlib/GENERATED_LINALG_ARCHITECTURE.md`](./stdlib/GENERATED_LINALG_ARCHITECTURE.md) — generated linear-algebra source and storage architecture
 - [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
 - [`kdoc_reference_contract.md`](./kdoc_reference_contract.md) — how a KDoc block reaches the completion panel and `public/docs/reference/`, which declaration forms the extractor can and cannot see, and what `checkKDocAttachment` enforces
+- [`stdlib_behaviour_changes.md`](./stdlib_behaviour_changes.md) — the running ledger of `afield.stdlib` fixes that change what already-written box code *computes*, with the caller sweep behind each one
 - [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
 - [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
 
