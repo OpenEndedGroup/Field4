@@ -68,6 +68,30 @@ clause cut before the type annotation (`var FLine.color by Delegation<Vector4f> 
 | another `/** … */` block | this block is dropped entirely. See "stacked blocks" below. |
 | nothing (end of file) | dropped. |
 
+### What the guard is *not* — its one structural blind spot
+
+`checkKDocAttachment` proves that a block **attaches to some declaration**. It cannot prove the block
+describes *that* declaration, and there is a recurring shape where those two come apart: a `//`-style
+section heading gets written as `/** … */`, and a later commit inserts a declaration underneath it. The
+heading is now legally attached, so the guard is silent, and the block confidently documents something
+several declarations away.
+
+Two live examples were found in `shaders.kt` on 2026-07-28, both dating to 2025-11-06:
+
+- `private data class CompileResult(…)` — an inert two-field result holder — carried
+  *"Unified compile/introspect helper that: runs the GLSL/spirv compilation for a stage; reports errors
+  via box.error…"*, which describes `compileStage`.
+- `private val preamblePrefixRegex = Regex(…)` — a one-line marker regex — carried
+  *"Applies an Insert's preamble(s) into the target box."*
+
+Both passed the guard. Neither published anything, because both are `private` and the reference only
+walks public symbols — which is also why nobody noticed for eight months.
+
+No automated check is proposed for this: any heuristic strong enough to catch it (does the prose's verb
+match the declaration's kind?) fires on far too many legitimately-worded blocks to be worth 6768 false
+positives. **The mitigation is a review habit:** when a block reads like a section heading, make it a
+`//` comment so a future insertion cannot adopt it.
+
 ## Stacked blocks
 
 Two KDoc blocks with no declaration between them means the first documents nothing. The usual causes
