@@ -231,8 +231,8 @@ Verified:
 - `./gradlew checkCodebaseReference` — green after each regeneration.
 - `./gradlew check --dry-run` — lists `:checkCodebaseReference` and `:checkKDocAttachment`, so the
   wiring is real.
-- The 17 regenerated docs captures — driven through the real pipeline and **looked at**, not just
-  counted.
+- The 19 regenerated docs captures (17 + 2) — driven through the real pipeline and **looked at**, not
+  just counted.
 
 Not verified, honestly:
 
@@ -246,10 +246,11 @@ Not verified, honestly:
   guard is **not** covered by a regression test: the function has no in-repo caller (it is reached
   from live-coded box code) and faking a `DynamicallyWriteable` GPU buffer for one assertion was not
   worth the weight. It is a two-line guard that mirrors what the Skiko and SVG writers already do.
-- The `fbm` amplitude change was traced through every `fbm`/`fbmPerlin` call site in the repo and in
-  `public/docs`, and the 17 affected captures were regenerated. I did **not** re-run the full docs
-  build, so if any page outside `functions_examples.md` renders `fbm` with a non-default amplitude
-  through a path I did not grep, its capture is stale.
+- Capture staleness was chased by grepping every `diffstatic_runner` fence in `public/docs` for the
+  changed functions (`fbm`/`fbmPerlin` with a non-default amplitude, `convolve(normalize)`,
+  `palindrome`, `tile`, `movingAverage`, `lowPass`, `highPass`) and regenerating exactly those. I did
+  **not** re-run the full docs build, so a capture that reaches a changed function through a helper I
+  did not grep for would still be stale.
 - `deflateCovariance`'s unscaled deflation is now described accurately but not fixed; a proper
   `λ·vvᵀ` deflation would change which minor axis is which for some clouds and I had no way to
   validate that visually tonight.
@@ -271,9 +272,9 @@ Not verified, honestly:
 3. **`palindrome` is one slot longer** for lists of three or more: `[a, b, c]` now spans 5 slots, not
    4. Any timeline arithmetic downstream of a palindrome's domain shifts accordingly.
 4. **`tile`'s declared domain widened** to the span it fills, so `f.tile(n).plot()` now draws all of
-   it. One committed capture (`functions_examples.md:1652`, `transform-palette.png`) plots a `tile`
-   through other transforms and may be marginally stale; the `fbm`/`convolve` regeneration did not
-   cover it because that fence's own snippet did not change.
+   it. The two captures this moved (`repeat-mirrorrepeat-tile-pad-echo.png` for `tile`,
+   `transform-palette.png` for `highPass`) were regenerated and looked at as well, so every committed
+   capture in `public/docs` whose snippet touches a changed function is current.
 5. `KDocExtractor.parseDeclaration` now recognises `typealias`, `actual`/`expect` and `constructor`.
    That moves summaries onto symbols that previously had none — visible in the regenerated diff and in
    the coverage count — and could in principle change a completion card somewhere. It cannot *remove*
