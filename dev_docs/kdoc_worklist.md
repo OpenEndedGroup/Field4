@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2182 of 4063 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2187 of 4069 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **274 undocumented entry points** (types, top-level functions and values) and 1491 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -12,13 +12,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
-| [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 23% |
+| [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 24% |
 | [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 5 | 9 | 83% |
 | [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, kotlin_overview, afield_four_graphics | 3 | 3 | 91% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 48 | 83% |
 | [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 1 | 38 | 42% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
-| [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers | 1 | 1 | 77% |
+| [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples | 0 | 28 | 63% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
@@ -28,7 +28,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples, wfc_examples | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers | 0 | 10 | 77% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
-| [wfc_field.kt](../src/jvmMain/kotlin/afield/stdlib/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 75% |
+| [wfc_field.kt](../src/jvmMain/kotlin/afield/stdlib/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 77% |
 | [imaging_filters.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt) | Imaging | imaging_examples | 0 | 6 | 82% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 45 | 226 | 0% |
@@ -63,9 +63,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | Declaration | Kind | Where |
 | --- | --- | --- |
 | `WfcOffset` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:35` |
-| `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:725` |
-| `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:727` |
-| `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:729` |
+| `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:737` |
+| `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:739` |
+| `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:741` |
 | `FnGraphRebuilder` | typealias | `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt:49` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Vec4` | typealias | `src/jvmMain/kotlin/afield/stdlib/linalg.kt:47` |
@@ -78,13 +78,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Vec3h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:884` |
 | `Vec4h` | typealias | `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:887` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
-| `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1210` |
-| `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1250` |
-| `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1253` |
-| `loadPngOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1304` |
-| `savePng` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1313` |
-| `FloatArray.sliceIntoUniqueTiles2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1403` |
-| `FloatArray.sliceIntoOverlappingPatterns2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1450` |
+| `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1222` |
+| `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1262` |
+| `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1265` |
+| `loadPngOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1316` |
+| `savePng` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1325` |
+| `FloatArray.sliceIntoUniqueTiles2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1415` |
+| `FloatArray.sliceIntoOverlappingPatterns2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1462` |
 | `WFC_NORTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:30` |
 | `WFC_EAST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:31` |
 | `WFC_SOUTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:32` |

@@ -376,7 +376,7 @@ class WfcRules private constructor(
     val neighborhood: WfcNeighborhood,
     /** allowed[direction][tile] is a bitset of tile IDs allowed in that direction from tile. */
     val allowed: Array<Array<LongArray>>
-) {
+) : afield.ToHTML {
     val wordCount: Int = wordsFor(tileCount)
 
     /**
@@ -434,6 +434,18 @@ class WfcRules private constructor(
         require(a in 0 until tileCount)
         return allowed[direction][a].countBits()
     }
+
+    override fun toString(): String =
+        "WfcRules($tileCount tiles, ${neighborhood.directionCount} directions" +
+            (if (findAsymmetry() == null) "" else ", ASYMMETRIC") + ")"
+
+    /**
+     * The rule set's own inline view: one adjacency matrix per direction plus the weights strip, with
+     * the three things that silently break a solve — empty masks, asymmetry, zero weights — marked.
+     *
+     * Delegates to [afield.stdlib.wfcRulesHtml] in `wfc_field.kt`; see its KDoc.
+     */
+    override fun toHTML(): String = wfcRulesHtml(this)
 
     companion object {
         fun fromSampleGrid(

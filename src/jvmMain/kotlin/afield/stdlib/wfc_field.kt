@@ -249,22 +249,13 @@ fun WfcSolver.possibilityCountImg(): Img {
     return Img(width, height, 1, out)
 }
 
-/** How many cells have collapsed to exactly one possibility. */
-fun WfcSolver.resolvedCellCount(): Int {
-    var resolved = 0
-    var y = 0
-    while (y < height) {
-        var x = 0
-        while (x < width) {
-            if (possibilityCountAt(x, y) == 1) resolved++
-            x++
-        }
-        y++
-    }
-    return resolved
-}
-
-/** [resolvedCellCount] as a `0..1` fraction — a progress read-out for a `step()` loop. */
+/**
+ * [WfcSolver.resolvedCellCount] as a `0..1` fraction — a progress read-out for a `step()` loop.
+ *
+ * (There used to be a `WfcSolver.resolvedCellCount()` extension here as well. It was dead on
+ * arrival: the class has a member of the same name, a member always wins over an extension, so no
+ * caller could ever have reached it. The compiler said so; it is gone.)
+ */
 fun WfcSolver.resolvedFraction(): Double =
     resolvedCellCount().toDouble() / (width.toDouble() * height.toDouble())
 
@@ -714,6 +705,170 @@ private fun rampLegendHtml(name: String, loLabel: String, hiLabel: String): Stri
           <div style="display:flex;justify-content:space-between;color:#8a90a0;font-size:10px">
             <span>$loLabel</span><span>$hiLabel</span>
           </div>
+        </div>
+    """.trimIndent()
+}
+
+// ==============================================================================================
+// The rules, inline — WfcRules' own ToHTML
+// ==============================================================================================
+
+/*
+ * The solver is almost never the thing that is wrong; the rules are. So they draw themselves too,
+ * and the view is built around the three ways a rule set fails rather than around its contents:
+ *
+ *   1. an **empty mask** — a `(direction, tile)` pair with no legal neighbour at all, which is a
+ *      guaranteed contradiction the moment that tile is placed anywhere but an edge;
+ *   2. an **asymmetry** — `allows(d, a, b)` without `allows(opposite(d), b, a)`, which creates arcs
+ *      propagation structurally cannot check, so the solver can emit a pair its own rules forbid;
+ *   3. a **zero weight** — a tile that exists in the model and can never be chosen, which
+ *      `fromSampleGrid` hands out silently to any tile the sample never contained.
+ *
+ * All three are marked in the picture and stated in the header, because all three are invisible in
+ * `toString()` and all three cost an afternoon.
+ */
+
+/** Packed `0xRRGGBB` for an allowed `(a, b)` pair in [wfcRulesHtml] — viridis teal. */
+const val WFC_ALLOWED_COLOR: Int = 0x21908C
+
+/** Packed `0xRRGGBB` for a disallowed pair — the same near-black as an undecided cell. */
+const val WFC_DISALLOWED_COLOR: Int = WFC_UNDECIDED_COLOR
+
+/** How many direction matrices [wfcRulesHtml] draws before it stops and says how many it skipped. */
+private const val WFC_MAX_RULE_PANELS = 8
+
+/**
+ * The adjacency matrix for one [direction] as an [Img], one pixel per `(tile, neighbour)` pair:
+ * row `a` is "what may sit at [direction] from tile `a`", column `b` is the candidate.
+ *
+ * [WFC_ALLOWED_COLOR] where the pair is allowed, [WFC_DISALLOWED_COLOR] where it is not, and the
+ * whole row in [WFC_CONTRADICTION_COLOR] when tile `a` has **no** legal neighbour in this direction
+ * — an empty mask, which is a contradiction waiting for that tile to be placed rather than a merely
+ * strict rule.
+ */
+fun WfcRules.adjacencyImg(direction: Int): Img {
+    require(direction in 0 until neighborhood.directionCount) {
+        "direction $direction outside 0 until ${neighborhood.directionCount}"
+    }
+    val n = tileCount
+    val out = FloatArray(n * n * 3)
+    for (a in 0 until n) {
+        val empty = allowedCount(direction, a) == 0
+        for (b in 0 until n) {
+            val packed = when {
+                empty -> WFC_CONTRADICTION_COLOR
+                allows(direction, a, b) -> WFC_ALLOWED_COLOR
+                else -> WFC_DISALLOWED_COLOR
+            }
+            writePacked(out, (a * n + b) * 3, packed)
+        }
+    }
+    return Img(n, n, 3, out)
+}
+
+/**
+ * The tile weights as a one-row [Img], viridis over a fixed `0 ..` the largest weight.
+ *
+ * A weight of **zero** is drawn [WFC_CONTRADICTION_COLOR] rather than at the bottom of the ramp,
+ * because it is categorically different from "rare": a zero-weight tile can never be chosen by a
+ * collapse, so it is a tile that exists in the model and cannot appear in the output.
+ * [WfcRules.fromSampleGrid] hands one out to any tile ID the sample never contained.
+ */
+fun WfcRules.weightsImg(colormap: String = "viridis"): WfcHeatmap {
+    val values = FloatArray(tileCount) { if (weights[it] <= 0.0) Float.NaN else weights[it].toFloat() }
+    val hi = weights.maxOrNull()?.toFloat()?.takeIf { it > 0f }
+    return heatmapOf(values, tileCount, 1, colormap, 0f, hi, WFC_CONTRADICTION_COLOR)
+}
+
+/**
+ * The inline view of a rule set — the body of [WfcRules]' `ToHTML`, so evaluating one in a box shows
+ * the model rather than three nested arrays of longs.
+ *
+ * One [adjacencyImg] per direction (at most [WFC_MAX_RULE_PANELS], since a `chebyshev(3)`
+ * neighborhood has 48 and nobody reads 48 matrices), then the [weightsImg] strip. The header states
+ * the three things that silently break a solve: unreachable-empty masks, asymmetry, and zero weights.
+ *
+ * Never throws; a malformed rule set degrades to the header line.
+ */
+fun wfcRulesHtml(rules: WfcRules): String {
+    val n = rules.tileCount
+    val directions = rules.neighborhood.directionCount
+    val shown = min(directions, WFC_MAX_RULE_PANELS)
+
+    var emptyMasks = 0
+    var allowedPairs = 0
+    for (d in 0 until directions) for (a in 0 until n) {
+        val c = rules.allowedCount(d, a)
+        if (c == 0) emptyMasks++
+        allowedPairs += c
+    }
+    val zeroWeights = rules.weights.count { it <= 0.0 }
+    val asymmetry = try {
+        rules.findAsymmetry()
+    } catch (t: Throwable) {
+        "check failed: $t"
+    }
+    val density = if (n == 0 || directions == 0) 0.0
+    else 100.0 * allowedPairs / (n.toDouble() * n * directions)
+
+    val parts = ArrayList<String>()
+    parts += "WfcRules $n tiles &middot; $directions direction${wfcS(directions)}"
+    parts += "${"%.1f".format(density)}% of pairs allowed"
+    parts += if (asymmetry == null) "<b style=\"color:#7ec96f\">symmetric</b>"
+    else "<b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">asymmetric: $asymmetry</b>"
+    if (emptyMasks > 0) {
+        parts += "<b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">$emptyMasks empty mask" +
+            "${wfcS(emptyMasks)}</b> (a tile with no legal neighbour there)"
+    }
+    if (zeroWeights > 0) {
+        parts += "<b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">$zeroWeights tile" +
+            "${wfcS(zeroWeights)} of weight 0</b> (can never be chosen)"
+    }
+    val header = "<div style=\"color:#c8cee0\">${parts.joinToString(" &middot; ")}</div>"
+
+    val panels = try {
+        val matrices = (0 until shown).map { d ->
+            val offset = rules.neighborhood.offset(d)
+            wfcPanelHtml(
+                rules.adjacencyImg(d),
+                "direction $d (${offset.dx}, ${offset.dy})",
+                null,
+                "row = tile, column = the neighbour that may sit at (${offset.dx}, ${offset.dy}) from it &middot; " +
+                    "<b style=\"color:#${"%06x".format(WFC_ALLOWED_COLOR)}\">teal</b> = allowed, dark = not" +
+                    if ((0 until n).any { rules.allowedCount(d, it) == 0 }) {
+                        " &middot; a fully <b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">magenta</b>" +
+                            " row is an empty mask"
+                    } else ""
+            )
+        }
+        val w = rules.weightsImg()
+        matrices + wfcPanelHtml(
+            w.img,
+            "weights",
+            rampLegendHtml(w.colormap, wfcNum(w.lo), wfcNum(w.hi)),
+            "one pixel per tile, in tile-ID order &middot; colour = relative frequency, ${w.colormap} " +
+                "${wfcNum(w.lo)} &hellip; ${wfcNum(w.hi)}" + wfcFlatNote(w) +
+                if (w.nonFiniteCount > 0) {
+                    " &middot; <b style=\"color:#${"%06x".format(WFC_CONTRADICTION_COLOR)}\">magenta</b> = weight 0," +
+                        " off the scale (${w.nonFiniteCount} tile${wfcS(w.nonFiniteCount)} that can never be chosen)"
+                } else ""
+        )
+    } catch (t: Throwable) {
+        listOf("<div style=\"$WFC_NOTE_STYLE\">view unavailable: $t</div>")
+    }
+
+    val skipped = if (directions > shown) {
+        "<div style=\"$WFC_NOTE_STYLE\">${directions - shown} further direction" +
+            "${wfcS(directions - shown)} not drawn</div>"
+    } else ""
+
+    return """
+        <div style="font-family:monospace;font-size:11px;line-height:1.4">
+          $header
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:5px">
+        ${panels.joinToString("\n")}
+          </div>
+          $skipped
         </div>
     """.trimIndent()
 }

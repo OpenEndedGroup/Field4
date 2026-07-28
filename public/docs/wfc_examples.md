@@ -1025,6 +1025,70 @@ edge-only tiles widened `allowed[d][t]` without telling the tiles on the other s
 could emit adjacent pairs its own rules forbade when read the other way. `findAsymmetry()` is what
 caught it; the fallback now widens both directions at once.
 
+### Looking at the rules
+
+`WfcRules` implements `ToHTML` for the same reason `WfcSolver` does, but the failures it exists to
+show are different — and they are three that a `println` cannot show you at all:
+
+- an **empty mask**: a `(direction, tile)` pair with no legal neighbour whatsoever. That is not a
+  strict rule, it is an unsatisfiable one the moment the tile is placed off an edge.
+- an **asymmetry**: `allows(d, a, b)` without `allows(opposite(d), b, a)`. Propagation pushes
+  constraints one arc at a time and can only check arcs that exist both ways round, so an asymmetric
+  table lets the solver emit a pair its own rules forbid — the bug above.
+- a **zero weight**: a tile that is in the model and can never be chosen. `fromSampleGrid` hands one
+  out, silently, to every tile ID its sample never contained.
+
+Each is marked in the picture and stated in the header, so the before and after of
+`allowMissingAnything()` is visible rather than inferred.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/inline-rules.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="wfc-inline-rules"}
+:::static
+// The same two rule sets as the figure above, this time just looked at. One adjacency matrix per
+// direction: row = tile, column = the neighbour that may sit at that offset from it.
+val strict = wfcRules(tileCount = 3) {
+    weights(3.0, 1.0, 2.0)
+    allow(WFC_EAST, 0, 1)
+    allow(WFC_EAST, 1, 2)
+    allow(WFC_SOUTH, 0, 1)
+    allow(WFC_SOUTH, 1, 2)
+}
+display("a. strict", strict.h)
+
+val relaxed = wfcRules(tileCount = 3) {
+    weights(3.0, 1.0, 2.0)
+    allow(WFC_EAST, 0, 1)
+    allow(WFC_EAST, 1, 2)
+    allow(WFC_SOUTH, 0, 1)
+    allow(WFC_SOUTH, 1, 2)
+    allowMissingAnything()
+}
+display("b. widened", relaxed.h)
+
+// And a learned model, for the zero-weight case: tile 2 never appears in the sample.
+val learned = WfcRules.fromSampleGrid(
+    sampleTileIds = intArrayOf(0, 1, 0, 1),
+    sampleWidth = 4,
+    sampleHeight = 1,
+    tileCount = 3,
+    wrapX = true
+)
+display("c. learned, with an unused tile", learned.h)
+
+println("strict:  " + strict)
+println("relaxed: " + relaxed + ", empty masks: " +
+    (0 until 4).sumOf { d -> (0 until 3).count { relaxed.allowedCount(d, it) == 0 } })
+println("learned: " + learned + ", weights " + learned.weights.toList())
+```
+
+![three rule sets drawn as adjacency matrices, one per direction: the strict set with magenta empty-mask rows, the widened set with none, and a learned set whose weights strip has one magenta zero-weight tile](assets/wfc_examples/inline-rules.png)
+
+The strict set's magenta rows are the whole story of why it deadlocks, in the place where that
+information actually lives — one row per tile with nowhere to go, in each direction. After
+`allowMissingAnything()` the same matrices have no magenta at all and the header still says
+`symmetric`: every previously empty mask became "anything", *and* every tile it now admits was told in
+turn that it may sit on the other side. The learned set is the third case — its matrices are fine and
+the fault is in the weights strip, where tile 2 sits off the ramp because it can never be chosen.
+
 ## Recipes
 
 **Reach for the simple-tiled model** when you have, or can draw, a tile set whose edges are the

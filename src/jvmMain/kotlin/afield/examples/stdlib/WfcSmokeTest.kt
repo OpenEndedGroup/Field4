@@ -1,7 +1,9 @@
 package afield.examples.stdlib
 
 import afield.rectsl.Colormaps
+import afield.stdlib.WFC_ALLOWED_COLOR
 import afield.stdlib.WFC_CONTRADICTION_COLOR
+import afield.stdlib.WFC_DISALLOWED_COLOR
 import afield.stdlib.WFC_EAST
 import afield.stdlib.WFC_MOORE_NEIGHBORHOOD
 import afield.stdlib.WFC_SOUTH
@@ -19,7 +21,9 @@ import afield.stdlib.possibilityCountHeatmap
 import afield.stdlib.sliceIntoOverlappingPatterns2D
 import afield.stdlib.solveWithRetries
 import afield.stdlib.wfcRules
+import afield.stdlib.wfcRulesHtml
 import afield.stdlib.wfcSolverHtml
+import afield.stdlib.weightsImg
 import afield.stdlib.wfcTileColor
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
@@ -54,6 +58,7 @@ object WfcSmokeTest {
             testContradictionReadsAsTheMarkerColor()
             testUndefinedEntropyIsMarkedNotClamped()
             testDegenerateDomainIsDrawnFlat()
+            testRulesViewMarksTheThreeWaysRulesBreak()
             println("WFC smoke tests passed")
             true
         } catch (t: Throwable) {
@@ -488,5 +493,77 @@ object WfcSmokeTest {
             "a flat domain was painted at an end of the ramp"
         }
         require("the range is flat" in html) { "the caption does not declare the flat range" }
+    }
+
+    /**
+     * `WfcRules`' own view exists for three failures that are invisible in a `toString()` and each
+     * cost an afternoon: an empty mask, an asymmetry, and a zero weight. Each has to be marked in the
+     * pixels, not merely mentioned in prose.
+     */
+    private fun testRulesViewMarksTheThreeWaysRulesBreak() {
+        // A strict 0 -> 1 -> 2 chain. Hand-authored rules are not widened, so "nothing may sit east
+        // of tile 2" stands: allowed[EAST][2] is empty.
+        val strict = wfcRules(tileCount = 3) {
+            weights(3.0, 1.0, 2.0)
+            allow(WFC_EAST, 0, 1)
+            allow(WFC_EAST, 1, 2)
+            allow(WFC_SOUTH, 0, 1)
+            allow(WFC_SOUTH, 1, 2)
+        }
+        require(strict.allowedCount(WFC_EAST, 2) == 0) { "tile 2 should have no legal east neighbour" }
+
+        val html = strict.toHTML()
+        require(html == wfcRulesHtml(strict)) { "WfcRules.toHTML() diverged from wfcRulesHtml()" }
+        val panels = decodePanels(html)
+        // Four von Neumann directions plus the weights strip.
+        require(panels.size == 5) { "expected 4 direction matrices + 1 weights strip, got ${panels.size}" }
+        for (d in 0 until 4) {
+            require(panels[d].width == 3 && panels[d].height == 3) {
+                "direction $d matrix should be 3x3, got ${panels[d].width}x${panels[d].height}"
+            }
+        }
+        val east = panels[WFC_EAST]
+        // Row a, column b. The one allowed pair in EAST from tile 0 is tile 1.
+        requireColor(east, 1, 0, WFC_ALLOWED_COLOR, "allowed pair (east of 0 is 1)")
+        requireColor(east, 0, 0, WFC_DISALLOWED_COLOR, "disallowed pair (east of 0 is not 0)")
+        requireColor(east, 2, 0, WFC_DISALLOWED_COLOR, "disallowed pair (east of 0 is not 2)")
+        // Tile 2's whole row is an empty mask, and reads as the contradiction marker rather than as
+        // three ordinary "not allowed" cells — the difference between strict and unsatisfiable.
+        for (b in 0 until 3) {
+            requireColor(east, b, 2, WFC_CONTRADICTION_COLOR, "empty-mask row cell ($b, 2)")
+        }
+        require("empty mask" in html && "symmetric" in html) {
+            "the rules view does not report the empty mask and the symmetry check"
+        }
+        // 4 authored pairs x 2 (symmetric) = 8 of 3*3*4 = 36 -> 22.2%.
+        require("22.2% of pairs allowed" in html) { "density line wrong: ${html.take(300)}" }
+
+        // Weights: three positive weights, so the strip is a ramp with nothing off scale.
+        val weights = strict.weightsImg()
+        require(weights.nonFiniteCount == 0 && weights.hi == 3f) { "weights strip: $weights" }
+        requireColor(panels[4], 0, 0, ramp("viridis", 1.0), "the heaviest tile in the weights strip")
+
+        // A learned model gives weight 0 to a tile its sample never contained. That tile can never be
+        // chosen, which is categorically different from "rare", so it comes off the ramp.
+        val learned = WfcRules.fromSampleGrid(
+            sampleTileIds = intArrayOf(0, 1, 0, 1),
+            sampleWidth = 4,
+            sampleHeight = 1,
+            tileCount = 3,
+            wrapX = true
+        )
+        val learnedHtml = learned.toHTML()
+        val learnedPanels = decodePanels(learnedHtml)
+        require(learnedPanels.size == 5) { "expected 5 panels, got ${learnedPanels.size}" }
+        requireColor(learnedPanels[4], 2, 0, WFC_CONTRADICTION_COLOR, "the zero-weight tile")
+        require(!near(rgbAt(learnedPanels[4], 2, 0), ramp("viridis", 0.0), tol = 24)) {
+            "a zero weight was drawn at the bottom of the ramp instead of off it"
+        }
+        require("weight 0" in learnedHtml && "can never be chosen" in learnedHtml) {
+            "the rules view does not admit to the zero-weight tile"
+        }
+        require("symmetric" in learnedHtml && "asymmetric" !in learnedHtml) {
+            "learned rules should report as symmetric"
+        }
     }
 }

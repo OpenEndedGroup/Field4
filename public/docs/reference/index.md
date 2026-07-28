@@ -4,14 +4,14 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**4063 public symbols across 68 source files**, 2182 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**4069 public symbols across 68 source files**, 2187 of them (53%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 14 | 1292 | 896 (69%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 16 | 640 | 206 (32%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Data](data.md) | 16 | 646 | 211 (32%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 14 | 1074 | 348 (32%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [Function](function.md) | 10 | 345 | 228 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -89,10 +89,10 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 2 | A minimal TUIO receiver. |  |
 | [units.kt](math.md#units-kt) | Math | 47 | 12 | Physical units for Field's spreadsheet-style numbers. |  |
-| [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [voronoi.kt](graphics.md#voronoi-kt) | Graphics | 63 | 0 | Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi ("CircularDirichlet") for Kotlin + Field linalg. |  |
-| [wfc.kt](data.md#wfc-kt) | Data | 106 | 25 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
-| [wfc_field.kt](data.md#wfc-field-kt) | Data | 32 | 24 | The bridge from Wave Function Collapse into the things Field already displays. | [Wave Function Collapse examples](../wfc_examples.md) |
+| [wfc.kt](data.md#wfc-kt) | Data | 108 | 26 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
+| [wfc_field.kt](data.md#wfc-field-kt) | Data | 36 | 28 | The bridge from Wave Function Collapse into the things Field already displays. | [Wave Function Collapse examples](../wfc_examples.md) |
 
 </div>
 
