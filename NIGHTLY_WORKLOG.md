@@ -233,6 +233,11 @@ Verified:
   wiring is real.
 - The 19 regenerated docs captures (17 + 2) — driven through the real pipeline and **looked at**, not
   just counted.
+- The published index now has **no empty "What it is" cell**: all 67 documented source files carry a
+  file overview that the generator actually prints. `imaging_simd.kt` was the last one, and a scan
+  confirmed no other file has a block above its first declaration that the generator is failing to pick
+  up. Worth a guard of its own one day, but it would be a coverage rule rather than a truth rule, and
+  the pages already report coverage honestly.
 
 Not verified, honestly:
 
