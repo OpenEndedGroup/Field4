@@ -326,3 +326,145 @@ attaches perfectly and is simply *untrue*, which is what `FnGraphEdge` was. The 
 actually caught those tonight were (a) a probe test that prints measurements of every numeric claim in
 a file and (b) reading the implementation immediately below each block. The first of those could be
 generalised — a `DocumentedBehaviourTest` per file, growing as claims are checked.
+
+---
+
+# Second pass — blast radius, `check`, and a fifth audit
+
+A second agent picked the branch up at `51bd4b0c` to answer the question the first pass left open:
+**what else in the repository depends on the behaviour these fixes changed?** Three commits
+(`bdffc5fa`, `323157d3`, `1836c7e8`).
+
+## 1. The blast radius, enumerated
+
+The sweep covered every changed symbol, not only the five the mission named — `sampleZeroCrossings`,
+`Fn.toDoubleArray(step, …)` and `stretchBy`'s dropped `outside` parameter are behaviour/API changes
+too and were not on the first pass's list. Method: grep each symbol across `src/`, `dev_docs/`,
+`public/docs/`, `templates/`, `config/`, `server/`, then **read every hit**; then, for the docs, parse
+every fence, extract its code and match it against the changed set. That last step is what found the
+stale capture, because it lives in a `diff_runner` fence rather than the `diffstatic_runner` fences the
+first pass grepped for.
+
+| site | verdict |
+| --- | --- |
+| `public/docs/functions_examples.md` → `diff_runner_after.png` | **STALE → regenerated.** Renders `fbm(seed = 77L, frequency = 4.0, amplitude = 0.12, octaves = 4)`; the committed PNG had that detail layer at full unit amplitude, swamping the carrier the prose says survives. `regenerated=1 failures=0`, 11.7 s, and looked at. The 18th capture the branch moves |
+| the 19 captures the first pass regenerated | verified as the right set — every `fbm`/`fbmPerlin` call in `public/docs` was read for its amplitude, and every non-1.0 one is in that set plus the row above |
+| the other 13 `fbm`/`fbmPerlin` docs fences | **unaffected — bit-identical.** The old loop accumulated from `amplitude` and divided by the same accumulated weight; the new one accumulates at 1.0 and multiplies at the end. At `amplitude = 1.0` the accumulation sequence is unchanged and the final multiply is by exactly 1.0. Re-derived from the diff, not assumed |
+| `rectsl/RectSL.kt:2491` and the whole RectSL gallery | **unaffected.** The RectSL `fbm` word calls `Functions.fbm(seed, frequency = 4.0)` — it has no amplitude to pass, so nothing in `rectsl_examples.md` or its stills can move |
+| `stdlib/FunctionOps.kt` `buildFbm` / `buildFbmPerlin` | **intentionally affected** — they forward `childOr(1.0, "amplitude")` from the graph, so a graph carrying a non-default amplitude now produces the documented output. Covered by `jvmTest`; `evolve-variety.png` was already regenerated |
+| `public/docs/interaction_nets_examples.md` (4 captures) | **unaffected.** All four give every node an explicit, distinct `at =`, so no pair is coincident and `PairContext.axis` takes the identical branch — the fix only revives a comparison that was dead. `stdlib.interaction-nets.smoke` re-run: PASS |
+| `dev_docs/agents/transcripts/` (28 files) + materialized starting points | **unaffected — zero hits** for any changed symbol |
+| `templates/field.sketch2_examples.edn` | **unaffected.** One hit, `pointsOut`, on a commented-out line; the box hand-rolls the same loop underneath |
+| `timeseries.kt`'s `PeakDetector` / `DynamicRangeCompressor` | no docs capture and no gallery reaches them; only `DocumentedBehaviourTest` constructs them |
+| `stretchBy(outside = …)` | **no caller anywhere** — every `outside =` in the tree belongs to `evalSafe`. Source-incompatible but unreached |
+| `String.abslutePath` | one caller, `FileManagerSmokeTest`, already suppressed by the first pass. Smoke re-run: PASS |
+| `UKFOptions.kappa` validation | no caller passes `kappa` at all |
+| `saved.kt`'s `atomic = true` | `kotlin.safe-save-atomic.smoke` re-run: PASS |
+| `keyframer`'s `1.5f` literal | no in-repo consumer of the generated string; the risk is user-facing (a `Float` literal will not compile where a `Double` is wanted) and is in the release note |
+| `obbBounds`, `graphics.pointsOut` | definition plus test only; no other call site in the tree |
+| `TidalPatterns.palindrome`, `dynamic_graph_systems.kNearest`, StackSL's `fbm` word, `ImagingGallery`'s `tiles`, `Collection.toDoubleArray()` | **false positives — different symbols entirely.** Recorded so the next sweep does not re-chase them |
+
+The release note now lives in **`dev_docs/stdlib_behaviour_changes.md`**, a running ledger linked from
+`dev_docs/README.md`, rather than only here — this file is routinely stripped at merge time.
+
+## 2. `check`, actually run
+
+`./gradlew check --continue` at `1836c7e8`. Every check task was reached: `compileKotlinJvm`,
+`compileTestKotlinJvm`, `jvmTest` (**executed**, not up-to-date — 514 tests, 0 failures, 0 errors, 0
+skipped, counted out of `build/test-results/jvmTest/*.xml`), `allTests`, `checkCodebaseReference`
+(green: 4011 symbols across 9 pages, drift-check passed) and `checkKDocAttachment` (green: 625 files,
+6768 blocks, 0 findings). `jsTest` is NO-SOURCE and `jsBrowserTest` SKIPPED on this machine — the base's
+configuration, not something this branch changed. `jvmTest` was also run standalone with `--rerun`
+earlier: same 514 / 0 / 0 in 1 m 2 s.
+
+**One task fails, and it is provably pre-existing.** `:tools:linalg-bench:compileKotlin` cannot resolve
+`afield.four.util.floatToHalfBits` / `halfBitsToFloat`. The failing file is
+`tools/linalg-bench/build/linalg-sources/.../Vectors.kt`, a `Copy` of the *committed*
+`src/generatedLinalg/kotlin/.../Vectors.kt`, which imports `afield.four.util.*` at line 6; the bench's
+`assembleLinalgSources` copies only `afield/stdlib/linalg/**`, so that import can never resolve. The
+import arrived in `41b116d2` (2026-07-16, "Add generated Vector8h"), which `git merge-base
+--is-ancestor 41b116d2 1a347dc8` confirms is an ancestor of the base, and
+`git diff 1a347dc8..HEAD -- src/generatedLinalg tools/` is empty. Worth fixing; not here.
+
+## 3. Guard coverage — closed rather than extended
+
+The guard walks `File(repo, "src")` recursively, and `find src -name '*.kt' | wc -l` is **625** —
+exactly what it reports scanning. It therefore already covers `jsMain` (20 files), `commonMain` (2),
+`jsVision` (1), `generatedLinalg` (9) and `jvmTest` (51) as well as `jvmMain`; 34 of those non-`jvmMain`
+files carry KDoc and pass. Nothing to extend, and the guard's own claim ("every `.kt` file under `src/`")
+was already the honest one.
+
+`tools/` is outside it by design: ~102 KDoc blocks across 15 files, none of which the extractor reads,
+so a mis-attached block there publishes nothing. The one part of `tools/` that *becomes* published prose
+— `tools/linalg-generator/src/main/resources/templates/*.kt` — is guarded at its destination in
+`src/generatedLinalg`, which the guard does scan.
+
+## 4. Fifth audit pass
+
+`timeseries.kt` from `LeakyIntegrator` to `DynamicRangeCompressor` (~15 classes, ~40 blocks), the
+stretch the first four passes did not reach. **One wrong claim**: `BimodalThresholder`'s "the first
+sample seeds the low centroid" — it seeds `c1`, but the pair is ordered as soon as the second, different
+value arrives, so a lower second value takes the low slot. Fixed, plus a documented range for `alpha`
+and the reason it matters: the `-1f`/`+1f` label is read from the distances taken *before* the centroid
+moves, and the swap that follows is unreachable for any `alpha` at or below 2, so an `alpha` above 2
+would report the two clusters the wrong way round.
+
+Everything else in the slice was checked arithmetically rather than skimmed: `LeakyIntegrator`'s
+`x/(1-leakRate)` = 100× DC gain, `DCBlocker`'s `(1-r)/2π` corner and its 0.0955 Hz at 120 Hz,
+`PeakDetector`'s `0.99¹⁰⁰ ≈ 1/3`, `CooldownFilter`'s `cooldownSamples + 1` spacing and full initial
+counter, `StreamingWhitener`'s systematic `(1 - alpha)` factor (`value - mean_new = (1 - alpha)·diff`
+exactly), `PercentileThresholder`'s `count - 1` denominator and 0.5 first sample, `MedianFilter`'s
+count-parity rule, `RollingNormalizer`'s flat-window midpoint, `AdaptiveThresholder`'s (n−1) sample
+deviation and its fallback divisor of 1. Also checked: the ring buffers in `RollingNormalizer`,
+`RollingOneDollarNormalizer`, `AdaptiveThresholder`, `MedianFilter` and `PercentileThresholder` all
+iterate `0 until count`, which is correct both while filling and once wrapped.
+
+`FunctionGraphBrowser.kt` (~20 blocks, never audited) came back **clean** — including a refutation of my
+own strongest suspicion in it. The file overview and three more blocks promise that an out-of-domain
+sample "becomes `NaN` and is simply left undrawn", while the sampler calls
+`evalSafe(x, outside = Double.NaN, edge = EdgeMode.ZERO)`, which reads as though `ZERO` would win and
+draw a line at zero. It does not: `EdgeMode.ZERO` means "return `outside` verbatim", so NaN is honoured
+and the claim is true. Recorded because the enum name invites exactly that misreading, and the same call
+shape appears in `ValueVisualizer`, `FunctionsPlotGallery` and `WaveshapeWorkedExample`.
+
+Two omissions noted and left alone as too small to be worth a reference regeneration: `graphTrace`'s
+`samples` is silently clamped to `16..4096` and `sensitivitySteps` to `2..64`, and `heightPx` is floored
+at 360 (`graphBrowseHtml`) / 320 (`rewriteBrowseHtml`), none of it documented.
+
+## Verification — second pass
+
+Verified tonight, by running it:
+
+- `./gradlew check --continue` — every check task reached; the only failure is the pre-existing
+  `:tools:linalg-bench:compileKotlin`, traced to a base commit with a git-provable argument.
+- `jvmTest` — **514 / 0 failures / 0 errors / 0 skipped**, executed twice (once standalone with
+  `--rerun`, once inside `check`), never trusted up-to-date.
+- `checkKDocAttachment` — 625 files, 6768 blocks, 0 findings.
+- `generateCodebaseReference` + `checkCodebaseReference` — green, and no page drifted after the
+  `timeseries.kt` edit (the changed paragraph is not the published summary line).
+- `tools/run_field_tests.py --no-reap --port 9720` for the four smokes the behaviour changes touch —
+  `kotlin.safe-save-atomic.smoke`, `stdlib.file-manager.smoke`, `stdlib.interaction-nets.smoke`,
+  `stdlib.smile.smoke`: **4 passed, 0 failed**. None of them are in `jvmTest`, so nothing else on the
+  branch had exercised them.
+- `diff_runner_after.png` regenerated through the real pipeline and **looked at**.
+
+Carried over from the first pass and *not* re-derived here: the 100× amplitude ratio, the ~63×
+`convolve` level change, the 1.6% `movingAverage` figure, the 3.7 s compressor attack, and the visual
+inspection of the other 19 captures. The bit-identity-at-`amplitude = 1.0` claim, by contrast, *was*
+re-derived from the diff, because the entire capture argument rests on it.
+
+Still not verified: no GPU/window test beyond that one docs capture; the full docs build was not re-run,
+so a capture reaching a changed function through a helper neither pass grepped for could still be stale;
+`deflateCovariance` remains described-but-not-fixed; and roughly a third of the campaign's ~1550 blocks
+have still never been read against the code.
+
+## Recommendation — second pass
+
+**MERGE**, on the first pass's reasoning plus one thing it could not say: the blast radius is now
+enumerated rather than assumed, and enumerating it turned up exactly one more dishonest artifact, which
+is fixed. `check` has been run rather than predicted, and its single failure is provably older than the
+branch — a human running `./gradlew check` on merge will hit that failure and should not read it as this
+branch's.
+
+Read `dev_docs/stdlib_behaviour_changes.md` before merging; it is the part of this record meant to
+survive the merge.
