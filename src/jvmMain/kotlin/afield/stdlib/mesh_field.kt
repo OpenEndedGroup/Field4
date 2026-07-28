@@ -138,23 +138,45 @@ fun tubeMesh(
 // ==============================================================================================
 
 /**
- * One 3D Voronoi cell's polygonal faces, triangulated into a [TriMesh].
+ * One 3D Voronoi cell's polygonal faces, triangulated into a closed [TriMesh].
  *
  * `voronoi.kt` clips half-spaces into [VoronoiFace] polygons already wound counter-clockwise about
- * their plane normal, and the plane normals point out of the cell, so the fan triangulation below
- * comes out consistently outward with no repair pass — which is worth checking, and the tests do.
+ * their plane normal, and the plane normals point out of the cell, so fanning each polygon gives a
+ * consistently outward mesh with no repair pass.
  *
- * @param shrink scale each cell toward its own site. `1.0` leaves the cells touching (so a whole
+ * # Why there is a healing step
+ *
+ * Fanning the faces alone does **not** always close. Where four bisector planes nearly meet at a
+ * point, `voronoi.kt`'s per-face clipping can list that corner on one face and skip it (as
+ * degenerate) on the neighbouring face, which leaves a **T-junction**: one edge on one side of the
+ * seam, two on the other. It shows up as a hairline crack — a couple of boundary edges and one
+ * non-manifold edge in an otherwise perfect cell — and no weld tolerance fixes it, because the
+ * problem is a missing vertex rather than a mismatched one. Measured on a 72-site lattice: 22 of the
+ * 36 interior cells closed from the faces alone.
+ *
+ * A Voronoi cell is by construction the intersection of half-spaces, so it is **convex**, so its
+ * convex hull is exactly itself. That makes [convexHullMesh] over the same corner set an exact repair
+ * rather than an approximation, and it is what [healToConvexHull] does for the cells that need it.
+ * With it, all 36 close. The faceted result is preferred whenever it is already correct, because it
+ * keeps the cell's real face structure.
+ *
+ * @param shrink scale the cell toward its own site. `1.0` leaves the cells touching (so a whole
  *   lattice is one solid); `0.9` opens the seams, which is what makes an exploded Voronoi readable.
  * @param fanFromCentroid triangulate each face from its centroid rather than from its first corner.
  *   Better-shaped triangles at the cost of one extra vertex per face; on by default because Voronoi
  *   faces are often long thin polygons whose corner fan is all slivers.
+ * @param healToConvexHull rebuild the cell as the convex hull of its corners when the fanned faces do
+ *   not close. Set it false to see the raw faceted result, cracks and all.
  */
-fun VoronoiCell3.toTriMesh(shrink: Double = 1.0, fanFromCentroid: Boolean = true): TriMesh {
+fun VoronoiCell3.toTriMesh(
+    shrink: Double = 1.0,
+    fanFromCentroid: Boolean = true,
+    healToConvexHull: Boolean = true,
+): TriMesh {
     val s = shrink.toFloat()
     fun place(p: Vec3): Vec3 =
         if (s == 1f) Vec3(p) else Vec3(site.x + (p.x - site.x) * s, site.y + (p.y - site.y) * s, site.z + (p.z - site.z) * s)
-    return triMesh {
+    val faceted = triMesh {
         for (face in faces) {
             val ring = face.polygon
             if (ring.size < 3) continue
@@ -170,27 +192,33 @@ fun VoronoiCell3.toTriMesh(shrink: Double = 1.0, fanFromCentroid: Boolean = true
             }
         }
     }.removeDegenerateTriangles()
+    if (faceted.triangleCount == 0) return faceted
+    // The face polygons already share exact corner coordinates where they agree, so the weld tolerance
+    // only has to absorb float noise: scale it to the cell rather than picking an absolute number.
+    val extent = faceted.bounds().let { Vec3(it.max).sub(it.min).length().toDouble() }
+    val welded = faceted.weld(extent * 1e-5)
+    if (!healToConvexHull || welded.topology().isWatertight) return welded
+    val hull = convexHullMesh(faces.flatMap { face -> face.polygon.map { place(it) } })
+    return if (hull.triangleCount > 0) hull else welded
 }
 
 /**
- * Every bounded cell of a 3D Voronoi lattice as one [TriMesh].
+ * Every cell of a 3D Voronoi lattice as one [TriMesh], one connected component per cell.
  *
  * Unbounded cells (the ones on the convex hull of the sites, which extend to infinity and are only
  * closed by the clip box) are included by default because the clip box does close them; pass
  * `boundedOnly = true` for just the interior cells, which is what you want if you are about to
- * measure volumes.
+ * measure volumes or make an exploded picture.
  *
  * @param shrink see [VoronoiCell3.toTriMesh]. `0.92` is a good exploded look.
  */
 fun VoronoiLattice.toTriMesh(shrink: Double = 0.92, boundedOnly: Boolean = false): TriMesh {
-    var out = TriMesh.empty
     val builder = TriMeshBuilder()
     for (cell in cells) {
         if (boundedOnly && !cell.bounded) continue
         builder.add(cell.toTriMesh(shrink))
     }
-    out = builder.build()
-    return out
+    return builder.build()
 }
 
 // ==============================================================================================
@@ -233,6 +261,47 @@ fun TriMesh.toCapturedMesh(label: String = "TriMesh", creaseAngleDegrees: Double
         packed[o + 13] = uv?.y ?: 0f
     }
     return VisionGeometryPreview.CapturedMesh(packed, ready.indices.copyOf(), label)
+}
+
+/**
+ * Per-vertex colours from a per-vertex scalar, through the same [afield.rectsl.Colormaps] tables
+ * RectSL's charts and `Img.colormap` use — so a curvature field, a distance field and a bar chart in
+ * the same document are coloured by one source of truth.
+ *
+ * This is what turns [TriMesh.gaussianCurvature] or [TriMesh.meanCurvature] from an array of numbers
+ * into something you can look at.
+ *
+ * @param values one per vertex.
+ * @param colormap a name from [afield.rectsl.Colormaps.names] — `viridis`, `magma`, `inferno`,
+ *   `plasma`, `turbo`, `coolwarm`, `grayscale`.
+ * @param low the value mapped to the bottom of the ramp; defaults to the data's own minimum.
+ * @param high the value mapped to the top; defaults to the data's own maximum.
+ * @param percentile when [low] and [high] are left null, clip this fraction off each tail before
+ *   choosing them. Curvature fields have long tails at creases, and one outlier vertex otherwise
+ *   flattens the entire ramp; `0.02` is a good default and `0.0` disables the clip.
+ */
+fun TriMesh.coloredByScalar(
+    values: DoubleArray,
+    colormap: String = "viridis",
+    low: Double? = null,
+    high: Double? = null,
+    percentile: Double = 0.02,
+): TriMesh {
+    require(values.size == vertexCount) { "expected $vertexCount values, got ${values.size}" }
+    if (vertexCount == 0) return this
+    val sorted = values.filter { it.isFinite() }.sorted()
+    if (sorted.isEmpty()) return withColor(0.5, 0.5, 0.5)
+    val clip = percentile.coerceIn(0.0, 0.49)
+    val lo = low ?: sorted[(sorted.size * clip).toInt().coerceIn(0, sorted.size - 1)]
+    val hi = high ?: sorted[((sorted.size - 1) * (1.0 - clip)).toInt().coerceIn(0, sorted.size - 1)]
+    val span = if (hi - lo < 1e-30) 1.0 else hi - lo
+    val out = FloatArray(vertexCount * 3)
+    for (v in 0 until vertexCount) {
+        val t = if (values[v].isFinite()) (values[v] - lo) / span else 0.5
+        val c = afield.rectsl.Colormaps.sample(colormap, t)
+        out[v * 3] = c.r.toFloat(); out[v * 3 + 1] = c.g.toFloat(); out[v * 3 + 2] = c.b.toFloat()
+    }
+    return withColors(out)
 }
 
 /**

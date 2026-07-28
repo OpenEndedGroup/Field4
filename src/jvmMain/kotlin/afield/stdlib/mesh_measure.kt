@@ -802,14 +802,39 @@ fun convexHullMesh(points: List<Vec3>, tolerance: Double = 1e-7): TriMesh {
 
     val onHull = BooleanArray(points.size)
     for (i in intArrayOf(i0, i1, i2, i3)) onHull[i] = true
+    val stride = points.size + 1L
+    fun edgeKey(a: Int, b: Int) = min(a, b).toLong() * stride + max(a, b)
     for (i in points.indices) {
         if (onHull[i]) continue
-        val visible = faces.filter { outside(it, i) > tolerance }
-        if (visible.isEmpty()) continue
+        val candidates = faces.filter { outside(it, i) > tolerance }
+        if (candidates.isEmpty()) continue
+        // The visible set must be **connected**, and taking every face that passes the test does not
+        // guarantee that: with coplanar or near-coplanar input (a Voronoi cell's faces, a box's
+        // corners) float noise can make a face on the far side pass too. Two disjoint visible regions
+        // mean two horizon loops, one cone, and a hull with a hole in it. So flood-fill across shared
+        // edges from the *most* visible face instead, which keeps the region a single disc and the
+        // horizon a single loop.
+        val adjacency = HashMap<Long, MutableList<IntArray>>()
+        for (f in faces) for (k in 0..2) {
+            adjacency.getOrPut(edgeKey(f[k], f[(k + 1) % 3])) { mutableListOf() }.add(f)
+        }
+        val candidateSet = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<IntArray, Boolean>())
+        candidateSet.addAll(candidates)
+        val visibleSet = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<IntArray, Boolean>())
+        val seed = candidates.maxByOrNull { outside(it, i) }!!
+        val stack = ArrayDeque<IntArray>()
+        stack.addLast(seed); visibleSet.add(seed)
+        while (stack.isNotEmpty()) {
+            val f = stack.removeLast()
+            for (k in 0..2) {
+                for (g in adjacency[edgeKey(f[k], f[(k + 1) % 3])] ?: continue) {
+                    if (g in candidateSet && g !in visibleSet) { visibleSet.add(g); stack.addLast(g) }
+                }
+            }
+        }
+        val visible = visibleSet.toList()
         // Horizon = the edges of the visible set that are not shared by two visible faces.
         val edgeCount = HashMap<Long, Int>()
-        val stride = points.size + 1L
-        fun edgeKey(a: Int, b: Int) = min(a, b).toLong() * stride + max(a, b)
         for (f in visible) {
             for (k in 0..2) edgeCount.merge(edgeKey(f[k], f[(k + 1) % 3]), 1, Int::plus)
         }
@@ -820,7 +845,9 @@ fun convexHullMesh(points: List<Vec3>, tolerance: Double = 1e-7): TriMesh {
                 if (edgeCount[edgeKey(a, b)] == 1) horizon.add(intArrayOf(a, b))
             }
         }
-        faces.removeAll(visible.toSet())
+        val doomed = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<IntArray, Boolean>())
+        doomed.addAll(visible)
+        faces.removeAll { it in doomed }
         // Cone the horizon back to the new point, each new face oriented away from the interior so
         // the `outside` test above keeps working on later points.
         for ((a, b) in horizon.map { it[0] to it[1] }) faces.add(facesAwayFromInterior(intArrayOf(a, b, i)))
