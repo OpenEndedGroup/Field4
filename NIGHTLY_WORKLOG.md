@@ -86,6 +86,162 @@ port 9740).
 
 Ports: 9740–9759 mine; clear 9477 before any docs build.
 
+## What shipped
+
+**The deliverable:** `public/docs/wfc_examples.md` — 979 lines, eight
+`diffstatic_runner` fences, all captured through the real docs runner with
+`capture="box"`, so the code shown on the page *is* the code that produced the
+picture beside it. Nav entry added under **Networks and Dynamics**.
+
+Sections: what WFC is (two honest paragraphs) and what this implementation does and
+does not do; §1 the model authored by hand; §2 learning from an image (simple-tiled
+at 1×1 tiles, then an 8-tile edge-socket circuit set); §3 the overlapping model with
+the classic ground constraint; §4 neighborhoods; §5 the collapse as stills + an mp4;
+§6 WFC on a scalar `FloatArray` ending in iso-contour `FLine`s; §7 contradictions,
+seeds and reproducibility; then Recipes.
+
+**Files changed** (36 files, +4683/-371 across 8 commits):
+
+| File | Why |
+| --- | --- |
+| `public/docs/wfc_examples.md` | new — the deliverable |
+| `public/docs/assets/wfc_examples/*` | 8 committed captures (7 PNG + 1 MP4) |
+| `public/zensical.yml` | nav entry |
+| `src/jvmMain/kotlin/afield/stdlib/wfc.kt` | **bug fix** + additive API (+337) |
+| `src/jvmMain/kotlin/afield/stdlib/wfc_field.kt` | new — WFC → `Img` bridge |
+| `src/jvmMain/kotlin/afield/stdlib/imaging.kt` | `Img.upscaleNearest` |
+| `src/jvmMain/kotlin/afield/examples/stdlib/WfcGallery.kt` | new — renders *and verifies* the figures |
+| `src/jvmMain/kotlin/afield/examples/stdlib/WfcSmokeTest.kt` | 2 cases → 7 |
+| `dev_docs/agents/transcripts/wfc_worked_example.yaml` | new — the loadable demo |
+| `public/docs/assets/agent_transcripts/wfc_worked_example/` | materialized starting point |
+| `.../DemoTranscriptExecSmokeTest.kt` | EXECUTE registration |
+| `public/docs/agent_transcripts.md`, `transcripts/README.md` | gallery + corpus entries |
+| `public/docs/reference/{data,imaging,index}.md` | regenerated for the new public API |
+
+## The bug found (bonus)
+
+`WfcRules.fromSampleGrid` has a defensive fallback: a `(direction, tile)` mask it
+never observed gets widened to "any tile may sit here". It widened **one direction
+only**, which silently breaks the invariant propagation depends on.
+
+WFC pushes constraints outward from a cell that changed, one direction per arc. That
+is sufficient only if adjacency is symmetric — `allowed[d][a] ∋ b` exactly when
+`allowed[opposite(d)][b] ∋ a`. Setting `allowed[EAST][t]` to everything without also
+telling each of those tiles that `t` may sit to *their* west creates arcs the solver
+structurally cannot check, so it can emit a pair its own rules forbid when read the
+other way round, and nothing notices.
+
+Fixed by `widenEmptyMasksSymmetrically`, which widens both directions at once and
+collects the empty masks up front (filling one can un-empty another). Found by
+writing `WfcRules.findAsymmetry()` as an assertable diagnostic.
+
+**Proof the regression test catches it:** with the one-sided widening restored,
+`stdlib.wfc.smoke` fails with `learned rules are not symmetric: allows(1, 0, 0)=false
+but allows(3, 0, 0)=true` — tile 0 may sit west of tile 0 but not east of it. And the
+over-constrained-then-widened rule set went from unsolvable in 16 attempts to solved
+in 1 after the fix.
+
+## Additive API (all in service of the page)
+
+`wfc.kt`: `wfcRules { }` / `WfcRules.build` + `WfcRulesBuilder` (hand-authored
+adjacency — the constructor is private and every existing factory *learns*, so §1 was
+literally unwriteable before); `WfcRules.allows` / `allowedCount` / `findAsymmetry`;
+`WfcSolver.solveWithRetries(maxAttempts, prepare)` + `WfcOutcome`;
+`resolvedCellCount` made public; `reset()`'s RNG contract documented.
+
+`wfc_field.kt` (new): `toImg` for all four tile-set types, `sampleToImg`,
+`waveToImg` (the mid-collapse blend — the money shot), `possibilityCountGrid` /
+`possibilityCountImg`, `resolvedFraction`.
+
+`imaging.kt`: `Img.upscaleNearest(factor)` — `resize`/`scaleBy` filter, and filtering
+is the one thing you must not do to a picture whose pixels are the point.
+
+## Verification — what I actually ran and saw
+
+**Every figure eyeballed.** Circuit traces all connect with no dangling ends; the
+sand coastline in §1 is traceable and sea never touches grass; §2's boosted panel has
+lakes with deep cores ringed by shallow then sand, exactly as the terrain chain
+requires; the overlapping panel's flowers are new but all rooted; the collapse
+nucleates and propagates; the mp4 animates (sampled frames at 19%/87%/100%).
+
+**Claims turned into assertions.** `stdlib.wfc.gallery` asserts, for every grid on the
+page: every adjacent pair is an allowed pair; the adjacency relation is symmetric; the
+output is not degenerate; and the set of terrain edges in the output is a subset of the
+set in the source. Plus the page's specific numbers — 29% source water becoming 0%
+under learned weights, sand ×10 restoring all five bands at the exact percentages the
+histogram prints, 473 diagonal breaks against 0, and the scalar field's anisotropy.
+
+**Three independent implementations agree.** The page's fences, `WfcGallery`, and the
+demo transcript each compute the same things and print the same numbers (132/74/102
+cells; the 9/19/12/30/27 → 0/0/4/50/44 → 3/15/45/21/12 histograms; 13 crossings of 748;
+22 patterns; 473 vs 0; 1069 steps; roughness 0.100/0.112 vs 0.008/0.112).
+
+**Green at the end:**
+
+- `stdlib` tag — 11/11 PASS (includes `stdlib.wfc.smoke`, `stdlib.wfc.gallery`,
+  `docs.codebase-reference.generate`)
+- `agents` tag — 7/7 PASS (includes `examples.demo-transcript.exec` over all 27
+  transcripts, and `examples.agent-transcripts.materialize`)
+- `imaging.gallery` PASS; `./gradlew jvmTest --tests "afield.stdlib.Imaging*"` PASS
+  (I touched `imaging.kt`)
+- `tools/check_doc_assets.py` — OK, 553 refs across 67 nav pages
+- `build_zensical_docs.py --page wfc_examples --page agent_transcripts --strict` —
+  "No issues found"; rendered page has 8 images, 1 `<video>`, 7 fold regions
+
+**Corrections I made after being wrong.** Three claims I wrote and then disproved by
+running them, rather than shipping: that quantising a smooth field can only put
+neighbouring bands adjacent (false at coarse sampling — the source really does contain
+band-skipping edges, so the check now derives the source's edge set); that the
+unpinned overlapping model would produce "all soil" (it produced rootless flowers with
+this seed); and that the 1×1 scalar result was rough above 0.15 (it measures 0.100 —
+the real property is isotropy vs anisotropy). The page and the assertions say the
+measured thing.
+
+## Not verified
+
+- **Only the two pages I touched were built.** I did not run the full 149-page docs
+  build, so I have not verified that no *other* page's capture regressed. Risk is low:
+  my only shared-code change is the additive `Img.upscaleNearest`, and
+  `imaging.gallery` plus the imaging unit tests pass.
+- **No visual diff of the regenerated reference pages** beyond confirming the drift
+  guard passes and that the four anchors the new page links to resolve.
+- **The mp4 has a static tail.** The collapse finishes at roughly 4.5 s of a 7 s clip;
+  the box's display loop runs far faster than the 20 fps recorder samples, so there is
+  no way to stretch it without a larger grid. It loops, so this reads as a beat rather
+  than a fault.
+- `docs.codebase-reference.generate` also rewrote `dev_docs/kdoc_worklist.md`; that is
+  generated output committed alongside, not reviewed line by line.
+
+## Field-box gotchas found (now documented on the page)
+
+None are WFC-specific and all cost real time: a local `fun` nested inside a lambda
+trips a K2 codegen assertion (`has no callableId`); a named function that touches the
+box's implicit `Box` receiver — and `println` does — also cannot be code-generated
+(`No mapping for symbol: SCRIPT_IMPLICIT_RECEIVER`, which is what the transcript
+harness caught); `h`, `sky` and `error` all resolve to Field DSL names ahead of a
+script-local `val` inside a lambda with its own receiver; and `display(channel, x)`
+**replaces** that channel rather than appending, which silently ate two text panels and
+put a one-frame caption flicker in the video.
+
+## Risks
+
+One-line: the only change outside new files and the WFC family is the additive
+`Img.upscaleNearest` in `imaging.kt`, and the `wfc.kt` symmetry fix makes previously
+under-constrained learned models *more* constrained, so a caller relying on the old
+lax behaviour could newly hit a contradiction — no such caller exists in-tree, and
+`solveWithRetries` is the documented remedy.
+
+## Recommendation
+
+**Merge.** The mission's deliverable is complete and every claim on it is either
+eyeballed or asserted by a test that runs in the build. It also carries a real
+correctness fix to `wfc.kt` with a regression test demonstrated to fail without it,
+first public coverage of the entire `FloatArray` half of the API, and a replayable
+demo that was actually replayed (and which caught a real defect in doing so). The
+follow-up worth doing separately is a full-corpus docs build to confirm no other
+page regressed.
 ## Execution log
 
 - Baseline `stdlib.wfc.smoke` PASS on warm build, port 9740.
+- Ports used: 9740 (test JVM), 9741 (docs runner). 9477 left alone.
+- Disk at start 48 GiB free, 46 GiB at the end — no ENOSPC risk to the captures.
