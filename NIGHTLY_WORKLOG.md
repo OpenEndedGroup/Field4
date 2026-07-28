@@ -468,3 +468,207 @@ branch's.
 
 Read `dev_docs/stdlib_behaviour_changes.md` before merging; it is the part of this record meant to
 survive the merge.
+
+---
+
+# Third pass (agent 3) — the docs build as a staleness detector, and a sixth audit
+
+## 1. The remaining risk is closed — and the method that was supposed to close it does not work
+
+The brief was: run a full docs build, and treat every asset it changes as a stale capture, because the
+build regenerates captures from the real code. **The premise is false, and establishing that is the main
+result of this pass.**
+
+`public/docs_hooks.py` keys each capture's cache digest (`compute_digest` / `compute_cache_metadata`) on
+the fence's own code text, its options, the page path, block index, `SCRIPT_VERSION`, a
+`runnerSourceDigest`, and — for gallery scenes only — `sceneInputs`. `runnerSourceDigest` hashes
+`RUNNER_DIGEST_SOURCE_FILES`, a hard-coded list of eleven files: `docs_hooks.py`, `Main.kt`,
+`screenshot.kt`, `FLine.kt`, `FLineGeometry.kt`, `StandardRendererDocsHarness.kt`,
+`NanoVisualization.kt`, `someSkiko.kt`, `outputareas2.js`, `field_backdoor.py`, `run_field_tests.py`.
+**Not one stdlib file is in it,** and `git diff --name-only 1a347dc8..HEAD` intersects it in zero files.
+So every digest on this branch is byte-identical to the base's: an ordinary (incremental) build is a
+100% cache hit and rewrites nothing at all. `reuse_existing_asset_for_incremental` goes further and
+reuses the committed asset even when `runnerSourceDigest` is the only thing that moved.
+
+The lever that does work is `FIELD_DOCS_RUNNER_MODE=always`, which sets `cache_allowed = False` per
+capture.
+
+## 2. What was actually run
+
+Port discipline: 9477 was free at 05:27, but rather than race the sibling agent I ran on **my own ports
+(9722, then 9723)** via `FIELD_DOCS_RUNNER_PORT`, which removes the shared-server hazard entirely rather
+than managing it. `verification_lock` is per-checkout, so it does not serialise across worktrees — the
+port is the only shared resource, and this sidesteps it.
+
+Two full runs, `FIELD_DOCS_RUNNER_MODE=always`, over the six pages that contain a fence reaching any
+file this branch changed — `functions_examples` (106 fences), `graph_connectivity_examples`,
+`interaction_nets_examples`, `state_estimation_examples`, `timeseries_examples`, `functions_domains`:
+
+- **Run 1**: `regenerated=121 (screenshots=121 videos=0), failures=0`, elapsed 335.7 s, exit 0. Full
+  site build on top: `checked 66 page(s), 536 asset ref(s) … OK — every referenced asset is committed`,
+  `Build finished in 6.49s`, **145 pages processed, 6 of them with runner mode always**.
+- **Run 2**: identical capture set, `regenerated=121 … failures=0`, elapsed 298.1 s, exit 0.
+
+Not attempted, and honestly so: the other 195 capture fences (`fline_examples` 51, `fabricate_renderer`
+12, `dough_dsp_sound` 12, the RectSL/StackSL galleries, `field_probes`, …). `always` mode over all 316
+would not have fitted the window, and `imaging_examples` is owned by an unmerged sibling branch. The six
+pages chosen are the ones whose fences reach the changed files; the rest were argued unaffected by the
+earlier passes and that argument is unchanged.
+
+## 3. The finding list — and why none of it is committed
+
+`git status --short public/docs/assets` after run 1: **121 modified files.** Committing that set is what
+the brief implies, and it would have been wrong. Every one of the 121 differs, so file-level status
+carries no information here; the question is what *kind* of difference.
+
+**A measurement trap first, because it nearly inverted the answer.** Pillow's `Image.getbbox()` defaults
+to `alpha_only=True` on RGBA, so on two fully-opaque images it inspects only the alpha channel and
+returns `None` — indistinguishable from "identical" — however much the RGB differs. My first pass
+reported *118 of 121 pixel-identical, byte churn only*, and I nearly wrote that down. It was visible only
+because the same script printed a contradiction next to it (`bbox=None` beside `nonzero=414489`). Redone
+with `ImageChops.difference(...).getextrema()` plus a histogram on `RGB`-converted images: **none of the
+121 was pixel-identical.**
+
+**The determinism control is what makes the rest interpretable.** Run 1 vs run 2 — same worktree, same
+commit, same code, ten minutes apart:
+
+| run 1 vs run 2 | count |
+| --- | --- |
+| bit-identical | **5** of 121 |
+| differ | **113** of 121 |
+| output height differs | 3 |
+
+Most of that is text/antialiasing jitter at ~0.005–0.01% of pixels and a maximum channel delta of ≤19.
+So "the build changed this asset" is, by itself, evidence of nothing. Anything inside that band is noise
+and committing it is pure churn.
+
+Correlating each asset's delta *against `HEAD`* with the date it was last regenerated splits almost
+perfectly:
+
+| delta vs committed asset | count | last regenerated |
+| --- | --- | --- |
+| **stable ~49% of pixels, Δ204** | **54** | 2026-07-09 (2) / 2026-07-10 (52) |
+| 3–13% | 34 | 2026-07-14 (1), 07-18 (2), 07-19 (30), 07-28 (1) |
+| height changed | 4 | 2026-07-19 |
+| ≤0.02%, Δ≤19 (noise band) | 29 | 07-19 (5) / 07-21 (5) / **07-28 (19)** |
+
+Three things fall out of that table.
+
+**(a) The branch's stated residual risk is closed, negative.** The 19 captures dated 2026-07-28 are
+exactly the 19 the earlier passes regenerated on this branch (`26482634`, `68f2ce17`, `bdffc5fa`), and
+**every one of them lands inside the noise band.** Two independent `always`-mode runs agree with what
+those passes committed. No capture on these pages is stale because of this branch, and the earlier
+grep-driven blast radius was right about the pages it covered.
+
+**(b) The 54-file ~49% cluster is real staleness, and it is not this branch's.** It is stable across both
+runs, so not jitter; and every one of the 54 was last captured on 2026-07-09/10 — before `bced282b`
+(2026-07-14) *"Fix `Fn.graphBrowseHtml` layout and constant-delay domain"* changed the plot browser's
+layout and y-autoscale. Attribution argued at source level, not assumed: `git diff 1a347dc8..HEAD -- src/`
+contains no occurrence of `crossfade`, `fun ramp`, or any autoscale symbol, and
+`FunctionGraphBrowser.kt` — which does the autoscaling — is not in the branch's changed-file list at all.
+The clearest case is `reference/ramp.png`, whose fence is
+`ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)`: the committed capture autoscales
+to roughly −0.1 … 0.51, the current code to **exactly 0.100 … 0.500** — 0.1 at both ends and 0.5 at the
+centre, which is the arithmetically correct range for that expression. The committed one is wrong and has
+been since 2026-07-14, four days before this branch's base. Both images were opened and read, not just
+differenced.
+
+**(c) Nothing is committed.** Not the 54 (pre-existing `main` staleness, 18 days older than the branch,
+and folding a 54-file asset churn into a KDoc-truth branch buries the actual change and invites conflicts
+with the unmerged sibling); not the 34 medium or the 4 height-unstable ones (undiagnosed, and inseparable
+from jitter in the time available); not the 29 noise-band ones (churn by definition). `git checkout --
+public/docs/assets` — the tree is clean. The finding is recorded instead, durably, in
+**`dev_docs/docs_capture_staleness.md`**, with the reproduction recipe, the noise-band thresholds, the
+`getbbox` trap, and the recommendation that the 54 be fixed in their own commit on `main`.
+
+## 4. Sixth audit pass — ten wrong claims, in the two least-audited files
+
+`colors.kt` (15 blocks) and `shaders.kt` (163 symbols, ~166 blocks read across both halves), plus
+`randoms.kt` (16 blocks). Every finding below was re-verified against the code by hand before editing,
+including the arithmetic.
+
+**`colors.kt` — 3.** The file overview claimed `okhsl` *and* `okhsv` "hold perceived lightness far
+steadier across hue"; only `okhsl` does (`lOk = toeInv(ll)`, hue-independent), while `okhsvToSrgb`
+derives lightness from the per-hue gamut cusp — and the `okhsv` block already said so, so the overview
+contradicted its own file. It also called `hsl` "ordinary HSL", but `hslToSrgb` returns a `LinearRgb`
+that `linearToVec4` then pushes through `srgbTransfer`, so `hsl(0, 0, 0.5)` is 0.735 grey, not 0.5. And
+`hsl`'s own "the pure hues match CSS's `hsl()`" holds only at the six 60°-multiple corners at `l = 0.5`,
+where every component is 0 or 1 and the transfer has a fixed point — `hsl(30, 1, 0.5)` is (1, 0.735, 0)
+against CSS's (1, 0.502, 0), re-derived by hand.
+
+**`shaders.kt` — 7.** `insertForShader` promised `Mesh`/`MeshGroup` accessors "for every push-constant
+and UBO member": UBO members get only a bare `var Structure.<name>`. Both `fromViews` overloads described
+the wrong sampler fallback — the `List` one scans all views rather than taking the first view's, and the
+`HasImageViewArray` one never consults the views at all, so a provider lacking a default sampler needs a
+live graphics context where the doc implied it would not. `Box.task` said `meshModuleHere` seeds "an
+`EmitMeshTasksEXT` default into all three": the three stages are seeded independently and only the task
+stub is that shader. `reloadShader` said `forceReresolve` re-resolves "every texture and buffer":
+`Module.reload` gates only the *texture* resolver on it, while UBOs and SSBOs are deliberately carried
+over. And two blocks documented the wrong declaration outright — `CompileResult`, an inert two-field
+holder, carried `compileStage`'s description, and `preamblePrefixRegex`, a one-line marker regex, carried
+"Applies an Insert's preamble(s) into the target box."
+
+**A guard limitation worth knowing:** those last two passed `checkKDocAttachment` cleanly. The guard
+verifies that a block *attaches to a declaration*, not that it describes the *right* one — a section
+heading that a later insertion turns into a KDoc block is attached, and therefore invisible to it. Both
+are `private`, so neither published anything, which is why the reference never showed the error. `git
+blame` dates both to 2025-11-06, i.e. they are **pre-campaign**, not sweep output.
+
+**Refutations — `randoms.kt` came back clean, and that is a result.** 16 blocks, no falsifiable claim.
+Checked and *correct*, recorded so no seventh pass re-chases them: the `±0.5` bound on `noise1D`
+(maximised analytically — the extremum really is 0.5 at `xf = 0.5`), `fade` being smootherstep
+(6t⁵−15t⁴+10t³), the Box–Muller formula and its `u1 <= Double.MIN_VALUE` guard against `ln(0)`, the
+"re-running a box replays the same sequence" claim (`resetStdlibRandom()` at `execution.kt:1252`, `:1912`,
+`:1960`), `STDLIB_RANDOM_DEFAULT_SEED == 1L`, and the `extraHash`-collides-with-the-neighbouring-channel
+warning. In `shaders.kt`, ~35 further suspicious-looking claims were checked and found correct — among
+them all four `NullPointerException` claims, both `{% copyPC %}` stage-ordering claims, the
+`shadertoyVertexShader` full-screen-triangle bit-twiddle, `fieldProbeHere`'s "clamped to 1..262144"
+(`FIELD_PROBE_MAX_SAMPLES = 1024 * 256`), `fieldStatsHere`'s three `require` ranges, and
+`Box.meshShader` being genuinely vestigial. Lines 1–2450 of `shaders.kt` yielded little because
+`b35fe91c` had already audited them.
+
+## Verification — third pass
+
+Verified tonight, by running it:
+
+- **Two `always`-mode docs runs**, 121 captures each, 0 failures, exit 0; plus one full site build —
+  145 pages, 536 asset refs checked, `No issues found`.
+- **The determinism control** — 113 of 121 captures differ run-to-run at the same commit. This is new
+  information and it is what disqualifies file-level `git status` as a staleness test.
+- **Pixel measurement redone** after catching the `getbbox(alpha_only=True)` trap; both `ramp.png`
+  versions opened and read visually, not only differenced.
+- **Attribution** of the 54-file cluster to `bced282b` (2026-07-14) by date correlation *and* by a
+  source-level argument that the branch cannot have caused it.
+- `./gradlew generateCodebaseReference` → `graphics.md` only; `checkCodebaseReference` **green** (4011
+  symbols, 9 pages, no drift); `checkKDocAttachment` **green** (625 files, 6768 blocks, 0 findings).
+- `jvmTest` — **514 tests / 0 failures / 0 errors / 0 skipped**, counted out of
+  `build/test-results/jvmTest/*.xml` after the edits.
+- `df -h /` checked before trusting any capture: 45 Gi available throughout.
+
+Carried over from the earlier passes and **not** re-derived here: the `check --continue` run and the
+pre-existing `:tools:linalg-bench:compileKotlin` failure; the four smoke runs; the amplitude/convolve/
+`movingAverage` magnitude figures; and the unaffectedness arguments for the ~195 capture fences on the
+ten pages I did not run.
+
+Still not verified: those ~195 fences have never been re-derived in `always` mode, so the same class of
+pre-2026-07-14 staleness may sit in `fline_examples` and the galleries — likely, given that 54 of 121
+were stale on the pages I did check. The 34 medium-band and 4 height-unstable captures are
+characterised but undiagnosed. `deflateCovariance` remains described-but-not-fixed. Roughly a quarter of
+the campaign's ~1550 blocks have still never been read against the code — `linalg.kt`, `stdlib.kt`,
+`keyframer.kt` and `StandardDrawing.kt` were on my list and I did not reach them.
+
+## Recommendation — third pass
+
+**MERGE.** The one risk the branch admitted to is now closed with a negative result: two independent
+cache-bypassing capture runs agree with everything the branch committed, so nothing in the docs is stale
+*because of this branch*. The branch is unchanged in scope — ten more KDoc corrections, one new dev_docs
+note, no code behaviour touched, no asset churn, `jvmTest` and both guards green.
+
+Two things for whoever merges:
+
+1. **`dev_docs/docs_capture_staleness.md` is the part of this pass meant to survive.** It documents that
+   a docs build does *not* detect stale captures by default, which is a trap the next agent would
+   otherwise fall into exactly as this brief did.
+2. **The 54 stale `functions_examples` captures are a real, separate bug on `main`,** dating to
+   2026-07-14 and independent of this branch. They should be regenerated in their own commit — and
+   whoever does it must sift them out of the run-to-run jitter rather than committing all 121.
