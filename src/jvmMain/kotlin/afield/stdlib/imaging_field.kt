@@ -199,6 +199,11 @@ fun Img.asScalarField2D(border: Border = Border.CLAMP): ScalarField2D {
  * mask) this interpolates between samples, so the contour is sub-pixel smooth — the right tool for
  * a distance transform, a blurred response or a height field.
  *
+ * Loops are closed and contours that run off the edge of the image are not, decided per contour with
+ * [isoContourClosed]. A level set inside a blurred response is almost always a closed ring, and the
+ * marcher returns one as a cycle whose ends are *adjacent* rather than equal — so drawing them all
+ * open, as this used to, leaves a notch one grid cell wide in every loop.
+ *
  * @param cells grid resolution; defaults to one cell per pixel
  */
 fun Img.isoContourFLines(iso: Double, cells: Int = max(width, height), z: Number = 0): List<FLine> {
@@ -206,13 +211,18 @@ fun Img.isoContourFLines(iso: Double, cells: Int = max(width, height), z: Number
     require(cells >= 2) { "cells must be >= 2, got $cells" }
     val nx = max(2, (cells.toDouble() * width / max(width, height)).toInt())
     val ny = max(2, (cells.toDouble() * height / max(width, height)).toInt())
-    val contours = generateIsoContours(
-        asScalarField2D(),
-        0.0, (width - 1).toDouble(),
-        0.0, (height - 1).toDouble(),
-        nx, ny, iso
-    )
-    return contoursToFLines(contours, closed = false, z = z)
+    val xMax = (width - 1).toDouble()
+    val yMax = (height - 1).toDouble()
+    val contours = generateIsoContours(asScalarField2D(), 0.0, xMax, 0.0, yMax, nx, ny, iso)
+    // One cell's worth of slack, because a crossing lands where the field puts it, not on the bound.
+    val boundaryEpsilon = 0.75 * max(xMax / nx, yMax / ny)
+    return contours.filter { it.size >= 2 }.map { contour ->
+        contourToFLine(
+            contour,
+            closed = isoContourClosed(contour, 0.0, xMax, 0.0, yMax, boundaryEpsilon),
+            z = z,
+        )
+    }
 }
 
 // ==============================================================================================

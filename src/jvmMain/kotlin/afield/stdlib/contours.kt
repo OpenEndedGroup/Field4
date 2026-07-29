@@ -446,7 +446,7 @@ fun smoothIsoContours(
     boundaryEpsilon: Double = 1e-6
 ): List<FLine> {
     return contours.map { contour ->
-        val closed = contourLikelyClosed(contour, xMin, xMax, yMin, yMax, boundaryEpsilon)
+        val closed = isoContourClosed(contour, xMin, xMax, yMin, yMax, boundaryEpsilon)
         when {
             contour.isEmpty() -> FLine()
             contour.size < 3 -> polylineFrom(contour, closed = closed)
@@ -736,13 +736,29 @@ private fun expandedIsoBounds(
     )
 }
 
-private fun contourLikelyClosed(
+/**
+ * Does this marching-squares contour close on itself, or does it run out of the sampling window?
+ *
+ * [generateIsoContours] returns a closed loop as a *cycle* whose first and last points are adjacent
+ * rather than equal, so "is it closed" cannot be answered by comparing the endpoints — they are one
+ * grid cell apart either way. What distinguishes the two is where the ends *are*: a contour that
+ * genuinely ran off the edge of the sampling window has both ends sitting on that window's boundary.
+ *
+ * Drawing a contour needs the answer, because a closed loop wants the segment from its last point
+ * back to its first and an open one does not — `polylineFrom(contour, closed = isoContourClosed(...))`.
+ * [smoothIsoContours] asks this for you; [Img.isoContourFLines] asks it per contour.
+ *
+ * @param boundaryEpsilon how near the window a point has to be to count as *on* it. Use something on
+ *   the order of the cell size — `spatialStep * 0.75` is what [generateSmoothIsoContours] defaults to
+ *   — because a crossing lands wherever the field says, not exactly on the boundary.
+ */
+fun isoContourClosed(
     contour: List<Vec2>,
     xMin: Double,
     xMax: Double,
     yMin: Double,
     yMax: Double,
-    boundaryEpsilon: Double
+    boundaryEpsilon: Double = 1e-6
 ): Boolean {
     if (contour.size < 3) return false
     val first = contour.first()
