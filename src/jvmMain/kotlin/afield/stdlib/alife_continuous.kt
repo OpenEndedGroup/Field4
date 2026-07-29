@@ -147,7 +147,16 @@ val GRAY_SCOTT_WORMS: GrayScottParams = GrayScottParams(feed = 0.037, kill = 0.0
 /** `F = 0.029, k = 0.057` — a space-filling maze of connected corridors. */
 val GRAY_SCOTT_MAZE: GrayScottParams = GrayScottParams(feed = 0.029, kill = 0.057)
 
-/** `F = 0.0367, k = 0.0649` — spots that grow, pinch and divide; the "mitosis" regime. */
+/**
+ * `F = 0.0367, k = 0.0649` — the dividing/sparse-spot regime.
+ *
+ * What `AlifeGallery` **measures** it to do, which is narrower than the "mitosis" name suggests: a
+ * square seed patch pinches into four spots within about 80 steps, all seeds doing so inside the same
+ * 20-step window, and the spot count is then stable for thousands of steps at a coverage of ~1 %. So it
+ * is one synchronous division from this initial condition, not sustained mitosis. The name is kept
+ * because the mechanism is the dividing instability; the measured behaviour is stated here so the name
+ * is not read as a claim.
+ */
 val GRAY_SCOTT_MITOSIS: GrayScottParams = GrayScottParams(feed = 0.0367, kill = 0.0649)
 
 /** `F = 0.039, k = 0.058` — the inverse morphology: round *holes* in a filled field. */
@@ -315,19 +324,24 @@ fun Img.morphology(level: Float? = null, minArea: Int = 4): MorphologyReport {
  *   scales and measuring [Img.correlationLength] is a *prediction test*, which is what the gallery
  *   does. A run that ignores `scale` (or a measurement that reads the seed's own scale rather than
  *   the pattern's) fails it.
- * @param steps integration steps
+ * @param rho reaction rate. The selected wavelength goes as `sqrt(D / rho)`, so this is the *other*
+ *   handle on the pattern's scale — and the useful one, because [scale] is capped near 1.25 by the
+ *   explicit scheme's stability limit while `rho` is not. At the default 0.04 the spots sit only a
+ *   couple of cells apart, which is a correct Turing pattern and a poor picture.
+ * @param steps integration steps. A smaller [rho] is a slower reaction and needs more of them.
  */
 fun turingPattern(
     width: Int,
     height: Int,
     scale: Double = 1.0,
-    steps: Int = 2000,
-    rho: Double = 0.04,
+    steps: Int = 4000,
+    rho: Double = 0.010,
     seed: Long = 1L
 ): Img {
     require(width >= 8 && height >= 8) { "Turing field must be at least 8x8, got ${width}x$height" }
     require(scale > 0.0) { "scale must be > 0, got $scale" }
     require(steps >= 1) { "steps must be >= 1, got $steps" }
+    require(rho > 0.0) { "rho must be > 0, got $rho" }
     val da = (0.02 * scale)
     val dh = (0.40 * scale)
     require(dh <= 0.5) { "diffusion scale too large for an explicit step: Dh*dt = $dh must be <= 0.5" }
@@ -546,15 +560,19 @@ fun leniaFromLifeRule(rule: LifeRule): LeniaRule {
     }
     val birth = rule.birth
     val survive = rule.survive
+    // The taps are given explicitly rather than built from the shell parameters. The shell builder
+    // measures radius in Euclidean units and drops anything past `radius`, so at R = 1 the four
+    // diagonals (at distance sqrt(2)) fall outside and the kernel would be the von Neumann cross —
+    // which is a different automaton, and the first version of this function shipped that bug until a
+    // tap count of 4 gave it away.
+    val dx = intArrayOf(-1, 0, 1, -1, 1, -1, 0, 1)
+    val dy = intArrayOf(-1, -1, -1, 0, 0, 1, 1, 1)
     return LeniaRule(
         radius = 1,
         dt = 1.0,
         mu = 0.5,
         sigma = 0.1,
-        // A single wide shell so every one of the 8 neighbours gets an equal tap; the exact profile is
-        // irrelevant because the taps are normalised and all eight are at the same radius.
         shellPeaks = doubleArrayOf(1.0),
-        shellWidth = 4.0,
         growth = { u ->
             // u is exactly count/8 for a two-state field; round to the nearest count.
             val count = Math.round(u * 8f)
@@ -563,7 +581,8 @@ fun leniaFromLifeRule(rule: LifeRule): LeniaRule {
                 count in survive -> 0f
                 else -> -1f
             }
-        }
+        },
+        kernelTaps = LeniaTaps(dx, dy, FloatArray(8) { 1f / 8f })
     )
 }
 

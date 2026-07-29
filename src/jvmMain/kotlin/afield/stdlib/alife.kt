@@ -527,11 +527,25 @@ fun Img.blobShapes(minArea: Int = 4, connectivity: Int = 8): List<BlobShape> {
  * Direction-averaged spatial autocorrelation of a 1-channel image at integer lags `0..maxLag`,
  * normalised so index 0 is 1.
  *
- * Averaging over [directions] evenly spaced angles (bilinear sampling, wrapped border) makes this an
- * *isotropic* measurement, which is the point: an anisotropic estimator run along the x axis reports
- * a stripe pattern's wavelength only if the stripes happen to be vertical.
+ * Averaging over [directions] evenly spaced angles (wrapped border) makes this an *isotropic*
+ * measurement, which is the point: an anisotropic estimator run along the x axis reports a stripe
+ * pattern's wavelength only if the stripes happen to be vertical.
+ *
+ * **Why [bilinear] defaults to `false`, which was found by a control arm rather than by thinking.**
+ * Bilinear sampling at a non-integer offset averages four neighbouring pixels, *one of which can be
+ * the centre pixel itself*. That manufactures correlation out of nothing: with bilinear sampling this
+ * function reports a correlation length near 2 for **shuffled white noise**, which has none. Nearest
+ * sampling rounds each direction's offset to a lattice vector, so an uncorrelated field reads 0 at
+ * every non-zero lag, as it must. The cost is that at small lags several directions collapse onto the
+ * same offset — a real loss of angular resolution, and the right trade, because an estimator that
+ * invents signal is worse than one that is coarse.
  */
-fun Img.radialAutocorrelation(maxLag: Int = 32, directions: Int = 24, stride: Int = 2): DoubleArray {
+fun Img.radialAutocorrelation(
+    maxLag: Int = 32,
+    directions: Int = 24,
+    stride: Int = 2,
+    bilinear: Boolean = false
+): DoubleArray {
     require(channels == 1) { "radialAutocorrelation expects a 1-channel image" }
     require(maxLag >= 1) { "maxLag must be >= 1, got $maxLag" }
     require(directions >= 4) { "directions must be >= 4, got $directions" }
@@ -553,10 +567,13 @@ fun Img.radialAutocorrelation(maxLag: Int = 32, directions: Int = 24, stride: In
             val a = 2.0 * PI * k / directions
             val ox = lag * cos(a)
             val oy = lag * sin(a)
+            val ix = Math.round(ox).toInt()
+            val iy = Math.round(oy).toInt()
             for (y in 0 until height step stride) for (x in 0 until width step stride) {
                 val v0 = at(x, y) - mean
-                val v1 = sampleBilinear(x + ox, y + oy, 0, Border.WRAP) - mean
-                acc += v0 * v1
+                val v1 = if (bilinear) sampleBilinear(x + ox, y + oy, 0, Border.WRAP)
+                else get(x + ix, y + iy, 0, Border.WRAP)
+                acc += v0 * (v1 - mean)
                 count++
             }
         }
@@ -566,19 +583,38 @@ fun Img.radialAutocorrelation(maxLag: Int = 32, directions: Int = 24, stride: In
 }
 
 /**
- * The **correlation length** of a pattern: the lag at which [radialAutocorrelation] first crosses
- * zero, linearly interpolated, or [maxLag] if it never does.
+ * The **correlation length** of a pattern: the lag at which [radialAutocorrelation] first falls to
+ * [level], linearly interpolated, or [maxLag] if it never does.
  *
- * For a periodic pattern of wavelength `λ` this is `≈ λ/4`, so it is a direct readout of the length
- * scale a Turing instability selects — the quantity linear stability theory says grows with
- * `sqrt(diffusion)`. For white noise it is `< 1`. That gap is the control.
+ * For a periodic pattern of wavelength `λ` this is a fixed fraction of `λ`, so it is a direct readout
+ * of the length scale a Turing instability selects — the quantity linear stability theory says grows
+ * with `sqrt(diffusion)`. For uncorrelated noise it is `< 1`.
+ *
+ * **Why [level] is `1/e` and not zero, which a control arm decided.** The obvious definition is the
+ * first *zero* crossing. It is unusable: an uncorrelated field's autocorrelation does not sit at zero,
+ * it fluctuates around zero at the estimator's noise floor (measured here: `0.004, 0.006, 0.006,
+ * 0.001, 0.004, 0.002, 0.005, 0.003, -0.000, …`), so the first crossing is wherever the noise happens
+ * to change sign — for shuffled white noise this function returned **8.97** under the zero-crossing
+ * definition. An e-folding threshold is far above the noise floor, so a field with no structure reads
+ * below 1 as it must, and a structured field's reading is unaffected by the change in any way that
+ * matters (the two definitions differ by a constant factor for a smooth pattern).
+ *
+ * @param level the autocorrelation value whose first crossing defines the length; `1/e` is the
+ *   standard e-folding convention
  */
-fun Img.correlationLength(maxLag: Int = 32, directions: Int = 24, stride: Int = 2): Double {
-    val ac = radialAutocorrelation(maxLag, directions, stride)
+fun Img.correlationLength(
+    maxLag: Int = 32,
+    directions: Int = 24,
+    stride: Int = 2,
+    bilinear: Boolean = false,
+    level: Double = 1.0 / Math.E
+): Double {
+    require(level > 0.0 && level < 1.0) { "level must be in (0, 1), got $level" }
+    val ac = radialAutocorrelation(maxLag, directions, stride, bilinear)
     for (lag in 1..maxLag) {
-        if (ac[lag] <= 0.0) {
+        if (ac[lag] <= level) {
             val prev = ac[lag - 1]
-            val frac = if (prev - ac[lag] < 1e-18) 0.0 else prev / (prev - ac[lag])
+            val frac = if (prev - ac[lag] < 1e-18) 0.0 else (prev - level) / (prev - ac[lag])
             return (lag - 1) + frac
         }
     }
@@ -636,13 +672,19 @@ data class MassRadiusFit(
  * [MassRadiusFit.rSquared].
  *
  * @param samples how many logarithmically-spaced radii to evaluate
+ * @param minCount when > 0, raise [rMin] until it encloses at least this many points. A fit that
+ *   starts where `N(r)` is 3 is dominated by counting noise: the second run of this family measured a
+ *   *uniform disc* at dimension 2.32 for exactly that reason, which is not a possible answer. Raising
+ *   the inner radius until the statistics exist is the fix, and stating it as a parameter is how the
+ *   fit stays honest about the range it is describing.
  */
 fun massRadiusDimension(
     points: List<Vec2>,
     center: Vec2,
     rMin: Double = 4.0,
     rMax: Double = 64.0,
-    samples: Int = 16
+    samples: Int = 16,
+    minCount: Int = 0
 ): MassRadiusFit {
     require(points.isNotEmpty()) { "massRadiusDimension needs at least one point" }
     require(rMin > 0.0 && rMax > rMin) { "need 0 < rMin < rMax, got $rMin..$rMax" }
@@ -652,9 +694,17 @@ fun massRadiusDimension(
         val dy = (it.y - center.y).toDouble()
         dx * dx + dy * dy
     }.sorted()
+    var lo = rMin
+    if (minCount > 0 && d2.size >= minCount) {
+        val needed = sqrt(d2[minCount - 1])
+        if (needed > lo) lo = needed
+    }
+    require(rMax > lo) {
+        "no fitting range left: rMin rose to $lo to enclose $minCount points, which is beyond rMax $rMax"
+    }
     val fit = ArrayList<Pair<Double, Double>>(samples)
     for (i in 0 until samples) {
-        val r = rMin * Math.pow(rMax / rMin, i.toDouble() / (samples - 1))
+        val r = lo * Math.pow(rMax / lo, i.toDouble() / (samples - 1))
         val rr = r * r
         // Sorted squared distances: the count within r is the insertion point.
         var lo = 0; var hi = d2.size

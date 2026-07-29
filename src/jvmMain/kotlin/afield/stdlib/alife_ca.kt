@@ -130,9 +130,45 @@ val MAZE: LifeRule = lifeRule("B3/S12345")
  */
 fun IntGrid.step(rule: LifeRule): IntGrid {
     val out = blank()
+    if (rule.radius == 1 && !rule.vonNeumann && width >= 3 && height >= 3) {
+        // Interior fast path: read the eight neighbours straight out of the array with no border
+        // resolution and no bounds checks. This is not premature — verifying the R-pentomino's
+        // 1103-generation history needs a board with room, and 620x620x1103 is 4e8 cell updates, where
+        // the difference between eight `get` calls and eight array reads is the difference between a
+        // figure that renders and one that times out. The border rows/columns still go through [get],
+        // so wrapped and bounded grids behave exactly as before.
+        val w = width
+        for (y in 1 until height - 1) {
+            var i = y * w + 1
+            var up = i - w
+            var dn = i + w
+            for (x in 1 until w - 1) {
+                var n = 0
+                if (cells[up - 1] != 0) n++
+                if (cells[up] != 0) n++
+                if (cells[up + 1] != 0) n++
+                if (cells[i - 1] != 0) n++
+                if (cells[i + 1] != 0) n++
+                if (cells[dn - 1] != 0) n++
+                if (cells[dn] != 0) n++
+                if (cells[dn + 1] != 0) n++
+                out.cells[i] = rule.next(cells[i], n)
+                i++; up++; dn++
+            }
+        }
+        for (x in 0 until w) {
+            out.cells[x] = rule.next(cells[x], mooreCount(x, 0, 1))
+            val yl = height - 1
+            out.cells[yl * w + x] = rule.next(cells[yl * w + x], mooreCount(x, yl, 1))
+        }
+        for (y in 1 until height - 1) {
+            out.cells[y * w] = rule.next(cells[y * w], mooreCount(0, y, 1))
+            out.cells[y * w + w - 1] = rule.next(cells[y * w + w - 1], mooreCount(w - 1, y, 1))
+        }
+        return out
+    }
     for (y in 0 until height) for (x in 0 until width) {
-        val n = if (rule.radius == 1 && !rule.vonNeumann) mooreCount(x, y, 1)
-        else neighborhoodCount(x, y, 1, rule.radius, rule.vonNeumann)
+        val n = neighborhoodCount(x, y, 1, rule.radius, rule.vonNeumann)
         out.cells[y * width + x] = rule.next(cells[y * width + x], n)
     }
     return out
@@ -313,10 +349,18 @@ class CyclicRule(
         "CyclicRule($states states, threshold $threshold, radius $radius${if (vonNeumann) ", von Neumann" else ""})"
 }
 
-/** The classic Griffeath "cyclic spirals" parameters: 14 states, threshold 1, Moore radius 1. */
-val CYCLIC_SPIRALS: CyclicRule = CyclicRule(states = 14, threshold = 1)
+/**
+ * 14 states, threshold 1, Moore radius 1 — Griffeath's original cyclic CA parameters.
+ *
+ * Named for the phase this codebase **measures** it to produce from a random soup rather than for the
+ * one it is often illustrated with: a locally-coherent labyrinth of interlocking colour bands, in which
+ * every cell advances every step. Spiral *cores* are a feature of the larger-neighbourhood,
+ * higher-threshold corner of the parameter space ([CYCLIC_EXCITABLE]), and this file does not claim them
+ * here because the gallery's own figure does not show them.
+ */
+val CYCLIC_LABYRINTH: CyclicRule = CyclicRule(states = 14, threshold = 1)
 
-/** Greenberg–Hastings-like excitable medium: 6 states, threshold 3, which gives fatter spiral arms. */
+/** Greenberg–Hastings-like excitable medium: 6 states, threshold 3, radius 2 — fatter, slower fronts. */
 val CYCLIC_EXCITABLE: CyclicRule = CyclicRule(states = 6, threshold = 3, radius = 2)
 
 /** One synchronous generation of a [CyclicRule]. */

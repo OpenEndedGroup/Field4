@@ -159,7 +159,12 @@ val LSYSTEM_KOCH_QUADRATIC: LSystem = lSystem("F", 'F' to "F+F-F-F+F")
  */
 val LSYSTEM_KOCH_SNOWFLAKE: LSystem = lSystem("F--F--F", 'F' to "F+F--F+F")
 
-/** The Sierpiński arrowhead curve: `A -> B-A-B`, `B -> A+B+A`, 60° turns, drawn from `A`. */
+/**
+ * The Sierpiński arrowhead curve: `A -> B-A-B`, `B -> A+B+A`, 60° turns, drawn from `A`.
+ *
+ * Both `A` and `B` are **drawing** symbols here, so it must be interpreted with
+ * `TurtleParams(drawSymbols = "AB")`; with the default `"FG"` alphabet it renders nothing.
+ */
 val LSYSTEM_SIERPINSKI_ARROWHEAD: LSystem = LSystem(
     "A",
     listOf(LProduction('A', "B-A-B"), LProduction('B', "A+B+A"))
@@ -215,7 +220,7 @@ val LSYSTEM_STOCHASTIC_PLANT: LSystem = LSystem(
  *
  * | symbol | meaning |
  * |---|---|
- * | `F`, `G` | move forward drawing a line |
+ * | any of [drawSymbols] (`F`, `G` by default) | move forward drawing a line |
  * | `f` | move forward **without** drawing (a pen-up jump) |
  * | `+` | turn left by [angle] |
  * | `-` | turn right by [angle] |
@@ -233,6 +238,12 @@ val LSYSTEM_STOCHASTIC_PLANT: LSystem = LSystem(
  * @property scaleOnBranch when `true`, entering a branch shortens and thins it automatically, which is
  *   what makes an unadorned `F -> F[+F]F[-F]F` look like a plant instead of a wire diagram
  * @property angleJitter random fraction of [angle] added to each turn; 0 is exactly reproducible
+ * @property drawSymbols which characters mean "move forward drawing".
+ *
+ *   `F`/`G` covers most systems, but not all: the Sierpiński **arrowhead** curve is written
+ *   `A -> B-A-B`, `B -> A+B+A` where `A` and `B` are *both* drawing symbols, and interpreting it with
+ *   the default alphabet renders a blank image (which is how this parameter came to exist). A symbol
+ *   that is neither here nor a turtle command is a rewriting-only non-terminal and is skipped.
  */
 data class TurtleParams(
     val angle: Double = PI / 8.0,
@@ -240,7 +251,8 @@ data class TurtleParams(
     val stepScale: Double = 0.62,
     val widthScale: Double = 0.7,
     val scaleOnBranch: Boolean = false,
-    val angleJitter: Double = 0.0
+    val angleJitter: Double = 0.0,
+    val drawSymbols: String = "FG"
 ) {
     init {
         require(step > 0.0) { "step must be > 0, got $step" }
@@ -334,32 +346,32 @@ fun turtleDraw(
     }
 
     for (ch in s) {
-        when (ch) {
-            'F', 'G' -> {
+        when {
+            ch in p.drawSymbols -> {
                 beginLine()
                 x += cos(heading) * step
                 y += sin(heading) * step
                 current!!.lineTo(x, y, 0)
                 drawn++
             }
-            'f' -> {
+            ch == 'f' -> {
                 endLine()
                 x += cos(heading) * step
                 y += sin(heading) * step
             }
-            '+' -> turn(-1.0)
-            '-' -> turn(+1.0)
-            '|' -> heading += PI
-            '!' -> width *= p.widthScale
-            '"' -> step *= p.stepScale
-            '[' -> {
+            ch == '+' -> turn(-1.0)
+            ch == '-' -> turn(+1.0)
+            ch == '|' -> heading += PI
+            ch == '!' -> width *= p.widthScale
+            ch == '"' -> step *= p.stepScale
+            ch == '[' -> {
                 endLine()
                 stack.add(doubleArrayOf(x, y, heading, step, width))
                 depth++
                 if (depth > maxDepth) maxDepth = depth
                 if (p.scaleOnBranch) { step *= p.stepScale; width *= p.widthScale }
             }
-            ']' -> {
+            ch == ']' -> {
                 endLine()
                 if (stack.isNotEmpty()) {
                     val st = stack.removeAt(stack.size - 1)

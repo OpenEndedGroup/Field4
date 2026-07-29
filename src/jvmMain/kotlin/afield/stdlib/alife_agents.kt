@@ -44,6 +44,15 @@ import kotlin.math.sqrt
  *   the flock stops being a flock, which is the control arm the [polarization] claim is made against
  * @property cohesionWeight strength of the pull toward the neighbour centroid
  * @property maxSpeed speed cap (agents fly at close to this)
+ * @property minSpeedFraction floor on speed as a fraction of [maxSpeed].
+ *
+ *   Not cosmetic, and found by measurement: the three steering terms are all written as
+ *   *desired-minus-current* velocities, so in a settled flock — where each agent already has close to
+ *   the mean velocity — they largely cancel, and with a force cap the speed drifts downward. The first
+ *   run of this family measured a mean speed of 0.46 against a cap of 1.4, i.e. a flock that had mostly
+ *   stopped while still scoring well on alignment. Reynolds' boids fly at a roughly constant speed; a
+ *   floor is the standard way to say so, and it changes only the magnitude, never the heading, so it
+ *   cannot inflate a polarization measurement.
  * @property maxForce per-step cap on the steering acceleration; without it a boid in a dense cluster
  *   receives an unbounded separation impulse and leaves at implausible speed
  */
@@ -54,12 +63,16 @@ data class BoidParams(
     val alignmentWeight: Double = 1.0,
     val cohesionWeight: Double = 0.9,
     val maxSpeed: Double = 1.4,
+    val minSpeedFraction: Double = 0.75,
     val maxForce: Double = 0.06
 ) {
     init {
         require(perceptionRadius > 0.0) { "perceptionRadius must be > 0, got $perceptionRadius" }
         require(separationRadius > 0.0) { "separationRadius must be > 0, got $separationRadius" }
         require(maxSpeed > 0.0) { "maxSpeed must be > 0, got $maxSpeed" }
+        require(minSpeedFraction >= 0.0 && minSpeedFraction <= 1.0) {
+            "minSpeedFraction must be in 0..1, got $minSpeedFraction"
+        }
         require(maxForce > 0.0) { "maxForce must be > 0, got $maxForce" }
     }
 }
@@ -218,11 +231,12 @@ fun BoidFlock.step(p: BoidParams = BoidParams()) {
         var nvx: Double = vx[i] + ax[i]
         var nvy: Double = vy[i] + ay[i]
         val s = hypot(nvx, nvy)
-        if (s > p.maxSpeed) { nvx = nvx / s * p.maxSpeed; nvy = nvy / s * p.maxSpeed }
-        // A stalled boid has no heading, so polarization would silently drop; nudge it back to speed.
-        if (s < p.maxSpeed * 0.25 && s > 1e-9) {
-            val k = p.maxSpeed * 0.25 / s
-            nvx *= k; nvy *= k
+        val minSpeed = p.maxSpeed * p.minSpeedFraction
+        if (s > p.maxSpeed) {
+            nvx = nvx / s * p.maxSpeed; nvy = nvy / s * p.maxSpeed
+        } else if (s < minSpeed && s > 1e-9) {
+            // Speed floor: magnitude only, heading untouched. See BoidParams.minSpeedFraction.
+            nvx = nvx / s * minSpeed; nvy = nvy / s * minSpeed
         }
         vx[i] = nvx.toFloat()
         vy[i] = nvy.toFloat()
@@ -319,6 +333,16 @@ fun BoidFlock.toImg(scale: Double = 1.0, tail: Double = 3.0): Img {
  * @property deposit how much trail it leaves per step
  * @property decay fraction of the trail that survives each step (`0.9` = 10 % evaporates)
  * @property blurRadius box-blur radius applied to the trail each step, which is the diffusion term
+ * @property exclusive Jones' one-agent-per-cell rule: an agent may only move into a cell no other
+ *   agent occupies, and otherwise stays put and picks a new random heading.
+ *
+ *   **This single flag is the difference between a network and a dot.** Without it there is nothing to
+ *   stop every agent within sensing range of the brightest trail from converging on it, and they do:
+ *   the first run of this family collapsed 6000 agents onto a 191-cell streak and measured a top-5%
+ *   deposit share of 1.000, which reads as "perfect concentration" and is in fact total failure.
+ *   Mutual exclusion makes the agent population *incompressible*, so a trail can only get so strong
+ *   before it has to widen or branch — and branching under a density limit is what a transport network
+ *   is. It is in Jones (2010) for this reason and is not an optimisation.
  * @property sensing when `false` the agent turns at random instead of following the trail — the
  *   control arm. Everything else is identical, so a difference in [Img.topShare] between the two runs
  *   is attributable to the sensing and to nothing else.
@@ -329,8 +353,9 @@ data class PhysarumParams(
     val turnAngle: Double = PI / 4.0,
     val stepSize: Double = 1.0,
     val deposit: Double = 5.0,
-    val decay: Double = 0.90,
+    val decay: Double = 0.92,
     val blurRadius: Int = 1,
+    val exclusive: Boolean = true,
     val sensing: Boolean = true
 ) {
     init {
@@ -432,6 +457,11 @@ class PhysarumSwarm(
  * the *previous* step left. The trail is diffused and decayed once per step, after all agents have
  * moved — a per-agent decay would make the result depend on agent ordering.
  *
+ * With [PhysarumParams.exclusive] on (the default) a move is refused when another agent already holds
+ * the target cell, and the refused agent takes a new random heading instead. Read
+ * [PhysarumParams.exclusive] before turning it off: it is what stops the whole population collapsing
+ * into a single point.
+ *
  * Returns a **new** swarm whose trail is the blurred, decayed successor field. The agent arrays are the
  * same objects, mutated in place — the population is a simulation, not a value, and copying it per step
  * would be most of the cost of a long run.
@@ -446,6 +476,15 @@ fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random): PhysarumSw
         val ix = Math.floorMod(px.roundToInt(), w)
         val iy = Math.floorMod(py.roundToInt(), h)
         return t.data[iy * w + ix]
+    }
+    // Occupancy for the exclusion rule: one agent per cell. Seeded from where the agents are now, so an
+    // agent vacating a cell frees it for a later agent in the same sweep — which is Jones' formulation
+    // and also the only version that does not depend on iteration order for whether anyone can move at
+    // all.
+    val occupied = if (!p.exclusive) null else BooleanArray(w * h).also { occ ->
+        for (i in 0 until count) {
+            occ[Math.floorMod(y[i].roundToInt(), h) * w + Math.floorMod(x[i].roundToInt(), w)] = true
+        }
     }
     for (i in 0 until count) {
         val a = heading[i].toDouble()
@@ -471,8 +510,23 @@ fun PhysarumSwarm.step(p: PhysarumParams, rng: kotlin.random.Random): PhysarumSw
             heading[i] = (a + (rng.nextDouble() - 0.5) * 2.0 * p.turnAngle).toFloat()
         }
         val na = heading[i].toDouble()
-        x[i] = wrapTo(x[i] + cos(na) * p.stepSize, w.toDouble()).toFloat()
-        y[i] = wrapTo(y[i] + sin(na) * p.stepSize, h.toDouble()).toFloat()
+        val tx = wrapTo(x[i] + cos(na) * p.stepSize, w.toDouble())
+        val ty = wrapTo(y[i] + sin(na) * p.stepSize, h.toDouble())
+        if (occupied == null) {
+            x[i] = tx.toFloat(); y[i] = ty.toFloat()
+        } else {
+            val fromCell = Math.floorMod(y[i].roundToInt(), h) * w + Math.floorMod(x[i].roundToInt(), w)
+            val toCell = Math.floorMod(ty.roundToInt(), h) * w + Math.floorMod(tx.roundToInt(), w)
+            if (toCell == fromCell || !occupied[toCell]) {
+                occupied[fromCell] = false
+                occupied[toCell] = true
+                x[i] = tx.toFloat(); y[i] = ty.toFloat()
+            } else {
+                // Blocked: stay, and take a new random heading. Jones' rule, and the whole reason the
+                // population cannot collapse onto one bright cell.
+                heading[i] = (rng.nextDouble() * 2.0 * PI).toFloat()
+            }
+        }
     }
     // Deposit after moving, so nothing senses its own current step.
     val dep = p.deposit.toFloat()
