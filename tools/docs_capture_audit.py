@@ -69,9 +69,12 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 PUBLIC_DIR = REPO_ROOT / "public"
 DOCS_DIR = PUBLIC_DIR / "docs"
 
-# The measured noise floor, straight from dev_docs/docs_capture_staleness.md: run-to-run
-# text/antialiasing jitter is ~0.005-0.01% of pixels at a maximum channel delta of <=19.
-DEFAULT_JITTER_PX_PCT = 0.02
+# The measured noise floor, from dev_docs/docs_capture_staleness.md: run-to-run text/antialiasing
+# jitter is ~0.005-0.01% of pixels at a maximum channel delta of <=19, and Delta19 was the ceiling
+# across all 121 captures. Max channel delta is therefore the discriminator (see Delta.within);
+# the pixel percentage is only a generous upper AREA guard so a whole-image low-magnitude tint
+# shift cannot pass as jitter.
+DEFAULT_JITTER_PX_PCT = 1.0
 DEFAULT_JITTER_DELTA = 19
 # The lower edge of the band where the same doc saw genuine re-renders. Only used to label a
 # delta in the report ("grey zone" between the noise floor and a confident re-render).
@@ -120,12 +123,30 @@ class Delta:
         return self.kind
 
     def within(self, *, px_pct: float, max_delta: int) -> bool:
-        """True when this delta is inside the measured jitter band (i.e. not evidence of anything)."""
+        """True when this delta is inside the measured jitter band (i.e. not evidence of anything).
+
+        The discriminating quantity is the **maximum channel delta**, not the changed-pixel count.
+        Antialiasing/glyph jitter is many *low-magnitude* deltas over a tiny area: measured over 121
+        captures it never exceeded Δ19. A high-Δ difference over a tiny area is the opposite thing —
+        a label or a curve genuinely drawing differently — and must not be excused just because it
+        is small. `px_pct` is therefore only an upper *area* guard, generously above the measured
+        0.005–0.01%, to stop a whole-image low-magnitude tint shift passing as jitter.
+        """
         if self.kind == "identical":
             return True
         if self.kind != "pixel":
             return False
-        return self.changed_px_pct <= px_pct and self.max_delta <= max_delta
+        return self.max_delta <= max_delta and self.changed_px_pct <= px_pct
+
+    def severity(self) -> float:
+        """A single ordering scalar, used only to pick the run that best matches the committed asset."""
+        if self.kind == "identical":
+            return 0.0
+        if self.kind == "pixel":
+            return self.changed_px_pct * max(1, self.max_delta)
+        if self.kind == "text":
+            return float(self.text_lines_changed) or 1.0
+        return float("inf")
 
 
 def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str) -> Delta:
@@ -197,46 +218,82 @@ VERDICT_ORDER = (
     "nondeterministic",
     "nondeterministic-size",
     "nondeterministic-binary",
+    "unstable",
     "jitter",
     "identical",
     "new",
 )
+# A capture can be BOTH stale and a little nondeterministic: with EMAFilter perturbed,
+# timeseries_examples/filter_chains.png moved 1.06% of pixels against the committed asset while
+# moving only 0.24% between the two audit runs. A flat "unstable ⇒ nondeterministic" rule buries
+# exactly the case this tool exists to find. So drift is called stale when it is this many times
+# larger than the run-to-run instability.
+STALE_OVER_JITTER_RATIO = 3.0
 
 
-def classify(*, vs_head: Delta, self_delta: Delta | None, px_pct: float, max_delta: int) -> tuple[str, str]:
-    """Return (verdict, why). `self_delta` is run1-vs-run2 and is None with --repeat 1."""
+def classify(
+    *,
+    vs_head: Delta,
+    other_vs_head: Delta | None,
+    self_delta: Delta | None,
+    px_pct: float,
+    max_delta: int,
+) -> tuple[str, str]:
+    """Return (verdict, why).
+
+    `vs_head` is run 1 against the committed asset, `other_vs_head` run 2 against it, and
+    `self_delta` run 1 against run 2 — the last two are None with `--repeat 1`. The drift estimate is
+    whichever run agrees *best* with the committed asset: if any faithful re-derivation reproduces
+    what is published, the published figure is not stale.
+    """
     if vs_head.kind == "missing":
         return "new", "asset is not committed at HEAD"
-    if vs_head.kind == "identical":
-        return "identical", "byte-identical to the committed asset"
-    if vs_head.within(px_pct=px_pct, max_delta=max_delta):
-        return "jitter", f"inside the measured noise band ({vs_head.summary()})"
-
+    candidates = [delta for delta in (vs_head, other_vs_head) if delta is not None and delta.kind != "missing"]
+    drift = min(candidates, key=lambda delta: delta.severity()) if candidates else vs_head
     unstable = self_delta is not None and not self_delta.within(px_pct=px_pct, max_delta=max_delta)
-    if vs_head.kind == "size":
+
+    if drift.kind == "identical":
         if unstable:
+            return "unstable", f"matches the committed asset, but does not reproduce itself ({self_delta.summary()})"
+        return "identical", "byte-identical to the committed asset"
+    if drift.within(px_pct=px_pct, max_delta=max_delta):
+        if unstable:
+            return "unstable", (
+                f"a run matched the committed asset within the noise band ({drift.summary()}), but the "
+                f"two runs disagree with each other ({self_delta.summary()})"
+            )
+        return "jitter", f"inside the measured noise band ({drift.summary()})"
+
+    if drift.kind == "size":
+        if unstable or (self_delta is not None and self_delta.kind == "size"):
             return "nondeterministic-size", f"height/width unstable run to run ({self_delta.summary()})"
-        return "stale-size", f"dimensions moved and are stable run to run ({vs_head.summary()})"
-    if vs_head.kind == "binary":
+        return "stale-size", f"dimensions moved and are stable run to run ({drift.summary()})"
+    if drift.kind == "binary":
         if self_delta is None:
-            return "suspect", f"binary format, single run ({vs_head.summary()})"
+            return "suspect", f"binary format, single run ({drift.summary()})"
         if self_delta.kind != "identical":
             return "nondeterministic-binary", "re-encodes differently run to run"
         return "stale-binary", "two runs agree with each other and disagree with the committed asset"
-    if vs_head.kind == "text":
-        if unstable or (self_delta is not None and self_delta.kind != "identical"):
+    if drift.kind == "text":
+        if self_delta is not None and self_delta.kind != "identical":
             return "nondeterministic", f"text output unstable run to run ({self_delta.summary()})"
-        return "stale-text", f"deterministic text output moved ({vs_head.summary()})"
+        return "stale-text", f"deterministic text output moved ({drift.summary()})"
 
-    if unstable:
-        return (
-            "nondeterministic",
-            f"this capture does not reproduce itself (run1 vs run2: {self_delta.summary()})",
-        )
     if self_delta is None:
-        band = "above the noise band" if vs_head.changed_px_pct < DRIFT_PX_PCT else "a different render"
-        return "suspect", f"{band} on a single run ({vs_head.summary()}); re-run with --repeat 2 to confirm"
-    return "stale", f"reproducible re-render disagreeing with the committed asset ({vs_head.summary()})"
+        band = "above the noise band" if drift.changed_px_pct < DRIFT_PX_PCT else "a different render"
+        return "suspect", f"{band} on a single run ({drift.summary()}); re-run with --repeat 2 to confirm"
+    if not unstable:
+        return "stale", f"reproducible re-render disagreeing with the committed asset ({drift.summary()})"
+    if drift.changed_px_pct >= STALE_OVER_JITTER_RATIO * max(self_delta.changed_px_pct, 1e-9):
+        return "stale", (
+            f"drift ({drift.summary()}) is {drift.changed_px_pct / max(self_delta.changed_px_pct, 1e-9):.1f}x "
+            f"the run-to-run instability ({self_delta.summary()})"
+        )
+    return (
+        "nondeterministic",
+        f"this capture does not reproduce itself (run1 vs run2: {self_delta.summary()}, "
+        f"vs committed {drift.summary()})",
+    )
 
 
 # ── fence enumeration ───────────────────────────────────────────────────────────────────────────
@@ -346,6 +403,19 @@ def iter_fences(pages: Sequence[Path]) -> Iterator[Fence]:
             )
 
 
+def expected_assets_by_page(pages: Sequence[Path]) -> dict[str, list[str]]:
+    """page (docs-relative) -> the repo-relative asset paths its fences declare."""
+    expected: dict[str, list[str]] = {}
+    for fence in iter_fences(pages):
+        page_key = str(fence.page.relative_to(DOCS_DIR))
+        for output in fence.outputs:
+            try:
+                expected.setdefault(page_key, []).append(str(output.resolve().relative_to(REPO_ROOT)))
+            except ValueError:
+                continue
+    return expected
+
+
 def select_pages(filters: Sequence[str]) -> list[Path]:
     hooks = import_docs_hooks()
     sys.path.insert(0, str(REPO_ROOT / "tools"))
@@ -443,7 +513,7 @@ def build_command(pages: Sequence[str]) -> list[str]:
     return command
 
 
-def run_captures(*, pages: Sequence[str], port: int, run_dir: Path, index: int, echo: bool) -> RunResult:
+def run_captures(*, pages: Sequence[str], port: int, run_dir: Path, index: int, echo: bool, protected: Iterable[str] = ()) -> RunResult:
     log_path = run_dir / f"run{index}.log"
     command = build_command(pages)
     env = dict(os.environ)
@@ -483,7 +553,12 @@ def run_captures(*, pages: Sequence[str], port: int, run_dir: Path, index: int, 
                 print(f"    | {line.rstrip()}", flush=True)
         returncode = process.wait()
     seconds = time.monotonic() - started
+    # A pre-existing local edit (--allow-dirty) is not something this run produced, so it must not
+    # appear in the report as a rewritten asset.
+    protected_set = set(protected)
     modified, untracked = dirty_paths("public/docs")
+    modified = [path for path in modified if path not in protected_set]
+    untracked = [path for path in untracked if path not in protected_set]
     return RunResult(
         index=index,
         log_path=log_path,
@@ -524,6 +599,45 @@ def restore(result: RunResult, *, protected: Iterable[str]) -> None:
 # ── reporting ───────────────────────────────────────────────────────────────────────────────────
 
 
+def load_runs_from_dir(run_dir: Path) -> list[RunResult]:
+    """Rebuild the RunResults from a previous audit's stored outputs — no captures.
+
+    Lets a threshold or a classification rule be re-evaluated against real captured evidence in
+    milliseconds instead of another JVM run.
+    """
+    runs: list[RunResult] = []
+    for index in range(1, 10):
+        root = run_dir / f"run{index}"
+        if not root.is_dir():
+            break
+        log_path = run_dir / f"run{index}.log"
+        failures: dict[str, str] = {}
+        if log_path.is_file():
+            for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines():
+                match = FAILURE_RE.search(line)
+                if match:
+                    path = match.group("path").strip()
+                    try:
+                        failures[str(Path(path).resolve().relative_to(REPO_ROOT))] = line.strip()
+                    except ValueError:
+                        failures[path] = line.strip()
+        captured = {
+            str(path.relative_to(root)): path for path in sorted(root.rglob("*")) if path.is_file()
+        }
+        result = RunResult(
+            index=index,
+            log_path=log_path,
+            returncode=0,
+            modified=sorted(captured),
+            untracked=[],
+            failures=failures,
+            seconds=0.0,
+        )
+        result.captured = captured
+        runs.append(result)
+    return runs
+
+
 def build_report(
     *,
     runs: list[RunResult],
@@ -545,6 +659,7 @@ def build_report(
         regenerated_path = primary.captured.get(relative)
         regenerated = regenerated_path.read_bytes() if regenerated_path else None
 
+        other_vs_head: Delta | None = None
         if regenerated is None:
             # Not rewritten by the run. Either the capture is byte-stable, or it never ran.
             if failed:
@@ -563,11 +678,20 @@ def build_report(
             if second is not None:
                 other = second.captured.get(relative)
                 if other is not None:
-                    self_delta = compare_bytes(regenerated, other.read_bytes(), suffix=suffix)
+                    other_bytes = other.read_bytes()
+                    self_delta = compare_bytes(regenerated, other_bytes, suffix=suffix)
+                    other_vs_head = compare_bytes(committed, other_bytes, suffix=suffix)
                 elif committed is not None:
-                    # Run 2 did not rewrite it, so run 2's output == the committed asset.
+                    # Run 2 did not rewrite it, so run 2's output IS the committed asset byte for byte.
                     self_delta = compare_bytes(regenerated, committed, suffix=suffix)
-            verdict, why = classify(vs_head=vs_head, self_delta=self_delta, px_pct=px_pct, max_delta=max_delta)
+                    other_vs_head = Delta("identical", old_bytes=len(committed), new_bytes=len(committed))
+            verdict, why = classify(
+                vs_head=vs_head,
+                other_vs_head=other_vs_head,
+                self_delta=self_delta,
+                px_pct=px_pct,
+                max_delta=max_delta,
+            )
             if failed:
                 verdict, why = "unknown-failed", f"capture failed ({failed[:160]})"
 
@@ -578,6 +702,7 @@ def build_report(
                 "verdict": verdict,
                 "why": why,
                 "vsHead": vs_head.__dict__,
+                "run2VsHead": other_vs_head.__dict__ if other_vs_head else None,
                 "selfDelta": self_delta.__dict__ if self_delta else None,
                 "regeneratedCopy": str(regenerated_path) if regenerated_path else None,
             }
@@ -764,6 +889,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--touched", action="append", default=[], metavar="PATH", help="With --plan: report how many fences touching this source file invalidates.")
     parser.add_argument("--mode", default="direct", choices=("direct", "stdlib", "off"), help="With --plan: which per-fence source coverage mode to model (FIELD_DOCS_SOURCE_REFS).")
     parser.add_argument("--list-pages", action="store_true", help="No capture: list pages that carry runner fences.")
+    parser.add_argument("--reclassify", default="", metavar="RUNDIR", help="No capture: re-classify a previous run directory's stored outputs (for tuning thresholds).")
     return parser.parse_args(argv)
 
 
@@ -777,6 +903,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_inventory(args.page)
     if args.plan:
         return run_plan(args.page, touched=args.touched, mode=args.mode)
+    if args.reclassify:
+        run_dir = Path(args.reclassify).resolve()
+        runs = load_runs_from_dir(run_dir)
+        if not runs:
+            print(f"no stored run outputs under {run_dir}", file=sys.stderr)
+            return 2
+        expected = expected_assets_by_page(pages_with_fences(args.page))
+        report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta)
+        print_report(report, limit=args.limit)
+        return 0
 
     pre_modified, pre_untracked = dirty_paths("public/docs")
     protected = set(pre_modified) | set(pre_untracked)
@@ -791,14 +927,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("no docs pages with runner fences matched the filter", file=sys.stderr)
         return 2
     page_filters = [str(page.relative_to(DOCS_DIR)) for page in pages]
-    expected: dict[str, list[str]] = {}
-    for fence in iter_fences(pages):
-        page_key = str(fence.page.relative_to(DOCS_DIR))
-        for output in fence.outputs:
-            try:
-                expected.setdefault(page_key, []).append(str(output.resolve().relative_to(REPO_ROOT)))
-            except ValueError:
-                continue
+    expected = expected_assets_by_page(pages)
 
     run_dir = Path(args.run_dir).resolve() if args.run_dir else REPO_ROOT / ".field-backdoor" / "docs-audit" / time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -807,7 +936,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     runs: list[RunResult] = []
     try:
         for index in range(1, max(1, args.repeat) + 1):
-            result = run_captures(pages=page_filters, port=args.port, run_dir=run_dir, index=index, echo=False)
+            result = run_captures(pages=page_filters, port=args.port, run_dir=run_dir, index=index, echo=False, protected=protected)
             stash_run_outputs(result, run_dir)
             runs.append(result)
             print(f"[audit] run {index} finished in {result.seconds:.0f}s: exit {result.returncode}, rewrote {len(result.modified) + len(result.untracked)}, {len(result.failures)} failure(s)")
