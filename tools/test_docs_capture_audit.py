@@ -18,6 +18,7 @@ from tools.docs_capture_audit import (
     Delta,
     classify,
     compare_images,
+    failing_exit_code,
     fold_runs,
 )
 
@@ -247,6 +248,24 @@ class ThreeRunFoldTests(unittest.TestCase):
         self.assertIsNone(runner_up)
         self.assertIsNone(worst)
         self.assertEqual(self.fold_verdict([pixel(2.2, 249)], []), "suspect")
+
+
+class ExitCodeTests(unittest.TestCase):
+    """The gate. Found by driving the tool at its edges rather than by reading it."""
+
+    def test_a_capture_that_could_not_be_measured_fails_the_gate(self) -> None:
+        # unknown-failed means the capture failed and the committed asset is untouched: the run
+        # learned nothing. Exit 0 there is the tool answering "still true?" without having looked.
+        self.assertEqual(failing_exit_code({"counts": {"unknown-failed": 1, "jitter": 4}}), 1)
+
+    def test_stale_and_suspect_fail_the_gate(self) -> None:
+        for verdict in ("stale", "stale-size", "stale-text", "stale-binary", "suspect"):
+            self.assertEqual(failing_exit_code({"counts": {verdict: 1}}), 1, verdict)
+
+    def test_clean_verdicts_pass(self) -> None:
+        for verdict in ("identical", "jitter", "unstable", "nondeterministic",
+                        "nondeterministic-size", "nondeterministic-binary", "new"):
+            self.assertEqual(failing_exit_code({"counts": {verdict: 3}}), 0, verdict)
 
 
 if __name__ == "__main__":

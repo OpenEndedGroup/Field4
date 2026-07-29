@@ -1034,6 +1034,25 @@ def adopt_stale(report: dict[str, Any]) -> int:
     return adopted
 
 
+FAILING_VERDICTS = ("stale", "suspect", "unknown-failed")
+
+
+def failing_exit_code(report: dict[str, Any]) -> int:
+    """1 if anything is stale, unconfirmed, or **could not be measured**, else 0.
+
+    `unknown-failed` counts. A capture that failed leaves the committed asset untouched, so the run
+    learned nothing about it — and a tool that answers "is this figure still true?" with exit 0 when
+    it could not look is worse than one that says no. `--reclassify` used to return 0
+    unconditionally, which quietly made `--reclassify --adopt` ungateable in CI.
+    """
+    counts = report["counts"]
+    failing = sum(
+        count for verdict, count in counts.items()
+        if verdict.startswith("stale") or verdict in FAILING_VERDICTS
+    )
+    return 1 if failing else 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     if args.list_pages:
@@ -1065,7 +1084,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_report(report, limit=args.limit)
         if args.adopt:
             adopt_stale(report)
-        return 0
+        return failing_exit_code(report)
 
     pre_modified, pre_untracked = dirty_paths("public/docs")
     protected = set(pre_modified) | set(pre_untracked)
@@ -1109,8 +1128,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.adopt:
         adopt_stale(report)
-    stale = sum(count for verdict, count in report["counts"].items() if verdict.startswith("stale") or verdict == "suspect")
-    return 1 if stale else 0
+    return failing_exit_code(report)
 
 
 if __name__ == "__main__":

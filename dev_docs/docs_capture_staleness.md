@@ -306,7 +306,14 @@ with no effect — a full extra capture pass that could not change a verdict, on
 height case it was recommended for. Every entry now also carries `runsVsHead`, the whole spread,
 rather than only the two numbers a verdict was taken from.
 
-Exit code is 1 when anything is `stale*` or `suspect`, so it can gate. `--jitter-px-pct` /
+Exit code is 1 when anything is `stale*`, `suspect`, **or `unknown-failed`** — a capture that failed
+left the committed asset untouched, so the run learned nothing about it, and exit 0 there is the tool
+answering "is this still true?" without having looked. `--reclassify` used to `return 0`
+unconditionally, which quietly made `--reclassify --adopt` ungateable; both paths now share
+`failing_exit_code`. (Found by an adversarial pass over the tool's own edges — empty run directory,
+page filter matching nothing, `--touched` on a file no fence names, a run directory holding an
+uncommitted asset, and a synthesised capture-failure log. The first four behaved; the fifth is what
+exposed the exit code.) `--jitter-px-pct` /
 `--jitter-max-delta` move the band; `--keep` leaves the regenerated tree in place
 (**and then it is yours to `git checkout --`**);
 `--reclassify <rundir>` re-runs the classification against a previous audit's stored captures with
