@@ -2,7 +2,10 @@
 
 `afield.stdlib`'s `alife*.kt` family: grid cellular automata, reaction–diffusion, Lenia, agent
 populations and L-systems. Public worked example: [`public/docs/alife_examples.md`](../public/docs/alife_examples.md).
-Verification harness: `afield.examples.stdlib.AlifeGallery` (FIELD_TEST `stdlib.alife.gallery`).
+Verification harness: `afield.examples.stdlib.AlifeGallery`, in two tiers — FIELD_TEST
+`stdlib.alife.gallery` (`--tier fast`, ~2.7 s, tagged `smoke`, and therefore what a routine
+`--tag smoke` run pays for) and `stdlib.alife.gallery.slow` (`--tier slow`, ~25 s, deliberately *not*
+tagged `smoke`, so it runs in an unfiltered catalog pass and on demand).
 Loadable demo: `dev_docs/agents/transcripts/alife_worked_example.yaml`.
 
 ## Why this exists, and what it is built on
@@ -59,10 +62,41 @@ at all — it is the statistics the rest of the family makes its claims through:
 - **`translationBetween`** — the *strong* form of "the pattern moved": not "the centroid drifted about
   one cell" but "every live cell moved by the same integer offset and nothing else changed".
 
+### The estimators are pinned against closed forms, not against a disc
+
+`figureCalibration` measures a synthetic disc and a thin annulus. That is one easy point of one curve,
+and it is not enough: two of these statistics were *wrong* in the first version of this family and were
+caught only because a control arm happened to disagree. So `figureMeasurement` (fast tier, runs first)
+checks them against inputs whose answers are known analytically. Every number below is asserted.
+
+| input | closed form | measured |
+|---|---|---|
+| uncorrelated noise, `ac(1..6)` | 0, within the `1/sqrt(N)` sampling band | `|ac| <= 0.0032`, band `0.0156` |
+| uncorrelated noise, `correlationLength` | exactly `(1 − 1/e)/(1 − ac(1))` | `0.630106` vs `0.630106`, to `1e-9` |
+| the same field, bilinear `ac(1)` | a *positive bias*, outside the band | `0.0417`, 2.7× outside |
+| checkerboard `ac(1)` | exactly `−1/3` (8 of 24 directions round to a diagonal, 16 to an axis) | `−0.333333` |
+| checkerboard `correlationLength` | exactly `(1 − 1/e)/(4/3)` | `0.474090` vs `0.474090` |
+| stripes at `λ = 12, 24, 48` | `length ∝ λ` | `length/λ` = `0.2655, 0.2749, 0.2774` (2.6 % spread) |
+| points at radii `R·(i/n)^(1/D)` | `massRadiusDimension` = `D` | `1.000, 1.262, 1.711, 2.002` for `D = 1.00, 1.2619, 1.71, 2.00` |
+| a lattice line | `D = 1` | `0.993` — `N(r) = 2⌊r⌋+1` is a staircase |
+
+Two things follow that no amount of control-arm design gives you.
+
+**The floor of `correlationLength` is 0.632, not 0.** For a field with no correlation, the estimator
+interpolates between `ac(0) = 1` and `ac(1) ≈ 0` and lands on `1 − 1/e`. Every "a structureless field
+reads low" claim in this family is now stated against that floor rather than against a chosen constant.
+
+**`massRadiusDimension` is unbiased at 1.71.** Handed a point set whose exponent is exactly 1.71 it
+returns 1.711. So the DLA figure's 1.617 is a fact about the cluster and not the estimator reading low —
+which the first pass asserted but did not check. The lattice costs about 0.7 % (the line reads 0.993 and
+the calibrated disc 1.986, the same bias in both directions), so the continuum reading of that cluster
+is ~1.63: still clearly under 1.71, and the "between 1.5 and 1.8, clearly not 2" framing survives.
+
 ### Three calibration/robustness lessons that are easy to undo
 
 These are all things a control arm caught during the initial build. Each is now pinned by an assertion
-in `AlifeGallery`, and each is a trap you would otherwise fall into again.
+in `AlifeGallery`, and each is a trap you would otherwise fall into again. All three fixes have since
+been confirmed *correct* rather than merely non-failing, by the oracle table above.
 
 1. **`radialAutocorrelation` must not interpolate.** Bilinear sampling at a non-integer offset averages
    four neighbours, *one of which can be the centre pixel*, so it manufactures correlation out of
@@ -232,7 +266,14 @@ dimension quoted without at least one of them is not evidence.
 
 Note the honest framing in the gallery: the measured 1.62 is below the 1.71 asymptote because lattice
 clusters of this size are known to read low, so the assertion is "between 1.5 and 1.8 and clearly not 2"
-rather than a claimed match.
+rather than a claimed match. That "lattice clusters read low" is no longer an appeal to the literature:
+`figureMeasurement` shows the estimator returns 1.711 for a synthetic set whose exponent is 1.71, and
+that a lattice line and a lattice disc both read 0.7 % under their exact answers. So ~0.7 % of the gap is
+the lattice and the remaining ~5 % is the cluster's finite size.
+
+The Eden and sprinkle arms are compared with *each other*, not with a `> 1.85` constant: two compact
+objects built by different code must measure the same dimension (they agree to 0.046) and DLA must sit
+well below both (it sits 0.29 and 0.34 below). That is a three-way statement no single threshold makes.
 
 ### L-systems
 
@@ -249,11 +290,19 @@ coordinate storage, not the maths.
 ## Running the verification
 
 ```bash
-# the whole gallery: 14 figures, ~30 s, renders to a temp dir and writes no committed assets
+# the fast tier: 9 figures, ~2.7 s, every claim an exact identity or a closed-form comparison
 python3 tools/run_field_tests.py --id stdlib.alife.gallery --port 952x --no-reap
 
-# one figure while iterating (development only; CI runs unfiltered)
-ALIFE_GALLERY_ONLY=lenia,turing python3 tools/run_field_tests.py --id stdlib.alife.gallery --port 952x
+# the slow tier: 7 figures, ~25 s, the statistical verdicts
+python3 tools/run_field_tests.py --id stdlib.alife.gallery.slow --port 952x --no-reap
+
+# both, plus every other smoke in the catalog
+python3 tools/run_field_tests.py --port 952x --no-reap
+
+# one figure while iterating (development only). Stage names are in AlifeGallery.STAGES;
+# ALIFE_GALLERY_TIER=all is the default when the entrypoint is run without --tier.
+ALIFE_GALLERY_ONLY=lenia,turing ALIFE_GALLERY_TIER=all \
+  python3 tools/run_field_tests.py --id stdlib.alife.gallery.slow --port 952x
 
 # render the figures somewhere that survives, and LOOK at them
 ALIFE_GALLERY_DIR=/tmp/alife python3 tools/run_field_tests.py --id stdlib.alife.gallery --port 952x
@@ -264,11 +313,17 @@ DEMO_TRANSCRIPT_ONLY=alife_worked_example AFIELD_DEMO_TRANSCRIPT_VERBOSE=alife_w
 ```
 
 `AlifeGallery` writes to a temp dir by default (the "tests: no committed writes" invariant) and to
-`args[0]` or `$ALIFE_GALLERY_DIR` when told to. **Rendering the figures is not verification — looking
-at them is.** Two rendering lies were caught only by looking: a saturated Lenia field is constant at 1,
-so an auto-ranged colour map drew it *black* and indistinguishable from death (the panels now use a
-fixed `0..1` range); and the mitosis filmstrip sampled every 300 steps showed five identical frames of
-the aftermath rather than the division.
+`--out DIR` / a bare first argument / `$ALIFE_GALLERY_DIR` when told to. **Rendering the figures is not
+verification — looking at them is.** Two rendering lies were caught only by looking: a saturated Lenia
+field is constant at 1, so an auto-ranged colour map drew it *black* and indistinguishable from death
+(the panels now use a fixed `0..1` range); and the mitosis filmstrip sampled every 300 steps showed five
+identical frames of the aftermath rather than the division.
+
+And one caveat about *how* to look, learned the hard way on the oracle figure: **decode the PNG and
+sample its pixels**, do not judge a preview. A downscaled preview of the checkerboard panel showed an
+obvious moiré and prompted a "fix"; the file itself had exactly two grey values, 0 and 255, in clean
+10-pixel blocks. `montage` never upscales (`min(1.0, …)`), so an undersized panel is centred rather than
+stretched and cannot alias. The moiré was in the viewer.
 
 ## Regenerating the docs
 

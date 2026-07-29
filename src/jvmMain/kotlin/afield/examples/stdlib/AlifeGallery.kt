@@ -511,10 +511,83 @@ object AlifeGallery {
             "life: the toad's detected period is 2 (found by exact state hashing, not by population)"
         )
 
+        // --- the interior fast path against an independent brute-force stepper ---
+        // `IntGrid.step` has a no-bounds-check interior loop and sends the border rows/columns through
+        // `mooreCount`. That split is the highest-risk line of new code in this family — every Life claim
+        // above runs through it, including the exact 319/821 and 116/1103 figures — and the first pass
+        // flagged it as "the kind of thing that could be subtly wrong for a 1- or 2-cell grid" without
+        // checking. So: every size from 1x1 to 8x8, both border modes, three rules, and soups carrying up
+        // to 4 states, against a reference stepper written here from scratch.
+        //
+        // It found a real divergence on the FIRST run: the interior counted neighbours `!= 0` while the
+        // borders counted `== 1`, so a grid holding any state above 1 was stepped by two different
+        // automata in one call, an interior one and a border one. Nothing in the family produces such a
+        // grid — every Life board here is binary — but `IntGrid.random(w, h, states = 14).step(LIFE)` is a
+        // legal call, and "the answer depends on whether the cell is near an edge" is not a defensible
+        // one. Both now test `== 1`.
+        var diffChecked = 0
+        var worstMismatch: String? = null
+        for (rule in listOf(LIFE, lifeRule("B36/S23"), lifeRule("B3/S12345"))) {
+            for (wrap in listOf(true, false)) {
+                for (side in 1..8) {
+                    for (states in listOf(2, 4)) {
+                        val g = IntGrid.random(side, side, states = states, seed = 5000L + side * 31L + states)
+                            .let { IntGrid(it.width, it.height, it.cells.copyOf(), wrap = wrap) }
+                        val fast = g.step(rule)
+                        val naive = naiveLifeStep(g, rule)
+                        diffChecked++
+                        for (k in fast.cells.indices) {
+                            if (fast.cells[k] != naive.cells[k]) {
+                                if (worstMismatch == null) {
+                                    worstMismatch = "${rule.notation} ${side}x$side wrap=$wrap states=$states " +
+                                        "cell (${k % side}, ${k / side}): step=${fast.cells[k]} " +
+                                        "reference=${naive.cells[k]}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        check(
+            worstMismatch == null,
+            "life: the interior fast path agrees cell-for-cell with an independent brute-force stepper " +
+                "over all $diffChecked (rule x border x size 1..8 x states) combinations — so the " +
+                "no-bounds-check interior loop and the mooreCount border rows compute the SAME automaton, " +
+                "including at the 3x3 size where the fast path turns on" +
+                (worstMismatch?.let { " (first mismatch: $it)" } ?: "")
+        )
+
         val strip = afield.stdlib.LifePatterns.glider.centeredOn(16, 16).let { g ->
             (0..4).map { "gen $it" to g.stepTimes(LIFE, it).toImg(2).upscaleNearest(14) }
         }
         montage(strip, columns = 5, cellSide = 240).savePng(File(outDir, "alife-life-glider.png").absolutePath)
+    }
+
+    /**
+     * A deliberately slow, obvious `B/S` stepper, written here rather than reused from `alife_ca.kt`, so
+     * that [figureLife]'s fast-path check is a comparison between two pieces of code rather than a
+     * function agreeing with itself. Indexes explicitly and resolves the border by hand.
+     */
+    private fun naiveLifeStep(g: IntGrid, rule: afield.stdlib.LifeRule): IntGrid {
+        val out = IntArray(g.width * g.height)
+        for (y in 0 until g.height) for (x in 0 until g.width) {
+            var n = 0
+            for (dy in -1..1) for (dx in -1..1) {
+                if (dx == 0 && dy == 0) continue
+                var nx = x + dx
+                var ny = y + dy
+                if (g.wrap) {
+                    nx = Math.floorMod(nx, g.width)
+                    ny = Math.floorMod(ny, g.height)
+                } else if (nx < 0 || ny < 0 || nx >= g.width || ny >= g.height) {
+                    continue
+                }
+                if (g.cells[ny * g.width + nx] == 1) n++
+            }
+            out[y * g.width + x] = rule.next(g.cells[y * g.width + x], n)
+        }
+        return IntGrid(g.width, g.height, out, wrap = g.wrap)
     }
 
     /**
@@ -1350,9 +1423,31 @@ object AlifeGallery {
      */
     private fun figureDla(outDir: File) {
         val side = 340
-        val dla = dlaCluster(side, side, particles = 9000, seed = 2L)
-        println("[alife-gallery]     $dla")
+        val requested = 9000
+        val dla = dlaCluster(side, side, particles = requested, seed = 2L)
+        println("[alife-gallery]     $dla (requested $requested particles)")
+        // The cluster stops when it reaches the domain edge, so it holds 3277 of the 9000 particles
+        // asked for. That is documented behaviour and it is fine — but it was NOT checked, and "asked for
+        // 9000, silently got 36 %" has two failure modes hiding behind it that a dimension of 1.6 would
+        // not reveal: the walk budget could have been exhausted instead (a much smaller, much noisier
+        // cluster), and the fit range could be sitting on the wall. Both are now assertions, in the same
+        // "checked rather than assumed" spirit as the R-pentomino's clearance test.
+        val domainRadius = side / 2.0 - 2.0
+        check(
+            dla.points.size < requested && dla.maxRadius > domainRadius - 12.0,
+            "dla: the cluster stopped at ${dla.points.size} of $requested requested particles because it " +
+                "reached the domain edge — its outer radius ${f(dla.maxRadius, 1)} is within " +
+                "${f(domainRadius - dla.maxRadius, 1)} cells of the ${f(domainRadius, 1)} the field " +
+                "allows. A cluster that ran out of WALK BUDGET instead would be small and noisy and would " +
+                "stop far short of this, and dlaCluster reports neither case as an error"
+        )
         val fit = dla.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
+        check(
+            dla.maxRadius * 0.75 < domainRadius * 0.85,
+            "dla: and the fitted range stops at r = ${f(dla.maxRadius * 0.75, 1)}, well inside the " +
+                "${f(domainRadius, 1)} where walkers are killed — so the slope is measured on the part of " +
+                "the cluster the finite domain did not shape"
+        )
         println("[alife-gallery]     DLA dimension ${f(fit.dimension, 3)} (r²=${f(fit.rSquared, 4)})")
         check(
             fit.rSquared > 0.99,

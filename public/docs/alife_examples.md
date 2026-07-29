@@ -219,6 +219,15 @@ radius two), which curls into visible spiral cores. That is a different *phase*,
 reported as a length scale rather than left to the eye — though note the direction: the wider
 neighbourhood gives the **smaller** correlation length, because the spiral arms are narrow.
 
+!!! note "This statistic's floor is 0.632, not 0"
+    [`correlationLength`](reference/alife.md#alife-kt) is the lag at which the direction-averaged
+    autocorrelation first falls to `1/e`, linearly interpolated. For a field with *no* correlation at all
+    the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632` —
+    a floor, reached from below by nothing. Both settled fields here are compared with their own pixels
+    shuffled, which lands on that floor to six decimal places (2.80 against 0.634, and 2.01 against
+    0.633), rather than with a chosen constant. A checkerboard — the shortest wavelength a lattice holds —
+    reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // A cyclic cellular automaton: a cell in state s advances to s+1 as soon as any neighbour is
@@ -348,10 +357,20 @@ available. With a uniform Moore ring kernel, `dt = 1`, and a **three-valued** st
 on the birth counts, `0` on survive-only counts, `-1` elsewhere), Lenia reduces exactly to an
 outer-totalistic `B/S` rule: `G = +1` forces a cell alive from either state, `G = 0` leaves it as it
 was, `G = -1` forces it dead. So this file's sparse float convolution and `alife_ca.kt`'s integer
-neighbour counting — two separately written steppers — must agree **bit for bit**.
+neighbour counting must agree **bit for bit**.
 [`leniaFromLifeRule`](reference/alife.md#alife-continuous-kt) builds that limit, and the worst per-cell
 difference over 20 generations of a glider is `0.0`. Moving the growth window one neighbour count
 diverges completely.
+
+Be precise about what that proves, because an earlier draft of this page was not: it called the two
+"separately written steppers", and they are not independent implementations of Conway's Life.
+`leniaFromLifeRule` reads the very same `B3/S23` birth and survive sets that the integer stepper reads,
+so a wrong table would produce two wrong steppers in perfect agreement. What the bit-for-bit result
+cross-validates is the two **update mechanisms** — a float convolution, an additive `A + dt·G` step, the
+quantisation back to a neighbour count, the clamp to `0..1`, the toroidal border and the `Img`↔`IntGrid`
+bridges, against integer neighbour counting and a table lookup. The *rule* is pinned separately, and from
+outside this codebase, by the named-object checks above: a glider that translates by exactly `(1, 1)` in
+four generations, a block that does not move, a blinker of period 2.
 
 There is one real restriction, and it is a fact rather than a limitation: this needs `birth ⊆ survive`.
 If a count births a dead cell but does not sustain a live one, no function of the neighbour count alone
@@ -561,6 +580,14 @@ it is not simply reading the bounded support.
     1.597 is below 1.71, and it is honest to say why rather than to round toward the literature: lattice
     DLA clusters of this size are known to read low, and the asymptote needs far larger clusters. The
     assertion in CI is therefore "clearly between 1.5 and 1.8, and clearly not 2".
+
+    "The cluster reads low" and "the estimator reads low" are different claims, and the second one is
+    checkable, so it is checked rather than assumed. A point set placed at radii `R·(i/n)^(1/D)` has
+    `N(r) = n·(r/R)^D` **by construction** for any real `D`, and `massRadiusDimension` recovers
+    `1.000, 1.262, 1.711, 2.002` from sets built with `D = 1.00, 1.2619, 1.71, 2.00`. Handed something
+    whose exponent *is* 1.71 it returns 1.71. Separately, a straight line of lattice points reads 0.993
+    and a filled lattice disc 1.986 — the same 0.7 % low, because a staircase `N(r)` is not a power law.
+    So about 0.7 % of the gap is the lattice and the rest is the cluster's finite size.
 
     A related trap, also caught by a control: fitting from where `N(r)` is three points measured a
     *uniform disc* at dimension **2.32**, which is not a possible answer. `massRadiusDimension`'s

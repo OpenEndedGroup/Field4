@@ -594,7 +594,17 @@ class Aggregate(
  * cluster radius rather than at the domain edge, and a walker that wanders past a kill radius is
  * abandoned and relaunched rather than followed home.
  *
- * @param particles how many to try to attach
+ * **[particles] is a ceiling, not a promise, and neither shortfall is reported as an error.** Growth
+ * stops early when the cluster reaches the domain edge (it cannot grow further, and spinning would be
+ * worse), when [maxWalkSteps] is exhausted, or when 64 consecutive launches fail to attach. A 340x340
+ * field asked for 9000 particles returns **3277** — 36 % — because a cluster of this dimension fills a
+ * 340-wide box at about that count. So read `Aggregate.points.size` for the truth; and if the difference
+ * matters, compare [Aggregate.maxRadius] against `min(width, height)/2 - 2` (reached the edge, the
+ * healthy case) and [Aggregate.walkSteps] against [maxWalkSteps] (ran out of budget, which leaves a small
+ * noisy cluster whose fitted dimension means much less). `AlifeGallery`'s DLA figure asserts both, because
+ * a 1.6 reading looks equally plausible either way.
+ *
+ * @param particles the *maximum* number to attach; see above
  * @param stickiness probability a walker adjacent to the cluster actually sticks; below 1 the cluster
  *   is denser and less branched, which is the standard way DLA is interpolated toward Eden growth
  * @param maxWalkSteps abandon the whole run if the total walk budget is exhausted, so a pathological

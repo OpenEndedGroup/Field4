@@ -127,6 +127,15 @@ val MAZE: LifeRule = lifeRule("B3/S12345")
  * Synchronous is the point — every cell reads the *old* state. An in-place update is a different (and
  * much less interesting) automaton, and is the classic way a first CA implementation ends up with a
  * glider that smears instead of moving.
+ *
+ * A `B/S` rule is a **two-state** rule, and "alive" here means state exactly `1`, matching
+ * [IntGrid.mooreCount]'s and [IntGrid.neighborhoodCount]'s `state` convention. Handing this a grid that
+ * carries other states (a cyclic-CA soup, say) is legal and treats every non-`1` cell as dead. The
+ * interior fast path below originally tested `!= 0` while the border rows went through [mooreCount],
+ * which tests `== 1` — so on such a grid one call produced two different automata, an interior one and a
+ * border one. Both now test `== 1`. `AlifeGallery`'s differential check runs the fast path against an
+ * independent brute-force stepper on 4-state soups at every size from 1 to 8, in both border modes,
+ * which is what would have caught it.
  */
 fun IntGrid.step(rule: LifeRule): IntGrid {
     val out = blank()
@@ -143,15 +152,18 @@ fun IntGrid.step(rule: LifeRule): IntGrid {
             var up = i - w
             var dn = i + w
             for (x in 1 until w - 1) {
+                // `== 1`, not `!= 0`: the border rows below count through mooreCount, which tests
+                // `== 1`, and a fast path that disagrees with its own borders is worse than either
+                // convention. See this function's KDoc.
                 var n = 0
-                if (cells[up - 1] != 0) n++
-                if (cells[up] != 0) n++
-                if (cells[up + 1] != 0) n++
-                if (cells[i - 1] != 0) n++
-                if (cells[i + 1] != 0) n++
-                if (cells[dn - 1] != 0) n++
-                if (cells[dn] != 0) n++
-                if (cells[dn + 1] != 0) n++
+                if (cells[up - 1] == 1) n++
+                if (cells[up] == 1) n++
+                if (cells[up + 1] == 1) n++
+                if (cells[i - 1] == 1) n++
+                if (cells[i + 1] == 1) n++
+                if (cells[dn - 1] == 1) n++
+                if (cells[dn] == 1) n++
+                if (cells[dn + 1] == 1) n++
                 out.cells[i] = rule.next(cells[i], n)
                 i++; up++; dn++
             }
