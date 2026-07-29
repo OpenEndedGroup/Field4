@@ -8,6 +8,7 @@ import afield.graphics.cubicSplineFrom
 import afield.graphics.polylineFrom
 import afield.stdlib.Vec2
 import afield.stdlib.vec
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.sqrt
@@ -40,10 +41,33 @@ import kotlin.math.sqrt
  * half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
  * same convention for the same reason.
  *
+ * # What the change to the marcher does and does not touch
+ *
+ * Three things changed here at once, and they have very different reach. Measured old-against-new
+ * over 392 (field, resolution, iso) combinations across eight fields:
+ *
+ * | change | when it can alter the output | how much |
+ * | --- | --- | --- |
+ * | the two-valued `inside` test | **only** when some grid sample is exactly equal to `iso` | unbounded — a whole contour appears where there was none, or four arcs become one loop. 96 of the 392 cases; **0** cases with no exactly-on-`iso` sample changed |
+ * | [ISO_CROSSING_EPSILON] | when a crossing lands within a thousandth of a cell of a grid corner | at most `1e-3` of a cell edge, an *analytic* bound; the sweep attained `9.93e-4` of a cell |
+ * | the saddle decider | any cell with four crossings whose bilinear saddle disagrees with the old fixed pairing — including on perfectly smooth fields | two segments are re-routed within that one cell, so up to about a cell |
+ *
+ * So only the third one reaches ordinary, non-degenerate input, and it reaches it rarely: 4 of the
+ * 392 cases, all of them the one saddle cell of `f = x*y`.
+ *
+ * # The saddle cell
+ *
+ * The four-crossing cell is resolved by the *asymptotic decider*: the sign of the cell's bilinear
+ * saddle value decides which diagonal pair of corners the centre of the cell belongs to. It is a pure
+ * function of the cell's own four corner values, so two cells sharing an edge cannot disagree about
+ * the crossing on it — which is the property the stitcher needs and the old fixed pairing did not
+ * have. It is *not* a claim that the ambiguity has gone away: when the saddle value is exactly `iso`
+ * the two pairings are equally correct and the decider genuinely has nothing to go on. That case is
+ * settled deterministically rather than by round-off — see [SADDLE_TIE_RELATIVE_EPSILON], which is
+ * where the interesting failure was.
+ *
  * The one remaining roughness: the segment stitcher is O(m^2) in the number of segments, so very
- * high grid resolutions get expensive. The four-crossing (saddle) cell is *not* a roughness any
- * more — it is resolved by the asymptotic decider, a pure function of the cell's own four corner
- * values, so two cells sharing a face cannot disagree about it.
+ * high grid resolutions get expensive.
  */
 
 private data class Vec2Segment(val a: Vec2, val b: Vec2)
@@ -63,6 +87,37 @@ private data class PointEdgeGraph2D(val points: List<Vec2>, val edges: List<Pair
  * `mesh_sdf.kt`'s `EDGE_CROSSING_EPSILON` is the same constant for the same reason, one dimension up.
  */
 private const val ISO_CROSSING_EPSILON = 1e-3
+
+/**
+ * When the asymptotic decider's saddle value counts as sitting *exactly on* `iso`, relative to the
+ * size of the terms that produced it.
+ *
+ * The decider tests the sign of the cell's bilinear saddle value, `(s0*s2 - s1*s3) / (s0+s2-s1-s3)`.
+ * If that numerator is zero the saddle is exactly at `iso`, the level set through the cell is an X
+ * meeting at a point, and the two pairings are *equally correct* — marching squares cannot draw an X
+ * and has to break the crossing one way. Neither answer is wrong.
+ *
+ * The trap is that this tie is not rare: it is exactly what happens for any field that is *itself*
+ * bilinear over the cell. For `f(x, y) = x * y` the numerator is `(ab)(cd) - (cb)(ad)`, which is zero
+ * in exact arithmetic and `±1e-20` in doubles — so without this tolerance the pairing is chosen by
+ * which way the last bit of a multiplication rounded. Measured on `f = x*y` over
+ * `[-1.05, 1.03] x [-1.02, 1.07]` before this tolerance existed, the numerator and the pairing came
+ * out as:
+ *
+ * ```
+ * nx =   4   numerator = -2.71e-20   pairing Q
+ * nx =   5   numerator =  0.00e+00   pairing P
+ * nx =   8   numerator = -1.69e-21   pairing Q
+ * nx =  32   numerator =  0.00e+00   pairing P
+ * nx =  64   numerator = +6.62e-24   pairing P
+ * nx = 128   numerator = -8.27e-25   pairing Q
+ * ```
+ *
+ * — noise, and it moved two segments by a full cell each time it flipped. With the tolerance the tie
+ * resolves to `P` at every resolution, which is the pairing the pre-decider code always used, so a
+ * tie now behaves exactly as it did before the decider was added.
+ */
+private const val SADDLE_TIE_RELATIVE_EPSILON = 1e-9
 
 /**
  * Scalar field f(x, y) -> value.
@@ -310,13 +365,19 @@ fun generateIsoContours(
                     val s1 = v1 - iso
                     val s2 = v2 - iso
                     val s3 = v3 - iso
+                    val numerator = s0 * s2 - s1 * s3
                     val denominator = s0 + s2 - s1 - s3
-                    val pairingP = if (denominator == 0.0) {
-                        // No saddle: the bilinear is degenerate along one direction. Either pairing
-                        // is as good as the other, so keep the historical choice.
+                    // A tie is either "no saddle" (the bilinear is degenerate along one direction) or
+                    // "the saddle is exactly on iso" (the level set is an X). Both are genuinely
+                    // undecidable, and the second one is *common* — it is every bilinear field. Left
+                    // to round-off it flips with resolution, so it is settled here instead, on the
+                    // historical pairing. See [SADDLE_TIE_RELATIVE_EPSILON].
+                    val tie = denominator == 0.0 ||
+                        abs(numerator) <= SADDLE_TIE_RELATIVE_EPSILON * max(abs(s0 * s2), abs(s1 * s3))
+                    val pairingP = if (tie) {
                         true
                     } else {
-                        val saddle = (s0 * s2 - s1 * s3) / denominator
+                        val saddle = numerator / denominator
                         (saddle < 0.0) == (s0 < 0.0)
                     }
                     if (pairingP) {

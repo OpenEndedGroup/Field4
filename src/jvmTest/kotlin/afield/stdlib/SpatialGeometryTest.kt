@@ -89,21 +89,202 @@ class SpatialGeometryTest {
     }
 
     @Test
-    fun theSaddleCellIsResolvedSymmetrically() {
-        // f = x*y at iso 0 is the two axes. Marching squares cannot draw an X, so it must give two
-        // branches — and because the field is symmetric under swapping x and y, the two branches
-        // must have the SAME length. The old arbitrary pairing gave 8 and 10 points.
+    fun theSaddleCellSplitsTheXIntoTwoBranchesOnTheZeroSet() {
+        // f = x*y at iso 0 is the two axes crossing. Marching squares cannot draw an X, so it must
+        // give two branches, and every point on them must really be on the zero set.
         val saddle: ScalarField2D = { x, y -> x * y }
         val contours = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
         assertEquals(2, contours.size)
-        assertEquals(contours[0].size, contours[1].size, "the two branches of x*y=0 should be equal length")
-
-        // Every point on a branch really is on the zero set, to within a cell.
         contours.flatten().forEach { p ->
             assertTrue(
                 abs(p.x.toDouble() * p.y.toDouble()) < 0.05,
                 "(${p.x}, ${p.y}) claims x*y = 0 but is ${p.x.toDouble() * p.y.toDouble()}",
             )
+        }
+    }
+
+    /**
+     * Which pairing the marcher chose in the one saddle cell of `f = x*y`, read off the output.
+     *
+     * The two crossings that share a corner are joined, so the answer is visible in *which elbow the
+     * far-left end of the x-axis ends up on*. Pairing P isolates the top-left and bottom-right
+     * corners, so the polyline containing the leftmost point also contains the top of the y-axis and
+     * its y-extent is positive. Pairing Q isolates bottom-left and top-right, so that same polyline
+     * runs *down* instead.
+     */
+    private fun saddlePairingOf(contours: List<List<Vec2>>): String {
+        val branch = contours.minByOrNull { c -> c.minOf { it.x } }!!
+        val top = branch.maxOf { it.y.toDouble() }
+        val bottom = branch.minOf { it.y.toDouble() }
+        return if (top > -bottom) "P" else "Q"
+    }
+
+    @Test
+    fun theSaddleTieIsBrokenTheSameWayAtEveryResolution() {
+        // A field that is *itself* bilinear makes the asymptotic decider's numerator
+        // (s0*s2 - s1*s3) exactly zero: the saddle sits precisely on iso, the level set is an X
+        // meeting at a point, and both pairings are equally correct. That is not an exotic case, it
+        // is every bilinear field — and in doubles the numerator comes out as +-1e-20 noise. Before
+        // SADDLE_TIE_RELATIVE_EPSILON the pairing therefore flipped with resolution:
+        //
+        //   nx =   4  numerator = -2.71e-20  Q        nx =  32  numerator =  0.00e+00  P
+        //   nx =   5  numerator =  0.00e+00  P        nx =  64  numerator = +6.62e-24  P
+        //   nx =   8  numerator = -1.69e-21  Q        nx = 128  numerator = -8.27e-25  Q
+        //
+        // …moving two segments by a full cell each time it flipped. The tie must be settled by the
+        // code, not by which way a multiplication rounded.
+        val saddle: ScalarField2D = { x, y -> x * y }
+        val pairings = listOf(4, 5, 8, 9, 16, 32, 64, 128).associateWith { n ->
+            val contours = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, n, n, 0.0)
+            assertEquals(2, contours.size, "f=x*y should give two branches at nx=$n")
+            saddlePairingOf(contours)
+        }
+        assertEquals(
+            setOf("P"), pairings.values.toSet(),
+            "the tie must resolve to the documented pairing P at every resolution, got $pairings",
+        )
+    }
+
+    @Test
+    fun theSaddleDeciderFollowsTheBilinearSaddleAndFlipsWithTheField() {
+        // A single cell whose four corner values are prescribed, so the decider is the only thing
+        // under test. Corners: v0 bottom-left, v1 bottom-right, v2 top-right, v3 top-left.
+        fun oneCell(v0: Double, v1: Double, v2: Double, v3: Double): List<List<Vec2>> {
+            val f: ScalarField2D = { x, y ->
+                if (x < 0.5) (if (y < 0.5) v0 else v3) else (if (y < 0.5) v1 else v2)
+            }
+            return generateIsoContours(f, 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
+        }
+
+        fun elbowCorners(contours: List<List<Vec2>>): Set<Pair<Int, Int>> {
+            assertEquals(2, contours.size, "a saddle cell emits two segments")
+            return contours.map { c ->
+                assertEquals(2, c.size)
+                // Each 2-point segment cuts one corner off the unit cell; name that corner.
+                val cx = c.sumOf { it.x.toDouble() } / 2.0
+                val cy = c.sumOf { it.y.toDouble() } / 2.0
+                (if (cx > 0.5) 1 else 0) to (if (cy > 0.5) 1 else 0)
+            }.toSet()
+        }
+
+        // The saddle value is (s0*s2 - s1*s3)/(s0+s2-s1-s3) = (9-1)/(-8) = -1, i.e. on the same side
+        // as the diagonal v0/v2, so v0 and v2 join through the centre and the OTHER two corners —
+        // bottom-right and top-left — are the ones cut off.
+        assertEquals(
+            setOf(1 to 0, 0 to 1),
+            elbowCorners(oneCell(-3.0, 1.0, -3.0, 1.0)),
+            "the decider should isolate the two shallow (+1) corners",
+        )
+
+        // Flip every value. Now the saddle is (1-9)/(-8) = +1, the *outside* is what joins through
+        // the centre, and the cut corners must swap to bottom-left and top-right. This is the case a
+        // fixed pairing gets wrong: the pre-decider marcher always joined (bottom, right) +
+        // (top, left) and would still cut bottom-right and top-left here, drawing two long diagonals
+        // across the cell instead of two corner elbows.
+        assertEquals(
+            setOf(0 to 0, 1 to 1),
+            elbowCorners(oneCell(-1.0, 3.0, -1.0, 3.0)),
+            "flipping the field must flip the pairing",
+        )
+
+        // …and the segments really are short corner elbows in both cases, not diagonals. A diagonal
+        // pairing would give length ~1.06 on the unit cell; a corner elbow gives ~0.354.
+        listOf(oneCell(-3.0, 1.0, -3.0, 1.0), oneCell(-1.0, 3.0, -1.0, 3.0)).forEach { contours ->
+            contours.forEach { c ->
+                val len = hypot((c[0].x - c[1].x).toDouble(), (c[0].y - c[1].y).toDouble())
+                assertTrue(len < 0.6, "expected a corner elbow, got a segment of length $len")
+            }
+        }
+    }
+
+    @Test
+    fun contouringADegenerateFieldMatchesTheGenericLimit() {
+        // *The* argument that the strictly-below convention is right, rather than merely different.
+        // `inside(v) = v < iso` is exactly the limit of contouring the same field at `iso - delta` as
+        // delta shrinks to zero, so the answer on a degenerate field (one with a sample landing
+        // exactly on iso) must equal the answer on an infinitesimally perturbed one — which is how
+        // every degenerate case in computational geometry is defined. The old three-way
+        // classification failed this badly: for f = x it returned nothing at all while the perturbed
+        // field returned a line.
+        val cases = listOf<Triple<String, ScalarField2D, DoubleArray>>(
+            Triple("plane f=x", { x, _ -> x }, doubleArrayOf(-1.0, 1.0, -1.0, 1.0)),
+            Triple("circle on the grid", { x, y -> hypot(x, y) - 1.0 }, doubleArrayOf(-2.0, 2.0, -2.0, 2.0)),
+            Triple("saddle on the grid", { x, y -> x * y }, doubleArrayOf(-1.0, 1.0, -1.0, 1.0)),
+            Triple("diamond |x|+|y|-1", { x, y -> abs(x) + abs(y) - 1.0 }, doubleArrayOf(-2.0, 2.0, -2.0, 2.0)),
+        )
+        for ((name, field, box) in cases) for (n in listOf(4, 8, 16, 32)) {
+            val degenerate = generateIsoContours(field, box[0], box[1], box[2], box[3], n, n, 0.0)
+            val perturbed = generateIsoContours(
+                { x, y -> field(x, y) + 1e-9 }, box[0], box[1], box[2], box[3], n, n, 0.0,
+            )
+            assertEquals(
+                perturbed.map { it.size }.sorted(), degenerate.map { it.size }.sorted(),
+                "$name at nx=$n: contouring the degenerate field must match the generic limit",
+            )
+            assertTrue(degenerate.isNotEmpty(), "$name at nx=$n should find its level set")
+        }
+    }
+
+    @Test
+    fun aFieldThatOnlyTouchesTheIsoLevelStillYieldsNoContour() {
+        // The guard against over-correcting. "Recover the contour that touches a grid corner" must
+        // NOT become "invent a contour wherever the field grazes iso". Relaxing the edge test to a
+        // non-strict sign change — the obvious wrong fix — would light up every cell of the first
+        // case and ring the origin in the second.
+        val flat: ScalarField2D = { _, _ -> 0.0 }
+        assertEquals(
+            emptyList(), generateIsoContours(flat, -1.0, 1.0, -1.0, 1.0, 16, 16, 0.0),
+            "a field identically equal to iso has an empty sublevel set and no boundary",
+        )
+
+        // f = x^2 + y^2 touches iso 0 at exactly one point, the origin, which is a grid sample here.
+        // {f < 0} is empty, so there is no boundary to draw.
+        val bowl: ScalarField2D = { x, y -> x * x + y * y }
+        assertEquals(
+            emptyList(), generateIsoContours(bowl, -1.0, 1.0, -1.0, 1.0, 8, 8, 0.0),
+            "a field that only grazes iso from above must not produce a contour",
+        )
+
+        // And a level nobody's samples reach at all.
+        assertEquals(emptyList(), generateIsoContours(bowl, -1.0, 1.0, -1.0, 1.0, 8, 8, -1.0))
+    }
+
+    @Test
+    fun theCrossingClampMovesNothingByMoreThanAThousandthOfACell() {
+        // Provenance for the one number in the marcher's risk statement. ISO_CROSSING_EPSILON pushes
+        // a crossing off a cell corner, and it can move a crossing by *at most* 1e-3 of the cell
+        // edge it lies on — analytically, because it is a coerceIn on the interpolation parameter.
+        // Two halves: a generic crossing must be untouched, and the worst case must attain the bound
+        // and not exceed it.
+
+        // t = 0.5 exactly: the crossing must land on the cell midpoint, unclamped.
+        val plane: ScalarField2D = { x, _ -> x }
+        val mid = generateIsoContours(plane, 0.0, 4.0, 0.0, 1.0, 4, 1, 1.5).single()
+        mid.forEach { p ->
+            assertEquals(1.5, p.x.toDouble(), 1e-6, "a crossing at t=0.5 must not be nudged")
+        }
+
+        // t = 1 exactly, on a 1-unit cell: displaced by the epsilon and no more — plus one Float
+        // rounding, because a marched point is a `Vec2` and therefore single precision. Nothing about
+        // the marcher's output is meaningful below about 1e-7 of the coordinate's own magnitude, and
+        // the clamp bound has to be stated on top of that rather than instead of it.
+        val onGrid = generateIsoContours(plane, 0.0, 4.0, 0.0, 1.0, 4, 1, 2.0).single()
+        onGrid.forEach { p ->
+            val drift = 2.0 - p.x.toDouble()
+            val bound = 1.0e-3 * 1.0 + Math.ulp(2.0f).toDouble()
+            assertTrue(drift > 0.0, "the recovered contour sits on the inside of an exactly-on-iso level")
+            assertTrue(drift <= bound, "drift $drift must not exceed $bound on a 1.0-wide cell")
+            assertTrue(drift > 0.9e-3, "…and it should actually attain the bound, not sit well under it")
+        }
+
+        // The same bound scaled: a 0.01-wide cell displaces by at most 1e-5. The clamp is a fraction
+        // of the CELL, so the drift shrinks with resolution — which is why quoting it as a fraction of
+        // the domain (as "7e-6" once was here) says nothing without also quoting nx.
+        val fine = generateIsoContours(plane, 0.0, 1.0, 0.0, 0.05, 100, 1, 0.5).single()
+        fine.forEach { p ->
+            val drift = abs(0.5 - p.x.toDouble())
+            val bound = 1.0e-3 * 0.01 + Math.ulp(0.5f).toDouble()
+            assertTrue(drift <= bound, "drift $drift must scale with the cell, not the domain (bound $bound)")
         }
     }
 
@@ -271,7 +452,6 @@ class SpatialGeometryTest {
         assertEquals(1, light.pieces.size, "the swallowed cell is bounded by exactly one curve")
         val arc = light.pieces[0]
         assertTrue(arc is CircularDirichlet.ArcPiece)
-        arc as CircularDirichlet.ArcPiece
         assertTrue(arc.sweepAngle > 2.0 * PI - 1e-3, "…and that curve is a complete circle, swept ${arc.sweepAngle}")
         assertEquals(null, arc.startCorner, "a full circle has no corners")
 
@@ -383,6 +563,101 @@ class SpatialGeometryTest {
             val best = result.medoids.minOf { m -> abs(p.x - m.x) + abs(p.y - m.y) }
             assertTrue(ownDistance <= best + 1e-6, "point $i is labelled for a medoid that is not its nearest")
         }
+    }
+
+    @Test
+    fun kMedoidsCoversItsWholeInputRangeAndNotJustAboveTheOldCliff() {
+        // The Smile version threw for every n below about 100. Showing that n = 90 now works says
+        // nothing about n = 2, so here is the whole range, ends included. `distance` defaults to
+        // MANHATTAN, so every distortion below is an L1 sum.
+
+        // n = 1 is rejected — one sample cannot be partitioned — and says so.
+        val message = assertFailsWith<IllegalArgumentException> {
+            vec2KMedoids(listOf(vec(0.0, 0.0)), 1)
+        }.message
+        assertTrue(
+            message != null && message.contains("vec2KMedoids") && message.contains("2 samples"),
+            "the n=1 rejection should name the function and the requirement, got: $message",
+        )
+        assertFailsWith<IllegalArgumentException> { vec2KMedoids(emptyList(), 1) }
+
+        // n = 2, k = 1 — the smallest problem that exists. One point becomes the medoid, and the
+        // distortion is exactly the L1 distance to the other.
+        val two = listOf(vec(0.0, 0.0), vec(4.0, 3.0))
+        val pair = vec2KMedoids(two, 1, KMedoidsOptions(randomSeed = 1L))
+        assertEquals(1, pair.k)
+        assertEquals(listOf(2), pair.clusterSizes.toList())
+        assertEquals(7.0, pair.distortion, 1e-9, "L1 distance between the only two samples")
+        assertTrue(pair.converged)
+
+        // k = n - 1, the largest k the function accepts: three medoids over four points leaves
+        // exactly one non-medoid, one L1 unit from its nearest neighbour.
+        val four = listOf(vec(0.0, 0.0), vec(0.0, 1.0), vec(5.0, 0.0), vec(5.0, 1.0))
+        val kMax = vec2KMedoids(four, 3, KMedoidsOptions(randomSeed = 2L))
+        assertEquals(3, kMax.k)
+        assertEquals(4, kMax.labels.size)
+        assertEquals(1.0, kMax.distortion, 1e-9)
+        assertEquals(3, kMax.medoidIndices.toSet().size, "the medoids must be three distinct samples")
+
+        // k = n, k > n, k = 0 and k < 0 are all rejected rather than silently clamped.
+        listOf(4, 5, 40, 0, -1).forEach { k ->
+            assertFailsWith<IllegalArgumentException>("k=$k should be rejected for n=4") {
+                vec2KMedoids(four, k)
+            }
+        }
+
+        // k = 1 must find the *exact* 1-medoid, because the re-medoid step enumerates the cluster.
+        // Brute-force it and insist on equality, not proximity.
+        val (points, _) = plantedClusters()
+        val brute = points.indices.minOf { i ->
+            points.sumOf { p -> abs(p.x - points[i].x).toDouble() + abs(p.y - points[i].y).toDouble() }
+        }
+        val one = vec2KMedoids(points, 1, KMedoidsOptions(randomSeed = 3L))
+        assertEquals(1, one.k)
+        assertEquals(listOf(90), one.clusterSizes.toList())
+        assertEquals(brute, one.distortion, 1e-6, "k=1 must be the exact medoid of the whole set")
+    }
+
+    @Test
+    fun kMedoidsSurvivesCoincidentAndIdenticalSamples() {
+        // Duplicates make the distance matrix singular in the way that breaks D²-weighted seeding:
+        // every remaining sample coincides with something already chosen, so the roulette's total
+        // weight is zero. That path has to pick a seed anyway rather than loop or under-fill.
+
+        // Three locations, ten copies each, k = 3: a perfect partition with zero distortion.
+        val stacked = listOf(vec(0.0, 0.0), vec(10.0, 0.0), vec(0.0, 10.0)).flatMap { c -> List(10) { vec(c.x, c.y) } }
+        val exact = vec2KMedoids(stacked, 3, KMedoidsOptions(randomSeed = 4L))
+        assertEquals(0.0, exact.distortion, 1e-12, "k = the number of distinct locations costs nothing")
+        assertEquals(listOf(10, 10, 10), exact.clusterSizes.sorted())
+        assertTrue(exact.converged)
+
+        // More clusters than distinct locations: still zero distortion, still k clusters reported,
+        // and no exception. Some medoids necessarily coincide in value.
+        val over = vec2KMedoids(stacked, 5, KMedoidsOptions(randomSeed = 5L))
+        assertEquals(5, over.k)
+        assertEquals(0.0, over.distortion, 1e-12)
+        assertEquals(30, over.clusterSizes.sum())
+
+        // Every sample identical. There is one location and nothing to partition, but the caller
+        // asked for k clusters and must get k back rather than an exception.
+        val flat = List(8) { vec(2.0, -1.0) }
+        val degenerate = vec2KMedoids(flat, 3, KMedoidsOptions(randomSeed = 6L))
+        assertEquals(3, degenerate.k)
+        assertEquals(0.0, degenerate.distortion, 1e-12)
+        assertEquals(8, degenerate.clusterSizes.sum())
+        assertTrue(degenerate.converged, "nothing can move, so the first round must already converge")
+        degenerate.medoids.forEach { assertEquals(2.0f, it.x) }
+
+        // The Euclidean metric takes the same paths.
+        val euclidean = vec2KMedoids(
+            stacked, 3, KMedoidsOptions(distance = MedoidDistance.EUCLIDEAN, randomSeed = 7L),
+        )
+        assertEquals(0.0, euclidean.distortion, 1e-12)
+        assertEquals(listOf(10, 10, 10), euclidean.clusterSizes.sorted())
+
+        // A single degenerate option is rejected rather than looping forever.
+        assertFailsWith<IllegalArgumentException> { vec2KMedoids(stacked, 3, KMedoidsOptions(maxIterations = 0)) }
+        assertFailsWith<IllegalArgumentException> { vec2KMedoids(stacked, 3, KMedoidsOptions(runs = 0)) }
     }
 
     @Test
