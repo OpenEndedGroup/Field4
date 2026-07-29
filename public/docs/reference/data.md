@@ -4,7 +4,7 @@
 
 Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box.
 
-16 source file(s), 657 public symbol(s), 222 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+16 source file(s), 659 public symbol(s), 224 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -346,14 +346,22 @@ An attractor of the Boolean network: the minimal invariant set(s) reached after 
 
 ## clustering.kt { #clustering-kt }
 
-Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`, mostly wrapping the Smile library
-(`smile.clustering`). Hierarchical clustering — `floatAgglomerative`, `vec2Agglomerative`,
-`vec3Agglomerative`, `vec4Agglomerative` — returns an [`AgglomerativeClustering`](data.md#clustering-kt-agglomerativeclustering) holding the
-merge tree, which you cut into a [`ClusterLayer`](data.md#clustering-kt-clusterlayer) with `AgglomerativeClustering.partition`,
-`AgglomerativeClustering.partitionByHeight` or `AgglomerativeClustering.layers`. The
-`…KMedoids` functions run Smile's `KMedoids` `KMedoidsOptions.runs` times and keep the lowest
-distortion; the `…KMedians` functions are a local Lloyd-style L1 implementation in this file
-with its own restarts and D²-weighted seeding. Cuts of the merge tree come back with labels
+Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
+
+**There is no k-means here, on purpose.** Every algorithm in this file returns either a *hierarchy*
+or a centre that is meaningful for the data it summarises: a medoid is one of your own samples, and
+a median is coordinate-wise robust. A k-means centroid is neither, and on a point cloud with an
+outlier it is the one that moves.
+
+Hierarchical clustering — `floatAgglomerative`, `vec2Agglomerative`, `vec3Agglomerative`,
+`vec4Agglomerative`, which wrap Smile's `HierarchicalClustering` over the seven
+[`AgglomerativeLinkage`](data.md#clustering-kt-agglomerativelinkage)s — returns an [`AgglomerativeClustering`](data.md#clustering-kt-agglomerativeclustering) holding the merge tree, which you
+cut into a [`ClusterLayer`](data.md#clustering-kt-clusterlayer) with `AgglomerativeClustering.partition`,
+`AgglomerativeClustering.partitionByHeight` or `AgglomerativeClustering.layers`. The `…KMedoids`
+and `…KMedians` functions are both local implementations in this file, each with D²-weighted
+seeding and `KMedoidsOptions.runs`/`KMediansOptions.runs` restarts keeping the best objective:
+k-medoids alternates assignment with an exact per-cluster re-medoid, k-medians is Lloyd's algorithm
+on the L1 metric with a coordinate-wise median. Cuts of the merge tree come back with labels
 renumbered by first appearance; every result type can be turned into a [`ClusterLayer`](data.md#clustering-kt-clusterlayer).
 
 `visualizeVec3ClusterLayers3D`, `visualizeVec2ClusterLayers3D` and
@@ -364,6 +372,8 @@ return `FLine`s in a map keyed `"cluster-points"`, `"cluster-points-halo"`,
 [`ClusterLayerVizOptions`](data.md#clustering-kt-clusterlayervizoptions) controls spacing, sizes and which of those layers are emitted.
 
 `src/jvmMain/kotlin/afield/stdlib/clustering.kt`
+
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #clustering-kt-functions }
 
@@ -402,14 +412,16 @@ Constants: `EUCLIDEAN`, `MANHATTAN`.
 
 ### KMedoidsOptions { #clustering-kt-kmedoidsoptions }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KMedoidsOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIter</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">neighborRatio</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0125</span><span class="p">,</span> <span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">MedoidDistance</span> <span class="o">=</span> <span class="nc">MedoidDistance</span><span class="p">.</span><span class="nc">MANHATTAN</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">KMedoidsOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">MedoidDistance</span> <span class="o">=</span> <span class="nc">MedoidDistance</span><span class="p">.</span><span class="nc">MANHATTAN</span><span class="p">,</span> <span class="k">val</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
+
+How the `…KMedoids` functions run.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">maxIter</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">neighborRatio</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">runs</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">MedoidDistance</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">randomSeed</span><span class="p">:</span> <span class="nc">Long</span><span class="o">?</span></code> |  |
 
 ### KMediansOptions { #clustering-kt-kmediansoptions }
 
@@ -451,7 +463,9 @@ Constants: `EUCLIDEAN`, `MANHATTAN`.
 
 ### KMedoidsResult { #clustering-kt-kmedoidsresult }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoids</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoidIndices</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">distortion</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nc">KMedoidsResult</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">labels</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoids</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">medoidIndices</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">distortion</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span><span class="p">)</span></code>
+
+What a `…KMedoids` call found.
 
 | Declaration | Summary |
 | --- | --- |
@@ -459,6 +473,8 @@ Constants: `EUCLIDEAN`, `MANHATTAN`.
 | <code class="highlight"><span class="k">val</span> <span class="n">medoids</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">medoidIndices</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">distortion</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">clusterSizes</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">options</span><span class="p">:</span> <span class="nc">KMedoidsOptions</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">k</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
