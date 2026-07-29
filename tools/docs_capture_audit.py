@@ -306,6 +306,13 @@ def classify(
         return "suspect", f"{band} on a single run ({drift.summary()}); re-run with --repeat 2 to confirm"
     if not unstable:
         return "stale", f"reproducible re-render disagreeing with the committed asset ({drift.summary()})"
+    if self_delta.kind != "pixel":
+        # The two runs differ in KIND (one changed size, say), so there is no ratio to take. The
+        # best-matching run still disagrees with the committed asset above the band.
+        return "stale", (
+            f"the best run still disagrees with the committed asset ({drift.summary()}) while the "
+            f"two runs differ in kind ({self_delta.summary()})"
+        )
     if drift.changed_px_pct >= STALE_OVER_JITTER_RATIO * max(self_delta.changed_px_pct, 1e-9):
         return "stale", (
             f"drift ({drift.summary()}) is {drift.changed_px_pct / max(self_delta.changed_px_pct, 1e-9):.1f}x "
