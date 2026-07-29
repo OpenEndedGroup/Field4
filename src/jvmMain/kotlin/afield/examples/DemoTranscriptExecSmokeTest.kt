@@ -81,6 +81,8 @@ object DemoTranscriptExecSmokeTest {
         "rewrite_strategies_demo",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
+        // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
+        "alife_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

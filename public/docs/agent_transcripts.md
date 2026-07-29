@@ -82,6 +82,21 @@ the tiles decided so far, with the contradicted cell marked in both heatmaps. Ev
 runs on its own, and prints the numbers the docs page quotes.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
 
+**alife_worked_example** — [Spatial artificial life](alife_examples.md) as ten independent pure-CPU
+boxes: Conway's Life checked against the glider's exact `(1, 1)` displacement and the R-pentomino's
+textbook peak of 319 at generation 821; Wolfram's rule 90 checked cell-for-cell against Pascal's
+triangle mod 2 computed from Kummer's theorem; a cyclic CA whose soup advance fraction matches the
+closed form `1 - (13/14)^8` and then pins at 1.0; Gray–Scott's regimes told apart by isoperimetric
+ratio, with two controls that produce nothing at all; Lenia's discrete limit shown bit-identical to the
+integer Life stepper; boids and Physarum each against a twin run with one interaction switched off;
+DLA's mass dimension against an Eden cluster and a uniform sprinkle; the Koch snowflake's exact
+closure, length and area identities; and the bridges out to iso-contour `FLine`s, a colonization tree
+and a watertight marched mesh. Every box prints the numbers the docs page quotes, and none opens a
+`Window` or a `Renderer`.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_worked_example/metadata.edn)
+
+
 ## visionOS device scenes
 
 These publish to Field4Vision's autonomous Live Metal renderer. Open **Live Metal** in the visionOS

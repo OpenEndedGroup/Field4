@@ -28,6 +28,7 @@ nav:
       - Data: reference/data.md
       - Graphics: reference/graphics.md
       - Imaging: reference/imaging.md
+      - ALife: reference/alife.md
       - Function: reference/function.md
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md
@@ -80,6 +81,7 @@ nav:
         - Boolean Networks Examples: boolean_networks_examples.md
         - Boolean Network Music Examples: boolean_network_music_examples.md
         - Wave Function Collapse Examples: wfc_examples.md
+        - Spatial Artificial Life: alife_examples.md
 
 # Note: declaring this key at all replaces Zensical's DEFAULT_MARKDOWN_EXTENSIONS
 # wholesale (it is only a `config.get(..., DEFAULT)` fallback) — only `toc` and

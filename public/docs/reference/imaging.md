@@ -298,7 +298,7 @@ extractor works on image data with no glue.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_field.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Wave Function Collapse examples](../wfc_examples.md), [Spatial artificial life](../alife_examples.md)
 
 ### Top-level functions { #imaging-field-kt-functions }
 
