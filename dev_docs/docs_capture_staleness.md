@@ -12,6 +12,7 @@ change and found the obvious way does not work. Extended 2026-07-29 with the fix
 | Are the committed figures on page X actually current? | Run the auditor. §5 |
 | Two captures differ — does that mean anything? | Only above the measured noise band. §2 |
 | Which published figures can any of this even see? | 304 of the 570 tracked media by fence, +106 by gallery side effect. §7 |
+| Is "the docs build is green" freshness evidence yet? | **No — weakened, not lifted.** Attribution 90.5% of fences; detection 54/54 on the one incident on record; still blind to code a fence never names. §4 |
 
 ## 1. Why a normal docs build could not detect stdlib staleness
 
@@ -87,7 +88,7 @@ single run cannot tell them apart. Two runs can: compare run 1 against run 2 as 
 `HEAD`. That is what `--repeat 2` is for, and it is the difference between a report you can act on
 and a list of file names.
 
-## 3. Pre-existing staleness in `functions_examples`, from 2026-07-14
+## 3. Pre-existing staleness in `functions_examples`, from the 2026-07-10 → 07-14 window
 
 Running the 121 captures of `functions_examples`, `functions_domains`, `timeseries_examples`,
 `interaction_nets_examples`, `graph_connectivity_examples` and `state_estimation_examples` in
@@ -102,9 +103,21 @@ regenerated gives an almost perfectly clean split:
 | ≤0.02% (noise) | 29 | 2026-07-19 / 07-21 / **2026-07-28** |
 
 The 54-file ~49% cluster is **stable across both runs** — it is not jitter — and every one of them
-was last captured on 2026-07-09 or 2026-07-10. `bced282b` (2026-07-14) is
-*"Fix `Fn.graphBrowseHtml` layout and constant-delay domain"*: it changed the plot browser's layout
-and y-autoscale and those 54 captures were never regenerated against it.
+was last captured on 2026-07-09 or 2026-07-10, then never regenerated against two weeks of
+`Functions.kt` changes.
+
+> **Corrected 2026-07-29 (2nd pass).** The 2026-07-28 pass named `bced282b` (2026-07-14, *"Fix
+> `Fn.graphBrowseHtml` layout and constant-delay domain"*) as *the* cause, on the strength of its
+> commit message, and the first 2026-07-29 pass repeated it. Reading the render path says otherwise:
+> these figures come from `env.plot()` → `Fn.plot` (`Functions.kt:3751`) → `Fn.plotHtml`
+> (`Functions.kt:3182`), and `graphBrowseHtml` has **no non-test caller in the tree**, so its layout
+> half cannot have touched them. The y-autoscale they show is `yPlotDomain`, also in `Functions.kt`,
+> unchanged since `f9161364` (2026-07-09 — the day they were captured). The cause is in
+> `Functions.kt`'s Fn/domain algebra, with at least two candidates in the window: `fd603986`
+> (2026-07-13, oscillators default to infinite domains — which moves the plot window of every periodic
+> reference figure) and `bced282b`'s constant-delay domain translation. Treat this as "a two-week band
+> of `Functions.kt` changes", not one commit. The *file* is what is established, and it is the one all
+> 54 fences name — which is why §4's detection number is 54 of 54.
 
 What that looks like, concretely, in `assets/functions_examples/reference/ramp.png`
 (`ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)`): the committed capture
@@ -113,8 +126,8 @@ tightly to **exactly 0.100 … 0.500**, which is the arithmetically correct rang
 expression (0.1 at both ends, 0.5 at the centre). About half the pixels move because the curve and
 every gridline shift with the axis.
 
-**This is inherited from `main`.** `ramp` and `crossfade` were untouched by the branch that found it,
-and so was `FunctionGraphBrowser.kt`, which does the autoscaling.
+**This is inherited from `main`.** Neither `ramp`/`crossfade` nor the plotting code was touched by the
+branch that found it.
 
 ## 4. The digest now follows the source a fence reaches
 
@@ -169,12 +182,60 @@ own parsers and comparing digests:
 - 0 of the 275 attributed fences hash identically to `main` (so the key is doing something);
 - with `FIELD_DOCS_SOURCE_REFS=off`, **304 of 304** fences reproduce `main` exactly.
 
-**But attribution is not detection, and the gap is large.** 90.5% of fences name *something*
-attributable; that is not the same as naming the file that decides what the figure looks like. The
-one real incident on record proves it: the 54-figure `functions_examples` staleness came from
-`FunctionGraphBrowser.kt`, which only **15 of 304** fences name directly — 4 of the 106 on
-`functions_examples`. The digest would have caught **4 of those 54 figures, 7%**. Quote the 90.5%
-only alongside that 7%.
+### Attribution covers *fences*. Detection covers *incidents*. Only the second is what a reviewer wants
+
+**Attribution: 275 of 304 fences, 90.5%.** Detection has to be scored against a real incident, and
+exactly one has ever been reconstructed: the 54 `functions_examples` figures that were wrong on `main`
+for two weeks (§3, regenerated in `a892e17e`).
+
+**Detection against that incident: 54 of 54, 100%.** All 54 fences name symbols declared in
+`Functions.kt`, so any change to that file moves all 54 digests and an incremental build re-captures
+all 54. Verified by perturbing the file's content hash and counting the fences whose digest moves.
+
+An earlier draft of this doc — and the worklog behind it — said the digest would have caught "4 of
+those 54, 7%". **That was wrong twice over**, and this correction is the most important number on the
+branch:
+
+1. it scored the incident against `FunctionGraphBrowser.kt` alone, but `bced282b` touched **two**
+   production files: `FunctionGraphBrowser.kt` *and* `Functions.kt` (the constant-delay domain change);
+2. even the 4 was misapplied. **0** of the 54 stale figures' fences name a `FunctionGraphBrowser.kt`
+   symbol. The 15 fences (4 of them on `functions_examples`) that do belong to *other* figures — so
+   scoring this incident against that file alone gives 0, not 4.
+
+**The cause was mis-attributed as well, by the 2026-07-28 pass and then by the first 2026-07-29 one.**
+These figures are not rendered by `Fn.graphBrowseHtml` at all. The fence calls `env.plot()`; `Fn.plot`
+(`Functions.kt:3751`) calls `Fn.plotHtml` (`Functions.kt:3182`), and the entire renderer — including
+`yPlotDomain`, the y-autoscale whose output visibly changed in `ramp.png` — is inside `Functions.kt`.
+`graphBrowseHtml` has **no non-test caller in the tree**. So `bced282b`'s CSS half cannot have moved
+these figures. The cause is in `Functions.kt`'s Fn/domain algebra, and the window holds at least two
+candidates: `fd603986` (2026-07-13, "oscillators default to infinite domains", which changes the plot
+window of every periodic reference figure) and `bced282b`'s constant-delay domain translation.
+`yPlotDomain` itself has not changed since `f9161364` — 2026-07-09, the day these figures were
+captured. "54 figures, one cause, `bced282b`" was an over-attribution that survived two passes. What
+is solid is the *file*, and the file is the one every affected fence names.
+
+**The hazard the 7% was reaching for is real; it just did not fire here.** A change confined to
+`FunctionGraphBrowser.kt` would be invisible to 102 of the 106 `functions_examples` fences, because a
+fence's pixels depend on code it never names. Measured options for closing that:
+
+| rule | files per fence (mean / max) | fences invalidated by touching `FunctionGraphBrowser.kt` | by touching `linalg.kt` |
+| --- | --- | --- | --- |
+| direct references (**the default**) | 2.7 / 16 | 15 of 304 | 2 of 304 |
+| + one hop through the named files | 43.6 / 65 | **274 of 304** | 272 of 304 |
+| `FIELD_DOCS_SOURCE_REFS=stdlib` | 75 / 75 | 275 of 304 | 275 of 304 |
+
+One hop *does* fix it — all 106 `functions_examples` fences then reach the browser — but it lands
+within two captures of hashing the whole stdlib for every fence, which is exactly what `stdlib` mode
+already does. There is no third mode worth having: the curve has two useful points and both exist. A
+per-`capture=` mode harness set would not have helped either, since the render path here is two
+ordinary Kotlin calls *inside* `Functions.kt`, not a capture harness.
+
+**Is the standing rule lifted? No — weakened.** An incremental build now re-captures figures whose
+*named* source moved, and on the only incident anyone has reconstructed that would have been all 54 of
+them. It still cannot certify a figure whose renderer lives in a file the fence never names, and it
+cannot see a capture-environment change at all. So: "the docs build is green" is still **not**
+freshness evidence; "the incremental build re-captured the figures my edit touches" now is, for direct
+references only. Proving a *published* figure still matches the code remains the auditor's job.
 
 **What over-invalidation costs, with a number** (2nd pass — "it costs build time, not correctness" is
 only reassuring once someone has priced it). The digest is file-granular, so touching one source file
@@ -194,10 +255,9 @@ So the worst realistic single-file blast radius is about **a third of a full sit
 minutes**, on top of whatever the Kotlin rebuild costs. That is the price of the fix, and it is
 payable. `FIELD_DOCS_SOURCE_REFS=off` is there for when it is not.
 
-**What it does NOT cover, and this matters:** an *indirect* change. `bced282b` moved plot layout
-inside `FunctionGraphBrowser.kt`, and only 4 of the 106 `functions_examples` fences name a browser
-symbol directly — the rest reach it through `Functions.plot`. The digest would have caught 4 of
-those 54 figures. Detecting the other 50 is the auditor's job, not the digest's.
+**What it does NOT cover:** an *indirect* change — code a fence's pixels depend on but its text never
+names. See the detection section above for the measured shape of that gap, and for why the one
+incident on record fell on the *right* side of it by luck of which files the commit touched.
 
 ## 5. The auditor: `tools/docs_capture_audit.py`
 
@@ -322,9 +382,9 @@ not-yet-stashed outputs). Run directories, with every regenerated file, are kept
 | `unstable` | 1 |
 | `jitter` | 47 |
 
-**54 of the 56 are one cause**: ~49% of pixels at maxΔ204 pre-floor, every one of them last committed
+**54 of the 56 are one cluster**: ~49% of pixels at maxΔ204 pre-floor, every one of them last committed
 2026-07-09 or 2026-07-10, i.e. exactly the cluster §3 predicted, reproduced independently and now
-confirmed across two runs. `assets/functions_examples/reference/ramp.png` was inspected directly: the
+confirmed across two runs. (One *cluster*, not one commit — see the correction in §3.) `assets/functions_examples/reference/ramp.png` was inspected directly: the
 committed figure autoscales y to ≈−0.1…0.51 and draws a zero line; the current code autoscales to
 0.100…0.500, which is the arithmetically correct range for
 `ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)`. **The published figure is
