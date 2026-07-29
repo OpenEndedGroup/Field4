@@ -1,5 +1,6 @@
 package afield.stdlib
 
+import afield.graphics.FLine
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -423,10 +424,19 @@ class ImagingFeaturesTest {
         var n = 0
         var worst = 0.0
         for (l in lines) for (node in l.nodes) {
+            // A closed contour ends on an FLine.Close, which carries no point at all — `node.to`
+            // reads storage[0] and would throw. This level set is a loop, so it has one.
+            if (node is FLine.Close) continue
             val d = hypot(node.to.x - cx, node.to.y - cy)
             worst = maxOf(worst, abs(d - 16.0)); n++
         }
         assertTrue(n > 40, "iso-contour has only $n points")
         assertTrue(worst < 1.5, "iso-contour deviates from radius 16 by up to $worst px")
+        // …and it really is a loop. isoContourFLines used to hand every contour back open, which
+        // left a notch one grid cell wide in a level set that is closed by construction.
+        assertTrue(
+            lines.all { it.nodes.lastOrNull() is FLine.Close },
+            "a level set inside the image should come back closed, got ${lines.map { it.nodes.last()::class.simpleName }}",
+        )
     }
 }

@@ -43,11 +43,16 @@ import afield.graphics.polylineFrom
  *
  * Each point becomes its own `moveTo`, and `pointed = true` with `stroked = false` means the
  * renderer draws dots rather than joining them into a path.
+ *
+ * @param pointSize a dot's *radius* comes out as `3 * pointSize` output pixels — `outputTo` in
+ *   `someSkiko.kt` multiplies by three — so the default 1.2 draws a dot about 3.6 px across. Note
+ *   that [planeFigureHtml] fits the geometry but not the styles, so this is in final pixels
+ *   regardless of the coordinate system the points are in.
  */
 fun pointCloudFLine(
     points: List<Vec2>,
     color: Vec4 = vec(1.0, 1.0, 1.0, 0.85),
-    pointSize: Double = 3.4,
+    pointSize: Double = 1.2,
     z: Number = 0,
 ): FLine = fline {
     val zz = z.toDouble()
@@ -238,8 +243,8 @@ fun ClusterLayer.toFLines(
     points: List<Vec2>,
     centers: List<Vec2>? = null,
     palette: List<Vec4> = okhslSet(maxOf(1, clusterCount), saturation = 0.78, lightness = 0.62),
-    pointSize: Double = 4.0,
-    centerSize: Double = 10.0,
+    pointSize: Double = 1.3,
+    centerSize: Double = 3.0,
     drawSpokes: Boolean = true,
     spokeAlpha: Float = 0.18f,
     z: Number = 0,
@@ -311,9 +316,27 @@ fun ClusterLayer.toFLines(
  * The markup for one titled figure: [lines] fitted into a [width] × [height] frame, rasterised to
  * inline SVG, on the same dark card the rest of Field's inline figures use.
  *
- * The lines are scaled and translated to fit ([List<FLine>.fitInto]), preserving aspect, so the
- * caller's coordinate system does not have to be anything in particular. Titles and captions are
- * inserted as text, so do not pass HTML you did not build.
+ * The lines are scaled and translated to fit, preserving aspect, so the caller's coordinate system
+ * does not have to be anything in particular. Titles and captions are inserted as text, so do not
+ * pass HTML you did not build.
+ *
+ * @param window which region of the caller's coordinate system to show. `null` fits the union of the
+ *   lines' own bounds ([List<FLine>.fitInto]), which is right until one line reaches far outside the
+ *   interesting part — `vec2VoronoiDiagram`'s hull cells do, by three times, because JTS clips an
+ *   unbounded cell to a generous envelope, and fitting to that collapses the diagram into a speck.
+ *   Passing a `window` maps *that* rectangle onto the frame instead, and whatever falls outside is
+ *   clipped by the frame rather than allowed to set the scale. Several panels sharing one `window`
+ *   also line up with each other, which is usually what a comparison wants.
+ *
+ * # Why the dots are drawn here and not by Skia
+ *
+ * Skia's SVG export has no circle primitive: `outputTo` in `someSkiko.kt` adds each `pointed` node to
+ * a `Path`, and that path is written out as **quadratic Bézier segments** — measured, one dot costs
+ * about 5 kB, so the 90-point cloud on a clustering figure came to **458 kB of SVG for one panel**.
+ * This function therefore strips `pointed` from a *copy* of each line before handing the geometry to
+ * `drawToSVG`, and overlays the dots as real `<circle>` elements: the same 90 dots in a few kB. The
+ * radius convention is `outputTo`'s, `3 * pointSize`, so a figure looks the same here as through
+ * `Box.lines`.
  */
 fun planeFigureHtml(
     lines: List<FLine>,
@@ -322,22 +345,82 @@ fun planeFigureHtml(
     width: Int = 640,
     height: Int = 460,
     padding: Double = 14.0,
+    window: Rect? = null,
 ): String {
     val frame = Rect(0.0, 0.0, width.toDouble(), height.toDouble())
-    val fitted = lines.fitInto(frame, padding = padding)
-    val svg = drawToSVG(fitted, width.toDouble(), height.toDouble())
+    val fitted = if (window == null) lines.fitInto(frame, padding = padding)
+    else lines.mapped(window, frame, padding)
+
+    val dots = StringBuilder()
+    val geometry = fitted.map { line ->
+        if (!line.pointed) return@map line
+        val fill = svgColor(line.color)
+        line.nodes.forEach { node ->
+            if (node is FLine.Close) return@forEach
+            val radius = (node.pointSize ?: line.pointSize) * 3.0
+            val p = node.to
+            dots.append(
+                "<circle cx=\"%.2f\" cy=\"%.2f\" r=\"%.2f\" fill=\"%s\"/>".format(p.x, p.y, radius, fill)
+            )
+        }
+        // A copy, because fitInto hands back the caller's own lines when the bounds are degenerate.
+        line.copy { pointed = false }
+    }
+
+    val svg = drawToSVG(geometry, width.toDouble(), height.toDouble())
+    val dotLayer = if (dots.isEmpty()) "" else
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"$width\" height=\"$height\" " +
+            "style=\"position:absolute;left:0;top:0;overflow:visible\">$dots</svg>"
     val titleHtml = title?.let {
         "<div style=\"font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
             "color:#91a4ba;margin-bottom:8px\">${escapePlaneHtml(it)}</div>"
     } ?: ""
+    // The caption goes *above* the picture, which looks like a subtitle and is deliberate: a docs
+    // `capture="box"` screenshot crops to the output area's measured height, and that measurement
+    // comes up about one text line short of the real card. Below the picture, the caption on the
+    // bottom row of a grid arrived sliced in half every time; above it, the only thing a short crop
+    // can eat is the empty margin `fitInto` already leaves around the geometry.
     val captionHtml = caption?.let {
         "<div style=\"font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
-            "margin-top:8px\">${escapePlaneHtml(it)}</div>"
+            "margin:-2px 0 8px 0\">${escapePlaneHtml(it)}</div>"
     } ?: ""
-    return "<div style=\"padding:12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
-        "border:1px solid #202b38;border-radius:10px\">$titleHtml" +
-        "<div style=\"line-height:0\">$svg</div>$captionHtml</div>"
+    return "<div style=\"padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
+        "border:1px solid #202b38;border-radius:10px\">$titleHtml$captionHtml" +
+        // overflow:hidden matters: `fitInto` keeps the geometry inside the frame, but a caller who
+        // adds a frame line on purpose (to pin the window, or to make several panels share an
+        // extent) wants everything outside it *cut* rather than spilled over the caption below.
+        "<div style=\"position:relative;width:${width}px;height:${height}px;line-height:0;overflow:hidden\">" +
+        "<div style=\"position:absolute;left:0;top:0\">$svg</div>$dotLayer</div></div>"
 }
+
+/**
+ * Map [source] onto [frame] inset by [padding], preserving aspect, and transform every line by it.
+ *
+ * The counterpart of [List<FLine>.fitInto] for when the caller knows the window rather than wanting
+ * it derived: geometry outside [source] lands outside [frame] and is clipped there.
+ */
+private fun List<FLine>.mapped(source: Rect, frame: Rect, padding: Double): List<FLine> {
+    if (source.w <= 0.0 || source.h <= 0.0) return this
+    val inset = padding.coerceAtLeast(0.0)
+    val innerW = (frame.w - inset * 2.0).coerceAtLeast(1.0)
+    val innerH = (frame.h - inset * 2.0).coerceAtLeast(1.0)
+    val scale = minOf(innerW / source.w, innerH / source.h)
+    if (!scale.isFinite() || scale <= 0.0) return this
+    val offsetX = frame.x + inset - source.x * scale + (innerW - source.w * scale) * 0.5
+    val offsetY = frame.y + inset - source.y * scale + (innerH - source.h * scale) * 0.5
+    return map { line ->
+        line.transform { p -> vec(p.x * scale + offsetX, p.y * scale + offsetY, p.z) }
+    }
+}
+
+/** A `Vec4` in 0..1 as an SVG `rgba(...)`. */
+private fun svgColor(c: Vec4): String =
+    "rgba(%d,%d,%d,%.3f)".format(
+        (c.x.coerceIn(0f, 1f) * 255f).toInt(),
+        (c.y.coerceIn(0f, 1f) * 255f).toInt(),
+        (c.z.coerceIn(0f, 1f) * 255f).toInt(),
+        c.w.coerceIn(0f, 1f),
+    )
 
 /**
  * Push one plane figure to a box output channel.
@@ -352,8 +435,9 @@ fun Box.showPlane(
     width: Int = 720,
     height: Int = 520,
     padding: Double = 14.0,
+    window: Rect? = null,
 ) {
-    display(channel, planeFigureHtml(lines, title, caption, width, height, padding))
+    display(channel, planeFigureHtml(lines, title, caption, width, height, padding, window))
 }
 
 /**
@@ -364,6 +448,8 @@ fun Box.showPlane(
  * how you get the numbers that carry the argument under the picture they are about.
  *
  * @param columns figures per row.
+ * @param window a shared window for every panel — see [planeFigureHtml]. Passing one both keeps a
+ *   far-flung stray line from setting the scale and makes the panels line up with each other.
  */
 fun Box.showPlaneGrid(
     vararg panels: Pair<String, List<FLine>>,
@@ -372,16 +458,24 @@ fun Box.showPlaneGrid(
     cellWidth: Int = 420,
     cellHeight: Int = -1,
     padding: Double = 12.0,
+    window: Rect? = null,
 ) {
     require(panels.isNotEmpty()) { "showPlaneGrid needs at least one panel" }
     val height = if (cellHeight > 0) cellHeight else (cellWidth * 0.78).toInt()
     val html = buildString {
-        append("<div style='display:grid;grid-template-columns:repeat($columns,minmax(0,1fr));gap:10px'>")
+        // max-content columns and fit-content on the container, not `1fr`: with `1fr` the cards
+        // stretch to whatever the box happens to be while the picture inside stays at cellWidth, so
+        // the layout — and a docs screenshot's crop — depends on the box width. This way the grid is
+        // exactly as wide as the panels are.
+        append(
+            "<div style='display:grid;width:fit-content;" +
+                "grid-template-columns:repeat($columns,max-content);gap:10px'>"
+        )
         for ((label, lines) in panels) {
             val title = label.substringBefore('\n')
             val caption = label.substringAfter('\n', "").ifBlank { null }
             append("<div>")
-            append(planeFigureHtml(lines, title, caption, cellWidth, height, padding))
+            append(planeFigureHtml(lines, title, caption, cellWidth, height, padding, window))
             append("</div>")
         }
         append("</div>")
