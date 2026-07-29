@@ -3,8 +3,9 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [`alife.kt`](reference/alife.md#alife-kt), [`alife_ca.kt`](reference/alife.md#alife-ca-kt),
 [`alife_continuous.kt`](reference/alife.md#alife-continuous-kt),
-[`alife_agents.kt`](reference/alife.md#alife-agents-kt) and
-[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt). Start from
+[`alife_agents.kt`](reference/alife.md#alife-agents-kt),
+[`alife_lsystem.kt`](reference/alife.md#alife-lsystem-kt) and
+[`alife_field.kt`](reference/alife.md#alife-field-kt). Start from
 [what's already in the box](reference/index.md).*
 
 Artificial life is the study of systems whose interesting behaviour is not in their rules. You write
@@ -27,9 +28,12 @@ polarization is 0.69 where 400 independent headings would give 0.044 and where t
 with the alignment term zeroed reaches 0.073.
 
 Everything on this page is checked in CI by
-[`afield.examples.stdlib.AlifeGallery`](https://github.com/) (`stdlib.alife.gallery`), which renders
-fourteen figures and asserts, for each, the statistic a control arm fails. The numbers printed below
-are the numbers it asserts.
+[`afield.examples.stdlib.AlifeGallery`](https://github.com/), which renders seventeen figures and
+asserts, for each, the statistic a control arm fails. The numbers printed below are the numbers it
+asserts. It runs in two tiers: `stdlib.alife.gallery` is the fast one (~3 s, everything whose evidence
+is an exact identity or a closed-form comparison, including the checks that pin the *measurement*
+functions against analytic answers) and `stdlib.alife.gallery.slow` is the ~25 s of figures that
+integrate a PDE or an agent population to a statistical verdict.
 
 !!! note "The measurement layer is the interesting part"
     `alife.kt` is mostly not automata — it is [`polarization`](reference/alife.md#alife-kt) and its
@@ -41,7 +45,7 @@ are the numbers it asserts.
 
 ## What this implementation does, and does not do
 
-Five dependency-free files built on the existing [imaging](imaging_examples.md) and
+Six dependency-free files built on the existing [imaging](imaging_examples.md) and
 [mesh](mesh_examples.md) families — nothing here reimplements convolution, connected-component
 labelling, colour mapping or marching cubes:
 
@@ -56,6 +60,8 @@ labelling, colour mapping or marching cubes:
   aggregation with two control models.
 - **`alife_lsystem.kt`** — a bracketed, parametric, optionally stochastic L-system with a turtle that
   emits [`FLine`](fline_examples.md)s, and space-colonization branching.
+- **`alife_field.kt`** — the [inline `ToHTML` views](#evaluating-one-of-these-in-a-box-the-inline-views),
+  kept in their own file so the five above name nothing from Field's visualizer.
 
 Things it deliberately does not do, so you are not surprised:
 
@@ -774,6 +780,64 @@ showImg(
 ```
 
 ![](assets/alife_examples/bridges.png)
+
+## Evaluating one of these in a box: the inline views
+
+`IntGrid`, `GrayScottState` and `LeniaRun` implement Field's `ToHTML`, so *evaluating* one of them in a
+box — or `grid.h` — draws it. Nothing to set up, no `montage` call, no colour map to choose.
+
+The interesting part is the range policy, and it is not a matter of taste. **Every scale is fixed by
+meaning and named in the caption**, never derived from the frame:
+
+| view | panels | scale |
+| --- | --- | --- |
+| `IntGrid` | the lattice, one pixel per cell | two states → grayscale, `0` = dead, `1` = alive; more states → `cyclicPalette`, and the caption says the hues repeat |
+| `GrayScottState` | `v` then `u` | `magma` and `viridis`, both fixed `0` … `1` — the range the reaction is defined on |
+| `LeniaRun` | the final field, then the mass history | `inferno`, fixed `0` … `1`, and the sparkline's `y` fixed to the same `0` … `1` |
+
+Auto-ranging here is not a cosmetic mistake, it is a lie with a specific victim. **A saturated Lenia
+field is constant at 1.** Normalise it per-frame and it maps to the *dark* end of the colour map and
+renders solid black — pixel-for-pixel indistinguishable from a field that died. That already cost this
+family a figure once. A view is worse than a figure in this respect: a figure is regenerated
+deliberately, a view is regenerated every time you look at a value.
+
+So the views are checked at the pixel rather than by eye. `AlifeGallery`'s `inline-view` figure decodes
+the base64 PNG back out of the emitted HTML and asserts individual pixels: all five of a glider's live
+cells read `#ffffff` and all 139 dead ones read `#000000` at coordinates taken from the grid (which is
+also how "one pixel per cell" is asserted rather than claimed); a `DEATH` run's centre pixel reads
+`#000004`, the bottom of `inferno`, and a `SATURATION` run's reads `#fcffa4`, the top; and an unseeded
+`GrayScottState` — the `v = 0` control arm — renders as exactly one colour, the bottom of `magma`,
+where `Img`'s own auto-normalising thumbnail would have turned its numerical dust into a texture.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/inline-view.png" wait="12.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// IntGrid, GrayScottState and LeniaRun implement ToHTML, so evaluating one draws it. The scales are
+// fixed by MEANING (0..1 for a reagent or a Lenia field, the observed state count for a lattice) and
+// named in every caption -- never taken from the frame, because a saturated Lenia field is constant
+// at 1 and an auto-ranged colour map renders it BLACK, identical to a dead one.
+display("a. a Life board", LifePatterns.glider.centeredOn(16, 16).h)
+
+// More than two states: the cyclic palette, with the repeat disclosed in the caption.
+display("b. an 8-state soup", IntGrid.random(28, 28, states = 8, seed = 3L).h)
+
+// Gray-Scott: both reagents, both on a FIXED 0..1 scale.
+val seeded = grayScottSeed(64, 64, patches = 4, patchSize = 10, seed = 11L)
+    .stepTimes(GRAY_SCOTT_SPOTS, 2000)
+display("c. Gray-Scott, seeded", seeded.h)
+
+// The control arm, and the reason the scale is fixed: v = 0 is a fixed point, so this field is empty.
+// On a fixed scale it is black. Auto-ranged, its numerical dust would become a rich texture.
+display("d. Gray-Scott, unseeded (v = 0)", grayScottSeed(64, 64, patches = 0, seed = 11L)
+    .stepTimes(GRAY_SCOTT_WORMS, 200).h)
+
+// The two Lenia phases that an auto-ranged scale makes indistinguishable.
+val death = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
+display("e. Lenia, death", leniaRun(leniaSeed(64, 64, death, blobRadii = 1.6, seed = 9L), death, steps = 160).h)
+val sat = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
+display("f. Lenia, saturation", leniaRun(leniaSeed(64, 64, sat, blobRadii = 1.6, seed = 9L), sat, steps = 160).h)
+```
+
+![](assets/alife_examples/inline-view.png)
 
 ## Loading all of this into a live Field
 

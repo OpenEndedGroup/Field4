@@ -39,9 +39,11 @@ stop.
 | `alife_continuous.kt` | `diffuse`, `GrayScottState`, `turingPattern`, `LeniaRule`, `leniaRun` |
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
+| `alife_field.kt` | the inline `ToHTML` views for `IntGrid`, `GrayScottState` and `LeniaRun` |
 
-The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All five
-carry `@file:afield.CompletionCategory("ALife")`.
+The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All six
+carry `@file:afield.CompletionCategory("ALife")` — without it a new file lands in a freshly-created
+`reference/uncategorised.md`, which is how `alife_field.kt` first failed the reference drift guard.
 
 ## The measurement layer is the load-bearing part
 
@@ -286,6 +288,36 @@ that closes to `2.3e-14` of a step; drawn length that grows by exactly `4×` per
 step (the textbook `4/3` is the constant-*diameter* form); and enclosed area matching
 `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3e-8` relative. That last floor is `FLine`'s single-precision
 coordinate storage, not the maths.
+
+## Inline `ToHTML` views
+
+`alife_field.kt` holds the bodies of `IntGrid.toHTML()`, `GrayScottState.toHTML()` and
+`LeniaRun.toHTML()`. It is a separate file for the reason `wfc_field.kt` is: the five system files then
+name exactly three symbols from it and nothing else from Field's visualizer, so `alife.kt` reads as
+integer lattices with no HTML in it.
+
+**The range policy is load-bearing, not tidy.** Every scale is fixed by meaning and named in the caption.
+The specific reason, and it is the same trap that cost this family a figure during the first build: a
+`SATURATION` Lenia field is *constant at 1*. Normalise per frame and it maps to the dark end of the
+colour map and renders solid black — pixel-for-pixel identical to a field that died. A view is a worse
+place for that bug than a figure, because a figure is regenerated deliberately and a view is regenerated
+every time somebody looks at a value.
+
+So the views are verified at the pixel, in `AlifeGallery`'s `inline-view` figure (fast tier), by decoding
+the base64 PNG back out of the emitted HTML — the pattern `WfcSmokeTest` uses:
+
+| claim | how it is checked | measured |
+|---|---|---|
+| one pixel per cell | panel dimensions against the grid's, and every pixel addressed by *grid* coordinates | 12×12 for a 12×12 grid |
+| the caption's grayscale mapping | all live cells `#ffffff`, all dead `#000000` | 5 / 139, 0 wrong |
+| a multi-state grid is not grayscale | distinct colour count, and the caption names `cyclicPalette` | 8 colours in an 8-state soup |
+| `DEATH` ≠ `SATURATION` | centre pixel of each against the two ends of `inferno` | `#000004` vs `#fcffa4` |
+| an unseeded `GrayScottState` renders empty | distinct colour count, and the bottom of `magma` | exactly 1 colour, `#000004` |
+| …and the view is not simply always black | the same view of a seeded field | 101 distinct colours |
+
+One honest limit, stated in the KDoc rather than papered over: an `IntGrid` does not carry its rule's
+state count, so the view reads `maxState() + 1` from the data. A 14-state cyclic soup that has died back
+to 9 distinct states reports 9. The caption therefore says "states **observed**".
 
 ## Running the verification
 

@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**4638 public symbols across 81 source files**, 2639 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**4644 public symbols across 82 source files**, 2645 of them (56%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -14,7 +14,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Data](data.md) | 16 | 657 | 222 (33%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 22 | 1315 | 584 (44%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
-| [ALife](alife.md) | 5 | 317 | 194 (61%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
+| [ALife](alife.md) | 6 | 323 | 200 (61%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 10 | 345 | 229 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 4 | 227 | 215 (94%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
@@ -26,10 +26,11 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 
 | File | Category | Symbols | Documented | What it is | Used in |
 | --- | --- | --- | --- | --- | --- |
-| [alife.kt](alife.md#alife-kt) | ALife | 50 | 38 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
+| [alife.kt](alife.md#alife-kt) | ALife | 51 | 39 | Spatial artificial life for the Field stdlib — the *continuous / grid / agent* half of ALife, the counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`, `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`. | [Spatial artificial life](../alife_examples.md) |
 | [alife_agents.kt](alife.md#alife-agents-kt) | ALife | 59 | 24 | Agent-based spatial ALife: boids flocking, a Physarum (slime-mould) deposit–sense–move population over a trail `Img`, and diffusion-limited aggregation. | [Spatial artificial life](../alife_examples.md) |
 | [alife_ca.kt](alife.md#alife-ca-kt) | ALife | 84 | 60 | Discrete cellular automata: life-like and outer-totalistic rules on a 2-D lattice, cyclic multi-state CA, Wolfram's elementary 1-D rules as a space-time raster, and a 3-D life-like CA that marches out to a `TriMesh`. | [Spatial artificial life](../alife_examples.md) |
-| [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 67 | 38 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
+| [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 69 | 40 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
+| [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
 | [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 57 | 34 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
 | [ArchitecturalGeometry.kt](graphics.md#architecturalgeometry-kt) | Graphics | 184 | 0 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |

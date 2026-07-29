@@ -4,7 +4,7 @@
 
 Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence.
 
-5 source file(s), 317 public symbol(s), 194 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+6 source file(s), 323 public symbol(s), 200 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -79,7 +79,7 @@ CPU reference implementations you can read), and any system needing a trained mo
 
 ### IntGrid { #alife-kt-intgrid }
 
-<code class="highlight"><span class="k">class</span> <span class="nf">IntGrid</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">wrap</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">class</span> <span class="nf">IntGrid</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">wrap</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">ToHTML</span></code>
 
 A rectangular lattice of integer cell states — the substrate every discrete automaton in the family steps. Row-major, `cells[y * width + x]`, origin top-left (matching [`Img`](imaging.md#imaging-kt-img)).
 
@@ -106,6 +106,7 @@ A rectangular lattice of integer cell states — the substrate every discrete au
 | <code class="highlight"><span class="k">fun</span> <span class="nf">livePoints</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> | Coordinates of every non-zero cell, row-major. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">liveBounds</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span></code> | Inclusive bounding box of the non-zero cells as `(minX, minY, maxX, maxY)`, or `null` when the grid is empty. Bounding-box *displacement* is how a translating pattern is measured without centroid rounding coming into it. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline view for the value visualizer: the lattice at one pixel per cell, plus population, border mode and state entropy. The body lives in `alife_field.kt` (`alifeGridHtml`) so that this file keeps its "integer lattices and nothing else" footprint. |
 
 ### BlobShape { #alife-kt-blobshape }
 
@@ -470,7 +471,7 @@ neighbour counting a claim they must agree on exactly.
 
 ### GrayScottState { #alife-continuous-kt-grayscottstate }
 
-<code class="highlight"><span class="k">class</span> <span class="nf">GrayScottState</span><span class="p">(</span><span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">class</span> <span class="nf">GrayScottState</span><span class="p">(</span><span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">ToHTML</span></code>
 
 A Gray–Scott reaction–diffusion state: two coupled fields `u` (the substrate) and `v` (the autocatalyst), both `Img`s of the same shape.
 
@@ -479,6 +480,7 @@ A Gray–Scott reaction–diffusion state: two coupled fields `u` (the substrate
 | <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> | Field width in cells. |
 | <code class="highlight"><span class="k">val</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span></code> | Field height in cells. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline view: both reagent fields on **fixed** `0..1` scales plus the morphology reading. Body in `alife_field.kt` (`alifeGrayScottHtml`); the fixed scale is the point, because `Img`'s own auto-normalising thumbnail turns an unseeded `v = 0` control arm into a rich texture. |
 
 ### GrayScottParams { #alife-continuous-kt-grayscottparams }
 
@@ -562,7 +564,7 @@ Constants: `non`.
 
 ### LeniaRun { #alife-continuous-kt-leniarun }
 
-<code class="highlight"><span class="k">class</span> <span class="nf">LeniaRun</span><span class="p">(</span><span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">LeniaPhase</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalMass</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">massHistory</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">blobCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">centroidDrift</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">class</span> <span class="nf">LeniaRun</span><span class="p">(</span><span class="k">val</span> <span class="n">phase</span><span class="p">:</span> <span class="nc">LeniaPhase</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalMass</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">massHistory</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">blobCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">centroidDrift</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">Img</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">ToHTML</span></code>
 
 The outcome of a Lenia run, as measured rather than as looked at.
 
@@ -575,6 +577,49 @@ The outcome of a Lenia run, as measured rather than as looked at.
 | <code class="highlight"><span class="k">val</span> <span class="n">centroidDrift</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">Img</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline view: the final field on a **fixed** `0..1` scale, the measured phase, and the mass history as a sparkline. Body in `alife_field.kt` (`alifeLeniaRunHtml`). A saturated field is constant at 1 and an auto-ranged colour map draws it black, i.e. identical to death — so this view is the one place in the family where the range policy is load-bearing rather than tidy. |
+
+## alife_field.kt { #alife-field-kt }
+
+Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an [`IntGrid`](alife.md#alife-kt-intgrid)
+or a [`GrayScottState`](alife.md#alife-continuous-kt-grayscottstate), with nothing to set up.
+
+This file exists for the same reason `wfc_field.kt` does. The family's own files stay free of any
+dependency on Field's visualizer: `alife.kt` and `alife_continuous.kt` each name exactly one symbol
+from here (`alifeGridHtml`, `alifeGrayScottHtml`) and inherit every pixel of their view from it. So a
+reader of `alife.kt` sees integer lattices and nothing about HTML, and the two files can be understood
+separately.
+
+**Range-policy discipline, which is the whole difference between a heatmap and a lie.** Copied
+deliberately from `wfc_field.kt`, because these are the rules that stop an inline view being
+decoration:
+
+ - **Every scale is named in the caption, with both endpoints spelled out in the units of the thing
+   being shown.** A picture whose scale is a mystery says nothing.
+ - **Domains are fixed by meaning, not by the frame.** An [`IntGrid`](alife.md#alife-kt-intgrid)'s states run `0 .. maxState`; a
+   Gray–Scott `v` runs `0 .. 1`, the range the reaction is defined on, *not* `min .. max` of this
+   particular field. Auto-ranging per frame is how a saturated Lenia field — constant at 1 — rendered
+   as solid black and looked exactly like death; that trap cost this family a figure, and it is a trap
+   an inline view walks into on every evaluation rather than once.
+ - **One pixel per cell, never resampled.** The `<img>` is scaled by an integer factor with
+   `image-rendering:pixelated`, so cell coordinates and pixel coordinates stay the same thing and a
+   reader can count. A filtered upscale destroys exactly the local structure a CA is about.
+ - **A flat field says so.** If every cell holds the same value the caption reports it, because a
+   uniform panel is otherwise indistinguishable from a broken one.
+
+These views are checked, not eyeballed: `AlifeGallery`'s `inline-view` figure decodes the base64 PNG
+back out of the emitted HTML and asserts the colour of individual pixels against the value the caption
+claims for them — the same thing `WfcSmokeTest` does for the solver's view.
+
+`src/jvmMain/kotlin/afield/stdlib/alife_field.kt`
+
+### Top-level functions { #alife-field-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">alifeGridHtml</span><span class="p">(</span><span class="n">grid</span><span class="p">:</span> <span class="nc">IntGrid</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The body of `IntGrid.toHTML`: the lattice itself, one pixel per cell, plus the two readings that say whether it is doing anything — population and state entropy. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">alifeGrayScottHtml</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">GrayScottState</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The body of `GrayScottState.toHTML`: both reagent fields side by side on **fixed `0 .. 1` scales**, plus the morphology reading that the docs page's regime claims are actually made through. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">alifeLeniaRunHtml</span><span class="p">(</span><span class="n">run</span><span class="p">:</span> <span class="nc">LeniaRun</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The body of `LeniaRun.toHTML`: the final field on a **fixed `0 .. 1` scale**, the measured phase, and the mass history as a sparkline. |
 
 ## alife_lsystem.kt { #alife-lsystem-kt }
 

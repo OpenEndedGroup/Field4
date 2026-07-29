@@ -79,7 +79,7 @@ class IntGrid(
     val height: Int,
     val cells: IntArray,
     val wrap: Boolean = true
-) {
+) : afield.ToHTML {
     init {
         require(width >= 1 && height >= 1) { "IntGrid must be at least 1x1, got ${width}x$height" }
         require(cells.size == width * height) {
@@ -218,6 +218,13 @@ class IntGrid(
 
     override fun toString(): String =
         "IntGrid(${width}x$height, ${if (wrap) "torus" else "bounded"}, population ${population()})"
+
+    /**
+     * Inline view for the value visualizer: the lattice at one pixel per cell, plus population, border
+     * mode and state entropy. The body lives in `alife_field.kt` ([alifeGridHtml]) so that this file
+     * keeps its "integer lattices and nothing else" footprint.
+     */
+    override fun toHTML(): String = alifeGridHtml(this)
 
     companion object {
         /** All-zero grid. */

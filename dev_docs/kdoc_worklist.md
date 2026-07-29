@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2639 of 4638 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2645 of 4644 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **264 undocumented entry points** (types, top-level functions and values) and 1602 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -23,7 +23,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples | 0 | 26 | 33% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
-| [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 56% |
+| [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples | 0 | 17 | 51% |

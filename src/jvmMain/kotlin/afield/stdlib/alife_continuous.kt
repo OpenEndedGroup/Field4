@@ -86,7 +86,7 @@ fun Img.diffuseTimes(steps: Int, rate: Double = 0.2, border: Border = Border.WRA
  * @property u substrate field, 1-channel; starts at 1 everywhere
  * @property v autocatalyst field, 1-channel; starts at 0 except where you seed it
  */
-class GrayScottState(val u: Img, val v: Img) {
+class GrayScottState(val u: Img, val v: Img) : afield.ToHTML {
     init {
         require(u.channels == 1 && v.channels == 1) { "Gray–Scott fields must be 1-channel" }
         require(u.sameShapeAs(v)) { "u and v must have the same shape" }
@@ -100,6 +100,13 @@ class GrayScottState(val u: Img, val v: Img) {
 
     override fun toString(): String =
         "GrayScottState(${width}x$height, v in ${"%.3f".format(v.min())}..${"%.3f".format(v.max())})"
+
+    /**
+     * Inline view: both reagent fields on **fixed** `0..1` scales plus the morphology reading. Body in
+     * `alife_field.kt` ([alifeGrayScottHtml]); the fixed scale is the point, because `Img`'s own
+     * auto-normalising thumbnail turns an unseeded `v = 0` control arm into a rich texture.
+     */
+    override fun toHTML(): String = alifeGrayScottHtml(this)
 }
 
 /**
@@ -637,9 +644,17 @@ class LeniaRun(
     val blobCount: Int,
     val centroidDrift: Double,
     val field: Img
-) {
+) : afield.ToHTML {
     override fun toString(): String =
         "LeniaRun($phase, mass %.4f, %d blob(s), drift %.2f cells)".format(finalMass, blobCount, centroidDrift)
+
+    /**
+     * Inline view: the final field on a **fixed** `0..1` scale, the measured phase, and the mass history
+     * as a sparkline. Body in `alife_field.kt` ([alifeLeniaRunHtml]). A saturated field is constant at 1
+     * and an auto-ranged colour map draws it black, i.e. identical to death — so this view is the one
+     * place in the family where the range policy is load-bearing rather than tidy.
+     */
+    override fun toHTML(): String = alifeLeniaRunHtml(this)
 }
 
 /**
