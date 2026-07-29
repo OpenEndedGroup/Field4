@@ -426,7 +426,7 @@ showPlaneGrid(
 :::endfold
 ```
 
-![Three panels, each drawn over its own faint sampling grid: a straight vertical contour recovered from a 4x4 grid whose middle column of samples sits exactly on it, a closed 28-point circle recovered from a 16x16 grid that it passes exactly through at the four axis points, and the two equal-length right-angled branches of x*y = 0 meeting at the origin of an 8x8 grid](assets/spatial_geometry_examples/grid_corner.png)
+![Three panels, each drawn over its own faint sampling grid: a straight vertical contour recovered from a 4x4 grid whose middle column of samples sits exactly on it, a closed 28-point circle recovered from a 16x16 grid that it passes exactly through at the four axis points, and the two branches of x*y = 0 on an 8x8 grid, of 8 and 10 points, each an elbow that turns inside the one cell containing the origin with the marcher's chosen pairing visible as a short diagonal across it](assets/spatial_geometry_examples/grid_corner.png)
 
 The captions carry the before-and-after. `f(x, y) = x` at `iso = 0` on a grid with an even cell count
 used to return **no contour at all** — the zero set is a straight line down the middle of the domain
@@ -449,13 +449,30 @@ sharing an edge can disagree, and the contour tears there. The resolution is the
 decider**: the cell's bilinear interpolant has exactly one saddle, at value
 `(s₀s₂ − s₁s₃) / (s₀ + s₂ − s₁ − s₃)` with every `s` measured from `iso`, and whichever diagonal pair
 of corners shares a side with that saddle is the pair the centre connects. It is a pure function of
-the cell's own four corner values, so the neighbour always agrees.
+the cell's own four corner values, so the neighbour always agrees — which is the property the
+stitcher needs, and the one an arbitrary pairing cannot give.
 
-The third panel is the visible consequence. `x·y = 0` is the two axes crossing, and a marcher cannot
-draw an X — at the saddle cell it has to join the four crossings in pairs, so the zero set comes back
-as two right-angled branches meeting at the origin rather than as two straight lines. Because the
-field is symmetric under swapping *x* and *y*, the two branches have to be the same length, and they
-are: **9 points each**. The arbitrary pairing gave 8 and 10.
+The third panel is the case where it has nothing to say, and this page got it wrong the first time.
+`x·y = 0` is the two axes crossing, and a marcher cannot draw an X, so at the saddle cell it joins
+the four crossings in pairs and the zero set comes back as two right-angled branches meeting at the
+origin. But `x·y` is *itself* bilinear, so the cell's interpolant reproduces it exactly and the
+saddle value is exactly `iso`. Both pairings are then equally correct and the decider is looking at
+a numerator that is zero in exact arithmetic and ±10⁻²⁰ in doubles. An earlier draft of this page
+reported the two branches as **9 points each** and called the equality evidence that the decider
+works. It was not: the equality was which way a multiplication rounded, and the same field gives
+32 and 34 points at `nx = 32` and 127 and 131 at `nx = 128`. The tie is now broken deterministically
+towards the pre-decider pairing, so `nx = 8` gives **8 and 10** — exactly what the "arbitrary"
+pairing gave, because on a tie there is nothing to improve on. Nor should the branches be equal: the
+sampling window here is `[-1.05, 1.03] × [-1.02, 1.07]`, so the origin sits at cell `(4.04, 3.90)`
+and the two arms of the X are cut by the grid at different places.
+
+Where the decider *does* earn its keep is any cell whose saddle value is genuinely off `iso`. Give
+one cell the corner values `(−3, +1, −3, +1)` and the saddle is at `−1`, on the same side as the
+`−3` diagonal, so those two corners join through the centre and the crossings cut the two `+1`
+corners off. Negate every value and the answer must flip to the other diagonal. A fixed pairing
+draws two long diagonals across the cell in one of those two cases; the decider draws two short
+corner elbows in both. That pair is asserted in `SpatialGeometryTest`, along with a control-arm run
+confirming the pre-fix marcher fails it.
 
 **What is still rough:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
 number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this

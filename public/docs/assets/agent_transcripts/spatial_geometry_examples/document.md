@@ -18,7 +18,7 @@ Marching squares has exactly two decisions in it, and both are places where a pl
 implementation is quietly wrong. Each input below has an answer you already know.
 
 ```edn [field-box id="spatial_marching" role="properties"]
-{"id" "spatial_marching" "index" 0 "name" "The two decisions inside marching squares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The two decisions inside marching squares" "_tombstone" false "frame" #afield/rect [1020.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_marching_code_.kt" "lines" 66 "characters" 3755 "sha256" "3f7cf7a21cae07d15b7b1090d00fe27124439d762ba26630e37e02de4dd60ef9"}]}
+{"id" "spatial_marching" "index" 0 "name" "The two decisions inside marching squares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The two decisions inside marching squares" "_tombstone" false "frame" #afield/rect [1020.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_marching_code_.kt" "lines" 72 "characters" 4223 "sha256" "4189ee20babea63ba4fc66f1911ecf62887f188885dfa2671bb861352964daae"}]}
 ```
 
 ```kotlin [field-property box="spatial_marching" name="code" path="spatial_marching_code_.kt"]
@@ -51,11 +51,17 @@ println("   perimeter %.4f against 2pi = %.4f".format(perimeter(aligned[0]), 2 *
 // 2. The saddle cell. Four corners alternating inside/outside give four crossings and two
 // ways to pair them, and the two choices give different topology — so an arbitrary choice
 // lets neighbouring cells disagree and the contour tears. The asymptotic decider settles it
-// from the cell's own four corner values, which is why f = x*y comes back symmetric.
+// from the cell's own four corner values, so two cells sharing an edge always agree.
+//
+// f = x*y is the case where it has nothing to go on: the field is ITSELF bilinear, so the
+// cell's interpolant reproduces it and the saddle value is exactly iso. Both pairings are
+// then equally correct. Left to floating point that tie flips with resolution, so it is
+// broken deterministically towards the pre-decider pairing. Raise nx and watch the branch
+// lengths: they are not equal, and with this sampling window they are not meant to be.
 val branches = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
 println()
 println("f = x*y at iso 0 -> ${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points")
-println("   (equal lengths: the field is symmetric under swapping x and y)")
+println("   (a genuine tie: the saddle sits exactly on iso, so either pairing is correct)")
 
 fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, nx: Int, ny: Int) = fline {
     for (i in 0..nx) { val x = x0 + (x1 - x0) * i / nx; moveTo(x, y0); lineTo(x, y1) }

@@ -287,11 +287,17 @@ operations:
           // 2. The saddle cell. Four corners alternating inside/outside give four crossings and two
           // ways to pair them, and the two choices give different topology — so an arbitrary choice
           // lets neighbouring cells disagree and the contour tears. The asymptotic decider settles it
-          // from the cell's own four corner values, which is why f = x*y comes back symmetric.
+          // from the cell's own four corner values, so two cells sharing an edge always agree.
+          //
+          // f = x*y is the case where it has nothing to go on: the field is ITSELF bilinear, so the
+          // cell's interpolant reproduces it and the saddle value is exactly iso. Both pairings are
+          // then equally correct. Left to floating point that tie flips with resolution, so it is
+          // broken deterministically towards the pre-decider pairing. Raise nx and watch the branch
+          // lengths: they are not equal, and with this sampling window they are not meant to be.
           val branches = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
           println()
           println("f = x*y at iso 0 -> ${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points")
-          println("   (equal lengths: the field is symmetric under swapping x and y)")
+          println("   (a genuine tie: the saddle sits exactly on iso, so either pairing is correct)")
 
           fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, nx: Int, ny: Int) = fline {
               for (i in 0..nx) { val x = x0 + (x1 - x0) * i / nx; moveTo(x, y0); lineTo(x, y1) }

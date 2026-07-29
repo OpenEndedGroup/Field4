@@ -1061,10 +1061,33 @@ points where the circle passes through a grid corner. See `ISO_CROSSING_EPSILON`
 half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
 same convention for the same reason.
 
+# What the change to the marcher does and does not touch
+
+Three things changed here at once, and they have very different reach. Measured old-against-new
+over 392 (field, resolution, iso) combinations across eight fields:
+
+| change | when it can alter the output | how much |
+| --- | --- | --- |
+| the two-valued `inside` test | **only** when some grid sample is exactly equal to `iso` | unbounded — a whole contour appears where there was none, or four arcs become one loop. 96 of the 392 cases; **0** cases with no exactly-on-`iso` sample changed |
+| `ISO_CROSSING_EPSILON` | when a crossing lands within a thousandth of a cell of a grid corner | at most `1e-3` of a cell edge, an *analytic* bound; the sweep attained `9.93e-4` of a cell |
+| the saddle decider | any cell with four crossings whose bilinear saddle disagrees with the old fixed pairing — including on perfectly smooth fields | two segments are re-routed within that one cell, so up to about a cell |
+
+So only the third one reaches ordinary, non-degenerate input, and it reaches it rarely: 4 of the
+392 cases, all of them the one saddle cell of `f = x*y`.
+
+# The saddle cell
+
+The four-crossing cell is resolved by the *asymptotic decider*: the sign of the cell's bilinear
+saddle value decides which diagonal pair of corners the centre of the cell belongs to. It is a pure
+function of the cell's own four corner values, so two cells sharing an edge cannot disagree about
+the crossing on it — which is the property the stitcher needs and the old fixed pairing did not
+have. It is *not* a claim that the ambiguity has gone away: when the saddle value is exactly `iso`
+the two pairings are equally correct and the decider genuinely has nothing to go on. That case is
+settled deterministically rather than by round-off — see `SADDLE_TIE_RELATIVE_EPSILON`, which is
+where the interesting failure was.
+
 The one remaining roughness: the segment stitcher is O(m^2) in the number of segments, so very
-high grid resolutions get expensive. The four-crossing (saddle) cell is *not* a roughness any
-more — it is resolved by the asymptotic decider, a pure function of the cell's own four corner
-values, so two cells sharing a face cannot disagree about it.
+high grid resolutions get expensive.
 
 `src/jvmMain/kotlin/afield/stdlib/contours.kt`
 
