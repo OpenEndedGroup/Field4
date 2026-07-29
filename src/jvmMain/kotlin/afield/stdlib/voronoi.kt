@@ -11,38 +11,82 @@ import afield.stdlib.linalg.Vector3f as Vec3
  * Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi
  * ("CircularDirichlet") for Kotlin + Field linalg.
  *
- * - voronoi3d(...) builds convex polyhedral cells by intersecting pairwise
- *   bisector half-spaces, then closing unbounded cells against a large clip box.
- * - CircularDirichlet3d.build(...) extracts approximate support patches on
- *   bisector spheres / planes by clipping a sampled surface mesh with the
- *   weighted score predicate.
+ * - [voronoi3d] builds convex polyhedral cells by intersecting pairwise bisector half-spaces. Six
+ *   clip-box planes are added to **every** cell, not only to the unbounded ones, so a cell always
+ *   comes back as a bounded polyhedron; [VoronoiCell3.bounded] is how you tell whether the answer is
+ *   the site's own cell or an artefact of the box. The box is the sites' bounding box grown on every
+ *   side by `clipPadding * scale + 1`, where `scale` is the cloud's own diagonal (floored at 1).
+ * - [CircularDirichlet3d.build] extracts approximate support patches on bisector spheres / planes by
+ *   clipping a sampled surface mesh with the weighted score predicate.
  *
  * The weighted contourer is renderer-oriented: it prefers stable, wound
  * boundary loops over exact symbolic patch topology.
+ *
+ * # What the unweighted clipper guarantees, and what it does not
+ *
+ * Which face each corner belongs to is decided **combinatorially** — a corner records the planes that
+ * produced it, and a face's polygon is exactly the corners recording that plane — rather than by a
+ * distance test against a tolerance. See the `collectCorners` KDoc in [Voronoi3d] for why that matters: with a
+ * tolerance scaled off the point cloud, faces near a near-cospherical site cluster claimed corners
+ * that were not on them, and the cells did not close (a T-junction, and a hairline crack in any mesh
+ * built from the faces).
+ *
+ * It is still a `Float` clipper and the repair is not total. On the sweep that ratcheted it, **4 of
+ * 465 bounded cells** and **12 of 447 clipped cells** still fail the strict closure check — every
+ * edge walked by exactly two faces, in opposite directions. Those counts are pinned with `<=` in
+ * `VoronoiFaceTopologyTest`, so they can improve but cannot regress silently. Cell volumes tile the
+ * clip box to 1e-4 relative and a cubic lattice of sites gives exact unit cubes.
  */
 
 // -----------------------------------------------------------------------------
 // Unweighted 3D Voronoi
 // -----------------------------------------------------------------------------
 
+/** An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clipper's own window. */
 data class Aabb3(
     val min: Vec3,
     val max: Vec3,
 )
 
+/**
+ * The plane `normal · x = d`.
+ *
+ * [normal] is **not** normalized — for a bisector it is the raw difference between two sites — so a
+ * signed distance from this plane is `(dot(normal, x) - d) / length(normal)`.
+ */
 data class Plane3(
-    val normal: Vec3, // plane: normal · x = d
+    val normal: Vec3,
     val d: Float,
 )
 
+/**
+ * One face of a [VoronoiCell3]: the plane it lies in, and the cell's corners that lie on it.
+ *
+ * @param neighborSite the site across this face, or `null` when this is a clip-box face rather than a
+ *   real bisector.
+ * @param polygon wound counter-clockwise as seen from the `+plane.normal` side — i.e. its signed area
+ *   along [Plane3.normal] is non-negative. Always at least 3 corners; a face with fewer, or with a
+ *   numerically zero area, is dropped rather than emitted degenerate.
+ * @param truncated `true` if any of this face's corners touches the clip box, so the face is cut by
+ *   the window rather than closed by the sites. Uses a deliberately looser tolerance than the cell's
+ *   combinatorics, because "does this come near the box" is a question about the box.
+ */
 data class VoronoiFace(
     val neighborSite: Int?,
     val plane: Plane3,
-    val polygon: List<Vec3>,   // wound CCW when viewed along plane.normal
+    val polygon: List<Vec3>,
     val isClip: Boolean,
     val truncated: Boolean,
 )
 
+/**
+ * The convex polyhedron of points nearer to [site] than to any other site, intersected with the
+ * lattice's clip box.
+ *
+ * @param bounded `true` only if no face is a clip face and no face is [VoronoiFace.truncated] — that
+ *   is, the cell is closed by its neighbours alone and the clip box did not participate. An unbounded
+ *   cell's faces are real geometry, but its volume is an artefact of the box.
+ */
 data class VoronoiCell3(
     val siteIndex: Int,
     val site: Vec3,
@@ -50,6 +94,12 @@ data class VoronoiCell3(
     val bounded: Boolean,
 )
 
+/**
+ * One cell per input site, in input order, plus the box they were all clipped against.
+ *
+ * A Voronoi tessellation partitions its clip box exactly, which gives a one-line total check on a
+ * result: the cell volumes must sum to the box's own volume. Measured, they do to 1e-4 relative.
+ */
 data class VoronoiLattice(
     val cells: List<VoronoiCell3>,
     val clipBounds: Aabb3,
@@ -57,6 +107,14 @@ data class VoronoiLattice(
     operator fun get(siteIndex: Int): VoronoiCell3 = cells[siteIndex]
 }
 
+/**
+ * The 3D Voronoi diagram of [l], with the default tolerance and a generous clip box.
+ *
+ * `Voronoi3d.build(l, tolerance, clipPadding)` is the same thing with the knobs exposed. The box is
+ * the sites' bounding box grown by `clipPadding * scale + 1` on every side, `scale` being the cloud's
+ * own diagonal, so the default `clipPadding = 8` puts the box well clear of the sites and every
+ * interior cell is decided by its neighbours alone. Shrink it if you want the box to do work.
+ */
 fun voronoi3d(l: List<Vec3>): VoronoiLattice = Voronoi3d.build(l)
 
 /** `Float`'s relative precision, `2^-23`. The unit every error bound in the clipper is expressed in. */

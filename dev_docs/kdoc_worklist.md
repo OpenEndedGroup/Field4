@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2458 of 4334 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 2464 of 4334 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**262 undocumented entry points** (types, top-level functions and values) and 1497 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**256 undocumented entry points** (types, top-level functions and values) and 1497 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | spatial_geometry_examples | 25 | 54 | 2% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
-| [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 17 | 46 | 0% |
+| [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 6 | 0 | 53% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
@@ -70,28 +70,23 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `AgglomerativeClustering` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:108` |
 | `KMediansResult` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:200` |
 | `ClusterLayerVizOptions` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:221` |
-| `Aabb3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:28` |
-| `Plane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:33` |
-| `VoronoiFace` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:38` |
-| `VoronoiCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:46` |
-| `VoronoiLattice` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:53` |
-| `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:436` |
-| `SupportSurface3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:441` |
-| `SupportSphere3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:445` |
-| `SupportPlane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:452` |
-| `CircularDirichletPatch3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:459` |
-| `SpherePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:466` |
-| `PlanePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:474` |
-| `CircularDirichletCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:482` |
-| `CircularDirichletDiagram3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:487` |
+| `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
+| `SupportSurface3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:499` |
+| `SupportSphere3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:503` |
+| `SupportPlane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:510` |
+| `CircularDirichletPatch3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:517` |
+| `SpherePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:524` |
+| `PlanePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:532` |
+| `CircularDirichletCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:540` |
+| `CircularDirichletDiagram3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:545` |
 | `WfcOffset` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:35` |
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
 | `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:862` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
-| `Voronoi3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:65` |
-| `CircularDirichlet3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
+| `Voronoi3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:123` |
+| `CircularDirichlet3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:552` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
 | `floatAgglomerative` | fun | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:238` |
 | `vec2Agglomerative` | fun | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:246` |
@@ -117,7 +112,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `generateIsoContours` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:412` |
 | `generateSmoothIsoContours` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:458` |
 | `generateSmoothIsoContours` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:503` |
-| `voronoi3d` | fun | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:60` |
 | `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1490` |
 | `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1530` |
 | `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1533` |
@@ -183,5 +177,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `EqualEdgeVector` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:569` |
 | `MirrorAcrossPlane` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:590` |
 | `PanelArea` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:612` |
+| `PointInHalfspace` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:636` |
+| `LineDirection` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:660` |
+| `PlaneNormalDirection` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:682` |
+| `LineTowardPoint` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:708` |
+| `CeresProgramBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:728` |
+| `CeresProgram` | class | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt:845` |
 
-…and **142 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **136 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

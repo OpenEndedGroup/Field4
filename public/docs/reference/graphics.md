@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-23 source file(s), 1326 public symbol(s), 595 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 1326 public symbol(s), 601 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2813,14 +2813,31 @@ What `slSweep` measured: the inputs it used and the `vec4` the program returned 
 Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi
 ("CircularDirichlet") for Kotlin + Field linalg.
 
-- voronoi3d(...) builds convex polyhedral cells by intersecting pairwise
-  bisector half-spaces, then closing unbounded cells against a large clip box.
-- CircularDirichlet3d.build(...) extracts approximate support patches on
-  bisector spheres / planes by clipping a sampled surface mesh with the
-  weighted score predicate.
+- `voronoi3d` builds convex polyhedral cells by intersecting pairwise bisector half-spaces. Six
+  clip-box planes are added to **every** cell, not only to the unbounded ones, so a cell always
+  comes back as a bounded polyhedron; `VoronoiCell3.bounded` is how you tell whether the answer is
+  the site's own cell or an artefact of the box. The box is the sites' bounding box grown on every
+  side by `clipPadding * scale + 1`, where `scale` is the cloud's own diagonal (floored at 1).
+- `CircularDirichlet3d.build` extracts approximate support patches on bisector spheres / planes by
+  clipping a sampled surface mesh with the weighted score predicate.
 
 The weighted contourer is renderer-oriented: it prefers stable, wound
 boundary loops over exact symbolic patch topology.
+
+# What the unweighted clipper guarantees, and what it does not
+
+Which face each corner belongs to is decided **combinatorially** — a corner records the planes that
+produced it, and a face's polygon is exactly the corners recording that plane — rather than by a
+distance test against a tolerance. See the `collectCorners` KDoc in [`Voronoi3d`](graphics.md#voronoi-kt-voronoi3d) for why that matters: with a
+tolerance scaled off the point cloud, faces near a near-cospherical site cluster claimed corners
+that were not on them, and the cells did not close (a T-junction, and a hairline crack in any mesh
+built from the faces).
+
+It is still a `Float` clipper and the repair is not total. On the sweep that ratcheted it, **4 of
+465 bounded cells** and **12 of 447 clipped cells** still fail the strict closure check — every
+edge walked by exactly two faces, in opposite directions. Those counts are pinned with `<=` in
+`VoronoiFaceTopologyTest`, so they can improve but cannot regress silently. Cell volumes tile the
+clip box to 1e-4 relative and a cubic lattice of sites gives exact unit cubes.
 
 `src/jvmMain/kotlin/afield/stdlib/voronoi.kt`
 
@@ -2830,11 +2847,13 @@ boundary loops over exact symbolic patch topology.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">voronoi3d</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">voronoi3d</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> | The 3D Voronoi diagram of `l`, with the default tolerance and a generous clip box. |
 
 ### Aabb3 { #voronoi-kt-aabb3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Aabb3</span><span class="p">(</span><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
+
+An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clipper's own window.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2845,6 +2864,8 @@ boundary loops over exact symbolic patch topology.
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Plane3</span><span class="p">(</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>
 
+The plane `normal · x = d`.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
@@ -2853,6 +2874,8 @@ boundary loops over exact symbolic patch topology.
 ### VoronoiFace { #voronoi-kt-voronoiface }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiFace</span><span class="p">(</span><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
+
+One face of a [`VoronoiCell3`](graphics.md#voronoi-kt-voronoicell3): the plane it lies in, and the cell's corners that lie on it.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2866,6 +2889,8 @@ boundary loops over exact symbolic patch topology.
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiCell3</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
+The convex polyhedron of points nearer to `site` than to any other site, intersected with the lattice's clip box.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
@@ -2876,6 +2901,8 @@ boundary loops over exact symbolic patch topology.
 ### VoronoiLattice { #voronoi-kt-voronoilattice }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiLattice</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span><span class="p">)</span></code>
+
+One cell per input site, in input order, plus the box they were all clipped against.
 
 | Declaration | Summary |
 | --- | --- |
