@@ -1,0 +1,423 @@
+# Field Document: spatial_geometry_examples
+
+This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
+
+```edn [field-document version="1" source="metadata.edn"]
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+```
+
+## 1. The two decisions inside marching squares
+
+<!-- field-box id="spatial_marching" index="0" -->
+
+### Narrative
+
+From `code`
+
+Marching squares has exactly two decisions in it, and both are places where a plausible
+implementation is quietly wrong. Each input below has an answer you already know.
+
+```edn [field-box id="spatial_marching" role="properties"]
+{"id" "spatial_marching" "index" 0 "name" "The two decisions inside marching squares" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The two decisions inside marching squares" "_tombstone" false "frame" #afield/rect [1020.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_marching_code_.kt" "lines" 66 "characters" 3755 "sha256" "3f7cf7a21cae07d15b7b1090d00fe27124439d762ba26630e37e02de4dd60ef9"}]}
+```
+
+```kotlin [field-property box="spatial_marching" name="code" path="spatial_marching_code_.kt"]
+// Marching squares has exactly two decisions in it, and both are places where a plausible
+// implementation is quietly wrong. Each input below has an answer you already know.
+val plane: ScalarField2D = { x, _ -> x }
+val circle: ScalarField2D = { x, y -> kotlin.math.hypot(x, y) - 1.0 }
+val saddle: ScalarField2D = { x, y -> x * y }
+
+// 1. A sample EXACTLY at iso. With a symmetric strict test such a sample is neither inside
+// nor outside and the crossing on every edge out of that corner is suppressed. f(x,y) = x
+// at iso 0 on an even grid used to return an empty list; the unit circle over [-2,2] at
+// nx = 16 came back severed into four arcs at the points where it passes through a corner.
+// The convention now is the one marchingCubes uses: inside iff strictly BELOW iso.
+val planeContours = generateIsoContours(plane, -1.0, 1.0, -1.0, 1.0, 4, 4, 0.0)
+val aligned = generateIsoContours(circle, -2.0, 2.0, -2.0, 2.0, 16, 16, 0.0)
+println("f(x,y) = x at iso 0, nx = 4 -> ${planeContours.size} contour of ${planeContours.sumOf { it.size }} points")
+println("unit circle at nx = 16      -> ${aligned.size} loop of ${aligned[0].size} points")
+
+fun perimeter(loop: List<Vec2>): Double {
+    var total = 0.0
+    for (i in loop.indices) {
+        val a = loop[i]; val b = loop[(i + 1) % loop.size]
+        total += kotlin.math.hypot((a.x - b.x).toDouble(), (a.y - b.y).toDouble())
+    }
+    return total
+}
+println("   perimeter %.4f against 2pi = %.4f".format(perimeter(aligned[0]), 2 * PI))
+
+// 2. The saddle cell. Four corners alternating inside/outside give four crossings and two
+// ways to pair them, and the two choices give different topology — so an arbitrary choice
+// lets neighbouring cells disagree and the contour tears. The asymptotic decider settles it
+// from the cell's own four corner values, which is why f = x*y comes back symmetric.
+val branches = generateIsoContours(saddle, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
+println()
+println("f = x*y at iso 0 -> ${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points")
+println("   (equal lengths: the field is symmetric under swapping x and y)")
+
+fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, nx: Int, ny: Int) = fline {
+    for (i in 0..nx) { val x = x0 + (x1 - x0) * i / nx; moveTo(x, y0); lineTo(x, y1) }
+    for (j in 0..ny) { val y = y0 + (y1 - y0) * j / ny; moveTo(x0, y); lineTo(x1, y) }
+    color = vec(0.34, 0.42, 0.54, 0.55)
+    thickness = 0.8
+}
+
+fun dotted(
+    contours: List<List<Vec2>>, x0: Double, x1: Double, y0: Double, y1: Double,
+    colors: List<Vec4>, eps: Double,
+) = contours.mapIndexed { i, c ->
+    polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, eps)).also {
+        it.color = colors[i % colors.size]; it.thickness = 2.2
+        it.pointed = true; it.pointSize = 1.1
+    }
+}
+
+val warm = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95),
+                  vec(0.98, 0.55, 0.62, 0.95), vec(0.6, 1.0, 0.72, 0.95))
+
+showPlaneGrid(
+    "f(x,y) = x at iso 0, grid aligned on x = 0\n${planeContours.size} contour of ${planeContours.sumOf { it.size }} points (was 0)" to
+        (listOf(gridLines(-1.0, 1.0, -1.0, 1.0, 4, 4)) + dotted(planeContours, -1.0, 1.0, -1.0, 1.0, warm, 0.4)),
+    "unit circle at nx = 16, aligned\n1 loop of ${aligned[0].size} points (was 4 arcs)" to
+        (listOf(gridLines(-2.0, 2.0, -2.0, 2.0, 16, 16)) + dotted(aligned, -2.0, 2.0, -2.0, 2.0, warm, 0.2)),
+    "f = x*y at iso 0 — the saddle cell\n${branches.size} branches of ${branches.map { it.size }.joinToString(" and ")} points" to
+        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8, 8)) + dotted(branches, -1.05, 1.03, -1.02, 1.07, warm, 0.2)),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 280,
+)
+```
+
+## 2. A field, and the seam through it
+
+<!-- field-box id="spatial_contours" index="1" -->
+
+### Narrative
+
+From `code`
+
+A Voronoi diagram IS the set of ties in argmin |x - p_i|, so contouring the gap between
+the nearest and the second nearest site recovers it from a completely different
+algorithm. Except at exactly zero — see below.
+
+```edn [field-box id="spatial_contours" role="properties"]
+{"id" "spatial_contours" "index" 1 "name" "A field, and the seam through it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A field, and the seam through it" "_tombstone" false "frame" #afield/rect [1020.0 80.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_contours_code_.kt" "lines" 69 "characters" 3438 "sha256" "6a8d31ea72d50958773b79f6a5c17d2f663e9a117c88d84102ce9b3ccf97ffe4"}]}
+```
+
+```kotlin [field-property box="spatial_contours" name="code" path="spatial_contours_code_.kt"]
+// A Voronoi diagram IS the set of ties in argmin |x - p_i|, so contouring the gap between
+// the nearest and the second nearest site recovers it from a completely different
+// algorithm. Except at exactly zero — see below.
+val sites = listOf(
+    vec(-1.6, -0.9), vec(1.4, -1.2), vec(2.0, 1.1), vec(-0.2, 1.7), vec(-2.1, 0.9), vec(0.4, -0.1),
+)
+val gap: ScalarField2D = { x, y ->
+    val d = sites.map { s -> kotlin.math.hypot(x - s.x, y - s.y) }.sorted()
+    d[1] - d[0]
+}
+
+// This field is NON-NEGATIVE: it touches zero on the seams and is positive everywhere
+// else. Marching squares finds SIGN CHANGES, so iso 0.0 finds nothing at all, and that is
+// the right answer rather than a bug. Every min-of-distances or absolute-value field has
+// this property, so it is worth internalising once.
+val atZero = generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, 0.0)
+var lo = Double.MAX_VALUE
+var hi = -Double.MAX_VALUE
+for (i in 0..120) for (j in 0..120) {
+    val v = gap(-3.4 + i * 6.8 / 120.0, -2.9 + j * 5.8 / 120.0)
+    if (v < lo) lo = v
+    if (v > hi) hi = v
+}
+println("field range %.3e .. %.4f  (never negative)".format(lo, hi))
+println("iso 0.0 exactly -> ${atZero.size} contours")
+
+val levels = listOf(0.05, 0.35, 0.8, 1.4)
+val byLevel = levels.map { iso -> iso to generateIsoContours(gap, -3.4, 3.4, -2.9, 2.9, 120, 120, iso) }
+byLevel.forEach { (iso, cs) ->
+    println("iso %.2f -> %2d contours, %4d points".format(iso, cs.size, cs.sumOf { it.size }))
+}
+
+// A completely different use of the same machinery: pointEdgeScalarField2D turns an FLine
+// into a signed field whose zero set is a tube around it, so contouring at 0.0 outlines a
+// stroke and a negative iso fattens it.
+val stroke = fline {
+    moveTo(-2.4, 1.2); cubicTo(-1.0, -2.2, 1.2, 2.4, 2.6, -1.0)
+}
+val outline = generateSmoothIsoContours(stroke, radius = 0.55, spatialStep = 0.05)
+val fat = generateSmoothIsoContours(stroke, radius = 0.55, spatialStep = 0.05, iso = -0.28)
+println()
+println("tube outlines: ${outline.size} at radius 0.55, ${fat.size} at 0.83")
+
+fun contourLines(contours: List<List<Vec2>>, color: Vec4, thickness: Double) =
+    contours.filter { it.size >= 2 }.map { c ->
+        polylineFrom(c, 0, closed = isoContourClosed(c, -3.4, 3.4, -2.9, 2.9, boundaryEpsilon = 0.05)).also {
+            it.color = color; it.thickness = thickness
+        }
+    }
+
+val siteDots = pointCloudFLine(sites, color = vec(1.0, 1.0, 1.0, 0.9), pointSize = 1.4)
+val ramp = okhslSet(levels.size, saturation = 0.82, lightness = 0.66, startHue = 0.55f)
+val stacked = byLevel.flatMapIndexed { i, (_, contours) ->
+    contourLines(contours, ramp[i], 1.5 - i * 0.15)
+} + siteDots
+
+showPlaneGrid(
+    "iso 0.05 — the cells, minus a hairline\n${byLevel[0].second.size} contours; at iso 0.0 exactly: ${atZero.size}" to
+        (contourLines(byLevel[0].second, vec(0.62, 0.9, 1.0, 0.85), 1.6) + siteDots),
+    "iso 0.05 / 0.35 / 0.8 / 1.4 together\ncells shrinking inwards with rounded corners" to stacked,
+    "generateSmoothIsoContours on an FLine\ntube radius 0.55 and 0.83" to listOf(
+        stroke.also { it.color = vec(1.0, 1.0, 1.0, 0.30); it.thickness = 1.0 },
+        *fat.map { it.also { f -> f.color = vec(0.98, 0.55, 0.42, 0.55); f.thickness = 1.3 } }.toTypedArray(),
+        *outline.map { it.also { f -> f.color = vec(1.0, 0.82, 0.42, 0.95); f.thickness = 1.6 } }.toTypedArray(),
+    ),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 280,
+)
+```
+
+## 3. Delaunay, and the Voronoi dual
+
+<!-- field-box id="spatial_delaunay" index="2" -->
+
+### Narrative
+
+From `code`
+
+Voronoi and Delaunay are the same object seen twice: the diagram cuts the plane into one
+cell per site, the triangulation joins two sites exactly when their cells share an edge.
+vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
+
+```edn [field-box id="spatial_delaunay" role="properties"]
+{"id" "spatial_delaunay" "index" 2 "name" "Delaunay, and the Voronoi dual" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Delaunay, and the Voronoi dual" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_delaunay_code_.kt" "lines" 71 "characters" 3511 "sha256" "35b9a2469b47748c497e261c52b74b2d49612fcc707ce54cee44ee35d645e0a7"}]}
+```
+
+```kotlin [field-property box="spatial_delaunay" name="code" path="spatial_delaunay_code_.kt"]
+// Voronoi and Delaunay are the same object seen twice: the diagram cuts the plane into one
+// cell per site, the triangulation joins two sites exactly when their cells share an edge.
+// vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
+val rng = java.util.Random(17)
+val sites = (0 until 54).map { i ->
+    vec((i % 9) * 44.0 + rng.nextDouble() * 22.0, (i / 9) * 44.0 + rng.nextDouble() * 22.0)
+}
+
+val delaunay = vec2DelaunayGraph(sites)
+val triangles = vec2DelaunayTriangles(sites)
+val voronoi = vec2VoronoiDiagram(sites)
+val hull = vec2ConvexHull(sites)
+
+// Euler's formula pins both counts exactly. A planar triangulation of n points with h of
+// them on the convex hull has 2n-2-h triangles and 3n-3-h edges, or it is not a
+// triangulation. So this is a complete structural check, not a plausibility check.
+val n = sites.size
+val h = hull.hullIndices.size
+println("sites $n, hull $h")
+println("triangles ${triangles.size}  expected 2n-2-h = ${2 * n - 2 - h}")
+println("edges     ${delaunay.edges.size}  expected 3n-3-h = ${3 * n - 3 - h}")
+println("dual == delaunay: ${vec2VoronoiDualGraph(sites).edges.toSet() == delaunay.edges.toSet()}")
+
+// The cells of the h hull sites are UNBOUNDED, and JTS hands them back clipped to a
+// generous envelope rather than to anything you asked for. Print how far it reaches: fit a
+// figure to that and the diagram collapses into a speck, which is why showPlaneGrid takes
+// an explicit window and clips whatever falls outside it.
+val allV = voronoi.cells.flatMap { it.vertices }
+println()
+println("site  x range %.1f .. %.1f".format(sites.minOf { it.x }, sites.maxOf { it.x }))
+println("cell  x range %.1f .. %.1f   <- JTS's clip envelope".format(
+    allV.minOf { it.x }, allV.maxOf { it.x }))
+
+val window = Rect(
+    sites.minOf { it.x.toDouble() } - 18.0, sites.minOf { it.y.toDouble() } - 18.0,
+    sites.maxOf { it.x.toDouble() } - sites.minOf { it.x.toDouble() } + 36.0,
+    sites.maxOf { it.y.toDouble() } - sites.minOf { it.y.toDouble() } + 36.0,
+)
+val bounded = voronoi.cells.count { c ->
+    c.vertices.size >= 3 && c.vertices.all {
+        it.x >= window.x && it.x <= window.x + window.w &&
+            it.y >= window.y && it.y <= window.y + window.h
+    }
+}
+println("cells wholly inside the window: $bounded of ${voronoi.cells.size}")
+
+val cloud = pointCloudFLine(sites, color = vec(1.0, 1.0, 1.0, 0.9), pointSize = 1.1)
+val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.55), thickness = 1.0)
+val hullLine = polylineFrom(hull.hullPoints, 0, closed = true).also {
+    it.color = vec(1.0, 0.78, 0.36, 0.85)
+    it.thickness = 2.0
+}
+
+showPlaneGrid(
+    "vec2DelaunayTriangles — the faces\n${triangles.size} triangles = 2n-2-h" to
+        listOf(frame, delaunayTrianglesToFLine(sites, triangles, color = vec(0.55, 0.70, 0.88, 0.6)), cloud),
+    "vec2VoronoiDiagram — the dual\n$bounded of ${voronoi.cells.size} cells wholly inside" to
+        listOf(frame, *voronoi.toFLines(palette = okhslSet(n, 0.7, 0.62, 0.9f), thickness = 1.2).toTypedArray(), cloud),
+    "both, plus vec2ConvexHull\n${delaunay.edges.size} edges = 3n-3-h, $h sites on the hull" to
+        listOf(
+            frame,
+            delaunay.toFLine(sites, color = vec(0.45, 0.58, 0.75, 0.6), thickness = 1.0),
+            *voronoi.toFLines(color = vec(0.62, 0.92, 1.0, 0.62), thickness = 1.1).toTypedArray(),
+            hullLine,
+            cloud,
+        ),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 280,
+    window = window,
+)
+```
+
+## 4. When the bisector is a circle
+
+<!-- field-box id="spatial_apollonius" index="3" -->
+
+### Narrative
+
+From `code`
+
+CircularDirichlet minimises |x - p|^2 / w^2 — the multiplicatively weighted, or
+Apollonius, diagram. Setting two sites' scores equal and clearing denominators gives the
+equation of a CIRCLE, which degenerates to a line only when the weights match. So a cell
+here is not a polygon: its boundary is made of ArcPieces and LinePieces.
+
+```edn [field-box id="spatial_apollonius" role="properties"]
+{"id" "spatial_apollonius" "index" 3 "name" "When the bisector is a circle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "When the bisector is a circle" "_tombstone" false "frame" #afield/rect [80.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_code_.kt" "lines" 62 "characters" 3208 "sha256" "60779cf12cd818a062300d7422fda4cc824ffb03ad0d60bfa9c5eb2f1e1cb484"}]}
+```
+
+```kotlin [field-property box="spatial_apollonius" name="code" path="spatial_apollonius_code_.kt"]
+// CircularDirichlet minimises |x - p|^2 / w^2 — the multiplicatively weighted, or
+// Apollonius, diagram. Setting two sites' scores equal and clearing denominators gives the
+// equation of a CIRCLE, which degenerates to a line only when the weights match. So a cell
+// here is not a polygon: its boundary is made of ArcPieces and LinePieces.
+val positions = listOf(
+    vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+)
+val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
+
+fun diagramOf(weights: List<Double>) =
+    CircularDirichlet.build(positions.mapIndexed { i, p -> vec(p.x, p.y, weights[i]) })
+
+val equal = diagramOf(List(5) { 1.0 })
+val mixed = diagramOf(listOf(1.0, 1.35, 0.8, 1.1, 1.6))
+val swallowed = diagramOf(listOf(1.0, 2.6, 1.0, 1.0, 1.0))
+
+fun arcs(d: CircularDirichlet.Diagram) =
+    d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
+fun straights(d: CircularDirichlet.Diagram) =
+    d.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.LinePiece } }
+fun fullCircles(d: CircularDirichlet.Diagram) = d.cells.sumOf { c ->
+    c.pieces.count { it is CircularDirichlet.ArcPiece && it.sweepAngle > 6.283 }
+}
+fun enclosed(d: CircularDirichlet.Diagram) = d.cells.count { c ->
+    c.pieces.size == 1 &&
+        (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+}
+
+// All-or-nothing, because the piece type is decided by an exact equality of weights.
+println("equal weights : ${straights(equal)} straight, ${arcs(equal)} arcs")
+println("mixed weights : ${straights(mixed)} straight, ${arcs(mixed)} arcs")
+println("one at 2.6    : ${fullCircles(swallowed)} full-circle pieces, ${enclosed(swallowed)} cells wholly enclosed")
+
+// Every boundary sample is a score tie between its two sites, and no third site beats it.
+fun score(s: Vec3, p: Vec2) =
+    ((p.x - s.x) * (p.x - s.x) + (p.y - s.y) * (p.y - s.y)).toDouble() / (s.z * s.z).toDouble()
+val sites = positions.mapIndexed { i, p -> vec(p.x, p.y, listOf(1.0, 1.35, 0.8, 1.1, 1.6)[i]) }
+var worstTie = 0.0
+mixed.cells.forEach { cell ->
+    cell.pieces.forEach { piece ->
+        val p = piece.samplePoint()
+        val own = score(sites[cell.siteIndex], p)
+        val other = score(sites[piece.neighborSite], p)
+        worstTie = maxOf(worstTie, kotlin.math.abs(own - other) / maxOf(1.0, own))
+    }
+}
+println()
+println("worst relative score gap across every boundary sample: %.3e".format(worstTie))
+
+val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
+val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
+fun panel(d: CircularDirichlet.Diagram) =
+    d.toFLines(clip = clip, maxChordError = 0.01f, palette = palette, thickness = 1.6) + cloud
+
+showPlaneGrid(
+    "equal weights — a plain Voronoi diagram\n${straights(equal)} straight bisectors, ${arcs(equal)} arcs" to panel(equal),
+    "weights 1.0 / 1.35 / 0.8 / 1.1 / 1.6\n${arcs(mixed)} arcs, ${straights(mixed)} straight" to panel(mixed),
+    "one site at weight 2.6\n${fullCircles(swallowed)} complete circles, ${enclosed(swallowed)} cells enclosed" to panel(swallowed),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 280,
+)
+```
+
+## 5. Partitioning the cloud instead of the plane
+
+<!-- field-box id="spatial_clustering" index="4" -->
+
+### Narrative
+
+From `code`
+
+There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
+or a centre that is meaningful for the data it summarises: a medoid is one of your own
+samples, a median is coordinate-wise robust. A k-means centroid is neither.
+
+```edn [field-box id="spatial_clustering" role="properties"]
+{"id" "spatial_clustering" "index" 4 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 52 "characters" 2822 "sha256" "842bdb7e6a8755324ad2a1fbbb9265074b9bb50255a6a05bf34d8bf3045e08ec"}]}
+```
+
+```kotlin [field-property box="spatial_clustering" name="code" path="spatial_clustering_code_.kt"]
+// There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
+// or a centre that is meaningful for the data it summarises: a medoid is one of your own
+// samples, a median is coordinate-wise robust. A k-means centroid is neither.
+val rng = java.util.Random(3)
+val centres = listOf(vec(0.0, 0.0), vec(3.0, 0.2), vec(1.4, 2.6))
+val points = centres.flatMap { c ->
+    List(30) { vec(c.x + rng.nextGaussian() * 0.35, c.y + rng.nextGaussian() * 0.35) }
+}
+
+val tree = vec2Agglomerative(points)          // Ward linkage by default
+val cut3 = tree.partition(3)
+val cut6 = tree.partition(6)
+val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))
+val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))
+
+fun sizes(layer: ClusterLayer) =
+    (0 until layer.clusterCount).map { layer.indices(it).size }.joinToString("/")
+
+println("planted 30/30/30")
+println("agglomerative k=3  ${sizes(cut3)}")
+println("agglomerative k=6  ${sizes(cut6)}")
+println("kmedoids      k=3  ${medoids.clusterSizes.joinToString("/")}  distortion %.3f  %d rounds  converged=%s"
+    .format(medoids.distortion, medoids.iterations, medoids.converged))
+println("kmedians      k=3  ${medians.clusterSizes.joinToString("/")}  L1 objective %.3f  converged=%s"
+    .format(medians.objective, medians.converged))
+
+// A finer cut of the merge tree refines a coarser one — which is the property that makes a
+// hierarchy worth having: you can change your mind about k afterwards, for free.
+val nested = (0 until cut6.clusterCount).all { fine ->
+    cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
+}
+// And a medoid is an actual input sample. Check it rather than trust it.
+val areSamples = medoids.medoids.all { m -> points.any { it.x == m.x && it.y == m.y } }
+println()
+println("k=6 nested inside k=3: $nested")
+println("medoids are input samples: $areSamples")
+println("medians beat medoids on the L1 objective: ${medians.objective <= medoids.distortion}")
+
+showPlaneGrid(
+    "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3)} — the planted clusters, whole" to
+        cut3.toFLines(points, drawSpokes = false, pointSize = 1.6),
+    "…the same tree cut at 6\nsizes ${sizes(cut6)}, nested in the k=3 cut: $nested" to
+        cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
+    "vec2KMedoids(k = 3)\ndistortion %.3f, %d rounds, medoids are samples: %s"
+        .format(medoids.distortion, medoids.iterations, areSamples) to
+        medoids.asLayer().toFLines(points, centers = medoids.medoids, pointSize = 1.6),
+    "vec2KMedians(k = 3)\nL1 objective %.3f, converged: %s".format(medians.objective, medians.converged) to
+        medians.asLayer().toFLines(points, centers = medians.centers, pointSize = 1.6),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 280,
+)
+```
+

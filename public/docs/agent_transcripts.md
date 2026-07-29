@@ -82,6 +82,26 @@ the tiles decided so far, with the contradicted cell marked in both heatmaps. Ev
 runs on its own, and prints the numbers the docs page quotes.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/wfc_worked_example/metadata.edn)
 
+**spatial_geometry_examples** — The [Voronoi, contours and clusters worked
+example](spatial_geometry_examples.md) as five independent boxes, each drawing itself with
+`showPlaneGrid` (which is `drawToSVG` → `display`, so no AWT and no GPU). *Delaunay* builds the
+triangulation, its Voronoi dual and the convex hull, checks the triangle and edge counts against
+Euler's `2n-2-h` and `3n-3-h`, and prints how far past the sites JTS's clip envelope for an unbounded
+cell actually reaches. *Apollonius* runs the same five sites at equal weights (every bisector a
+straight line), at mixed weights (every bisector a circular arc), and with one site heavy enough to
+swallow two neighbours into **complete discs** — which makes its own cell a region with holes rather
+than a polygon — then verifies every boundary sample really is a score tie. *Contours* recovers the
+Voronoi diagram from a completely different algorithm by contouring the gap between the nearest and
+second-nearest site, and shows why asking for iso `0.0` finds *nothing*: that field is non-negative,
+it grazes zero on the seams, and marching squares locates sign changes. *Marching* puts the two
+decisions inside marching squares on inputs whose exact answer you know — a level set running through
+a whole column of grid samples, a circle passing exactly through grid corners, and the ambiguous
+saddle cell — and draws the sampling grid so you can see what the marcher had to work with.
+*Clustering* cuts a merge tree at two depths, shows the finer cut nested inside the coarser, and runs
+k-medoids and k-medians on the same planted clusters. Every box is pure CPU and runs on its own; move
+a site, change a weight, raise an iso level or ask for a different `k` and re-run it.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
+
 ## visionOS device scenes
 
 These publish to Field4Vision's autonomous Live Metal renderer. Open **Live Metal** in the visionOS
