@@ -647,6 +647,9 @@ def build_report(
 ) -> dict[str, Any]:
     primary = runs[0]
     second = runs[1] if len(runs) > 1 else None
+    # The date each asset was last committed. Correlating a delta band against it is what turned
+    # "113 of 121 captures differ" into "54 of them were all last captured on 2026-07-09".
+    last_commit = asset_last_commit_dates()
     touched = sorted({*primary.modified, *primary.untracked, *(second.modified if second else []), *(second.untracked if second else [])})
     owner = {asset: page for page, assets in expected.items() for asset in assets}
     all_expected = sorted(owner)
@@ -699,6 +702,7 @@ def build_report(
             {
                 "asset": relative,
                 "page": owner.get(relative, "?"),
+                "lastCommit": last_commit.get(relative, "untracked"),
                 "verdict": verdict,
                 "why": why,
                 "vsHead": vs_head.__dict__,
@@ -748,6 +752,15 @@ def print_report(report: dict[str, Any], *, limit: int) -> None:
         print(f"  [{item['verdict']}] {item['asset']}")
         print(f"      {item['why']}")
         shown += 1
+    dated: dict[str, int] = {}
+    for item in report["entries"]:
+        if item["verdict"].startswith("stale") or item["verdict"] == "suspect":
+            key = item.get("lastCommit", "?")
+            dated[key] = dated.get(key, 0) + 1
+    if dated:
+        print("  stale/suspect by the date the asset was last committed:")
+        for date, count in sorted(dated.items()):
+            print(f"      {date}  {count}")
     if report["assetsNotEnumerated"]:
         print(f"  NOTE: {len(report['assetsNotEnumerated'])} rewritten asset(s) were not predicted by fence enumeration:")
         for path in report["assetsNotEnumerated"][:10]:
@@ -771,13 +784,19 @@ def write_markdown(report: dict[str, Any], path: Path) -> None:
         count = report["counts"].get(verdict)
         if count:
             lines.append(f"| {verdict} | {count} |")
-    lines += ["", "| asset | verdict | vs HEAD | run1 vs run2 |", "| --- | --- | --- | --- |"]
+    lines += [
+        "",
+        "| asset | last committed | verdict | vs HEAD | run1 vs run2 |",
+        "| --- | --- | --- | --- | --- |",
+    ]
     for item in report["entries"]:
         if item["verdict"] in {"identical", "jitter"}:
             continue
         vs_head = Delta(**item["vsHead"]).summary()
         self_delta = Delta(**item["selfDelta"]).summary() if item["selfDelta"] else "—"
-        lines.append(f"| `{item['asset']}` | {item['verdict']} | {vs_head} | {self_delta} |")
+        lines.append(
+            f"| `{item['asset']}` | {item.get('lastCommit', '?')} | {item['verdict']} | {vs_head} | {self_delta} |"
+        )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
