@@ -25,13 +25,44 @@ import kotlin.math.sqrt
  * grown by the tube radius.
  *
  * [smoothIsoContours] and [generateSmoothIsoContours] fit cubic splines through the polylines,
- * treating a contour that ends on the sampling bounds as open and the rest as closed loops. Two
- * known roughnesses: the four-crossing saddle cell is split arbitrarily, and the segment stitcher
- * is O(m^2) in the number of segments, so very high grid resolutions get expensive.
+ * treating a contour that ends on the sampling bounds as open and the rest as closed loops.
+ *
+ * # The sign convention, and why it is asymmetric
+ *
+ * A grid corner is *inside* iff its sample is **strictly below** `iso`; a sample exactly *at* `iso`
+ * counts as outside. That asymmetry is deliberate and it matters: with a symmetric test (`below`
+ * on one end and `above` on the other, so "equal" is neither) a sample landing exactly on the iso
+ * level suppresses the crossing on *every* edge out of that corner, and the contour silently
+ * vanishes or shatters. It is not an exotic case — `f(x, y) = x` at `iso = 0.0` on any grid with an
+ * odd number of columns of samples used to return **no contour at all**, and the unit circle
+ * sampled over `[-2, 2]` at `nx = ny = 16` came back as four disconnected arcs, severed at the four
+ * points where the circle passes through a grid corner. See [ISO_CROSSING_EPSILON] for the second
+ * half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
+ * same convention for the same reason.
+ *
+ * The one remaining roughness: the segment stitcher is O(m^2) in the number of segments, so very
+ * high grid resolutions get expensive. The four-crossing (saddle) cell is *not* a roughness any
+ * more — it is resolved by the asymptotic decider, a pure function of the cell's own four corner
+ * values, so two cells sharing a face cannot disagree about it.
  */
 
 private data class Vec2Segment(val a: Vec2, val b: Vec2)
 private data class PointEdgeGraph2D(val points: List<Vec2>, val edges: List<Pair<Int, Int>>)
+
+/**
+ * How far a marched crossing is kept from a grid corner, as a fraction of the cell edge.
+ *
+ * With the strictly-below inside test a corner whose sample is *exactly* `iso` is outside, so an
+ * edge out of it does cross — but it crosses at `t = 0` or `t = 1`, i.e. exactly *on* that corner.
+ * Every such edge would then interpolate to the same point, the segments between them would be
+ * zero-length, and the stitcher would fuse parts of the contour that only touch. Pushing the
+ * crossing a thousandth of a cell inwards keeps each crossing on its own edge. The displacement is
+ * far below the marcher's own O(h^2) accuracy, and it is symmetric — the two cells sharing a grid
+ * edge clamp to `t` and `1 - t`, so they still agree on where the crossing is.
+ *
+ * `mesh_sdf.kt`'s `EDGE_CROSSING_EPSILON` is the same constant for the same reason, one dimension up.
+ */
+private const val ISO_CROSSING_EPSILON = 1e-3
 
 /**
  * Scalar field f(x, y) -> value.
@@ -151,6 +182,15 @@ fun pointEdgeScalarField2D(
 /**
  * Generate iso-contours for a scalar field using marching squares.
  *
+ * [field] is sampled once per grid corner, i.e. `(nx + 1) * (ny + 1)` times, and never again. A
+ * corner is treated as *inside* iff its sample is strictly below [iso] — a sample exactly equal to
+ * [iso] is outside — and the saddle cell is resolved by the asymptotic decider. See the file
+ * overview for why both of those are load-bearing.
+ *
+ * The polylines come back in no particular order and with no particular orientation. A closed loop
+ * arrives as a cycle whose first and last points are *adjacent*, not equal, so drawing it needs a
+ * closing segment: `polylineFrom(contour, closed = true)`, or let [smoothIsoContours] decide.
+ *
  * @param field    function f(x, y) returning a scalar value
  * @param xMin     left bound of domain
  * @param xMax     right bound of domain
@@ -191,16 +231,23 @@ fun generateIsoContours(
 
     val segments = mutableListOf<Vec2Segment>()
 
-    // Helper: does edge (v1, v2) cross iso?
-    fun crosses(v1: Double, v2: Double): Boolean {
-        // Strict sign change; if you want to capture "touching" you can relax this.
-        return (v1 < iso && v2 > iso) || (v1 > iso && v2 < iso)
-    }
+    /**
+     * Which side of the iso level a corner is on: strictly below is *inside*.
+     *
+     * A corner sample exactly equal to [iso] is therefore outside. Both halves of that sentence
+     * matter — see the file overview. The one thing this must not be is a three-way answer.
+     */
+    fun inside(v: Double): Boolean = v < iso
 
-    // Linear interpolation along an edge
+    // An edge carries a crossing iff its two ends disagree about which side they are on. With a
+    // two-valued `inside` there is no third case, so this cannot silently drop one.
+    fun crosses(v1: Double, v2: Double): Boolean = inside(v1) != inside(v2)
+
+    // Linear interpolation along an edge, clamped off the endpoints — see [ISO_CROSSING_EPSILON].
     fun interp(p1: Vec2, p2: Vec2, v1: Double, v2: Double): Vec2 {
         val denom = (v2 - v1)
-        val t = if (denom == 0.0) 0.5 else (iso - v1) / denom
+        val raw = if (denom == 0.0) 0.5 else (iso - v1) / denom
+        val t = raw.coerceIn(ISO_CROSSING_EPSILON, 1.0 - ISO_CROSSING_EPSILON)
         return Vec2(
             (p1.x + t * (p2.x - p1.x)).toFloat(),
              (p1.y + t * (p2.y - p1.y)).toFloat()
@@ -248,17 +295,45 @@ fun generateIsoContours(
                     segments += Vec2Segment(pts[0], pts[1])
                 }
                 4 -> {
-                    // Ambiguous saddle case: split as two segments (0-1, 2-3).
-                    // This is a standard but arbitrary resolution.
-                    segments += Vec2Segment(pts[0], pts[1])
-                    segments += Vec2Segment(pts[2], pts[3])
+                    // The saddle cell: the four corners alternate inside/outside, so the two
+                    // crossings on either side of an isolated corner could be joined two ways.
+                    // `pts` is [bottom, right, top, left], so the two candidate pairings are
+                    //   P: (bottom, right) + (top, left)  — isolates the two corners v1 and v3
+                    //   Q: (bottom, left)  + (right, top)  — isolates the two corners v0 and v2
+                    //
+                    // Choose with the *asymptotic decider*: the cell's bilinear interpolant has one
+                    // saddle, whose value is (s0*s2 - s1*s3) / (s0 + s2 - s1 - s3) with every s
+                    // measured from `iso`. Whichever diagonal pair shares a side with that saddle
+                    // is the pair the centre of the cell connects. This is a pure function of the
+                    // four corner values, so the neighbour cell that shares an edge always agrees.
+                    val s0 = v0 - iso
+                    val s1 = v1 - iso
+                    val s2 = v2 - iso
+                    val s3 = v3 - iso
+                    val denominator = s0 + s2 - s1 - s3
+                    val pairingP = if (denominator == 0.0) {
+                        // No saddle: the bilinear is degenerate along one direction. Either pairing
+                        // is as good as the other, so keep the historical choice.
+                        true
+                    } else {
+                        val saddle = (s0 * s2 - s1 * s3) / denominator
+                        (saddle < 0.0) == (s0 < 0.0)
+                    }
+                    if (pairingP) {
+                        segments += Vec2Segment(pts[0], pts[1])
+                        segments += Vec2Segment(pts[2], pts[3])
+                    } else {
+                        segments += Vec2Segment(pts[0], pts[3])
+                        segments += Vec2Segment(pts[1], pts[2])
+                    }
                 }
                 else -> {
-                    // Rare degenerate case; you can log if you want.
-                    // We'll just pair them sequentially.
-                    for (k in 0 until (pts.size - 1) step 2) {
-                        segments += Vec2Segment(pts[k], pts[k + 1])
-                    }
+                    // Unreachable: `inside` is two-valued, so walking the four edges of the cell
+                    // changes side an even number of times. 1 and 3 cannot happen. Kept as a
+                    // deliberate no-op rather than a silent sequential pairing, so that if the
+                    // classification is ever made three-valued again this is a visible hole and not
+                    // a plausible-looking wrong answer.
+                    error("marching squares: ${pts.size} crossings in one cell is impossible")
                 }
             }
         }
