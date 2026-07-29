@@ -689,6 +689,35 @@ def fold_runs(
     return best, runner_up, worst_self
 
 
+PAGES_MANIFEST = "pages.json"
+
+
+def audited_pages(run_dir: Path, filters: Sequence[str]) -> list[Path]:
+    """Which pages the stored run covered — from its manifest, or inferred from its own log.
+
+    A run written by this tool since 2026-07-29 records its page list in `pages.json`. For older run
+    directories the page names are recovered from the capture log lines
+    (`… capturing <page>.md … -> <asset>`), which is the same evidence the failure parser uses. An
+    explicit `--page` filter always wins.
+    """
+    if filters:
+        return pages_with_fences(filters)
+    manifest = run_dir / PAGES_MANIFEST
+    if manifest.is_file():
+        names = json.loads(manifest.read_text(encoding="utf-8"))
+        return [DOCS_DIR / name for name in names if (DOCS_DIR / name).is_file()]
+    seen: set[str] = set()
+    for log in sorted(run_dir.glob("run*.log")):
+        for match in re.finditer(r"capturing (?P<page>\S+\.md) ", log.read_text(errors="replace")):
+            seen.add(match.group("page"))
+    if seen:
+        print(f"[reclassify] no {PAGES_MANIFEST}; inferred {len(seen)} audited page(s) from the run log(s)")
+        return [DOCS_DIR / name for name in sorted(seen) if (DOCS_DIR / name).is_file()]
+    print(f"[reclassify] WARNING: cannot tell which pages this run audited; falling back to all of "
+          f"them, so assets no run touched will read as `identical`")
+    return pages_with_fences(())
+
+
 def build_report(
     *,
     runs: list[RunResult],
@@ -1021,7 +1050,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not runs:
             print(f"no stored run outputs under {run_dir}", file=sys.stderr)
             return 2
-        expected = expected_assets_by_page(pages_with_fences(args.page))
+        # Scope to the pages the stored run actually audited. Without this, every asset of every
+        # page the original run never visited is reported `identical` ("no run rewrote it, so the
+        # capture must be byte-stable") — 106 phantom clean verdicts when reclassifying a run that
+        # only covered 36 of the 37 pages. A clean verdict for a capture that never ran is the exact
+        # false comfort this whole tool exists to remove.
+        audited = audited_pages(run_dir, args.page)
+        expected = expected_assets_by_page(audited)
+        print(f"[reclassify] {len(runs)} stored run(s) over {len(audited)} page(s), "
+              f"{sum(len(v) for v in expected.values())} declared asset(s)")
         report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta, ignore_delta=args.ignore_delta)
         (run_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
         write_markdown(report, run_dir / "report.md")
@@ -1047,6 +1084,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     run_dir = Path(args.run_dir).resolve() if args.run_dir else REPO_ROOT / ".field-backdoor" / "docs-audit" / time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
+    # So --reclassify knows what this run covered, and does not call the other 268 assets clean.
+    (run_dir / PAGES_MANIFEST).write_text(json.dumps(page_filters, indent=1), encoding="utf-8")
     print(f"[audit] {len(pages)} page(s), {sum(len(v) for v in expected.values())} declared capture asset(s); run dir {run_dir}")
 
     runs: list[RunResult] = []

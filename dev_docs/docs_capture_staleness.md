@@ -230,6 +230,14 @@ asset:
 | `unstable` | a run *did* match the committed asset, but the two runs disagree with each other — informational, not a failure |
 | `unknown-failed` | the capture FAILED, so the stale file is still in place; **not** clean |
 
+A page-scoped audit reports only the pages it audited. Each run directory now carries a `pages.json`
+manifest and `--reclassify` reads it (older directories are inferred from the capture logs), because
+without it every asset on every page the run never visited came back `identical` — "no run rewrote
+it, so it must be byte-stable". Reclassifying the 36-page sweep produced **106 phantom clean
+verdicts** for `functions_examples` that way. No finding was ever at risk (an asset a run rewrote is
+always reported), but a clean verdict for a capture that never ran is exactly the false comfort this
+tool exists to remove.
+
 `--repeat N` for N > 2 **folds every run** (`fold_runs`): the drift estimate is whichever run agrees
 best with the committed asset, and the instability estimate is the *worst* of all N(N−1)/2 pairs, so
 a capture that lands on one output twice and a different one the third time cannot pass as stable.
