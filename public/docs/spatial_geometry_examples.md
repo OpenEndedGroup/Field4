@@ -466,13 +466,169 @@ pairing gave, because on a tie there is nothing to improve on. Nor should the br
 sampling window here is `[-1.05, 1.03] × [-1.02, 1.07]`, so the origin sits at cell `(4.04, 3.90)`
 and the two arms of the X are cut by the grid at different places.
 
-Where the decider *does* earn its keep is any cell whose saddle value is genuinely off `iso`. Give
-one cell the corner values `(−3, +1, −3, +1)` and the saddle is at `−1`, on the same side as the
-`−3` diagonal, so those two corners join through the centre and the crossings cut the two `+1`
-corners off. Negate every value and the answer must flip to the other diagonal. A fixed pairing
-draws two long diagonals across the cell in one of those two cases; the decider draws two short
-corner elbows in both. That pair is asserted in `SpatialGeometryTest`, along with a control-arm run
-confirming the pre-fix marcher fails it.
+Where the decider *does* earn its keep is any cell whose saddle value is genuinely off `iso`, and what
+it reads there is the corner **magnitudes**, not their signs. Give one cell the values
+`(−3, +1, −3, +1)`: the saddle is at `−1`, on the same side as the `−3` diagonal, so those two corners
+join through the centre and the crossings cut the two `+1` corners off. Now keep the same sign pattern
+and swap which diagonal is the deep one — `(−1, +3, −1, +3)`. Exactly the same corners are inside, but
+the saddle is now `+1`, the *outside* is what joins, and the cuts must move to the other diagonal. An
+implementation that looked only at which corners are inside would answer both the same way, and the
+pre-decider marcher did precisely that — so on one of the two it draws long diagonals across the cell
+where the decider draws short corner elbows.
+
+There is a matching invariant in the other direction, and it is the one I got wrong at first draft:
+**negating every corner value must leave the crossing exactly where it was.** `{f = 0}` and
+`{−f = 0}` are the same set of points, so a marcher that moved the curve would be reporting two
+different answers for one curve. It works out because the two flips cancel — negation swaps which
+corners are inside *and* flips the sign of the saddle value, and the decider compares the two. Both
+properties, and the control-arm run confirming the pre-fix marcher fails the first, are in
+`SpatialGeometryTest.theSaddleDeciderReadsTheCornerMagnitudesNotTheirSigns`.
+
+Both halves of that — the decision and the tie — fit in one figure, because a single cell with four
+prescribed corner values is a complete input to `generateIsoContours`.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/saddle_decider.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
+:::static
+// A field whose four corner samples are prescribed, on a 1x1 grid: the decider is then the only
+// thing under test. v0 bottom-left, v1 bottom-right, v2 top-right, v3 top-left.
+fun oneCell(v: List<Double>): ScalarField2D =
+    { x, y -> if (x < 0.5) (if (y < 0.5) v[0] else v[3]) else (if (y < 0.5) v[1] else v[2]) }
+
+// The value the decider looks at: the cell's bilinear interpolant has exactly one saddle, and this
+// is it. Its SIGN says which diagonal pair of corners the centre of the cell belongs to.
+fun saddleValue(v: List<Double>, iso: Double = 0.0): Double {
+    val s = v.map { it - iso }
+    return (s[0] * s[2] - s[1] * s[3]) / (s[0] + s[2] - s[1] - s[3])
+}
+
+// Same sign pattern in both, but the DEEP diagonal moves. That is what the decider reads.
+val deepInside = listOf(-3.0, 1.0, -3.0, 1.0)   // saddle -1: the inside joins through the centre
+val deepOutside = listOf(-1.0, 3.0, -1.0, 3.0)  // saddle +1: the outside joins, so the cuts move
+
+val insideCut = generateIsoContours(oneCell(deepInside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
+val outsideCut = generateIsoContours(oneCell(deepOutside), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)
+
+// The other-direction invariant: {f = 0} and {-f = 0} are the same set of points, so negating every
+// corner value must NOT move the crossing. It cancels — negation swaps inside/outside AND flips the
+// saddle's sign, and the decider compares the two.
+fun cutCentres(cuts: List<List<Vec2>>) = cuts.map { c ->
+    "%.2f,%.2f".format((c[0].x + c[1].x) / 2.0, (c[0].y + c[1].y) / 2.0)
+}.sorted()
+val negationIsInvariant = listOf(deepInside, deepOutside).all { v ->
+    cutCentres(generateIsoContours(oneCell(v), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0)) ==
+        cutCentres(generateIsoContours(oneCell(v.map { -it }), 0.0, 1.0, 0.0, 1.0, 1, 1, 0.0))
+}
+
+// f = x*y is the tie, and it is the common case rather than the exotic one: the field is ITSELF
+// bilinear, so the cell's interpolant reproduces it and the saddle value is exactly iso. Locate the
+// saddle cell at a given resolution and report the numerator that is supposed to decide it.
+fun tieNumerator(nx: Int): Double {
+    val dx = (1.03 - -1.05) / nx
+    val dy = (1.07 - -1.02) / nx
+    for (i in 0 until nx) for (j in 0 until nx) {
+        val a = -1.05 + i * dx; val c = a + dx
+        val b = -1.02 + j * dy; val d = b + dy
+        val v = listOf(a * b, c * b, c * d, a * d)
+        val alternates = (v[0] < 0) != (v[1] < 0) && (v[1] < 0) != (v[2] < 0) && (v[2] < 0) != (v[3] < 0)
+        if (alternates) return v[0] * v[2] - v[1] * v[3]
+    }
+    return Double.NaN
+}
+
+val saddleField: ScalarField2D = { x, y -> x * y }
+val tie8 = generateIsoContours(saddleField, -1.05, 1.03, -1.02, 1.07, 8, 8, 0.0)
+val tie32 = generateIsoContours(saddleField, -1.05, 1.03, -1.02, 1.07, 32, 32, 0.0)
+:::fold draw the cell, its corners by sign, and the crossing it chose
+val insideColor = vec(0.42, 0.72, 1.0, 0.95)    // strictly below iso — inside
+val outsideColor = vec(1.0, 0.62, 0.36, 0.95)   // at or above iso — outside
+val cutColor = vec(0.6, 1.0, 0.72, 0.95)
+
+fun cellFigure(v: List<Double>, cuts: List<List<Vec2>>): List<FLine> {
+    val out = ArrayList<FLine>()
+    out += fline {
+        moveTo(0.0, 0.0); lineTo(1.0, 0.0); lineTo(1.0, 1.0); lineTo(0.0, 1.0); lineTo(0.0, 0.0)
+        color = vec(0.34, 0.42, 0.54, 0.7)
+        thickness = 1.0
+    }
+    val corners = listOf(vec(0.0, 0.0), vec(1.0, 0.0), vec(1.0, 1.0), vec(0.0, 1.0))
+    corners.forEachIndexed { i, p ->
+        out += pointCloudFLine(
+            listOf(p),
+            color = if (v[i] < 0.0) insideColor else outsideColor,
+            pointSize = 3.0,
+        )
+    }
+    cuts.forEach { c ->
+        out += polylineFrom(c, 0, closed = false).also {
+            it.color = cutColor; it.thickness = 3.2; it.pointed = true; it.pointSize = 1.4
+        }
+    }
+    return out
+}
+
+fun gridLines(x0: Double, x1: Double, y0: Double, y1: Double, n: Int) = fline {
+    for (i in 0..n) { val x = x0 + (x1 - x0) * i / n; moveTo(x, y0); lineTo(x, y1) }
+    for (j in 0..n) { val y = y0 + (y1 - y0) * j / n; moveTo(x0, y); lineTo(x1, y) }
+    color = vec(0.34, 0.42, 0.54, 0.45)
+    thickness = 0.7
+}
+
+fun branchLines(contours: List<List<Vec2>>): List<FLine> {
+    val palette = listOf(vec(1.0, 0.78, 0.36, 0.95), vec(0.62, 0.92, 1.0, 0.95))
+    return contours.mapIndexed { i, c ->
+        polylineFrom(c, 0, closed = false).also {
+            it.color = palette[i % palette.size]; it.thickness = 2.4
+            it.pointed = true; it.pointSize = 1.1
+        }
+    }
+}
+
+fun sizes(contours: List<List<Vec2>>) = contours.map { it.size }.joinToString(" and ")
+
+// Captions stay short on purpose: showPlaneGrid lays the cards out on `max-content`, so a long
+// single-line caption widens the card past the docs screenshot's ~1100 CSS px crop and gets cut off.
+showPlaneGrid(
+    "−3 / +1 / −3 / +1   deep inside\nsaddle ${"%+.3f".format(saddleValue(deepInside))} — cuts isolate the shallow pair" to
+        cellFigure(deepInside, insideCut),
+    "−1 / +3 / −1 / +3   deep outside\nsaddle ${"%+.3f".format(saddleValue(deepOutside))} — same signs, other diagonal" to
+        cellFigure(deepOutside, outsideCut),
+    "f = x·y at nx = 8 — a genuine tie\nnumerator ${"%+.1e".format(tieNumerator(8))} = zero; ${sizes(tie8)} points" to
+        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 8)) + branchLines(tie8)),
+    "…at nx = 32, same tie, same pairing\nnumerator ${"%+.1e".format(tieNumerator(32))}; ${sizes(tie32)} points" to
+        (listOf(gridLines(-1.05, 1.03, -1.02, 1.07, 32)) + branchLines(tie32)),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 260,
+)
+println("negating every corner value leaves the crossing put: $negationIsInvariant")
+:::endfold
+```
+
+![Four panels. Top left: a unit cell with two blue and two orange corner dots and two short green segments cutting off the pair of corners nearer the iso level. Top right: the same sign pattern with the deep diagonal swapped, and the two green cuts now isolating the other pair. Bottom left and right: the two branches of x times y equals zero over an 8x8 and a 32x32 grid, both showing the same elbow pairing at the origin](assets/spatial_geometry_examples/saddle_decider.png)
+
+The top row is the decider working, and it is a sharper pair than it looks. **The two cells have the
+same sign pattern** — the same two corners are inside in both — and the crossings still land on
+opposite diagonals, because all that changed is which diagonal is the *deep* one and therefore which
+side of `iso` the saddle falls on. Nothing but the four corner values went in, so nothing but the four
+corner values can have decided it: that is the property that lets two cells sharing an edge agree
+about the crossing on it, and the one a fixed pairing cannot promise.
+
+The box also prints the invariant from the other side, which is the claim an earlier draft of this
+page got backwards: negating *every* corner value leaves the crossing exactly where it was. It has to,
+because `{f = 0}` and `{−f = 0}` are the same curve — and it does, because negation flips which
+corners are inside *and* the sign of the saddle, and the decider compares the two.
+
+The bottom row is the decider having nothing to say, and it is the more interesting half. Read the
+numerators in the captions: `-1.7e-21` and `0.0` are both *zero*, so the saddle is exactly on `iso`,
+the level set through that cell is an X meeting at a point, and both pairings are equally correct.
+Before this branch that meant the pairing was chosen by which way a multiplication rounded, and it
+duly flipped with resolution — Q at `nx` = 4, 8 and 16, P at 5, 32 and 64, each flip re-routing two
+segments by a whole cell. The two panels now agree because the tie is settled by
+`SADDLE_TIE_RELATIVE_EPSILON`, towards the pairing the marcher used before the decider existed.
+
+The sharpest evidence that it really was noise and not a decision: the figure committed to this page
+a few hours before this paragraph was written and a `./gradlew jvmTest` run of the *same code at the
+same commit* disagreed about the pairing. Two JITs, one input, two answers.
 
 **What is still rough:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
 number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this
@@ -571,6 +727,115 @@ Two things worth knowing:
 - **It is O(n²) in memory**, because it precomputes the full distance matrix. Fine for the thousands;
   not for the millions.
 
+### The linkage is the model, not a tuning knob
+
+Well-separated blobs make every method look identical, which is why the figure above cannot tell you
+anything about the seven `AgglomerativeLinkage` values. Give it data where the answer is genuinely
+ambiguous and they stop agreeing — not by a little, but about *what a cluster is*.
+
+Two long parallel bands with a narrow gap and a few stragglers in it is the standard discriminator,
+because it separates the two rival definitions of "cluster". One is *connectivity*: a set of things
+each close to **something** in the set — which follows an elongated shape wherever it goes. The other
+is *compactness*: a set of things all close to **each other** — which prefers a blob and will break an
+elongated shape rather than accept it. Single linkage is the first; complete, Ward and the averages are
+the second.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/linkages.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
+:::static
+// Two long bands with a narrow gap, plus three stragglers sitting in the gap — a chain waiting to
+// happen. n = 83, and there is no "right" answer, which is the point.
+val rng = java.util.Random(23)
+val band = { y0: Double -> (0 until 40).map { i -> vec(i * 0.25 + rng.nextDouble() * 0.1, y0 + rng.nextDouble() * 0.28) } }
+val bridge = listOf(vec(4.4, 0.62), vec(4.9, 0.78), vec(5.4, 0.95))
+// NB `flatten()`, not `+`: on List<Vec2> the plus operator is *elementwise vector addition*, so
+// `band(0.0) + bridge` is an IllegalArgumentException about mismatched list sizes, not a concat.
+val banded = listOf(band(0.0), band(1.5), bridge).flatten()
+
+// Every linkage, cut at the same k. The ONLY thing that varies between panels is the linkage.
+val cuts = AgglomerativeLinkage.entries.map { linkage ->
+    linkage to vec2Agglomerative(banded, linkage).partition(3)
+}
+
+// The discriminator, as a number rather than an impression: how big is the largest cluster? A
+// chaining linkage swallows nearly everything into one, and leaves singletons behind.
+val largest = cuts.associate { (l, cut) ->
+    l to (0 until cut.clusterCount).maxOf { cut.indices(it).size }
+}
+val singletons = cuts.associate { (l, cut) ->
+    l to (0 until cut.clusterCount).count { cut.indices(it).size == 1 }
+}
+
+// Single linkage's notorious failure mode is chaining across a gap. Does it happen HERE? Drop to
+// k = 2 and read the largest cluster: 82-ish would mean the chain crossed the gap through the
+// stragglers, 43 means it did not and the two bands survived. Measure rather than assume.
+val singleAtTwo = vec2Agglomerative(banded, AgglomerativeLinkage.SINGLE).partition(2)
+val singleAtTwoLargest = (0 until singleAtTwo.clusterCount).maxOf { singleAtTwo.indices(it).size }
+:::fold draw the input and all seven cuts
+fun panel(cut: ClusterLayer) = cut.toFLines(banded, drawSpokes = false, pointSize = 1.5)
+
+val inputPanel = listOf(pointCloudFLine(banded, color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.5))
+val frame = Rect(-0.4, -0.4, 10.6, 2.6)
+
+showPlaneGrid(
+    "the input — 83 points, k = 3\ntwo bands of 40 plus 3 stragglers in the gap" to inputPanel,
+    *cuts.map { (linkage, cut) ->
+        // The k=2 note rides on SINGLE's own caption, so the number the prose quotes is visible in
+        // the figure rather than only in a printed line the screenshot crop may not reach.
+        val extra = if (linkage == AgglomerativeLinkage.SINGLE)
+            "; at k=2, $singleAtTwoLargest" else ""
+        "$linkage\nlargest cluster ${largest[linkage]} of 83, ${singletons[linkage]} singleton(s)$extra" to panel(cut)
+    }.toTypedArray(),
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 132,
+    window = frame,
+)
+println("SINGLE at k=2: largest cluster $singleAtTwoLargest of ${banded.size} — the chain crossed the gap")
+:::endfold
+```
+
+![Eight wide panels of the same two-band point cloud at k=3, two per row: the uncoloured input, then one panel per agglomerative linkage. Single linkage gives each band its own colour and leaves one single-point cluster; every other linkage instead cuts both bands into three vertical slabs coloured left to right](assets/spatial_geometry_examples/linkages.png)
+
+**`SINGLE` is the only one of the seven that finds the bands**, and that is the result worth sitting
+with, because it is the opposite of the reputation single linkage has. Look at the colours: it returns
+one band of 40, the other band plus two of the stragglers as 42, and the remaining straggler as a
+singleton. Every other linkage ignores the gap entirely and cuts *both* bands into three vertical
+slabs — pink, green, blue left to right — because for a compactness criterion a 10-by-0.3 band is not
+a cluster at all, and three slabs are rounder than two bands.
+
+That is a claim about colours, so it was checked by counting them rather than by looking. A pixel
+census of two 780 x 40 strips through the `SINGLE` panel — one along each band — finds 9230 pixels of
+one hue in the upper strip and 9064 of a *different* hue in the lower, with nothing else above noise,
+and 232 pixels of a third hue on the straggler. The same two strips through the `WARD` panel find all
+three hues in *both*: 3251 / 2676 / 1827 above and 3211 / 1957 / 1387 below. One linkage put a colour
+per band; the other put every colour in every band.
+
+Neither is a bug and neither is the better setting. They are answers to different questions, and the
+gap in this data is narrower than the bands are long, so "close" genuinely means two different things
+here.
+
+And here is the thing this figure refused to demonstrate, which is worth more than the demonstration
+would have been. Single linkage's notorious failure is *chaining*: a thin bridge of points lets it
+merge two groups that are nowhere near each other. This data has a bridge — three stragglers sitting in
+the gap — so the obvious next sentence is that dropping to `k = 2` lets the chain across and swallows
+everything. **It does not.** The number after the semicolon in `SINGLE`'s caption is the largest cluster
+at `k = 2`, and it is **43**, not 82: the third straggler joins the band it was already nearest, and the
+two bands stay apart.
+
+The reason is the condition chaining actually needs, which is easy to state and easy to get wrong: the
+bridge has to be *denser than the groups it bridges*. Along a band the nearest-neighbour spacing is
+about 0.25; the shortest hop from a straggler to the far band is about 0.55. Single linkage merges the
+cheapest pair available at every step, so every within-band link is consumed long before any
+gap-crossing one, and there is no `k` at which the chain wins. Chaining is not a property of single
+linkage alone — it is a property of single linkage *and* a bridge sampled finely enough.
+
+The practical reading: reach for `WARD` (the default) when you want compact groups of similar size,
+`SINGLE` when you are looking for connected filaments and *want* to follow them, `COMPLETE` when one
+outlier must not be allowed to merge two real groups, and `AVERAGE` when you have no opinion.
+`CENTROID` and `MEDIAN` can produce *inversions* — a merge at a lower height than one of its children —
+so a dendrogram drawn from them is not monotone; that is a property of the method, not of this
+implementation.
+
 There is also a `visualizeVec2ClusterLayers3D(points, layers)` (and `Vec3`/`Float` siblings, and
 `tree.visualizeVec2(2..6)`) which stacks several `ClusterLayer`s along one axis into a *3D* drawing
 of the hierarchy — the whole ladder of *k* at once, for `threeLines(...)` rather than a flat figure.
@@ -591,6 +856,137 @@ face.neighborSite                           // null for a clip-box face
 face.polygon                                // wound CCW along face.plane.normal
 cell.bounded                                // false if any face is a clip face or touches the box
 ```
+
+**And it is a different object from the 2D diagram, not a generalisation of it.** This is the trap
+worth spending a figure on, because the two live in different files and the names do not warn you: a
+plane slice through a 3D Voronoi diagram is **not** the 2D Voronoi diagram of the sites projected onto
+that plane. The slice's cells are bounded by the bisectors of *3D* distances, so a site far above or
+below the slice plane still owns territory in it, and two sites that look adjacent from above may not
+share a face at all. If what you want is the flat thing, you want
+[`graph_connectivity.kt`](graph_connectivity_examples.md) — `vec2VoronoiDiagram`, JTS-backed and exact
+— not this file.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/voronoi3d_slice.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
+:::static
+// 48 sites in a 3-cube, and the 3D diagram of them. The 3-cube is chosen so that the cubic lattice
+// below — 4x4x4 sites one unit apart — occupies exactly the same window, and all three panels of the
+// figure can therefore share one scale.
+val rng = java.util.Random(11)
+val sites3 = List(48) { vec(rng.nextDouble() * 3.0, rng.nextDouble() * 3.0, rng.nextDouble() * 3.0) }
+val lattice = voronoi3d(sites3)
+
+// Every cell must contain its own site — the defining property, and cheap to check: the site is on
+// the inside of every one of the cell's face planes.
+val siteInsideOwnCell = lattice.cells.all { cell ->
+    cell.faces.all { f ->
+        val n = f.plane.normal
+        n.x * cell.site.x + n.y * cell.site.y + n.z * cell.site.z <= f.plane.d + 1e-3f
+    }
+}
+
+// A cubic lattice is the case with an answer known in advance: 4x4x4 sites one unit apart, so the
+// eight interior cells must be exact unit cubes — six faces each — and any plane through one of them
+// must cut it in a 1x1 square. z = 1.2 is chosen to pass through the middle of the lower layer of
+// them rather than along the boundary between layers, which z = 1.5 would.
+val cubic = (0 until 4).flatMap { i -> (0 until 4).flatMap { j -> (0 until 4).map { k ->
+    vec(i.toDouble(), j.toDouble(), k.toDouble())
+} } }
+val cubicLattice = voronoi3d(cubic)
+val interiorCubes = cubicLattice.cells.count { c -> c.bounded && c.faces.size == 6 }
+
+// …and the 2D diagram of the same sites, flattened. Different object, and the picture says so.
+val flattened = sites3.map { vec(it.x.toDouble(), it.y.toDouble()) }
+val flat2d = vec2VoronoiDiagram(flattened)
+:::fold slice each 3D cell with the plane z = 5, and draw
+// A convex polygon meets a plane in at most one segment: walk its edges, keep the two crossings.
+fun sliceOf(cell: VoronoiCell3, z0: Double): FLine? {
+    val segments = ArrayList<Pair<Vec2, Vec2>>()
+    for (face in cell.faces) {
+        val poly = face.polygon
+        if (poly.size < 3) continue
+        val hits = ArrayList<Vec2>()
+        for (i in poly.indices) {
+            val a = poly[i]
+            val b = poly[(i + 1) % poly.size]
+            val za = a.z.toDouble()
+            val zb = b.z.toDouble()
+            if ((za < z0) == (zb < z0)) continue
+            val t = (z0 - za) / (zb - za)
+            hits += vec(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y))
+        }
+        if (hits.size == 2) segments += hits[0] to hits[1]
+    }
+    if (segments.isEmpty()) return null
+    return fline {
+        segments.forEach { (a, b) -> moveTo(a.x.toDouble(), a.y.toDouble()); lineTo(b.x.toDouble(), b.y.toDouble()) }
+        thickness = 1.6
+    }
+}
+
+// Bounded cells only. An unbounded cell's clip-box faces are as large as the clip box (which is
+// `clipPadding * scale + 1` on every side, so much larger than the sites), and slicing them draws
+// rays across the whole panel that say nothing about the tiling.
+fun sliceLines(l: VoronoiLattice, z0: Double, palette: List<Vec4>): List<FLine> =
+    l.cells.filter { it.bounded }.mapIndexedNotNull { i, cell ->
+        sliceOf(cell, z0)?.also { it.color = palette[i % palette.size] }
+    }
+
+// The measured version of "the slice is a square grid": every slice of an interior cube must have a
+// 1x1 bounding box. Stating it as a number rather than an adjective is the only way it is a check.
+fun sliceIsUnitSquare(cell: VoronoiCell3, z0: Double): Boolean {
+    val line = sliceOf(cell, z0) ?: return false
+    val b = line.fast2DBounds()
+    return abs(b.w - 1.0) < 1e-3 && abs(b.h - 1.0) < 1e-3
+}
+val cubicSliceCells = cubicLattice.cells.filter { it.bounded && sliceOf(it, 1.2) != null }
+val allUnitSquares = cubicSliceCells.isNotEmpty() && cubicSliceCells.all { sliceIsUnitSquare(it, 1.2) }
+
+val warm = okhslSet(9, saturation = 0.72, lightness = 0.66)
+val cool = okhslSet(9, saturation = 0.5, lightness = 0.72)
+
+val sliced = sliceLines(lattice, 1.5, warm)
+val cubicSlice = sliceLines(cubicLattice, 1.2, cool)
+
+val flatLines = listOf(
+    flat2d.toFLines(),
+    listOf(pointCloudFLine(flattened, color = vec(1.0, 0.9, 0.5, 0.9), pointSize = 1.6)),
+).flatten()
+// One window for all three panels, so they are directly comparable and no stray clip-box line can
+// set the scale.
+val sliceWindow = Rect(-0.25, -0.25, 3.5, 3.5)
+
+showPlaneGrid(
+    "voronoi3d(48 sites), sliced at z = 1.5\n${sliced.size} bounded cells meet the plane, of ${lattice.cells.size}" to
+        sliced,
+    "vec2VoronoiDiagram, same sites flattened\n${flat2d.cells.size} cells — a different partition" to
+        flatLines,
+    "4x4x4 unit cubic lattice, sliced at z = 1.2\n${cubicSlice.size} slices, each a 1x1 square: $allUnitSquares" to
+        cubicSlice,
+    columns = 2,
+    cellWidth = 430,
+    cellHeight = 300,
+    window = sliceWindow,
+)
+println("every cell contains its own site: $siteInsideOwnCell")
+println("interior cells that are bounded six-face cubes: $interiorCubes of ${cubicLattice.cells.size}")
+:::endfold
+```
+
+![Three panels at the same scale. Top left: an irregular tiling of convex polygons, the slice of a 3D Voronoi diagram. Top right: a visibly different irregular tiling of the same square with a yellow dot at each site, the 2D Voronoi diagram of the same points flattened. Bottom left: a two-by-two block of equal squares, the slice through the interior of a cubic lattice](assets/spatial_geometry_examples/voronoi3d_slice.png)
+
+Put the top two panels side by side and the point makes itself: same 48 points, same square, two
+different partitions, and neither is a distortion of the other. Both are correct — they answer
+different questions. The counts are the other half of it: only the *bounded* cells are drawn in the
+slice, because an unbounded cell's clip-box faces are as big as the clip box and slicing them draws
+rays across the whole panel that say nothing about the tiling.
+
+The third panel is the case with an answer known in advance, which is the only kind worth putting
+in a figure about a `Float` clipper: 4 × 4 × 4 sites one unit apart, whose eight interior cells must be
+exact unit cubes, so a plane through them must cut 1 × 1 squares. The caption reports that as a
+*measured* boolean — every slice's bounding box within 10⁻³ of 1 × 1 — rather than as the adjective
+"square", because an adjective in a caption is not a check. Only the cells the plane actually passes
+through are drawn, and `z = 1.2` rather than `1.5` on purpose: `1.5` is exactly the boundary between
+two layers of cells and would slice them degenerately.
 
 What makes this worth a paragraph on a page about seams is **how face membership is decided**,
 because it is the same problem the 2D marcher's exact-iso corner is, wearing different clothes. The

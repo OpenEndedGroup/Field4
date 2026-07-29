@@ -146,7 +146,7 @@ class SpatialGeometryTest {
     }
 
     @Test
-    fun theSaddleDeciderFollowsTheBilinearSaddleAndFlipsWithTheField() {
+    fun theSaddleDeciderReadsTheCornerMagnitudesNotTheirSigns() {
         // A single cell whose four corner values are prescribed, so the decider is the only thing
         // under test. Corners: v0 bottom-left, v1 bottom-right, v2 top-right, v3 top-left.
         fun oneCell(v0: Double, v1: Double, v2: Double, v3: Double): List<List<Vec2>> {
@@ -176,15 +176,18 @@ class SpatialGeometryTest {
             "the decider should isolate the two shallow (+1) corners",
         )
 
-        // Flip every value. Now the saddle is (1-9)/(-8) = +1, the *outside* is what joins through
-        // the centre, and the cut corners must swap to bottom-left and top-right. This is the case a
-        // fixed pairing gets wrong: the pre-decider marcher always joined (bottom, right) +
-        // (top, left) and would still cut bottom-right and top-left here, drawing two long diagonals
-        // across the cell instead of two corner elbows.
+        // Keep the sign pattern and swap which diagonal is the DEEP one: (-1, +3, -1, +3). The same
+        // corners are inside as before, but the saddle is now (1-9)/(-8) = +1, so it is the *outside*
+        // that joins through the centre and the cut corners must move to bottom-left and top-right.
+        //
+        // This is the pair that shows the decider is reading the corner *magnitudes*, not their signs
+        // — an implementation that looked only at which corners are inside would give the same answer
+        // for both, and the pre-decider marcher, which always joined (bottom, right) + (top, left),
+        // gives the same answer for both by construction and so draws two long diagonals here.
         assertEquals(
             setOf(0 to 0, 1 to 1),
             elbowCorners(oneCell(-1.0, 3.0, -1.0, 3.0)),
-            "flipping the field must flip the pairing",
+            "moving the deep diagonal must move the pairing",
         )
 
         // …and the segments really are short corner elbows in both cases, not diagonals. A diagonal
@@ -194,6 +197,24 @@ class SpatialGeometryTest {
                 val len = hypot((c[0].x - c[1].x).toDouble(), (c[0].y - c[1].y).toDouble())
                 assertTrue(len < 0.6, "expected a corner elbow, got a segment of length $len")
             }
+        }
+
+        // The invariant that pins it from the other side, and the one I got wrong first: negating
+        // EVERY value must leave the pairing exactly where it was. The level set {f = 0} and
+        // {-f = 0} are the same set of points, so any marcher that moved the crossing would be
+        // reporting a different curve for the same curve. It works out because the two flips cancel:
+        // negation swaps which corners are inside AND flips the sign of the saddle value, and the
+        // decider compares the two.
+        listOf(
+            listOf(-3.0, 1.0, -3.0, 1.0),
+            listOf(-1.0, 3.0, -1.0, 3.0),
+            listOf(-2.0, 5.0, -0.5, 1.0),
+        ).forEach { v ->
+            assertEquals(
+                elbowCorners(oneCell(v[0], v[1], v[2], v[3])),
+                elbowCorners(oneCell(-v[0], -v[1], -v[2], -v[3])),
+                "negating every corner value must not move the crossing: $v",
+            )
         }
     }
 
