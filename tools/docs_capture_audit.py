@@ -909,7 +909,34 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--mode", default="direct", choices=("direct", "stdlib", "off"), help="With --plan: which per-fence source coverage mode to model (FIELD_DOCS_SOURCE_REFS).")
     parser.add_argument("--list-pages", action="store_true", help="No capture: list pages that carry runner fences.")
     parser.add_argument("--reclassify", default="", metavar="RUNDIR", help="No capture: re-classify a previous run directory's stored outputs (for tuning thresholds).")
+    parser.add_argument("--adopt", action="store_true", help="Copy ONLY the assets classified stale* into the working tree (never the jitter ones). Combine with --reclassify to adopt from a finished run.")
     return parser.parse_args(argv)
+
+
+def adopt_stale(report: dict[str, Any]) -> int:
+    """Copy the regenerated version of every `stale*` asset into the working tree, and nothing else.
+
+    A whole-page `FIELD_DOCS_RUNNER_MODE=always` regeneration rewrites the jitter captures too, and
+    committing jitter is pure noise in the history — `dev_docs/docs_capture_staleness.md` says never
+    to do it. Adopting per verdict is how a stale figure gets fixed without dragging fifty
+    antialiasing diffs along with it.
+    """
+    adopted = 0
+    for item in report["entries"]:
+        if not item["verdict"].startswith("stale"):
+            continue
+        source = item.get("regeneratedCopy")
+        if not source:
+            continue
+        destination = REPO_ROOT / item["asset"]
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+        adopted += 1
+        print(f"  adopted {item['asset']} ({item['why']})")
+    print(f"[audit] adopted {adopted} stale asset(s); jitter and nondeterministic captures left alone.")
+    print("[audit] LOOK at each one before committing — `stale` means this environment does not")
+    print("        reproduce the committed asset, which can be a code change OR a capture-environment change.")
+    return adopted
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -930,7 +957,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
         expected = expected_assets_by_page(pages_with_fences(args.page))
         report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta)
+        (run_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+        write_markdown(report, run_dir / "report.md")
         print_report(report, limit=args.limit)
+        if args.adopt:
+            adopt_stale(report)
         return 0
 
     pre_modified, pre_untracked = dirty_paths("public/docs")
@@ -971,6 +1002,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     print_report(report, limit=args.limit)
     print(f"[audit] reports: {run_dir / 'report.json'} , {run_dir / 'report.md'}")
 
+    if args.adopt:
+        adopt_stale(report)
     stale = sum(count for verdict, count in report["counts"].items() if verdict.startswith("stale") or verdict == "suspect")
     return 1 if stale else 0
 
