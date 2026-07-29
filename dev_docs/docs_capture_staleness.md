@@ -90,6 +90,33 @@ It is worth fixing, in **its own commit on `main`**, not folded into an unrelate
 with `FIELD_DOCS_RUNNER_MODE=always`, and expect to have to sift the ~54 real ones out of the
 run-to-run noise affecting the rest.
 
+## 4. `wfc_examples` — one figure that oscillates, one that is stale (2026-07-29)
+
+Measured while checking whether a `contours.kt` change moved a downstream figure. All eleven
+`wfc_examples` screenshots regenerated with `FIELD_DOCS_RUNNER_MODE=always`, **twice**, and compared
+pixel-wise against the committed asset and against each other:
+
+| file | committed vs run 2 | run 1 vs run 2 | reading |
+| --- | --- | --- | --- |
+| `collapse-frames.png` | **0 px** | **32.1% of px, Δ226** | oscillates — run 1 was a different collapse |
+| `neighborhoods.png` | **35.7% of px, Δ204** | 59 px (noise) | reproduces run-to-run, but the committed image is **stale** |
+| the other nine | ~0.01% of px, Δ≤27 | — | noise (see §2) |
+
+So the two signals from §2 and §3 both show up on one page at once. The noise on the other nine is
+confined to `x < 20` — the channel-name gutter and its disclosure triangle — which is a useful
+fingerprint: **if every changed pixel is in the left 20 columns, nothing in the picture moved.**
+
+Neither figure is caused by any stdlib change: `collapse-frames` and `neighborhoods` are WFC solver
+output, and the branch that found this touches only `contours.kt` and `clustering.kt`. Worth fixing
+in its own commit on `main`, and `collapse-frames` needs its seed pinned before regenerating is even
+meaningful.
+
+The same run answered the question it was for, and the answer is the useful kind of negative:
+`wfc_examples.md` §7 **does** execute `Img.isoContourFLines` in a capture fence (a claim to the
+contrary was made and was wrong), but making that function close its closed loops moved
+`scalar-field.png` by **one pixel** outside the gutter — because every level set of that blurred
+field runs off the image boundary, so `isoContourClosed` returns `false` for all of them.
+
 ## Reproducing
 
 ```sh
