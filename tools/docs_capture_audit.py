@@ -667,6 +667,28 @@ def load_runs_from_dir(run_dir: Path) -> list[RunResult]:
     return runs
 
 
+def fold_runs(
+    *, vs_head: Sequence[Delta], pairwise: Sequence[Delta]
+) -> tuple[Delta, Delta | None, Delta | None]:
+    """Reduce N runs to the (drift, runner-up, worst instability) triple `classify` consumes.
+
+    Drift is the run that agrees *best* with the committed asset — if any faithful re-derivation
+    reproduces what is published, the published figure is not stale. Instability is the *worst*
+    disagreement between any two runs, because a capture that produces one output twice and a
+    different one on the third try is not stable, and reading only the first pair hides that.
+
+    Its own function because `--repeat 3` used to be advice with no effect: the report read runs 1
+    and 2 and nothing else, so a third pass cost a full capture run and could not change a verdict.
+    `dev_docs/docs_capture_staleness.md` recommended it for the tri-modal `capture=box` heights —
+    precisely the case two runs cannot settle.
+    """
+    ranked = sorted((delta for delta in vs_head if delta.kind != "missing"), key=Delta.severity)
+    best = ranked[0] if ranked else (vs_head[0] if vs_head else Delta("missing"))
+    runner_up = ranked[1] if len(ranked) > 1 else None
+    worst_self = max(pairwise, key=Delta.severity) if pairwise else None
+    return best, runner_up, worst_self
+
+
 def build_report(
     *,
     runs: list[RunResult],
@@ -676,23 +698,24 @@ def build_report(
     ignore_delta: int = DEFAULT_IGNORE_DELTA,
 ) -> dict[str, Any]:
     primary = runs[0]
-    second = runs[1] if len(runs) > 1 else None
+    later = runs[1:]
     # The date each asset was last committed. Correlating a delta band against it is what turned
     # "113 of 121 captures differ" into "54 of them were all last captured on 2026-07-09".
     last_commit = asset_last_commit_dates()
-    touched = sorted({*primary.modified, *primary.untracked, *(second.modified if second else []), *(second.untracked if second else [])})
+    touched = sorted({path for run in runs for path in (*run.modified, *run.untracked)})
     owner = {asset: page for page, assets in expected.items() for asset in assets}
     all_expected = sorted(owner)
 
     entries: list[dict[str, Any]] = []
     for relative in sorted(set(touched) | set(all_expected)):
         suffix = Path(relative).suffix
-        failed = primary.failures.get(relative)
+        failed = next((run.failures[relative] for run in runs if relative in run.failures), None)
         committed = head_blob(relative)
         regenerated_path = primary.captured.get(relative)
         regenerated = regenerated_path.read_bytes() if regenerated_path else None
 
         other_vs_head: Delta | None = None
+        run_vs_head: list[Delta] = []
         if regenerated is None:
             # Not rewritten by the run. Either the capture is byte-stable, or it never ran.
             if failed:
@@ -706,18 +729,25 @@ def build_report(
                 vs_head = Delta("identical", old_bytes=len(committed), new_bytes=len(committed))
                 self_delta = None
         else:
-            vs_head = compare_bytes(committed, regenerated, suffix=suffix, ignore_delta=ignore_delta)
-            self_delta = None
-            if second is not None:
-                other = second.captured.get(relative)
-                if other is not None:
-                    other_bytes = other.read_bytes()
-                    self_delta = compare_bytes(regenerated, other_bytes, suffix=suffix, ignore_delta=ignore_delta)
-                    other_vs_head = compare_bytes(committed, other_bytes, suffix=suffix, ignore_delta=ignore_delta)
+            # Every run's output, in order. A run that did not rewrite the asset produced the
+            # committed bytes, so it counts as a run that agrees with HEAD exactly.
+            outputs: list[bytes] = [regenerated]
+            for run in later:
+                path = run.captured.get(relative)
+                if path is not None:
+                    outputs.append(path.read_bytes())
                 elif committed is not None:
-                    # Run 2 did not rewrite it, so run 2's output IS the committed asset byte for byte.
-                    self_delta = compare_bytes(regenerated, committed, suffix=suffix, ignore_delta=ignore_delta)
-                    other_vs_head = Delta("identical", old_bytes=len(committed), new_bytes=len(committed))
+                    outputs.append(committed)
+            run_vs_head = [
+                compare_bytes(committed, output, suffix=suffix, ignore_delta=ignore_delta)
+                for output in outputs
+            ]
+            pairwise = [
+                compare_bytes(outputs[i], outputs[j], suffix=suffix, ignore_delta=ignore_delta)
+                for i in range(len(outputs))
+                for j in range(i + 1, len(outputs))
+            ]
+            vs_head, other_vs_head, self_delta = fold_runs(vs_head=run_vs_head, pairwise=pairwise)
             verdict, why = classify(
                 vs_head=vs_head,
                 other_vs_head=other_vs_head,
@@ -725,6 +755,8 @@ def build_report(
                 px_pct=px_pct,
                 max_delta=max_delta,
             )
+            if len(outputs) > 2:
+                why += f" [folded over {len(outputs)} runs: worst pair of {len(pairwise)}]"
             if failed:
                 verdict, why = "unknown-failed", f"capture failed ({failed[:160]})"
 
@@ -738,6 +770,9 @@ def build_report(
                 "vsHead": vs_head.__dict__,
                 "run2VsHead": other_vs_head.__dict__ if other_vs_head else None,
                 "selfDelta": self_delta.__dict__ if self_delta else None,
+                # Every run against the committed asset, so a human can see the spread rather than
+                # the two numbers the verdict happened to be taken from.
+                "runsVsHead": [delta.summary() for delta in run_vs_head],
                 "regeneratedCopy": str(regenerated_path) if regenerated_path else None,
             }
         )

@@ -18,6 +18,7 @@ from tools.docs_capture_audit import (
     Delta,
     classify,
     compare_images,
+    fold_runs,
 )
 
 
@@ -178,6 +179,74 @@ class DeltaTests(unittest.TestCase):
 
     def test_severity_orders_the_run_that_best_matches_head_first(self) -> None:
         self.assertLess(pixel(0.0096, 5).severity(), pixel(1.63, 249).severity())
+
+
+class ThreeRunFoldTests(unittest.TestCase):
+    """`--repeat 3` used to cost a whole capture pass and change nothing, because the report read
+    runs 1 and 2 only. Numbers below are the real 3-run audit of `interpolants_examples` +
+    `correlations_examples`, `.field-backdoor/docs-audit/20260729-150636`, 2026-07-29."""
+
+    @staticmethod
+    def dims(old, new) -> Delta:
+        return Delta("size", old_size=old, new_size=new)
+
+    def fold_verdict(self, vs_head, pairwise) -> str:
+        drift, runner_up, worst = fold_runs(vs_head=vs_head, pairwise=pairwise)
+        return classify(
+            vs_head=drift,
+            other_vs_head=runner_up,
+            self_delta=worst,
+            px_pct=DEFAULT_JITTER_PX_PCT,
+            max_delta=DEFAULT_JITTER_DELTA,
+        )[0]
+
+    def test_drift_is_the_best_of_all_three_runs_not_of_the_first_two(self) -> None:
+        # smooth_duration.png: run 1 changed height, runs 2 and 3 kept HEAD's height and moved
+        # 2.1239% / 2.2718%. Drift must be run 2's — the reading friendliest to the committed
+        # asset — 2.1239%, not the 2.3506% a two-run read reported for the same figure.
+        drift, _, worst = fold_runs(
+            vs_head=[self.dims((1144, 772), (1144, 918)), pixel(2.1239, 238), pixel(2.2718, 238)],
+            pairwise=[
+                self.dims((1144, 918), (1144, 772)),
+                self.dims((1144, 918), (1144, 772)),
+                pixel(0.3524, 238),
+            ],
+        )
+        self.assertAlmostEqual(drift.changed_px_pct, 2.1239)
+        # …and the instability is the WORST pair — the size change, not the 0.35% pixel pair.
+        self.assertEqual(worst.kind, "size")
+
+    def test_a_stable_size_change_over_three_runs_is_stale_size(self) -> None:
+        # keyframe_morph.png: HEAD is 918 px tall, all three runs came out 796 and agreed with each
+        # other to maxΔ2. In the earlier two-run sweep the pair happened to disagree at maxΔ60 and
+        # it was reported `nondeterministic-size`; a third run settles it.
+        self.assertEqual(
+            self.fold_verdict(
+                [self.dims((1144, 918), (1144, 796))] * 3,
+                [pixel(0.0, 2), pixel(0.0, 1), pixel(0.0, 1)],
+            ),
+            "stale-size",
+        )
+
+    def test_a_third_run_can_overturn_a_two_run_stale(self) -> None:
+        # The case that justifies the fold: two runs agreeing with each other reads `stale`, and a
+        # third run that reproduces the committed asset makes it `unstable` instead.
+        pair = [pixel(2.20, 249), pixel(2.20, 249)]
+        self.assertEqual(self.fold_verdict(pair, [pixel(0.0, 1)]), "stale")
+        self.assertEqual(
+            self.fold_verdict(
+                [*pair, pixel(0.004, 9)],
+                [pixel(0.0, 1), pixel(2.19, 249), pixel(2.19, 249)],
+            ),
+            "unstable",
+        )
+
+    def test_one_run_still_folds_to_the_single_run_verdict(self) -> None:
+        drift, runner_up, worst = fold_runs(vs_head=[pixel(2.2, 249)], pairwise=[])
+        self.assertAlmostEqual(drift.changed_px_pct, 2.2)
+        self.assertIsNone(runner_up)
+        self.assertIsNone(worst)
+        self.assertEqual(self.fold_verdict([pixel(2.2, 249)], []), "suspect")
 
 
 if __name__ == "__main__":

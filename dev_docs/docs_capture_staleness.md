@@ -57,6 +57,22 @@ channel delta of ≤19**. Treat that band as noise. Above it, two real signals w
 Independently reconfirmed 2026-07-29 by `tools/docs_capture_audit.py` on `timeseries_examples`:
 0.0066% and 0.0071% of pixels at maxΔ 13 and 18 — inside the band to three significant figures.
 
+Two later refinements to that table, both measured:
+
+- **The unstable `capture=box` height is not random — it is a first-capture effect.** A 3-run audit
+  of `interpolants_examples` + `correlations_examples`: `smooth_duration.png` came out 918 px on run
+  1 and 772 px (= `HEAD`) on runs 2 and 3; `metric_profile.png` came out 2056 px on run 1 and 2072
+  px (= `HEAD`) on runs 2 and 3. Same direction, same position in the sequence. So the wobble
+  attaches to the *first* capture of a page against a freshly started server, not to a die roll, and
+  a 2-run audit whose run 1 is the odd one out reports a size change that a third run overturns.
+- **A fourth class: timing-dependent captures.** Some figures plot a *wall-clock-driven* process
+  (`smooth_duration.png` is "fixed 140 calls" against "1.2 seconds"). The knee of the curve moves
+  with how fast the machine ticked, so drift-from-committed and run-to-run instability are the same
+  phenomenon at different scales — 2.1–2.3% against a figure captured weeks ago, 0.35% between two
+  runs a minute apart. The 3× ratio rule reads that as `stale` and it is not. Nothing distinguishes
+  this class mechanically; the tell is in the picture (same shape, one feature displaced along the
+  time axis) and in the source (does the fence measure elapsed time?).
+
 Two gotchas when measuring:
 
 - **`Image.getbbox()` defaults to `alpha_only=True` on RGBA** in modern Pillow, so it returns `None`
@@ -214,8 +230,17 @@ asset:
 | `unstable` | a run *did* match the committed asset, but the two runs disagree with each other — informational, not a failure |
 | `unknown-failed` | the capture FAILED, so the stale file is still in place; **not** clean |
 
+`--repeat N` for N > 2 **folds every run** (`fold_runs`): the drift estimate is whichever run agrees
+best with the committed asset, and the instability estimate is the *worst* of all N(N−1)/2 pairs, so
+a capture that lands on one output twice and a different one the third time cannot pass as stable.
+Until 2026-07-29 the report read runs 1 and 2 and ignored the rest, which made `--repeat 3` advice
+with no effect — a full extra capture pass that could not change a verdict, on exactly the tri-modal
+height case it was recommended for. Every entry now also carries `runsVsHead`, the whole spread,
+rather than only the two numbers a verdict was taken from.
+
 Exit code is 1 when anything is `stale*` or `suspect`, so it can gate. `--jitter-px-pct` /
-`--jitter-max-delta` move the band; `--keep` leaves the regenerated tree in place;
+`--jitter-max-delta` move the band; `--keep` leaves the regenerated tree in place
+(**and then it is yours to `git checkout --`**);
 `--reclassify <rundir>` re-runs the classification against a previous audit's stored captures with
 no JVM at all, which is how to retune a threshold without paying for more capture runs.
 
@@ -330,7 +355,7 @@ the asset — the first draft of this table had three dates wrong and mis-descri
 | --- | --- | --- | --- | --- |
 | `wfc_examples/neighborhoods.png` | `wfc_examples` | 35.76% at maxΔ227, runs agree to 0.004% | 2026-07-28 | **regenerated** `06968677` |
 | `command-palette.png` | `survivalGuide` | 3.83% at maxΔ245, runs pixel-identical | 2026-07-19 | **regenerated** `00fe971c` |
-| `interpolants_examples/smooth_duration.png` | `interpolants_examples` | run 1 changed *height* (772→918); run 2 kept the height and moved 2.35% at maxΔ238 | 2026-07-19 | left — unstable-height class, provisional |
+| `interpolants_examples/smooth_duration.png` | `interpolants_examples` | heights 918/772/772 over 3 runs; at the matching height 2.12–2.27% at maxΔ238, runs differ from each other by 0.35% | 2026-07-19 | left — timing-dependent, settled by `--repeat 3` |
 | `graph_query/lenses.png` | `graph_query` | 2.20% at maxΔ249 | 2026-07-24 | left — capture-environment drift |
 | `rectsl/rectsl-cascade-split.png` | `rectsl_examples` | 1.28% at maxΔ255, runs byte-identical | 2026-07-20 | **regenerated** `238015fb` |
 | `visualizers-display-html.png` | `visualizers` | 0.031% at maxΔ20 (229 px, then 307 px) | 2026-07-20 | left — band edge |
@@ -382,9 +407,21 @@ every asset older than a week and proves nothing by itself. It is useful only wh
 - `closest_point.png` — nine pixels, in one 17×41 box. Reproducible, and still nine pixels. There is
   no figure to fix. (Deliberately *not* fixed by raising `MIN_SIGNAL_PX` until it disappears — tuning
   a threshold to erase a finding is how a freshness tool stops being one.)
-- `interpolants_examples/smooth_duration.png` — this is the tri-modal `capture=box` height class from
-  §2 wearing a `stale` label: run 1 came out 918 px tall, run 2 came out 772 px like `HEAD`. Its
-  "2.35% at maxΔ238" is run 2 only. Two runs cannot settle a tri-modal height; needs `--repeat 3`.
+- `interpolants_examples/smooth_duration.png` — **settled by actually running `--repeat 3`** rather
+  than deferring it. Heights: 918 (run 1), 772, 772 — so `HEAD`'s height is the majority and the
+  wobble is the first-capture effect from §2. At the matching height it reproducibly differs from
+  `HEAD` by 2.12% / 2.27% at maxΔ238 while the two matching runs differ from *each other* by 0.35% at
+  the same maxΔ238. Looked at it: same two curves, same legend, and the orange ramp's knee sits ~10 px
+  earlier. That figure plots "fixed 140 calls" against "1.2 seconds" — it is the timing-dependent
+  class from §2, where drift and instability are one phenomenon at two scales. Left alone, and now for
+  a reason rather than a hedge.
+- `interpolants_examples/keyframe_morph.png` — **a finding the sweep mislabelled, in the safe
+  direction.** It was reported `nondeterministic-size` because the sweep's two runs disagreed at
+  maxΔ60; over three runs all three come out 796 px tall against `HEAD`'s 918 and agree with each
+  other to maxΔ2, which is `stale-size`. But looking at it: identical curves, identical legend — the
+  two output panels have simply swapped order (`keys` above the plot in the committed shot, below it
+  now) and the committed one carries extra trailing whitespace. A stable *layout* difference with no
+  information content, so still not regenerated.
 - `stacksl/stacksl-diffusion-feedback.mp4` — **the `stale-binary` verdict is wrong.** `stale-binary`
   compares *bytes* (146357 → 146410, +53). Decoding frames 1, 48 and 96 of both and comparing pixels:
   8–13% of pixels differ at a per-channel maximum of **18–20**, over the whole frame. That is h.264
