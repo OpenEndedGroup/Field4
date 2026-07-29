@@ -86,7 +86,12 @@ import afield.stdlib.translationBetween
 import afield.stdlib.upscaleNearest
 import afield.stdlib.withLabel
 import java.io.File
+import kotlin.math.E
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.ln
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.system.exitProcess
 
@@ -95,7 +100,26 @@ FIELD_TEST
 id: stdlib.alife.gallery
 runner: jvm-main
 entrypoint: afield.examples.stdlib.AlifeGallery
+args:
+  - "--tier"
+  - "fast"
 tags: [smoke, stdlib, alife, capture, cpu]
+timeoutSec: 180
+expect:
+  exitCode: 0
+  stdoutContains:
+    - "alife gallery rendered"
+*/
+
+/*
+FIELD_TEST
+id: stdlib.alife.gallery.slow
+runner: jvm-main
+entrypoint: afield.examples.stdlib.AlifeGallery
+args:
+  - "--tier"
+  - "slow"
+tags: [stdlib, alife, capture, cpu, slow]
 timeoutSec: 900
 expect:
   exitCode: 0
@@ -115,20 +139,35 @@ expect:
  *  - a pure-diffusion step must conserve total mass to floating-point tolerance on a torus;
  *  - Gray–Scott's spot preset must measure round and its maze preset must measure connected, by
  *    isoperimetric ratio and largest-blob share, not by eye;
- *  - Lenia's discrete limit must reproduce Conway's Life *bit for bit* — two independently written
- *    steppers, one float and one integer;
+ *  - Lenia's discrete limit must reproduce Conway's Life *bit for bit* — two different update
+ *    mechanisms, one float-convolution-plus-additive-growth and one integer neighbour count, driven from
+ *    the same `B3/S23` table (they are not independent *rules*, and this file used to say they shared no
+ *    code, which was wrong — see [figureLenia]);
  *  - a flock's polarization must be far above the random-heading baseline, and its alignment-off twin
  *    must not be;
  *  - a Physarum network must concentrate its deposit far more than its sensing-off twin;
  *  - a DLA cluster's mass dimension must be ~1.7 while an Eden cluster's and a random sprinkle's are ~2.
  *
- * Two statistics are **calibrated rather than trusted** ([figureCalibration]): a synthetic disc is
- * measured to confirm that [blobShapes] scores a round object near 1 and that [massRadiusDimension]
- * scores a filled disc near 2. If the calibration drifts, every downstream threshold is meaningless, so
- * it runs first and fails loudly.
+ * The statistics those claims are made through are themselves checked, in two layers that run first and
+ * fail loudly, because a wrong estimator makes every downstream number meaningless (and two of them
+ * *were* wrong in the first version of this family):
  *
- * As a FIELD_TEST (`stdlib.alife.gallery`) it renders to a temp dir and writes no committed assets.
- * Pass an output dir as `args[0]` (or set `ALIFE_GALLERY_DIR`) to put the PNGs somewhere that survives.
+ *  - [figureCalibration] measures a synthetic disc and a thin annulus, to show that [blobShapes] scores
+ *    a round object near 1 and a filamentary one near 40, and that [massRadiusDimension] scores a filled
+ *    disc near 2;
+ *  - [figureMeasurement] pins the same two estimators against **closed-form** answers — an uncorrelated
+ *    field's `1/sqrt(N)` noise band, the `(1 - 1/e)` interpolation floor, a checkerboard's exactly
+ *    `-1/3` lag-1 autocorrelation, proportionality of correlation length to wavelength, and recovery of
+ *    a *prescribed* mass–radius exponent at `D = 1.00, 1.26, 1.71, 2.00`.
+ *
+ * **Two tiers.** `--tier fast` (the `stdlib.alife.gallery` FIELD_TEST, ~2 s) is everything whose
+ * evidence is an exact identity or a closed-form comparison. `--tier slow`
+ * (`stdlib.alife.gallery.slow`, ~25 s) is the seven figures that integrate something to a statistical
+ * verdict. `--tier all` is the default when run by hand. See [Tier].
+ *
+ * As a FIELD_TEST it renders to a temp dir and writes no committed assets. Pass `--out DIR` (or a bare
+ * first argument, or set `ALIFE_GALLERY_DIR`) to put the PNGs somewhere that survives, and `--only
+ * name,name` to iterate on one figure.
  */
 object AlifeGallery {
 
@@ -206,6 +245,218 @@ object AlifeGallery {
     }
 
     // ==========================================================================================
+    // 0b — The two estimators pinned against closed-form answers
+    // ==========================================================================================
+
+    /**
+     * Pins the family's two *derived* statistics — [correlationLength]/[radialAutocorrelation] and
+     * [massRadiusDimension] — against inputs whose answers are known in closed form.
+     *
+     * [figureCalibration] shows that the estimators read the right thing for a disc. That is one point
+     * of one curve, and a disc is the easiest case there is. This figure exists because a measurement
+     * function that "does not fail now" is not the same as a correct one, and two of the numbers this
+     * family reports (a correlation length, a fractal dimension) were *wrong* in the first version and
+     * were only caught because a control arm happened to disagree. The fix for that is not a better
+     * control arm; it is an oracle.
+     *
+     * Four analytic cases, none of them involving an automaton:
+     *
+     *  1. **Uncorrelated noise.** The true autocorrelation is zero at every non-zero lag, so the
+     *     estimator's lag-1 reading must sit inside its own sampling noise band — and that band has a
+     *     closed form, `1/sqrt(N)` for `N` sampled sites. This replaces the magic `< 0.02` the Turing
+     *     figure used to carry (which was a 1.3-sigma bound at its sample count, i.e. a bound that a
+     *     *correct* estimator fails about 20 % of the time).
+     *  2. **The interpolation floor.** With zero correlation, `correlationLength` reduces to
+     *     `(1 - 1/e) / (1 - ac(1))` — the linear interpolation between lag 0 and lag 1. So the floor of
+     *     this statistic is **0.632, not 0**, which is the number every "a structureless field reads
+     *     low" claim in this family has to be compared against. Asserted to `1e-9`.
+     *  3. **A checkerboard.** Its autocorrelation at the 8 Moore offsets is `+1` on the diagonals and
+     *     `-1` on the axes. Of the 24 sampled directions, rounding sends 8 to a diagonal and 16 to an
+     *     axis, so the lag-1 reading is **exactly `-1/3`** and the correlation length is exactly
+     *     `(1 - 1/e) / (4/3) = 0.4741`. Any change to the direction count or the offset rounding moves
+     *     this, which is the point.
+     *  4. **Sinusoidal stripes.** For a pattern of wavelength `λ` the correlation length must be
+     *     *proportional to* `λ` — that proportionality is the entire basis of the Turing figure's
+     *     "the length scale grows with the diffusion scale" claim, and it had never been checked.
+     *
+     * And for the dimension estimator, point sets with an **exactly prescribed** mass–radius exponent:
+     * `n` points at radii `R·(i/n)^(1/D)` and uniformly random angles give `N(r) = n·(r/R)^D` by
+     * construction, for any real `D`. Recovering `D = 1.00, 1.26, 1.71, 2.00` from those pins down the
+     * question the DLA figure cannot otherwise answer: **is 1.617 the cluster, or the estimator reading
+     * low?** If the estimator returns 1.71 when handed a set that has 1.71, the answer is "the cluster".
+     */
+    private fun figureMeasurement(outDir: File) {
+        val side = 192
+
+        // ---- 1 & 2: uncorrelated noise, and the interpolation floor ----------------------------
+        val rng = kotlin.random.Random(20260729L)
+        val noise = Img.zeros(side, side, 1)
+        for (i in noise.data.indices) noise.data[i] = rng.nextFloat()
+        // stride 1 so N is the whole field: the noise band is 1/sqrt(N) and a tighter band makes a
+        // sharper statement about the bilinear bias below.
+        val acNoise = noise.radialAutocorrelation(maxLag = 8, stride = 1)
+        val sigma = 1.0 / side.toDouble()   // 1/sqrt(N) with N = side*side sampled sites
+        println("[alife-gallery]     oracle: white-noise ac = " + (1..6).joinToString(", ") { f(acNoise[it], 4) } +
+            " (sampling sigma ${f(sigma, 4)})")
+        check(
+            (1..6).all { abs(acNoise[it]) < 3.0 * sigma },
+            "oracle: on uncorrelated noise the autocorrelation estimator reads " +
+                "|ac| <= ${f((1..6).maxOf { abs(acNoise[it]) }, 4)} at every lag 1..6, inside the " +
+                "3-sigma sampling band ${f(3.0 * sigma, 4)} that ${side * side} samples give (theory: " +
+                "exactly zero). The bound is 1/sqrt(N), not a number chosen to pass"
+        )
+        val noiseLength = noise.correlationLength(maxLag = 8, stride = 1)
+        val floorClosedForm = (1.0 - 1.0 / E) / (1.0 - acNoise[1])
+        println("[alife-gallery]     oracle: white-noise correlation length ${f(noiseLength, 6)}, " +
+            "closed form ${f(floorClosedForm, 6)}")
+        check(
+            abs(noiseLength - floorClosedForm) < 1e-9,
+            "oracle: and its correlation length is EXACTLY the interpolation floor " +
+                "(1 - 1/e)/(1 - ac(1)) = ${f(floorClosedForm, 6)} (measured ${f(noiseLength, 6)}). So " +
+                "the floor of this statistic is 0.632, NOT 0 — which is the number every " +
+                "'a structureless field reads low' claim in this family must be compared against"
+        )
+        // The interpolation artefact, as a *bias* rather than a magnitude: bilinear sampling at a
+        // non-integer offset mixes in the centre pixel, so its lag-1 reading is systematically POSITIVE
+        // and far outside the sampling band that the lattice sampler sits inside.
+        val acBilinear = noise.radialAutocorrelation(maxLag = 8, stride = 1, bilinear = true)
+        println("[alife-gallery]     oracle: bilinear white-noise ac(1) ${f(acBilinear[1], 4)}")
+        check(
+            acBilinear[1] > 3.0 * sigma && abs(acNoise[1]) < 3.0 * sigma,
+            "oracle CONTROL: the same field sampled bilinearly reads ${f(acBilinear[1], 4)} at lag 1 — " +
+                "${f(acBilinear[1] / (3.0 * sigma), 1)}x outside the 3-sigma band, while the lattice " +
+                "sampler is inside it. Bilinear interpolation averages in the centre pixel and so " +
+                "manufactures correlation from nothing; this is a systematic bias, not bad luck"
+        )
+
+        // ---- 3: a checkerboard, whose lag-1 autocorrelation is exactly -1/3 --------------------
+        val checker = Img.generate(side, side) { x, y -> if ((x + y) % 2 == 0) 1f else 0f }
+        val acChecker = checker.radialAutocorrelation(maxLag = 4, stride = 1)
+        println("[alife-gallery]     oracle: checkerboard ac(1) ${f(acChecker[1], 6)} (theory -1/3)")
+        check(
+            abs(acChecker[1] + 1.0 / 3.0) < 1e-6,
+            "oracle: a checkerboard's lag-1 autocorrelation is ${f(acChecker[1], 6)}, exactly the " +
+                "-1/3 theory gives: +1 on the four diagonal Moore offsets and -1 on the four axial " +
+                "ones, and rounding sends 8 of the 24 sampled directions to a diagonal and 16 to an axis"
+        )
+        val checkerLength = checker.correlationLength(maxLag = 4, stride = 1)
+        val checkerClosedForm = (1.0 - 1.0 / E) / (4.0 / 3.0)
+        check(
+            abs(checkerLength - checkerClosedForm) < 1e-6,
+            "oracle: so its correlation length is exactly (1 - 1/e)/(4/3) = " +
+                "${f(checkerClosedForm, 6)} (measured ${f(checkerLength, 6)}) — the smallest reading " +
+                "this statistic can produce, from the shortest-wavelength pattern a lattice holds"
+        )
+
+        // ---- 4: correlation length is PROPORTIONAL to wavelength -------------------------------
+        // The Turing figure's claim is that this statistic reads out a length scale. That is only true
+        // if it is linear in the wavelength, which had never been checked. 192 is a multiple of all
+        // three wavelengths, so the toroidal wrap is consistent and no seam contributes.
+        val waves = intArrayOf(12, 24, 48)
+        val waveLengths = waves.map { lambda ->
+            val stripes = Img.generate(side, side) { x, _ ->
+                (0.5 + 0.5 * cos(2.0 * PI * x / lambda)).toFloat()
+            }
+            stripes.correlationLength(maxLag = 40, stride = 1)
+        }
+        val perLambda = waves.indices.map { waveLengths[it] / waves[it] }
+        println("[alife-gallery]     oracle: stripe wavelengths ${waves.joinToString()} -> lengths " +
+            waveLengths.joinToString(", ") { f(it, 3) } + ", length/lambda " +
+            perLambda.joinToString(", ") { f(it, 4) })
+        val meanPerLambda = perLambda.average()
+        check(
+            perLambda.all { abs(it - meanPerLambda) / meanPerLambda < 0.06 },
+            "oracle: the correlation length is PROPORTIONAL to wavelength — length/lambda is " +
+                perLambda.joinToString(", ") { f(it, 4) } + " across a 4x range of lambda, a spread of " +
+                "${f(perLambda.indices.maxOf { abs(perLambda[it] - meanPerLambda) / meanPerLambda } * 100, 1)}% " +
+                "about ${f(meanPerLambda, 4)}. That proportionality is what makes 'the length scale grew " +
+                "3.1x' in the Turing figure a statement about the pattern rather than about the estimator"
+        )
+        check(
+            waveLengths[0] > noiseLength * 2.0,
+            "oracle: and even the shortest stripe pattern (lambda 12, length ${f(waveLengths[0], 2)}) " +
+                "reads ${f(waveLengths[0] / noiseLength, 1)}x above the ${f(noiseLength, 3)} floor, so " +
+                "the statistic has range above its own floor"
+        )
+
+        // ---- 5: the dimension estimator against exactly-prescribed exponents -------------------
+        // N(r) = n * (r / R)^D holds by construction for radii R*(i/n)^(1/D): the i-th point is at
+        // exactly the radius enclosing i points. So this is an oracle for any real D, not just for the
+        // two integers a disc and a line give.
+        val targets = doubleArrayOf(1.00, 1.2619, 1.71, 2.00)
+        val recovered = ArrayList<afield.stdlib.MassRadiusFit>()
+        for ((k, d) in targets.withIndex()) {
+            val pts = powerLawPoints(60_000, d, 400.0, Vec2(512f, 512f), seed = 100L + k)
+            val fit = massRadiusDimension(pts, Vec2(512f, 512f), rMin = 12.0, rMax = 300.0, samples = 24)
+            recovered.add(fit)
+            println("[alife-gallery]     oracle: prescribed D=$d -> measured ${f(fit.dimension, 4)} " +
+                "(r2=${f(fit.rSquared, 6)})")
+        }
+        check(
+            targets.indices.all { abs(recovered[it].dimension - targets[it]) < 0.02 },
+            "oracle: massRadiusDimension recovers a PRESCRIBED exponent to " +
+                "${f(targets.indices.maxOf { abs(recovered[it].dimension - targets[it]) }, 4)} at " +
+                "D = ${targets.joinToString(", ")} (measured " +
+                recovered.joinToString(", ") { f(it.dimension, 3) } + "). In particular it returns " +
+                "${f(recovered[2].dimension, 3)} when handed a set whose exponent IS 1.71 — so the DLA " +
+                "figure's 1.617 is a fact about the cluster, not the estimator reading low"
+        )
+        // A literal straight line on the integer lattice: a different geometry with the same answer,
+        // and — more usefully — a reading of how much the *lattice* costs. `N(r) = 2*floor(r) + 1` is a
+        // staircase rather than a power law, and fitting a line through a staircase in log–log space
+        // reads slightly low. It comes out at 0.993, i.e. 0.7 % under 1 — the same 0.7 % the calibrated
+        // filled disc reads under 2 (1.986). Two different lattice objects, the same small bias, and the
+        // continuum point sets above show none of it. So the honest reading of the DLA figure's 1.617 is
+        // "about 1.63 in the continuum, and clearly not 1.71" rather than "1.617".
+        val line = (-300..300).map { Vec2((512 + it).toFloat(), 512f) }
+        val lineFit = massRadiusDimension(line, Vec2(512f, 512f), rMin = 5.0, rMax = 250.0)
+        val discBias = 1.0 - 1.986 / 2.0
+        println("[alife-gallery]     oracle: a straight line of lattice points -> D ${f(lineFit.dimension, 4)} " +
+            "(lattice bias ${f((1.0 - lineFit.dimension) * 100, 2)}%, cf. the disc's ${f(discBias * 100, 2)}%)")
+        check(
+            abs(lineFit.dimension - 1.0) < 0.02 && lineFit.rSquared > 0.999,
+            "oracle: a literal straight line of lattice points measures " +
+                "${f(lineFit.dimension, 4)} (r2 ${f(lineFit.rSquared, 6)}) against the exact 1 a 1-D " +
+                "set has — ${f((1.0 - lineFit.dimension) * 100, 2)}% low, because N(r) = 2*floor(r)+1 " +
+                "is a staircase and not a power law. The continuum sets above are recovered to 0.3%, so " +
+                "this is the lattice's error and not the estimator's"
+        )
+
+        // Every panel is built to land on exactly the 300 px cell. Not because [montage] would otherwise
+        // resample — it only ever scales *down* (`min(1.0, ...)`), so an undersized panel is centred, not
+        // stretched — but because a checkerboard is the one image where any resampling anywhere in the
+        // chain shows up as a moiré, and a reader who sees one cannot tell whether the figure or their
+        // viewer produced it. (This author saw a moiré in a downscaled preview of this very panel and
+        // spent a round-trip "fixing" it; the PNG had exactly two grey values, 0 and 255, in 10 px
+        // blocks. Decode and sample the pixels — do not trust a preview.)
+        montage(
+            listOf(
+                "white noise: ac(1) ${f(acNoise[1], 4)}" to noise.crop(0, 0, 100, 100).upscaleNearest(3),
+                "checkerboard: ac(1) = -1/3" to checker.crop(0, 0, 30, 30).upscaleNearest(10),
+                "stripes lambda 48: len/lambda ${f(perLambda[2], 3)}" to
+                    Img.generate(300, 300) { x, _ -> (0.5 + 0.5 * cos(2.0 * PI * x / 48)).toFloat() }
+                        .colormap("viridis"),
+                "prescribed D: 1.00 / 1.26 / 1.71 / 2.00" to plotLogLog(recovered, 300, 300)
+            ),
+            columns = 2, cellSide = 300
+        ).savePng(File(outDir, "alife-measurement-oracles.png").absolutePath)
+    }
+
+    /**
+     * `n` points whose mass–radius exponent about [center] is **exactly** [d]: the `i`-th point sits at
+     * the radius that encloses exactly `i` points, `R*(i/n)^(1/d)`, at a uniformly random angle. So
+     * `N(r) = n*(r/R)^d` identically, and the only error [massRadiusDimension] can make is its own.
+     */
+    private fun powerLawPoints(n: Int, d: Double, rOuter: Double, center: Vec2, seed: Long): List<Vec2> {
+        val rng = kotlin.random.Random(seed)
+        return (1..n).map { i ->
+            val r = rOuter * Math.pow(i.toDouble() / n, 1.0 / d)
+            val a = rng.nextDouble() * 2.0 * PI
+            Vec2((center.x + r * cos(a)).toFloat(), (center.y + r * sin(a)).toFloat())
+        }
+    }
+
+    // ==========================================================================================
     // 1 — Conway's Life against known objects
     // ==========================================================================================
 
@@ -260,6 +511,21 @@ object AlifeGallery {
             "life: the toad's detected period is 2 (found by exact state hashing, not by population)"
         )
 
+        val strip = afield.stdlib.LifePatterns.glider.centeredOn(16, 16).let { g ->
+            (0..4).map { "gen $it" to g.stepTimes(LIFE, it).toImg(2).upscaleNearest(14) }
+        }
+        montage(strip, columns = 5, cellSide = 240).savePng(File(outDir, "alife-life-glider.png").absolutePath)
+    }
+
+    /**
+     * The R-pentomino, split out from [figureLife] because it is the family's one genuinely expensive
+     * *discrete* claim: 1103 generations on a 620x620 board plus 1400 on a walled 250x250, ~2.7 s of the
+     * gallery's runtime, against ~10 ms for every other Life assertion. It lives in the slow tier.
+     *
+     * Nothing here is a threshold: every number is an exact integer equality against a figure from the
+     * literature, so this is the cheapest possible thing to keep and the most obviously safe to defer.
+     */
+    private fun figureRPentomino(outDir: File) {
         // --- the R-pentomino: a specific number of generations to a specific population ---
         // The textbook figure — 1103 generations to a population of 116 — is about an **unbounded**
         // board: six of those 116 cells are gliders still in flight, escaping to infinity. So the check
@@ -319,11 +585,6 @@ object AlifeGallery {
                 "${report.population.last()} cells — fewer than 116, because the escaping gliders hit " +
                 "the wall. Same rule, different boundary, different (and correctly different) answer"
         )
-
-        val strip = afield.stdlib.LifePatterns.glider.centeredOn(16, 16).let { g ->
-            (0..4).map { "gen $it" to g.stepTimes(LIFE, it).toImg(2).upscaleNearest(14) }
-        }
-        montage(strip, columns = 5, cellSide = 240).savePng(File(outDir, "alife-life-glider.png").absolutePath)
 
         // A picture of the R-pentomino's history: population over time, plus the settled ash.
         val popImg = plotSeries(report.population.map { it.toDouble() }, 460, 300)
@@ -463,10 +724,13 @@ object AlifeGallery {
                 "organised into locally-coherent bands where every cell is driven by a neighbour, which " +
                 "is precisely what no uncorrelated field does"
         )
-        check(
-            late > early * 2.0,
-            "cyclic: the advance fraction rose ${f(late / early, 2)}x from soup to organised phase"
-        )
+        // Stated against the closed form rather than as a bare ratio: `early` is pinned to
+        // 1 - (13/14)^8 = 0.447 by the check above and `late` is pinned above 0.99, so this ratio cannot
+        // be less than 0.99/(0.447 + 0.02) = 2.12 without one of those two failing first. Reported, not
+        // thresholded independently.
+        println("[alife-gallery]     cyclic: advance fraction rose ${f(late / early, 2)}x from soup to " +
+            "organised phase (floor implied by the two checks above: " +
+            "${f(0.99 / (predicted + 0.02), 2)}x)")
 
         val palette = cyclicPalette(rule.states)
         val exRule = CYCLIC_EXCITABLE
@@ -476,17 +740,36 @@ object AlifeGallery {
         println("[alife-gallery]     excitable (${exRule.states} states, threshold ${exRule.threshold}, r=${exRule.radius}) advance ${f(exLate)}")
         // The two parameter sets are visibly different phases — the excitable one curls into spiral
         // cores — and the difference is measurable as a length scale rather than left to the eye.
-        val labLength = settled.toImg(rule.states).correlationLength(maxLag = 30)
-        val exLength = exSettled.toImg(exRule.states).correlationLength(maxLag = 30)
-        println("[alife-gallery]     correlation length: labyrinth ${f(labLength, 2)}, excitable ${f(exLength, 2)}")
+        val labImg = settled.toImg(rule.states)
+        val exImg = exSettled.toImg(exRule.states)
+        val labLength = labImg.correlationLength(maxLag = 30)
+        val exLength = exImg.correlationLength(maxLag = 30)
+        // The load-bearing claim is that each settled field HAS a length scale, and the control arm for
+        // that is the same field with its pixels shuffled — which reads the interpolation floor
+        // (~0.632; see figureMeasurement, where that floor is derived in closed form). This replaces a
+        // bare `labyrinth > excitable * 1.3` that measured 1.39 and so had 7 % headroom: a threshold
+        // that thin is a scheduled red build, and it was also the weaker of the two available claims.
+        val labShuffled = shuffleImg(labImg, 91L).correlationLength(maxLag = 30)
+        val exShuffled = shuffleImg(exImg, 91L).correlationLength(maxLag = 30)
+        println("[alife-gallery]     correlation length: labyrinth ${f(labLength, 2)} (shuffled " +
+            "${f(labShuffled, 3)}), excitable ${f(exLength, 2)} (shuffled ${f(exShuffled, 3)})")
         check(
-            labLength > exLength * 1.3,
-            "cyclic: the two parameter sets settle at measurably different length scales — the " +
-                "threshold-1 labyrinth at ${f(labLength, 2)} cells against the excitable rule's " +
-                "${f(exLength, 2)}, a factor of ${f(labLength / exLength, 2)}. (The larger " +
-                "neighbourhood gives the *smaller* correlation length, which is the opposite of what " +
-                "this figure first asserted; the excitable rule's spiral arms are narrow even though its " +
-                "neighbourhood is wide.)"
+            labLength > labShuffled * 2.5 && exLength > exShuffled * 2.5,
+            "cyclic: both settled fields have a real length scale — labyrinth ${f(labLength, 2)} cells " +
+                "against ${f(labShuffled, 3)} for its own shuffled pixels (${f(labLength / labShuffled, 1)}x), " +
+                "excitable ${f(exLength, 2)} against ${f(exShuffled, 3)} (${f(exLength / exShuffled, 1)}x). " +
+                "The control is the identical histogram with the order destroyed"
+        )
+        check(
+            labLength > exLength * 1.15,
+            "cyclic: and the two parameter sets settle at *different* length scales — the threshold-1 " +
+                "labyrinth at ${f(labLength, 2)} cells against the excitable rule's ${f(exLength, 2)}, a " +
+                "factor of ${f(labLength / exLength, 2)}. The bound is 1.15 rather than the measured " +
+                "1.39 on purpose: the direction is the interesting part and the margin is not large, so " +
+                "there is no case for a threshold that only just passes. (The larger neighbourhood gives " +
+                "the *smaller* correlation length, which is the opposite of what this figure first " +
+                "asserted; the excitable rule's spiral arms are narrow even though its neighbourhood is " +
+                "wide.)"
         )
         montage(
             listOf(
@@ -586,27 +869,40 @@ object AlifeGallery {
             "gray-scott: the spot preset produced ${spots.blobCount} separate features, the largest " +
                 "holding ${f(spots.largestShare)} of the covered area — many small things, not one big one"
         )
-        // Note the direction of the small-blob bias: the crack-perimeter π/4 correction is asymptotic, so
-        // a 10-cell blob scores slightly BELOW 1 (a 40-cell disc scores 1.0 — see figureCalibration).
-        // That biases this statistic toward "round", which makes a *stripe* verdict conservative.
+        // Stated against the measured calibration rather than against a constant: the same run measures a
+        // 40-cell disc at [discRatio], so "round" here means "within a factor of 2 of an actual disc,
+        // measured by this build, in this process". The old form was `< 1.6`, a number with no
+        // provenance. Note the direction of the small-blob bias: the crack-perimeter π/4 correction is
+        // asymptotic, so a 10-cell blob scores slightly BELOW 1, which biases the statistic toward
+        // "round" and makes a *stripe* verdict conservative rather than flattering.
+        val discRatio = discMaskImg(160, 160, 40.0).blobShapes().first().isoperimetricRatio
         check(
-            spots.medianIsoperimetric < 1.6,
-            "gray-scott: and they are ROUND — median P^2/4piA ${f(spots.medianIsoperimetric, 2)}, against " +
-                "1.0 for a calibrated 40-cell disc (small blobs read slightly under 1; see calibration)"
+            spots.medianIsoperimetric < discRatio * 2.0,
+            "gray-scott: and they are ROUND — median P^2/4piA ${f(spots.medianIsoperimetric, 2)} against " +
+                "${f(discRatio, 3)} measured for a calibrated 40-cell disc in this same run, i.e. " +
+                "${f(spots.medianIsoperimetric / discRatio, 2)}x a disc (bound: 2x)"
         )
+        // A control-arm comparison, not a magic floor: the spot preset's largest feature holds
+        // [spots.largestShare] of the covered area, so "dominated by ONE structure" is 10x that, not
+        // "> 0.40". The old absolute bound had 12 % headroom on the maze preset (measured 0.449).
         check(
-            worms.largestShare > 0.40 && maze.largestShare > 0.40,
+            worms.largestShare > spots.largestShare * 10 && maze.largestShare > spots.largestShare * 10,
             "gray-scott: both labyrinth presets are dominated by ONE connected structure — worms " +
-                "${f(worms.largestShare)}, maze ${f(maze.largestShare)} of the covered area, against " +
-                "${f(spots.largestShare)} for the spots"
+                "${f(worms.largestShare)} and maze ${f(maze.largestShare)} of the covered area against " +
+                "${f(spots.largestShare)} for the spots at the same coverage, i.e. " +
+                "${f(worms.largestShare / spots.largestShare, 0)}x and " +
+                "${f(maze.largestShare / spots.largestShare, 0)}x. The comparison is with the spot arm, " +
+                "not with a constant"
         )
         check(
-            maze.medianIsoperimetric > spots.medianIsoperimetric * 2.5 &&
-                worms.medianIsoperimetric > spots.medianIsoperimetric * 2.5,
+            maze.medianIsoperimetric > spots.medianIsoperimetric * 2.0 &&
+                worms.medianIsoperimetric > spots.medianIsoperimetric * 2.0,
             "gray-scott: and they are ${f(maze.medianIsoperimetric / spots.medianIsoperimetric, 1)}x / " +
                 "${f(worms.medianIsoperimetric / spots.medianIsoperimetric, 1)}x less round than the " +
                 "spots (${f(maze.medianIsoperimetric, 1)}, ${f(worms.medianIsoperimetric, 1)} vs " +
-                "${f(spots.medianIsoperimetric, 2)}) — the SAME code, two numbers changed"
+                "${f(spots.medianIsoperimetric, 2)}) — the SAME code, two numbers changed. Bound 2.0 " +
+                "rather than the measured 3.0: the claim is 'a different morphology', and doubling is " +
+                "already far beyond anything the small-blob bias can produce"
         )
         check(
             holes.blobCount == 1 && holes.medianIsoperimetric > 20.0 && holes.coverage > 0.6,
@@ -616,7 +912,7 @@ object AlifeGallery {
         )
 
         // Control arm 1: v = 0 is a fixed point, so an unseeded field never patterns at all.
-        val unseeded = grayScottSeed(side, side, patches = 0).stepTimes(GRAY_SCOTT_WORMS, 500)
+        val unseeded = grayScottSeed(side, side, patches = 0, seed = 11L).stepTimes(GRAY_SCOTT_WORMS, 500)
         check(
             unseeded.v.max() < 1e-6f,
             "gray-scott CONTROL: with no seed the autocatalyst stays at exactly 0 after 500 steps " +
@@ -646,8 +942,12 @@ object AlifeGallery {
             .filmstrip(GRAY_SCOTT_MITOSIS, 160, 20)
         val counts = strip.map { it.v.threshold(0.15f).blobShapes(minArea = 4).size }
         println("[alife-gallery]     mitosis blob counts over 0..160 every 20: $counts")
+        // `>= first * 2`, not `>= first * 3`. The measured sequence is 4 -> 12, i.e. exactly 3x, so the
+        // old bound passed with ZERO headroom: one blob landing on the other side of the 0.15 threshold
+        // would have turned this red. The claim is "each patch divides", and doubling is the weakest
+        // statement that means it.
         check(
-            counts.first() <= 4 && counts.last() >= counts.first() * 3,
+            counts.first() <= 4 && counts.last() >= counts.first() * 2,
             "gray-scott: the 'mitosis' preset divides — ${counts.first()} seeded patches become " +
                 "${counts.last()} spots over 160 steps, a measured ${f(counts.last().toDouble() / counts.first(), 1)}x, " +
                 "with coverage still only ${f(strip.last().v.morphology().coverage, 3)} (so this is " +
@@ -655,12 +955,14 @@ object AlifeGallery {
         )
         val risingIntervals = counts.zipWithNext().count { (a, b) -> b > a }
         check(
-            counts.zipWithNext().all { (a, b) -> b >= a } && risingIntervals == 1,
-            "gray-scott: and the count never falls, rising in exactly $risingIntervals of the eight " +
-                "sampled intervals ($counts). So the honest description is a SINGLE synchronous " +
-                "division — every square seed pinches into four spots inside the same 20-step window and " +
-                "the field is then stable at that count. Not sustained mitosis, which is what the " +
-                "preset's name would suggest and what a coarser sampling of this figure appeared to show"
+            counts.zipWithNext().all { (a, b) -> b >= a } && risingIntervals <= 2,
+            "gray-scott: and the count never falls, rising in $risingIntervals of the eight sampled " +
+                "intervals ($counts). So the honest description is a SINGLE synchronous division — every " +
+                "square seed pinches into four spots inside the same 20-step window and the field is then " +
+                "stable at that count. Not sustained mitosis, which is what the preset's name would " +
+                "suggest and what a coarser sampling of this figure appeared to show. The bound is <= 2 " +
+                "rather than == 1 so that a division event straddling a sample boundary is not a failure; " +
+                "sustained mitosis would show 8"
         )
         montage(
             strip.mapIndexed { i, st ->
@@ -703,24 +1005,37 @@ object AlifeGallery {
         // shuffled field reads ~2, which is the artefact this control caught.
         val shuffled = shuffleImg(fields[2], 42L)
         val shuffledLength = shuffled.correlationLength(maxLag = 40)
+        // Compared with the statistic's *floor*, which figureMeasurement derives in closed form as
+        // (1 - 1/e) = 0.632 for a field with no correlation at all — not with a magic `< 1.0`. Both
+        // directions are stated: the shuffled arm must sit at the floor, and the real field must sit
+        // far above it.
+        val acShuffled = shuffled.radialAutocorrelation(maxLag = 4)
+        val floorClosedForm = (1.0 - 1.0 / E) / (1.0 - acShuffled[1])
         check(
-            shuffledLength < 1.0,
+            abs(shuffledLength - floorClosedForm) < 1e-6 && lengths[2] > shuffledLength * 3.0,
             "turing CONTROL: shuffling the same pixels drops the correlation length to " +
-                "${f(shuffledLength, 3)} — the statistic reads spatial structure, not the histogram"
+                "${f(shuffledLength, 4)}, which is *exactly* the (1 - 1/e)/(1 - ac(1)) floor a field " +
+                "with no correlation must give (${f(floorClosedForm, 4)}) — while the unshuffled field " +
+                "reads ${f(lengths[2], 2)}, ${f(lengths[2] / shuffledLength, 1)}x that floor. The " +
+                "statistic reads spatial structure, not the histogram"
         )
-        // The interpolation artefact, pinned at the level it actually happens: the lag-1 autocorrelation
-        // of WHITE NOISE, which must be zero and is not when the sampler interpolates. Kept as a check so
-        // the default cannot quietly go back to bilinear.
-        val acNearest = shuffled.radialAutocorrelation(maxLag = 4)
+        // The interpolation artefact, pinned as a *bias* against the estimator's own sampling noise
+        // rather than against a constant: sigma is 1/sqrt(N) for N sampled sites, so the lattice sampler
+        // must land inside 3 sigma and the bilinear one must land outside it. The bound this replaces was
+        // `< 0.02`, which at this sample count is 1.3 sigma — i.e. a bound a *correct* estimator fails
+        // about a fifth of the time. figureMeasurement derives the same pair on a purpose-built field.
         val acBilinear = shuffled.radialAutocorrelation(maxLag = 4, bilinear = true)
-        println("[alife-gallery]     white-noise ac(1): nearest ${f(acNearest[1], 4)}, bilinear ${f(acBilinear[1], 4)}")
+        val sigma = 2.0 / 128.0    // stride 2 over a 128x128 field: N = 64*64, sigma = 1/sqrt(N)
+        println("[alife-gallery]     white-noise ac(1): nearest ${f(acShuffled[1], 4)}, bilinear " +
+            "${f(acBilinear[1], 4)}, sampling sigma ${f(sigma, 4)}")
         check(
-            abs(acNearest[1]) < 0.02 && acBilinear[1] > 5.0 * abs(acNearest[1]),
-            "turing: on that same white noise the lag-1 autocorrelation is ${f(acNearest[1], 4)} with " +
-                "lattice sampling (correct: zero) against ${f(acBilinear[1], 4)} with bilinear sampling, " +
-                "${f(acBilinear[1] / abs(acNearest[1]), 0)}x larger — bilinear interpolation averages in " +
-                "the centre pixel and so manufactures correlation from nothing. This is why the estimator " +
-                "does not interpolate, and this check is why it cannot quietly start again"
+            abs(acShuffled[1]) < 3.0 * sigma && acBilinear[1] > 3.0 * sigma,
+            "turing: on that same white noise the lag-1 autocorrelation is ${f(acShuffled[1], 4)} with " +
+                "lattice sampling — inside the ${f(3.0 * sigma, 4)} three-sigma sampling band, as a " +
+                "correct estimator of a true zero must be — against ${f(acBilinear[1], 4)} with bilinear " +
+                "sampling, which is outside it. Bilinear interpolation averages in the centre pixel and " +
+                "so manufactures correlation from nothing. This is why the estimator does not " +
+                "interpolate, and this check is why it cannot quietly start again"
         )
 
         montage(
@@ -739,9 +1054,21 @@ object AlifeGallery {
 
     /**
      * The cross-check that ties the family's two halves together: Lenia's discrete limit must reproduce
-     * Conway's Life *bit for bit*. Two implementations that share no code — a sparse float convolution
-     * with a growth mapping, and integer Moore-neighbour counting — must agree exactly for 20
+     * Conway's Life *bit for bit*: a sparse float convolution with an additive growth mapping and a
+     * clamp, and integer Moore-neighbour counting with a table lookup, must agree exactly for 20
      * generations, including on a glider's rigid translation.
+     *
+     * **A correction to what this file used to claim.** The first version of this KDoc said the two
+     * "share no code" and were "two independently written steppers". That is not true, and it overstates
+     * the evidence. [leniaFromLifeRule] closes over the *same* [afield.stdlib.LifeRule.birth] and
+     * [afield.stdlib.LifeRule.survive] sets that [afield.stdlib.step] uses, so a wrong `B3/S23` table
+     * would produce two wrong steppers that agree perfectly. What this check actually cross-validates is
+     * the two **update mechanisms** — float convolution, additive `A + dt*G(K*A)`, `Math.round(u*8)`
+     * quantisation, clamping to `0..1`, toroidal borders and the `Img`/[IntGrid] bridges on one side
+     * against integer counting on the other. That is worth having, and it is a smaller claim. The rule
+     * table itself is pinned separately and independently, by the named-object checks in [figureLife]
+     * (a glider that moves `(1,1)` in 4 generations, a block that does not move, a blinker of period 2)
+     * — which are facts about `B3/S23` from the literature, not from this codebase.
      */
     private fun figureLenia(outDir: File) {
         val discreteRule = leniaFromLifeRule(LIFE)
@@ -763,7 +1090,10 @@ object AlifeGallery {
         check(
             worstDiff == 0.0,
             "lenia: 20 generations of continuous Lenia in its discrete limit are BIT-IDENTICAL to " +
-                "20 generations of the integer Life stepper (worst per-cell difference $worstDiff)"
+                "20 generations of the integer Life stepper (worst per-cell difference $worstDiff). Two " +
+                "update MECHANISMS agreeing exactly — float convolution plus additive growth plus a " +
+                "clamp, against integer counting — from the one shared B3/S23 table, which is pinned " +
+                "separately by the named-object checks"
         )
         val leniaGrid = field.toIntGrid(0.5f, wrap = true)
         check(
@@ -875,11 +1205,17 @@ object AlifeGallery {
         // figure), and the *global* order parameter of k independent flocks tops out near 1/sqrt(k). So
         // the claim is stated against the two things it must beat: the random baseline, and the
         // alignment-off twin.
+        // No absolute floor. The old form carried `pFlock > 0.60` against a measured 0.692 — 15 %
+        // headroom on a magic number, and a number that says nothing anyway: what makes this evidence is
+        // that the *same initial state* run with alignment off does not get there. So the claim is made
+        // entirely against the two arms it must beat, both of which are computed in this same run.
         check(
-            pFlock > 0.60 && pFlock > baseline * 10,
+            pFlock > baseline * 10 && pFlock > pNoAlign * 4,
             "boids: after 900 steps the population's global polarization is ${f(pFlock, 3)} — " +
-                "${f(pFlock / baseline, 1)}x the independent-heading baseline, in a state of several " +
-                "separate flocks (so 1.0 is not the ceiling here)"
+                "${f(pFlock / baseline, 1)}x the independent-heading baseline ${f(baseline, 3)} and " +
+                "${f(pFlock / pNoAlign, 1)}x its own alignment-off twin ${f(pNoAlign, 3)}, in a state of " +
+                "several separate flocks (so 1.0 is not the ceiling here, and no absolute threshold " +
+                "would be meaningful)"
         )
         check(
             pNoAlign < pFlock * 0.4,
@@ -891,22 +1227,41 @@ object AlifeGallery {
         val dFlock = quantileOf(flock.neighborDistances(), 0.05)
         val dNoSep = quantileOf(noSep.neighborDistances(), 0.05)
         println("[alife-gallery]     boids 5th-pct nearest neighbour: flock ${f(dFlock, 2)}, no-separation ${f(dNoSep, 2)}")
+        // Again relational rather than absolute: `dFlock > 1.0` measured 1.37, and 1.0 is not a number
+        // anything in the model derives. The separation-off twin collapses to 0.01, so a factor of 10 is
+        // both a far stronger statement and one with two orders of magnitude of room.
         check(
-            dFlock > 1.0,
-            "boids: the 5th-percentile nearest-neighbour distance is ${f(dFlock, 2)} cells — " +
-                "separation really does keep them apart"
+            dFlock > dNoSep * 10.0,
+            "boids: the 5th-percentile nearest-neighbour distance is ${f(dFlock, 2)} cells against " +
+                "${f(dNoSep, 3)} for the identical initial state with separationWeight = 0 — " +
+                "${f(dFlock / dNoSep, 0)}x. Separation really does keep them apart, and the floor is the " +
+                "separation term rather than an artefact of the domain size"
+        )
+        // A by-construction invariant rather than a threshold: the integrator clamps every agent's speed
+        // up to maxSpeed*minSpeedFraction, so the MINIMUM speed in the flock cannot be below it. Checking
+        // the minimum (not the mean) is what makes this exact — and the control arm is the same run with
+        // the floor removed, which is the configuration whose mean speed decayed to 0.46 in the first
+        // version of this figure.
+        val minSpeed = params.maxSpeed * params.minSpeedFraction
+        val slowest = (0 until n).minOf { kotlin.math.hypot(flock.vx[it].toDouble(), flock.vy[it].toDouble()) }
+        val noFloor = start.copy()
+        noFloor.stepTimes(params.copy(minSpeedFraction = 0.0), 900)
+        println("[alife-gallery]     boids speed: mean ${f(flock.meanSpeed(), 3)}, slowest " +
+            "${f(slowest, 4)}, floor ${f(minSpeed, 3)}; no-floor twin mean ${f(noFloor.meanSpeed(), 3)}")
+        check(
+            slowest >= minSpeed * (1.0 - 1e-6),
+            "boids: the SLOWEST agent flies at ${f(slowest, 4)}, at or above the " +
+                "${f(minSpeed, 3)} floor the integrator clamps to — an exact invariant, not a threshold, " +
+                "and stronger than the mean (${f(flock.meanSpeed(), 3)}) because a mean can hide a " +
+                "stalled subpopulation"
         )
         check(
-            dNoSep < dFlock * 0.6,
-            "boids CONTROL: with separationWeight = 0 it collapses to ${f(dNoSep, 2)} — the floor is the " +
-                "separation term, not an artefact of the domain size"
-        )
-        check(
-            flock.meanSpeed() > params.maxSpeed * params.minSpeedFraction * 0.99,
-            "boids: mean speed ${f(flock.meanSpeed(), 2)} of a ${params.maxSpeed} cap — the flock is " +
-                "flying, not a frozen lattice with lucky headings (see BoidParams.minSpeedFraction: the " +
-                "first run of this figure measured 0.46 here and was a stalled flock scoring well on " +
-                "alignment)"
+            noFloor.meanSpeed() < minSpeed * 0.8,
+            "boids CONTROL: the identical run with minSpeedFraction = 0 decays to mean speed " +
+                "${f(noFloor.meanSpeed(), 3)}, ${f(minSpeed / noFloor.meanSpeed(), 1)}x below the floor — " +
+                "so the floor is doing real work. This is the configuration the first version of this " +
+                "figure shipped, and it measured 0.46 while still scoring 0.88 on alignment: a frozen " +
+                "lattice with lucky headings"
         )
 
         montage(
@@ -941,12 +1296,17 @@ object AlifeGallery {
         val sSense = sensing.trail.topShare(0.05)
         val sBlind = blind.trail.topShare(0.05)
         println("[alife-gallery]     physarum top-5% deposit share: sensing ${f(sSense, 3)}, blind ${f(sBlind, 3)}")
+        // The lower bound is relational (against the sensing-off twin below and against the 0.05 a flat
+        // field gives by definition); the UPPER bound is the one that has to be absolute, because the
+        // failure this figure exists to catch is a *collapsed* population reading 1.000 — a number that
+        // looks like perfect concentration and means total failure.
         check(
-            sSense in 0.20..0.95,
-            "physarum: the brightest 5% of the trail holds ${f(sSense, 3)} of all deposit, against the " +
-                "0.05 a flat field gives — concentrated into filaments, but NOT the 1.000 that a " +
-                "collapsed population reports (which is what the first run of this figure produced; see " +
-                "PhysarumParams.exclusive)"
+            sSense > 0.05 * 4 && sSense < 0.95,
+            "physarum: the brightest 5% of the trail holds ${f(sSense, 3)} of all deposit, " +
+                "${f(sSense / 0.05, 1)}x the 0.05 a flat field gives *by definition* — concentrated into " +
+                "filaments, but NOT the 1.000 that a collapsed population reports (which is what the " +
+                "first run of this figure produced; see PhysarumParams.exclusive). The upper bound is the " +
+                "load-bearing half"
         )
         check(
             sBlind < sSense * 0.6,
@@ -1010,11 +1370,6 @@ object AlifeGallery {
         val eden = edenCluster(side, side, particles = dla.points.size, seed = 2L)
         val edenFit = eden.fractalDimension(rMin = 5.0, rMaxFraction = 0.75)
         println("[alife-gallery]     Eden dimension ${f(edenFit.dimension, 3)} (r²=${f(edenFit.rSquared, 4)})")
-        check(
-            edenFit.dimension > 1.85,
-            "dla CONTROL: an Eden cluster of the same size grown from uniformly-chosen sites measures " +
-                "${f(edenFit.dimension, 3)} — compact, dimension ~2. Only the diffusing walker makes it 1.7"
-        )
         val sprinkle = sprinkleCluster(side, side, dla.points.size, dla.maxRadius, seed = 2L)
         // minCount raises the inner fit radius until the count is worth fitting. Without it this control
         // measured 2.32 for a uniform disc, which is not a possible answer — the fit was starting where
@@ -1030,10 +1385,25 @@ object AlifeGallery {
                 "${f(sprinkleFit.dimension, 3)} against the exact 2.0 it must have — so the estimator is " +
                 "not simply reading the support"
         )
+        // The Eden arm is stated against the sprinkle arm, not against a `> 1.85` constant (which had
+        // 0.058 of headroom). Two compact objects built by entirely different code — one grown one
+        // particle at a time from uniformly-chosen perimeter sites, one sprinkled independently — must
+        // measure the SAME dimension, and DLA must not. That is a three-way statement no single threshold
+        // makes.
         check(
-            edenFit.dimension - fit.dimension > 0.15,
-            "dla: DLA and Eden differ by ${f(edenFit.dimension - fit.dimension, 2)} in dimension from " +
-                "the same estimator, the same particle count and the same seed"
+            abs(edenFit.dimension - sprinkleFit.dimension) < 0.10,
+            "dla CONTROL: an Eden cluster measures ${f(edenFit.dimension, 3)} and a uniform sprinkle " +
+                "${f(sprinkleFit.dimension, 3)} — two compact objects built by different code agreeing to " +
+                "${f(abs(edenFit.dimension - sprinkleFit.dimension), 3)}, both near the 2 they must have"
+        )
+        check(
+            edenFit.dimension - fit.dimension > 0.15 && sprinkleFit.dimension - fit.dimension > 0.15,
+            "dla: and DLA sits ${f(edenFit.dimension - fit.dimension, 2)} / " +
+                "${f(sprinkleFit.dimension - fit.dimension, 2)} below both of them, from the same " +
+                "estimator, the same particle count and the same seed. Only the diffusing walker makes it " +
+                "1.6, and figureMeasurement shows the estimator returns 1.71 for a set that HAS 1.71, so " +
+                "this is the cluster and not the tool (the lattice costs about 0.7%, so read " +
+                "${f(fit.dimension / 0.993, 3)} in the continuum — still clearly under 1.71)"
         )
 
         montage(
@@ -1274,7 +1644,10 @@ object AlifeGallery {
         val x0 = all.minOf { it.first }; val x1 = all.maxOf { it.first }
         val y0 = all.minOf { it.second }; val y1 = all.maxOf { it.second }
         fits.forEachIndexed { k, fit ->
-            val v = 1f - k * 0.3f
+            // Floor the intensity at 0.4: with 4 fits a 0.3 step put the last curve at 0.1, which is
+            // invisible on a dark background — and an invisible curve in a figure whose whole point is
+            // "look at the four slopes" is a rendering lie of the same kind as the black Lenia panel.
+            val v = 1f - k * 0.2f
             var px = -1; var py = -1
             for ((lx, ly) in fit.points) {
                 val x = ((lx - x0) / (x1 - x0 + 1e-9) * (w - 9)).toInt() + 4
@@ -1347,42 +1720,98 @@ object AlifeGallery {
         return Img(img.width, img.height, img.channels, d)
     }
 
+    /**
+     * Which tier a figure belongs to.
+     *
+     * [FAST] is everything whose evidence is an **exact identity or a closed-form comparison** and whose
+     * runtime is milliseconds: the two estimator oracles, Life's named objects, the elementary rules'
+     * two independent number-theoretic oracles, mass conservation, the L-system identities, the tree
+     * invariants, the dimension controls and the watertight mesh. It is ~2 s and it is the tier that
+     * catches a broken stepper, a broken estimator or a broken bridge.
+     *
+     * [SLOW] is the seven figures that integrate a PDE, a 6000-step reaction, a 240-step Lenia sweep or
+     * an `O(N²)` agent loop to a *statistical* verdict — ~25 s of the ~27. Their claims are the more
+     * interesting ones, and they are also the ones a change to `Random`, to float rounding or to a
+     * default parameter can move.
+     *
+     * The split is not a claim that the slow tier matters less. It is a claim that a 27-second
+     * unconditional cost on every routine smoke run buys less than the same seconds spent elsewhere,
+     * and that ~2 s of *exact* checks is the right thing to make unconditional.
+     */
+    private enum class Tier { FAST, SLOW }
+
+    private data class Stage(val name: String, val tier: Tier, val run: (File) -> Unit)
+
+    private val STAGES: List<Stage> = listOf(
+        Stage("oracles", Tier.FAST, ::figureMeasurement),
+        Stage("calibration", Tier.FAST, ::figureCalibration),
+        Stage("life", Tier.FAST, ::figureLife),
+        Stage("elementary", Tier.FAST, ::figureElementary),
+        Stage("diffusion", Tier.FAST, ::figureDiffusion),
+        Stage("dla", Tier.FAST, ::figureDla),
+        Stage("l-system", Tier.FAST, ::figureLSystem),
+        Stage("colonization", Tier.FAST, ::figureColonization),
+        Stage("3d-ca", Tier.FAST, ::figureVolume),
+        Stage("rpentomino", Tier.SLOW, ::figureRPentomino),
+        Stage("cyclic", Tier.SLOW, ::figureCyclic),
+        Stage("gray-scott", Tier.SLOW, ::figureGrayScott),
+        Stage("turing", Tier.SLOW, ::figureTuring),
+        Stage("lenia", Tier.SLOW, ::figureLenia),
+        Stage("boids", Tier.SLOW, ::figureBoids),
+        Stage("physarum", Tier.SLOW, ::figurePhysarum)
+    )
+
     @JvmStatic
     fun main(args: Array<String>) {
+        // `--tier fast|slow|all`, `--out DIR`, `--only a,b`. A bare first argument is still an output
+        // dir, because that is what every other gallery in this tree accepts and what the docs say.
+        var tierArg: String? = System.getenv("ALIFE_GALLERY_TIER")
+        var outArg: String? = null
+        var onlyArg: String? = System.getenv("ALIFE_GALLERY_ONLY")
+        var i = 0
+        while (i < args.size) {
+            val a = args[i]
+            when {
+                a == "--tier" -> { tierArg = args.getOrNull(++i); }
+                a.startsWith("--tier=") -> tierArg = a.substringAfter('=')
+                a == "--out" -> { outArg = args.getOrNull(++i); }
+                a.startsWith("--out=") -> outArg = a.substringAfter('=')
+                a == "--only" -> { onlyArg = args.getOrNull(++i); }
+                a.startsWith("--only=") -> onlyArg = a.substringAfter('=')
+                a.startsWith("-") -> error("AlifeGallery: unknown option $a (want --tier/--out/--only)")
+                outArg == null -> outArg = a
+                else -> error("AlifeGallery: unexpected extra argument $a")
+            }
+            i++
+        }
+        val tiers: Set<Tier> = when (tierArg?.lowercase()) {
+            null, "", "all" -> setOf(Tier.FAST, Tier.SLOW)
+            "fast" -> setOf(Tier.FAST)
+            "slow" -> setOf(Tier.SLOW)
+            else -> error("AlifeGallery: --tier must be fast, slow or all, got $tierArg")
+        }
         val outDir = File(
-            args.getOrNull(0) ?: System.getenv("ALIFE_GALLERY_DIR")
+            outArg ?: System.getenv("ALIFE_GALLERY_DIR")
                 ?: java.nio.file.Files.createTempDirectory("alife-gallery").toFile().absolutePath
         )
         outDir.mkdirs()
 
-        val stages: List<Pair<String, (File) -> Unit>> = listOf(
-            "calibration" to ::figureCalibration,
-            "life" to ::figureLife,
-            "elementary" to ::figureElementary,
-            "cyclic" to ::figureCyclic,
-            "diffusion" to ::figureDiffusion,
-            "gray-scott" to ::figureGrayScott,
-            "turing" to ::figureTuring,
-            "lenia" to ::figureLenia,
-            "boids" to ::figureBoids,
-            "physarum" to ::figurePhysarum,
-            "dla" to ::figureDla,
-            "l-system" to ::figureLSystem,
-            "colonization" to ::figureColonization,
-            "3d-ca" to ::figureVolume
-        )
-        // Iterating on one figure otherwise means waiting for the other thirteen. Development only: an
-        // unfiltered run is the default and is what the FIELD_TEST does.
-        val only = System.getenv("ALIFE_GALLERY_ONLY")
-            ?.split(',')?.map(String::trim)?.filter(String::isNotEmpty)?.toSet()
+        // Iterating on one figure otherwise means waiting for the other fifteen. Development only: the
+        // FIELD_TESTs pass a tier and no filter.
+        val only = onlyArg?.split(',')?.map(String::trim)?.filter(String::isNotEmpty)?.toSet()
         only?.let { println("[alife-gallery] FILTERED to ${it.joinToString()} — not a full run") }
-        for ((name, stage) in stages) {
+        println("[alife-gallery] tier(s): " + tiers.joinToString { it.name.lowercase() })
+        var ran = 0
+        for ((name, tier, stage) in STAGES) {
+            if (tier !in tiers) continue
             if (only != null && name !in only) continue
             val t0 = System.currentTimeMillis()
             println("[alife-gallery] --- $name ---")
             stage(outDir)
+            ran++
             println("[alife-gallery] --- $name done in ${System.currentTimeMillis() - t0} ms ---")
         }
+        if (ran == 0) fail("no figure ran — check --tier/--only against the stage list")
 
         if (failures.isNotEmpty()) {
             System.err.println("AlifeGallery FAILED with ${failures.size} problem(s):")

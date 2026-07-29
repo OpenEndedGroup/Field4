@@ -685,7 +685,12 @@ def build_backdoor_command(
             raise RunnerError(f"{test.get('id')}: missing jvm-main entrypoint")
         command_parts = ["run-jvm-main", "--timeout", str(timeout), entrypoint]
         for arg in test.get("args") or []:
-            command_parts.extend(["--arg", str(arg)])
+            # `--arg=VALUE`, not `--arg VALUE`: argparse rejects a separate value that itself
+            # starts with a dash, so the space-separated form made it impossible for a
+            # FIELD_TEST to hand its entrypoint an *option* (`--tier fast` failed with
+            # "argument --arg: expected one argument"). The `=` form is identical for every
+            # value that does not start with a dash, so this is a widening, not a change.
+            command_parts.append(f"--arg={arg}")
         cmd.extend(["--command", shlex.join(command_parts)])
         return cmd, artifacts
 
