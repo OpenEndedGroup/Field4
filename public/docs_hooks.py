@@ -237,6 +237,12 @@ class RunnerState:
         self.broken_failures: list[str] = []
         validate_scenes_against_harness(self.repo_root)
         self.runner_source_digest = compute_runner_source_digest(self.repo_root)
+        # Per-fence source coverage: RUNNER_DIGEST_SOURCE_FILES only covers the runner
+        # machinery, so a stdlib edit used to leave every digest identical. See
+        # load_source_symbol_index / compute_source_refs_digest.
+        self.source_refs_mode = resolve_source_refs_mode(os.environ.get(SOURCE_REFS_MODE_ENV))
+        self.source_symbol_index = load_source_symbol_index(self.repo_root)
+        self._source_file_digests: dict[str, str] = {}
         self.cache, self.cache_metadata = self._load_cache()
         self.dirty = False
         self.started_at = time.monotonic()
@@ -261,12 +267,28 @@ class RunnerState:
         self.session_captures = 0
         self._captures_since_server_restart = 0
         LOG.info("Field docs runner mode: %s", self.runner_mode)
+        LOG.info(
+            "Field docs runner per-fence source coverage: %s (%s symbol(s) over %s file(s))",
+            self.source_refs_mode,
+            len(self.source_symbol_index),
+            len({source for files in self.source_symbol_index.values() for source in files}),
+        )
         LOG.info("Field docs runner continue on error: %s", self.continue_on_error)
         if self.session_enabled:
             LOG.info("Field docs runner warm-session path ENABLED (experimental; fast path with per-process fallback)")
         if self.runner_mode != "never":
             self._ensure_runner_owned_field_server(reason=f"{self.runner_mode} docs capture run")
         atexit.register(self.close)
+
+    def source_refs_digest(self, code: str) -> str:
+        """Digest of the stdlib source this fence's code text reaches. `""` when it reaches none."""
+        return compute_source_refs_digest(
+            repo_root=self.repo_root,
+            code=code,
+            symbol_index=self.source_symbol_index,
+            file_digest_cache=self._source_file_digests,
+            mode=self.source_refs_mode,
+        )
 
     def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
         message = f"{page_path.name} -> {output_path}: {error}"
@@ -1110,12 +1132,14 @@ class RunnerState:
         video_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
+        source_refs = self.source_refs_digest(code)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=video_options,
             page_path=page_path,
             block_index=block_index,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
             scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
@@ -1125,6 +1149,7 @@ class RunnerState:
             block_index=block_index,
             runner_mode=self.runner_mode,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
             scene_inputs_digest=scene_inputs,
         )
         cache_key = str(video_path)
@@ -1306,12 +1331,14 @@ class RunnerState:
         )
 
         cache_allowed = self.runner_mode != "always"
+        source_refs = self.source_refs_digest(generated_code)
         cache_metadata = compute_cache_metadata(
             code=generated_code,
             options=options,
             page_path=page_path,
             block_index=block_index,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
         )
         digest = compute_digest(
             code=generated_code,
@@ -1320,6 +1347,7 @@ class RunnerState:
             block_index=block_index,
             runner_mode=self.runner_mode,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
         )
         cache_key = str(audio_path)
         cached_digest = self.cache.get(cache_key)
@@ -1452,14 +1480,16 @@ class RunnerState:
 
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
+        source_refs = self.source_refs_digest(code)
         cache_metadata = compute_cache_metadata(
             code=code, options=options, page_path=page_path, block_index=block_index,
-            runner_source_digest=self.runner_source_digest, scene_inputs_digest=scene_inputs,
+            runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs, scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
             code=code, options=options, page_path=page_path, block_index=block_index,
             runner_mode=self.runner_mode, runner_source_digest=self.runner_source_digest,
-            scene_inputs_digest=scene_inputs,
+            source_refs_digest=source_refs, scene_inputs_digest=scene_inputs,
         )
         cache_key = str(primary)
         cached_digest = self.cache.get(cache_key)
@@ -1549,12 +1579,14 @@ class RunnerState:
         screenshot_path.parent.mkdir(parents=True, exist_ok=True)
         cache_allowed = self.runner_mode != "always"
         scene_inputs = compute_scene_inputs_digest(self.repo_root, options.fabricate_scene)
+        source_refs = self.source_refs_digest(code)
         cache_metadata = compute_cache_metadata(
             code=code,
             options=options,
             page_path=page_path,
             block_index=block_index,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
             scene_inputs_digest=scene_inputs,
         )
         digest = compute_digest(
@@ -1564,6 +1596,7 @@ class RunnerState:
             block_index=block_index,
             runner_mode=self.runner_mode,
             runner_source_digest=self.runner_source_digest,
+            source_refs_digest=source_refs,
             scene_inputs_digest=scene_inputs,
         )
         cache_key = str(screenshot_path)
@@ -2499,6 +2532,153 @@ def compute_runner_source_digest(repo_root: Path) -> str:
     return hasher.hexdigest()
 
 
+REFERENCE_DIR_RELATIVE = "public/docs/reference"
+# Below this length a name is too generic to attribute to a file ("of", "run", "map"); the
+# codebase-reference generator applies the same kind of floor when it looks for page evidence.
+SOURCE_REF_MIN_SYMBOL_LENGTH = 4
+# A name declared in more than this many source files is dropped rather than mapped to all of them.
+# The reference lists data-class members too, so `name`, `value`, `size`, `index`, `toString`,
+# `step`, `points` … each appear in a dozen files; mapping those would attach nearly every fence to
+# nearly every file. Measured over all 304 runner fences: keeping only *unambiguous* names gives
+# 2.7 source files per fence (mean, max 10); allowing two gives 5.8; allowing all gives 10.1/max 44.
+# Unambiguous still maps all 106 `functions_examples` fences onto `Functions.kt`.
+SOURCE_REF_MAX_FILES_PER_SYMBOL = 1
+# `direct` (default) hashes only the files a fence's code text names. `stdlib` hashes the whole
+# indexed stdlib for every fence — the paranoid mode, which detects an *indirect* change (a callee of
+# a callee) at the cost of re-capturing the entire site after any stdlib edit. Measured: the
+# transitive file-reference closure of a typical fence is 72 of the 75 indexed files, i.e. depth > 1
+# IS `stdlib`, which is why the default stops at depth 1 and `tools/docs_capture_audit.py` exists to
+# catch what the digest cannot. `off` restores the pre-2026-07-29 digests exactly.
+SOURCE_REFS_MODE_ENV = "FIELD_DOCS_SOURCE_REFS"
+SOURCE_REFS_MODES = ("direct", "stdlib", "off")
+IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+HIGHLIGHT_CODE_RE = re.compile(r'<code class="highlight">(.*?)</code>', re.S)
+REFERENCE_SOURCE_PATH_RE = re.compile(r"^`(src/[^`]+\.kt)`\s*$", re.M)
+REFERENCE_TYPE_HEADING_RE = re.compile(r"^###+ (?!Top-level)(?P<name>[^{\n]+?)\s*\{", re.M)
+DECLARED_FUNCTION_RE = re.compile(r"\bfun\s+(?:<[^>]*>\s+)?(?:[\w.<>,?\s]+\.)?(?P<name>\w+)\s*\(")
+DECLARED_VALUE_RE = re.compile(r"\b(?:const\s+)?va[lr]\s+(?:<[^>]*>\s+)?(?:[\w.<>,?\s]+\.)?(?P<name>\w+)\s*:")
+DECLARED_TYPE_RE = re.compile(r"\b(?:class|object|interface)\s+(?P<name>\w+)")
+
+
+def strip_reference_markup(fragment: str) -> str:
+    """One `<code class="highlight">` declaration back to plain Kotlin signature text."""
+    text = HTML_TAG_RE.sub("", fragment)
+    for entity, replacement in (("&#95;", "_"), ("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&"), ("&quot;", '"')):
+        text = text.replace(entity, replacement)
+    return text
+
+
+def load_source_symbol_index(repo_root: Path) -> dict[str, tuple[str, ...]]:
+    """Map each public stdlib symbol name to the source file(s) declaring it.
+
+    The map is read out of the **committed codebase reference**
+    (`public/docs/reference/*.md`), which `afield.docs.StdlibReferenceGenerator` emits from
+    `KotlinSourceIndex.parseTopLevelDefinitions` — the same scan that feeds the in-editor completion
+    doc browser — and which the `docs.codebase-reference.generate` smoke keeps from drifting from
+    the source. So this is not a second parser of Kotlin: it is a cheap read of an existing,
+    drift-guarded index, which is why no Kotlin has to run to compute a digest.
+
+    Declaration names are recovered by stripping the reference's syntax-highlight markup back to
+    plain Kotlin and matching `fun` / `val` / `class` forms, plus each type's own `###` heading.
+    Deliberately *narrow*: only declared names, never the types merely mentioned in a signature —
+    mapping `Double` to every file that returns one would make the digest invalidate everything.
+
+    Returns `{}` when the reference has not been generated; the digest then degrades to exactly the
+    old runner-machinery behaviour rather than failing a build.
+    """
+    reference_dir = repo_root / REFERENCE_DIR_RELATIVE
+    index: dict[str, set[str]] = {}
+    if not reference_dir.is_dir():
+        return {}
+    for page in sorted(reference_dir.glob("*.md")):
+        try:
+            text = page.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for section in text.split("\n## ")[1:]:
+            path_match = REFERENCE_SOURCE_PATH_RE.search(section)
+            if path_match is None:
+                continue
+            source_file = path_match.group(1)
+            names: set[str] = set()
+            for heading in REFERENCE_TYPE_HEADING_RE.finditer(section):
+                candidate = heading.group("name").strip()
+                if IDENTIFIER_RE.fullmatch(candidate):
+                    names.add(candidate)
+            for fragment in HIGHLIGHT_CODE_RE.finditer(section):
+                declaration = strip_reference_markup(fragment.group(1))
+                for pattern in (DECLARED_FUNCTION_RE, DECLARED_VALUE_RE, DECLARED_TYPE_RE):
+                    for match in pattern.finditer(declaration):
+                        names.add(match.group("name"))
+            for name in names:
+                if len(name) >= SOURCE_REF_MIN_SYMBOL_LENGTH:
+                    index.setdefault(name, set()).add(source_file)
+    return {
+        name: tuple(sorted(files))
+        for name, files in index.items()
+        if len(files) <= SOURCE_REF_MAX_FILES_PER_SYMBOL
+    }
+
+
+def resolve_source_refs_mode(raw: str | None) -> str:
+    lowered = (raw or "direct").strip().lower()
+    if lowered in SOURCE_REFS_MODES:
+        return lowered
+    supported = ", ".join(SOURCE_REFS_MODES)
+    raise RuntimeError(f"Unsupported {SOURCE_REFS_MODE_ENV}={raw!r}; supported: {supported}")
+
+
+def fence_source_files(
+    *,
+    code: str,
+    symbol_index: dict[str, tuple[str, ...]],
+    mode: str = "direct",
+) -> tuple[str, ...]:
+    """The stdlib source files this fence's code text names (or all of them, in `stdlib` mode)."""
+    if not symbol_index or mode == "off":
+        return ()
+    if mode == "stdlib":
+        return tuple(sorted({source for files in symbol_index.values() for source in files}))
+    reached: set[str] = set()
+    for token in set(IDENTIFIER_RE.findall(code)):
+        reached.update(symbol_index.get(token, ()))
+    return tuple(sorted(reached))
+
+
+def compute_source_refs_digest(
+    *,
+    repo_root: Path,
+    code: str,
+    symbol_index: dict[str, tuple[str, ...]],
+    file_digest_cache: dict[str, str] | None = None,
+    mode: str = "direct",
+) -> str:
+    """Hash the contents of every source file this fence reaches.
+
+    Returns `""` when the fence reaches nothing (a pure-UI or forth/rectsl fence, say), which keeps
+    the key out of the digest payload entirely so such a fence hashes exactly as it did before this
+    existed.
+    """
+    files = fence_source_files(code=code, symbol_index=symbol_index, mode=mode)
+    if not files:
+        return ""
+    cache = file_digest_cache if file_digest_cache is not None else {}
+    hasher = hashlib.sha256()
+    for relative in files:
+        digest = cache.get(relative)
+        if digest is None:
+            try:
+                digest = hashlib.sha256((repo_root / relative).read_bytes()).hexdigest()
+            except OSError:
+                digest = "<missing>"
+            cache[relative] = digest
+        hasher.update(relative.encode("utf-8"))
+        hasher.update(b"\0")
+        hasher.update(digest.encode("utf-8"))
+    return hasher.hexdigest()
+
+
 def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
     payload = {
         "sourceImage": options.source_image,
@@ -2567,6 +2747,7 @@ def compute_cache_metadata(
     block_index: int,
     runner_source_digest: str,
     scene_inputs_digest: str = "",
+    source_refs_digest: str = "",
 ) -> dict[str, Any]:
     options_payload = options_digest_payload(options)
     metadata = {
@@ -2582,6 +2763,10 @@ def compute_cache_metadata(
     # keeps every other fence's metadata byte-for-byte identical.
     if scene_inputs_digest:
         metadata["sceneInputs"] = scene_inputs_digest
+    # Present only when the fence's code text actually names a symbol the codebase reference can
+    # attribute to a source file, so a fence that reaches nothing hashes exactly as before.
+    if source_refs_digest:
+        metadata["sourceRefsDigest"] = source_refs_digest
     return metadata
 
 
@@ -2594,6 +2779,7 @@ def compute_digest(
     runner_mode: str,
     runner_source_digest: str,
     scene_inputs_digest: str = "",
+    source_refs_digest: str = "",
 ) -> str:
     payload = {
         "page": str(page_path),
@@ -2607,6 +2793,10 @@ def compute_digest(
     # non-gallery fences hash to exactly the same digest as before this feature.
     if scene_inputs_digest:
         payload["sceneInputs"] = scene_inputs_digest
+    # Same rule for the per-fence source coverage: absent unless the fence names something
+    # attributable, so a fence that reaches no stdlib file keeps its historical digest.
+    if source_refs_digest:
+        payload["sourceRefs"] = source_refs_digest
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
 
@@ -2779,6 +2969,12 @@ def compare_cache_metadata(
         reasons.append("script version changed")
     if cached_metadata.get("runnerSourceDigest") != current_metadata.get("runnerSourceDigest"):
         reasons.append("runner source changed")
+    if cached_metadata.get("sourceRefsDigest") != current_metadata.get("sourceRefsDigest"):
+        reasons.append(
+            "source this fence reaches changed"
+            if cached_metadata.get("sourceRefsDigest") is not None
+            else "per-fence source coverage adopted"
+        )
     if cached_metadata.get("codeDigest") != current_metadata.get("codeDigest"):
         reasons.append("runnable code changed")
     if cached_metadata.get("optionsDigest") != current_metadata.get("optionsDigest"):
@@ -2807,6 +3003,18 @@ def reuse_existing_asset_for_incremental(
     stable_keys = ("page", "block", "scriptVersion", "codeDigest", "optionsDigest", "sceneInputs")
     if any(cached_metadata.get(key) != current_metadata.get(key) for key in stable_keys):
         return False
+    cached_refs = cached_metadata.get("sourceRefsDigest")
+    current_refs = current_metadata.get("sourceRefsDigest")
+    if cached_refs is not None and cached_refs != current_refs:
+        # A source file this fence actually *calls* moved. This is exactly the case that used to be
+        # reused away, which is how 54 functions_examples figures stayed wrong on main for two weeks.
+        # Never reuse here: re-capture.
+        return False
+    if cached_refs is None and current_refs is not None:
+        # First build after per-fence source coverage was introduced: the cache predates the key, so
+        # there is nothing to compare against and re-capturing the whole site would prove nothing.
+        # Adopt the new digest against the existing asset; the NEXT source move is detected.
+        return True
     return cached_metadata.get("runnerSourceDigest") != current_metadata.get("runnerSourceDigest")
 
 
