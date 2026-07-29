@@ -76,6 +76,16 @@ DOCS_DIR = PUBLIC_DIR / "docs"
 # shift cannot pass as jitter.
 DEFAULT_JITTER_PX_PCT = 1.0
 DEFAULT_JITTER_DELTA = 19
+# A per-channel difference of one or two levels out of 255 is not a difference. Measured on the
+# functions_examples sweep: 25 captures came back "5.08% of pixels changed" and in every one of them
+# 91758 of the 91873 changed pixels differed by EXACTLY 1 — a whole-image ±1 dither/rounding
+# difference, invisible, covering the entire frame (the diff bounding box is the whole image). An
+# area-based guard flags that as a finding; ignoring the sub-perceptual floor removes it and leaves
+# the real signal untouched, because a real re-render moves pixels by ~200.
+DEFAULT_IGNORE_DELTA = 2
+# Below this many above-floor pixels there is no figure to speak of, whatever their magnitude — a
+# handful of stray antialiased pixels is not a changed figure.
+MIN_SIGNAL_PX = 8
 # The lower edge of the band where the same doc saw genuine re-renders. Only used to label a
 # delta in the report ("grey zone" between the noise floor and a confident re-render).
 DRIFT_PX_PCT = 0.25
@@ -99,8 +109,9 @@ class Delta:
     """How far apart two versions of one asset are."""
 
     kind: str  # identical | pixel | size | binary | text | missing
-    changed_px_pct: float = 0.0
-    above_band_px_pct: float = 0.0
+    changed_px_pct: float = 0.0  # percent of pixels differing by MORE than the ignore-delta floor
+    changed_px: int = 0
+    all_changed_px_pct: float = 0.0  # including the sub-perceptual floor, for diagnosis only
     max_delta: int = 0
     old_size: tuple[int, int] | None = None
     new_size: tuple[int, int] | None = None
@@ -115,7 +126,10 @@ class Delta:
         if self.kind == "size":
             return f"size {self.old_size} -> {self.new_size}"
         if self.kind == "pixel":
-            return f"{self.changed_px_pct:.4f}% px changed, maxΔ{self.max_delta}"
+            extra = ""
+            if self.all_changed_px_pct > self.changed_px_pct + 0.005:
+                extra = f" ({self.all_changed_px_pct:.2f}% incl. the sub-perceptual floor)"
+            return f"{self.changed_px_pct:.4f}% px changed, maxΔ{self.max_delta}{extra}"
         if self.kind == "text":
             return f"{self.text_lines_changed} line(s) changed"
         if self.kind == "binary":
@@ -125,17 +139,22 @@ class Delta:
     def within(self, *, px_pct: float, max_delta: int) -> bool:
         """True when this delta is inside the measured jitter band (i.e. not evidence of anything).
 
-        The discriminating quantity is the **maximum channel delta**, not the changed-pixel count.
-        Antialiasing/glyph jitter is many *low-magnitude* deltas over a tiny area: measured over 121
-        captures it never exceeded Δ19. A high-Δ difference over a tiny area is the opposite thing —
-        a label or a curve genuinely drawing differently — and must not be excused just because it
-        is small. `px_pct` is therefore only an upper *area* guard, generously above the measured
-        0.005–0.01%, to stop a whole-image low-magnitude tint shift passing as jitter.
+        Three things, in order:
+
+        - Differences at or below the ignore-delta floor were never counted (see `compare_images`),
+          so a whole-image ±1 dither arrives here as zero changed pixels.
+        - Fewer than `MIN_SIGNAL_PX` above-floor pixels is not a changed figure at any magnitude.
+        - Otherwise the discriminator is the **maximum channel delta**, not the changed-pixel count.
+          AA/glyph jitter is many low-magnitude deltas and never exceeded Δ19 over 121 captures; a
+          high-Δ difference over a tiny area is the opposite thing — one label drawing differently —
+          and must not be excused for being small. `px_pct` is only an upper *area* guard.
         """
         if self.kind == "identical":
             return True
         if self.kind != "pixel":
             return False
+        if self.changed_px < MIN_SIGNAL_PX:
+            return True
         return self.max_delta <= max_delta and self.changed_px_pct <= px_pct
 
     def severity(self) -> float:
@@ -149,14 +168,14 @@ class Delta:
         return float("inf")
 
 
-def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str) -> Delta:
+def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str, ignore_delta: int = DEFAULT_IGNORE_DELTA) -> Delta:
     if old is None or new is None:
         return Delta("missing", note="no committed version" if old is None else "no regenerated version")
     if old == new:
         return Delta("identical", old_bytes=len(old), new_bytes=len(new))
     lowered = suffix.lower()
     if lowered in PIXEL_SUFFIXES or lowered in ANIMATION_SUFFIXES:
-        delta = compare_images(old, new)
+        delta = compare_images(old, new, ignore_delta=ignore_delta)
         if lowered in ANIMATION_SUFFIXES and delta.kind in {"pixel", "identical"}:
             delta.note = (delta.note + " first frame only").strip()
         delta.old_bytes, delta.new_bytes = len(old), len(new)
@@ -166,7 +185,7 @@ def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str) -> Delta
     return compare_text(old, new)
 
 
-def compare_images(old: bytes, new: bytes) -> Delta:
+def compare_images(old: bytes, new: bytes, *, ignore_delta: int = DEFAULT_IGNORE_DELTA) -> Delta:
     from PIL import Image, ImageChops  # imported lazily so --inventory/--plan need no Pillow
 
     with Image.open(io.BytesIO(old)) as old_image, Image.open(io.BytesIO(new)) as new_image:
@@ -183,11 +202,14 @@ def compare_images(old: bytes, new: bytes) -> Delta:
         worst = ImageChops.lighter(worst, extra)
     histogram = worst.histogram()
     total = max(1, old_size[0] * old_size[1])
-    changed = total - histogram[0]
+    all_changed = total - histogram[0]
+    changed = sum(histogram[ignore_delta + 1 :])
     max_delta = max((value for value, count in enumerate(histogram) if count), default=0)
     return Delta(
-        "identical" if changed == 0 else "pixel",
+        "identical" if all_changed == 0 else "pixel",
         changed_px_pct=100.0 * changed / total,
+        changed_px=changed,
+        all_changed_px_pct=100.0 * all_changed / total,
         max_delta=max_delta,
         old_size=old_size,
         new_size=new_size,
@@ -644,6 +666,7 @@ def build_report(
     expected: dict[str, list[str]],
     px_pct: float,
     max_delta: int,
+    ignore_delta: int = DEFAULT_IGNORE_DELTA,
 ) -> dict[str, Any]:
     primary = runs[0]
     second = runs[1] if len(runs) > 1 else None
@@ -676,17 +699,17 @@ def build_report(
                 vs_head = Delta("identical", old_bytes=len(committed), new_bytes=len(committed))
                 self_delta = None
         else:
-            vs_head = compare_bytes(committed, regenerated, suffix=suffix)
+            vs_head = compare_bytes(committed, regenerated, suffix=suffix, ignore_delta=ignore_delta)
             self_delta = None
             if second is not None:
                 other = second.captured.get(relative)
                 if other is not None:
                     other_bytes = other.read_bytes()
-                    self_delta = compare_bytes(regenerated, other_bytes, suffix=suffix)
-                    other_vs_head = compare_bytes(committed, other_bytes, suffix=suffix)
+                    self_delta = compare_bytes(regenerated, other_bytes, suffix=suffix, ignore_delta=ignore_delta)
+                    other_vs_head = compare_bytes(committed, other_bytes, suffix=suffix, ignore_delta=ignore_delta)
                 elif committed is not None:
                     # Run 2 did not rewrite it, so run 2's output IS the committed asset byte for byte.
-                    self_delta = compare_bytes(regenerated, committed, suffix=suffix)
+                    self_delta = compare_bytes(regenerated, committed, suffix=suffix, ignore_delta=ignore_delta)
                     other_vs_head = Delta("identical", old_bytes=len(committed), new_bytes=len(committed))
             verdict, why = classify(
                 vs_head=vs_head,
@@ -722,7 +745,7 @@ def build_report(
             {"index": run.index, "returncode": run.returncode, "seconds": round(run.seconds, 1), "log": str(run.log_path), "rewrote": len(run.modified) + len(run.untracked), "failures": len(run.failures)}
             for run in runs
         ],
-        "thresholds": {"jitterPxPct": px_pct, "jitterMaxDelta": max_delta},
+        "thresholds": {"jitterPxPct": px_pct, "jitterMaxDelta": max_delta, "ignoreDelta": ignore_delta, "minSignalPx": MIN_SIGNAL_PX},
         "counts": counts,
         "entries": entries,
         "assetsNotEnumerated": unexpected,
@@ -735,7 +758,7 @@ def print_report(report: dict[str, Any], *, limit: int) -> None:
     for run in report["runs"]:
         print(f"run {run['index']}: exit {run['returncode']}  {run['seconds']}s  rewrote {run['rewrote']} asset(s)  failures {run['failures']}  log {run['log']}")
     thresholds = report["thresholds"]
-    print(f"noise band: <= {thresholds['jitterPxPct']}% of pixels at maxΔ <= {thresholds['jitterMaxDelta']}")
+    print(f"noise band: ignore Δ<={thresholds.get('ignoreDelta', DEFAULT_IGNORE_DELTA)} entirely; then <= {thresholds['jitterPxPct']}% of pixels at maxΔ <= {thresholds['jitterMaxDelta']}, or < {thresholds.get('minSignalPx', MIN_SIGNAL_PX)} px")
     print("-" * 96)
     for verdict in VERDICT_ORDER:
         count = report["counts"].get(verdict)
@@ -902,6 +925,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--allow-dirty", action="store_true", help="Proceed even if public/docs already has uncommitted changes (they are never touched).")
     parser.add_argument("--jitter-px-pct", type=float, default=DEFAULT_JITTER_PX_PCT, help=f"Noise band: percent of pixels (default {DEFAULT_JITTER_PX_PCT}).")
     parser.add_argument("--jitter-max-delta", type=int, default=DEFAULT_JITTER_DELTA, help=f"Noise band: max channel delta (default {DEFAULT_JITTER_DELTA}).")
+    parser.add_argument("--ignore-delta", type=int, default=DEFAULT_IGNORE_DELTA, help=f"Per-pixel channel differences at or below this are not counted at all (default {DEFAULT_IGNORE_DELTA}).")
     parser.add_argument("--limit", type=int, default=60, help="How many non-clean assets to print (default 60).")
     parser.add_argument("--inventory", action="store_true", help="No capture: list capture assets by the date they were last committed.")
     parser.add_argument("--plan", action="store_true", help="No capture: show the per-fence source set the digest now covers.")
@@ -956,7 +980,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"no stored run outputs under {run_dir}", file=sys.stderr)
             return 2
         expected = expected_assets_by_page(pages_with_fences(args.page))
-        report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta)
+        report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta, ignore_delta=args.ignore_delta)
         (run_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
         write_markdown(report, run_dir / "report.md")
         print_report(report, limit=args.limit)
@@ -996,7 +1020,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if runs and not args.keep:
             restore(runs[-1], protected=protected)
 
-    report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta)
+    report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta, ignore_delta=args.ignore_delta)
     (run_dir / "report.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
     write_markdown(report, run_dir / "report.md")
     print_report(report, limit=args.limit)

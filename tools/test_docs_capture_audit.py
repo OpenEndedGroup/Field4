@@ -11,15 +11,26 @@ Run with:  uv run --group docs python -m unittest tools.test_docs_capture_audit
 import unittest
 
 from tools.docs_capture_audit import (
+    DEFAULT_IGNORE_DELTA,
     DEFAULT_JITTER_DELTA,
     DEFAULT_JITTER_PX_PCT,
+    MIN_SIGNAL_PX,
     Delta,
     classify,
+    compare_images,
 )
 
 
-def pixel(pct: float, max_delta: int) -> Delta:
-    return Delta("pixel", changed_px_pct=pct, max_delta=max_delta)
+def pixel(pct: float, max_delta: int, *, total_px: int = 1_800_000) -> Delta:
+    """A pixel delta as `compare_images` would report it: `pct` already excludes the sub-perceptual
+    floor, and the above-floor pixel count follows from it."""
+    return Delta(
+        "pixel",
+        changed_px_pct=pct,
+        changed_px=int(round(total_px * pct / 100.0)),
+        all_changed_px_pct=pct,
+        max_delta=max_delta,
+    )
 
 
 def verdict(vs_head: Delta, *, other=None, self_delta=None) -> str:
@@ -109,6 +120,52 @@ class OtherSignalTests(unittest.TestCase):
 
     def test_uncommitted_asset_is_new_not_stale(self) -> None:
         self.assertEqual(verdict(Delta("missing")), "new")
+
+
+class SubPerceptualFloorTests(unittest.TestCase):
+    """The functions_examples sweep's 25-file "5.08% changed" cluster: a whole-image dither of +-1."""
+
+    def test_whole_image_plus_minus_one_dither_is_not_a_difference(self) -> None:
+        from PIL import Image
+
+        base = Image.new("RGB", (200, 200), (40, 40, 40))
+        shifted = Image.new("RGB", (200, 200), (41, 41, 41))
+        buffers = []
+        for image in (base, shifted):
+            import io
+
+            handle = io.BytesIO()
+            image.save(handle, format="PNG")
+            buffers.append(handle.getvalue())
+        delta = compare_images(buffers[0], buffers[1], ignore_delta=DEFAULT_IGNORE_DELTA)
+        self.assertEqual(delta.max_delta, 1)
+        self.assertAlmostEqual(delta.all_changed_px_pct, 100.0)  # every pixel moved...
+        self.assertEqual(delta.changed_px, 0)  # ...and none of it counts
+        self.assertTrue(delta.within(px_pct=DEFAULT_JITTER_PX_PCT, max_delta=DEFAULT_JITTER_DELTA))
+
+    def test_a_real_re_render_survives_the_floor(self) -> None:
+        from PIL import Image
+
+        base = Image.new("RGB", (200, 200), (0, 0, 0))
+        drawn = Image.new("RGB", (200, 200), (0, 0, 0))
+        for x in range(60):
+            for y in range(60):
+                drawn.putpixel((x, y), (250, 250, 250))
+        buffers = []
+        for image in (base, drawn):
+            import io
+
+            handle = io.BytesIO()
+            image.save(handle, format="PNG")
+            buffers.append(handle.getvalue())
+        delta = compare_images(buffers[0], buffers[1])
+        self.assertEqual(delta.changed_px, 3600)
+        self.assertEqual(delta.max_delta, 250)
+        self.assertFalse(delta.within(px_pct=DEFAULT_JITTER_PX_PCT, max_delta=DEFAULT_JITTER_DELTA))
+
+    def test_a_handful_of_pixels_is_not_a_changed_figure(self) -> None:
+        stray = Delta("pixel", changed_px_pct=0.0001, changed_px=MIN_SIGNAL_PX - 1, max_delta=250)
+        self.assertTrue(stray.within(px_pct=DEFAULT_JITTER_PX_PCT, max_delta=DEFAULT_JITTER_DELTA))
 
 
 class DeltaTests(unittest.TestCase):
