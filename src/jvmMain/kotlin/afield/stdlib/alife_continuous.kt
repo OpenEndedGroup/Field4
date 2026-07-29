@@ -47,8 +47,13 @@ val REACTION_DIFFUSION_LAPLACIAN: Kernel2D = Kernel2D.of(
  * @param rate the diffusion coefficient times the timestep. Stability needs `rate <= 0.5` for this
  *   kernel (the usual explicit-scheme CFL condition); above that the field oscillates and diverges,
  *   which is a property of the scheme rather than a bug, so it is required rather than clamped.
- * @param border [Border.WRAP] conserves mass exactly; [Border.CLAMP] does not (it invents material at
- *   the edges), and [Border.ZERO] loses it. Diffusion "leaking" is nearly always this parameter.
+ * @param border **[Border.WRAP] and [Border.CLAMP] both conserve mass; only [Border.ZERO] loses it.**
+ *   WRAP is a torus and CLAMP is a *reflecting*, zero-flux (Neumann) boundary, so neither creates nor
+ *   destroys material — measured at `1.2e-6` relative over 500 steps for both. ZERO is absorbing and
+ *   loses 3.7% over the same span. So if diffusion appears to be "leaking", this parameter is the first
+ *   thing to check and `ZERO` is the value to suspect. (This line previously said CLAMP "invents
+ *   material at the edges", which is false and which `AlifeGallery`'s diffusion figure has asserted to
+ *   be false since the day it was written.)
  */
 fun Img.diffuse(rate: Double = 0.2, border: Border = Border.WRAP): Img {
     require(rate > 0.0 && rate <= 0.5) { "diffusion rate must be in (0, 0.5] for stability, got $rate" }
@@ -333,8 +338,11 @@ fun Img.morphology(level: Float? = null, minArea: Int = 4): MorphologyReport {
  *   the pattern's) fails it.
  * @param rho reaction rate. The selected wavelength goes as `sqrt(D / rho)`, so this is the *other*
  *   handle on the pattern's scale — and the useful one, because [scale] is capped near 1.25 by the
- *   explicit scheme's stability limit while `rho` is not. At the default 0.04 the spots sit only a
- *   couple of cells apart, which is a correct Turing pattern and a poor picture.
+ *   explicit scheme's stability limit while `rho` is not. At the default `0.010` the pattern's
+ *   correlation length is a little over one cell at `scale = 1`; raising `rho` toward `0.04` packs the
+ *   spots to a couple of cells apart, which is still a correct Turing pattern and a worse picture.
+ *   (This line used to say "at the default 0.04"; the default was lowered to 0.010 and the prose was
+ *   not, so every number in it was calibrated against a value the code no longer used.)
  * @param steps integration steps. A smaller [rho] is a slower reaction and needs more of them.
  */
 fun turingPattern(
@@ -777,8 +785,11 @@ fun leniaMuSweep(
 }
 
 /**
- * Total absolute difference per cell between two same-shape fields — the residual a claim of
- * "these two implementations agree exactly" is asserted to be zero.
+ * **Largest** absolute per-cell difference between two same-shape fields — an L-infinity norm, not a
+ * sum, as the name says. The residual a claim of "these two implementations agree exactly" is asserted
+ * to be zero, and a per-cell tolerance can be compared against it directly. (The first line of this
+ * KDoc used to say "Total", which describes a quantity larger by up to the pixel count and would lead a
+ * caller to pick a tolerance wrong by that factor.)
  */
 fun fieldMaxAbsDiff(a: Img, b: Img): Double {
     require(a.sameShapeAs(b)) { "fieldMaxAbsDiff needs matching shapes" }

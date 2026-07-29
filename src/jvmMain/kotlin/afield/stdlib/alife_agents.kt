@@ -693,6 +693,14 @@ fun dlaCluster(
  * It exists to be the control. Eden growth produces a compact blob with a rough edge and a mass
  * dimension of **2**, so it is the object that proves [Aggregate.fractalDimension] is measuring the
  * *diffusion-limited* part of DLA rather than merely "a growth process happened".
+ *
+ * **[particles] is a ceiling here too, for the same reason and with the same silence.** The perimeter
+ * never includes the outer ring of the field, so once the blob reaches the border the perimeter drains
+ * and growth stops with fewer particles placed than were asked for — no exception, no report field.
+ * Read `Aggregate.points.size`. Being compact, an Eden blob fills a field at roughly its area rather
+ * than at DLA's much smaller count, so a caller who sizes [particles] from DLA intuition will hit this.
+ * `AlifeGallery` sidesteps it by passing `particles = dla.points.size`, which is also what makes the
+ * two arms comparable.
  */
 fun edenCluster(width: Int, height: Int, particles: Int = 4000, seed: Long = 1L): Aggregate {
     require(width >= 16 && height >= 16) { "Eden field must be at least 16x16, got ${width}x$height" }

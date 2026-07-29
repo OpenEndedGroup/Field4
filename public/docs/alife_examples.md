@@ -229,10 +229,13 @@ neighbourhood gives the **smaller** correlation length, because the spiral arms 
     [`correlationLength`](reference/alife.md#alife-kt) is the lag at which the direction-averaged
     autocorrelation first falls to `1/e`, linearly interpolated. For a field with *no* correlation at all
     the interpolation runs from `ac(0) = 1` straight to `ac(1) ≈ 0`, so the answer is `1 − 1/e = 0.632` —
-    a floor, reached from below by nothing. Both settled fields here are compared with their own pixels
-    shuffled, which lands on that floor to six decimal places (2.80 against 0.634, and 2.01 against
-    0.633), rather than with a chosen constant. A checkerboard — the shortest wavelength a lattice holds —
-    reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
+    a floor, reached from below by nothing. So the right comparison for a settled field is with its own
+    pixels *shuffled*, which lands on that floor to six decimal places, rather than with a chosen
+    constant — and that is the comparison CI makes. Be careful reading the two numbers the box below
+    prints (**2.77** and **1.96** on its 200×200 fields) against the ones quoted in
+    `dev_docs/ALIFE.md` (**2.80** and **2.01**): those are the gallery's 220×220 fields, a different
+    measurement of the same phenomenon, not a discrepancy. A checkerboard — the shortest wavelength a
+    lattice holds — reads exactly `(1 − 1/e)/(4/3) = 0.4741`, which is as low as this statistic can go.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/alife_examples/cyclic.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -720,7 +723,9 @@ bridges, all into machinery that was already here:
 
 1. **A reaction–diffusion field → [`FLine`](fline_examples.md)s.** `Img.isoContourFLines` runs the
    marching-squares extractor in `contours.kt` over the `v` field, so a Gray–Scott result becomes
-   drawable, animatable, exportable geometry — 195 contours at `v = 0.25` below.
+   drawable, animatable, exportable geometry — 195 contours at `v = 0.25` below. That count is checked
+   against a second measurement rather than printed: CI asserts at least one loop per thresholded blob,
+   and pins the extractor itself against circle geometry (a disc's contour encloses `πr²` to 0.16 %).
 2. **Space colonization → a tree of `FLine`s.** Grown into an *annulus*, which no
    upward-with-noise heuristic reaches, so the branching really is following the space.
    `ColonizationTree.isTree()` checks the thing a picture cannot show — one root, `n − 1` edges, no
@@ -729,6 +734,15 @@ bridges, all into machinery that was already here:
    occupancy and runs `mesh_sdf.kt`'s marching cubes, so the automaton's surface is a real mesh you can
    boolean, subdivide and export. The claim asserted is that it is **watertight** — a leaking mesher
    produces a picture that looks fine and a model that cannot be printed.
+
+!!! warning "Contour loops carry no winding information"
+    An annulus contours to two loops — an outer and an inner — and **both come back wound the same way**.
+    Each is right to better than 0.4 % of its own circle, so the geometry is sound, but
+    `loops.sumOf { flineSignedArea(...) }` reads 67 % high for a shape with a hole; the right answer is
+    the *difference* of the magnitudes (0.006 % out). Anything that fills, booleans or exports these
+    curves has to find the hole by containment or by area, not by orientation. `contours.kt` never
+    promised a winding convention — this is undocumented behaviour, now asserted in CI so it cannot
+    change silently.
 
 !!! warning "An empty mesh is vacuously watertight"
     The first version of this figure passed its watertight check with a dead volume and **zero

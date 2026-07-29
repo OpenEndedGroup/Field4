@@ -19,8 +19,10 @@ import kotlin.math.sin
  *
  * L-systems are the odd one out in this family and belong in it for a precise reason: they are the one
  * generative system here whose output can be checked **exactly and combinatorially** rather than
- * statistically. Lindenmayer's original algae system has Fibonacci-length derivations; the Koch curve
- * has exactly `4^n` forward symbols after `n` rewrites; the Koch snowflake's turtle path closes to a
+ * statistically. Lindenmayer's original algae system has Fibonacci-length derivations; the Koch
+ * *snowflake* has exactly `3 * 4^n` forward symbols after `n` rewrites (the quadratic Koch island this
+ * file also ships, [LSYSTEM_KOCH_QUADRATIC], has `5^n` — check which one you are asserting about); the
+ * Koch snowflake's turtle path closes to a
  * measurable area. Those are equalities, not distributions, so they are the sharpest evidence in the
  * whole family — and they exercise the same turtle that draws the pretty trees.
  */
@@ -444,9 +446,12 @@ fun flineBounds(lines: List<FLine>): DoubleArray? {
  * Total drawn length of [lines] — the sum of the straight-line distances between consecutive nodes
  * within each line.
  *
- * The quantity a Koch construction has an exact value for: each generation multiplies the number of
- * segments by 4 and divides the segment length by 3, so the length grows by exactly `4/3` per
- * generation. A turtle that has miscounted a turn does not reproduce that ratio.
+ * The quantity a Koch construction has an exact value for — but mind which construction. The textbook
+ * `4/3` per generation is the ratio when the figure is held at constant *diameter*, i.e. the segment
+ * length is divided by 3 as the count is multiplied by 4. [turtleDraw] holds the **step** constant
+ * instead, so the figure triples in size each generation and the drawn length grows by exactly **4x**.
+ * That is what `AlifeGallery` asserts (to `1e-5`, at every generation), and a turtle that has miscounted
+ * a turn reproduces neither ratio.
  */
 fun flineTotalLength(lines: List<FLine>): Double {
     var total = 0.0
@@ -603,8 +608,10 @@ class ColonizationTree(
  *
  * Each iteration, every attractor within [influenceRadius] of some node votes for its nearest node; each
  * node with votes grows one new child of length [stepSize] in the average direction of its voters; any
- * attractor within [killRadius] of a node is consumed. Growth stops when no attractor influences
- * anything.
+ * attractor within [killRadius] of a node is consumed. Growth stops when the cloud is exhausted or when
+ * an iteration adds no node — and it really does stop: the loop used to be a `repeat` whose early exits
+ * were `break@grow`, which is `continue` rather than `break`, so a finished tree idled through the
+ * remaining iterations re-allocating three per-node arrays each time.
  *
  * The reason this is in an ALife family rather than a modelling one: the *form* is not authored. Give
  * the algorithm a cloud shaped like a maple leaf and it grows maple venation; give it a sparse cloud and
@@ -651,8 +658,8 @@ fun spaceColonization(
     val inf2 = influenceRadius * influenceRadius
     val kill2 = killRadius * killRadius
 
-    repeat(maxIterations) {
-        if (live.isEmpty()) return@repeat
+    grow@ for (iteration in 0 until maxIterations) {
+        if (live.isEmpty()) break@grow
         val dirX = DoubleArray(xs.size)
         val dirY = DoubleArray(xs.size)
         val votes = IntArray(xs.size)
@@ -675,7 +682,7 @@ fun spaceColonization(
         }
         val grownFrom = ArrayList<Int>()
         for (i in xs.indices) if (votes[i] > 0) grownFrom.add(i)
-        if (grownFrom.isEmpty()) return@repeat
+        if (grownFrom.isEmpty()) break@grow
         for (i in grownFrom) {
             val d = hypot(dirX[i], dirY[i]).coerceAtLeast(1e-9)
             xs.add(xs[i] + dirX[i] / d * stepSize)

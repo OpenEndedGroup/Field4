@@ -54,6 +54,7 @@ import afield.stdlib.flineSignedArea
 import afield.stdlib.flineTotalLength
 import afield.stdlib.grayScottSeed
 import afield.stdlib.isWatertight
+import afield.stdlib.isoContourFLines
 import afield.stdlib.leniaFromLifeRule
 import afield.stdlib.leniaRun
 import afield.stdlib.leniaSeed
@@ -693,6 +694,73 @@ object AlifeGallery {
             "life: the toad's detected period is 2 (found by exact state hashing, not by population)"
         )
 
+        // --- rule PARSING rejects garbage instead of silently inventing a rule ---
+        // `lifeRule`'s validation was a tautology: `s.filter { it.isDigit() }.length ==
+        // s.count { it.isDigit() }` is the same expression on both sides, so the documented @throws
+        // never fired. `lifeRule("hello/world")` returned B/S with both sets EMPTY — a rule under which
+        // everything dies, silently — and `lifeRule("B3junk/S2x3")` returned B3/S23, quietly discarding
+        // the part it could not read. A wrong rule that runs is far worse here than one that throws,
+        // because every figure below would still produce a plausible picture.
+        val garbage = listOf("hello/world", "B3junk/S2x3", "Bx/S23", "B3/S2!3", "//", "B3/S23/S4")
+        val rejected = garbage.count { spec ->
+            try { lifeRule(spec); false } catch (e: IllegalArgumentException) { true }
+        }
+        check(
+            rejected == garbage.size,
+            "life: rule notation that is not digits is REJECTED — $rejected of ${garbage.size} " +
+                "(${garbage.joinToString()}) throw. Before this pass none of them did: the guard " +
+                "compared an expression with itself, so garbage became an empty rule under which " +
+                "everything dies, or a truncated rule, with no signal either way"
+        )
+        // The forms that must keep working, including the unlabelled one — and `B2/S`, whose survive set
+        // is legitimately EMPTY. That entry is here because tightening the guard above initially
+        // required a non-empty body and so rejected `SEEDS`, a rule this family ships: a validation fix
+        // that outlaws valid input is a regression, and this line is what caught it on the next run.
+        // NB `23/3`, NOT `3/23`: an unlabelled pair is the older **survive/birth** order. This list was
+        // first written with `3/23 to LIFE` and failed, which is the assertion earning its keep — a
+        // reader reaching for the short form has a 50/50 chance of picking the wrong one and getting a
+        // silently different automaton, and nothing else in the family would have said so.
+        val accepted = listOf(
+            "B3/S23" to LIFE,
+            "23/3" to LIFE,
+            "b3/s23" to LIFE,
+            "S23/B3" to LIFE,
+            "B2/S" to afield.stdlib.SEEDS,
+            "B3678/S34678" to afield.stdlib.DAY_AND_NIGHT
+        )
+        check(
+            accepted.all { (spec, want) ->
+                val r = lifeRule(spec)
+                r.birth == want.birth && r.survive == want.survive
+            },
+            "life: and every legitimate spelling still parses to the rule it names — " +
+                accepted.joinToString { it.first } + " (note B2/S: an EMPTY survive set is valid, and " +
+                "the first version of the stricter guard rejected it)"
+        )
+        // The 3-D parser had the mirror-image bug: `drop(1)` ran unconditionally, so the unlabelled form
+        // it also accepts lost the first count of each list. Note the unlabelled order is
+        // **survive/birth**, as in 2-D — this check was first written expecting birth/survive and caught
+        // its own author, which is the same trap the 2-D list above documents.
+        val r3 = afield.stdlib.lifeRule3D("13,14/13,14,15")
+        check(
+            r3.survive == setOf(13, 14) && r3.birth == setOf(13, 14, 15),
+            "3d-ca: the UNLABELLED 3-D rule form parses every count and reads survive/birth — survive " +
+                "${r3.survive}, birth ${r3.birth} for \"13,14/13,14,15\". `drop(1)` used to run " +
+                "unconditionally, so this silently became survive {4,15} / birth {4} with the first " +
+                "count of each list eaten"
+        )
+        val r3labelled = afield.stdlib.lifeRule3D("S13,14/B13,14,15")
+        check(
+            r3labelled.birth == r3.birth && r3labelled.survive == r3.survive,
+            "3d-ca: and labelling it explicitly as S13,14/B13,14,15 gives the identical rule"
+        )
+        val r3swapped = afield.stdlib.lifeRule3D("B13,14/S13,14,15")
+        check(
+            r3swapped.birth == setOf(13, 14) && r3swapped.survive == setOf(13, 14, 15),
+            "3d-ca: while B13,14/S13,14,15 is the OTHER rule (birth ${r3swapped.birth}, survive " +
+                "${r3swapped.survive}) — the labels are load-bearing, and the count is never eaten either way"
+        )
+
         // --- the interior fast path against an independent brute-force stepper ---
         // `IntGrid.step` has a no-bounds-check interior loop and sends the border rows/columns through
         // `mooreCount`. That split is the highest-risk line of new code in this family — every Life claim
@@ -1045,8 +1113,11 @@ object AlifeGallery {
 
     /**
      * The numerical invariant behind every continuous system here: with a zero-sum Laplacian on a torus,
-     * diffusion moves material and creates none. Checked to relative `1e-5` over 500 steps, and shown to
-     * *fail* under a clamped border, which is the mistake this check exists to catch.
+     * diffusion moves material and creates none. Checked to relative `1e-5` over 500 steps — and checked
+     * for a **clamped** border too, which also conserves it, because clamping is a reflecting zero-flux
+     * boundary. Only an *absorbing* (`ZERO`) border loses mass, and that is the arm that fails. (This
+     * KDoc used to say the check was "shown to fail under a clamped border", contradicting the body
+     * three lines below it.)
      */
     private fun figureDiffusion(outDir: File) {
         // A field that REACHES the border, so a lossy boundary actually has something to lose. The first
@@ -1845,6 +1916,187 @@ object AlifeGallery {
     }
 
     // ==========================================================================================
+    // 9b — The bridge out to FLine, against the geometry of a circle
+    // ==========================================================================================
+
+    /**
+     * Verifies the `Img` -> [afield.stdlib.isoContourFLines] -> `FLine` bridge, which the public page and
+     * the shipped transcript both *use* and which nothing asserted until now: they printed
+     * "195 iso-contour FLine(s)" and a picture, and 195 is not a number a reader can check.
+     *
+     * The bridge is what makes this family Field's rather than a generic ALife library — a
+     * reaction-diffusion field becomes drawable, animatable, exportable geometry through the same
+     * marching-squares extractor in `contours.kt` that everything else uses. So it is checked against
+     * shapes whose contours are known in closed form:
+     *
+     *  - **a disc** contours to exactly one closed loop of length `2*pi*r` enclosing area `pi*r^2`;
+     *  - **three discs** give exactly three loops, matching what [blobShapes] independently counts;
+     *  - **an annulus** gives two loops whose *signed* areas have opposite sign, so their **sum** is the
+     *    annulus area `pi*(R^2 - r^2)`. That is the invariant which says the extractor winds a hole
+     *    opposite to an outer boundary — what any consumer that fills, booleans or exports these curves
+     *    depends on, and something no vertex count would catch;
+     *  - **a constant field** gives zero contours, because nothing crosses the iso level.
+     *
+     * Stating the claims as *circle geometry* rather than as vertex or loop-point counts is deliberate.
+     * `contours.kt` is shared code under active change; a claim about the area of a circle stays
+     * meaningful across a reimplementation of marching squares, and still fails if the reimplementation
+     * is wrong. This figure only ever *consumes* `contours.kt`.
+     */
+    private fun figureBridgeFLines(outDir: File) {
+        val side = 200
+        val r = 60.0
+        val disc = discMaskImg(side, side, r)
+        // cells = side marches one cell per pixel, the finest the raster supports.
+        val discLoops = disc.isoContourFLines(0.5, cells = side)
+        val discLen = discLoops.sumOf { flineTotalLength(listOf(it)) }
+        val discArea = discLoops.sumOf { flineSignedArea(listOf(it)) }
+        val lenErr = abs(discLen - 2.0 * PI * r) / (2.0 * PI * r)
+        val areaErr = abs(abs(discArea) - PI * r * r) / (PI * r * r)
+        println("[alife-gallery]     bridge: disc r=$r -> ${discLoops.size} loop(s), perimeter " +
+            "${f(discLen, 2)} vs 2*pi*r ${f(2.0 * PI * r, 2)} (${f(lenErr * 100, 2)}%), area " +
+            "${f(abs(discArea), 1)} vs pi*r^2 ${f(PI * r * r, 1)} (${f(areaErr * 100, 2)}%)")
+        check(
+            discLoops.size == 1,
+            "bridge: a disc contours to exactly ONE closed loop (got ${discLoops.size})"
+        )
+        check(
+            areaErr < 0.01,
+            "bridge: and it encloses ${f(abs(discArea), 1)} against the exact ${f(PI * r * r, 1)} a " +
+                "circle of radius $r has — ${f(areaErr * 100, 2)}% out. Area is the sharper of the two " +
+                "tests because it averages the marching cell's interpolation error rather than " +
+                "accumulating it"
+        )
+        check(
+            lenErr < 0.05,
+            "bridge: and its perimeter is ${f(discLen, 2)} against 2*pi*r = ${f(2.0 * PI * r, 2)}, " +
+                "${f(lenErr * 100, 2)}% out. Bounded at 5% rather than at the measured value because a " +
+                "polyline on a pixel lattice cannot be exactly a circle and the residual is a property " +
+                "of the grid, not of the extractor"
+        )
+
+        // Three discs: the loop count must agree with what an independent estimator counts.
+        val centres = listOf(Triple(50.0, 60.0, 26.0), Triple(140.0, 55.0, 22.0), Triple(95.0, 145.0, 30.0))
+        val three = Img.generate(side, side) { x, y ->
+            if (centres.any { (cx, cy, rad) -> kotlin.math.hypot(x - cx, y - cy) <= rad }) 1f else 0f
+        }
+        val threeLoops = three.isoContourFLines(0.5, cells = side)
+        val threeBlobs = three.blobShapes().size
+        check(
+            threeLoops.size == 3 && threeBlobs == 3,
+            "bridge: three separated discs give ${threeLoops.size} contour loop(s) and $threeBlobs " +
+                "connected component(s) — two unrelated pieces of machinery agreeing on the same count"
+        )
+
+        // An annulus: two loops, oppositely wound, so the SIGNED areas SUM to the annulus area.
+        val rOut = 70.0
+        val rIn = 35.0
+        val annulus = Img.generate(side, side) { x, y ->
+            val d = kotlin.math.hypot(x - (side - 1) / 2.0, y - (side - 1) / 2.0)
+            if (d in rIn..rOut) 1f else 0f
+        }
+        val ringLoops = annulus.isoContourFLines(0.5, cells = side)
+        val signed = ringLoops.map { flineSignedArea(listOf(it)) }
+        val ringExpected = PI * (rOut * rOut - rIn * rIn)
+        val signedSum = abs(signed.sum())
+        val ringErr = abs(signedSum - ringExpected) / ringExpected
+        println("[alife-gallery]     bridge: annulus -> ${ringLoops.size} loop(s), signed areas " +
+            signed.joinToString(", ") { f(it, 1) } + ", |sum| ${f(signedSum, 1)} vs pi*(R^2-r^2) " +
+            "${f(ringExpected, 1)} (${f(ringErr * 100, 2)}%)")
+        check(
+            ringLoops.size == 2,
+            "bridge: an annulus contours to exactly TWO loops, an outer and an inner (got ${ringLoops.size})"
+        )
+        // Each loop against its OWN circle first, which is the part that is unambiguously right.
+        val outerMeasured = signed.maxOf { abs(it) }
+        val innerMeasured = signed.minOf { abs(it) }
+        val outerErr = abs(outerMeasured - PI * rOut * rOut) / (PI * rOut * rOut)
+        val innerErr = abs(innerMeasured - PI * rIn * rIn) / (PI * rIn * rIn)
+        check(
+            outerErr < 0.01 && innerErr < 0.01,
+            "bridge: each loop matches its own circle — outer ${f(outerMeasured, 1)} against " +
+                "${f(PI * rOut * rOut, 1)} (${f(outerErr * 100, 2)}%), inner ${f(innerMeasured, 1)} " +
+                "against ${f(PI * rIn * rIn, 1)} (${f(innerErr * 100, 2)}%)"
+        )
+        // ---------------------------------------------------------------------------------------
+        // A finding, pinned as the behaviour it is rather than as the behaviour it "should" be.
+        //
+        // This figure was written expecting the two loops to be wound in OPPOSITE directions, because
+        // that is the convention that lets a consumer sum signed areas and get the area of a shape with
+        // a hole. `isoContourFLines` does not do that: both loops come back with the SAME sign, so the
+        // naive sum reads 19270 for an annulus whose area is 11545 — 67% high. Getting the right answer
+        // means subtracting the smaller magnitude, i.e. knowing which loop is the hole by some means
+        // other than its winding.
+        //
+        // This is NOT a violated contract: `contours.kt` documents no orientation guarantee (the one
+        // "counter-clockwise" comment in it refers to a marching cell's corner ordering, not to output
+        // winding). So it is undocumented behaviour that a caller who fills, booleans or exports these
+        // curves has to know, which is exactly why it is asserted here and written up in
+        // `dev_docs/ALIFE.md` rather than left to be rediscovered.
+        //
+        // It is also a deliberate tripwire on a live coupling: `contours.kt` is shared code and its
+        // marching-squares behaviour is under change on another branch. If winding becomes
+        // orientation-aware, THIS assertion fails and says so in one line, instead of the annulus area
+        // silently starting to come out right for a reason nobody recorded.
+        // ---------------------------------------------------------------------------------------
+        check(
+            signed.all { it > 0.0 } || signed.all { it < 0.0 },
+            "bridge: both annulus loops are wound the SAME way (signed areas " +
+                signed.joinToString(", ") { f(it, 1) } + "), so isoContourFLines does NOT encode a hole " +
+                "by orientation. Summing signed areas therefore OVERSTATES a holed shape's area — " +
+                "${f(signedSum, 1)} against the true ${f(ringExpected, 1)}, ${f(ringErr * 100, 0)}% high. " +
+                "contours.kt promises no winding convention, so this is undocumented behaviour a caller " +
+                "must know, not a broken contract. If a change to contours.kt makes winding " +
+                "orientation-aware, this line is the one that will say so"
+        )
+        val ringByDifference = outerMeasured - innerMeasured
+        val diffErr = abs(ringByDifference - ringExpected) / ringExpected
+        check(
+            diffErr < 0.005,
+            "bridge: taking the DIFFERENCE of the two magnitudes instead gives ${f(ringByDifference, 1)} " +
+                "against the exact ${f(ringExpected, 1)} — ${f(diffErr * 100, 3)}% out. So the geometry " +
+                "the extractor produces is right to four figures; it is only the orientation that " +
+                "carries no information"
+        )
+
+        // Control: no iso crossing, no contour.
+        val flat = Img.generate(side, side) { _, _ -> 0.9f }
+        check(
+            flat.isoContourFLines(0.5, cells = side).isEmpty(),
+            "bridge CONTROL: a constant field at 0.9 yields no contours at iso 0.5 — nothing crosses the " +
+                "level, so there is nothing to trace"
+        )
+
+        // And the real thing the docs page shows, with its count tied to a second measurement.
+        val rd = grayScottSeed(128, 128, patches = 6, patchSize = 14, seed = 11L)
+            .stepTimes(GRAY_SCOTT_SPOTS, 4000)
+        val rdLoops = rd.v.isoContourFLines(0.25, cells = 128)
+        val rdBlobs = rd.v.threshold(0.25f).blobShapes(minArea = 4).size
+        println("[alife-gallery]     bridge: Gray-Scott -> ${rdLoops.size} contour loop(s), $rdBlobs blob(s) at the same level")
+        check(
+            rdLoops.size >= rdBlobs && rdBlobs > 20,
+            "bridge: the Gray-Scott field gives ${rdLoops.size} contour loops for $rdBlobs thresholded " +
+                "blobs at the same level — at least one loop per blob, and more is correct because a blob " +
+                "with a hole contributes two. This ties the docs page's contour count to a second " +
+                "measurement instead of printing it"
+        )
+        check(
+            rdLoops.all { flineTotalLength(listOf(it)) > 0.0 },
+            "bridge: and every one of the ${rdLoops.size} loops has non-zero length — no degenerate " +
+                "single-point FLines in the output"
+        )
+
+        montage(
+            listOf(
+                "disc: area ${f(areaErr * 100, 2)}% off pi r^2" to rasterizeFLines(discLoops, 300, 300),
+                "annulus: 2 loops, signed sum ${f(ringErr * 100, 2)}% off" to rasterizeFLines(ringLoops, 300, 300),
+                "three discs: ${threeLoops.size} loops = $threeBlobs blobs" to rasterizeFLines(threeLoops, 300, 300),
+                "Gray-Scott: ${rdLoops.size} loops" to rasterizeFLines(rdLoops, 300, 300)
+            ),
+            columns = 2, cellSide = 300
+        ).savePng(File(outDir, "alife-bridge-flines.png").absolutePath)
+    }
+
+    // ==========================================================================================
     // 10 — 3-D CA out to a mesh
     // ==========================================================================================
 
@@ -2029,6 +2281,7 @@ object AlifeGallery {
         Stage("dla", Tier.FAST, ::figureDla),
         Stage("l-system", Tier.FAST, ::figureLSystem),
         Stage("colonization", Tier.FAST, ::figureColonization),
+        Stage("bridge-flines", Tier.FAST, ::figureBridgeFLines),
         Stage("3d-ca", Tier.FAST, ::figureVolume),
         Stage("rpentomino", Tier.SLOW, ::figureRPentomino),
         Stage("cyclic", Tier.SLOW, ::figureCyclic),

@@ -84,9 +84,26 @@ fun lifeRule(notation: String, radius: Int = 1, vonNeumann: Boolean = false): Li
     val parts = notation.trim().split('/')
     require(parts.size == 2) { "rule notation must be two slash-separated parts, got '$notation'" }
     fun digits(s: String): Set<Int> {
-        val d = s.filter { it.isDigit() }
-        require(d.length == s.count { it.isDigit() }) { "unreadable rule part '$s' in '$notation'" }
-        return d.map { it - '0' }.toSet()
+        // The body is everything after an optional leading B/S label, and it must be ALL digits.
+        // The original guard here was `s.filter { it.isDigit() }.length == s.count { it.isDigit() }`,
+        // which is a tautology — the two sides are the same expression — so it could never fire and
+        // the documented @throws never happened: `lifeRule("B3junk/S2x3")` silently returned B3/S23
+        // and `lifeRule("hello/world")` silently returned a rule under which everything dies.
+        val body = if (s.isNotEmpty() && (s[0] == 'B' || s[0] == 'b' || s[0] == 'S' || s[0] == 's')) {
+            s.substring(1)
+        } else {
+            s
+        }
+        // An EMPTY body is legitimate and must stay so: [SEEDS] is `B2/S`, a rule that is born on two
+        // neighbours and never survives. The first version of this stricter guard required a non-empty
+        // body and broke `SEEDS` on the spot — a validation tightening that outlaws a rule the family
+        // itself ships is a regression, not a fix. `AlifeGallery`'s accepted-spellings check now names
+        // `B2/S` explicitly, which is the only reason that mistake did not reach a commit.
+        require(body.all { it.isDigit() }) {
+            "unreadable rule part '$s' in '$notation': expected an optional B/S label followed by " +
+                "digits only, got '$body' after the label"
+        }
+        return body.map { it - '0' }.toSet()
     }
     val a = parts[0].trim()
     val b = parts[1].trim()
@@ -244,7 +261,14 @@ class CycleReport(
  * than a population heuristic — a pattern whose population is constant while it rotates is *not*
  * reported as period 1.
  *
- * Memory is `O(maxGenerations)` hashes, not grids, plus the grids for the states that share a hash.
+ * **Memory is `O(maxGenerations * width * height)` ints, because every generation's grid is retained**
+ * — a hash alone cannot settle equality, so each bucket keeps the grids it has seen and the buckets are
+ * never pruned. At 250x250 over 1400 generations (which is what `AlifeGallery`'s walled R-pentomino
+ * figure asks for) that is ~350 MB; a 620x620 board over the same span would be ~2 GB. Size
+ * [maxGenerations] with that in mind, and prefer [stepTimes] plus [IntGrid.sameCellsAs] against one
+ * remembered state if you only need to know whether a *specific* state recurs. (This KDoc previously
+ * claimed the opposite — "hashes, not grids" — which is the claim a caller would have used to size a
+ * budget.)
  */
 fun IntGrid.runUntilCycle(rule: LifeRule, maxGenerations: Int = 2000): CycleReport {
     require(maxGenerations >= 1) { "maxGenerations must be >= 1, got $maxGenerations" }
@@ -674,7 +698,12 @@ class LifeRule3D(val birth: Set<Int>, val survive: Set<Int>) {
 fun lifeRule3D(notation: String): LifeRule3D {
     val parts = notation.trim().split('/')
     require(parts.size == 2) { "3-D rule notation must be two slash-separated parts, got '$notation'" }
-    fun counts(s: String): Set<Int> = s.trim().drop(1).split(',')
+    // Drop a B/S label if there is one, and ONLY if there is one: `drop(1)` unconditionally ate the
+    // first count of each list for the unlabelled form this function also accepts, so
+    // `lifeRule3D("4,5/5,6,7")` silently became B5/S6,7 rather than failing or parsing.
+    fun counts(s: String): Set<Int> = s.trim()
+        .let { if (it.isNotEmpty() && it[0].uppercaseChar() in "BS") it.substring(1) else it }
+        .split(',')
         .map { it.trim() }.filter { it.isNotEmpty() }.map {
             it.toIntOrNull() ?: throw IllegalArgumentException("unreadable count '$it' in '$notation'")
         }.toSet()

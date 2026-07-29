@@ -18,7 +18,7 @@ import kotlin.math.sqrt
  * counterpart to the graph-rewriting half already here (`growing.kt`, `dynamic_graph_systems.kt`,
  * `interactionnets.kt`, `booleannetworks.kt`) and to the constraint-based generator in `wfc.kt`.
  *
- * Five files:
+ * Six files:
  *
  * - **`alife.kt`** (this one) — the substrate: [IntGrid], the grid↔[Img] bridges, and the
  *   **measurement** layer. Everything else in the family makes its claims through the functions at
@@ -28,6 +28,8 @@ import kotlin.math.sqrt
  *   3-D life-like CA that marches out to a [TriMesh].
  * - **`alife_continuous.kt`** — Gray–Scott reaction–diffusion, Turing patterns, and Lenia
  *   (continuous CA: ring-kernel convolution plus a growth mapping).
+ * - **`alife_field.kt`** — the inline `ToHTML` views for [IntGrid], `GrayScottState` and `LeniaRun`,
+ *   kept separate so the five system files name nothing from Field's visualizer.
  * - **`alife_agents.kt`** — boids flocking, a Physarum/slime-mould deposit–sense–move population over
  *   a trail [Img], and diffusion-limited aggregation.
  * - **`alife_lsystem.kt`** — a bracketed/parametric L-system with a turtle that emits
@@ -752,8 +754,15 @@ fun IntGrid.stateEntropyBits(states: Int? = null): Double {
 }
 
 /**
- * A smooth pseudo-random scalar field in `0..1` — value noise at [cells] cells across, bilinearly
- * interpolated, tiling at the borders.
+ * A smooth pseudo-random scalar field in `0..1` — value noise at [cells] cells across, smoothstep-faded
+ * (`t*t*(3-2t)`) between lattice values rather than linearly interpolated.
+ *
+ * **It does not tile.** The `cells + 1`-th row and column exist so the interpolation never reads out of
+ * bounds, and they are drawn independently of the 0th, so using this field periodically shows a seam at
+ * the wrap. That matters because its main use is seeding *toroidal* Gray-Scott and Lenia domains: the
+ * seam is a real discontinuity in the initial condition, which those systems then smooth away over the
+ * first few dozen steps rather than preserving. (An earlier version of this line claimed "tiling at the
+ * borders", which was never true.)
  *
  * Exists because seeding a continuous system with per-pixel white noise is usually wrong: Gray–Scott
  * and Lenia both have a characteristic length, and white noise excites everything above it and

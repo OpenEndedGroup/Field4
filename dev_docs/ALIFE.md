@@ -177,6 +177,17 @@ labyrinth of colour bands), not for the spirals it is often illustrated with. Sp
 statistic, and it has a closed form to check against in the uncorrelated case:
 `1 - (1 - 1/states)^8` for threshold 1, radius 1.
 
+The length-scale claim is made against each field's **own shuffled pixels**, not against the other
+parameter set: on the gallery's 220x220 fields the labyrinth measures a correlation length of **2.80**
+against **0.634** shuffled and the excitable rule **2.01** against **0.633**, i.e. 4.4x and 3.2x their
+own floor. (0.632 is the floor of that statistic, not 0 — see the oracle table above.) The pairwise
+labyrinth-vs-excitable ratio is only 1.39, so its assertion is bounded at 1.15 rather than at the
+measured value; the direction is the interesting part and the margin is not large.
+
+**These numbers are grid-size dependent, and the public page's are different on purpose.**
+`public/docs/alife_examples.md` runs the same comparison on 200x200 fields and prints **2.77** and
+**1.96**. Same phenomenon, different measurement, not a discrepancy — do not "reconcile" them.
+
 ### Elementary 1-D CA
 
 `elementaryCa` returns the whole space-time diagram as an `IntGrid` (one row per generation) because a
@@ -288,6 +299,44 @@ that closes to `2.3e-14` of a step; drawn length that grows by exactly `4×` per
 step (the textbook `4/3` is the constant-*diameter* form); and enclosed area matching
 `9^n · A₀ · (1 + 3/5(1 − (4/9)^n))` to `3e-8` relative. That last floor is `FLine`'s single-precision
 coordinate storage, not the maths.
+
+## The bridges out, and one thing `isoContourFLines` does not promise
+
+The family reaches Field's existing geometry two ways, and both are now verified rather than merely
+demonstrated (until this pass they were exercised by the shipped transcript, which only asserts that no
+box printed an error — so "195 iso-contour FLines" was a number nobody could check):
+
+- **`Img` → `FLine`** via `imaging_field.kt`'s `Img.isoContourFLines`, which adapts an `Img` to the
+  `ScalarField2D` that `contours.kt` marches. Checked in `AlifeGallery`'s `bridge-flines` figure (fast
+  tier) against circle geometry: a disc of radius 60 gives exactly one loop enclosing **0.16 %** off
+  `πr²` and **1.44 %** off `2πr`; three separated discs give three loops, matching what
+  `blobShapes` counts independently; a constant field gives none.
+- **`IntVolume` → `TriMesh`** via `mesh_sdf.kt`'s marching cubes, checked for watertightness and an even
+  Euler characteristic with a non-zero triangle count (an empty mesh is vacuously watertight, and the
+  first version of that figure passed that way).
+
+**`isoContourFLines` does not encode a hole by winding direction, and nothing said so.** An annulus
+contours to two loops whose signed areas are **both positive** (15408.2 and 3862.2 for `R = 70`,
+`r = 35`). Each loop is right to better than 0.4 % of its own circle, so the geometry is fine — but the
+orientation carries no information, and the consequence is concrete:
+
+```kotlin
+loops.sumOf { flineSignedArea(listOf(it)) }        // 19270 — 67 % too high for an annulus
+abs(outer) - abs(inner)                            // 11546 vs the exact 11545.4 — 0.006 %
+```
+
+Anything that fills, booleans or exports these curves has to identify the hole by some means other than
+its winding — containment, or area magnitude. This is **not a violated contract**: `contours.kt` promises
+no winding convention anywhere (its one "counter-clockwise" comment is about a marching cell's corner
+ordering, not the output loop). It is undocumented behaviour, which is why it is now an assertion.
+
+That assertion is also a deliberate tripwire on a live coupling. `contours.kt` is shared code and its
+marching-squares behaviour is being changed on another branch as of 2026-07-29. **This branch only ever
+*consumes* `contours.kt` — it does not edit it.** If winding becomes orientation-aware there, the
+same-sign assertion in `figureBridgeFLines` fails and names the reason in one line, rather than the
+annulus area quietly starting to come out right for a reason nobody wrote down. Every other claim in that
+figure is stated as the area or perimeter of a circle, which is the form that survives a correct
+reimplementation and still fails a wrong one.
 
 ## Inline `ToHTML` views
 
