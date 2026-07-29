@@ -161,7 +161,7 @@ number that decides how much the digest change is worth):
   do not are 10 `fabricate_renderer`, 3 `rectsl_examples`, 2 each `ar_reference` / `graph_query` /
   `stacksl_examples`, and one each on `survivalGuide`, `forth_examples`, `funFeatures`, `visualizers`.
 
-**And the additive claim, verified directly** rather than argued from the code. Loading `80be50`'s
+**And the additive claim, verified directly** rather than argued from the code. Loading `main`'s (`80b6ef50`)
 `public/docs_hooks.py` and this branch's as two modules, walking all 304 fences with each module's
 own parsers and comparing digests:
 
