@@ -434,9 +434,6 @@ private fun dominantEigenvector(cov: Array<FloatArray>): Vec3? {
     return v
 }
 
-/** Whether every component is a real number — a power iteration on a degenerate cloud can produce NaN. */
-private fun Vec3.isFinite(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
-
 /**
  * Some unit vector at right angles to [a], chosen by crossing with whichever basis axis [a] leans on least
  * so the cross product is never degenerate.
