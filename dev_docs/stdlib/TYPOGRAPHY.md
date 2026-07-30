@@ -212,9 +212,39 @@ arc-length placement is right; rebuilding the table under a moving curve is not.
 is correct and was deliberately kept — a kinetic-typography family whose text jumps when the path
 animates should not ship claiming otherwise.
 
-Diagnosis lead, **not verified**: the arc-length table is a polyline through the cubic, so moving a
-control point moves its knots and shifts the parameter→arc-length mapping under a fixed
-`startOffset`. Suspect knots at fixed *parameter* spacing rather than fixed *arc-length* spacing.
+**DIAGNOSED (nightly judge, 2026-07-30) — and the defect is NOT in this branch.** The earlier
+guess in commit `80b13eb8` ("knots at fixed parameter spacing") was wrong in mechanism. The real
+cause is in `src/jvmMain/kotlin/afield/graphics/PathFlattener.kt:150-174`, which predates this
+branch and is on `main`.
+
+`emitCubicFrame` subdivides **adaptively by flatness**, recursing while
+`flatnessFor(a, c1, c2, b) > tol`; `flatnessFor` (`:177-182`) is the control points' distance from
+the chord. The `motion_morph` panel sweeps `lift = -300 * sin(phase)`, so at frames 0 and 45 the
+lift is exactly zero, all four control points are **collinear**, flatness is exactly `0.0`, the
+recursion stops immediately — and the entire cubic becomes **one linear segment**. `Cursor.setD`
+(`FLinesAndJavaShapes.kt:729`) then degenerates to plain **parameter** interpolation. Since this
+cubic is not uniformly parameterised (controls at x=260/640, not 313/627), the glyph teleports:
+
+| frame | lift | flattener leaves | x at half arc-length |
+| --- | --- | --- | --- |
+| 89 | 20.93 | 82 | 469.97 |
+| 0 | 0.00 | **1** | **455.00** |
+| 45 | 0.00 | **1** | **455.00** |
+
+A 14.98-unit jump against a median step of 0.297 — **50x median** for a mid-string glyph. The panel
+reports 9.7x only because it averages over 32 glyphs and both axes, and the error vanishes near the
+path ends.
+
+**Consequences beyond typography:** the same flattener backs `Cursor.d`/`setD`,
+`FLine.sampleByDistance` and `byDashing`, so **every arc-length spacing operation in Field**
+mis-spaces any near-straight cubic. This is the highest-value item to come out of the night, and it
+is not typography-specific.
+
+**Tightening `tol` cannot fix it** — flatness is `0.0`, which is `<=` any tolerance. The fix is a
+**minimum-subdivision floor** in `emitCubicFrame`; the judge measured `minSubDiv = 3` taking the
+ratio from 50.4x to **1.6x** (the panel's threshold is 3x), costing 8 leaves for a straight cubic.
+Roughly three lines. Expect `stdlib.typography.gallery` to go 14/14, and expect `byDashing` /
+`sampleByDistance` goldens to shift slightly — toward correct.
 
 ### 2. `flatShaded()` before a topology-printing sink publishes false captions
 
