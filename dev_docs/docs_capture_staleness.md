@@ -127,3 +127,39 @@ git status --short public/docs/assets     # necessary, nowhere near sufficient �
 ```
 
 Then compare pixel-wise against `HEAD`, twice, and discard everything inside the noise band.
+
+## 5. Recording a *sweep*: the recorder's frame clock is not the box's (2026-07-29)
+
+Separate from staleness, and the thing that costs the most builds when adding an animated
+`diffstatic_runner` fence. Established while adding the two parameter sweeps to
+`spatial_geometry_examples.md`.
+
+A `video=` fence records until it has `duration * fps` frames and then re-times them to `fps`. It does
+**not** record for `duration` wall-clock seconds. So the real length of the recording is
+`duration * fps / captureRate`, and `captureRate` is whatever the machine manages.
+
+Three consequences, all measured:
+
+| claim | measurement |
+| --- | --- |
+| `frameNumber` is the wrong clock | the Apollonius box renders ≈4× faster than it is captured, so a ramp with period 160 *frames* ran four sweeps inside one 160-frame clip |
+| wall-clock elapsed is the right clock, but `sweepSeconds = duration` is wrong | at `sweepSeconds = 8.0` the iso box's clip contained **1.6** sweeps: 160 frames captured at ≈12.5 fps is 12.8 real seconds, not 8 |
+| the capture rate is not even constant *within* one recording | a linear there-and-back came back with limb slopes of **7.5 and 5.9 px/frame**, which a triangle ramp cannot produce |
+
+What to do:
+
+- Drive the swept parameter from `System.nanoTime()`, not `frameNumber`.
+- Calibrate `sweepSeconds` against a *recorded* clip rather than setting it to `duration`, then
+  re-record and re-measure. 9.0 and 8.6 put one sweep in an 8 s clip for those two boxes.
+- Keep the per-frame cost low. Dropping the iso box's grid from 140×84 to 100×60 moved its capture
+  rate from ≈12.5 to ≈16 fps and its picture is no worse.
+- **Use a triangle ramp on a scalar, not a closed loop in position.** Videos embed as
+  `<video controls autoplay loop muted>`, so the seam is visible on every cycle. With a triangle ramp
+  a residual phase error is a small parameter offset (measured 4.7% and 6.2% of the swept range). With
+  a circular orbit the same error is a *positional jump*: an edge-flip clip came back at 1.42
+  revolutions per clip in one run and 0.78 in the next, and at 0.78 the mover hopped 18.7% of its path
+  at the loop point — on a clip about edges snapping between configurations, indistinguishable from a
+  flip. That clip was dropped rather than shipped for exactly this reason.
+
+Measuring the achieved period does not need guesswork: extract frames with `ffmpeg -vf select`, locate
+the moving element by colour, and fit its position against the frame index.
