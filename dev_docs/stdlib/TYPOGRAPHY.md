@@ -199,7 +199,29 @@ blank fails the test instead of shipping.
 Both were found after the branch's own verification passed, so treat this section as the pre-merge
 worklist rather than as history.
 
-### 1. `onCurve` is not continuous under a *morphing* curve
+### 1. ~~`onCurve` is not continuous under a morphing curve~~ — FIXED (2026-07-30 closeout)
+
+**Fixed** by a minimum-subdivision floor in `PathFlattener.emitCubicFrame`
+(`src/jvmMain/kotlin/afield/graphics/PathFlattener.kt`, `minSubDiv = 3`, clamped against `maxSubDiv`
+so the floor can never reach the bail-out that drops a segment). **`stdlib.typography.gallery` is now
+14/14**, and `motion_morph` reports `median step 2.21, worst 6.06 (2.74x median)` against its 3x
+threshold — down from 9.7x.
+
+The floor depth was chosen by measurement rather than by the prototype's estimate: `minSubDiv` of
+3 / 4 / 5 gives **2.74x / 2.73x / 2.73x**, i.e. the metric has plateaued by 3, so deeper floors cost
+frames and buy nothing. Note this does *not* match the 1.6x the judge's Python port predicted — the
+port and the running system disagree, and the running system is the one that counts. The residual
+2.73x is not subdivision-limited and is not believed to be a defect: the panel deforms the curve
+sinusoidally (arc length sweeps 940..1021), so a glyph pinned at a fixed arc-length offset genuinely
+moves fastest mid-sweep. What the floor removed was the discontinuity; what remains is the motion.
+
+Collateral checked: `jvmTest` **696 tests / 60 suites / 0 failures / 0 errors / 0 skipped**, and
+`examples.demo-transcript.exec` PASS (all 31 demos). That suite failed on its *first* run here with
+`ConcurrentModificationException at Box.resyncAll:1241` on `alife_worked_example` and passed on the
+second — the known race, **not** this change, and the exact frame branch 2's `PropertyBag` fix
+targets. It is a fourth independent sighting, and an argument for merging branch 2 first.
+
+The original diagnosis follows, for the record.
 
 `stdlib.typography.gallery` is **RED** on the `motion_morph` panel:
 
