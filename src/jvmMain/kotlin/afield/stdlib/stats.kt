@@ -27,8 +27,23 @@ import kotlin.math.atan2
  * change. [seriesPlotToSvg] envelope-downsamples to `maxSeriesPoints` (500) before drawing.
  */
 
+/**
+ * One bin of a [Histogram]: the half-open interval `[start, end)` and how many samples fell in it.
+ *
+ * [buildHistogram] tiles `[min, max]` with these, every bin the same width, so `end` is the next
+ * bin's `start` with no gap and no overlap — except for the last bin, whose `end` is set to the
+ * sample maximum exactly so the largest value has somewhere to go.
+ */
 data class HistogramBin(val start: Double, val end: Double, val count: Int)
 
+/**
+ * A histogram and the five-number summary of the same data, as [buildHistogram] returns them.
+ *
+ * [bins] are uniform-width and in ascending order; [count] sums them, so it is the number of
+ * *finite* samples that went in rather than the length of the input. [binWidth] is the width every
+ * bin shares, and [modeBin] the fullest one (the first, on a tie). The quartiles are the same
+ * linear-interpolated ones [SummaryStats] carries.
+ */
 data class Histogram(
     val bins: List<HistogramBin>,
     val min: Double,
@@ -44,6 +59,29 @@ data class Histogram(
         get() = bins.maxByOrNull { it.count }
 }
 
+/**
+ * Seventeen descriptive numbers about one sample, as [buildSummaryStats] returns them.
+ *
+ * **The two conventions do not match, and that is the one thing to know.** [sampleVariance] /
+ * [sampleStdDev] divide by n−1 while [populationVariance] / [populationStdDev] divide by n — both
+ * are here, named — but [skewness] and [kurtosisExcess] are only ever the **population** forms, with
+ * no bias correction and no n−1 counterpart. So a `SummaryStats` printed field-by-field mixes the
+ * two, which is a trap when comparing against another tool. Against NumPy/SciPy the mapping is
+ * exact: [q1]/[median]/[q3] are `numpy.percentile`'s default linear interpolation, [mad] is
+ * `median(|y − median(y)|)` **unscaled** (no 1.4826 factor), [sampleStdDev] is `numpy.std(ddof=1)`,
+ * and [skewness]/[kurtosisExcess] are `scipy.stats.skew`/`scipy.stats.kurtosis` at their *default*
+ * `bias=True`. Pinned to ten decimal places in `StatsSummaryTest`.
+ *
+ * Non-finite input never reaches any of these: it is filtered out and counted in [droppedCount], so
+ * [count] is the number of finite samples and can be well below the input length. Small samples are
+ * guarded rather than propagated, so you get a zero rather than a NaN: [sampleVariance] is 0.0 at
+ * n=1, [skewness] is 0.0 unless n>2, [kurtosisExcess] is 0.0 unless n>3. An empty sample gives
+ * [Companion.empty], where everything but [sum] (0.0) and [count] (0) is NaN.
+ *
+ * [range] and [coeffOfVariation] are derived on read. [coeffOfVariation] is [sampleStdDev]/[mean],
+ * which is meaningless the moment the mean approaches zero — it returns NaN at exactly 0.0 and
+ * something enormous just beside it, so do not reach for it on a centred signal.
+ */
 data class SummaryStats(
     val count: Int,
     val droppedCount: Int,
@@ -93,6 +131,16 @@ data class SummaryStats(
     }
 }
 
+/**
+ * Everything [SummaryStatsBuffer.summaryBox] knows in one value: the window's [values] in arrival
+ * order, their [stats] and [histogram], and the buffer's three counters — so it is what
+ * [summaryStatsBoxToHtml] needs to render a whole card, and what you keep if you want to pass a
+ * *previous* card to it and get the changed numbers tinted.
+ *
+ * [windowSize] is the buffer's cap, not the number of samples held; that is `values.size`, which
+ * equals `stats.count`. [droppedNonFinite] and [droppedByCapacity] are the two distinct counters
+ * described on [SummaryStatsBuffer].
+ */
 data class SummaryStatsBox(
     val values: List<Double>,
     val stats: SummaryStats,
@@ -210,6 +258,17 @@ private fun svgTitleBackdrop(
     """.trimIndent()
 }
 
+/**
+ * [buildVec2SummaryStats]'s answer: a full [SummaryStats] per component, plus one for the vector
+ * [length] and one for the [angleRadians] (`atan2(y, x)`, so in −π..π), plus the Pearson correlation
+ * between the two components.
+ *
+ * A vector is kept only if **both** components are finite — one NaN drops the whole sample — and
+ * [count]/[droppedCount] read through to the `x` component's. [correlationXY] is exactly 1.0 for
+ * `y = kx` with k > 0, and NaN when fewer than two vectors survived or either component is constant.
+ * [mean]/[median]/[min]/[max] recombine the per-component numbers into a `Vec2`, so [median] is the
+ * componentwise median and *not* a point that was ever in the input.
+ */
 data class Vec2SummaryStats(
     val x: SummaryStats,
     val y: SummaryStats,
@@ -231,6 +290,15 @@ data class Vec2SummaryStats(
         get() = Vec2(x.max.toFloat(), y.max.toFloat())
 }
 
+/**
+ * [buildVec3SummaryStats]'s answer: a [SummaryStats] per component and one for the vector [length],
+ * plus the three pairwise component correlations. There is no angle summary here — [Vec2SummaryStats]
+ * has one because a 2D direction is a single number and a 3D one is not.
+ *
+ * A vector is kept only if all three components are finite. Each correlation is exactly 1.0 for an
+ * exactly proportional pair with a positive factor, and NaN when fewer than two vectors survived or
+ * one of the two components is constant.
+ */
 data class Vec3SummaryStats(
     val x: SummaryStats,
     val y: SummaryStats,
@@ -254,6 +322,14 @@ data class Vec3SummaryStats(
         get() = Vec3(x.max.toFloat(), y.max.toFloat(), z.max.toFloat())
 }
 
+/**
+ * [buildVec4SummaryStats]'s answer: a [SummaryStats] per component and one for the vector [length],
+ * plus all six pairwise component correlations.
+ *
+ * A vector is kept only if all four components are finite. Nothing here treats `w` as special, so a
+ * `Vec4` used as an RGBA colour gets its alpha summarised alongside the channels and folded into
+ * [length] with them.
+ */
 data class Vec4SummaryStats(
     val x: SummaryStats,
     val y: SummaryStats,
@@ -281,6 +357,12 @@ data class Vec4SummaryStats(
         get() = Vec4(x.max.toFloat(), y.max.toFloat(), z.max.toFloat(), w.max.toFloat())
 }
 
+/**
+ * What [Vec2SummaryStatsBuffer.summaryBox] returns: the window's vectors in arrival order, their
+ * [stats], and the buffer's three counters. The scalar twin, [SummaryStatsBox], also carries a
+ * [Histogram]; these do not, because there is no single histogram of a vector — ask the buffer for
+ * [Vec2SummaryStatsBuffer.lengthHistogram] if that is what you want.
+ */
 data class Vec2SummaryStatsBox(
     val values: List<Vec2>,
     val stats: Vec2SummaryStats,
@@ -290,6 +372,10 @@ data class Vec2SummaryStatsBox(
     val droppedByCapacity: Long
 )
 
+/**
+ * What [Vec3SummaryStatsBuffer.summaryBox] returns — see [Vec2SummaryStatsBox]; the only difference is
+ * the [stats] type.
+ */
 data class Vec3SummaryStatsBox(
     val values: List<Vec3>,
     val stats: Vec3SummaryStats,
@@ -299,6 +385,10 @@ data class Vec3SummaryStatsBox(
     val droppedByCapacity: Long
 )
 
+/**
+ * What [Vec4SummaryStatsBuffer.summaryBox] returns — see [Vec2SummaryStatsBox]; the only difference is
+ * the [stats] type.
+ */
 data class Vec4SummaryStatsBox(
     val values: List<Vec4>,
     val stats: Vec4SummaryStats,
@@ -309,9 +399,21 @@ data class Vec4SummaryStatsBox(
 )
 
 /**
- * Rolling numeric summary + histogram buffer.
+ * Rolling numeric summary + histogram buffer: `add` samples one at a time, ask for a [snapshot], a
+ * [histogram], a whole [summaryBox] or a rendered [summaryHtml] whenever you like.
  *
- * Keeps only finite numbers and maintains a capped sliding window.
+ * **Two independent drop counters, and the distinction is the useful part.** [droppedNonFinite]
+ * counts samples the buffer *refused* — null, NaN or an infinity, rejected at `add` time so `values`
+ * never holds one — while [droppedByCapacity] counts samples it *accepted and later evicted* because
+ * the window filled. Feeding 200 finite samples to a `maxSize = 64` buffer leaves `size == 64`,
+ * `samplesSeen == 200` and `droppedByCapacity == 136`. [samplesSeen] counts every `add` including the
+ * refused ones. [snapshot] carries [droppedNonFinite] forward into [SummaryStats.droppedCount], so a
+ * snapshot's `droppedCount` is about refusals and says nothing about evictions.
+ *
+ * Every read and mutation is `@Synchronized` on the buffer, so it is safe to `add` from one thread
+ * and snapshot from another — but note the [maxSize] *setter* is not, and it trims. `maxSize` is
+ * floored at 1. [clear] empties the window and keeps the counters unless you pass
+ * `resetCounters = true`.
  */
 class SummaryStatsBuffer(
     maxSize: Int = 100
@@ -527,6 +629,16 @@ class SummaryStatsBuffer(
     }
 }
 
+/**
+ * The `Vec2` twin of [SummaryStatsBuffer]: `add` vectors one at a time into a capped, synchronized
+ * sliding window, then ask for a [snapshot], a [summaryBox] or a [lengthHistogram].
+ *
+ * Same two independent counters, with the same distinction: [droppedNonFinite] counts vectors refused
+ * at `add` time — and a vector is refused if **either** component is non-finite — while
+ * [droppedByCapacity] counts vectors evicted once the window filled. [maxSize] is floored at 1.
+ * [lengthHistogram] bins the vector lengths, which is the only scalar a 2D sample has that is not a
+ * component.
+ */
 class Vec2SummaryStatsBuffer(
     maxSize: Int = 100
 ) {
@@ -630,6 +742,10 @@ class Vec2SummaryStatsBuffer(
     }
 }
 
+/**
+ * The `Vec3` twin of [SummaryStatsBuffer] — see [Vec2SummaryStatsBuffer] for the counters and the
+ * all-components-must-be-finite rule. [snapshot] carries the three pairwise component correlations.
+ */
 class Vec3SummaryStatsBuffer(
     maxSize: Int = 100
 ) {
@@ -733,6 +849,10 @@ class Vec3SummaryStatsBuffer(
     }
 }
 
+/**
+ * The `Vec4` twin of [SummaryStatsBuffer] — see [Vec2SummaryStatsBuffer] for the counters and the
+ * all-components-must-be-finite rule. [snapshot] carries all six pairwise component correlations.
+ */
 class Vec4SummaryStatsBuffer(
     maxSize: Int = 100
 ) {
@@ -1089,9 +1209,21 @@ fun buildVec4SummaryStats(
 }
 
 /**
- * Compute histogram bins and summary statistics.
+ * Bin [rawValues] into a [Histogram], choosing the bin width itself: **the smallest of the
+ * Freedman–Diaconis, Scott and Sturges estimates**, floored at `range/2000` so the bin count can
+ * never exceed 2000. There is no bin-count parameter — if you need a specific one, bin it yourself.
  *
- * Non-finite values are dropped (and optionally counted via [onDrop]).
+ * "Smallest" means finest, which is usually what you want, but it is decided by *global* spread and
+ * that misfires on multi-modal data: for two clean modes 4 apart with a within-mode sd of 0.4, both
+ * Freedman–Diaconis (1.0065) and Scott (0.9077) read the between-mode separation as spread, so
+ * Sturges wins at 0.6329 — and Sturges knows nothing but n, giving `ceil(log2 n + 1)` = 10 bins for
+ * *any* 500-point sample. The same n of a unimodal signal gets 28. `StatsSummaryTest` pins both.
+ *
+ * Bins tile `[min, max]` at uniform width with no gap, and the last bin's `end` is the maximum
+ * exactly, so [Histogram.count] equals the number of finite samples. Non-finite values are dropped
+ * before anything else and reported via [onDrop] when any were. A constant sample cannot be binned by
+ * width, so it gets one synthetic bin of `max(8·ulp(min), 1e-9)` centred on the value; an empty
+ * sample gives no bins at all and NaN for every quantile.
  */
 fun buildHistogram(
     rawValues: Iterable<Double>,
@@ -1522,6 +1654,21 @@ fun seriesPlotToSvg(
     """.trimIndent()
 }
 
+/**
+ * Render a whole [SummaryStatsBox] as one self-contained HTML card: a three-column grid of thirteen
+ * metrics, then a [histogramToSvg] and a [seriesPlotToSvg] of the same window, all inline. No `<img>`,
+ * no `<script>`, nothing to fetch — hand it to `display` and it draws.
+ *
+ * **The metric labels mix the two variance conventions**, faithfully, because [SummaryStats] does:
+ * `stddev` and `variance` are the sample (n−1) forms while `skew` and `kurtosis(ex)` on the same card
+ * are the population (n) forms. `dropped(non-finite)` and `window-evicted` are the buffer's two
+ * distinct counters.
+ *
+ * Pass [previousSummary] and every number that moved is tinted by the *sign and relative size* of the
+ * change — green up, red down, saturating as the relative move grows — which is what makes the card
+ * useful on a runloop. The long parameter list is colour and padding; the defaults are Field's
+ * cyan-on-black.
+ */
 fun summaryStatsBoxToHtml(
     summary: SummaryStatsBox,
     previousSummary: SummaryStatsBox? = null,

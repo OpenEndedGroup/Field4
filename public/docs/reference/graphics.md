@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-23 source file(s), 1326 public symbol(s), 601 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 1326 public symbol(s), 607 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2378,12 +2378,14 @@ continuous snapshot reads.
 
 `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt`
 
+**Used in:** [Which of these signals actually depend on each other?](../statistics_examples.md)
+
 ### Top-level functions { #quantilewarp-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">fieldProbeQuantileWarp</span><span class="p">(</span><span class="n">probe</span><span class="p">:</span> <span class="nc">ShaderFieldProbe</span><span class="p">,</span> <span class="n">warp</span><span class="p">:</span> <span class="nc">AdaptiveQuantileWarp</span> <span class="o">=</span> <span class="nc">AdaptiveQuantileWarp</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="nc">ShaderProbeQuantileWarpConfig</span> <span class="o">=</span> <span class="nc">ShaderProbeQuantileWarpConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">install</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="n">warp</span><span class="p">:</span> <span class="nc">QuantileWarpState</span><span class="p">,</span> <span class="n">batch</span><span class="p">:</span> <span class="nc">FieldProbeScalarBatch</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldQuantileWarpController</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">inverseStandardNormalCdf</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">inverseStandardNormalCdf</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | The standard normal quantile function `Φ⁻¹(p)` — Acklam's rational approximation, in three branches that meet at `p = 0.02425` and its reflection. |
 
 ### Top-level values { #quantilewarp-kt-values }
 
@@ -2396,6 +2398,8 @@ continuous snapshot reads.
 
 <code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">QuantileFunction</span></code>
 
+The inverse CDF of the distribution you want a signal reshaped *into*: given a probability, the value at that quantile. A SAM interface, so `QuantileFunction { p -> ... }` is enough.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">quantile</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
@@ -2403,6 +2407,8 @@ continuous snapshot reads.
 ### TargetDistributions { #quantilewarp-kt-targetdistributions }
 
 <code class="highlight"><span class="k">object</span> <span class="nc">TargetDistributions</span></code>
+
+The ready-made [`QuantileFunction`](graphics.md#quantilewarp-kt-quantilefunction) targets: `UnitNormal` (the default target of [`AdaptiveQuantileWarp`](graphics.md#quantilewarp-kt-adaptivequantilewarp)), `Uniform01`, and `uniform` for an arbitrary range.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2413,6 +2419,8 @@ continuous snapshot reads.
 ### QuantileWarpConfig { #quantilewarp-kt-quantilewarpconfig }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">QuantileWarpConfig</span><span class="p">(</span><span class="k">val</span> <span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">defaultQuantileWarpProbabilities</span><span class="p">.</span><span class="nf">copyOf</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">historyFrames</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">smoothingAlpha</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.20</span><span class="p">,</span> <span class="k">val</span> <span class="n">epsilonRelative</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="k">val</span> <span class="n">epsilonAbsolute</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span></code>
+
+How [`AdaptiveQuantileWarp`](graphics.md#quantilewarp-kt-adaptivequantilewarp) fits: which eight quantiles to measure, how much history to pool, and how fast to move.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2425,6 +2433,8 @@ continuous snapshot reads.
 ### QuantileWarpState { #quantilewarp-kt-quantilewarpstate }
 
 <code class="highlight"><span class="k">class</span> <span class="nf">QuantileWarpState</span><span class="p">(</span><span class="n">probabilities</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">inputKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">targetKnots</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">historySampleCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
+
+One fitted warp: eight `inputKnots` measured from the signal, eight `targetKnots` from the target distribution, and the monotone PCHIP curve through them.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2444,6 +2454,8 @@ continuous snapshot reads.
 ### AdaptiveQuantileWarp { #quantilewarp-kt-adaptivequantilewarp }
 
 <code class="highlight"><span class="k">class</span> <span class="nf">AdaptiveQuantileWarp</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">config</span><span class="p">:</span> <span class="nc">QuantileWarpConfig</span> <span class="o">=</span> <span class="nc">QuantileWarpConfig</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">QuantileFunction</span> <span class="o">=</span> <span class="nc">TargetDistributions</span><span class="p">.</span><span class="nc">UnitNormal</span><span class="p">)</span></code>
+
+Reshapes a signal's distribution into a target one, adaptively: hand `update` a batch of samples and get back a [`QuantileWarpState`](graphics.md#quantilewarp-kt-quantilewarpstate) whose `QuantileWarpState.evaluate` maps that signal onto the target — `TargetDistributions.UnitNormal` unless you pass another.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2758,7 +2770,7 @@ including inside the docs build.
 
 `src/jvmMain/kotlin/afield/stdlib/spatial_field.kt`
 
-**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md)
 
 ### Top-level functions { #spatial-field-kt-functions }
 
