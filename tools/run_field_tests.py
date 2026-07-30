@@ -336,6 +336,14 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
       against a half-dead server and reported a green. ``--no-reap`` never helped, because it
       protects everyone else from you and nobody from them.
 
+      This is not a story about the past tense. While *verifying* this very change, a
+      19-test run lost its server after 11 passes: the prewarm log ends
+      ``Process 'command ... java' finished with non-zero exit value 130 (this value may
+      indicate that the process was terminated with the SIGINT signal)`` after 45 s, and the
+      next two tests failed with ``ConnectionClosedError ... [code=1006]`` and "backdoor
+      returned no JSON result". Both passed on retry. Nothing inside a run SIGINTs its own
+      prewarm server mid-suite; a sibling checkout's unscoped preflight sweep does.
+
     Best effort: never fails the run. Pass ``dry_run`` (``--reap-dry-run``) to print the
     classification and kill nothing.
     """
