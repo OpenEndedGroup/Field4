@@ -453,7 +453,9 @@ showPlaneGrid(
 
 ![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-From here: `kMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
+**143** points at spacing 18 and **558** at 4.5 — `3.90×` for a 4× finer spacing, which is the honest
+check that the resampler is walking arc length and not emitting one point per stored vertex. From
+here `vec2KMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
 
 ## Loading a font
