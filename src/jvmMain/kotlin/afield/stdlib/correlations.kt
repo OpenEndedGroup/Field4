@@ -53,9 +53,11 @@ import kotlin.math.*
  * single NaN in either array propagates straight into the result. Variances and covariances are the
  * population (divide by n) forms, which cancels out of a correlation anyway.
  *
- * The rank-based members all sort by value with a stable tie-break on the original index:
- * [ranksAverageTies] hands tied values their average rank, while the private helper inside
- * [micTicNaive] uses plain order ranks, which is all its equipartition binning needs.
+ * The rank-based members sort by value, and each has its own answer for ties. [ranksAverageTies] hands
+ * tied values their average rank; the private helper inside [micTicNaive] uses plain order ranks, which
+ * is all its equipartition binning needs; [chatterjeeXi] resolves ties among the `x` values by taking the
+ * expectation over all their orderings, so — unlike the other two — its answer does not depend on the
+ * order the pairs were presented in.
  */
 object StatsDependence {
 
@@ -232,12 +234,31 @@ object StatsDependence {
     // Tie-aware finite-sample form:
     // xi_n = 1 - n * sum_{i=1}^{n-1} |R_{i+1} - R_i| / (2 * sum_i L_i (n - L_i))
     // where:
-    // - observations are ordered by x (ties are broken deterministically by index)
+    // - observations are ordered by x
     // - R_i = #{j : y_j <= y_i}
     // - L_i = #{j : y_j >= y_i}
     //
     // For continuous y (no ties), this reduces to:
     // 1 - 3 * sum |rank(y_{i+1}) - rank(y_i)| / (n^2 - 1)
+    //
+    // Chatterjee (2021) defines the estimator for tied x by breaking those ties *uniformly at random*,
+    // which makes xi_n a random variable. Rather than pick a seed we evaluate its expectation in closed
+    // form. The denominator does not depend on the tie-breaking at all, so
+    //   E[xi_n] = 1 - n * E[sum |R_{i+1} - R_i|] / (2 * sum_i L_i (n - L_i))
+    // exactly, and only the numerator needs an expectation. Group the x-order into runs of equal x:
+    // inside a run of size m a uniformly random permutation makes each of the m-1 adjacent pairs a
+    // uniformly chosen unordered pair of distinct members, and across the boundary between runs g and h
+    // the adjacent pair is one uniform member of each. So
+    //   E[intra(g)]   = (2/m) * sum_{a<b in g} |R_a - R_b|
+    //   E[cross(g,h)] = (1/(|g|*|h|)) * sum_{a in g, b in h} |R_a - R_b|
+    // Both are computable in O(m log m) from the run's sorted R values, so the whole function stays
+    // O(n log n). For distinct x every run has m = 1: intra vanishes and cross degenerates to the plain
+    // |R_a - R_b|, the same arithmetic in the same order as the untied form, so untied inputs are
+    // bit-identical to the simple sum.
+    //
+    // Breaking x-ties by input index instead — which this did until 2026-07-30 — silently scores how
+    // nearly y is a function of *arrival order*: a constant predictor read 0.9702970297029703 at n=100
+    // and a two-valued one read 0.9702330025889176 at n=300, for predictors carrying no information.
     // -------------------------
     /**
      * Chatterjee's xi, which is **asymmetric on purpose**: it measures how nearly `y` is a *function* of
@@ -246,9 +267,19 @@ object StatsDependence {
      * parabola, where [pearson] reads 0 and [kendallTauB] not much more.
      *
      * Values are asymptotically in 0..1, but the finite-sample form used here can come out slightly
-     * negative for small n, so do not clamp it and call it a probability. Ties in either variable go
-     * through the tie-aware form, x-ties break by index, and when every y is identical the denominator
-     * vanishes and it returns 0.0. O(n log n) — the cheap one to reach for on a long series.
+     * negative for small n, so do not clamp it and call it a probability. When every y is identical the
+     * denominator vanishes and it returns 0.0. O(n log n) — the cheap one to reach for on a long series.
+     *
+     * **Ties.** Chatterjee's estimator is only defined up to a *random* breaking of the ties among the
+     * `x` values, so on tied `x` this returns the exact expectation of xi over all such breakings —
+     * deterministic, reproducible, and invariant to the order you present the pairs in. Two consequences
+     * worth knowing: a constant predictor gives exactly 0.0 (the closed form is exactly zero for every n,
+     * not merely close to it), and quantised or categorical `x` is answered honestly rather than being
+     * scored on arrival order. Inputs with all-distinct `x` are unaffected, bit for bit.
+     *
+     * Until 2026-07-30 x-ties broke by input index instead, so a constant predictor read **0.970** and a
+     * two-valued predictor of nothing but the arrival index read **0.970** — high scores for carrying no
+     * information at all. If you have recorded xi values on tied `x` from before that, they are wrong.
      */
     fun chatterjeeXi(x: DoubleArray, y: DoubleArray): Double {
         requireSameSize(x, y)
@@ -280,13 +311,6 @@ object StatsDependence {
             pos = end + 1
         }
 
-        var sumAbsDiff = 0L
-        for (i in 0 until n - 1) {
-            val a = r[orderByX[i]]
-            val b = r[orderByX[i + 1]]
-            sumAbsDiff += abs(a - b).toLong()
-        }
-
         var denomTerm = 0L
         for (i in 0 until n) {
             val li = l[i].toLong()
@@ -296,8 +320,67 @@ object StatsDependence {
         val denominator = 2.0 * denomTerm.toDouble()
         if (denominator == 0.0) return 0.0 // e.g. all y identical
 
-        val numerator = n.toDouble() * sumAbsDiff.toDouble()
+        // E[sum |R_{i+1} - R_i|] over uniformly random breakings of the x-ties. See the note above for
+        // why the expectation of the ratio is the ratio with the expectation, and why m = 1 everywhere
+        // (all-distinct x) reproduces the plain sum exactly.
+        var expectedSumAbsDiff = 0.0
+        var previousRun: DoubleArray? = null
+        var runStart = 0
+        while (runStart < n) {
+            var runEnd = runStart
+            val xv = x[orderByX[runStart]]
+            while (runEnd + 1 < n && x[orderByX[runEnd + 1]] == xv) runEnd++
+
+            val m = runEnd - runStart + 1
+            val run = DoubleArray(m) { r[orderByX[runStart + it]].toDouble() }
+            run.sort()
+
+            if (m >= 2) expectedSumAbsDiff += 2.0 / m * pairwiseAbsSum(run)
+            previousRun?.let { p ->
+                expectedSumAbsDiff += crossAbsSum(p, run) / (p.size.toDouble() * m.toDouble())
+            }
+
+            previousRun = run
+            runStart = runEnd + 1
+        }
+
+        val numerator = n.toDouble() * expectedSumAbsDiff
         return 1.0 - (numerator / denominator)
+    }
+
+    /**
+     * `sum_{a<b} |v_a - v_b|` over an **ascending-sorted** array, in one pass: each element is the larger
+     * of the `k` pairs below it and the smaller of the `m-1-k` above, so it contributes with weight
+     * `2k - m + 1`. O(m) given the sort.
+     */
+    private fun pairwiseAbsSum(sortedValues: DoubleArray): Double {
+        val m = sortedValues.size
+        var total = 0.0
+        for (k in 0 until m) total += (2 * k - m + 1) * sortedValues[k]
+        return total
+    }
+
+    /**
+     * `sum_{a in A, b in B} |A_a - B_b|` over two **ascending-sorted** arrays, by walking a pointer into
+     * `b` and keeping its running prefix sum, so each `a` splits `b` into the part below it and the part
+     * above. O(|A| + |B|) rather than the naive product.
+     */
+    private fun crossAbsSum(a: DoubleArray, b: DoubleArray): Double {
+        var sumB = 0.0
+        for (v in b) sumB += v
+
+        var total = 0.0
+        var j = 0
+        var prefix = 0.0 // sum of b[0 until j], i.e. the entries known to be <= the current a
+        for (va in a) {
+            while (j < b.size && b[j] <= va) {
+                prefix += b[j]
+                j++
+            }
+            // below: j entries, each contributing va - b; above: b.size - j entries, contributing b - va
+            total += va * j - prefix + (sumB - prefix) - va * (b.size - j)
+        }
+        return total
     }
 
     /**
@@ -827,8 +910,10 @@ class RollingXiCorrelation(private val windowSize: Int) {
 
     /**
      * Xi over the window's current contents without pushing anything, or null while fewer than two samples
-     * have arrived. Copies the window out in arrival order first; since [StatsDependence.chatterjeeXi]
-     * sorts by x itself, that order only decides how x-ties break.
+     * have arrived. Copies the window out in arrival order first, which no longer matters to the answer:
+     * [StatsDependence.chatterjeeXi] sorts by x itself and resolves x-ties by expectation rather than by
+     * position, so the result depends only on *which* pairs are in the window and not on where in the ring
+     * buffer they happen to sit.
      */
     fun current(): Double? {
         if (n < 2) return null

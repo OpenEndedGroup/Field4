@@ -14,9 +14,9 @@ import kotlin.test.assertFailsWith
  *
  * The load-bearing test is [rolling distance correlation agrees with the batch call], and it is a
  * genuine cross-check rather than an identity: [RollingDistanceCorrelation] only ever adds to and
- * subtracts from maintained row/grand/cross sums (`correlations.kt:689`, `correlations.kt:742`),
+ * subtracts from maintained row/grand/cross sums (`correlations.kt:770`, `correlations.kt:823`),
  * while [StatsDependence.distanceCorrelation] materialises two full n×n distance matrices and
- * double-centres them (`correlations.kt:334`). Two different algorithms, one answer. That the guard
+ * double-centres them (`correlations.kt:415`). Two different algorithms, one answer. That the guard
  * can fire is pinned by [comparing against the wrong window does disagree] — otherwise a tolerance
  * this tight would be evidence of a tautology rather than of correctness.
  *
@@ -89,26 +89,162 @@ class RollingDependenceTest {
     }
 
     /**
-     * The sharp edge `statistics_examples.md` warns about: `chatterjeeXi` breaks x-ties by original
-     * index (`correlations.kt:257`), so with a constant predictor it silently scores how nearly `y`
-     * is a function of *arrival order*.
+     * A predictor that is *constant* carries no information about anything, so xi must read 0 — and
+     * the answer must not depend on the order the pairs were handed over in.
+     *
+     * The oracle is analytic rather than a recorded number. Under Chatterjee's prescription (break
+     * x-ties uniformly at random) a single tie group of size n with distinct y gives
+     * `E[sum |R_{i+1} - R_i|] = (n^2 - 1)/3` while the denominator is `2 * n(n+1)(n-1)/6`, so
+     * `xi = 1 - n(n^2-1)/3 / (n(n^2-1)/3)` is **exactly** zero for every n. Hence the 0.0 tolerance:
+     * it is not a tight empirical fit, it is the closed form.
+     *
+     * Before `correlations.kt` computed that expectation it broke x-ties by input index, and this
+     * case returned 0.970297 — a near-perfect dependence score for a predictor carrying nothing.
      */
     @Test
-    fun `xi with a constant predictor scores arrival order, not dependence`() {
+    fun `xi on a constant predictor is exactly zero, whatever order the pairs arrived in`() {
         val n = 100
         val const = DoubleArray(n) { 4.0 }
         val inArrivalOrder = DoubleArray(n) { it.toDouble() }
-        assertTrue(
-            StatsDependence.chatterjeeXi(const, inArrivalOrder) > 0.9,
-            "documented artefact: ${StatsDependence.chatterjeeXi(const, inArrivalOrder)}",
+        assertEquals(
+            0.0,
+            StatsDependence.chatterjeeXi(const, inArrivalOrder),
+            0.0,
+            "a constant predictor explains nothing; the closed form is exactly 0",
         )
         val shuffled = (0 until n).shuffled(java.util.Random(2)).map { it.toDouble() }.toDoubleArray()
-        assertTrue(
-            abs(StatsDependence.chatterjeeXi(const, shuffled)) < 0.1,
-            "shuffling the pairs restores the honest answer: ${StatsDependence.chatterjeeXi(const, shuffled)}",
+        assertEquals(
+            0.0,
+            StatsDependence.chatterjeeXi(const, shuffled),
+            0.0,
+            "and the same 0 regardless of arrival order",
         )
-        // and the documented "all y identical -> 0.0" branch (correlations.kt:297)
+        // the "all y identical -> 0.0" branch is unaffected
         assertEquals(0.0, StatsDependence.chatterjeeXi(inArrivalOrder, const), 0.0)
+    }
+
+    /**
+     * The constant predictor was only the clearest symptom. The bug was arrival order leaking through
+     * *any* x-tie, so the case that matters is heavy ties: a few distinct x values with many repeats,
+     * which is what you get from a quantised sensor, a binned covariate or a categorical predictor.
+     *
+     * Here x cycles over three values and y is the arrival index, so x predicts nothing about y and
+     * xi must read ~0. Index tie-breaking returned **+0.950566** at n=300 and **+0.799280** for the
+     * four-value variant at n=100 (both measured against the pre-fix code). The tolerance is loose on
+     * purpose: the honest answer is a small negative number near zero, not exactly zero, because y's
+     * ranks are not uniformly spread inside each tie group.
+     */
+    @Test
+    fun `xi does not leak arrival order through heavy x-ties`() {
+        for (distinct in intArrayOf(2, 3, 4, 5, 10)) {
+            val n = 300
+            val x = DoubleArray(n) { (it % distinct).toDouble() }
+            val y = DoubleArray(n) { it.toDouble() } // pure arrival order: unpredictable from x
+            val v = StatsDependence.chatterjeeXi(x, y)
+            assertTrue(
+                abs(v) < 0.05,
+                "x with $distinct distinct values predicts nothing about arrival order, got $v",
+            )
+        }
+    }
+
+    /**
+     * Permutation invariance, stated directly: relabelling *which sample arrived first* cannot change
+     * a dependence measure. Ten shuffles of a heavily-tied pair set must all give one answer.
+     *
+     * This is the property the index tie-break violated, and it is checked independently of what the
+     * right number is — so it would fail for any order-sensitive tie rule, including a differently
+     * seeded random one.
+     */
+    @Test
+    fun `xi is invariant to the order the pairs are presented in`() {
+        val n = 200
+        val rnd = java.util.Random(17)
+        val xs = DoubleArray(n) { (it % 7).toDouble() }              // heavy ties
+        val ys = DoubleArray(n) { (it % 13).toDouble() + 0.5 * (it / 13) } // some y-ties too
+        val reference = StatsDependence.chatterjeeXi(xs, ys)
+        repeat(10) {
+            val perm = (0 until n).shuffled(rnd)
+            val px = DoubleArray(n) { xs[perm[it]] }
+            val py = DoubleArray(n) { ys[perm[it]] }
+            assertEquals(
+                reference,
+                StatsDependence.chatterjeeXi(px, py),
+                1e-12,
+                "xi changed when only the presentation order changed",
+            )
+        }
+    }
+
+    /**
+     * A cross-implementation oracle for the tied-x path, and the check that keeps the fix from being
+     * "return something near zero whenever x has ties".
+     *
+     * The expected values come from a second, independent implementation (a Python transcription written
+     * from the paper's definition, not from this code) whose answers were in turn validated against a
+     * 30 000-replication Monte Carlo of the *randomised* estimator — the thing the closed form is the
+     * expectation of. Agreement was within 1.5 standard errors on every case below, so these numbers are
+     * not this function reporting on itself.
+     *
+     * The two strong cases matter most: heavy ties with a real relationship still read **0.891**, so the
+     * fix has not flattened genuine dependence — it has removed 0.990, the inflated reading that the
+     * within-group arrival ordering used to add on top of it.
+     */
+    @Test
+    fun `xi on tied x matches an independent implementation and its Monte-Carlo`() {
+        val n = 300
+        // no information: x cycles, y is the arrival index
+        assertEquals(
+            -0.006577850865009616,
+            StatsDependence.xi(DoubleArray(n) { (it % 3).toDouble() }, DoubleArray(n) { it.toDouble() }),
+            1e-12,
+        )
+        // real dependence through ties: ten blocks of thirty, y rising across and within blocks.
+        // Pre-fix this read 0.990033, inflated by the arrival order inside each block.
+        assertEquals(
+            0.8911099012211247,
+            StatsDependence.xi(
+                DoubleArray(n) { (it / 30).toDouble() },
+                DoubleArray(n) { ((it / 30) * (it / 30)).toDouble() + (it % 30) / 100.0 },
+            ),
+            1e-12,
+        )
+        // and the same value for the interleaved presentation of the same structure, which is the
+        // permutation invariance again but with a number attached
+        assertEquals(
+            0.8911099012211247,
+            StatsDependence.xi(
+                DoubleArray(n) { (it % 10).toDouble() },
+                DoubleArray(n) { ((it % 10) * (it % 10)).toDouble() + (it / 10) / 50.0 },
+            ),
+            1e-12,
+        )
+        // When y is constant inside every x-tie group the tie-breaking cannot matter, so this case is
+        // unchanged by the fix — a V shape read 0.9824016563146998 before and after.
+        assertEquals(
+            0.9824016563146998,
+            StatsDependence.xi(
+                DoubleArray(n) { (it / 30).toDouble() },
+                DoubleArray(n) { abs(it / 30 - 5).toDouble() },
+            ),
+            1e-12,
+        )
+    }
+
+    /**
+     * The tie-aware path must not have moved the tie-*free* answers, because the published figures on
+     * `statistics_examples.md` and `interpolants_examples.md` are tie-free and their numbers are
+     * quoted in prose. With every x distinct each tie group has size one, the expectation is over a
+     * single ordering, and the arithmetic reduces term-for-term to the old sum — so this asserts
+     * *bit* equality against values recorded from the pre-fix implementation, not a tolerance.
+     */
+    @Test
+    fun `tie-free xi is bit-identical to the pre-fix implementation`() {
+        val n = 400
+        val x = DoubleArray(n) { it / (n - 1.0) * 2.0 - 1.0 }
+        // Recorded by running the pre-fix build, which sorted by x and never consulted the index here.
+        assertEquals(0.9850375467576664, StatsDependence.xi(x, DoubleArray(n) { x[it] * x[it] }), 0.0)
+        assertEquals(0.9925187032418953, StatsDependence.xi(x, DoubleArray(n) { -x[it] }), 0.0)
     }
 
     @Test
@@ -218,7 +354,7 @@ class RollingDependenceTest {
     }
 
     /**
-     * The KDoc at `correlations.kt:586` warns that the maintained sums accumulate floating-point
+     * The KDoc at `correlations.kt:667` warns that the maintained sums accumulate floating-point
      * drift. They do — and this pins how much, because the docs page quotes the bound.
      */
     @Test
@@ -297,7 +433,7 @@ class RollingDependenceTest {
             )
             worst = maxOf(worst, abs(batch - rolling))
         }
-        // It literally calls chatterjeeXi over a copy of the window (correlations.kt:843), so this
+        // It literally calls chatterjeeXi over a copy of the window (correlations.kt:924), so this
         // is bit-exact rather than merely close, and any deviation means the window is wrong.
         assertEquals(0.0, worst, 0.0)
     }

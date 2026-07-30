@@ -279,20 +279,31 @@ where `y` is a perfect function of `x`, it reads 0.491; on the sine, 0.286. Lowe
 mean weaker dependence, it means less *linear* dependence. Use it to decide whether to keep
 looking, then use something else to describe what you found.
 
-!!! warning "`xi` with a tied predictor silently measures arrival order"
+!!! note "How `xi` handles a tied predictor"
 
-    `chatterjeeXi` sorts by `x` with the original index as tie-break
-    (`correlations.kt:257`–`correlations.kt:259`). That makes it deterministic, which is a real
-    virtue — and it means that when `x` has heavy ties, part of what it measures is dependence on
-    *the order the samples arrived in*. At the limit: with `x` constant and `y = 0, 1, 2, … 99` in
-    arrival order, `xi(x, y)` returns **0.970** — a near-perfect score for a predictor that
-    carries no information at all. Shuffle those same pairs and it returns **−0.036**, which is the
-    honest answer. Every other coefficient here refuses: `pearson`, `spearman` and `kendallTauB`
-    all return NaN on a constant, and `distanceCorrelation` returns 0.0.
+    Chatterjee's estimator is only defined up to a *random* breaking of the ties among the `x`
+    values, so on tied `x` it is a random variable rather than a number. Rather than pick a seed,
+    `chatterjeeXi` returns that random variable's **exact expectation**, computed in closed form
+    from the ranks inside each run of equal `x` (`correlations.kt:321`–`correlations.kt:343`). So it
+    is deterministic, reproducible, and — the property that matters — invariant to the order you
+    hand the pairs over in.
 
-    If your predictor is heavily quantised — a bucketed index, an integer control value, a
-    thresholded signal — either shuffle the pairs before calling `xi`, or use
-    `distanceCorrelation` instead.
+    Two consequences worth knowing. A **constant predictor gives exactly 0.0**, and exactly is the
+    right word: for a single tie group the numerator's expectation is `(n²−1)/3` against a
+    denominator of `n(n²−1)/3`, so the closed form is zero for every `n`. And a quantised predictor
+    — a bucketed index, an integer control value, a thresholded signal — is answered honestly:
+    heavy ties with a real relationship still read high (a ten-block staircase reads **0.891**),
+    while heavy ties with no relationship read ~0.
+
+    Inputs whose `x` values are all distinct are unaffected, bit for bit, so every number elsewhere
+    on this page is a tie-free case and reads the same as it always did.
+
+    **If you have xi values recorded on tied `x` from before 2026-07-30, they are wrong.** Until
+    then x-ties broke by input index, which silently scored how nearly `y` was a function of *the
+    order the samples arrived in*: a constant predictor read **0.970**, and so did a two-valued
+    predictor of nothing but the arrival index (n=300) — near-perfect scores for predictors carrying
+    no information at all. Every other coefficient here refuses that input outright: `pearson`,
+    `spearman` and `kendallTauB` return NaN on a constant, and `distanceCorrelation` returns 0.0.
 
 ## Is 0.193 big? The permutation test nobody wrote for you
 
@@ -412,9 +423,9 @@ invisible; distance correlation needs a few hundred samples before it can see a 
 A single coefficient over a whole recording answers the wrong question if the relationship comes
 and goes. `RollingDistanceCorrelation` maintains its row sums, grand sums and cross sums
 incrementally, so a `push` costs O(w) rather than the O(w²) a rebuild would
-(`correlations.kt:589`). `RollingXiCorrelation` makes no such promise — it recomputes
-`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:833`–
-`correlations.kt:844`) — which makes it exactly as trustworthy as the batch call and no faster.
+(`correlations.kt:670`). `RollingXiCorrelation` makes no such promise — it recomputes
+`chatterjeeXi` over the window every time, at O(w log w) (`correlations.kt:914`–
+`correlations.kt:925`) — which makes it exactly as trustworthy as the batch call and no faster.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/rolling_regime.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -515,9 +526,9 @@ the change, xi **48**. Distance correlation reacts sooner; xi ends up higher.
 The last line of that figure is a real cross-check and not a restatement.
 `RollingDistanceCorrelation` never rebuilds a distance matrix — it only adds to and subtracts from
 maintained sums — while `StatsDependence.distanceCorrelation` materialises two full w×w matrices
-and double-centres them (`correlations.kt:334`–`correlations.kt:414`). Two genuinely different
+and double-centres them (`correlations.kt:415`–`correlations.kt:495`). Two genuinely different
 algorithms, and on the final window they agree to **5×10⁻¹⁵**. The KDoc at
-`correlations.kt:586`–`correlations.kt:588` warns that the incremental sums drift over a long run,
+`correlations.kt:667`–`correlations.kt:669` warns that the incremental sums drift over a long run,
 and they do — but the drift is small: over **200 000** pushes with a window of 64, the largest
 disagreement sampled against the batch call was **8.6×10⁻¹⁴**. Both bounds are pinned in
 `RollingDependenceTest`.
