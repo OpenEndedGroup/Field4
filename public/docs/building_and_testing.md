@@ -70,6 +70,48 @@ cd public && python3 -m http.server 8000
 > fresh process per capture. It is opt-in and falls back to the ordinary capture
 > path after a configured session failure.
 
+## Is that published figure still true?
+
+A green docs build is **not** an answer to that question, and for a long time
+nothing was. The capture cache keys each figure on the fence's own code, its
+options, and a digest of the runner machinery, so editing a stdlib function that a
+fence *calls* used to leave every digest identical: the build was a 100% cache hit
+and re-executed nothing. Two things now close that gap.
+
+**The digest follows the code a fence reaches.** Each fence also hashes the source
+files its code text actually names (`sourceRefsDigest`), mapped through the
+committed [codebase reference](reference/index.md), so an `incremental` build
+re-captures the figures a stdlib edit can actually affect. What it cannot see is an
+*indirect* change — a function called by the function you edited.
+`FIELD_DOCS_SOURCE_REFS=stdlib` hashes the whole indexed stdlib for every fence
+instead (catches that, at the cost of re-capturing everything); `=off` restores the
+old behaviour.
+
+**The auditor answers it directly.** `tools/docs_capture_audit.py` re-runs captures
+from the real code and classifies each result against the *measured* run-to-run
+noise floor, so it can say "stale" rather than merely "different":
+
+```diffstatic {data-lang=bash}
+:::static
+# does this page's committed figures still match the code? (two runs = rigorous)
+uv run --group docs python tools/docs_capture_audit.py --page functions_examples --repeat 2
+
+# no Field, instant: rank capture assets by when they were last regenerated
+uv run --group docs python tools/docs_capture_audit.py --inventory
+
+# no Field: which source files does each fence reach, and what would touching one invalidate?
+uv run --group docs python tools/docs_capture_audit.py --plan --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
+```
+
+Captures are not byte-reproducible — only a handful are byte-stable run to run — so
+the comparison is per pixel against `git show HEAD:`, with jitter (≤0.02% of pixels
+at max channel delta ≤19) reported separately from a genuine re-render, and
+`--repeat 2` distinguishing a *nondeterministic* capture from a stale one. The
+working tree is restored after every run; the regenerated files are kept under
+`.field-backdoor/docs-audit/<timestamp>/` so you can look at the before/after
+yourself. Full background, including the noise-band measurements, is in
+`dev_docs/docs_capture_staleness.md`.
+
 ## Watching progress & debugging a build
 
 The runner prints per-capture progress as it goes, so a slow build is
