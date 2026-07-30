@@ -371,9 +371,17 @@ fun planeFigureHtml(
     val dotLayer = if (dots.isEmpty()) "" else
         "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"$width\" height=\"$height\" " +
             "style=\"position:absolute;left:0;top:0;overflow:visible\">$dots</svg>"
+    // Both text blocks are pinned to the picture's width, and that pin is load-bearing rather than
+    // cosmetic. [Box.showPlaneGrid] lays its cards out in `max-content` grid columns, and the
+    // max-content size of a block of text is its width with *no wrapping at all* — so an unpinned
+    // caption one line longer than the picture silently widens the whole column past `cellWidth`,
+    // pushes the grid wider than the box, and a docs `capture="box"` screenshot loses the last
+    // column entirely. Pinned, the column's max-content is exactly the picture plus this card's
+    // padding, whatever the caption says, and a long caption wraps onto another line instead.
     val titleHtml = title?.let {
         "<div style=\"font-family:monospace;font-size:12px;font-weight:700;letter-spacing:0.04em;" +
-            "color:#91a4ba;margin-bottom:8px\">${escapePlaneHtml(it)}</div>"
+            "color:#91a4ba;margin-bottom:8px;width:${width}px;overflow-wrap:break-word\">" +
+            "${escapePlaneHtml(it)}</div>"
     } ?: ""
     // The caption goes *above* the picture, which looks like a subtitle and is deliberate: a docs
     // `capture="box"` screenshot crops to the output area's measured height, and that measurement
@@ -382,7 +390,8 @@ fun planeFigureHtml(
     // can eat is the empty margin `fitInto` already leaves around the geometry.
     val captionHtml = caption?.let {
         "<div style=\"font-family:monospace;font-size:11px;line-height:1.5;color:#7f92a8;" +
-            "margin:-2px 0 8px 0\">${escapePlaneHtml(it)}</div>"
+            "margin:-2px 0 8px 0;width:${width}px;overflow-wrap:break-word\">" +
+            "${escapePlaneHtml(it)}</div>"
     } ?: ""
     return "<div style=\"padding:12px 12px 16px 12px;background:linear-gradient(180deg,#0d1219,#090d12);" +
         "border:1px solid #202b38;border-radius:10px\">$titleHtml$captionHtml" +
