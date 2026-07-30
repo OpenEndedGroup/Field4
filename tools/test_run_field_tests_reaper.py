@@ -113,6 +113,28 @@ class AttributionTests(unittest.TestCase):
         self.assertTrue(_command_belongs_to(emptied, MINE))
         self.assertFalse(_command_belongs_to(emptied, SIBLING))
 
+    def test_the_jvm_main_launcher_has_no_aot_property_at_all(self) -> None:
+        """Observed live, not hypothesised.
+
+        While this change was being verified, a sibling agent's smoke run appeared on the
+        machine as pid 23545: `afield.AgentJvmMainLauncher ... afield.examples.DemoTranscriptExecSmokeTest`,
+        68,496 characters of argv, **no `-Dafield.aot.cache.path` argument whatsoever**, and its
+        only checkout fingerprint the `-cp` entries under
+        `/Users/marc/field4-worktrees/2026-07-30-1-typography-geometry-family/build/`. So the
+        classpath fallback is the signal that spares the jvm-main path, and it is load-bearing
+        rather than defensive -- without it this checkout's reaper would have SIGKILLed another
+        agent's in-flight `demo-transcript.exec`, which is the exact failure being fixed.
+        """
+        launcher = (
+            f"{JAVA} -Xmx8g "
+            f"-cp {MINE}/build/classes/kotlin/jvm/main:{MINE}/libs/jep-4.3.1.jar "
+            "afield.AgentJvmMainLauncher afield.examples.DemoTranscriptExecSmokeTest"
+        )
+        self.assertNotIn("-Dafield.aot.cache.path", launcher)
+        self.assertTrue(_command_belongs_to(launcher, MINE))
+        self.assertFalse(_command_belongs_to(launcher, SIBLING))
+        self.assertFalse(_command_belongs_to(launcher, PRIMARY))
+
     def test_the_aot_signal_carries_it_without_a_classpath(self) -> None:
         # The jvm-main launcher path, and anything launched with a `@argfile` classpath.
         aot_only = (

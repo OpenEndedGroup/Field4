@@ -198,15 +198,21 @@ def _command_belongs_to(command: str, root: Path) -> bool:
     loosely against the whole line:
 
     * ``-Dafield.aot.cache.path=<root>/...`` -- ``build.gradle.kts``'s
-      ``fieldAotStatusJvmArgs`` stamps this onto *every* JVM it launches (``runJvm`` and the
-      jvm-main launcher alike), defaulting to ``<root>/build/aot/field.aot``. It is the
-      cheapest and most direct answer.
-    * a ``-classpath``/``-cp`` entry under ``<root>/build/`` -- the fallback for the one
-      configuration where the property above is emitted empty (``-PfieldAotCache=false``
-      resolves the cache file to null and the arg becomes ``...cache.path=``). ``<root>/build/``
-      rather than ``<root>/`` on purpose: a checkout's build output is unambiguous, whereas
-      ``<root>/`` would also match incidental paths such as a worktree's
-      ``<primary>/.git/worktrees/<name>`` gitdir.
+      ``fieldAotStatusJvmArgs`` puts this on the ``runJvm`` server, defaulting to
+      ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
+    * a ``-classpath``/``-cp`` entry under ``<root>/build/``. Not a theoretical fallback: an
+      observed ``afield.AgentJvmMainLauncher`` running
+      ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
+      ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
+      its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
+      resolves the cache file to null. ``<root>/build/`` rather than ``<root>/`` on purpose: a
+      checkout's build output is unambiguous, whereas ``<root>/`` would also match incidental
+      paths such as a worktree's ``<primary>/.git/worktrees/<name>`` gitdir.
+
+    Tokenising with ``split()`` is good enough here and not more: ``ps`` prints argument values
+    unquoted (``-Dafield.aot.detail=No AOT cache was requested. ...`` really does arrive as
+    several "arguments"), so this would mis-pair a ``-cp`` whose *value* contained a space.
+    Field's own paths do not, and the first signal is a plain substring test that does not care.
 
     A Field JVM that matches neither is *not* attributed to this checkout and is therefore
     left alone. That is deliberately conservative: failing to reap someone else's orphan
