@@ -11,7 +11,8 @@ from tools.field_backdoor import BackdoorError, CommandParseError, FieldBackdoor
 # under its package name, rather than reaching into the module's own imports.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tools.run_field_tests import build_backdoor_command  # noqa: E402  (path set up just above)
+import tools.run_field_tests as rft  # noqa: E402  (path set up just above)
+from tools.run_field_tests import build_backdoor_command  # noqa: E402
 
 
 class _Logger:
@@ -139,6 +140,130 @@ class JvmMainArgEmissionTests(unittest.TestCase):
             workspace=None,
         )
         self.assertNotIn("--arg", " ".join(cmd))
+
+
+class _FakePs:
+    """Stands in for `subprocess.run(["ps", ...])` with a fixed process table."""
+
+    def __init__(self, table: str) -> None:
+        self.stdout = table
+
+    def __call__(self, cmd, **_kwargs):
+        return self
+
+
+# One Field JVM per checkout, exactly as `ps -eo pid=,command=` renders them: argv[0] is the
+# java binary and the worktree shows up in the -D flags.
+def _field_jvm(pid: int, root: str, main: str = "afield.Server") -> str:
+    return (
+        f"{pid} /jdks/graalvm/bin/java "
+        f"-Dableton.link.library={root}/libs/libabl_link_jvm.dylib "
+        f"-Dafield.aot.cache.path={root}/build/aot/field.aot -cp {root}/build/classes {main}"
+    )
+
+
+class ReapScopeTests(unittest.TestCase):
+    """Backlog #20: reaping must not reach into a sibling worktree or the user's live Field."""
+
+    OURS = "/Users/marc/field4-worktrees/2026-07-29b-ci-warnings"
+    SIBLING = "/Users/marc/field4-worktrees/2026-07-28-ci-warnings"
+    PRIMARY = "/Users/marc/field4"
+
+    def _table(self) -> str:
+        return "\n".join([
+            _field_jvm(101, self.OURS),
+            _field_jvm(202, self.SIBLING),
+            _field_jvm(303, self.PRIMARY),
+            _field_jvm(404, self.OURS, main="afield.AgentJvmMainLauncher"),
+            # A Gradle daemon and a shell that merely mentions the marker: never reapable.
+            "505 /jdks/graalvm/bin/java -cp /gradle org.gradle.launcher.daemon.bootstrap.GradleDaemon",
+            "606 /bin/zsh -c grep afield.Server foo",
+        ])
+
+    def setUp(self) -> None:
+        self._real_run = rft.subprocess.run
+        rft.subprocess.run = _FakePs(self._table())
+        self._real_ancestors = rft._ancestor_pids
+        rft._ancestor_pids = lambda: set()
+        self._real_root = rft.REPO_ROOT
+        rft.REPO_ROOT = Path(self.OURS)
+
+    def tearDown(self) -> None:
+        rft.subprocess.run = self._real_run
+        rft._ancestor_pids = self._real_ancestors
+        rft.REPO_ROOT = self._real_root
+
+    def test_repo_scope_reaps_only_this_checkout(self) -> None:
+        pids = rft._stale_field_jvm_pids(exclude=set(), scope="repo")
+        self.assertEqual(sorted(pids), [101, 404])
+
+    def test_repo_scope_spares_sibling_worktree_and_primary_tree(self) -> None:
+        """The 2026-07-28 mutual destruction: a sibling agent session and the user's live app."""
+        pids = rft._stale_field_jvm_pids(exclude=set(), scope="repo")
+        self.assertNotIn(202, pids)
+        self.assertNotIn(303, pids)
+
+    def test_all_scope_preserves_the_old_machine_wide_behaviour(self) -> None:
+        pids = rft._stale_field_jvm_pids(exclude=set(), scope="all")
+        self.assertEqual(sorted(pids), [101, 202, 303, 404])
+
+    def test_neither_scope_touches_gradle_daemons_or_shells(self) -> None:
+        for scope in ("repo", "all"):
+            pids = rft._stale_field_jvm_pids(exclude=set(), scope=scope)
+            self.assertNotIn(505, pids, "Gradle daemon must survive")
+            self.assertNotIn(606, pids, "a shell mentioning the marker must survive")
+
+    def test_exclude_wins_over_scope(self) -> None:
+        """The port holder is left to recycle_field even though it is ours."""
+        pids = rft._stale_field_jvm_pids(exclude={101}, scope="repo")
+        self.assertEqual(pids, [404])
+
+    def test_scope_defaults_to_repo_and_rejects_junk(self) -> None:
+        import os
+        for value, expected in [(None, "repo"), ("", "repo"), ("repo", "repo"),
+                                ("all", "all"), ("ALL", "all"), ("sideways", "repo")]:
+            with self.subTest(value=value):
+                if value is None:
+                    os.environ.pop("AFIELD_TEST_REAP_SCOPE", None)
+                else:
+                    os.environ["AFIELD_TEST_REAP_SCOPE"] = value
+                self.assertEqual(rft._reap_scope(), expected)
+        os.environ.pop("AFIELD_TEST_REAP_SCOPE", None)
+
+
+class CompetingRunnerTests(unittest.TestCase):
+    """Backlog #20's other half: say so when a second runner is live."""
+
+    TABLE = "\n".join([
+        "111 /usr/bin/python3 /repo/tools/run_field_tests.py --refresh-catalog",
+        "222 /usr/bin/python3 /repo/tools/field_backdoor.py --command snapshot",
+        "333 /bin/zsh -c 'python tools/run_field_tests.py'",
+        "444 /usr/bin/python3 /repo/tools/other_thing.py",
+    ])
+
+    def setUp(self) -> None:
+        self._real_run = rft.subprocess.run
+        rft.subprocess.run = _FakePs(self.TABLE)
+        self._real_ancestors = rft._ancestor_pids
+        rft._ancestor_pids = lambda: set()
+
+    def tearDown(self) -> None:
+        rft.subprocess.run = self._real_run
+        rft._ancestor_pids = self._real_ancestors
+
+    def test_finds_other_runners_and_backdoors(self) -> None:
+        pids = [pid for pid, _ in rft._competing_runner_pids()]
+        self.assertEqual(sorted(pids), [111, 222])
+
+    def test_ignores_shells_and_unrelated_python(self) -> None:
+        pids = [pid for pid, _ in rft._competing_runner_pids()]
+        self.assertNotIn(333, pids, "a shell quoting the script name is not a runner")
+        self.assertNotIn(444, pids, "an unrelated python script is not a runner")
+
+    def test_excludes_our_own_process_chain(self) -> None:
+        rft._ancestor_pids = lambda: {111}
+        pids = [pid for pid, _ in rft._competing_runner_pids()]
+        self.assertEqual(pids, [222])
 
 
 if __name__ == "__main__":

@@ -212,7 +212,29 @@ def _ancestor_pids() -> set[int]:
     return chain
 
 
-def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
+def _reap_scope() -> str:
+    """``repo`` (default) reaps only this checkout's Field JVMs; ``all`` reaps machine-wide."""
+    value = os.environ.get("AFIELD_TEST_REAP_SCOPE", "").strip().lower()
+    return value if value in {"repo", "all"} else "repo"
+
+
+def _stale_field_jvm_pids(*, exclude: set[int], scope: str | None = None) -> list[int]:
+    """Field JVMs eligible for reaping.
+
+    Scoped to **this checkout** by default. A Field JVM's command line carries absolute paths
+    into the tree it was launched from (`-Dafield.aot.cache.path=<root>/build/aot/field.aot`,
+    `-Dableton.link.library=<root>/libs/...`), so "is this one mine?" is directly answerable.
+
+    That matters because this reaper runs unconditionally at startup and used to kill **every**
+    Field JVM on the machine: a sibling worktree's agent session, another concurrent test run, or
+    the user's own live Field application. On 2026-07-28 that mutual destruction produced four
+    failures with four *different* infrastructure signatures and a result that could not be
+    re-run without killing someone else's session (Backlog #20). Reaping siblings was never the
+    point -- clearing *this* checkout's orphans was.
+
+    Set ``AFIELD_TEST_REAP_SCOPE=all`` for the old machine-wide behaviour when that is genuinely
+    wanted (e.g. a CI orchestrator deliberately clearing the machine first).
+    """
     try:
         out = subprocess.run(
             ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
@@ -220,6 +242,8 @@ def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
     except (OSError, subprocess.TimeoutExpired):
         return []
     protected = exclude | _ancestor_pids()
+    scope = scope or _reap_scope()
+    root_marker = str(REPO_ROOT)
     pids: list[int] = []
     for line in out.splitlines():
         line = line.strip()
@@ -238,9 +262,44 @@ def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
         # which in testing reaped the very shell running the reaper.
         if os.path.basename(argv0) != "java":
             continue
-        if any(marker in rest for marker in FIELD_JVM_MARKERS):
-            pids.append(pid)
+        if not any(marker in rest for marker in FIELD_JVM_MARKERS):
+            continue
+        if scope == "repo" and root_marker not in rest:
+            continue
+        pids.append(pid)
     return pids
+
+
+def _competing_runner_pids() -> list[tuple[int, str]]:
+    """Other live `run_field_tests.py` / `field_backdoor.py` processes, excluding our own chain.
+
+    Two concurrent runs are mutually destructive even with scoped reaping, because they contend
+    for the same port and the same shared Field server. There is no lock; the least this can do
+    is say so loudly rather than let the run produce an inexplicable spread of failures.
+    """
+    try:
+        out = subprocess.run(
+            ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
+        ).stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    mine = _ancestor_pids() | {os.getpid()}
+    found: list[tuple[int, str]] = []
+    for line in out.splitlines():
+        head, _, command = line.strip().partition(" ")
+        try:
+            pid = int(head)
+        except ValueError:
+            continue
+        if pid in mine:
+            continue
+        # Must be a python process actually running the script, not a shell mentioning it.
+        argv0 = command.partition(" ")[0]
+        if "python" not in os.path.basename(argv0):
+            continue
+        if "run_field_tests.py" in command or "field_backdoor.py" in command:
+            found.append((pid, command[:120]))
+    return found
 
 
 def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
@@ -272,15 +331,30 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
         subprocess.run(["killall", "-9", "java"], capture_output=True, text=True, timeout=30, check=False)
         return
 
+    competing = _competing_runner_pids()
+    if competing:
+        print(
+            "WARNING: another Field test runner / backdoor appears to be live -- concurrent runs "
+            "contend for the same port and shared Field server, and results from this run may be "
+            "contaminated (see Backlog #20):\n"
+            + "\n".join(f"  pid {pid}: {cmd}" for pid, cmd in competing),
+            file=sys.stderr, flush=True,
+        )
+
     # Leave the port holder to recycle_field, which SIGINTs it first so it can
     # dispose its GPU/window resources instead of leaking them.
     keep = set(_pids_listening_on(port))
-    pids = _stale_field_jvm_pids(exclude=keep)
+    scope = _reap_scope()
+    pids = _stale_field_jvm_pids(exclude=keep, scope=scope)
     if not pids:
         return
 
+    scope_note = (
+        f"this checkout ({REPO_ROOT})" if scope == "repo"
+        else "EVERY Field JVM on this machine (AFIELD_TEST_REAP_SCOPE=all)"
+    )
     print(
-        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs: "
+        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs in {scope_note}: "
         + ", ".join(_describe_pid(pid) for pid in pids),
         file=sys.stderr, flush=True,
     )
@@ -292,11 +366,11 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
 
     deadline = time.monotonic() + grace
     while time.monotonic() < deadline:
-        if not _stale_field_jvm_pids(exclude=keep):
+        if not _stale_field_jvm_pids(exclude=keep, scope=scope):
             return
         time.sleep(0.5)
 
-    survivors = _stale_field_jvm_pids(exclude=keep)
+    survivors = _stale_field_jvm_pids(exclude=keep, scope=scope)
     for pid in survivors:
         try:
             os.kill(pid, signal.SIGKILL)
