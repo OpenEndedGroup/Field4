@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. The two decisions inside marching squares
@@ -184,9 +184,85 @@ showPlaneGrid(
 )
 ```
 
-## 3. Delaunay, and the Voronoi dual
+## 3. Sweep the weight, and watch the bisector bow
 
-<!-- field-box id="spatial_delaunay" index="2" -->
+<!-- field-box id="spatial_apollonius_sweep" index="2" -->
+
+### Narrative
+
+From `code`
+
+The animated twin of "When the bisector is a circle". Three stills at three weights argue
+that a straight bisector becomes a circle; sweeping the weight SHOWS it. Launch this box
+(it ends in `animate`, so it runs until you stop it) and watch three things:
+- only the edges that TOUCH site 1 bow. A bisector between two equally weighted sites
+stays exactly straight, which is why both counts are in the caption.
+- the counts JUMP rather than drift: the total piece count falls when a light neighbour
+is swallowed, because an enclosed cell needs one full circle where it needed several
+arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
+- at exactly 1.0 the whole diagram snaps to straight lines. The piece type is decided
+by an EXACT equality of weights, so it really is discontinuous.
+
+```edn [field-box id="spatial_apollonius_sweep" role="properties"]
+{"id" "spatial_apollonius_sweep" "index" 2 "name" "Sweep the weight, and watch the bisector bow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the weight, and watch the bisector bow" "_tombstone" false "frame" #afield/rect [1020.0 500.0 620.0 700.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_sweep_code_.kt" "lines" 50 "characters" 2723 "sha256" "536b7491263de233d0c14c1e57647f0eaa233947377af8b3136642a13415f333"}]}
+```
+
+```kotlin [field-property box="spatial_apollonius_sweep" name="code" path="spatial_apollonius_sweep_code_.kt"]
+// The animated twin of "When the bisector is a circle". Three stills at three weights argue
+// that a straight bisector becomes a circle; sweeping the weight SHOWS it. Launch this box
+// (it ends in `animate`, so it runs until you stop it) and watch three things:
+//   - only the edges that TOUCH site 1 bow. A bisector between two equally weighted sites
+//     stays exactly straight, which is why both counts are in the caption.
+//   - the counts JUMP rather than drift: the total piece count falls when a light neighbour
+//     is swallowed, because an enclosed cell needs one full circle where it needed several
+//     arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
+//   - at exactly 1.0 the whole diagram snaps to straight lines. The piece type is decided
+//     by an EXACT equality of weights, so it really is discontinuous.
+val positions = listOf(
+    vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+)
+val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
+// A FIXED window. Left to fit its own bounds each frame the picture rescales as the arcs
+// swell, and the sweep appears to stand still.
+val window = Rect(-3.4, -3.4, 8.0, 8.0)
+val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
+val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
+val heavy = 1                 // the site whose weight is swept; the other four stay at 1.0
+val sweepSeconds = 9.0
+val started = System.nanoTime()
+
+// The line that turns elapsed time into the swept parameter — the one you would change. A
+// triangle ramp rather than a saw, so it runs out to 2.7 and back to 1.0 with no jump.
+fun weightAt(elapsed: Double): Double {
+    val phase = (elapsed / sweepSeconds) % 1.0
+    return 1.0 + 1.7 * (1.0 - abs(1.0 - 2.0 * phase))
+}
+
+animate {
+    val w = weightAt((System.nanoTime() - started) / 1e9)
+    val diagram = CircularDirichlet.build(
+        positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
+    )
+    val arcs = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
+    val straight = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.LinePiece } }
+    val enclosed = diagram.cells.count { c ->
+        c.pieces.size == 1 &&
+            (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+    }
+    showPlane(
+        diagram.toFLines(clip = clip, maxChordError = 0.005f, palette = palette, thickness = 1.6) + cloud,
+        title = "site 1 weight %.2f".format(w),
+        caption = "$arcs arcs, $straight straight, enclosed $enclosed",
+        width = 560,
+        height = 560,
+        window = window,
+    )
+}
+```
+
+## 4. Delaunay, and the Voronoi dual
+
+<!-- field-box id="spatial_delaunay" index="3" -->
 
 ### Narrative
 
@@ -197,7 +273,7 @@ cell per site, the triangulation joins two sites exactly when their cells share 
 vec2VoronoiDualGraph is literally one line in the source that returns vec2DelaunayGraph.
 
 ```edn [field-box id="spatial_delaunay" role="properties"]
-{"id" "spatial_delaunay" "index" 2 "name" "Delaunay, and the Voronoi dual" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Delaunay, and the Voronoi dual" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_delaunay_code_.kt" "lines" 71 "characters" 3511 "sha256" "35b9a2469b47748c497e261c52b74b2d49612fcc707ce54cee44ee35d645e0a7"}]}
+{"id" "spatial_delaunay" "index" 3 "name" "Delaunay, and the Voronoi dual" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Delaunay, and the Voronoi dual" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_delaunay_code_.kt" "lines" 71 "characters" 3511 "sha256" "35b9a2469b47748c497e261c52b74b2d49612fcc707ce54cee44ee35d645e0a7"}]}
 ```
 
 ```kotlin [field-property box="spatial_delaunay" name="code" path="spatial_delaunay_code_.kt"]
@@ -274,9 +350,81 @@ showPlaneGrid(
 )
 ```
 
-## 4. When the bisector is a circle
+## 5. Sweep the iso level through the saddle
 
-<!-- field-box id="spatial_apollonius" index="3" -->
+<!-- field-box id="spatial_iso_sweep" index="4" -->
+
+### Narrative
+
+From `code`
+
+The animated twin of "The two decisions inside marching squares". That box argues about a
+single ambiguous cell; this one shows why the cell matters. Two Gaussian bumps, and the
+iso level swept from 0.18 to 0.78 and back through the saddle between the peaks. Below
+the saddle there is ONE contour around both peaks, above it there are TWO, one per peak,
+and the changeover is a frame where the marcher's four corner values decide the topology.
+Contours are coloured by index, so the merge reads as a colour vanishing.
+
+```edn [field-box id="spatial_iso_sweep" role="properties"]
+{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 620.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2402 "sha256" "14fb47372b57a2b76b60bbe3bcfa09b0a9b3077138544590425abda12c3e192e"}]}
+```
+
+```kotlin [field-property box="spatial_iso_sweep" name="code" path="spatial_iso_sweep_code_.kt"]
+// The animated twin of "The two decisions inside marching squares". That box argues about a
+// single ambiguous cell; this one shows why the cell matters. Two Gaussian bumps, and the
+// iso level swept from 0.18 to 0.78 and back through the saddle between the peaks. Below
+// the saddle there is ONE contour around both peaks, above it there are TWO, one per peak,
+// and the changeover is a frame where the marcher's four corner values decide the topology.
+// Contours are coloured by index, so the merge reads as a colour vanishing.
+val field: ScalarField2D = { x, y ->
+    exp(-((x - 1.4) * (x - 1.4) + y * y) / 1.2) + exp(-((x + 1.4) * (x + 1.4) + y * y) / 1.2)
+}
+val x0 = -3.2; val x1 = 3.2; val y0 = -1.9; val y1 = 1.9
+val window = Rect(-3.0, -1.7, 6.0, 3.4)       // fixed, or the loops never appear to shrink
+val peakDots = pointCloudFLine(
+    listOf(vec(1.4, 0.0), vec(-1.4, 0.0)), color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
+)
+val saddleDot = pointCloudFLine(
+    listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
+)
+val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
+val sweepSeconds = 8.6
+
+// The saddle level, measured rather than assumed: the field's own value at the col.
+val saddle = field(0.0, 0.0)
+println("saddle level %.3f — below it one contour, above it two".format(saddle))
+val started = System.nanoTime()
+
+// The line that turns elapsed time into the swept parameter, straddling the saddle.
+fun isoAt(elapsed: Double): Double {
+    val phase = (elapsed / sweepSeconds) % 1.0
+    return 0.18 + 0.60 * (1.0 - abs(1.0 - 2.0 * phase))
+}
+
+animate {
+    val iso = isoAt((System.nanoTime() - started) / 1e9)
+    val contours = generateIsoContours(field, x0, x1, y0, y1, 100, 60, iso).filter { it.size >= 2 }
+    val lines = contours.mapIndexed { i, c ->
+        polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, boundaryEpsilon = 0.05)).also {
+            it.color = byIndex[i % byIndex.size]
+            it.thickness = 2.0
+        }
+    }
+    showPlane(
+        lines + peakDots + saddleDot,
+        title = "iso %.3f — %d contour(s)".format(iso, contours.size),
+        caption = if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
+        else "below the saddle %.3f — one loop around both".format(saddle),
+        width = 560,
+        height = 320,
+        window = window,
+    )
+}
+```
+
+## 6. When the bisector is a circle
+
+<!-- field-box id="spatial_apollonius" index="5" -->
 
 ### Narrative
 
@@ -288,7 +436,7 @@ equation of a CIRCLE, which degenerates to a line only when the weights match. S
 here is not a polygon: its boundary is made of ArcPieces and LinePieces.
 
 ```edn [field-box id="spatial_apollonius" role="properties"]
-{"id" "spatial_apollonius" "index" 3 "name" "When the bisector is a circle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "When the bisector is a circle" "_tombstone" false "frame" #afield/rect [80.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_code_.kt" "lines" 62 "characters" 3208 "sha256" "60779cf12cd818a062300d7422fda4cc824ffb03ad0d60bfa9c5eb2f1e1cb484"}]}
+{"id" "spatial_apollonius" "index" 5 "name" "When the bisector is a circle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "When the bisector is a circle" "_tombstone" false "frame" #afield/rect [80.0 500.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_code_.kt" "lines" 62 "characters" 3208 "sha256" "60779cf12cd818a062300d7422fda4cc824ffb03ad0d60bfa9c5eb2f1e1cb484"}]}
 ```
 
 ```kotlin [field-property box="spatial_apollonius" name="code" path="spatial_apollonius_code_.kt"]
@@ -356,9 +504,9 @@ showPlaneGrid(
 )
 ```
 
-## 5. Partitioning the cloud instead of the plane
+## 7. Partitioning the cloud instead of the plane
 
-<!-- field-box id="spatial_clustering" index="4" -->
+<!-- field-box id="spatial_clustering" index="6" -->
 
 ### Narrative
 
@@ -368,21 +516,32 @@ There is no k-means in Field, on purpose. Every algorithm here returns either a 
 or a centre that is meaningful for the data it summarises: a medoid is one of your own
 samples, a median is coordinate-wise robust. A k-means centroid is neither.
 
+Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
+wrong with it: three tight blobs of 28, and a single 85th point nine units out.
+
 ```edn [field-box id="spatial_clustering" role="properties"]
-{"id" "spatial_clustering" "index" 4 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 52 "characters" 2822 "sha256" "842bdb7e6a8755324ad2a1fbbb9265074b9bb50255a6a05bf34d8bf3045e08ec"}]}
+{"id" "spatial_clustering" "index" 6 "name" "Partitioning the cloud instead of the plane" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Partitioning the cloud instead of the plane" "_tombstone" false "frame" #afield/rect [550.0 920.0 900.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_clustering_code_.kt" "lines" 75 "characters" 4295 "sha256" "aade0bcdfb1cc16d5bd4a9ccb149079c7b780311bf78be3590ebc8d0cb25a0e7"}]}
 ```
 
 ```kotlin [field-property box="spatial_clustering" name="code" path="spatial_clustering_code_.kt"]
 // There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
 // or a centre that is meaningful for the data it summarises: a medoid is one of your own
 // samples, a median is coordinate-wise robust. A k-means centroid is neither.
-val rng = java.util.Random(3)
-val centres = listOf(vec(0.0, 0.0), vec(3.0, 0.2), vec(1.4, 2.6))
-val points = centres.flatMap { c ->
-    List(30) { vec(c.x + rng.nextGaussian() * 0.35, c.y + rng.nextGaussian() * 0.35) }
+//
+// Well-separated blobs make all four look identical, so this cloud has exactly ONE thing
+// wrong with it: three tight blobs of 28, and a single 85th point nine units out.
+val rng = java.util.Random(7)
+val blobCentres = listOf(vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2))
+val blobs = blobCentres.flatMap { c ->
+    List(28) { vec(c.x + rng.nextGaussian() * 0.30, c.y + rng.nextGaussian() * 0.30) }
 }
+val stray = vec(9.0, 8.0)
+// NOT `blobs + stray`: FLineGeometry's `List<Vec2> + Vec2` TRANSLATES every point, and it
+// wins over kotlin.collections.plus on specificity. `+ listOf(stray)` zips instead. Append.
+val points = buildList { addAll(blobs); add(stray) }
+val window = Rect(-1.4, -1.4, 11.2, 10.2)     // shared, so the four panels are comparable
 
-val tree = vec2Agglomerative(points)          // Ward linkage by default
+val tree = vec2Agglomerative(points)          // Ward: minimises within-cluster SUM OF SQUARES
 val cut3 = tree.partition(3)
 val cut6 = tree.partition(6)
 val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))
@@ -391,8 +550,16 @@ val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))
 fun sizes(layer: ClusterLayer) =
     (0 until layer.clusterCount).map { layer.indices(it).size }.joinToString("/")
 
-println("planted 30/30/30")
-println("agglomerative k=3  ${sizes(cut3)}")
+// One ruler for all of them: the objective k-medians optimises, applied to ANY partition.
+fun l1Of(labels: IntArray, k: Int) = (0 until k).sumOf { c ->
+    val mem = points.indices.filter { labels[it] == c }
+    val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
+    val my = mem.map { points[it].y }.sorted()[mem.size / 2]
+    mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
+}
+
+println("planted 28/28/28 plus one stray at (9, 8)")
+println("agglomerative k=3  ${sizes(cut3)}   L1 of that cut %.3f".format(l1Of(cut3.labels, 3)))
 println("agglomerative k=6  ${sizes(cut6)}")
 println("kmedoids      k=3  ${medoids.clusterSizes.joinToString("/")}  distortion %.3f  %d rounds  converged=%s"
     .format(medoids.distortion, medoids.iterations, medoids.converged))
@@ -410,20 +577,27 @@ println()
 println("k=6 nested inside k=3: $nested")
 println("medoids are input samples: $areSamples")
 println("medians beat medoids on the L1 objective: ${medians.objective <= medoids.distortion}")
+// The discriminator. Ward spends a whole cluster on the one stray and pays by merging two
+// real blobs, because 28/29 * 9.72^2 = 91.2 exceeds 14 * 2.408^2 = 81.2. k-medoids and
+// k-medians minimise sums of DISTANCES, where that point costs 9.72 and not 94.5.
+println("Ward's cut costs %.2fx k-medians' L1 objective (1.00x on well-separated blobs)"
+    .format(l1Of(cut3.labels, 3) / medians.objective))
 
 showPlaneGrid(
-    "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3)} — the planted clusters, whole" to
+    "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3)} — one stray, one whole cluster" to
         cut3.toFLines(points, drawSpokes = false, pointSize = 1.6),
-    "…the same tree cut at 6\nsizes ${sizes(cut6)}, nested in the k=3 cut: $nested" to
+    "…the SAME tree, cut at 6\nsizes ${sizes(cut6)} — nested: $nested. the blobs are back" to
         cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
-    "vec2KMedoids(k = 3)\ndistortion %.3f, %d rounds, medoids are samples: %s"
-        .format(medoids.distortion, medoids.iterations, areSamples) to
+    "vec2KMedoids(k = 3)\ndistortion %.3f — samples: %s"
+        .format(medoids.distortion, areSamples) to
         medoids.asLayer().toFLines(points, centers = medoids.medoids, pointSize = 1.6),
-    "vec2KMedians(k = 3)\nL1 objective %.3f, converged: %s".format(medians.objective, medians.converged) to
+    "vec2KMedians(k = 3)\nL1 %.3f — Ward's cut costs %.2fx"
+        .format(medians.objective, l1Of(cut3.labels, 3) / medians.objective) to
         medians.asLayer().toFLines(points, centers = medians.centers, pointSize = 1.6),
     columns = 2,
     cellWidth = 430,
-    cellHeight = 280,
+    cellHeight = 352,
+    window = window,
 )
 ```
 
