@@ -193,3 +193,66 @@ blank fails the test instead of shipping.
 - **`onCurve` on a closed path** does not wrap: a glyph past the end is clamped (or extrapolated along
   the end tangent with `clampToPath = false`). Sizing the circle to the layout is the idiom, and it is
   what the docs page does.
+
+## Two known defects, unfixed (added at closeout by the nightly orchestrator)
+
+Both were found after the branch's own verification passed, so treat this section as the pre-merge
+worklist rather than as history.
+
+### 1. `onCurve` is not continuous under a *morphing* curve
+
+`stdlib.typography.gallery` is **RED** on the `motion_morph` panel:
+
+    IllegalStateException: a glyph jumped 9.7x the median step — the motion is not continuous
+    at TypographyGallery.panelMotionMorph(TypographyGallery.kt:533)
+
+13 of 14 panels pass, and the sibling `motion_march` panel proves the *fixed*-curve case is exact
+(dL=7.331, mean step 7.331, worst per-step error 0.1%, 0 stalls, 0 jumps over 1246 steps). So
+arc-length placement is right; rebuilding the table under a moving curve is not. The failing check
+is correct and was deliberately kept — a kinetic-typography family whose text jumps when the path
+animates should not ship claiming otherwise.
+
+Diagnosis lead, **not verified**: the arc-length table is a polyline through the cubic, so moving a
+control point moves its knots and shifts the parameter→arc-length mapping under a fixed
+`startOffset`. Suspect knots at fixed *parameter* spacing rather than fixed *arc-length* spacing.
+
+### 2. `flatShaded()` before a topology-printing sink publishes false captions
+
+`Box.showMesh`, `Box.showMeshGrid` and `TriMesh.toHTML()` each compute `topology()` on the mesh they
+are handed and print it as fact in the figcaption (`mesh_field.kt:383-393`, `:466-481`, `:582-592`).
+`flatShaded()` un-welds every triangle (`V = E = 3F`, `mesh_process.kt:89-108`), so a flat-shaded copy
+of a closed mesh captions as `χ=F · open (F boundary loop(s))`. And the call is **unnecessary**: every
+render bridge already shades an unshaded mesh via `toCapturedMesh` (`mesh_field.kt:246`), which
+`renderPng` (`:369`) and `renderPixels` (`:372`) both go through.
+
+The causal KDoc has been fixed (`typography_field.kt` `toMesh`, `mesh_generate.kt:617`). **These call
+sites have not been**, and each needs `.flatShaded()` dropped:
+
+| # | site |
+| --- | --- |
+| 1 | `public/docs/typography_examples.md:178` — `showMesh(o.flatShaded())`; line 177 prints the *truth* two lines above |
+| 2 | `public/docs/typography_examples.md:205-208` — four `showMeshGrid` panels over marched SDF meshes, which are welded and closed by construction (`mesh_sdf.kt:44`) |
+| 3 | `dev_docs/agents/transcripts/typography_worked_example.yaml:305-306` — worst case in the repo: the panel *title* carries the true genus and the figcaption directly beneath it carries the false topology |
+| 4 | `dev_docs/agents/transcripts/typography_worked_example.yaml:311` |
+| 5 | `dev_docs/agents/transcripts/typography_worked_example.yaml:342-345` |
+| 6 | `public/docs/assets/agent_transcripts/typography_worked_example/typo_mesh_code_.kt:35,36,41` (published mirror of 3/4) |
+| 7 | `public/docs/assets/agent_transcripts/typography_worked_example/typo_sdf_code_.kt:22-25` (published mirror of 5) |
+| 8 | `public/docs/assets/agent_transcripts/typography_worked_example/document.md:333,334,339` and `:169-172` |
+| 9 | `public/docs/assets/agent_transcripts/typography_worked_example/metadata.edn` — same code as an inline blob, re-executed on replay |
+
+Mirrors 6-9 are materializer output, so fix 1-5 and regenerate
+(`--id examples.agent-transcripts.materialize`) rather than editing them by hand.
+
+**Scope, stated precisely:** none of the *committed* PNGs under
+`public/docs/assets/typography_gallery/` carry these captions — they come from
+`TypographyGallery.renderPng`, which computes no topology. The false captions are generated at
+runtime, so this is latent-on-replay, not baked into any shipped image. `grep` for
+`boundary loop(s)` in the docs therefore finds nothing.
+
+**Not a defect, for contrast:** `TypographyGallery.kt:371-373` does this correctly — it asserts
+`isWatertight()`/`genus()` on the *welded* mesh at `:359-362` and sends the flat-shaded copies only
+to `renderPng`, which prints no topology. `MeshGallery.kt:681-697` is also safe (hand-written `facts`
+string, not the topology-computing helper). And every existing *assertion* on a flat-shaded mesh in
+the tree asserts its falseness deliberately, as a weld/repair regression test — `MeshCoreTest.kt:295-302`,
+`:306-310`, `:391-395`, `MeshProcessTest.kt:48-58`, `MeshIoTest.kt:134-138`, `:148-150` — so no
+existing assertion is vacuous.

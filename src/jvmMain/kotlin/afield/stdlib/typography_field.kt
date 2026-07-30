@@ -242,11 +242,20 @@ fun TextLayout.toPointFLine(
  * @param centre translate so the ink's bounding box is centred on the origin — usually what you want
  *   before handing a mesh to a renderer.
  *
- * Normals are **not** attached, exactly as `extrudeMesh` leaves them off (`mesh_generate.kt:625`):
- * call `flatShaded()` before rendering. That is not a convenience left undone, it is the point —
- * `flatShaded()` un-welds every triangle into its own three vertices, so a mesh that has been through
- * it is no longer topologically anything, and `isWatertight()` / `genus()` on the result would answer
- * about the *render* copy rather than about the extrusion. Measure first, shade second.
+ * Normals are **not** attached, exactly as `extrudeMesh` leaves them off (`mesh_generate.kt:617`).
+ * You do **not** need to do anything about that in order to render it: every render bridge shades an
+ * unshaded mesh for you — `renderPng` (`mesh_field.kt:369`) and `renderPixels` (`:372`) both go through
+ * `toCapturedMesh`, which does `if (hasNormals) this else shadedNormals(creaseAngleDegrees)`
+ * (`mesh_field.kt:246`). An extrusion is all creases, so that comes out faceted anyway.
+ *
+ * In particular, do **not** call `flatShaded()` on the way into `Box.showMesh` / `Box.showMeshGrid` /
+ * `toHTML()`. `flatShaded()` un-welds every triangle into its own three vertices (`V = E = 3F`), so the
+ * copy is no longer topologically anything — and those sinks each compute `topology()` on the mesh they
+ * are handed and then *state the answer as fact in the figure caption* (`mesh_field.kt:383-393`,
+ * `:466-481`, `:582-592`). Hand one a flat-shaded copy and the caption reads
+ * `χ=F · open (F boundary loop(s))` about a mesh that is genuinely closed. Measure and render the
+ * welded mesh; reach for `flatShaded()` only when something downstream truly needs one vertex per
+ * corner.
  */
 fun TextLayout.toMesh(
     depth: Number = typeface.size * 0.25,
