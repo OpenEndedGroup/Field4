@@ -406,7 +406,7 @@ encoder has nothing to predict from: at 128 cells and eight seconds this clip al
 than the other nine put together. The cost is very nearly proportional to cells × frames rather than to
 pixels — magnifying a small lattice with nearest-neighbour blocks is close to free, and shrinking the
 *lattice* is what pays — so it is 96 cells at three pixels each rather than 128 at two. It is a bigger
-picture than it was, and it costs 5.2 MB instead of 9.6.
+picture than it was, and it costs 5.1 MB instead of 9.6.
 
 The left panel is the sequence the figure above samples at generations 0, 40 and 400, without the gaps.
 Watch for the transition, because it is sharp and it has a name: the soup is **locally** advancing
@@ -564,25 +564,33 @@ paced the way it is.
     | | 1st quarter | 2nd | 3rd | 4th | half the change by |
     | --- | --- | --- | --- | --- | --- |
     | linear | **78.3 %** | 16.9 % | 4.7 % | 0.0 % | 14.5 % of the clip |
-    | `ramp = 40` | 15.5 % | 73.8 % | 10.7 % | 0.0 % | **38.4 %** of the clip |
+    | `ramp = 40` | 11.0 % | 42.8 % | 44.4 % | 1.8 % | **47.8 %** of the clip |
 
-    Four fifths of everything that happened used to happen in the first two seconds; now the busiest
-    quarter is the second one and half the change arrives at 38 % rather than 14 % of the clip. And the
-    honest reading of that table is that a ramp **moved** the busy part rather than spreading it, because
-    what Gray–Scott does is not gradual: the burst is the fronts filling the domain, roughly steps 400 to
-    1500, and a schedule can only decide how much of the clip that window gets. It got 18 % of it linearly
-    and it gets 35 % now. No monotone time-warp will make a burst uniform, and `ramp` is one parameter —
-    the one to change if you disagree with where the burst sits.
+    Four fifths of everything that happened used to happen in the first two seconds. Now half the change has
+    arrived at the half-way mark, which is what "evenly paced" means as a number, and the frames that show
+    essentially nothing fell from 30 % of the clip to 21 %. The endpoint measurement agrees for once:
+    first-to-middle and middle-to-last were **42.09** and **3.98**, and are now **30.47** and **28.57** —
+    a 10.6× imbalance became 1.07×. The middle frame of the recording sits at `step 1559 of 6000` instead of
+    step 2927.
 
-    Two honest notes. The *endpoint* measurement is the wrong instrument for this particular clip: the first
-    frame is a nearly black field, so its difference from any later frame saturates near 42 whatever the
-    schedule does, and first-to-middle / middle-to-last only moved from 42.09 / 3.98 to 42.40 / 9.61 —
-    an understatement of a change that more than doubled the busy window's share of the clip. And the ramp
-    asks the last frames for about 170 reaction–diffusion steps each, which is more than a twentieth of a
-    second's worth, so the tail *could* fall behind the wall clock. It did not: the recording reads
-    `step 6000 of 6000` well before it ends, with a beat of settled labyrinth after it. That
-    is exactly what the burned-in step clock is for — the last frame says whether the schedule finished, and
-    that is checkable by looking rather than by trusting.
+    What a ramp cannot do is make a *burst* uniform. Gray–Scott's is the fronts filling the domain, roughly
+    steps 400 to 1500 — 18 % of a linear clip, 30 % of this one. A schedule only decides how much of the clip
+    that window gets, and `ramp` is the one parameter to change if you disagree with where it sits.
+
+    Two honest notes about instruments. The endpoint measurement is a *weak* one here even when it agrees:
+    the first frame is a nearly black field, so its difference from any later frame saturates near 42
+    whatever the schedule does. An earlier cut of this clip measured 42.40 / 9.61 while its consecutive-frame
+    profile was still 15.5 / 73.8 / 10.7 / 0.0 — the endpoints understated a badly-paced clip. Trust the
+    per-quarter table.
+
+    And the ramp asks the last frames for about 170 reaction–diffusion steps each, which is more than a
+    twentieth of a second's worth, so the tail could fall behind the wall clock. It does not, and the reason
+    is that the schedule is anchored to elapsed *time* and steps taken rather than to a frame index: the
+    docs runner's real capture rate on this page ranged from 14.6 to 18.7 frames a second against the 20 it
+    was asked for, and a clip keyed to "frame *i* of an expected *N*" would have stopped short of its regime.
+    This one reads `step 6000 of 6000` with a beat of settled labyrinth after it. That is what the burned-in
+    step clock is for — the last frame says whether the schedule finished, and that is checkable by looking
+    rather than by trusting.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
 :::static
@@ -735,9 +743,9 @@ self-maintaining phase, which is the *claim* but not the event, gets the other h
 Measured the same way as Gray–Scott's, by consecutive-frame difference summed over each quarter of the
 recording: an even schedule put **86.3 %** of the whole clip's change in the first quarter and had half of it
 over by 10 % of the clip, with 71 % of frames showing essentially no change at all. At `ramp = 25` the
-quarters read 13.0 / 75.4 / 10.7 / 0.9 %, half the change arrives at 37 % of the clip, and the near-still
-frames fall to 48 % — which is a floor rather than a failure, because one of the two panels really does die
-and a dead field is *supposed* to sit still.
+quarters read 11.1 / 76.4 / 11.4 / 1.1 %, half the change arrives at 38 % of the clip, the near-still frames
+fall to 45 %, and middle-to-last goes from **1.14** to **5.78**. That 45 % is a floor rather than a failure:
+one of the two panels really does die, and a dead field is *supposed* to sit still.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
 :::static

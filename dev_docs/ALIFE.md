@@ -392,6 +392,24 @@ second or two more than `seconds`, and why every call site burns the step counte
 clip reach the regime?" is then answered by looking at the last frame of the mp4 rather than by trusting
 the schedule.
 
+**The docs runner's capture rate is not the rate you asked for, and that is why the schedule is anchored to
+the wall clock.** Measured over the ten clips on the public page: `fps=20` produced an effective **14.6 to
+18.7 fps**, i.e. 6 % to 27 % of every mp4's frames are duplicates of their predecessor. Note that the frame
+*count* cannot tell you this — ffmpeg's `fps=` filter pads the recording to exactly `duration × fps`, so
+every clip reports a tidy 160 frames whatever really happened. A sibling branch measured the same
+instability between and within runs while trying to record a parameter sweep that had to close a loop, and
+recorded it in `dev_docs/docs_capture_staleness.md`.
+
+A time evolution degrades gracefully under this **only if** its schedule is keyed to elapsed time and steps
+taken, never to "frame *i* of an expected *N*". `animateEvolution` compares `done` against
+`progress(elapsed / seconds) · totalSteps`; the frame index appears nowhere in it. So a slow capture makes a
+clip coarser and never makes it end somewhere else. `CATCH_UP` is the other half: without headroom on
+`perPass`, a loop running at 17 passes a second against a schedule written for 20 can never recover inside
+the schedule, because it is allowed exactly one frame's batch per pass while the clock asks for one frame's
+batch. The evidence that this works is the burned-in step counter — all ten clips' final frames read their
+final scheduled state (`step 6000 of 6000`, `gen 400`, `particles 2392 of 2392`, `100% drawn`) at an
+effective 14.6–18.7 fps.
+
 **`ramp`, because a linear schedule is not neutral.** Reaction–diffusion and Lenia are log-time processes:
 step 60 → 600 and step 600 → 6000 are about equally large *visible* changes. Measured on the recorded
 clips as the consecutive-frame mean absolute luma difference summed per quarter, an even schedule put
@@ -399,15 +417,23 @@ clips as the consecutive-frame mean absolute luma difference summed per quarter,
 last. `ramp` is the ratio between the last displayed frame's batch and the first, on the geometric schedule
 `done(t) = totalSteps · (ramp^t − 1) / (ramp − 1)`, pinned to 0 at `t = 0` and `totalSteps` at `t = 1` for
 every ramp — so no ramp can make a clip skip its seed or stop short, and `ramp = 1.0` is exactly the linear
-schedule. At `ramp = 40` Gray–Scott's quarters read 10.4 / 35.6 / 50.0 / 4.0 % and half the change has
-arrived at 51 % of the clip. `perPass` is found by scanning the schedule's own per-frame increments for the
-largest, which keeps the two-clock guarantee for any monotone schedule.
+schedule. At `ramp = 40` Gray–Scott's quarters read 11.0 / 42.8 / 44.4 / 1.8 % and half the change has
+arrived at **47.8 %** of the clip; Lenia at `ramp = 25` reads 11.1 / 76.4 / 11.4 / 1.1 %. `perPass` is found
+by scanning the schedule's own per-frame increments for the largest, which keeps the two-clock guarantee for
+any monotone schedule.
+
+What a ramp **cannot** do is make a *burst* uniform. Gray–Scott's change is the fronts filling the domain,
+roughly steps 400 to 1500: 18 % of a linear clip and 30 % of a `ramp = 40` one. A schedule decides how much
+of the clip that window gets and nothing more. This is a refutation of the log-time model the ramp was
+designed from, and pushing the ramp higher makes it worse rather than better, because a geometric map
+compresses its own upper range.
 
 **Do not measure pacing at the endpoints.** The obvious instrument — mean absolute difference between the
-first, middle and last frames — *saturates* for anything that starts near black: Gray–Scott's
-first-to-middle figure barely moved (42.09 → 42.40) across a fourfold change in pacing, because a
-labyrinth and an empty field differ by about 42 however you got there. Consecutive-frame difference per
-quarter is the number that moves.
+first, middle and last frames — *saturates* for anything that starts near black, because a labyrinth and an
+empty field differ by about 42 however you got there. An intermediate cut of the Gray–Scott clip measured
+42.40 / 9.61 at the endpoints while its consecutive-frame profile was still 15.5 / 73.8 / 10.7 / 0.0 %: the
+endpoints called a badly-paced clip fixed. (The shipped clip does read 30.47 / 28.57, so the two agree in
+the end — but the per-quarter profile is the instrument that moved first and moved further.)
 
 The four prefix helpers each fix one specific animation failure rather than being general tidiness:
 `Img.rowsRevealed` (a space-time diagram at generation *n*, at **full height**, so `montage` does not

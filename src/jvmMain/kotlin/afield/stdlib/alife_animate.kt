@@ -35,12 +35,22 @@ import kotlin.math.roundToInt
  * **Two clocks, deliberately.** A fixed steps-per-frame alone makes the clip's *content* depend on how
  * fast the host is; a pure wall-clock schedule alone degrades catastrophically, because a pass that falls
  * behind is then asked to do a bigger batch, which makes it fall further behind. So the loop uses both: it
- * advances at most the largest batch its own schedule ever asks of one frame (smoothness, and a bound on how
- * far one pass can lag — `ceil(totalSteps / framesTarget)` for a linear schedule, the final frame's batch
- * for a ramped one), and never runs *ahead* of the wall clock (so a fast host does not finish in two seconds).
+ * advances at most [CATCH_UP] times the largest batch its own schedule ever asks of one frame (smoothness,
+ * and a bound on how far one pass can lag), and never runs *ahead* of the wall clock (so a fast host does not
+ * finish in two seconds).
  * A slow host therefore lags at a bounded rate and keeps catching up after the schedule ends, which is why
  * a recording should ask for a second or two more than `seconds` — the tail is both a hold on the settled
  * result and the slack that absorbs the lag.
+ *
+ * **The schedule is anchored to the wall clock and to `totalSteps`, never to a frame index, and that is a
+ * robustness property rather than an implementation detail.** The docs runner's live capture rate is *not*
+ * stable — measured over the ten clips on `alife_examples.md`, asking for 20 fps produced an effective
+ * **14.6 to 18.7 fps** (6 % to 27 % of the mp4's frames are duplicates of their predecessor; ffmpeg pads the
+ * recording to exactly `duration × fps` regardless, so the frame *count* of an mp4 tells you nothing about
+ * the rate it was captured at). A sibling branch measured the same instability between and within runs. An
+ * eased schedule keyed to "frame *i* of an expected *N*" would therefore stop short of its regime on a slow
+ * capture, or overshoot and sit still on a fast one. This one cannot: a capture that comes in slow changes
+ * how *smooth* a clip is and never where it ends up. [CATCH_UP] is the other half of that guarantee.
  *
  * **A linear step schedule is not a neutral choice, and for some of these systems it is the wrong one.**
  * Reaction–diffusion and Lenia are *log-time* processes: the visible change from step 60 to step 600 is
@@ -61,6 +71,25 @@ import kotlin.math.roundToInt
  * a saturating field indistinguishable from a dying one. So every call site passes explicit `lo`/`hi` to
  * [Img.colormap]. Auto-ranging is a per-figure mistake and a per-*frame* lie.
  */
+
+/**
+ * How much more than one displayed frame's worth of steps a single pass may take when it is **behind**.
+ *
+ * This exists because the frame rate a recording actually gets is not the frame rate it asked for. Without
+ * headroom, `perPass` is exactly the schedule's own per-frame batch, so a loop that manages 17 passes a
+ * second against a schedule written for 20 falls 15 % behind and can *never* recover inside the schedule —
+ * it advances by one frame's batch while the clock asks for one frame's batch. It then relies entirely on
+ * the recording's tail to finish, and on a slower host it does not finish at all. With headroom a behind
+ * pass takes a bigger bite and catches up.
+ *
+ * It cannot make a healthy recording jumpier, and that is the point: when the loop is *level* with its
+ * schedule the advance is limited by the clock (`allowedByClock - done`), not by this bound, so raising it
+ * changes nothing about a clip that is keeping up. It only ever shortens a lag.
+ *
+ * 2.0 tolerates a capture running at half the rate it asked for; the measured range on this machine was
+ * 0.73× to 0.94×.
+ */
+private const val CATCH_UP = 2.0
 
 /**
  * Animate a stateful system in a box: step it toward a schedule, draw it, repeat, forever.
@@ -109,7 +138,7 @@ import kotlin.math.roundToInt
  *   That is the right schedule for a log-time process: `ramp = 100` on 6000 steps puts the mid-point of
  *   the clip at step 545 instead of step 3000, so the pattern-formation the first tenth of the run does
  *   gets a third of the clip and the annealing gets the rest. It costs a bigger batch at the end —
- *   `perPass` is raised to the largest single-frame batch the schedule ever asks for, so the two-clock
+ *   `perPass` is derived from the largest single-frame batch the schedule ever asks for, so the two-clock
  *   guarantee below is unchanged — and it means the *first* frames advance by a step or two each, which
  *   is why `ramp` belongs only on systems whose early steps are individually interesting.
  * @param step advance the state by exactly one simulation step. For the family's immutable systems
@@ -141,12 +170,14 @@ fun <S> Box.animateEvolution(
     val progress: (Double) -> Double =
         if (ramp == 1.0) { t -> t } else { t -> (ramp.pow(t) - 1.0) / (ramp - 1.0) }
     // The largest batch the schedule ever asks one pass for, found by scanning the frames rather than
-    // differentiating: it bounds how far a single slow pass can lag, and for a geometric ramp it is the
-    // LAST frame's batch, not the mean.
+    // differentiating: for a geometric ramp that is the LAST frame's batch, not the mean. Times CATCH_UP,
+    // so a capture running slower than framesTarget/seconds recovers instead of lagging permanently — see
+    // that constant. This bound only ever binds when the loop is BEHIND; level with the schedule, the
+    // advance below is limited by the clock.
     val perPass = max(
         1,
         (1..framesTarget).maxOf {
-            ceil(totalSteps * (progress(it.toDouble() / framesTarget) - progress((it - 1.0) / framesTarget))).toInt()
+            ceil(CATCH_UP * totalSteps * (progress(it.toDouble() / framesTarget) - progress((it - 1.0) / framesTarget))).toInt()
         }
     )
     var state = start
