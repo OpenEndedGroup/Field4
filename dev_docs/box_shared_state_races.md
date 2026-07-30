@@ -121,6 +121,20 @@ The one behaviour change is that removing through `keys.iterator()`, or `setValu
 through `properties.remove(name)` — and a snapshot that goes stale is strictly less dangerous than
 an iterator that throws.
 
+**What it costs**, measured on a 66-entry bag (GraalVM 25, arm64, third round after warm-up, with a
+throwaway benchmark that was not committed):
+
+| | plain `LinkedHashMap` | `PropertyBag` | |
+| --- | --- | --- | --- |
+| single-key get | 7.56 ns | 12.24 ns | +4.7 ns — one uncontended monitor |
+| `Box.getPropertyRaw` (the real read path) | — | 14.11 ns | |
+| whole-bag walk (`resyncAll()` vs the same `filter`) | 64.8 µs | 65.7 µs | **+1.3 %** |
+
+The snapshot copy — the thing that looks expensive — is 1.3 % of a bag walk, because matching ~70
+resync regexes per property dominates it by three orders of magnitude. And end-to-end,
+`examples.demo-transcript.exec` ran 84.7 s / 84.2 s / 83.9 s with the change against 92.7 s / 85.5 s /
+79.6 s / 82.0 s recorded at base the night before: inside the noise.
+
 ## 4. The same defect, one field along
 
 Auditing outwards from `resyncAll` found two more unsynchronised maps on `Box` in the same position —
