@@ -29,16 +29,19 @@ println("'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f
     "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}")
 
 // Back-face culling is on in MeshView, so a wall wound inside out would be a MISSING wall
-// here rather than merely odd shading. flatShaded() only at the render boundary: it un-welds
-// every triangle, so a mesh that has been through it is no longer topologically anything.
+// here rather than merely odd shading. Note what is NOT here: flatShaded(). showMeshGrid
+// computes topology() on what you hand it and prints it in the caption, and flatShaded()
+// un-welds every triangle — so a flat-shaded copy would caption these as open, directly
+// under a title stating their genus. It is also unnecessary: the render path applies
+// shadedNormals to an unshaded mesh for you (mesh_field.kt:246).
 showMeshGrid(
-    "o — genus ${o.genus()}" to o.flatShaded(),
-    "l — genus ${l.genus()}" to l.flatShaded(),
+    "o — genus ${o.genus()}" to o,
+    "l — genus ${l.genus()}" to l,
     columns = 2, cellWidth = 400,
     view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2)
 )
 showMesh(
-    word.flatShaded(),
+    word,
     view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
     title = "extruded from the same contours the raster filled"
 )

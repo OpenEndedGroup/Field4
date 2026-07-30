@@ -141,7 +141,7 @@ it in z with the exact prism formula. Negative inside the ink, per mesh_sdf.kt's
 convention. From there letters are just another ScalarField3D, which is the point.
 
 ```edn [field-box id="typo_sdf" role="properties"]
-{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 28 "characters" 1635 "sha256" "7d9ed992a28390b861558cb8bb3561e4c3e97cea59914dab50db24f94e94ec44"}]}
+{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 28 "characters" 1583 "sha256" "f86ae6820ec5717aadd6ea5a249b529f50b337974d8a5bdf361f6750981b5bfa"}]}
 ```
 
 ```kotlin [field-property box="typo_sdf" name="code" path="typo_sdf_code_.kt"]
@@ -166,10 +166,10 @@ println("smooth union with a sphere: ${melted.triangleCount} triangles; " +
 
 showImg(grid.toImg(), caption = "the 2D signed distance field — mid grey is the outline")
 showMeshGrid(
-    "marchingCubes on the letters" to marched.flatShaded(),
-    "sdfSmoothUnion with a sphere" to melted.flatShaded(),
-    "field.shell(0.02)" to hollow.flatShaded(),
-    "field.twisted(0.5)" to wrung.flatShaded(),
+    "marchingCubes on the letters" to marched,
+    "sdfSmoothUnion with a sphere" to melted,
+    "field.shell(0.02)" to hollow,
+    "field.twisted(0.5)" to wrung,
     columns = 2, cellWidth = 400,
     view = MeshView(yawDegrees = 18.0, pitchDegrees = 12.0, distance = 2.6)
 )
@@ -292,7 +292,7 @@ is what makes the result watertight, and what makes genus a meaningful question 
 letter.
 
 ```edn [field-box id="typo_mesh" role="properties"]
-{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 44 "characters" 2528 "sha256" "1f35525b465d0c9dfc21b1e770ba287f31aea54297667397fec64bf08bc16a33"}]}
+{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 47 "characters" 2725 "sha256" "2e20b8b5370d325fa7cf44e8313e73a7f7c5d3b15f550d8d35d9b660002c8ad9"}]}
 ```
 
 ```kotlin [field-property box="typo_mesh" name="code" path="typo_mesh_code_.kt"]
@@ -327,16 +327,19 @@ println("'o': ink area x depth = ${"%.0f".format(expected)}, mesh volume ${"%.0f
     "relative difference ${"%.2e".format(kotlin.math.abs(expected - measured) / expected)}")
 
 // Back-face culling is on in MeshView, so a wall wound inside out would be a MISSING wall
-// here rather than merely odd shading. flatShaded() only at the render boundary: it un-welds
-// every triangle, so a mesh that has been through it is no longer topologically anything.
+// here rather than merely odd shading. Note what is NOT here: flatShaded(). showMeshGrid
+// computes topology() on what you hand it and prints it in the caption, and flatShaded()
+// un-welds every triangle — so a flat-shaded copy would caption these as open, directly
+// under a title stating their genus. It is also unnecessary: the render path applies
+// shadedNormals to an unshaded mesh for you (mesh_field.kt:246).
 showMeshGrid(
-    "o — genus ${o.genus()}" to o.flatShaded(),
-    "l — genus ${l.genus()}" to l.flatShaded(),
+    "o — genus ${o.genus()}" to o,
+    "l — genus ${l.genus()}" to l,
     columns = 2, cellWidth = 400,
     view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2)
 )
 showMesh(
-    word.flatShaded(),
+    word,
     view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
     title = "extruded from the same contours the raster filled"
 )

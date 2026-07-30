@@ -19,10 +19,10 @@ println("smooth union with a sphere: ${melted.triangleCount} triangles; " +
 
 showImg(grid.toImg(), caption = "the 2D signed distance field — mid grey is the outline")
 showMeshGrid(
-    "marchingCubes on the letters" to marched.flatShaded(),
-    "sdfSmoothUnion with a sphere" to melted.flatShaded(),
-    "field.shell(0.02)" to hollow.flatShaded(),
-    "field.twisted(0.5)" to wrung.flatShaded(),
+    "marchingCubes on the letters" to marched,
+    "sdfSmoothUnion with a sphere" to melted,
+    "field.shell(0.02)" to hollow,
+    "field.twisted(0.5)" to wrung,
     columns = 2, cellWidth = 400,
     view = MeshView(yawDegrees = 18.0, pitchDegrees = 12.0, distance = 2.6)
 )

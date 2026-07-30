@@ -175,7 +175,7 @@ makes the result watertight, and what makes `genus()` a meaningful question abou
 ```kotlin
 val o = layoutText("o", typeface("SansSerif", 170.0)).toMesh(depth = 46.0, centre = true)
 println("${o.isWatertight()}, chi ${o.eulerCharacteristic()}, genus ${o.genus()}")   // true, chi 0, genus 1
-showMesh(o.flatShaded())                                                            // flatShaded only to render
+showMesh(o)                                                                         // shades for you
 ```
 
 ![An extruded lowercase o as a ring you can see through, an extruded l as a solid slab, and the word mesh in 3D](assets/typography_gallery/mesh.png)
@@ -189,9 +189,15 @@ unpunched counter all break one of those.
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
 rather than merely odd shading — the same failure a GPU would show you.
 
-`flatShaded()` belongs at the render boundary and nowhere earlier: it un-welds every triangle into
-its own three vertices, so a mesh that has been through it is no longer topologically anything and
-`isWatertight()` would be answering about the render copy.
+Don't reach for `flatShaded()` here, tempting as it looks. It un-welds every triangle into its own
+three vertices, so the copy is no longer topologically anything — and `showMesh` computes
+`topology()` on whatever you hand it and prints the answer *as fact* in the figure caption
+(`mesh_field.kt:383-393`). Pass it a flat-shaded `o` and the caption reads `open (N boundary loop(s))`
+directly underneath a line proving the mesh is closed. You don't need it either way: `showMesh`
+renders through `toCapturedMesh`, which already applies `shadedNormals` to a mesh that arrives
+without normals (`mesh_field.kt:246`), and an extrusion is all creases so that comes out faceted
+anyway. Measure and render the welded mesh; keep `flatShaded()` for something that genuinely needs
+one vertex per corner.
 
 ## Letters in the SDF family
 
@@ -202,10 +208,10 @@ From there a word is just another `ScalarField3D`, which is the entire point:
 val sdf = layoutText("SDF", typeface("SansSerif", 170.0)).toSdf(depth = 0.24, gridResolution = 340)
 showImg(sdf.distanceField.toImg())
 showMeshGrid(
-    "marched"  to sdf.march(resolution = 130).flatShaded(),
-    "+ sphere" to marchingCubes(sdfSmoothUnion(sdf.field, sdfSphere(0.6), 0.18), sdf.bounds, 130).flatShaded(),
-    "shelled"  to marchingCubes(sdf.field.shell(0.02), sdf.bounds, 150).flatShaded(),
-    "twisted"  to marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130).flatShaded(),
+    "marched"  to sdf.march(resolution = 130),
+    "+ sphere" to marchingCubes(sdfSmoothUnion(sdf.field, sdfSphere(0.6), 0.18), sdf.bounds, 130),
+    "shelled"  to marchingCubes(sdf.field.shell(0.02), sdf.bounds, 150),
+    "twisted"  to marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130),
 )
 ```
 

@@ -268,7 +268,7 @@ ratio from 50.4x to **1.6x** (the panel's threshold is 3x), costing 8 leaves for
 Roughly three lines. Expect `stdlib.typography.gallery` to go 14/14, and expect `byDashing` /
 `sampleByDistance` goldens to shift slightly — toward correct.
 
-### 2. `flatShaded()` before a topology-printing sink publishes false captions
+### 2. ~~`flatShaded()` before a topology-printing sink publishes false captions~~ — FIXED (2026-07-30 closeout)
 
 `Box.showMesh`, `Box.showMeshGrid` and `TriMesh.toHTML()` each compute `topology()` on the mesh they
 are handed and print it as fact in the figcaption (`mesh_field.kt:383-393`, `:466-481`, `:582-592`).
@@ -277,8 +277,18 @@ of a closed mesh captions as `χ=F · open (F boundary loop(s))`. And the call i
 render bridge already shades an unshaded mesh via `toCapturedMesh` (`mesh_field.kt:246`), which
 `renderPng` (`:369`) and `renderPixels` (`:372`) both go through.
 
-The causal KDoc has been fixed (`typography_field.kt` `toMesh`, `mesh_generate.kt:617`). **These call
-sites have not been**, and each needs `.flatShaded()` dropped:
+**All of it is now fixed.** The causal KDoc (`typography_field.kt` `toMesh`, `mesh_generate.kt:617`),
+the docs-page prose that repeated the wrong rule, and every call site below. Sites 1-5 were edited by
+hand; 6-9 are materializer output and were regenerated with
+`run-jvm-main afield.examples.AgentTranscriptMaterializer --arg <repo>/public/docs/assets/agent_transcripts`.
+There are now **zero** non-comment `flatShaded()` occurrences anywhere in the worked example, including
+inside `metadata.edn`, so the loadable document is fixed and not just the page.
+
+Verified after the change: `examples.agent-transcripts.materialize` **PASS** (the drift guard, which is
+what caught the staleness in the first place) and `examples.demo-transcript.exec` **PASS** across all 31
+demos — the edited box bodies still compile and execute.
+
+The original site list, for the record:
 
 | # | site |
 | --- | --- |
