@@ -2008,8 +2008,6 @@ class FLinesAndJavaShapes {
             out.y = a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3
             out.z = a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3
 
-            println(a.toString() + " " + c1 + " " + c2 + " " + b + " " + alpha + " == " + out)
-
             return out
         }
 

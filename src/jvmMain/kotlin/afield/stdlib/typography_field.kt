@@ -166,13 +166,16 @@ private fun forcePositiveWinding(glyph: Glyph): FLine {
  * area sign, so the ring is reversed here to keep the convention true — which is why a mirrored
  * letter still meshes and rasterises with its counters intact.
  */
-fun TextLayout.toContours(): List<GlyphContour> {
+fun TextLayout.toContours(honourHoles: Boolean = true): List<GlyphContour> {
     val out = mutableListOf<GlyphContour>()
     inkedGlyphs.forEach { g ->
         val t = g.transform()
         g.glyph.contours.forEach { ring ->
             val pts = ring.points.map { t.tx(it) }
-            val wantPositive = !ring.isHole
+            // honourHoles = false is the control arm: every ring wound positively, which is what a
+            // layer with no winding convention hands its consumers. Under NON_ZERO fill the counter
+            // of an `o` then vanishes into the bowl — see rasterizeText's fillRule.
+            val wantPositive = !honourHoles || !ring.isHole
             val area = signedAreaOf(pts)
             out.add(GlyphContour(if ((area > 0.0) == wantPositive) pts else pts.reversed(), ring.depth))
         }
@@ -238,6 +241,12 @@ fun TextLayout.toPointFLine(
  *   mirrors, so the winding is reversed to compensate.
  * @param centre translate so the ink's bounding box is centred on the origin — usually what you want
  *   before handing a mesh to a renderer.
+ *
+ * Normals are **not** attached, exactly as `extrudeMesh` leaves them off (`mesh_generate.kt:625`):
+ * call `flatShaded()` before rendering. That is not a convenience left undone, it is the point —
+ * `flatShaded()` un-welds every triangle into its own three vertices, so a mesh that has been through
+ * it is no longer topologically anything, and `isWatertight()` / `genus()` on the result would answer
+ * about the *render* copy rather than about the extrusion. Measure first, shade second.
  */
 fun TextLayout.toMesh(
     depth: Number = typeface.size * 0.25,
@@ -277,7 +286,7 @@ fun TextLayout.toMesh(
         val c = b.center
         mesh = mesh.translated(-c.x, -c.y, -c.z)
     }
-    return mesh.flatShaded()
+    return mesh
 }
 
 /** One outer ring plus its holes: two caps and one wall per ring, all off shared vertices. */
@@ -570,6 +579,24 @@ class TextSdf internal constructor(
 // ==============================================================================================
 
 /**
+ * How a scanline decides whether a crossing count means "inside".
+ *
+ * The two rules a filled outline can be interpreted under, and the reason the winding convention in
+ * `typography.kt` is load-bearing rather than tidy:
+ *
+ *  - [NON_ZERO] sums the *directions* of the crossings, and is what Skia (`someSkiko.kt`'s
+ *    `outputTo`) and Java2D's `GeneralPath` both do by default. A counter is a hole under this rule
+ *    **only** if its ring runs the opposite way to its bowl — which is exactly what this family
+ *    guarantees, and exactly what [TextLayout.toContours]`(honourHoles = false)` takes away.
+ *  - [EVEN_ODD] counts crossings and ignores their direction, so it depends on nesting parity
+ *    instead. Robust to a broken winding, blind to a self-overlapping stroke.
+ *
+ * Two rules that agree on correct input and disagree on broken input is a control arm, so both are
+ * here on purpose.
+ */
+enum class TextFillRule { NON_ZERO, EVEN_ODD }
+
+/**
  * Rasterise a layout by filling its own rings: an analytic-in-x, supersampled-in-y scanline fill.
  *
  * Deliberately not `Graphics2D.drawString`. Two reasons, and the second is the important one:
@@ -579,12 +606,12 @@ class TextSdf internal constructor(
  * extraction, the winding and the layout.
  *
  * Coverage is exact horizontally (a span contributes its real overlap with each pixel) and
- * [supersample]-fold vertically, which is enough to read 14pt type. Even-odd parity across sorted
- * crossings is what makes a counter a hole here — the *other* half of the winding convention's
- * payoff, since parity needs nesting to alternate and not direction.
+ * [supersample]-fold vertically, which is enough to read 14pt type.
  *
  * @param window the text-space rectangle mapped onto the image; defaults to the inked bounds. Pass
  *   the same window for several layouts and they share a scale — the way `planeFigureHtml` does.
+ * @param rings override the geometry, keeping the fit and the fill — the hook the control-arm figure
+ *   uses to raster `toContours(honourHoles = false)` through the identical filler.
  * @return a one-channel coverage [Img], 0 outside the ink and 1 well inside it. `.toRGB()`,
  *   `montage(...)` and `savePng(...)` all take it from here.
  */
@@ -595,12 +622,14 @@ fun rasterizeText(
     margin: Double = 0.06,
     supersample: Int = 4,
     window: Rect? = null,
+    fillRule: TextFillRule = TextFillRule.NON_ZERO,
+    rings: List<GlyphContour> = layout.toContours(),
 ): Img {
     require(width > 0 && height > 0) { "rasterizeText needs a positive size, got ${width}x$height" }
     require(supersample >= 1) { "supersample must be >= 1, got $supersample" }
     val img = Img.zeros(width, height, 1)
-    val rings = layout.toContours().filter { it.points.size >= 3 }
-    if (rings.isEmpty()) return img
+    val poly = rings.filter { it.points.size >= 3 }
+    if (poly.isEmpty()) return img
 
     val src = window ?: layout.bounds
     if (src.w <= 0 || src.h <= 0) return img
@@ -619,7 +648,7 @@ fun rasterizeText(
     val ey0 = ArrayList<Double>()
     val ex1 = ArrayList<Double>()
     val ey1 = ArrayList<Double>()
-    rings.forEach { ring ->
+    poly.forEach { ring ->
         val pts = ring.points
         for (i in pts.indices) {
             val a = pts[i]
@@ -639,7 +668,10 @@ fun rasterizeText(
     val bx = DoubleArray(n) { ex1[it] }
     val by = DoubleArray(n) { ey1[it] }
 
-    val crossings = DoubleArray(n)
+    // Crossings, plus a parallel array of edge directions — NON_ZERO needs to know which way the
+    // edge was going and EVEN_ODD does not care.
+    val xs = DoubleArray(n)
+    val dir = IntArray(n)
     val weight = (1.0 / supersample).toFloat()
 
     for (py in 0 until height) {
@@ -650,17 +682,45 @@ fun rasterizeText(
                 val y0 = ay[e]
                 val y1 = by[e]
                 // Half-open in y, so a vertex shared by two edges is counted exactly once.
-                if ((sy >= y0 && sy < y1) || (sy >= y1 && sy < y0)) {
-                    val t = (sy - y0) / (y1 - y0)
-                    crossings[count++] = ax[e] + t * (bx[e] - ax[e])
+                if (sy >= y0 && sy < y1) {
+                    xs[count] = ax[e] + (sy - y0) / (y1 - y0) * (bx[e] - ax[e])
+                    dir[count] = 1
+                    count++
+                } else if (sy >= y1 && sy < y0) {
+                    xs[count] = ax[e] + (sy - y0) / (y1 - y0) * (bx[e] - ax[e])
+                    dir[count] = -1
+                    count++
                 }
             }
             if (count < 2) continue
-            java.util.Arrays.sort(crossings, 0, count)
-            var c = 0
-            while (c + 1 < count) {
-                addSpan(img, py, crossings[c], crossings[c + 1], weight)
-                c += 2
+            // Insertion sort over the two parallel arrays. A scanline through a word crosses a few
+            // dozen edges, so this beats boxing indices to hand java.util.Arrays a comparator.
+            for (i in 1 until count) {
+                val x = xs[i]
+                val d = dir[i]
+                var j = i - 1
+                while (j >= 0 && xs[j] > x) {
+                    xs[j + 1] = xs[j]; dir[j + 1] = dir[j]; j--
+                }
+                xs[j + 1] = x; dir[j + 1] = d
+            }
+
+            when (fillRule) {
+                TextFillRule.EVEN_ODD -> {
+                    var c = 0
+                    while (c + 1 < count) {
+                        addSpan(img, py, xs[c], xs[c + 1], weight)
+                        c += 2
+                    }
+                }
+
+                TextFillRule.NON_ZERO -> {
+                    var wind = 0
+                    for (c in 0 until count - 1) {
+                        wind += dir[c]
+                        if (wind != 0) addSpan(img, py, xs[c], xs[c + 1], weight)
+                    }
+                }
             }
         }
     }
@@ -692,7 +752,8 @@ fun TextLayout.toImg(
     margin: Double = 0.06,
     supersample: Int = 4,
     window: Rect? = null,
-): Img = rasterizeText(this, width, height, margin, supersample, window)
+    fillRule: TextFillRule = TextFillRule.NON_ZERO,
+): Img = rasterizeText(this, width, height, margin, supersample, window, fillRule)
 
 /**
  * What fraction of the raster the ink covers.
