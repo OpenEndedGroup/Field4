@@ -158,19 +158,30 @@ class StatsSummaryTest {
     }
 
     @Test
-    fun `a bimodal sample is under-resolved because both rules read the between-mode spread`() {
-        // The caveat statistics_examples.md publishes: same n, far fewer bins.
+    fun `on a bimodal sample the crude Sturges fallback wins and the modes are under-resolved`() {
+        // The caveat statistics_examples.md publishes: both Freedman-Diaconis and Scott are driven
+        // by the BETWEEN-mode spread, so both come out coarser than Sturges -- and Sturges knows
+        // nothing but n, giving ceil(log2 500 + 1) = 10 bins for any 500-point sample.
         val rng = java.util.Random(23)
         val bimodal = (0 until 500).map {
             if (it % 2 == 0) -2.0 + 0.4 * rng.nextGaussian() else 2.0 + 0.4 * rng.nextGaussian()
         }
         val s = buildSummaryStats(bimodal)
         assertTrue(s.iqr > 3.0, "the IQR should straddle both modes: ${s.iqr}")
-        val bins = buildHistogram(bimodal).bins.size
-        assertTrue(bins < 15, "expected a coarse histogram for a bimodal sample, got $bins bins")
-        assertTrue(
-            buildHistogram((0 until 500).map { exp(0.6 * java.util.Random(11).nextGaussian()) }).bins.size >= 1,
-        )
+        assertTrue(s.sampleStdDev > 2.0, "as should the sd, where the within-mode spread is 0.4: ${s.sampleStdDev}")
+
+        val range = s.max - s.min
+        val cubeRoot = 500.0.pow(-1.0 / 3.0)
+        val hFd = 2.0 * s.iqr * cubeRoot
+        val hScott = 3.5 * s.sampleStdDev * cubeRoot
+        val kSturges = kotlin.math.ceil(ln(500.0) / ln(2.0) + 1.0).toInt()
+        val hSturges = range / kSturges
+        assertEquals(10, kSturges)
+        assertTrue(hSturges < hFd && hSturges < hScott, "Sturges wins: fd=$hFd scott=$hScott sturges=$hSturges")
+
+        val h = buildHistogram(bimodal)
+        assertEquals(kSturges, h.bins.size, "the crudest of the three rules decides the bin count")
+        assertEquals(500, h.count)
     }
 
     @Test

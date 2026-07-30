@@ -69,6 +69,7 @@ nav:
         - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
         - Timeseries Examples: timeseries_examples.md
         - State Estimation Examples: state_estimation_examples.md
+        - Statistics & Dependence: statistics_examples.md
         - Spectral Examples: spectral_examples.md
         - Imaging & Computer Vision: imaging_examples.md
         - Meshes & 3D Geometry: mesh_examples.md
