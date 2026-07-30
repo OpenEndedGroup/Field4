@@ -562,7 +562,7 @@ fun List<Vec3>.fitPolynomialTree3D(
     require(config.claims.claimRefitWeight >= 0.0) { "fitPolynomialTree3D: claimRefitWeight must be >= 0" }
 
     val copiedPoints = this.map { Vec3(it) }
-    require(copiedPoints.all(::isFiniteVec3)) { "fitPolynomialTree3D: all points must be finite" }
+    require(copiedPoints.all { it.isFinite() }) { "fitPolynomialTree3D: all points must be finite" }
 
     val effectiveMinPoints = max(config.minPointsPerLeaf, config.order + 1).coerceAtLeast(2)
     val tunedConfig = config.copy(
@@ -681,7 +681,7 @@ class PolynomialTreeIncrementalUpdater internal constructor(
 
     init {
         require(initialPoints.isNotEmpty()) { "PolynomialTreeIncrementalUpdater: initialPoints must not be empty" }
-        require(initialPoints.all(::isFiniteVec3)) { "PolynomialTreeIncrementalUpdater: initialPoints must be finite" }
+        require(initialPoints.all { it.isFinite() }) { "PolynomialTreeIncrementalUpdater: initialPoints must be finite" }
 
         val baseLastIndex = (initialPoints.size - 1).coerceAtLeast(1)
         root = buildIncrementalNode(templateRoot, baseLastIndex)
@@ -720,7 +720,7 @@ class PolynomialTreeIncrementalUpdater internal constructor(
 
     fun update(newPoints: List<Vec3>): PolynomialTreeIncrementalSummary {
         require(newPoints.isNotEmpty()) { "PolynomialTreeIncrementalUpdater.update: points must not be empty" }
-        require(newPoints.all(::isFiniteVec3)) { "PolynomialTreeIncrementalUpdater.update: points must be finite" }
+        require(newPoints.all { it.isFinite() }) { "PolynomialTreeIncrementalUpdater.update: points must be finite" }
 
         overwritePoints(newPoints)
         refitAllNodes()
@@ -2243,4 +2243,3 @@ private fun turningAngle(prev: Vec3, cur: Vec3, next: Vec3): Double {
     return acos(cos)
 }
 
-private fun isFiniteVec3(v: Vec3): Boolean = v.x.isFinite() && v.y.isFinite() && v.z.isFinite()

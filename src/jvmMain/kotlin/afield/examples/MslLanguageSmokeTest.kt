@@ -4,6 +4,7 @@ import afield.graphics.MslEditorLanguage
 import afield.graphics.VisionMetalKotlinJs
 import java.io.File
 import java.nio.file.Files
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -30,13 +31,13 @@ expect:
 object MslLanguageSmokeTest {
     @JvmStatic
     fun main(args: Array<String>) {
-        val node = which("node")
+        val node = NodeTool.resolveNode()
         if (node == null) {
             // The module still has to be loadable and self-consistent without Node.
             val source = MslEditorLanguage.javascript()
             require(source.contains("define(\"bithero/msl\"")) { "msl.js must register the AMD module" }
             require(source.contains("registerCompletionItemProvider")) { "msl.js must register completion" }
-            println("node not on PATH; msl.js source checks passed, provider drive skipped")
+            println("skipping provider drive: ${NodeTool.unavailableMessage()}; msl.js source checks passed")
             println("MslLanguageSmokeTest ok")
             return
         }
@@ -190,10 +191,4 @@ object MslLanguageSmokeTest {
 
         if (!process.exitCode) console.log("msl-language-ok: " + bare.length + " global suggestions");
     """.trimIndent()
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull { it.canExecute() }
-            ?.absolutePath
 }

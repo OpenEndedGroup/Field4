@@ -227,6 +227,11 @@ class RunnerState:
         self._shared_field_started_by_runner = False
         self._shared_field_started_at: float | None = None
         self._shared_field_jvm_pid: int | None = None
+        # Set the moment WE start signalling the shared server down (teardown, restart, or a
+        # failed-start cleanup). Without it, `diagnose_capture_failure` reads any exited process
+        # as "the JVM died mid-capture" and reports the runner's own SIGKILL as a crash --
+        # which on 2026-07-28 aimed triage at an OOM that never happened. See Backlog #18.
+        self._shared_field_stop_reason: str | None = None
         self._closed = False
         self.failures: list[str] = []
         # Captures that failed but had a committed asset already on disk to fall back
@@ -337,10 +342,26 @@ class RunnerState:
             sections.append("Field server process: not tracked (no runner-owned server handle).")
         elif process.poll() is None:
             sections.append(f"Field server process: still alive (pid {process.pid}, jvm pid {self._shared_field_jvm_pid}).")
+        elif self._shared_field_stop_reason is not None:
+            # OUR kill, not a crash. `_kill_shared_field_process` / `_stop_shared_field_server`
+            # escalate SIGTERM -> SIGKILL, so the exit code is typically 143 or 137 -- and Gradle
+            # helpfully appends "often caused by the system running out of memory" to 137, which
+            # sent 2026-07-28's triage after an OOM that never happened (Backlog #18). Say plainly
+            # that the exit is ours, and that the capture had already failed before it.
+            sections.append(
+                f"Field server process: exited with code {process.returncode} "
+                f"(pid {process.pid}, jvm pid {self._shared_field_jvm_pid}) -- "
+                f"{self._shared_field_stop_reason}, NOT a mid-capture crash. "
+                "The capture had already failed by then, so this exit is a consequence and not the "
+                "cause. Ignore any 'non-zero exit value 137 / out of memory' hint below: 137 is this "
+                "runner's own SIGKILL during cleanup. Look instead at what the capture was waiting "
+                "for in the log tails."
+            )
         else:
             sections.append(
                 f"Field server process: EXITED with code {process.returncode} "
-                f"(pid {process.pid}, jvm pid {self._shared_field_jvm_pid}) -- the JVM died mid-capture."
+                f"(pid {process.pid}, jvm pid {self._shared_field_jvm_pid}) -- the JVM died mid-capture "
+                "(no runner-initiated stop was in progress, so this exit was NOT ours)."
             )
 
         # --- JVM crash dumps written during this server's lifetime ---
@@ -558,6 +579,8 @@ class RunnerState:
         self._shared_field_started_by_runner = True
         self._shared_field_started_at = time.time()
         self._shared_field_jvm_pid = None
+        # A fresh process: any earlier runner-initiated stop no longer explains an exit.
+        self._shared_field_stop_reason = None
         self.server_starts += 1
 
         deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
@@ -591,6 +614,7 @@ class RunnerState:
         self._shared_field_process = None
         if process is None:
             return
+        self._shared_field_stop_reason = "killed by the runner while cleaning up a failed server start"
         if process.poll() is None:
             try:
                 if os.name == "nt":
@@ -651,6 +675,7 @@ class RunnerState:
         process = self._shared_field_process
         if process is None:
             return
+        self._shared_field_stop_reason = "stopped by the runner during teardown"
         LOG.info("Field docs runner stopping shared Field server")
         self._request_shared_field_shutdown()
         deadline = time.monotonic() + 8.0

@@ -6,6 +6,7 @@ import org.json.JSONObject
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.TimeUnit
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -32,8 +33,8 @@ expect:
 object KotlinJsRemoteLifecycleSmokeTest {
     @JvmStatic
     fun main(args: Array<String>) {
-        val node = which("node") ?: run {
-            println("node not on PATH; lifecycle host execution skipped")
+        val node = NodeTool.resolveNode() ?: run {
+            println("skipping lifecycle host execution: ${NodeTool.unavailableMessage()}")
             println("KotlinJsRemoteLifecycleSmokeTest ok")
             return
         }
@@ -165,10 +166,4 @@ object KotlinJsRemoteLifecycleSmokeTest {
         }
         error("could not locate Field repository root from ${System.getProperty("user.dir")}")
     }
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull { it.canExecute() }
-            ?.absolutePath
 }

@@ -4,6 +4,7 @@ import afield.remotejs.KotlinJsHeadProfiles
 import afield.remotejs.KotlinToJsCompiler
 import java.io.File
 import java.nio.file.Files
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -93,8 +94,9 @@ object KotlinJsSourcePreparationSmokeTest {
     }
 
     private fun runNode(vararg javascript: String): String {
-        val node = requireNotNull(which("node")) {
-            "node is required to verify generated Kotlin/JS execution and retained state"
+        val node = requireNotNull(NodeTool.resolveNode()) {
+            "node is required to verify generated Kotlin/JS execution and retained state: " +
+                NodeTool.unavailableMessage()
         }
         val script = Files.createTempFile("field-kotlinjs-source-prep", ".js").toFile()
         return try {
@@ -115,10 +117,4 @@ object KotlinJsSourcePreparationSmokeTest {
             script.delete()
         }
     }
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull(File::canExecute)
-            ?.absolutePath
 }

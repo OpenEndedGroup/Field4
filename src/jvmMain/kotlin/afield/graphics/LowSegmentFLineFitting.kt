@@ -82,7 +82,7 @@ fun Iterable<Vec3>.fitLowSegmentFLineResult(
     config: LowSegmentFLineFitConfig = LowSegmentFLineFitConfig()
 ): LowSegmentFLineFitResult {
     val source = dedupeConsecutive(map { Vec3(it) })
-    require(source.all(::isFiniteVec3LowFit)) { "fitLowSegmentFLine: all points must be finite" }
+    require(source.all { it.isFinite() }) { "fitLowSegmentFLine: all points must be finite" }
 
     if (source.isEmpty()) {
         return LowSegmentFLineFitResult(FLine(), 0.0, 0.0, 0, emptyList())
@@ -543,4 +543,3 @@ private fun dedupeConsecutive(points: List<Vec3>): List<Vec3> {
     return out
 }
 
-private fun isFiniteVec3LowFit(v: Vec3): Boolean = v.x.isFinite() && v.y.isFinite() && v.z.isFinite()

@@ -19,6 +19,7 @@ import afield.thisSessionInfo
 import java.io.File
 import java.nio.file.Files
 import java.util.concurrent.ConcurrentHashMap
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -149,13 +150,13 @@ object KotlinJsHeadProfilesSmokeTest {
         val remoteJs = compile(remote.profile.prepareSource(remote.source), "profile_remote_ar")
         val toneJs = compile(tone.profile.prepareSource(tone.source), "profile_tone")
 
-        val node = which("node")
+        val node = NodeTool.resolveNode()
         if (node != null) {
             runNode(node, visionHost + "\n" + visionJs + "\n" + visionProbe, "vision-metal-profile-ok")
             runNode(node, remoteArHost + "\n" + remoteJs + "\n" + remoteArProbe, "remote-ar-profile-ok")
             runNode(node, toneHost + "\n" + toneJs + "\n" + toneProbe, "tone-profile-ok")
         } else {
-            println("node not on PATH; all profile compiles passed, host-link execution skipped")
+            println("skipping host-link execution: ${NodeTool.unavailableMessage()}; all profile compiles passed")
         }
 
         println("KotlinJsHeadProfilesSmokeTest ok")
@@ -541,10 +542,4 @@ object KotlinJsHeadProfilesSmokeTest {
         }
         console.log("tone-profile-ok");
     """.trimIndent()
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull { it.canExecute() }
-            ?.absolutePath
 }

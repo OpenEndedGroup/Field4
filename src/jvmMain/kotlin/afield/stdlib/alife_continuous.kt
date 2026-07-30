@@ -421,7 +421,7 @@ class LeniaRule(
     val shellPeaks: DoubleArray = doubleArrayOf(1.0),
     val shellWidth: Double = 0.15,
     val growth: (Float) -> Float = { u ->
-        val d = (u - mu).toDouble()
+        val d = u - mu
         (2.0 * exp(-d * d / (2.0 * sigma * sigma)) - 1.0).toFloat()
     },
     val kernelTaps: LeniaTaps? = null

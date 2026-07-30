@@ -34,7 +34,40 @@ class Runloop {
 
     companion object {
         val runLoop = Runloop()
-        val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2)
+
+        private val miscPoolThreads = AtomicLong(0)
+
+        /**
+         * Shared pool for fire-and-forget background work (history screenshots, workspace saves,
+         * AI box naming, render-target file writes).
+         *
+         * **Daemon-threaded, with a draining shutdown hook.** With the default thread factory these
+         * workers were non-daemon, so a dozen idle `pool-1-thread-N` threads sat parked in
+         * `LinkedBlockingQueue.take` forever and the JVM could never terminate on its own. That is
+         * what made `examples.agent-transcripts.materialize` exit 3 under
+         * `AFIELD_JVM_MAIN_STRICT_EXIT` — a pool that has finished all its work still pinned the
+         * process. (It presents as `ForkJoinPool.managedBlock` frames, which is merely how AQS parks
+         * and not evidence of a ForkJoinPool.)
+         *
+         * Daemon threads alone would have quietly given up something real, though: today an
+         * in-flight save keeps the JVM alive by accident, so it gets to finish. The shutdown hook
+         * restores that on purpose and extends it — hooks also run on `exitProcess`, which is how
+         * this process actually ends, and which previously waited for nothing at all.
+         */
+        val miscPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() + 2) { runnable ->
+            Thread(runnable, "afield-misc-${miscPoolThreads.incrementAndGet()}").apply { isDaemon = true }
+        }.also { pool ->
+            // Throws if the JVM is already shutting down when the pool is first touched; that is
+            // exactly the case where there is nothing left to drain, so ignoring it is correct.
+            runCatching {
+                Runtime.getRuntime().addShutdownHook(
+                    Thread({
+                        pool.shutdown()
+                        runCatching { pool.awaitTermination(5, TimeUnit.SECONDS) }
+                    }, "afield-misc-drain")
+                )
+            }
+        }
 
         private val scheduling = RunloopSchedulingConfig.fromEnvironment()
         private val schedulingState = RunloopSchedulingState(scheduling)
