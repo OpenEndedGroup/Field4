@@ -711,6 +711,142 @@ class SpatialGeometryTest {
         )
     }
 
+    /**
+     * The cloud the `spatial_geometry_examples` clustering figure draws: three tight blobs of 28 with
+     * centres 2.408 apart, plus one stray at [strayDistance]-ish from the nearest of them. The stray
+     * direction is fixed; only how far out it sits varies.
+     */
+    private fun blobsWithOneStray(stray: Vec2): List<Vec2> {
+        val rng = java.util.Random(7)
+        val centres = listOf(vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2))
+        val points = ArrayList<Vec2>()
+        centres.forEach { c ->
+            repeat(28) { points += vec(c.x + rng.nextGaussian() * 0.30, c.y + rng.nextGaussian() * 0.30) }
+        }
+        points += stray
+        return points
+    }
+
+    /** The L1 objective — sum of |dx| + |dy| to each cluster's own median — of any partition at all. */
+    private fun l1ObjectiveOf(points: List<Vec2>, labels: IntArray, k: Int): Double =
+        (0 until k).sumOf { c ->
+            val members = points.indices.filter { labels[it] == c }
+            if (members.isEmpty()) return@sumOf 0.0
+            val mx = members.map { points[it].x }.sorted()[members.size / 2]
+            val my = members.map { points[it].y }.sorted()[members.size / 2]
+            members.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
+        }
+
+    private fun sortedSizes(layer: ClusterLayer): List<Int> =
+        (0 until layer.clusterCount).map { layer.indices(it).size }.sorted()
+
+    @Test
+    fun oneStrayPointBuysAWardClusterButNotAMedoidOne() {
+        // The discriminating claim the clustering figure is built on. Ward minimises a sum of
+        // SQUARED deviations, so one far point can be worth more than two real clusters; k-medoids
+        // and k-medians minimise sums of distances, so it cannot be.
+        val stray = vec(9.0, 8.0)
+        val points = blobsWithOneStray(stray)
+        assertEquals(85, points.size)
+
+        val tree = vec2Agglomerative(points)
+        val cut3 = tree.partition(3)
+        val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))
+        val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))
+
+        // Ward gives the single stray a cluster of its own, and pays by merging two 28-point blobs.
+        assertEquals(listOf(1, 28, 56), sortedSizes(cut3), "Ward's k=3 cut of the stray cloud")
+        // The robust pair absorb it and keep every planted blob whole.
+        assertEquals(listOf(28, 28, 29), medoids.clusterSizes.sorted(), "k-medoids' k=3 cut")
+        assertEquals(listOf(28, 28, 29), medians.clusterSizes.sorted(), "k-medians' k=3 cut")
+
+        // Scored on one ruler, Ward's answer is far worse — and *how much* worse is the number the
+        // page prints. This is the assertion that fails on well-separated blobs (see the control arm
+        // in `wellSeparatedBlobsCannotDiscriminateBetweenTheStrategies`), where the ratio is 1.000.
+        val wardCost = l1ObjectiveOf(points, cut3.labels, 3)
+        val ratio = wardCost / medians.objective
+        assertTrue(
+            ratio > 1.8,
+            "Ward's cut should cost far more on the L1 ruler; got $wardCost vs ${medians.objective} = ${"%.3f".format(ratio)}x",
+        )
+
+        // The backbone invariants still hold on this harder data.
+        medoids.medoids.forEach { m ->
+            assertTrue(points.any { it.x == m.x && it.y == m.y }, "medoid $m is not an input sample")
+        }
+        assertTrue(
+            medians.objective < medoids.distortion,
+            "k-medians ${medians.objective} should beat k-medoids ${medoids.distortion} on the L1 objective",
+        )
+
+        // Cutting the SAME tree deeper undoes the damage: the stray is alone, and every planted blob
+        // is a union of k=6 clusters even though the k=3 cut ran across two of them.
+        val cut6 = tree.partition(6)
+        assertEquals(listOf(1, 11, 12, 16, 17, 28), sortedSizes(cut6), "the k=6 cut of the same tree")
+        for (fine in 0 until cut6.clusterCount) {
+            assertEquals(
+                1, cut6.indices(fine).map { cut3.labels[it] }.toSet().size,
+                "k=6 cluster $fine straddles two k=3 clusters",
+            )
+        }
+        val plantedOf = { i: Int -> if (i < 84) i / 28 else -1 }
+        for (fine in 0 until cut6.clusterCount) {
+            val planted = cut6.indices(fine).map(plantedOf).toSet()
+            assertEquals(1, planted.size, "k=6 cluster $fine mixes planted blobs $planted")
+        }
+    }
+
+    @Test
+    fun theWardFlipHappensAtThePredictedStrayDistance() {
+        // Ward should abandon the stray exactly when absorbing it costs more than merging two blobs:
+        // 28/29 · d² > 28·28/56 · 2.408², i.e. d > sqrt(81.2 / 0.966) = 9.17. Bracket that.
+        val nearest = vec(1.2, 2.2)   // the blob centre the stray is closest to
+        fun distanceOf(stray: Vec2) =
+            hypot((stray.x - nearest.x).toDouble(), (stray.y - nearest.y).toDouble())
+        fun wardIsolatesTheStray(stray: Vec2): Boolean {
+            val points = blobsWithOneStray(stray)
+            return sortedSizes(vec2Agglomerative(points).partition(3)).first() == 1
+        }
+
+        val inside = vec(8.0, 7.0)
+        val outside = vec(9.0, 8.0)
+        assertTrue(distanceOf(inside) < 9.17, "the near stray should be inside the predicted threshold")
+        assertTrue(distanceOf(outside) > 9.17, "the far stray should be outside it")
+        assertTrue(!wardIsolatesTheStray(inside), "at d=${distanceOf(inside)} Ward should absorb the stray")
+        assertTrue(wardIsolatesTheStray(outside), "at d=${distanceOf(outside)} Ward should isolate the stray")
+    }
+
+    @Test
+    fun wellSeparatedBlobsCannotDiscriminateBetweenTheStrategies() {
+        // The control arm, and the reason the clustering figure was rebuilt. On the well-separated
+        // 30/30/30 cloud the figure used to draw, every assertion in
+        // `oneStrayPointBuysAWardClusterButNotAMedoidOne` is either trivially true or false: the
+        // three strategies return the same partition and score within 0.5% of each other, so the
+        // figure cannot demonstrate any difference between them.
+        val (points, _) = plantedClusters()
+        val cut3 = vec2Agglomerative(points).partition(3)
+        val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))
+        val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))
+
+        assertEquals(listOf(30, 30, 30), sortedSizes(cut3))
+        assertEquals(listOf(30, 30, 30), medoids.clusterSizes.sorted())
+        assertEquals(listOf(30, 30, 30), medians.clusterSizes.sorted())
+
+        // No singleton anywhere, so `sizes(cut3).first() == 1` is false…
+        assertEquals(30, sortedSizes(cut3).first(), "no strategy isolates anything on this data")
+        // …and the L1 ratio that reaches 1.86 on the stray cloud is exactly 1 here, because Ward and
+        // k-medians found the very same partition.
+        val ratio = l1ObjectiveOf(points, cut3.labels, 3) / medians.objective
+        assertEquals(
+            1.0, ratio, 1e-6,
+            "on well-separated blobs Ward's cut and k-medians' cut score identically, ratio $ratio",
+        )
+        assertTrue(
+            abs(medoids.distortion - medians.objective) / medians.objective < 0.01,
+            "the two objectives differ by under 1% here: ${medoids.distortion} vs ${medians.objective}",
+        )
+    }
+
     @Test
     fun agglomerativeCutsAreNestedAndCanonicallyLabelled() {
         val (points, _) = plantedClusters(seed = 12L)

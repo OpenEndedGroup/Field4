@@ -659,61 +659,114 @@ Each of `Float`, `Vec2`, `Vec3` and `Vec4` has all three (`floatKMedoids`, `vec3
 and every result converts to a `ClusterLayer` — a name plus one integer label per sample — which is
 the currency the visualisers take.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/clustering.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="980" padding="14"}
-:::static
-// Three planted Gaussian blobs, 30 points each, so the right answer is known: [30, 30, 30].
-val rng = java.util.Random(3)
-val centres = listOf(vec(0.0, 0.0), vec(3.0, 0.2), vec(1.4, 2.6))
-val points = centres.flatMap { c ->
-    List(30) { vec(c.x + rng.nextGaussian() * 0.35, c.y + rng.nextGaussian() * 0.35) }
-}
+A comparison is only worth drawing on data that can tell the things compared *apart*. Three
+well-separated Gaussian blobs cannot: every strategy below recovers them exactly, the numbers agree to
+four significant figures, and the figure teaches nothing except that none of the code is broken. So
+here is a cloud with exactly **one** thing wrong with it — three tight blobs of 28 points, and a
+single 85th point sitting nine units away from all of them. Nothing else is unusual. Watch what each
+strategy does with that one point.
 
-val tree = vec2Agglomerative(points)                                  // Ward linkage by default
+```diffstatic_runner {data-lang=kotlin screenshot="assets/spatial_geometry_examples/clustering.png" wait="3.0" capture="box" open-outputs="true" w="1040" h="1080" padding="14"}
+:::fold plant three tight blobs of 28 — and one lone stray nine units out
+// Three tight Gaussian blobs, 28 points each, centres 2.4 apart. Then one stray, far from all three.
+// The only interesting thing about this cloud is that 85th point.
+val rng = java.util.Random(7)
+val blobCentres = listOf(vec(0.0, 0.0), vec(2.4, 0.2), vec(1.2, 2.2))
+val blobs = blobCentres.flatMap { c ->
+    List(28) { vec(c.x + rng.nextGaussian() * 0.30, c.y + rng.nextGaussian() * 0.30) }
+}
+val stray = vec(9.0, 8.0)
+// NOT `blobs + stray`: in Field, `List<Vec2> + Vec2` is `FLineGeometry`'s elementwise operator and
+// TRANSLATES all 84 points by (9, 8) rather than appending an 85th. `+ listOf(stray)` is worse still
+// — that overload zips two equal-length lists. Append explicitly.
+val points = buildList { addAll(blobs); add(stray) }
+val window = Rect(-1.4, -1.4, 11.2, 10.2)   // shared by all four panels, so they are comparable
+:::endfold
+:::static
+// Four strategies, one question: partition these 85 points into three groups.
+val tree = vec2Agglomerative(points)     // Ward: minimises within-cluster sum of SQUARES
 val cut3 = tree.partition(3)
 val cut6 = tree.partition(6)
+val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))  // centres ARE samples
+val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))  // L1 Lloyd
 
-val medoids = vec2KMedoids(points, 3, KMedoidsOptions(randomSeed = 11L))
-val medians = vec2KMedians(points, 3, KMediansOptions(randomSeed = 11L))
+// One ruler for all of them: score ANY partition by the objective k-medians optimises — the sum of
+// |dx| + |dy| from each point to its own cluster's median. That makes the four answers comparable.
+fun l1Of(labels: IntArray, k: Int) = (0 until k).sumOf { c ->
+    val mem = points.indices.filter { labels[it] == c }
+    val mx = mem.map { points[it].x }.sorted()[mem.size / 2]
+    val my = mem.map { points[it].y }.sorted()[mem.size / 2]
+    mem.sumOf { (abs(points[it].x - mx) + abs(points[it].y - my)).toDouble() }
+}
+fun sizes(layer: ClusterLayer) = (0 until layer.clusterCount).map { layer.indices(it).size }.sorted()
 
-// A medoid is an actual input sample; check it rather than trust it.
+// THE DISCRIMINATORS. Every one of these is boring on well-separated blobs and decisive here.
+val wardSpendsAClusterOnTheStray = sizes(cut3).first() == 1        // [1, 28, 56]
+val medoidsKeepEveryBlobWhole = medoids.clusterSizes.min() >= 28   // [28, 28, 29]
+val wardCostsThisMuchMore = l1Of(cut3.labels, 3) / medians.objective  // 1.86x, not 1.00x
+
+// …and the invariants that hold whatever the data, which is why they are the honest backbone.
 val medoidsAreSamples = medoids.medoids.all { m -> points.any { it.x == m.x && it.y == m.y } }
-// A finer cut of the merge tree refines a coarser one: every k=6 cluster lies inside one k=3 cluster.
 val nested = (0 until cut6.clusterCount).all { fine ->
     cut6.indices(fine).map { cut3.labels[it] }.toSet().size == 1
 }
+val mediansBeatMedoids = medians.objective < medoids.distortion
 :::fold draw the four partitions
-fun sizes(layer: ClusterLayer) =
-    (0 until layer.clusterCount).map { layer.indices(it).size }.joinToString("/")
-
+// Only the FIRST newline splits a panel label into title + caption; later ones render as spaces, and
+// the grid's max-content columns are sized by the longest caption. So: one short caption line each.
 showPlaneGrid(
-    "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3)} — the planted clusters recovered whole" to
+    "vec2Agglomerative().partition(3)\nsizes ${sizes(cut3).joinToString("/")} — L1 %.3f. one stray, one whole cluster"
+        .format(l1Of(cut3.labels, 3)) to
         cut3.toFLines(points, drawSpokes = false, pointSize = 1.6),
-    "…the same tree cut at 6\nsizes ${sizes(cut6)}, nested inside the k=3 cut: $nested" to
-        cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
-    "vec2KMedoids(k = 3)\nsizes ${medoids.clusterSizes.joinToString("/")}, distortion %.3f, %d rounds, medoids are samples: %s"
-        .format(medoids.distortion, medoids.iterations, medoidsAreSamples) to
+    "…the SAME tree, cut at 6\nsizes ${sizes(cut6).joinToString("/")} — nested: $nested. the blobs are back"
+        to cut6.toFLines(points, drawSpokes = false, pointSize = 1.6),
+    "vec2KMedoids(k = 3)\nsizes ${medoids.clusterSizes.toList().sorted().joinToString("/")} — distortion %.3f. samples: %s"
+        .format(medoids.distortion, medoidsAreSamples) to
         medoids.asLayer().toFLines(points, centers = medoids.medoids, pointSize = 1.6),
-    "vec2KMedians(k = 3)\nsizes ${medians.clusterSizes.joinToString("/")}, L1 objective %.3f, converged: %s"
-        .format(medians.objective, medians.converged) to
+    "vec2KMedians(k = 3)\nsizes ${medians.clusterSizes.toList().sorted().joinToString("/")} — L1 %.3f. Ward's cut costs %.2fx"
+        .format(medians.objective, wardCostsThisMuchMore) to
         medians.asLayer().toFLines(points, centers = medians.centers, pointSize = 1.6),
     columns = 2,
     cellWidth = 430,
-    cellHeight = 280,
+    cellHeight = 352,
+    window = window,
 )
 :::endfold
 ```
 
-![Four panels of the same 90-point cloud: a Ward cut at k=3 recovering the three planted blobs, the same tree cut at 6, k-medoids with its three sample medoids marked, and k-medians with its three robust centres and spokes](assets/spatial_geometry_examples/clustering.png)
+![Four panels of the same 85-point cloud, all at one scale: the Ward cut at k=3 colouring the single far stray as a cluster of its own while two of the three tight blobs share a colour; the same tree cut at 6, where the stray is alone and the blobs are separate again; k-medoids, which absorbs the stray into its nearest blob and keeps all three whole; and k-medians doing the same with its three robust centres marked](assets/spatial_geometry_examples/clustering.png)
 
-All four find the planted structure — **30/30/30** three times over — which on well-separated blobs
-is the least a clustering algorithm can do, and is exactly why it makes a good figure: you can see
-whether the *colours* are right. The interesting numbers are the ones that distinguish the methods.
-The k=6 cut is **nested inside** the k=3 cut, which is the property that makes a hierarchy worth
-having: you can change your mind about *k* after the fact, for free, without re-running anything.
-K-medoids converged in **2 rounds** with a distortion of **51.803**, and every one of its three
-medoids is an actual input point. K-medians reaches a slightly lower L1 objective (**51.546**),
-because a median is free to sit *between* samples — which is the trade: a medoid you can point at,
-against a centre that fits marginally better.
+**The four strategies do not agree, and each disagreement is the reason you would pick that strategy.**
+
+**Ward spends a whole cluster on one point.** The k=3 cut is **1 / 28 / 56**: the stray alone, one blob
+intact, and *two genuine blobs merged into one*. That is not a bug, it is the objective. Agglomerative
+Ward merges whichever pair raises the within-cluster sum of squares least, and merging clusters of
+`n₁`, `n₂` whose centroids are `d` apart costs `n₁n₂/(n₁+n₂) · d²`. Merging two 28-point blobs 2.408
+apart costs `14 · 5.80 = 81.2`. Absorbing the stray into its nearest blob — 9.72 away — costs
+`28/29 · 94.5 = 91.2`. **91.2 > 81.2**, so the stray stays out and two real clusters pay for it. The
+whole mechanism is that one *squaring*: a point three times further away is nine times as expensive.
+
+That prediction is testable, and it holds: the threshold should sit at `d = √(81.2 / 0.966) = 9.17`,
+and moving the stray inward, the cut flips from `1 / 28 / 56` to `28 / 28 / 29` between
+**d = 8.32 and d = 9.72** — the two sampled distances that bracket 9.17.
+`SpatialGeometryTest.oneStrayPointBuysAWardClusterButNotAMedoidOne` asserts it.
+
+**k-medoids and k-medians both shrug the stray off, and they are the right answer here.** Both minimise
+a sum of *distances*, so that point costs 9.72 rather than 94.5, and absorbing it as one eccentric
+member of the nearest blob is obviously cheaper than tearing a real blob apart. Both return
+**28 / 28 / 29**, both recover all three planted blobs whole, and every medoid is still one of your own
+samples. Scored on one ruler — the L1 objective in the code above — Ward's cut costs **103.113** where
+k-medians reaches **55.383**: **1.86×** as much. On the well-separated blobs this figure used to show,
+those two numbers were **51.546 and 51.546** — identical to four significant figures, which is precisely
+why that version of the figure could not discriminate between anything.
+
+**The hierarchy is not thereby discredited — it is the only one of the four you can argue with after the
+fact.** Cut the *same tree* at 6 and you get **1 / 11 / 12 / 16 / 17 / 28**: the stray is a singleton,
+and the two blobs Ward merged at k=3 are separate again. Every planted blob is a union of k=6 clusters
+even though the k=3 cut cut across them. That cost nothing — no re-run, no re-seed, no new random
+number — because the finer cut is **nested** inside the coarser one. Which is the trade the family is
+really offering: k-medoids and k-medians give a better answer to the question you asked, and the
+hierarchy lets you discover you asked the wrong question.
 
 Two things worth knowing:
 
@@ -729,9 +782,10 @@ Two things worth knowing:
 
 ### The linkage is the model, not a tuning knob
 
-Well-separated blobs make every method look identical, which is why the figure above cannot tell you
-anything about the seven `AgglomerativeLinkage` values. Give it data where the answer is genuinely
-ambiguous and they stop agreeing — not by a little, but about *what a cluster is*.
+One stray point was enough to separate the three *algorithms*. It is not enough to separate the seven
+`AgglomerativeLinkage` values, because all seven agree that a lone far point is its own cluster. What
+they disagree about is deeper — not where to put an awkward point, but *what a cluster is at all* — and
+seeing that needs a shape rather than an outlier.
 
 Two long parallel bands with a narrow gap and a few stragglers in it is the standard discriminator,
 because it separates the two rival definitions of "cluster". One is *connectivity*: a set of things
