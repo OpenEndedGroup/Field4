@@ -653,6 +653,12 @@ compare against published MIC numbers. Above a few thousand samples, `kendallTau
 switch to `RollingDistanceCorrelation` or subsample. And if the problem turns out to be that the
 signal is the wrong shape rather than unrelated to anything, that is `quantilewarp.kt`.
 
+Everything on this page is also **five live, editable boxes**: the `statistics_examples` starting
+point listed under *Pure-compute scenes* in
+[Agent transcripts](agent_transcripts.md#pure-compute-scenes) opens the whole thing in a fresh
+document, each box printing the numbers above so a re-run checks itself. Change a shape, a window
+size, a target distribution or an `n` and re-run one.
+
 For the signals themselves rather than these derived quantities, see
 [Timeseries examples](timeseries_examples.md); for recovering a hidden state from noisy
 measurements, [State estimation](state_estimation_examples.md); and for the rolling-dependence

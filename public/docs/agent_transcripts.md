@@ -121,6 +121,27 @@ rather than run: a `Frames` that is only built never runs. None of the twenty op
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_worked_example/metadata.edn)
 
+**statistics_examples** — [Which of these signals actually depend on each other?](statistics_examples.md)
+as five independent boxes. *Summary* pins the three quantities `buildSummaryStats` makes easy to
+misread — MAD recomputed from scratch to show it is the unscaled median absolute deviation, the
+`sampleStdDev/populationStdDev` ratio against `sqrt(n/(n-1))` to show which of the two conventions the
+card's `stddev` follows while its `skew` follows the other, and `cv` blowing up to 10¹⁴ once the mean is
+re-centred to zero. *Histogram* re-derives the bin-width rule and predicts the bin count before asking:
+28 bins where Freedman–Diaconis wins, and 10 where FD and Scott are both inflated by the distance
+*between* two modes so the crudest rule, Sturges, decides. *Dependence* is the centrepiece — six shapes
+at n=400 with all six coefficients on each, `xi` shown asymmetric (0.985 forwards, 0.246 backwards on a
+parabola), `dCor` shown to be exactly 1 for *any* straight line but only 0.491 for a perfect parabola,
+and then the permutation test the family does not provide: the growing-spread case's dCor of 0.193 beats
+all 400 random re-pairings while its xi of 0.026 is beaten by 76 of them. *Rolling* runs both rolling
+classes across a regime change against rolling `|pearson|` and against the measured null threshold, then
+cross-checks the incremental sums against the O(w²) batch call — two different algorithms agreeing to
+5×10⁻¹⁵. *Warp* fits an 8-knot quantile warp on one log-normal draw and measures a disjoint second one
+(skew 11.7 → 0.007), compares it against the exact `Φ⁻¹(F̂(v))` built in the box, and prints both sharp
+edges: `evaluate(-1.0)` returning −21.1 outside the fitted knots, and the 0.20 smoothing tracking
+`10·0.8ᵏ`. Every box is pure CPU and self-checking; change a shape, a window size, a target distribution
+or an n and re-run it.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/statistics_examples/metadata.edn)
+
 
 ## visionOS device scenes
 
