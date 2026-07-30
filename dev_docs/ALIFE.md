@@ -3,7 +3,7 @@
 `afield.stdlib`'s `alife*.kt` family: grid cellular automata, reaction–diffusion, Lenia, agent
 populations and L-systems. Public worked example: [`public/docs/alife_examples.md`](../public/docs/alife_examples.md).
 Verification harness: `afield.examples.stdlib.AlifeGallery`, in two tiers — FIELD_TEST
-`stdlib.alife.gallery` (`--tier fast`, ~2.7 s, tagged `smoke`, and therefore what a routine
+`stdlib.alife.gallery` (`--tier fast`, 11 figures, ~6 s, tagged `smoke`, and therefore what a routine
 `--tag smoke` run pays for) and `stdlib.alife.gallery.slow` (`--tier slow`, ~25 s, deliberately *not*
 tagged `smoke`, so it runs in an unfiltered catalog pass and on demand).
 Loadable demo: `dev_docs/agents/transcripts/alife_worked_example.yaml`.
@@ -40,10 +40,15 @@ stop.
 | `alife_agents.kt` | `BoidFlock`, `PhysarumSwarm`, `dlaCluster` / `edenCluster` / `sprinkleCluster` |
 | `alife_lsystem.kt` | `LSystem`, `turtleDraw`, `rasterizeFLines`, `spaceColonization` |
 | `alife_field.kt` | the inline `ToHTML` views for `IntGrid`, `GrayScottState` and `LeniaRun` |
+| `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
-The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All six
+The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
 carry `@file:afield.CompletionCategory("ALife")` — without it a new file lands in a freshly-created
 `reference/uncategorised.md`, which is how `alife_field.kt` first failed the reference drift guard.
+
+`alife_animate.kt` sits apart from the five simulation files for the same reason `alife_field.kt` does:
+those files name nothing from Field's box runtime and it is entirely about it (`Box`, `Frames`,
+`display`). See "Animating one of these" below for the two things in it that are not obvious.
 
 ## The measurement layer is the load-bearing part
 
@@ -368,10 +373,59 @@ One honest limit, stated in the KDoc rather than papered over: an `IntGrid` does
 state count, so the view reads `maxState() + 1` from the data. A 14-state cyclic soup that has died back
 to 9 distinct states reports 9. The caption therefore says "states **observed**".
 
+## Animating one of these
+
+Every system here is a time evolution, and the montage of frozen generations that the docs page's figures
+end with is precisely the view that hides what they are about. `Box.animateEvolution` is the family's one
+animation idiom: a state, a `step`, a `panels` renderer, and a **schedule** — `totalSteps` over `seconds`,
+divided into `framesTarget` displayed frames. A `Frames` that is merely built never runs, so a box that
+ends in a call to it must be **launched**, not run; the docs fences say `execution="launch"`.
+
+Two things in it are not obvious, and both were paid for.
+
+**Two clocks, because either alone fails.** A fixed steps-per-frame makes the clip's content depend on how
+fast the host is. A pure wall-clock schedule diverges, because a pass that has fallen behind is then asked
+for a bigger batch, which makes it fall further behind. So the loop advances at most the largest batch its
+own schedule ever asks of one frame *and* never runs ahead of the clock. A slow host therefore lags at a
+bounded rate and keeps catching up after the schedule ends — which is why a recording should ask for a
+second or two more than `seconds`, and why every call site burns the step counter into the frame. "Did this
+clip reach the regime?" is then answered by looking at the last frame of the mp4 rather than by trusting
+the schedule.
+
+**`ramp`, because a linear schedule is not neutral.** Reaction–diffusion and Lenia are log-time processes:
+step 60 → 600 and step 600 → 6000 are about equally large *visible* changes. Measured on the recorded
+clips as the consecutive-frame mean absolute luma difference summed per quarter, an even schedule put
+**78.3 %** of Gray–Scott's whole change in the first quarter of the clip (Lenia: 86.3 %) and 0 % in the
+last. `ramp` is the ratio between the last displayed frame's batch and the first, on the geometric schedule
+`done(t) = totalSteps · (ramp^t − 1) / (ramp − 1)`, pinned to 0 at `t = 0` and `totalSteps` at `t = 1` for
+every ramp — so no ramp can make a clip skip its seed or stop short, and `ramp = 1.0` is exactly the linear
+schedule. At `ramp = 40` Gray–Scott's quarters read 10.4 / 35.6 / 50.0 / 4.0 % and half the change has
+arrived at 51 % of the clip. `perPass` is found by scanning the schedule's own per-frame increments for the
+largest, which keeps the two-clock guarantee for any monotone schedule.
+
+**Do not measure pacing at the endpoints.** The obvious instrument — mean absolute difference between the
+first, middle and last frames — *saturates* for anything that starts near black: Gray–Scott's
+first-to-middle figure barely moved (42.09 → 42.40) across a fourfold change in pacing, because a
+labyrinth and an empty field differ by about 42 however you got there. Consecutive-frame difference per
+quarter is the number that moves.
+
+The four prefix helpers each fix one specific animation failure rather than being general tidiness:
+`Img.rowsRevealed` (a space-time diagram at generation *n*, at **full height**, so `montage` does not
+rescale every frame differently), `rasterizeFLinesFramed` (framing taken from the finished curve, because
+`rasterizeFLines` fits its raster to what it is handed and a growing prefix would rescale every frame),
+`flinePrefix` (the turtle's path in the order the turtle walked it, so an L-system animates by *drawing*),
+and `Aggregate.arrivalPrefixImg` (the colour ramp fixed to the full cluster's count, because
+`arrivalOrderImg` normalises by its own and would re-map the newest particle to 1.0 every frame).
+
+All four are the same principle in different coordinates, and it is the principle `alife_field.kt`'s range
+policy states in colour: **a frame must never set its own scale.** The DLA clip's crop is the same rule in
+geometry — taken once from the finished cluster, per axis rather than as a square around `maxRadius`
+(a DLA cluster is anisotropic, and a square leaves a third of the panel empty forever).
+
 ## Running the verification
 
 ```bash
-# the fast tier: 9 figures, ~2.7 s, every claim an exact identity or a closed-form comparison
+# the fast tier: 11 figures, ~6 s, every claim an exact identity or a closed-form comparison
 python3 tools/run_field_tests.py --id stdlib.alife.gallery --port 952x --no-reap
 
 # the slow tier: 7 figures, ~25 s, the statistical verdicts

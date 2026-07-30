@@ -4,7 +4,7 @@
 
 Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence.
 
-6 source file(s), 323 public symbol(s), 200 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+7 source file(s), 328 public symbol(s), 205 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -260,6 +260,70 @@ A grown aggregate.
 | <code class="highlight"><span class="k">val</span> <span class="n">walkSteps</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">fractalDimension</span><span class="p">(</span><span class="n">rMin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="n">rMaxFraction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">)</span><span class="p">:</span> <span class="nc">MassRadiusFit</span></code> | `massRadiusDimension` of this aggregate, fitted over the range its own size supports. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+## alife_animate.kt { #alife-animate-kt }
+
+One shared, honest way to *animate* the `alife*.kt` family — because every system in it is a time
+evolution, and a montage of frozen generations is the one view that hides the thing they are about.
+
+The whole file is `Box.animateEvolution` plus four small "show a prefix of something" helpers. It sits
+apart from the five simulation files for the same reason `alife_field.kt` does: those files name nothing
+from Field's box runtime, and this one is entirely about it (`Box`, `Frames`, `display`).
+
+**Pacing is the craft, and it is the reason this is a shared helper rather than a copied loop.** The
+naive animation — one simulation step per displayed frame — is wrong for almost every system here, and
+wrong in two opposite directions:
+
+ - Gray–Scott needs about **6000** explicit-Euler steps to reach its named regime. One step per frame at
+   20 fps is five minutes of a clip in which nothing happens.
+ - Conway's glider moves one cell per **four** generations. Forty steps per frame is a strobe.
+
+So `Box.animateEvolution` takes the *whole* evolution — `totalSteps` — and the wall-clock `seconds` it
+should occupy, and derives the steps-per-frame from them. The clip is then a statement about the system
+("these 6000 steps, in 7 seconds") rather than about the machine that recorded it.
+
+**Two clocks, deliberately.** A fixed steps-per-frame alone makes the clip's *content* depend on how
+fast the host is; a pure wall-clock schedule alone degrades catastrophically, because a pass that falls
+behind is then asked to do a bigger batch, which makes it fall further behind. So the loop uses both: it
+advances at most the largest batch its own schedule ever asks of one frame (smoothness, and a bound on how
+far one pass can lag — `ceil(totalSteps / framesTarget)` for a linear schedule, the final frame's batch
+for a ramped one), and never runs *ahead* of the wall clock (so a fast host does not finish in two seconds).
+A slow host therefore lags at a bounded rate and keeps catching up after the schedule ends, which is why
+a recording should ask for a second or two more than `seconds` — the tail is both a hold on the settled
+result and the slack that absorbs the lag.
+
+**A linear step schedule is not a neutral choice, and for some of these systems it is the wrong one.**
+Reaction–diffusion and Lenia are *log-time* processes: the visible change from step 60 to step 600 is
+about the same as from step 600 to step 6000. Spend equal steps on equal wall-clock and the clip
+front-loads — measured as the mean absolute luma difference between the extracted frames of the
+Gray–Scott clip on `alife_examples.md`, a linear schedule gave **42.09** from the first frame to the
+middle and **3.98** from the middle to the last: the reader watches it finish and then waits. So
+`Box.animateEvolution` takes a `ramp`, and the schedule it drives is geometric rather than linear. See
+that parameter for the arithmetic.
+
+**The step counter belongs in the frame.** Every call site here labels its panels with the step number,
+which is not decoration: it is how "did this clip actually reach the regime?" is answered by *looking* at
+the last frame of the recorded mp4 rather than by trusting the schedule. A clip whose final label reads
+`step 2100 / 6000` is a failed clip, and it says so on its face.
+
+**The range policy from `alife_field.kt` applies with more force here, not less.** A colour map whose
+range is taken from the frame makes an animation of a growing structure appear to stand still, and makes
+a saturating field indistinguishable from a dying one. So every call site passes explicit `lo`/`hi` to
+`Img.colormap`. Auto-ranging is a per-figure mistake and a per-*frame* lie.
+
+`src/jvmMain/kotlin/afield/stdlib/alife_animate.kt`
+
+**Used in:** [Spatial artificial life](../alife_examples.md)
+
+### Top-level functions { #alife-animate-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">S</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">animateEvolution</span><span class="p">(</span><span class="n">start</span><span class="p">:</span> <span class="nc">S</span><span class="p">,</span> <span class="n">totalSteps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">7.0</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cellSide</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">420</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">framesTarget</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">140</span><span class="p">,</span> <span class="n">ramp</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">step</span><span class="p">:</span> <span class="p">(</span><span class="nc">S</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">S</span><span class="p">,</span> <span class="n">panels</span><span class="p">:</span> <span class="p">(</span><span class="nc">S</span><span class="p">,</span> <span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Img</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Frames</span></code> | Animate a stateful system in a box: step it toward a schedule, draw it, repeat, forever. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">rowsRevealed</span><span class="p">(</span><span class="n">rows</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | A copy of this image with every row after `rows` set to zero — the space-time diagram of a 1-D automaton as it would look at generation `rows`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rasterizeFLinesFramed</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `rasterizeFLines`, but with the framing taken from `reference` rather than from `lines`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">flinePrefix</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The first `fraction` of a turtle's path, in the order the turtle walked it — so an L-system can be animated by *drawing*, which is what a turtle does, rather than by cutting between derivation depths. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Aggregate</span><span class="p">.</span><span class="nf">arrivalPrefixImg</span><span class="p">(</span><span class="n">upTo</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | The first `upTo` particles of this aggregate, coloured by arrival order **on the full cluster's scale**. |
 
 ## alife_ca.kt { #alife-ca-kt }
 

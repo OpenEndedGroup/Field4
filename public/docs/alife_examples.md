@@ -28,9 +28,9 @@ polarization is 0.69 where 400 independent headings would give 0.044 and where t
 with the alignment term zeroed reaches 0.073.
 
 Everything on this page is checked in CI by
-[`afield.examples.stdlib.AlifeGallery`](https://github.com/), which renders seventeen figures and
+[`afield.examples.stdlib.AlifeGallery`](https://github.com/), which renders eighteen figures and
 asserts, for each, the statistic a control arm fails. The numbers printed below are the numbers it
-asserts. It runs in two tiers: `stdlib.alife.gallery` is the fast one (~3 s, everything whose evidence
+asserts. It runs in two tiers: `stdlib.alife.gallery` is the fast one (~6 s, everything whose evidence
 is an exact identity or a closed-form comparison, including the checks that pin the *measurement*
 functions against analytic answers) and `stdlib.alife.gallery.slow` is the ~25 s of figures that
 integrate a PDE or an agent population to a statistical verdict.
@@ -171,7 +171,8 @@ something stationary. Nothing is claimed here beyond the number in the caption, 
     against 42 for Gray–Scott. The reason is arithmetic rather than aesthetic. A glider is five live cells,
     so on a 48-cell board **0.2 %** of the pixels ever change — the motion is perfect and the picture is
     almost still. Shrinking the board to 16 cells makes the same five cells **2 %** of the panel and the
-    same 400 generations measure **PENDING_LIFE**. Nothing about the automaton changed; the frame is just
+    same 400 generations measure **5.26**, and half the clip's change has arrived by 37 % of its length.
+    Nothing about the automaton changed; the frame is just
     the size of the thing being claimed. The most famous object in the field deserves not to be four pixels
     wide.
 
@@ -405,7 +406,7 @@ encoder has nothing to predict from: at 128 cells and eight seconds this clip al
 than the other nine put together. The cost is very nearly proportional to cells × frames rather than to
 pixels — magnifying a small lattice with nearest-neighbour blocks is close to free, and shrinking the
 *lattice* is what pays — so it is 96 cells at three pixels each rather than 128 at two. It is a bigger
-picture than it was, and it costs PENDING_CYCLIC.
+picture than it was, and it costs 5.2 MB instead of 9.6.
 
 The left panel is the sequence the figure above samples at generations 0, 40 and 400, without the gaps.
 Watch for the transition, because it is sharp and it has a name: the soup is **locally** advancing
@@ -554,19 +555,36 @@ paced the way it is.
 
     So [`animateEvolution`](reference/alife.md#alife-animate-kt) takes a `ramp`, and the one visible line
     of the fence below sets it to 40 — meaning the last displayed frame advances forty times as many steps
-    as the first, on the geometric schedule
-    `done(t) = 6000 · (40^t − 1) / 39`. The mid-point of the clip is now step **819** instead of step 3000,
-    the fronts meet at four fifths of the way through rather than halfway, and the same five events are
-    spread across the whole clip: **PENDING_GS**. It is one number, and it is the
-    number to change if you disagree with the pacing.
+    as the first, on the geometric schedule `done(t) = 6000 · (40^t − 1) / 39`. The mid-point of the
+    *schedule* is then step **819** rather than step 3000.
 
-    It costs something, and the cost is visible rather than hidden: the last frames each advance about
-    160 steps, which is more than the host can compute in a twentieth of a second, so the clip's tail runs
-    slower than wall-clock and needs a longer recording window to finish. That is exactly what the burned-in
-    `step N of 6000` clock is for — the last frame of the recording says whether the schedule finished, and
-    it is checkable by looking rather than by trusting.
+    Whether that made the clip evenly paced is a separate question, and it has its own measurement: the
+    mean absolute luma difference between **consecutive** frames, summed over each quarter of the recording.
 
-```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="10" fps="20" timeout="300" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
+    | | 1st quarter | 2nd | 3rd | 4th | half the change by |
+    | --- | --- | --- | --- | --- | --- |
+    | linear | **78.3 %** | 16.9 % | 4.7 % | 0.0 % | 14.5 % of the clip |
+    | `ramp = 40` | 15.5 % | 73.8 % | 10.7 % | 0.0 % | **38.4 %** of the clip |
+
+    Four fifths of everything that happened used to happen in the first two seconds; now the busiest
+    quarter is the second one and half the change arrives at 38 % rather than 14 % of the clip. And the
+    honest reading of that table is that a ramp **moved** the busy part rather than spreading it, because
+    what Gray–Scott does is not gradual: the burst is the fronts filling the domain, roughly steps 400 to
+    1500, and a schedule can only decide how much of the clip that window gets. It got 18 % of it linearly
+    and it gets 35 % now. No monotone time-warp will make a burst uniform, and `ramp` is one parameter —
+    the one to change if you disagree with where the burst sits.
+
+    Two honest notes. The *endpoint* measurement is the wrong instrument for this particular clip: the first
+    frame is a nearly black field, so its difference from any later frame saturates near 42 whatever the
+    schedule does, and first-to-middle / middle-to-last only moved from 42.09 / 3.98 to 42.40 / 9.61 —
+    an understatement of a change that more than doubled the busy window's share of the clip. And the ramp
+    asks the last frames for about 170 reaction–diffusion steps each, which is more than a twentieth of a
+    second's worth, so the tail *could* fall behind the wall clock. It did not: the recording reads
+    `step 6000 of 6000` well before it ends, with a beat of settled labyrinth after it. That
+    is exactly what the burned-in step clock is for — the last frame says whether the schedule finished, and
+    that is checkable by looking rather than by trusting.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
 :::static
 :::fold the autocatalyst field, on a fixed colour range
 // The autocatalyst field on a FIXED 0..0.5 magma range. Auto-ranging per frame is what makes an
@@ -712,8 +730,14 @@ Which is why this clip is ramped like Gray–Scott's, and for the same measured 
 inside the first forty steps of two hundred and forty, so an even schedule gave **12.13** of change over the
 first half of the clip and **1.14** over the second. `ramp = 25` puts the mid-point of the clip at step 40
 instead of step 120 — the whole of the interesting decision gets half the clip, and the long
-self-maintaining phase, which is the *claim* but not the event, gets the other half. Measured after:
-**PENDING_LENIA**.
+self-maintaining phase, which is the *claim* but not the event, gets the other half.
+
+Measured the same way as Gray–Scott's, by consecutive-frame difference summed over each quarter of the
+recording: an even schedule put **86.3 %** of the whole clip's change in the first quarter and had half of it
+over by 10 % of the clip, with 71 % of frames showing essentially no change at all. At `ramp = 25` the
+quarters read 13.0 / 75.4 / 10.7 / 0.9 %, half the change arrives at 37 % of the clip, and the near-still
+frames fall to 48 % — which is a floor rather than a failure, because one of the two panels really does die
+and a dead field is *supposed* to sit still.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
 :::static
@@ -1086,10 +1110,17 @@ the interior is *empty*, permanently, and it was made empty by the arrival proce
 
 !!! note "Cropped, for the same reason section 1's boards shrank — and *not* zoomed"
     This clip was the second-weakest on the page (a first-to-last mean absolute luma difference of **2.78**)
-    and the cause is the same arithmetic: 6000 particles on a 300-cell domain is **6.7 %** of the pixels
-    ever lit, and a cluster that only ever grows can never differ from its first frame by more than the ink
-    it lays down. Cropping once to the finished cluster's own square roughly doubles that share — the box
-    below prints both figures — and the difference measured after is **PENDING_DLA**.
+    and the cause is the same arithmetic: a cluster that only ever grows can never differ from its first
+    frame by more than the ink it lays down, and on a 300 × 300 domain this cluster lays down **2.7 %** of
+    the pixels. Cropping once to the cluster's own bounding box raises that to **6.0 %** and the difference
+    measured after is **5.83** — both figures printed by the box below, from the cluster it is about to
+    animate.
+
+    The crop has to be taken **per axis**. The first cut of it took a square of side `2 · maxRadius` and
+    barely helped: `maxRadius` is 138.3 on a 300-cell domain, so the square was 282 × 282 and the ink share
+    went from 2.7 % to 3.0 %. A DLA cluster is *anisotropic* — one arm gets ahead and sets the radius — and
+    this one's bounding box is **261 × 152**. `maxRadius` is the right number for fitting a dimension and the
+    wrong one for framing a picture.
 
     That is the ceiling and not a target: even at a perfect crop this figure is a couple of percent of ink
     on black, so it will always be a quieter clip than a field that re-colours every cell. The alternative
@@ -1105,28 +1136,34 @@ the interior is *empty*, permanently, and it was made empty by the arrival proce
 // in -- at a uniform rate over seven seconds.
 val dla = dlaCluster(300, 300, particles = 6000, seed = 2L)
 
-:::fold crop once to the finished cluster's own square, and colour by arrival order on its full scale
+:::fold crop once to the finished cluster's bounding box, and colour by arrival order on its full scale
 // The crop is the colour-range discipline in geometry: taken ONCE, from the finished cluster, never
 // from the frame -- a crop that tracked the growing prefix would zoom out as the cluster grew and
 // the screening this clip is about would be the one thing you could not see.
-val r = Math.ceil(dla.maxRadius).toInt() + 2
-val x0 = (dla.center.x.toInt() - r).coerceAtLeast(0)
-val y0 = (dla.center.y.toInt() - r).coerceAtLeast(0)
-val cropSide = (2 * r).coerceAtMost(minOf(300 - x0, 300 - y0))
+//
+// Per AXIS rather than a square around maxRadius: a DLA cluster is anisotropic, and maxRadius is set
+// by its single longest arm, so a square crop leaves a third of the panel permanently empty.
+val pad = 2
+val x0 = (dla.points.minOf { it.x }.toInt() - pad).coerceAtLeast(0)
+val y0 = (dla.points.minOf { it.y }.toInt() - pad).coerceAtLeast(0)
+val cw = (dla.points.maxOf { it.x }.toInt() + pad + 1 - x0).coerceAtMost(300 - x0)
+val ch = (dla.points.maxOf { it.y }.toInt() + pad + 1 - y0).coerceAtMost(300 - y0)
 
 // `arrivalPrefixImg` fixes the colour ramp to the FULL cluster's particle count, so a branch keeps
 // the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
 // newest particle to the top of turbo on every frame.
 fun cluster(dla: Aggregate, n: Int) =
     listOf("particles " + n + " of " + dla.points.size to
-        dla.arrivalPrefixImg(n).crop(x0, y0, cropSide, cropSide).colormap("turbo", 0f, 1f).upscaleNearest(3))
+        dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3))
 :::endfold
 
-// Why the crop: a 6000-particle cluster is a fixed amount of ink, and how legible its growth is
-// depends entirely on how much of the frame that ink occupies.
-println("cluster max radius " + "%.1f".format(dla.maxRadius) + " -> cropped to " + cropSide +
-    " of 300 cells, so " + "%.1f".format(100.0 * dla.points.size / (cropSide * cropSide)) +
-    "% of the panel is ever lit, against " + "%.1f".format(100.0 * dla.points.size / 90000.0) + "% uncropped")
+// Why the crop: a cluster is a fixed amount of ink, and how legible its growth is depends entirely on
+// how much of the frame that ink occupies. Note the particle count in the first line -- `particles`
+// is a ceiling, not a promise, and this cluster stopped well short of the 6000 asked for.
+println(dla)
+println("cropped to " + cw + " x " + ch + " of 300 x 300, so " +
+    "%.1f".format(100.0 * dla.points.size / (cw * ch)) + "% of the panel is ever lit, against " +
+    "%.1f".format(100.0 * dla.points.size / 90000.0) + "% uncropped")
 
 animateEvolution(
     Unit,

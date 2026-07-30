@@ -161,7 +161,7 @@ expect:
  *    `-1/3` lag-1 autocorrelation, proportionality of correlation length to wavelength, and recovery of
  *    a *prescribed* mass–radius exponent at `D = 1.00, 1.26, 1.71, 2.00`.
  *
- * **Two tiers.** `--tier fast` (the `stdlib.alife.gallery` FIELD_TEST, ~2 s) is everything whose
+ * **Two tiers.** `--tier fast` (the `stdlib.alife.gallery` FIELD_TEST, 11 figures, ~6 s) is everything whose
  * evidence is an exact identity or a closed-form comparison. `--tier slow`
  * (`stdlib.alife.gallery.slow`, ~25 s) is the seven figures that integrate something to a statistical
  * verdict. `--tier all` is the default when run by hand. See [Tier].
@@ -2255,7 +2255,7 @@ object AlifeGallery {
      * [FAST] is everything whose evidence is an **exact identity or a closed-form comparison** and whose
      * runtime is milliseconds: the two estimator oracles, Life's named objects, the elementary rules'
      * two independent number-theoretic oracles, mass conservation, the L-system identities, the tree
-     * invariants, the dimension controls and the watertight mesh. It is ~2 s and it is the tier that
+     * invariants, the dimension controls and the watertight mesh. It is ~6 s and it is the tier that
      * catches a broken stepper, a broken estimator or a broken bridge.
      *
      * [SLOW] is the seven figures that integrate a PDE, a 6000-step reaction, a 240-step Lenia sweep or
@@ -2265,7 +2265,7 @@ object AlifeGallery {
      *
      * The split is not a claim that the slow tier matters less. It is a claim that a 27-second
      * unconditional cost on every routine smoke run buys less than the same seconds spent elsewhere,
-     * and that ~2 s of *exact* checks is the right thing to make unconditional.
+     * and that ~6 s of *exact* checks is the right thing to make unconditional.
      */
     private enum class Tier { FAST, SLOW }
 
