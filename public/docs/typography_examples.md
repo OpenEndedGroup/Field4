@@ -4,13 +4,13 @@
 [Graphics](reference/graphics.md).*
 
 Field could draw, mesh, filter, cluster, contour and evolve geometry, and it could not turn *a
-string* into any of it. There was no text-as-geometry layer at all: every `java.awt.Font` in the tree
-painted a label into a raster and none of them produced a value you could extrude, march, sample or
-animate. For a live-coding tool for new-media art, that is a strange hole — kinetic typography is a
-headline capability, not a footnote.
+string* into any of it. Every `java.awt.Font` in the tree painted a label into a raster; none of them
+produced a value you could extrude, march, sample or animate. For a live-coding tool for new-media
+art that is a strange hole — kinetic typography is a headline capability, not a footnote.
 
 Two files fill it, and they add no dependency. `GlyphVector.getOutline()` hands back the font's real
-Bézier outlines, and everything after that is arithmetic.
+Bézier outlines, and everything after that is arithmetic. **Every figure on this page was rendered by
+the docs build from the code shown above it**, in a live Field, at build time.
 
 | what you want | where it is |
 |---|---|
@@ -21,24 +21,32 @@ Bézier outlines, and everything after that is arithmetic.
 
 ## Hello, legibility
 
-```kotlin
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/word.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="640" padding="14"}
+:::static
 val face = typeface("SansSerif", 140.0)
 val word = layoutText("Handgloves", face)
-showImgGrid("Handgloves" to rasterizeText(word, 1600, 380), columns = 1, cellSide = 860)
+
+// rasterizeText is a scanline fill over the contours this family extracted. Not drawString.
+showImgGrid(
+    "Handgloves — %d contours, %d of them counters, %.0f units wide"
+        .format(word.contourCount, word.holeCount, word.advanceWidth) to
+        rasterizeText(word, 1600, 380),
+    columns = 1, cellSide = 900,
+)
 ```
 
-![The word Handgloves in white sans-serif on black, all counters open](assets/typography_gallery/word.png)
+![The word Handgloves in white sans-serif on black, every counter open](assets/typography_examples/word.png)
 
-That raster is worth being precise about, because it is the whole argument for the page. It was **not
-drawn by AWT**. `rasterizeText` is a scanline fill over the contours this family extracted — so a
-legible picture is evidence about the extraction, the winding and the layout, and not about
-`Graphics2D.drawString`. (There is a second reason: `imaging_field.kt` forbids in-process AWT text
-rendering outright, which is why `montage` captions with a 5×7 bitmap table.)
+That raster is the whole argument for the page, so be precise about it: it was **not drawn by AWT**.
+`rasterizeText` is a scanline fill over the contours *this family* extracted, so a legible picture is
+evidence about the extraction, the winding and the layout — and not about `Graphics2D.drawString`.
+(A second reason it has to be: `imaging_field.kt` forbids in-process AWT text rendering outright,
+which is why `montage` captions with a 5×7 bitmap table.)
 
-## The winding convention, and what happens without it
+## The winding convention, and the control arm
 
 A counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so. `isoContourFLines`
-in `contours.kt` leaves its winding arbitrary and every consumer downstream has to cope; this family
+in `contours.kt` leaves its winding arbitrary and every consumer downstream has to cope. This family
 decides instead:
 
 > A ring's signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are positive; holes
@@ -48,76 +56,149 @@ decides instead:
 
 That is not housekeeping. Skia and Java2D both fill **non-zero**, so a counter survives exactly
 because its ring runs the other way and cancels its bowl. Take the convention away and the letters
-fill in:
+fill in. Below: identical filler, identical fill rule, identical rings — the only difference is
+whether the hole rings run the opposite way.
 
-```kotlin
-val layout = layoutText("open", typeface("SansSerif", 220.0))
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/winding.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="620" padding="14"}
+:::static
+:::fold one face, one window, so the three cells are strictly comparable
+val face = typeface("SansSerif", 220.0)
+val layout = layoutText("open", face)
 val window = layout.bounds
-showImgGrid(
-    "convention on"  to rasterizeText(layout, 900, 460, window = window, rings = layout.toContours(honourHoles = true)),
-    "convention off" to rasterizeText(layout, 900, 460, window = window, rings = layout.toContours(honourHoles = false)),
-    columns = 2, cellSide = 420
+:::endfold
+
+// The control arm is one argument. Same filler, same NON_ZERO rule, same rings — only their
+// direction differs, and NON_ZERO cancels a +1 outer against a −1 hole to leave a counter.
+val withConvention = rasterizeText(
+    layout, 900, 460, window = window,
+    fillRule = TextFillRule.NON_ZERO, rings = layout.toContours(honourHoles = true),
 )
+val withoutConvention = rasterizeText(
+    layout, 900, 460, window = window,
+    fillRule = TextFillRule.NON_ZERO, rings = layout.toContours(honourHoles = false),
+)
+
+// EVEN_ODD counts crossings and ignores direction, depending on nesting parity instead. Over
+// correct rings it must produce the IDENTICAL raster — two independent rules agreeing.
+val evenOdd = rasterizeText(layout, 900, 460, window = window, fillRule = TextFillRule.EVEN_ODD)
+
+:::fold measure the ink and the worst per-pixel disagreement, then draw the three cells
+var worst = 0.0
+for (y in 0 until withConvention.height) for (x in 0 until withConvention.width) {
+    worst = maxOf(worst, kotlin.math.abs(withConvention.at(x, y, 0) - evenOdd.at(x, y, 0)).toDouble())
+}
+showImgGrid(
+    "NON_ZERO, convention on — %.1f%% inked".format(100 * withConvention.inkFraction()) to withConvention,
+    "NON_ZERO, convention off — %.1f%% inked".format(100 * withoutConvention.inkFraction()) to withoutConvention,
+    "EVEN_ODD over the same correct rings — worst difference from cell 1: %.5f".format(worst) to evenOdd,
+    columns = 3, cellSide = 380,
+)
+:::endfold
 ```
 
-![The word open twice: on the left the o and p counters are holes, on the right they are filled solid](assets/typography_gallery/counters.png)
+![The word open three times: counters open, counters filled solid, and counters open again under the even-odd rule](assets/typography_examples/winding.png)
 
-Same filler, same fill rule, same rings — only their direction differs. Measured: 11.9% of the frame
-inked with the convention, 17.1% without. The `e` survives in both because its aperture is open to
-the outside and so was never a closed ring at all.
+The counters of `o` and `p` close up in the middle cell and the ink fraction rises to prove it. The
+`e` survives in **both**, and that is the detail worth keeping: its aperture is open to the outside,
+so it was never a closed ring at all and there is nothing for a winding rule to get wrong.
 
-The cross-check is that two independent fill rules agree when the winding is right. `EVEN_ODD`
-ignores direction and depends on nesting parity instead, so it should produce the *identical* raster:
+The third cell is the cross-check. `EVEN_ODD` ignores direction entirely, so over correct rings it
+must produce the *identical* raster — and the worst per-pixel difference printed in its caption is
+`0.00000`. Reverse the hole rings and the two rules diverge, which is why both are in the API rather
+than only the one this code happens to use.
 
-![B, per-mille sign and o filled under NON_ZERO and under EVEN_ODD, with a completely black difference image](assets/typography_gallery/fill_rules.png)
+## The rings themselves
 
-Worst per-pixel difference: `0.00000`. Reverse the hole rings and the two rules diverge — which is
-why both are in the API rather than only the one this code happens to use.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/rings.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="640" padding="14"}
+:::static
+val layout = layoutText("aeg", typeface("Serif", 240.0))
 
-You can see the ring structure directly:
+// Every ring of the layout, still classified: depth is containment, isHole is depth parity,
+// signedArea is the direction that classification forced.
+val rings = layout.toContours()
 
-```kotlin
-val rings = layoutText("aeg", typeface("Serif", 240.0)).toContours()
-rings.forEach { println("depth ${it.depth} ${if (it.isHole) "HOLE" else "outer"} area ${it.signedArea}") }
+:::fold one closed FLine per ring, tinted by classification
+val lines = rings.map { ring ->
+    fline {
+        ring.points.forEachIndexed { i, p -> if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y) }
+        lineTo(ring.points[0].x, ring.points[0].y)
+        color = if (ring.isHole) vec(1.0, 0.55, 0.28, 0.95) else vec(0.5, 0.82, 1.0, 0.95)
+        thickness = 1.8
+    } to ring.isHole
+}
+val signs = rings.joinToString(" ") { if (it.signedArea > 0) "+" else "−" }
+showPlaneGrid(
+    "outer rings — depth even, area positive (${rings.count { !it.isHole }})" to lines.filter { !it.second }.map { it.first },
+    "hole rings — depth odd, area negative (${rings.count { it.isHole }})" to lines.filter { it.second }.map { it.first },
+    "all ${rings.size} rings, signs $signs" to lines.map { it.first },
+    "the same layout, filled" to layout.toFLines(filled = true, stroked = false, thickness = 1.0),
+    columns = 2, cellWidth = 460, cellHeight = 250, window = layout.bounds,
+)
+:::endfold
 ```
 
-![Left: three outer rings as outlines spelling aeg. Right: four hole rings floating where the counters are](assets/typography_gallery/outlines.png)
+![Four panels of the letters a e g: three outer rings, four hole rings floating where the counters are, both together, and the filled result](assets/typography_examples/rings.png)
 
-Seven rings for `aeg`: three outer, four holes (the double-storey `g` contributes two), and the
-signs run `+ − + − + − −`.
+Seven rings for `aeg` — three outer and four holes, because the double-storey `g` contributes two.
+The hole panel is the interesting one: those four little loops are floating in space exactly where
+the counters are, which is what "a letter is a ring *system*" means in practice.
 
 ## What layout decided
 
 `layoutText` takes AWT's advances and kerning pairs and adds the things AWT does not do: `\n`,
 letter-spacing, alignment, and a mutable transform handle per glyph. Two identities are worth
-printing, because they are how you find out that something silently rounded:
+drawing, because they are how you find out that something silently rounded.
 
-```kotlin
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/layout.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="1080" padding="14"}
+:::static
+:::fold one face, and prose to wrap
+val face = typeface("SansSerif", 120.0)
+val prose = wrapText(
+    "Type is geometry that happens to be legible, and legibility is the one test " +
+        "a plausible looking picture cannot pass.",
+    face.atSize(44.0), maxWidth = 620.0,
+)
+:::endfold
+
+// Identity one: kerning off, no tracking — the line is the sum of its advances. Two different
+// AWT paths (accumulated pen positions vs per-glyph metrics) that have to agree.
 val plain = layoutText("minimum", face.withKerning(false))
-println(plain.advanceWidth)                                // == the sum of the glyph advances
-println(plain.glyphs.sumOf { it.glyph.advance })
+val drift = plain.advanceWidth - plain.glyphs.sumOf { it.glyph.advance }
 
+// Identity two: tracking adds one gap per INTER-GLYPH space, not one per glyph. The trailing gap
+// nobody asked for is the classic off-by-one, and the advance boxes below show where it went.
 val t = 0.16 * face.size
-val loose = layoutText("TYPE", face, tracking = t)
 val tight = layoutText("TYPE", face)
-println(loose.advanceWidth - tight.advanceWidth)           // == (glyphs - 1) * t, exactly
+val loose = layoutText("TYPE", face, tracking = t)
+
+:::fold draw the metrics diagram, then the same wrapped paragraph in all three alignments
+showPlaneGrid(
+    "tracking 0 — %.0f units; advanceWidth − Σadvances = %.1e".format(tight.advanceWidth, drift) to
+        (tight.metricsFLines() + tight.advanceBoxFLines() + tight.toFLines(thickness = 1.0)),
+    "tracking 0.16em — %.0f units, i.e. exactly %d gaps × %.1f wider"
+        .format(loose.advanceWidth, tight.glyphs.size - 1, t) to
+        (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
+    columns = 1, cellWidth = 900, cellHeight = 250,
+    window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
+)
+showImgGrid(
+    *TextAlign.entries.map { a ->
+        a.name.lowercase() to rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
+    }.toTypedArray(),
+    columns = 3, cellSide = 300,
+)
+:::endfold
 ```
 
-Tracking adds one gap per *inter-glyph* space and not one per glyph — the trailing gap nobody asked
-for is the classic off-by-one here. Draw the advance boxes and the extra space is visibly *between*
-the letters:
+![Two baselines of TYPE with ascent and descent guides and one advance box per glyph, the second visibly looser, above the same five-line paragraph set left, centred and right](assets/typography_examples/layout.png)
 
-![TYPE at tracking 0 and at 0.16em, each glyph in its advance box, the looser one 433 units wide against 352](assets/typography_gallery/tracking.png)
+The first two panels are the diagram of the *decisions* rather than of the letters:
+`metricsFLines()` draws baseline, ascent and descent; `advanceBoxFLines()` draws one box per glyph —
+including for a space, which has no glyph to draw and is exactly why the boxes are useful. Compare
+the two rows and the extra space is visibly *between* the letters and not after the last one.
 
-`metricsFLines()` and `advanceBoxFLines()` give you the diagram of the decisions rather than of the
-letters. The advance boxes exist for a space too, which is exactly why they are useful:
-
-![Two baselines of serif text with ascent and descent guides and one advance box per glyph](assets/typography_gallery/metrics.png)
-
-Word wrap measures with the real layout, so it is correct for the tracking and kerning you are going
-to use, and all three alignments come off the same wrapped string:
-
-![The same five-line paragraph set left, centred and right](assets/typography_gallery/paragraph.png)
+Word wrap measures with the real layout, so it is correct for the tracking and kerning you are
+actually going to use, and all three alignments come off the same wrapped string.
 
 ## Text on a curve
 
@@ -127,43 +208,94 @@ along the path — `FLine.cursor()`'s arc-length table, the same machinery `samp
 spacing is even in distance rather than in curve parameter, and a multi-line layout follows the curve
 in bands instead of collapsing onto it.
 
-```kotlin
-val ring = layoutText("AROUND AND AROUND", typeface("SansSerif", 78.0), tracking = 7.0)
-// size the circle to the text, not the text to the circle, and the string closes exactly
-val onCircle = ring.onCurve(textCircle(radius = ring.advanceWidth / (2 * Math.PI)), align = TextAlign.CENTER)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/on_a_curve.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="740" padding="14"}
+:::static
+:::fold a face, a string, and a cubic to bend the second one along
+val face = typeface("SansSerif", 78.0)
+val ring = layoutText("AROUND AND AROUND", face, tracking = 7.0)
+val wave = fline {
+    moveTo(0.0, 0.0)
+    cubicTo(300.0, -240.0, 720.0, 240.0, 1020.0, 0.0)
+}
+:::endfold
+
+// Size the circle to the text rather than the text to the circle: a circumference equal to the
+// layout's width means the string closes exactly, with no gap and no overlap at the seam.
+val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
+val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
+val onWave = layoutText("a rolling line of type", face, tracking = 2.0).onCurve(wave, align = TextAlign.CENTER)
+
+:::fold draw both, plus the circle path with the letters as outlines over it
+showImgGrid(
+    "on a circle — circumference %.1f vs layout width %.1f".format(circle.arcLength(), ring.advanceWidth) to
+        rasterizeText(onCircle, 620, 620),
+    "on a cubic — %d of %d glyphs turned with the curve"
+        .format(onWave.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }, onWave.glyphs.size) to
+        rasterizeText(onWave, 900, 420),
+    columns = 2, cellSide = 430,
+)
+showPlaneGrid(
+    "the path and the letters as outlines — the original layout is still straight: ${ring.glyphs.all { it.isUntransformed }}" to
+        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.5); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
+    columns = 1, cellWidth = 460, cellHeight = 420,
+)
+:::endfold
 ```
 
-![AROUND AND AROUND set clockwise around a circle, and a rolling line of type following an S-curve](assets/typography_gallery/on_a_curve.png)
+![AROUND AND AROUND set clockwise around a circle, a rolling line of type following an S-curve, and the circle path with the letters drawn as outlines on it](assets/typography_examples/on_a_curve.png)
 
-Circumference 937.2 units against a layout width of 937.4. `onCurve` returns a **copy**, so the
-straight layout is still straight and can be bent along something else.
+Read the first caption: the circumference and the layout width agree to a fraction of a unit, which
+is what "closes exactly" means and is the reason to size the circle from the text. `onCurve` returns
+a **copy** — the third caption says so — so the straight layout is still straight and can be bent
+along something else.
 
 ## Kinetic typography
 
 The handles are the point of the whole design, not a convenience bolted on afterwards. Every
 `PlacedGlyph` carries `offset`, `rotation`, `scale` and `pivot`, and the pivot defaults to the
 glyph's own visual centre — so a bare `rotation = 0.3` spins each letter about itself and looks like
-what you meant. One layout, computed once, and a function of elapsed seconds written into it:
+what you meant. One layout, computed once, and a function of elapsed seconds written into it.
 
-```kotlin
-val layout = layoutText("KINETIC", typeface("SansSerif", 150.0), tracking = 16.0)
+```diffstatic_runner {data-lang=kotlin video="assets/typography_examples/kinetic.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="900" embed=true name="typography-kinetic" alt="the word KINETIC with a travelling wave of rotation, scale and vertical lift running left to right through the letters, each letter turning about its own centre inside a frame that never moves"}
+:::static
+:::fold the face, the layout, and a window fixed from the widest the wave will ever get
+val face = typeface("SansSerif", 150.0)
+val layout = layoutText("KINETIC", face, tracking = 16.0)
+// A FIXED frame, not fit-to-contents: left to rescale to each frame's own bounds the letters would
+// move and the picture would stand still. Probe both extremes of the wave and union them.
+val window = run {
+    val probe = layoutText("KINETIC", face, tracking = 16.0)
+    probe.eachGlyph { i -> rotation = 0.5; scale = vec(1.3, 1.3); offset = vec(0.0, 34.0) }
+    val a = probe.bounds
+    probe.eachGlyph { i -> rotation = -0.5; scale = vec(1.3, 1.3); offset = vec(0.0, -34.0) }
+    a.union(probe.bounds)
+}
 val started = System.nanoTime()
+:::endfold
+
+// The line you would change: elapsed seconds and a glyph index in, a travelling wave out. Elapsed
+// seconds rather than a frame counter, because this box renders faster than the recorder samples it.
+fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
+
 animate {
-    val t = (System.nanoTime() - started) / 1e9
+    val elapsed = (System.nanoTime() - started) / 1e9
     layout.eachGlyph { i ->
-        val w = 1.7 * t + i * 0.7
-        rotation = 0.42 * sin(w)
-        scale = vec(1 + 0.22 * cos(w), 1 + 0.22 * cos(w))
-        offset = vec(0.0, 30.0 * sin(w * 1.3))
+        val w = waveAt(elapsed, i)
+        rotation = 0.42 * kotlin.math.sin(w)
+        val s = 1.0 + 0.22 * kotlin.math.cos(w)
+        scale = vec(s, s)
+        offset = vec(0.0, 30.0 * kotlin.math.sin(w * 1.3))
     }
-    showImgGrid("t = %.1fs".format(t) to rasterizeText(layout, 1100, 420, window = window), columns = 1)
+    showImgGrid(
+        "t = %.1fs".format(elapsed) to rasterizeText(layout, 1100, 420, window = window),
+        columns = 1, cellSide = 820,
+    )
 }
 ```
 
-![Four frames of the word KINETIC with a travelling rotation, scale and lift wave running through it](assets/typography_gallery/kinetic.png)
-
-Note the fixed `window`: without it the frame rescales to whatever the letters are doing and no
-motion is legible. That is the same lesson `rasterizeFLinesFramed` in `alife_animate.kt` records.
+Three handles per letter and one wave function is the whole animation. Note the fixed `window`:
+without it the frame rescales to whatever the letters are doing and no motion is legible — the same
+lesson `rasterizeFLinesFramed` in `alife_animate.kt` records.
 
 ## Extrusion, counters and all
 
@@ -172,78 +304,150 @@ and a letter is a ring *system*. So `toMesh` triangulates the caps with `FloatEa
 indices, and builds the walls from the **same flattened vertices the caps used** — which is what
 makes the result watertight, and what makes `genus()` a meaningful question about a letter.
 
-```kotlin
-val o = layoutText("o", typeface("SansSerif", 170.0)).toMesh(depth = 46.0, centre = true)
-println("${o.isWatertight()}, chi ${o.eulerCharacteristic()}, genus ${o.genus()}")   // true, chi 0, genus 1
-showMesh(o)                                                                         // shades for you
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="900" padding="14"}
+:::static
+:::fold three extrusions off the same contour extractor
+val face = typeface("SansSerif", 170.0)
+val o = layoutText("o", face).toMesh(depth = 46.0, centre = true)
+val l = layoutText("l", face).toMesh(depth = 46.0, centre = true)
+val word = layoutText("mesh", typeface("SansSerif", 130.0)).toMesh(depth = 36.0, centre = true)
+:::endfold
+
+// A 2D count against a 3D one. The hole count comes from ring nesting in the plane; the genus comes
+// from counting the mesh's vertices, edges and faces. They have no reason to agree unless the
+// extruder is right.
+val holesIn2D = layoutText("o", face).holeCount
+
+// A 2D area against a 3D volume: a shoelace sum times the depth, against the divergence theorem
+// over the triangles. A dropped cap triangle or a wall wound the wrong way breaks it.
+val expected = layoutText("o", face).glyphs.sumOf { it.glyph.inkArea } * 46.0
+val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
+
+:::fold draw them — note what is NOT here: flatShaded()
+// flatShaded() un-welds every triangle, and showMesh computes topology() on what you hand it and
+// prints the answer as fact in the caption — so a flat-shaded copy would caption as "open" directly
+// under a title stating its genus. Unnecessary as well: the render path applies shadedNormals to an
+// unshaded mesh for you (mesh_field.kt:246).
+showMeshGrid(
+    "o — genus ${o.genus()}, 2D hole count $holesIn2D, watertight ${o.isWatertight()}" to o,
+    "l — genus ${l.genus()}, watertight ${l.isWatertight()}" to l,
+    columns = 2, cellWidth = 420,
+    view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2),
+)
+showMesh(
+    word,
+    view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
+    title = "extruded from the same contours the raster filled",
+    caption = "'o': ink area × depth = %.0f, mesh volume %.0f, relative difference %.2e"
+        .format(expected, measured, kotlin.math.abs(expected - measured) / expected),
+)
+:::endfold
 ```
 
-![An extruded lowercase o as a ring you can see through, an extruded l as a solid slab, and the word mesh in 3D](assets/typography_gallery/mesh.png)
+![An extruded lowercase o as a ring you can see through beside an extruded l as a solid slab, and the word mesh extruded in 3D](assets/typography_examples/mesh.png)
 
-Two claims are being checked there rather than illustrated. **Genus 1 for `o` and 0 for `l`** is a 2D
-count (rings nested at odd depth) agreeing with a 3D one (Euler characteristic over the mesh's edges
-and faces). And the volume matches the ink area times the depth to within `1e-4` relative — a
+Two claims are being *checked* there rather than illustrated. **Genus 1 for `o` and 0 for `l`** is a
+2D count (rings nested at odd depth) agreeing with a 3D one (Euler characteristic over the mesh's
+edges and faces). And the volume matches the ink area times the depth to a relative `1e-4` — a
 shoelace sum against the divergence theorem. A dropped cap triangle, a wall wound the wrong way or an
 unpunched counter all break one of those.
 
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
 rather than merely odd shading — the same failure a GPU would show you.
 
-Don't reach for `flatShaded()` here, tempting as it looks. It un-welds every triangle into its own
-three vertices, so the copy is no longer topologically anything — and `showMesh` computes
-`topology()` on whatever you hand it and prints the answer *as fact* in the figure caption
-(`mesh_field.kt:383-393`). Pass it a flat-shaded `o` and the caption reads `open (N boundary loop(s))`
-directly underneath a line proving the mesh is closed. You don't need it either way: `showMesh`
-renders through `toCapturedMesh`, which already applies `shadedNormals` to a mesh that arrives
-without normals (`mesh_field.kt:246`), and an extrusion is all creases so that comes out faceted
-anyway. Measure and render the welded mesh; keep `flatShaded()` for something that genuinely needs
-one vertex per corner.
+!!! warning "Don't reach for `flatShaded()` here"
+
+    It un-welds every triangle into its own three vertices, so the copy is no longer topologically
+    anything — and `showMesh` computes `topology()` on whatever you hand it and prints the answer
+    *as fact* in the figure caption (`mesh_field.kt:383-393`). Pass it a flat-shaded `o` and the
+    caption reads `open (N boundary loop(s))` directly underneath a line proving the mesh is closed.
+    You don't need it either way: `showMesh` renders through `toCapturedMesh`, which already applies
+    `shadedNormals` to a mesh that arrives without normals (`mesh_field.kt:246`), and an extrusion is
+    all creases so it comes out faceted anyway.
 
 ## Letters in the SDF family
 
 `toSdf` builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes it in z.
-From there a word is just another `ScalarField3D`, which is the entire point:
+From there a word is just another `ScalarField3D`, which is the entire point.
 
-```kotlin
-val sdf = layoutText("SDF", typeface("SansSerif", 170.0)).toSdf(depth = 0.24, gridResolution = 340)
-showImg(sdf.distanceField.toImg())
-showMeshGrid(
-    "marched"  to sdf.march(resolution = 130),
-    "+ sphere" to marchingCubes(sdfSmoothUnion(sdf.field, sdfSphere(0.6), 0.18), sdf.bounds, 130),
-    "shelled"  to marchingCubes(sdf.field.shell(0.02), sdf.bounds, 150),
-    "twisted"  to marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130),
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/sdf.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="1120" padding="14"}
+:::static
+val layout = layoutText("SDF", typeface("SansSerif", 170.0))
+val sdf = layout.toSdf(depth = 0.24, gridResolution = 340)
+
+// Once the letters are a field, the whole SDF family applies to them unchanged — which is the
+// entire reason for this bridge existing.
+val marched = sdf.march(resolution = 130)
+val melted = marchingCubes(sdfSmoothUnion(sdf.field, sdfSphere(0.6, vec(0.0, 0.0, 0.0)), 0.18), sdf.bounds, 130)
+val hollow = marchingCubes(sdf.field.shell(0.02), sdf.bounds, 150)
+val wrung = marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130)
+
+:::fold draw the grid and the four surfaces
+val grid = sdf.distanceField
+showImg(
+    grid.toImg(),
+    caption = "the 2D signed distance field, %dx%d — mid grey is the outline, deepest inside the ink %.1f units"
+        .format(grid.nx, grid.ny, grid.deepestInside()),
 )
+showMeshGrid(
+    "marchingCubes on the letters — ${marched.triangleCount} triangles, genus ${marched.genus()}" to marched,
+    "sdfSmoothUnion with a sphere — ${melted.triangleCount}" to melted,
+    "field.shell(0.02) — ${hollow.triangleCount}" to hollow,
+    "field.twisted(0.5) — ${wrung.triangleCount}" to wrung,
+    columns = 2, cellWidth = 420,
+    view = MeshView(yawDegrees = 18.0, pitchDegrees = 12.0, distance = 2.6),
+)
+:::endfold
 ```
 
-![The 2D distance field of SDF as a grey gradient, the marched letters in 3D, and a sphere smooth-unioned into them](assets/typography_gallery/sdf.png)
+![The 2D distance field of SDF as a grey gradient above four 3D panels: the marched letters, a sphere smooth-unioned into them, a shelled version and a twisted one](assets/typography_examples/sdf.png)
 
-The grid is what limits how crisp a serif can be, not the marching resolution. The sign convention is
-`mesh_sdf.kt`'s — **negative inside** — which is the opposite of `GlyphContour.signedArea`'s, and
-deliberately so: an area's sign says which way a ring runs, a distance's sign says which side of the
-ink you are on.
+The **grid** is what limits how crisp a serif can be, not the marching resolution. The sign
+convention is `mesh_sdf.kt`'s — **negative inside** — which is the opposite of
+`GlyphContour.signedArea`'s, and deliberately so: an area's sign says which way a ring runs, a
+distance's sign says which side of the ink you are on.
 
 ## Letters as point clouds
 
 The plainest bridge, and the one that opens the most doors: even-by-arc-length samples along the
 outlines. Once a word is points, every point-consuming family in the stdlib works on letters.
 
-```kotlin
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/points.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="700" padding="14"}
+:::static
 val layout = layoutText("field", typeface("SansSerif", 200.0))
-val points = layout.samplePoints(spacing = 18.0)
-val graph = vec2DelaunayGraph(points)
-val km = vec2KMedoids(points, k = 6, options = KMedoidsOptions(randomSeed = 11L))
+
+// Even by ARC LENGTH, so halving the spacing twice roughly quadruples the count. That ratio is the
+// honest check that the resampler walks the curve rather than emitting one point per stored vertex.
+val coarse = layout.samplePoints(spacing = 18.0)
+val fine = layout.samplePoints(spacing = 4.5)
+
+// And now every point-consuming family in the stdlib eats a word.
+val graph = vec2DelaunayGraph(coarse)
+val km = vec2KMedoids(coarse, k = 6, options = KMedoidsOptions(randomSeed = 11L))
+
+:::fold four views of the same word, all sharing one window
+val layer = ClusterLayer("outline strokes", km.labels)
+showPlaneGrid(
+    "outline samples — ${coarse.size} at spacing 18, ${fine.size} at 4.5 (%.2fx for 4x finer)"
+        .format(fine.size.toDouble() / coarse.size) to listOf(layout.toPointFLine(spacing = 18.0, pointSize = 1.1)),
+    "vec2DelaunayGraph over those samples — ${graph.edges.size} edges" to
+        listOf(graph.toFLine(coarse, thickness = 0.8), layout.toPointFLine(spacing = 18.0, pointSize = 0.9)),
+    "vec2KMedoids, k = 6 — distortion %.1f, converged ${km.converged}".format(km.distortion) to
+        layer.toFLines(coarse, centers = km.medoids, drawSpokes = false),
+    "the outlines the samples came from" to layout.toFLines(thickness = 1.2),
+    columns = 2, cellWidth = 420, cellHeight = 250, window = layout.bounds,
+)
+:::endfold
 ```
 
-![The word dots as outline sample points at two spacings, 140 points and 550](assets/typography_gallery/points.png)
+![Four panels of the word field: outline sample dots, a Delaunay triangulation over them, a six-way k-medoids partition tinted per cluster, and the outlines themselves](assets/typography_examples/points.png)
 
-Halving the spacing twice roughly quadruples the count (140 → 550 for 4× finer), which is the honest
-check that the resampler is walking arc length rather than emitting one point per stored vertex. From
-here: `kMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
+From here: `kMedoids` finds the strokes, `vec2DelaunayGraph` triangulates a word, and the agents in
 [Spatial Artificial Life](alife_examples.md) will happily eat a headline.
 
 ## Loading a font
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 typeface("SansSerif", 64.0)                              // logical family: always resolves
 Typefaces.named("Futura", 64.0, strict = true)           // throws instead of substituting silently
 Typefaces.firstAvailable("Futura", "Avenir", size = 64)  // the first one this machine actually has
@@ -253,6 +457,11 @@ Typefaces.fromFile("/path/to/Whatever.ttf", 64.0)        // Font.createFont, not
 `Typefaces.available()` lists the installed families, and is held apart from the rest on purpose:
 enumerating families needs a `GraphicsEnvironment` and loading a face **by name** does not.
 
+Because the figures above are rendered on whatever machine builds these docs, they are set in that
+machine's logical `SansSerif` and `Serif`. Build them somewhere else and you get different-looking
+but equally correct pictures — which is the honest situation, and why every claim on this page is
+about a *structural* property rather than about a particular curve.
+
 ### One platform caveat, and its symptom
 
 A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
@@ -260,18 +469,14 @@ A JVM that reads glyph outlines and passes `-XstartOnFirstThread` must also pass
 `sun.font.CFontManager.loadFonts` dispatches to the process's first thread and waits, and under
 `-XstartOnFirstThread` — which GLFW requires — that thread only services the dispatch if something is
 pumping its run loop. `Typefaces.warm()` detects this in four seconds and throws with the flag in the
-message rather than hanging, and every jvm-main gallery in the tree already sets the property in the
-first line of `main`.
+message rather than hanging. Field's own desktop JVM sets it (`build.gradle.kts`, `requiredRunJvmArgs`),
+which is why the captures on this page exist at all.
 
 ## Run it yourself
 
 | what | how |
 |---|---|
-| the eight boxes on this page, in a fresh Field | replay `dev_docs/agents/transcripts/typography_worked_example.yaml` with the agent backdoor (`field_run_transcript`), or open the materialised document at `public/docs/assets/agent_transcripts/typography_worked_example/` |
-| `assets/typography_gallery/*.png` (twelve figures) | **committed captures** from the `stdlib.typography.gallery` FIELD_TEST: `python3 tools/run_field_tests.py --id stdlib.typography.gallery --port 9700`, then pass the output dir as `args[0]` to regenerate them here |
+| every figure on this page | it *is* the docs build: `uv run --group docs python tools/build_zensical_docs.py --page typography_examples.md`. Each fence's code runs in a live Field and the image is what came out |
+| the eight boxes as a document you can edit | replay `dev_docs/agents/transcripts/typography_worked_example.yaml` with the agent backdoor (`field_run_transcript`), or open the materialised document at `public/docs/assets/agent_transcripts/typography_worked_example/` |
 | the structural assertions | `./gradlew jvmTest --tests afield.stdlib.TypographyTest` (38 tests) |
 | the demo, replayed through the real engine | `python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port 9700` |
-
-Every figure above is a real render of this code. The gallery asserts before it writes — ink fraction
-in range, the control arm actually differing, genus and watertightness, the resampler scaling with
-spacing — so a panel that produced a plausible blank fails the test rather than shipping.
