@@ -16,6 +16,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
+import afield.util.NodeTool
 
 /**
  * See a Live Metal box's `geometry { … }` on your desk, without a headset.
@@ -274,10 +275,10 @@ object VisionGeometryPreview {
         frames: List<FrameTick> = emptyList(),
         timeoutSeconds: Long = 60,
     ): Capture {
-        val node = which("node")
+        val node = NodeTool.resolveNode()
             ?: throw NodeUnavailable(
-                "node is not on PATH; the geometry preview runs the box's real compiled Kotlin/JS, " +
-                    "so there is nothing honest to draw without it",
+                "the geometry preview runs the box's real compiled Kotlin/JS, so there is nothing " +
+                    "honest to draw without node: " + NodeTool.unavailableMessage(),
             )
 
         val selection = KotlinJsHeadProfiles.resolve(source)
@@ -412,12 +413,6 @@ object VisionGeometryPreview {
             hasFrameCallback: typeof __fieldFrame === "function",
         }));
     """.trimIndent()
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull { it.isFile && it.canExecute() }
-            ?.absolutePath
 
     // ---------------------------------------------------------------- camera and style
 

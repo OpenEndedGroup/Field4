@@ -10,6 +10,7 @@ import afield.graphics.visionMetalWireJson
 import afield.remotejs.KotlinToJsCompiler
 import java.io.File
 import java.nio.file.Files
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -72,13 +73,13 @@ object VisionMetalKotlinJsExternalsSmokeTest {
             "Compiled module does not contain the expected uniform writes"
         }
 
-        val node = which("node")
+        val node = NodeTool.resolveNode()
         if (node != null) {
             runNode(node, hostShim + "\n" + js + "\n" + hostProbe, "vision-metal-host-ok")
             val shapesJs = compile(shapeSource, "vision_metal_shapes")
             runNode(node, hostShim + "\n" + shapesJs + "\n" + shapeProbe, "vision-metal-shapes-ok")
         } else {
-            println("node not on PATH; compile proof passed, host-link execution skipped")
+            println("skipping host-link execution: ${NodeTool.unavailableMessage()}; compile proof passed")
         }
 
         println("VisionMetalKotlinJsExternalsSmokeTest ok")
@@ -323,10 +324,4 @@ object VisionMetalKotlinJsExternalsSmokeTest {
         }
         console.log("vision-metal-shapes-ok");
     """.trimIndent()
-
-    private fun which(executable: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, executable) }
-            .firstOrNull { it.canExecute() }
-            ?.absolutePath
 }

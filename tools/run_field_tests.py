@@ -62,27 +62,51 @@ def which_on_path(executable: str) -> str | None:
     return None
 
 
-def warn_if_node_too_old(progress: Any) -> None:
-    """Report the resolved `node` up front when it is too old for the JS tests."""
-    node = which_on_path("node")
-    if node is None:
-        return  # tests that need node report their own absence
+def _node_major(path: str) -> int | None:
     try:
         raw = subprocess.run(
-            [node, "--version"], capture_output=True, text=True, timeout=15
+            [path, "--version"], capture_output=True, text=True, timeout=15
         ).stdout.strip()
     except (OSError, subprocess.SubprocessError):
-        return
+        return None
     match = re.match(r"v?(\d+)", raw)
-    if not match or int(match.group(1)) >= MIN_NODE_MAJOR:
-        return
+    return int(match.group(1)) if match else None
+
+
+def warn_if_node_too_old(progress: Any) -> None:
+    """Warn only when NO `node` on PATH meets the floor.
+
+    This used to look at the first PATH match alone and predict failure whenever *that* binary was
+    old. Since `afield.util.NodeTool` gained a version floor, the tests no longer take the first
+    match -- they take the first one that qualifies -- so on this machine (nvm concatenates every
+    bin dir, v10.8.0 first, v22 further along) the old check cried wolf: it announced four
+    imminent failures and all four passed. A preflight that is wrong in the healthy case is worse
+    than none, because the next person to read it learns to ignore it.
+    """
+    candidates = [
+        str(Path(entry) / "node")
+        for entry in (os.environ.get("PATH") or "").split(os.pathsep)
+        if entry and (Path(entry) / "node").is_file()
+    ]
+    if not candidates:
+        return  # tests that need node report their own absence
+
+    majors = [(path, _node_major(path)) for path in candidates]
+    if any(major is not None and major >= MIN_NODE_MAJOR for _, major in majors):
+        return  # NodeTool will find that one, whatever came first on PATH
+
+    found = ", ".join(
+        f"{path} (v{major})" if major is not None else f"{path} (unreadable version)"
+        for path, major in majors
+    )
     progress(
-        f"WARNING: `node` on PATH is {raw} ({node}); the JS-backed tests need "
-        f"v{MIN_NODE_MAJOR}+ (globalThis, optional chaining).\n"
+        f"WARNING: no `node` on PATH meets v{MIN_NODE_MAJOR}+ (globalThis, optional chaining), "
+        f"which the JS-backed tests need.\n"
+        f"         Found: {found}\n"
         "         Expect rectsl.editor-extension.workout, both remotejs.kotlinjs-*, and\n"
         "         vision.geometry-preview to fail with SyntaxError/ReferenceError from a\n"
         "         temp .js file. These are environment failures, not code regressions.\n"
-        "         Put a newer node first on PATH, e.g. `nvm use 22`, and re-run."
+        "         Install/select a newer node, e.g. `nvm use 22`, and re-run."
     )
 
 

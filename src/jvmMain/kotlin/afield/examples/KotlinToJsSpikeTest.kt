@@ -3,6 +3,7 @@ package afield.examples
 import afield.remotejs.KotlinToJsCompiler
 import java.io.File
 import java.nio.file.Files
+import afield.util.NodeTool
 
 /*
 FIELD_TEST
@@ -90,7 +91,7 @@ object KotlinToJsSpikeTest {
         println("broken snippet -> ${errors.size} diagnostic(s), first: ${errors.first()}")
 
         // --- 3. optional: actually run the JS if node is available ---
-        val node = which("node")
+        val node = NodeTool.resolveNode()
         if (node != null) {
             val tmp = Files.createTempFile("field-ktjs-spike", ".js").toFile()
             try {
@@ -118,10 +119,4 @@ object KotlinToJsSpikeTest {
 
         println("KotlinToJsSpikeTest ok")
     }
-
-    private fun which(exe: String): String? =
-        (System.getenv("PATH") ?: "").split(File.pathSeparator)
-            .map { File(it, exe) }
-            .firstOrNull { it.canExecute() }
-            ?.absolutePath
 }
