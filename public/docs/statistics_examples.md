@@ -207,10 +207,9 @@ fun coefficients(y: DoubleArray): String {
 // Each panel is min-max rescaled into the unit square so the six share one window; SVG y grows
 // downward, so flip it to read the shapes the way the formulas are written.
 //
-// Two columns rather than three, and the reason is a `showPlaneGrid` gotcha worth knowing: its
-// grid columns are `max-content` (spatial_field.kt:471), so a long caption widens the card past
-// `cellWidth` instead of wrapping inside it. Six coefficients of caption is about 420px, so three
-// of these side by side overflow the capture viewport and the third column gets cropped away.
+// Two columns because three panels this wide do not fit the capture, and the panels are worth
+// more here than a third column would be. A caption longer than `cellWidth` now wraps inside the
+// card instead of widening it out of frame — that used to cost you a whole column.
 val window = Rect(0.0, 0.0, 1.0, 1.0)
 val frame = window.toFLine(color = vec(0.35, 0.44, 0.56, 0.5), thickness = 1.0)
 
@@ -288,10 +287,12 @@ looking, then use something else to describe what you found.
     is deterministic, reproducible, and — the property that matters — invariant to the order you
     hand the pairs over in.
 
-    Two consequences worth knowing. A **constant predictor gives exactly 0.0**, and exactly is the
-    right word: for a single tie group the numerator's expectation is `(n²−1)/3` against a
-    denominator of `n(n²−1)/3`, so the closed form is zero for every `n`. And a quantised predictor
-    — a bucketed index, an integer control value, a thresholded signal — is answered honestly:
+    Two consequences worth knowing. A **constant predictor reads 0**: for a single tie group the
+    numerator's expectation is `(n²−1)/3` against a denominator of `n(n²−1)/3`, so the closed form
+    is exactly zero for every `n`. In `Double` it is zero to within one ulp rather than bit-exact —
+    sweeping `n` = 2..400, 54 values come back non-zero, the largest of them 2.2×10⁻¹⁶ — so compare
+    it against a tolerance, not against `0.0`. And a quantised predictor — a bucketed index, an
+    integer control value, a thresholded signal — is answered honestly:
     heavy ties with a real relationship still read high (a ten-block staircase reads **0.891**),
     while heavy ties with no relationship read ~0.
 
@@ -355,10 +356,8 @@ val thresholds = sizes.map { m ->
     v[(k * 0.95).toInt()]
 }
 val fitted = sizes.map { 2.5 / sqrt(it.toDouble()) }
-// Plotted against 1/sqrt(n) rather than n, for two reasons. It turns the claim into a straight
-// line through the origin, which is a much stronger thing to see than a hyperbola. And it puts the
-// tail in the top right: `darkMode` anchors the legend to the *lower* right (plotly.kt:236), where
-// it will quietly cover the last points of any decreasing series.
+// Plotted against 1/sqrt(n) rather than n: it turns the claim into a straight line through the
+// origin, which is a much stronger thing to see than a hyperbola.
 val inverseRootN = sizes.map { 1.0 / sqrt(it.toDouble()) }
 :::fold two figures
 val hist = buildHistogram(nullDcor.toList())
@@ -380,7 +379,7 @@ showSignals(
     x = inverseRootN,
     channel = "threshold vs n",
     title = "How big dCor has to be to mean anything: proportional to 1/sqrt(n)",
-    xTitle = "1 / sqrt(n)      (right edge = n 25, left edge = n 400)",
+    xTitle = "1 / sqrt(n)   (n=400 left, n=25 right)",
     yTitle = "dCor",
 )
 display(
@@ -504,7 +503,7 @@ display(
 :::endfold
 ```
 
-![Three rolling coefficients across a regime change: dCor and xi both climb after the change while rolling absolute Pearson barely moves](assets/statistics_examples/rolling_regime.png)
+![Three rolling coefficients across a regime change: dCor and xi both climb clear of the null threshold and stay there, while rolling absolute Pearson swings across the same band before and after](assets/statistics_examples/rolling_regime.png)
 
 The measured numbers, from the run above:
 
