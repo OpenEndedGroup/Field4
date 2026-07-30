@@ -25,6 +25,7 @@ import afield.stdlib.layoutText
 import afield.stdlib.metricsFLines
 import afield.stdlib.montage
 import afield.stdlib.onCurve
+import afield.stdlib.PlacedGlyph
 import afield.stdlib.arcLength
 import afield.stdlib.flatShaded
 import afield.stdlib.fline
@@ -47,6 +48,7 @@ import afield.stdlib.volume
 import afield.stdlib.wrapText
 import java.io.File
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -114,6 +116,8 @@ object TypographyGallery {
         Panel("points") { panelPoints() },
         Panel("mesh") { panelMesh() },
         Panel("sdf") { panelSdf() },
+        Panel("motion_march") { panelMotionMarch() },
+        Panel("motion_morph") { panelMotionMorph() },
     )
 
     // ------------------------------------------------------------------------------------------
@@ -409,9 +413,172 @@ object TypographyGallery {
             "marched ${marched.triangleCount} tris, blended ${melted.triangleCount} tris"
     }
 
+    /**
+     * Motion, measured rather than asserted by eye: text marching along a fixed curve.
+     *
+     * A still of a moving thing proves nothing about the moving, so this panel sweeps `startOffset`
+     * by a fixed `dL` for 90 frames and *measures* what each glyph did. Two failure modes that no
+     * still can show are what it is looking for:
+     *
+     *  - **crawl** — glyphs travelling at the wrong speed, i.e. mean displacement per frame that is
+     *    not `dL`;
+     *  - **jitter** — glyphs stalling and then jumping because `FLine.cursor()`'s arc-length table is
+     *    a polyline through the cubic and its sample spacing beats against `dL`.
+     *
+     * The figure is the glyph pivots' traces over those 90 frames, which is a still *of* the motion:
+     * even bands mean even spacing frame after frame, and a bunched or gappy band would be the
+     * jitter. The numbers below the picture are the real check.
+     */
+    private fun panelMotionMarch(): Pair<ByteArray, String> {
+        val face = Typefaces.named("Monospaced", 46.0)
+        val layout = layoutText("MARCHING ALONG", face, tracking = 3.0)
+        val path = fline {
+            moveTo(0.0, 0.0)
+            // Deliberately uneven speed: a cubic whose control points are bunched at one end covers
+            // very different arc length per unit parameter along its length. Arc-length placement has
+            // to undo exactly that, so it is the honest curve to march along.
+            cubicTo(80.0, -260.0, 900.0, 260.0, 1000.0, 0.0)
+        }
+        val length = path.arcLength()
+        val frames = 90
+        val dL = (length - layout.advanceWidth) / (frames - 1)
+        check(dL > 0.5) { "the path is too short to march along: $length vs ${layout.advanceWidth}" }
+
+        // Per frame, per glyph: where its pivot ended up.
+        val tracks = ArrayList<List<Vec2>>(frames)
+        repeat(frames) { f ->
+            val bent = layout.onCurve(path, startOffset = f * dL, align = TextAlign.LEFT)
+            tracks.add(bent.glyphs.map { g -> pivotOf(g) })
+        }
+
+        // Displacement per frame per glyph. Chord <= arc, and for dL this small the two agree to well
+        // under a percent, so the mean is a speed check and the spread is a jitter check.
+        val disp = ArrayList<Double>()
+        for (f in 1 until frames) for (i in tracks[f].indices) {
+            val a = tracks[f - 1][i]
+            val b = tracks[f][i]
+            disp.add(hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble()))
+        }
+        val mean = disp.average()
+        val worst = disp.maxOf { kotlin.math.abs(it - dL) } / dL
+        val stalls = disp.count { it < dL * 0.5 }
+        val jumps = disp.count { it > dL * 1.5 }
+        check(kotlin.math.abs(mean - dL) / dL < 0.02) { "glyphs crawled: mean step $mean against dL $dL" }
+        check(stalls == 0 && jumps == 0) { "$stalls stalls and $jumps jumps out of ${disp.size} steps — jitter" }
+        check(worst < 0.10) { "worst per-step error ${pct(worst)} of dL — the arc-length table is beating against dL" }
+
+        // The trace figure: every pivot of every frame as a dot, over the path itself.
+        val dots = tracks.flatten()
+        val img = dotRaster(dots, boundsOfAll(dots + pathPoints(path)), 900, 420, 0)
+        val pathImg = rasterizeFLinesFramed(
+            listOf(path), listOf(path) + listOf(fline { moveTo(0.0, 0.0); lineTo(0.0, 0.0) }), 900, 420, margin = 6
+        )
+        return montage(
+            listOf(
+                "90 frames of pivot positions — even bands mean even spacing" to img,
+                "the curve they were marching along" to pathImg,
+            ),
+            columns = 1, cellSide = 900
+        ).toPngBytes() to
+            "dL=${"%.3f".format(dL)}, mean step ${"%.3f".format(mean)} (${pct(kotlin.math.abs(mean - dL) / dL)} off), " +
+            "worst step error ${pct(worst)}, 0 stalls, 0 jumps over ${disp.size} steps"
+    }
+
+    /**
+     * Motion, measured: the *curve* moving under the text.
+     *
+     * The harder half of "does it animate coherently". Marching along a fixed path only exercises one
+     * arc-length table; morphing the path rebuilds the table every frame, and a table whose knots move
+     * is exactly where a glyph can jump. So this sweeps a control point through 90 frames and asks
+     * whether each glyph's position is *continuous* — which is a property of the sequence and cannot
+     * be read off any one frame.
+     *
+     * The threshold is relative to the motion actually observed (`3 x median step`), not a magic
+     * number: a jump is a step that is wildly out of line with its neighbours, and how big a normal
+     * step is depends on how fast the control point is being swept.
+     */
+    private fun panelMotionMorph(): Pair<ByteArray, String> {
+        val face = Typefaces.named("SansSerif", 44.0)
+        val layout = layoutText("a curve that will not hold still", face, tracking = 1.0)
+        val frames = 90
+        fun pathAt(phase: Double): FLine {
+            // One control point swept up and down; the other end pinned, so the arc length changes and
+            // the table is genuinely rebuilt rather than translated.
+            val lift = -300.0 * sin(phase)
+            return fline {
+                moveTo(0.0, 0.0)
+                cubicTo(260.0, lift, 640.0, -lift, 940.0, 0.0)
+            }
+        }
+
+        val tracks = ArrayList<List<Vec2>>(frames)
+        val lengths = ArrayList<Double>(frames)
+        repeat(frames) { f ->
+            val phase = 2 * Math.PI * f / frames
+            val path = pathAt(phase)
+            lengths.add(path.arcLength())
+            tracks.add(layout.onCurve(path, align = TextAlign.CENTER).glyphs.map { g -> pivotOf(g) })
+        }
+
+        val steps = ArrayList<Double>()
+        for (f in 1 until frames) for (i in tracks[f].indices) {
+            val a = tracks[f - 1][i]
+            val b = tracks[f][i]
+            steps.add(hypot((b.x - a.x).toDouble(), (b.y - a.y).toDouble()))
+        }
+        val median = steps.sorted()[steps.size / 2]
+        val worst = steps.max()
+        val ratio = worst / median
+        check(median > 0.2) { "nothing moved: median step $median" }
+        check(ratio < 3.0) { "a glyph jumped ${"%.1f".format(ratio)}x the median step — the motion is not continuous" }
+
+        // And the rotations must be continuous too: a tangent that flips sign between frames is the
+        // other way this looks broken, and it would not show up in position alone.
+        var worstTurn = 0.0
+        for (f in 1 until frames) {
+            val prev = layout.onCurve(pathAt(2 * Math.PI * (f - 1) / frames), align = TextAlign.CENTER)
+            val now = layout.onCurve(pathAt(2 * Math.PI * f / frames), align = TextAlign.CENTER)
+            prev.glyphs.indices.forEach { i ->
+                worstTurn = max(worstTurn, kotlin.math.abs(now.glyphs[i].rotation - prev.glyphs[i].rotation))
+            }
+        }
+        check(worstTurn < 0.35) { "a glyph turned ${"%.3f".format(worstTurn)} rad in one frame — the tangent flipped" }
+
+        val window = boundsOfAll(tracks.flatten())
+        val shown = listOf(0, frames / 6, frames / 3, frames / 2).map { f ->
+            val path = pathAt(2 * Math.PI * f / frames)
+            "frame $f — path length ${"%.0f".format(lengths[f])}" to
+                rasterizeText(layout.onCurve(path, align = TextAlign.CENTER), 620, 320, window = window)
+        }
+        return montage(shown, columns = 2, cellSide = 620).toPngBytes() to
+            "median step ${"%.2f".format(median)}, worst ${"%.2f".format(worst)} (${"%.2f".format(ratio)}x median), " +
+            "worst one-frame turn ${"%.3f".format(worstTurn)} rad; arc length swept " +
+            "${"%.0f".format(lengths.min())}..${"%.0f".format(lengths.max())}"
+    }
+
     // ------------------------------------------------------------------------------------------
     // Small helpers
     // ------------------------------------------------------------------------------------------
+
+    /** Where a placed glyph's rotation/scale centre ended up, in layout space. */
+    private fun pivotOf(g: PlacedGlyph): Vec2 {
+        val p = g.resolvedPivot
+        val d = g.transform().transform(java.awt.geom.Point2D.Double(p.x.toDouble(), p.y.toDouble()), null)
+        return vec(d.x, d.y)
+    }
+
+    private fun boundsOfAll(points: List<Vec2>): Rect {
+        var minX = Double.MAX_VALUE; var minY = Double.MAX_VALUE
+        var maxX = -Double.MAX_VALUE; var maxY = -Double.MAX_VALUE
+        points.forEach {
+            minX = min(minX, it.x.toDouble()); maxX = max(maxX, it.x.toDouble())
+            minY = min(minY, it.y.toDouble()); maxY = max(maxY, it.y.toDouble())
+        }
+        return Rect(minX, minY, maxX - minX, maxY - minY)
+    }
+
+    private fun pathPoints(path: FLine): List<Vec2> =
+        path.nodes.map { vec(it.to.x, it.to.y) }
 
     private fun pct(x: Double) = "%.1f%%".format(x * 100)
 
