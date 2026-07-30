@@ -101,6 +101,26 @@ saddle cell — and draws the sampling grid so you can see what the marcher had 
 k-medoids and k-medians on the same planted clusters. Every box is pure CPU and runs on its own; move
 a site, change a weight, raise an iso level or ask for a different `k` and re-run it.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/spatial_geometry_examples/metadata.edn)
+**alife_worked_example** — [Spatial artificial life](alife_examples.md) as twenty boxes: ten that
+measure, and a band below them of ten that **move**. The measuring ten are independent and pure CPU —
+Conway's Life checked against the glider's exact `(1, 1)` displacement and the R-pentomino's
+textbook peak of 319 at generation 821; Wolfram's rule 90 checked cell-for-cell against Pascal's
+triangle mod 2 computed from Kummer's theorem; a cyclic CA whose soup advance fraction matches the
+closed form `1 - (13/14)^8` and then pins at 1.0; Gray–Scott's regimes told apart by isoperimetric
+ratio, with two controls that produce nothing at all; Lenia's discrete limit shown bit-identical to the
+integer Life stepper; boids and Physarum each against a twin run with one interaction switched off;
+DLA's mass dimension against an Eden cluster and a uniform sprinkle; the Koch snowflake's exact
+closure, length and area identities; and the bridges out to iso-contour `FLine`s, a colonization tree
+and a watertight marched mesh. Every one of them prints the numbers the docs page quotes.
+
+The moving ten are the same systems as time evolutions, through `Box.animateEvolution` — each one a
+schedule (how many steps, over how many seconds, on what ramp) plus a way to draw the state, with the step
+counter burned into every frame so a clip cannot lie about where it got to. They must be **launched**
+rather than run: a `Frames` that is only built never runs. None of the twenty opens a `Window` or a
+`Renderer`.
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/alife_worked_example/metadata.edn)
+
 
 ## visionOS device scenes
 

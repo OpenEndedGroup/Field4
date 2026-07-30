@@ -2152,7 +2152,7 @@ println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Spatial artificial life](../alife_examples.md)
 
 ### Top-level functions { #mesh-topology-kt-functions }
 

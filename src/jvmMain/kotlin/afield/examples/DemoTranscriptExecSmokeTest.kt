@@ -84,6 +84,8 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
         // so no AWT, no GPU and nothing to launch.
         "spatial_geometry_examples",
+        // Ten independent pure-CPU spatial-ALife boxes; nothing opens a Window or a Renderer.
+        "alife_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

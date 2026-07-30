@@ -140,6 +140,11 @@ object StdlibReferenceGenerator {
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
             "separable-convolution core vectorized to roughly OpenCV's single-threaded speed. " +
             "Every detector hands back geometry, so results go straight to `lines()`.",
+        "ALife" to "Spatial artificial life: grid cellular automata (life-like, cyclic and " +
+            "Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, " +
+            "Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and " +
+            "structural growth (L-systems, space colonization) — plus the measurement layer every " +
+            "one of them makes its claims through, because \"it produced pixels\" is not evidence.",
         "Function" to "The function algebra — Field's first-class, evolvable, graph-rewritable " +
             "notion of a function. Build them, compose them, fit them, mutate them, and rewrite " +
             "their graphs with user-authored patterns.",

@@ -685,7 +685,23 @@ def build_backdoor_command(
             raise RunnerError(f"{test.get('id')}: missing jvm-main entrypoint")
         command_parts = ["run-jvm-main", "--timeout", str(timeout), entrypoint]
         for arg in test.get("args") or []:
-            command_parts.extend(["--arg", str(arg)])
+            # A value that begins with a dash has to use `--arg=VALUE`: argparse rejects a
+            # *separate* value starting with a dash, so `args: ["--tier", "fast"]` used to die
+            # with "argument --arg: expected one argument" and a FIELD_TEST could not hand its
+            # entrypoint an option at all.
+            #
+            # Everything else keeps the original `--arg VALUE` spelling, deliberately. Both forms
+            # parse identically (`--arg` is `action="append"`, and argparse splits an inline value
+            # on the first `=`), so emitting `=` unconditionally would also have been correct —
+            # but this file is shared harness code that every FIELD_TEST and the 6am CI loop run
+            # through, and "the emitted command for every pre-existing test is byte-for-byte what
+            # it was" is a property worth more than the one-line saving. See
+            # tools/test_field_backdoor.py::test_jvm_main_arg_emission.
+            text = str(arg)
+            if text.startswith("-"):
+                command_parts.append(f"--arg={text}")
+            else:
+                command_parts.extend(["--arg", text])
         cmd.extend(["--command", shlex.join(command_parts)])
         return cmd, artifacts
 
