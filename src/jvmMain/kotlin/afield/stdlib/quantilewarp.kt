@@ -47,10 +47,25 @@ private val defaultQuantileWarpProbabilities = doubleArrayOf(
 
 const val FIELD_QUANTILE_WARP_INCLUDE_NAME = "quantileWarp"
 
+/**
+ * The inverse CDF of the distribution you want a signal reshaped *into*: given a probability, the
+ * value at that quantile. A SAM interface, so `QuantileFunction { p -> ... }` is enough.
+ *
+ * [AdaptiveQuantileWarp] only ever calls it at the eight probabilities in its [QuantileWarpConfig],
+ * all strictly inside `(0, 1)`, and only once per warp instance — so it may be as slow as it likes.
+ * The three ready-made ones are in [TargetDistributions].
+ */
 fun interface QuantileFunction {
     fun quantile(p: Double): Double
 }
 
+/**
+ * The ready-made [QuantileFunction] targets: [UnitNormal] (the default target of
+ * [AdaptiveQuantileWarp]), [Uniform01], and [uniform] for an arbitrary range.
+ *
+ * [UnitNormal] is [inverseStandardNormalCdf] and accepts only `p` strictly inside `(0, 1)`; the two
+ * uniform ones accept the closed `[0, 1]` and throw outside it.
+ */
 object TargetDistributions {
     val Uniform01 = QuantileFunction { p ->
         require(p in 0.0..1.0) { "p must be in [0, 1]" }
@@ -67,6 +82,25 @@ object TargetDistributions {
     }
 }
 
+/**
+ * How [AdaptiveQuantileWarp] fits: which eight quantiles to measure, how much history to pool, and
+ * how fast to move.
+ *
+ * The default [probabilities] are `0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99` — note that they
+ * are deliberately **not symmetric**, spending three knots below the 5th percentile and only two
+ * above the 95th. There must be exactly eight, strictly increasing, strictly inside `(0, 1)`, or
+ * construction throws; that is what makes the state pack into four `vec4`s.
+ *
+ * [historyFrames] (default **8**) is how many `update` batches are pooled before quantiles are taken,
+ * so the knots are fitted on eight frames' worth of samples rather than one. [smoothingAlpha]
+ * (default **0.20**) lerps the previous knots that fraction of the way to the new ones on every
+ * update, so a step change in the signal is followed geometrically — the remaining gap after k
+ * updates is `(1 − alpha)^k`, measured and pinned in `QuantileWarpTest`. It takes about a dozen
+ * updates to close 90% of a jump, which is a feature on a noisy probe and a nuisance on a slow one.
+ *
+ * [epsilonRelative] and [epsilonAbsolute] set the minimum gap forced between adjacent knots after
+ * smoothing, which is what keeps the curve invertible when the input degenerates to a constant.
+ */
 data class QuantileWarpConfig(
     val probabilities: DoubleArray = defaultQuantileWarpProbabilities.copyOf(),
     val historyFrames: Int = 8,
@@ -89,6 +123,27 @@ data class QuantileWarpConfig(
     }
 }
 
+/**
+ * One fitted warp: eight [inputKnots] measured from the signal, eight [targetKnots] from the target
+ * distribution, and the monotone PCHIP curve through them.
+ *
+ * [evaluate] is the curve on the CPU; [packedPushConstants] is the same sixteen numbers (eight input
+ * then eight target) as `FloatArray`, reachable as four `Vector4f`s via [xLo]/[xHi]/[yLo]/[yHi] or
+ * pushed by name with [applyToPushConstants], and the GLSL include named by
+ * [FIELD_QUANTILE_WARP_INCLUDE_NAME] evaluates the identical curve on the GPU.
+ *
+ * **Two things to know about [evaluate].** Eight knots is an approximation: against the exact answer
+ * it is fitting — `Φ⁻¹(F̂(v))`, the inverse target CDF of the empirical CDF — it lands within about
+ * **0.05** over the 2nd-to-98th percentile of a log-normal, and drifts further in the extreme tails.
+ * And **outside** `inputKnots.first()..inputKnots.last()` it extrapolates *linearly* from the endpoint
+ * tangent, with nothing clamping the result: on a log-normal fit whose lowest knot is 0.038,
+ * `evaluate(0.0)` returns about −3.7 and `evaluate(-1.0)` about −21. Clamp your input if the signal
+ * can leave the range you fitted on. Both bounds are pinned in `QuantileWarpTest`.
+ *
+ * The arrays are copied in on construction, so a state is a snapshot and not a view.
+ * [historySampleCount] is how many pooled samples the quantiles came from. [Companion.identity01] is
+ * the do-nothing warp: input knots equal to the probabilities, so it is the identity between them.
+ */
 class QuantileWarpState(
     probabilities: DoubleArray,
     inputKnots: DoubleArray,
@@ -151,6 +206,23 @@ class QuantileWarpState(
     }
 }
 
+/**
+ * Reshapes a signal's distribution into a target one, adaptively: hand [update] a batch of samples
+ * and get back a [QuantileWarpState] whose [QuantileWarpState.evaluate] maps that signal onto the
+ * target — [TargetDistributions.UnitNormal] unless you pass another.
+ *
+ * It works, and it works out of sample: fitted on one log-normal draw of 4000 and applied to a
+ * *disjoint* second draw, skewness goes from 11.7 to 0.007 and excess kurtosis from 255 to −0.17,
+ * with the mean and standard deviation landing within 0.01 of 0 and 1. Pinned in `QuantileWarpTest`.
+ *
+ * The target knots are computed once, in the constructor. Each [update] appends its batch to a
+ * history of the last `historyFrames` batches (default 8), pools and sorts the lot, takes the eight
+ * empirical quantiles, forces them strictly increasing, lerps them `smoothingAlpha` (default 0.20) of
+ * the way from the previous state's knots, and forces them strictly increasing again. So the *first*
+ * update is unsmoothed and every one after it lags — see [QuantileWarpConfig]. `update` throws on an
+ * empty batch. [reset] clears both the history and the state, optionally seeding a starting state;
+ * [currentStateOrNull] is the last state without recomputing.
+ */
 class AdaptiveQuantileWarp(
     private val config: QuantileWarpConfig = QuantileWarpConfig(),
     target: QuantileFunction = TargetDistributions.UnitNormal
@@ -671,6 +743,18 @@ private fun hermiteSegment(
 
 private fun lerp(a: Double, b: Double, t: Double): Double = a + (b - a) * t
 
+/**
+ * The standard normal quantile function `Φ⁻¹(p)` — Acklam's rational approximation, in three branches
+ * that meet at `p = 0.02425` and its reflection.
+ *
+ * Accurate to about 1e-9 absolute, which is more than the eight-knot fit above it can use: it returns
+ * 1.959964 at p=0.975 and −3.090232 at p=0.001, matching the published quantiles to six decimals, and
+ * is antisymmetric across the branch boundary to the same tolerance. Checked in `QuantileWarpTest`.
+ *
+ * `p` must be **strictly** inside `(0, 1)` or it throws — there is no ±infinity at the ends. This is
+ * what [TargetDistributions.UnitNormal] is, so the eight warp probabilities being strictly inside
+ * `(0, 1)` is not a stylistic constraint but this function's precondition.
+ */
 fun inverseStandardNormalCdf(p: Double): Double {
     require(p > 0.0 && p < 1.0) { "p must lie strictly inside (0, 1)" }
 
