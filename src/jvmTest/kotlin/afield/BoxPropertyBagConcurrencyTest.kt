@@ -165,6 +165,63 @@ class BoxPropertyBagConcurrencyTest {
         assertEquals(before + added, box.properties.keys.toList())
     }
 
+    /**
+     * The same defect on the same object, one field along: `syncExecutionStatus` walks every box's
+     * `currentRunningStates` on the main runloop every 500 ms (`Server.kt`'s resync loop), while
+     * `Phased`, `ReturnValueRegistry`, the launch coroutines, `KotlinJs` and `FieldMLInterface` all
+     * write it from whatever thread is running the box.
+     *
+     * Found by auditing outwards from the `resyncAll` sighting rather than by a sighting of its own,
+     * so this is the evidence that it was a real race and not a tidy-up: at `4f55fc4e` the walker
+     * dies on `LinkedHashMap$LinkedHashIterator.nextNode`, exactly as `resyncAll` did.
+     */
+    @Test
+    fun executionStatusWalksDoNotRaceOnRunningStates() {
+        val box = Box("running-states-race")
+        stressedBoxes += box
+
+        val deadline = System.currentTimeMillis() + 1_500
+        val failure = AtomicReference<Throwable?>(null)
+        val walks = AtomicLong(0)
+        val writes = AtomicLong(0)
+        val start = CyclicBarrier(2)
+
+        fun worker(name: String, body: () -> Unit) = Thread({
+            start.await()
+            try {
+                while (System.currentTimeMillis() < deadline && failure.get() == null) body()
+            } catch (t: Throwable) {
+                failure.compareAndSet(null, t)
+            }
+        }, name)
+
+        // What syncExecutionStatus (Boxes.kt) does to each box, 500ms apart, on the main runloop.
+        val walker = worker("execution-status-walker") {
+            box.currentRunningStates.toMap().forEach { (_, state) -> state.watermark }
+            walks.incrementAndGet()
+        }
+        var n = 0
+        val writer = worker("strand-writer") {
+            box.currentRunningStates["strand_$n"] = RunningState(n, "launch")
+            if (n >= 32) box.currentRunningStates.remove("strand_${n - 32}")
+            n++
+            writes.incrementAndGet()
+        }
+
+        listOf(walker, writer).forEach { it.start() }
+        listOf(walker, writer).forEach { it.join(30_000) }
+
+        val raised = failure.get()
+        assertNull(
+            raised,
+            "walking currentRunningStates while strands start and stop raised " +
+                "${raised?.javaClass?.name} at:\n" +
+                raised?.stackTrace?.take(4)?.joinToString("\n") { "    $it" }
+        )
+        assertTrue(walks.get() > 100, "the status walker barely ran (${walks.get()} walks)")
+        assertTrue(writes.get() > 100, "the strand writer barely ran (${writes.get()} writes)")
+    }
+
     /** The bag holds nulls; `ConcurrentHashMap` would have thrown here. */
     @Test
     fun nullValuesAreStorable() {

@@ -15,6 +15,7 @@ import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.IdentityHashMap
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
@@ -150,14 +151,21 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     val thisBox: Box
         get() = this
 
-    var runGeneration = mutableMapOf("default" to -1)
+    // These three are written by every thread that can run a box -- Phased, ReturnValueRegistry, the
+    // launch coroutines in execution.kt, KotlinJs, FieldMLInterface, the agent backdoor -- and the two
+    // that get *iterated* are iterated on the main runloop: syncExecutionStatus walks
+    // currentRunningStates every 500ms (Server.kt's resync loop) and the language interfaces walk
+    // runGeneration.keys. Concurrent, unsynchronised LinkedHashMaps in that position are the same
+    // defect as the property bag (see PropertyBag.kt); found by that audit, not by a sighting.
+    // Neither holds nulls and neither has an order anyone reads, so a ConcurrentHashMap is exact.
+    var runGeneration: MutableMap<String, Int> = ConcurrentHashMap(mapOf("default" to -1))
     var fragmentGeneration: Int = -1
     var jobs: MutableList<Job> = BoxJobList(this)
         set(value) {
             field = BoxJobList(this).also { it.addAll(value) }
         }
-    val cachedLaunchReturns = mutableMapOf<String, CachedLaunchReturn>()
-    val currentRunningStates = mutableMapOf<String, RunningState>()
+    val cachedLaunchReturns: MutableMap<String, CachedLaunchReturn> = ConcurrentHashMap()
+    val currentRunningStates: MutableMap<String, RunningState> = ConcurrentHashMap()
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
