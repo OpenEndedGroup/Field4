@@ -2,6 +2,11 @@ package afield
 
 import afield.stdlib.Action
 import afield.stdlib.actions
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
@@ -187,6 +192,118 @@ class BoxTopologyConcurrencyTest {
         all.forEach { it.join(30_000) }
 
         assertNoRace(failure, "gather()/visitParents() while parent edges churn", "gathers" to gathers, "edges" to edges)
+    }
+
+    /**
+     * `gather("actions")` merges every ancestor's `actions` map with `putAll`, i.e. iterates it — from
+     * `doResync`'s `"actions"` branch on the runloop — while box code registers actions from execution
+     * threads (`root.actions["reset"] = …` in `execution.kt`, the slideshow and alignment installers).
+     * Same walk, different collection: the maps *inside* the graph, not the edges between boxes.
+     */
+    @Test
+    fun gatherDoesNotRaceActionRegistration() {
+        val session = session("actions-race")
+        val leaf = boxIn(session, "actions-leaf")
+        val ancestor = boxIn(session, "actions-ancestor")
+        leaf.parents.add(ancestor)
+        // A long map, for the same reason the topology walks needed long sets: `putAll` over three
+        // entries is far too short a window to catch anything.
+        repeat(1_500) { ancestor.actions["preinstalled-$it"] = Action("a$it", "detail") { } }
+
+        val deadline = System.currentTimeMillis() + 1_500
+        val failure = AtomicReference<Throwable?>(null)
+        val gathers = AtomicLong(0)
+        val registrations = AtomicLong(0)
+        val start = CyclicBarrier(2)
+
+        val gatherer = worker("actions-gather", session, start, deadline, failure) {
+            leaf.gather<MutableMap<String, Action>>("actions")
+            gathers.incrementAndGet()
+        }
+        var n = 0
+        val registrar = worker("actions-register", session, start, deadline, failure) {
+            // Alternate on the same key so every iteration is a real structural modification.
+            val key = "churn-${n / 2}"
+            if (n % 2 == 0) ancestor.actions[key] = Action(key, "detail") { } else ancestor.actions.remove(key)
+            n++
+            registrations.incrementAndGet()
+        }
+
+        listOf(gatherer, registrar).forEach { it.start() }
+        listOf(gatherer, registrar).forEach { it.join(30_000) }
+
+        assertNoRace(
+            failure, "gather(\"actions\") while actions are registered",
+            "gathers" to gathers, "registrations" to registrations
+        )
+    }
+
+    /**
+     * `BoxJobList` is the most instructive one in the family, because it was clearly *written* to be
+     * thread-safe: every method takes its `lock` and bumps `modCount`. But the iterator it inherits from
+     * `AbstractMutableList` checks `modCount` outside that lock — so `jobs.any { it.isActive }`, which
+     * `syncJobRunningState` runs for every box on the runloop every 500 ms, raced `removeCompleted`,
+     * which fires from `job.invokeOnCompletion` on whatever dispatcher finished the job.
+     *
+     * No synthetic mutation here: the churn is *real coroutines completing*, which is the production
+     * trigger.
+     */
+    @Test
+    fun jobsAnyDoesNotRaceCoroutineCompletion() {
+        val box = Box("jobs-race")
+        boxes += box
+        val scope = CoroutineScope(Dispatchers.Default)
+        // A long list of jobs that outlive the test, so the `any {}` walk has a real window.
+        val parked = CompletableDeferred<Unit>()
+        repeat(1_500) { box.jobs.add(scope.launch { parked.await() }) }
+
+        val deadline = System.currentTimeMillis() + 1_500
+        val failure = AtomicReference<Throwable?>(null)
+        val walks = AtomicLong(0)
+        val completions = AtomicLong(0)
+        val start = CyclicBarrier(2)
+
+        // Exactly Server.kt's and agent_backdoor's expression.
+        val walker = Thread({
+            start.await()
+            try {
+                while (System.currentTimeMillis() < deadline && failure.get() == null) {
+                    box.jobs.any { !it.isCancelled && it.isActive }
+                    walks.incrementAndGet()
+                }
+            } catch (t: Throwable) {
+                failure.compareAndSet(null, t)
+            }
+        }, "jobs-walker")
+
+        val churner = Thread({
+            start.await()
+            try {
+                while (System.currentTimeMillis() < deadline && failure.get() == null) {
+                    // Completes almost immediately on Dispatchers.Default, so its completion handler
+                    // calls removeCompleted from a pool thread while the walker iterates.
+                    box.jobs.add(scope.launch { })
+                    completions.incrementAndGet()
+                }
+            } catch (t: Throwable) {
+                failure.compareAndSet(null, t)
+            }
+        }, "jobs-churner")
+
+        listOf(walker, churner).forEach { it.start() }
+        listOf(walker, churner).forEach { it.join(30_000) }
+        parked.complete(Unit)
+        scope.cancel()
+
+        val raised = failure.get()
+        assertNull(
+            raised,
+            "jobs.any {} while coroutines complete raised ${raised?.javaClass?.name} after " +
+                "walks=${walks.get()} launches=${completions.get()}, at:\n" +
+                raised?.stackTrace?.take(5)?.joinToString("\n") { "    $it" }
+        )
+        assertTrue(walks.get() > 50, "the jobs walker barely ran (${walks.get()})")
+        assertTrue(completions.get() > 50, "the job churner barely ran (${completions.get()})")
     }
 
     /**

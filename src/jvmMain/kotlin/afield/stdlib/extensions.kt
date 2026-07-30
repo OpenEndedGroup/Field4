@@ -24,7 +24,10 @@ fun action(
 )  = Action(desc, detail, docHtml, docJs, payload)
 
 val Box.actions by Delegation<MutableMap<String, Action>>(
-    defaultValue = {HashMap<String, Action>()},
+    // ConcurrentHashMap: `gather("actions")` walks every ancestor's map (`together.putAll(it)`) from
+    // doResync on the runloop, while box code registers actions from execution threads. Already a
+    // HashMap, so nothing depended on its order.
+    defaultValue = { java.util.concurrent.ConcurrentHashMap<String, Action>() },
     onGet = { inside, v ->
         needsResync.add((inside as Box) to "actions")
     }

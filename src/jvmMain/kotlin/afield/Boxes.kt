@@ -158,7 +158,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     // the same time, and an unsynchronised LinkedHashMap made every walk of it (resyncAll, saving,
     // history diffing, ...) a ConcurrentModificationException waiting to happen. See PropertyBag.kt.
     val properties: MutableMap<String, Any?> = PropertyBag()
-    val markers = mutableMapOf<String, Marker>()
+    // ConcurrentHashMap: `Box.__m` (stdlib.kt) does computeIfAbsent from box code, i.e. from execution
+    // threads. Never iterated, so this was not a CME risk -- but concurrent computeIfAbsent on a
+    // HashMap can lose an entry, and on CHM it is atomic, which is what the caller wanted anyway.
+    val markers: MutableMap<String, Marker> = ConcurrentHashMap()
 
     // Kept as a named delegate (not an anonymous `by lazyVar { }`) so disposeKi()
     // can check whether the engine was ever created and release it without forcing
@@ -943,6 +946,26 @@ private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
         box.syncJobRunningState()
     }
 
+    /**
+     * Append atomically.
+     *
+     * `AbstractList.add(E)` is `add(size(), element)` — it reads the size *outside* the lock and then
+     * takes it, so a job completing in between (`removeCompleted`, from `invokeOnCompletion` on an
+     * arbitrary dispatcher) shrinks the list and the index is stale. The result is a production
+     * `IndexOutOfBoundsException` from the ordinary `box.jobs.add(job)` that every launch does; the
+     * stress test caught `Index: 1501, Size: 1500` in under a second. The single-argument overload is
+     * the only one that has to compute an index, so it is the only one that needs this.
+     */
+    override fun add(element: Job): Boolean {
+        synchronized(lock) {
+            delegate.add(element)
+            modCount++
+            track(element)
+        }
+        box.syncJobRunningState()
+        return true
+    }
+
     override fun set(index: Int, element: Job): Job {
         val previous = synchronized(lock) {
             val old = delegate.set(index, element)
@@ -963,6 +986,34 @@ private class BoxJobList(private val box: Box) : AbstractMutableList<Job>() {
         }
         box.syncJobRunningState()
         return removed
+    }
+
+    /**
+     * Iterate a snapshot, and route `remove()` back through the locked path.
+     *
+     * Every *method* in this class takes [lock] and bumps `modCount`, which reads as thread-safe and is
+     * not: the iterator inherited from `AbstractMutableList` checks `modCount` **outside** the lock. So
+     * `jobs.any { it.isActive && !it.isCancelled }` — which `syncJobRunningState` runs for every box on
+     * the main runloop every 500 ms via `syncExecutionStatus`, and which `Server.kt` and
+     * `agent_backdoor.kt` also run — raced [removeCompleted]; and `removeCompleted` fires from
+     * `job.invokeOnCompletion`, i.e. on whatever dispatcher thread happened to finish the job.
+     *
+     * Locking every method and leaving the iterator alone is exactly the `Collections.synchronizedList`
+     * trap described in `PropertyBag.kt`. This is the same fix in the same shape: reads from a snapshot,
+     * writes through to the live list.
+     */
+    override fun iterator(): MutableIterator<Job> = object : MutableIterator<Job> {
+        private val snapshot = synchronized(lock) { ArrayList(delegate) }
+        private var index = 0
+        private var last: Job? = null
+
+        override fun hasNext(): Boolean = index < snapshot.size
+        override fun next(): Job = snapshot[index++].also { last = it }
+        override fun remove() {
+            val target = checkNotNull(last) { "BoxJobList iterator: remove() before next()" }
+            this@BoxJobList.remove(target)
+            last = null
+        }
     }
 
     override fun clear() {

@@ -273,7 +273,12 @@ class SessionInformation(
     val documentName: String = filename,
     var boxes: ConcurrentHashMap<String, Box> = ConcurrentHashMap<String, Box>(),
     var root: Box,
-    var sessions: MutableSet<WebSocketSession> = mutableSetOf<WebSocketSession>(),
+    // ConcurrentHashMap.newKeySet, not mutableSetOf: doResync's `enqueue` and syncExecutionStatus
+    // fan out over this set on the main runloop, while the websocket frame loop sweeps closed sockets
+    // out of it (`sessions.entries.removeIf { ... detachDocumentSession(...) }`) on a Ktor IO thread and
+    // the backdoor adds to it. Fan-out order across clients is not meaningful. See PropertyBag.kt for
+    // the family this belongs to.
+    var sessions: MutableSet<WebSocketSession> = ConcurrentHashMap.newKeySet<WebSocketSession>(),
     var topologyGeneration: Int = 0,
     var autorunTriggered: Boolean = false,
     val ephemeral: Boolean = false
