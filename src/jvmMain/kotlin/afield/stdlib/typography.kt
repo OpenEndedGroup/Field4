@@ -78,14 +78,22 @@ import kotlin.math.sqrt
  *
  * # AWT and the main run loop
  *
- * `imaging_field.kt` explains why `montage` captions with a bitmap table instead of
+ * `imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
  * `Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
- * with GLFW for the main run loop, and `Server.main` deliberately never initialises the toolkit.
- * This family cannot avoid the font manager — it *is* the font manager — so it contains the risk
- * instead: the one-time initialisation happens on a dedicated daemon thread ([Typefaces.warm]) with
- * a timeout, never on whatever thread a box happens to run on, and a timeout produces a diagnosable
- * error naming `-Djava.awt.headless=true` rather than a hung process. Everything after that first
- * touch is pure computation on cached outlines.
+ * with GLFW for the main run loop, and `Server.main` deliberately never initialises the toolkit. This
+ * family cannot avoid the font manager — it *is* the font manager — so it contains the hazard in one
+ * place, [Typefaces.warm], whose KDoc carries the measured stack trace and the conclusion:
+ *
+ * > **A JVM that wants glyph outlines and passes `-XstartOnFirstThread` must also pass
+ * > `-Djava.awt.headless=true`.** Otherwise `CFontManager.loadFonts` dispatches to the process's first
+ * > thread and waits forever for a run loop nobody is pumping.
+ *
+ * [Typefaces.warm] detects that in four seconds and throws with that sentence in it, rather than
+ * hanging the editor. Every jvm-main gallery in the tree already sets the property in the first line
+ * of `main`, `jvmTest` does not need it (Gradle's test JVM has no `-XstartOnFirstThread`), and an
+ * interactive Field window pumps its run loop through `glfwPollEvents` and so is expected to be
+ * fine — expected, not tested; see [Typefaces.warm]. Everything after that one touch is pure
+ * computation over cached outlines.
  */
 
 // ==============================================================================================
@@ -189,63 +197,119 @@ class Typeface internal constructor(val awtFont: Font) {
 /**
  * Font loading, the glyph cache, and the one dangerous moment in this family.
  *
- * [warm] is the only place the AWT font manager is initialised. It runs on its own daemon thread so
- * that a box body on Field's runloop thread cannot be the thread that pulls AppKit in, and it joins
- * with a timeout so a platform that *does* deadlock reports a fixable error instead of hanging the
- * editor. Call it yourself at startup if you want the ~100 ms out of the way.
+ * [warm] is the only place the AWT font manager is initialised, and it is worth reading its KDoc
+ * before changing anything here: which *thread* touches it first decides whether it answers at all
+ * on macOS. Call [warm] yourself at startup if you want the one-off cost out of the way.
  */
 object Typefaces {
 
-    private const val WARM_TIMEOUT_MS = 20_000L
+    /**
+     * How long a helper thread is given before [warm] concludes that AWT is waiting on the thread that
+     * called it, and does the work inline instead.
+     *
+     * Long enough that a cold font-directory walk on a slow disk is not mistaken for a deadlock, short
+     * enough that the fallback happens inside a single box execution.
+     */
+    private const val WARM_TIMEOUT_MS = 4_000L
 
     @Volatile
     private var warmed = false
+
+    @Volatile
+    private var environmentWarmed = false
 
     private val glyphCache = ConcurrentHashMap<GlyphKey, Glyph>()
 
     private data class GlyphKey(val font: Font, val glyphCode: Int)
 
     /**
-     * Initialise the AWT font manager once, off the calling thread.
+     * Initialise the AWT font manager once, on a helper thread, and refuse to hang if it will not
+     * answer.
      *
-     * Idempotent and cheap after the first call. Throws with an actionable message on timeout —
-     * which is the whole point of doing it here rather than letting it happen inside a glyph lookup
-     * deep in a render loop.
+     * **Measured 2026-07-30, and the whole reason this function exists.** In a JVM started with
+     * `-XstartOnFirstThread` that is not pumping its run loop, the first
+     * `Font.createGlyphVector(...)` *never returns*. The sampled stack says exactly why:
+     *
+     * ```
+     * sun.font.CFontManager.loadFonts <- sun.font.SunFontManager.findFont2D <- java.awt.Font.getFont2D
+     *   <- sun.font.StandardGlyphVector.<init> <- java.awt.Font.createGlyphVector
+     * ```
+     *
+     * `CFontManager.loadFonts` dispatches to the process's **first** thread and waits. macOS GLFW
+     * requires `-XstartOnFirstThread`, so Field passes it to every jvm-main child
+     * (`agent_backdoor.kt:830`) — and in a child that opens no window, nothing ever services that
+     * dispatch. Running it inline on the caller does not help either; the caller is not that thread.
+     *
+     * The fix is `java.awt.headless=true`, and it has to be set **before AWT initialises**: headless
+     * AWT does not route the font manager through the main thread at all. That is why every jvm-main
+     * gallery in the tree starts with `System.setProperty("java.awt.headless", "true")` and why they
+     * never saw this, and why setting it from here — after a box has already touched `BufferedImage`
+     * or Skiko — is far too late to matter.
+     *
+     * So this throws rather than blocks, and the message names the fix. `imaging_field.kt:417`'s rule
+     * is that a stdlib call every box might make must not be able to take the process down; a hang
+     * would, and a diagnosable exception does not. Idempotent and cheap after the first call — the
+     * whole family is pure computation over cached outlines from here on.
+     *
+     * Verified working: `jvmTest` (no `-XstartOnFirstThread`), the jvm-main galleries and
+     * `DemoTranscriptExecSmokeTest` (headless set first). An interactive Field window pumps the run
+     * loop through `glfwPollEvents`, so it is expected to be fine and is *not* covered by an automated
+     * test — if a live box reports this error, the flag is the answer there too.
      */
     fun warm() {
         if (warmed) return
         synchronized(this) {
             if (warmed) return
-            val exec = Executors.newSingleThreadExecutor { r ->
-                Thread(r, "afield-typography-init").apply { isDaemon = true }
-            }
-            try {
-                val task = exec.submit<Int> {
-                    // Both halves of the font manager: the family list (which is what walks the
-                    // system font directories) and one real glyph outline (which is what loads the
-                    // native rasteriser). If either is going to block, it blocks here, on this
-                    // thread, under a timeout.
-                    val names = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().availableFontFamilyNames
-                    Font(Font.SANS_SERIF, Font.PLAIN, 12).createGlyphVector(typographyFrc, "o").outline
-                    names.size
-                }
-                task.get(WARM_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-            } catch (e: java.util.concurrent.TimeoutException) {
-                throw IllegalStateException(
-                    "afield.stdlib typography: the AWT font manager did not initialise within " +
-                        "${WARM_TIMEOUT_MS}ms. On macOS this is the AppKit-vs-GLFW main-run-loop clash " +
-                        "documented in imaging_field.kt — rerun the JVM with -Djava.awt.headless=true.",
-                    e
-                )
-            } catch (e: java.util.concurrent.ExecutionException) {
-                throw IllegalStateException(
-                    "afield.stdlib typography: the AWT font manager failed to initialise: ${e.cause?.message}",
-                    e.cause
-                )
-            } finally {
-                exec.shutdownNow()
+            // One real glyph outline: that is what loads libfontmanager and the platform's font
+            // engine. Deliberately NOT GraphicsEnvironment — the family list is a separate, heavier
+            // hazard, and only [available] needs it.
+            val probe = { Font(Font.SANS_SERIF, Font.PLAIN, 12).createGlyphVector(typographyFrc, "o").outline }
+            if (offThread("afield-typography-init", probe) == null) {
+                throw IllegalStateException(stallMessage("the AWT font manager"))
             }
             warmed = true
+        }
+    }
+
+    private fun stallMessage(what: String) =
+        "afield.stdlib typography: $what did not answer within ${WARM_TIMEOUT_MS}ms, so this JVM cannot read " +
+            "glyph outlines.\n  stuck at: ${lastWarmStall ?: "unknown"}\n" +
+            "  This is the macOS -XstartOnFirstThread trap: CFontManager dispatches to the process's first " +
+            "thread and waits, and nothing here is pumping that run loop. Start the JVM with " +
+            "-Djava.awt.headless=true (it must be set BEFORE any AWT class initialises — see " +
+            "Typefaces.warm and the jvm-main galleries, which all set it in the first line of main)."
+
+    /**
+     * Where the last stalled warm attempt was, top frames first.
+     *
+     * A stall with no stack is a dead end for whoever hits it next, so the helper thread is sampled
+     * before it is abandoned. Exposed because it is the evidence behind [warm]'s KDoc, and a platform
+     * that stalls somewhere *else* should be able to say so.
+     */
+    @Volatile
+    var lastWarmStall: String? = null
+        private set
+
+    /** Run [body] on a fresh daemon thread under [WARM_TIMEOUT_MS]; `null` means it did not finish. */
+    private fun <T> offThread(name: String, body: () -> T): T? {
+        var thread: Thread? = null
+        val exec = Executors.newSingleThreadExecutor { r ->
+            Thread(r, name).apply { isDaemon = true; thread = this }
+        }
+        try {
+            return exec.submit(body).get(WARM_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: java.util.concurrent.TimeoutException) {
+            lastWarmStall = thread?.stackTrace?.take(12)?.joinToString(" <- ") { "${it.className}.${it.methodName}" }
+            return null
+        } catch (e: java.util.concurrent.ExecutionException) {
+            throw IllegalStateException(
+                "afield.stdlib typography: the AWT font manager failed to initialise: ${e.cause?.message}",
+                e.cause
+            )
+        } finally {
+            // shutdownNow interrupts, but a thread blocked in a native AppKit wait will not notice; it
+            // is a daemon, so it cannot keep the JVM alive either way.
+            exec.shutdownNow()
         }
     }
 
@@ -292,9 +356,32 @@ object Typefaces {
         return Typeface(f)
     }
 
-    /** Every font family the graphics environment can see, sorted. */
+    /**
+     * Every font family the graphics environment can see, sorted.
+     *
+     * Held apart from [warm] on purpose: this is the *only* thing in the family that needs a
+     * `GraphicsEnvironment`, which is a second and heavier AWT hazard than the font manager
+     * ([warm]'s KDoc has the measurement). Loading a face by name, laying text out and extracting
+     * outlines all avoid it entirely, so a live box never pays for it unless it asks for the list
+     * — or passes `strict = true` to [named], which is the same question in disguise.
+     */
     fun available(): List<String> {
         warm()
+        if (!environmentWarmed) {
+            synchronized(this) {
+                if (!environmentWarmed) {
+                    val names = offThread("afield-typography-environment") {
+                        java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().availableFontFamilyNames.size
+                    } ?: throw IllegalStateException(
+                        stallMessage("GraphicsEnvironment.getLocalGraphicsEnvironment()") +
+                            "\n  Note that enumerating installed families needs a graphics environment and " +
+                            "loading a face BY NAME does not, so naming the face you want may be enough."
+                    )
+                    check(names >= 0)
+                    environmentWarmed = true
+                }
+            }
+        }
         return java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().availableFontFamilyNames.sorted()
     }
 
