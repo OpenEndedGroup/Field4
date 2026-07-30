@@ -175,7 +175,7 @@ showSignals(
 The two naive oscillators, deliberately un-bandlimited: one second of a 200 Hz sawtooth
 (`ZawOsc`) then one second of a 200 Hz narrow pulse (`PulzeOsc`, duty 0.3). The raw ramps buzz
 with aliasing — that grit is the character, not a bug. The plot shows two periods of each: a clean
-descending ramp and a narrow rectangular pulse.
+rising ramp and a narrow rectangular pulse.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dough_dsp_sound/zaw-pulze.png" wait="1.5" capture="box" open-outputs="true" name="dough-sound-oscillators"}
 :::static
