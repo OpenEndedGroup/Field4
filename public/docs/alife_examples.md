@@ -144,6 +144,53 @@ comparison. It aligns the two patterns' bounding boxes, shifts one by that offse
 makes "the glider translates by (1, 1)" an assertion a wrong rule fails rather than a statistic a wrong
 rule can fluke — and the `B34/S23` line above is that control, printing `null`.
 
+### The two objects, moving
+
+Two panels, 400 generations, two generations per displayed frame — which is slow enough that the glider's
+four-generation cycle is legible rather than a strobe, and the reason the whole page's clips state their
+step budget explicitly.
+
+Left: the glider, on a 128-cell **torus**, so it never runs out of room. It travels 100 cells diagonally in
+those 400 generations, and if you watch one edge of the frame you can see it re-enter from the other. That
+is the same claim the montage above makes, and the same claim `translationBetween` asserts, in the form
+where it is obvious.
+
+Right: the R-pentomino on a 128-cell **walled** board, with its live population in the caption. Read the
+section's second paragraph before reading this panel: it is deliberately *not* the run the numbers above
+are about. Those need a board wide enough that no escaping glider can reach an edge, which at 1103
+generations means 620 cells, and 620 cells at one pixel each is a video in which the interesting part is
+four pixels wide. So this is the walled question instead — same rule, same seed, different board — and what
+it shows is the shape of the thing: five cells, a violent expansion, and then a long quieting-down as the
+population approaches something stationary. Nothing is claimed here beyond the number in the caption, which
+is measured live.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/life.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="1000" embed=true name="alife-life-video" alt="Conway's Life: a glider drifting diagonally across a toroidal board, and the R-pentomino exploding and settling on a walled board"}
+:::static
+:::fold the two boards, integer-upscaled so a cell is a block you can count
+// The two boards, integer-upscaled so a cell is a block you can count -- eight pixels for the
+// glider's 48-cell torus, four for the R-pentomino's 96-cell walled board.
+fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
+    "glider, gen " + n to g.toImg(2).upscaleNearest(8),
+    "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(4)
+)
+:::endfold
+
+// 400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
+// clip on this page on purpose -- the glider's period is FOUR generations, and a spaceship stepped
+// nine generations at a time is a strobe rather than a spaceship.
+animateEvolution(
+    LifePatterns.glider.centeredOn(48, 48) to
+        LifePatterns.rPentomino.centeredOn(96, 96, wrap = false),
+    totalSteps = 400,
+    seconds = 7.0,
+    framesTarget = 200,
+    columns = 2,
+    cellSide = 384,
+    step = { (g, r) -> g.step(LIFE) to r.step(LIFE) },
+    panels = { (g, r), n -> boards(g, r, n) }
+)
+```
+
 ## 2. Wolfram's elementary rules, against an independent oracle
 
 A one-dimensional automaton's behaviour is two-dimensional, so
@@ -206,6 +253,56 @@ showImg(
 ```
 
 ![](assets/alife_examples/elementary.png)
+
+### Four rules, drawn a generation at a time
+
+A space-time diagram is a *picture of time*, which makes animating one slightly strange: the motion is the
+downward growth of the picture, not motion within it. It is worth doing anyway, because the four panels
+grow at the same rate and the differences between the 256 rules become differences you can watch appear.
+
+One generation per displayed frame, 128 generations in six seconds. Rule 90 lays down the Sierpiński gasket
+with the self-similarity arriving in bursts at the powers of two — the row populations are `2^popcount(g)`,
+so the widest rows are the ones where `g` has many bits, and the diagram visibly *breathes*. Rule 30 starts
+identically, from a single cell, and never repeats. Rule 110 — the universal one — separates into a
+background of periodic structure with localised gliders travelling through it, which is what a proof of
+universality has to be built out of. Rule 184 just shifts, forever, conserving its 86 live cells exactly.
+
+!!! note "This one is a reveal, not a re-simulation, and that is a real distinction"
+    [`elementaryCa`](reference/alife.md#alife-ca-kt) computes the whole diagram, and
+    [`rowsRevealed`](reference/alife.md#alife-animate-kt) uncovers it a row at a time. That is legitimate
+    here for a specific reason and not in general: row `g` of a space-time diagram depends only on rows
+    below `g`, so revealing rows and re-running the automaton produce *identical* pixels. Every other clip
+    on this page steps the real system. This one is honest about being the exception.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/elementary.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="240" w="900" embed=true name="alife-elementary-video" alt="four elementary cellular automaton space-time diagrams filling in a row at a time: rule 90's Sierpinski gasket, rule 30's chaos, rule 110's gliders and rule 184's shifting traffic"}
+:::static
+:::fold compute the four space-time diagrams once, in full
+// Compute the four space-time diagrams once, in full: 257 cells wide, 128 generations tall.
+val seedRow = IntArray(257) { if ((it * 7919) % 3 == 0) 1 else 0 }
+val diagrams = listOf(
+    "rule 90" to elementaryCa(90, 257, 128).toImg(2),
+    "rule 30" to elementaryCa(30, 257, 128).toImg(2),
+    "rule 110" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
+    "rule 184" to elementaryCa(184, 257, 128, seedRow).toImg(2)
+)
+:::endfold
+
+// 128 generations over 128 displayed frames: ONE row of every diagram per frame. The upscale comes
+// AFTER the reveal, so `n` counts generations rather than pixels -- and `rowsRevealed` keeps the
+// full height, so montage frames each panel identically instead of rescaling a growing image.
+animateEvolution(
+    Unit,
+    totalSteps = 128,
+    seconds = 6.0,
+    framesTarget = 128,
+    columns = 2,
+    cellSide = 520,
+    step = { it },
+    panels = { _, n ->
+        diagrams.map { (name, img) -> name + ", gen " + n to img.rowsRevealed(n).upscaleNearest(2) }
+    }
+)
+```
 
 ## 3. Cyclic CA: self-organisation with a closed form to check it against
 
@@ -278,6 +375,51 @@ showImg(
 
 ![](assets/alife_examples/cyclic.png)
 
+### The two phases, running
+
+Of everything in this family the cyclic CA is the system whose stills lie hardest, because the whole point
+of it is *rotation* and a still frame has no chirality. Both panels below run 400 generations in seven
+seconds — three generations per displayed frame — from the same kind of soup. The lattices are 128 cells
+rather than the figure's 200, drawn three pixels to a cell: at one pixel per cell a rotating spiral core is
+about four pixels of video and reads as flicker.
+
+The left panel is the sequence the figure above samples at generations 0, 40 and 400, without the gaps.
+Watch for the transition, because it is sharp and it has a name: the soup is **locally** advancing
+everywhere (that is the 0.4483 the box prints, and it is what an uncorrelated field gives) but it has no
+structure, and then within a few dozen generations it is *entirely* bands, after which every cell advances
+on every step forever. Nothing directs that. The right panel is the excitable rule, and what it does that
+the labyrinth does not is **rotate**: those spiral cores are pinned defects, they wind at a fixed rate, and
+you cannot see any of that in a photograph of one.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/cyclic.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="1100" embed=true name="alife-cyclic-video" alt="two cyclic cellular automata running: a random soup organising into rotating bands, and an excitable rule winding into spiral cores"}
+:::static
+:::fold one palette per rule, fixed by the rule and never by the frame
+// One palette per rule, FIXED -- it is a function of the rule's state count, never of the frame,
+// which is what makes generation 0 and generation 400 the same picture of the same thing.
+val pal = cyclicPalette(CYCLIC_LABYRINTH.states)
+val exPal = cyclicPalette(CYCLIC_EXCITABLE.states)
+fun soups(a: IntGrid, b: IntGrid, n: Int) = listOf(
+    "labyrinth, gen " + n to a.toImg(pal).upscaleNearest(2),
+    "excitable, gen " + n to b.toImg(exPal).upscaleNearest(2)
+)
+:::endfold
+
+// Two cyclic rules from the same kind of soup, stepped together so the schedule is shared:
+// 400 generations over 140 displayed frames, THREE generations per frame.
+val rule = CYCLIC_LABYRINTH
+val ex = CYCLIC_EXCITABLE
+animateEvolution(
+    IntGrid.random(128, 128, states = rule.states, seed = 7L) to
+        IntGrid.random(128, 128, states = ex.states, seed = 7L),
+    totalSteps = 400,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 256,
+    step = { (a, b) -> a.step(rule) to b.step(ex) },
+    panels = { (a, b), n -> soups(a, b, n) }
+)
+```
+
 ## 4. Gray–Scott: telling regimes apart by measurement
 
 Two coupled fields, `u` (substrate) and `v` (autocatalyst), the reaction `U + 2V → 3V` with `V → P`,
@@ -348,6 +490,56 @@ showImg(montage(panels, columns = 3, cellSide = 260))
 ```
 
 ![](assets/alife_examples/gray-scott.png)
+
+### The same 6000 steps, recorded live
+
+A montage of finished fields is the *evidence*, and it is also the one view that hides what
+reaction–diffusion is: those numbers are the end of a process, and the process is the phenomenon. So here
+is one preset again, animated — the `maze` field, `F = 0.029`, `k = 0.057`, the same 6000 steps, in seven
+seconds.
+
+What to watch, with the step counter in the caption as your clock:
+
+- **Step 63.** Six square seed patches, each with a bright rim. That is `grayScottSeed`'s output plus
+  enough steps to make it visible: `v` is high only where the patch meets the substrate.
+- **Step ~600.** Every square has buckled into a four-lobed cross. This is the Turing instability
+  arriving as an *event*: the flat patch boundary is unstable, and it does not decay into noise, it picks
+  a wavelength. The four lobes are that wavelength meeting the square's symmetry.
+- **Step ~1600.** Each patch has filled its own interior with labyrinth and the fronts are advancing into
+  empty substrate — the black regions are unconsumed `u`, and they are shrinking.
+- **Step ~2900.** The fronts have met. From here the field is *entirely* labyrinth and the dynamics change
+  character completely: no more growth, only rearrangement.
+- **Step 6000.** Annealed. Watch the last second and almost nothing moves; the little that does is at the
+  free ends, which is where a labyrinth still has somewhere to go. That is why the section's numbers are
+  stable enough to assert.
+
+[`animateEvolution`](reference/alife.md#alife-animate-kt) divides the whole 6000 steps across the clip's
+seven seconds — 43 steps per displayed frame — for the reason its own KDoc gives: one step per frame at
+20 fps would be five minutes of clip. The step counter is burned into the frame so the *last* frame of the
+recording says whether the schedule actually finished, which is a thing you can check by looking rather
+than by trusting.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
+:::static
+:::fold the autocatalyst field, on a fixed colour range
+// The autocatalyst field on a FIXED 0..0.5 magma range. Auto-ranging per frame is what makes an
+// animation of a growing pattern appear to stand still, and it is the single easiest way to turn
+// a reaction-diffusion clip into a lie.
+fun view(s: GrayScottState, n: Int) =
+    listOf("maze - step " + n + " of 6000" to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(3))
+:::endfold
+
+// The `maze` preset, the same 6000 steps the figure above measures, over 140 displayed frames:
+// 43 reaction-diffusion steps per frame.
+animateEvolution(
+    grayScottSeed(128, 128, patches = 6, patchSize = 14, seed = 11L),
+    totalSteps = 6000,
+    seconds = 7.0,
+    cellSide = 420,
+    step = { it.step(GRAY_SCOTT_MAZE) },
+    panels = { s, n -> view(s, n) }
+)
+```
 
 ## 5. Lenia: a continuous CA that contains Life
 
@@ -442,6 +634,50 @@ showImg(montage(panels, columns = 3, cellSide = 280))
 
 ![](assets/alife_examples/lenia.png)
 
+### The two `mu` values, running
+
+The discrete-limit result above is a **proof**, and it deliberately stays a still: "the worst per-cell
+difference over 20 generations is `0.0`" is a number, it is exact, and there is nothing about it to watch.
+Animating it would add motion and subtract certainty.
+
+The continuous regime is the opposite. Both panels are the same seed under the same ring kernel with only
+`mu` changed — 0.06 on the left, 0.14 on the right — 240 steps in seven seconds, with the **mean field
+printed live** in each caption so the phase verdict is being computed while you watch rather than asserted
+afterwards. On a fixed `0 … 1` `inferno` scale, for the reason the note below this clip gives.
+
+What to watch is the first second, which is where the two panels stop being the same picture. Both start as
+one smooth blob. Then the growth mapping's window decides everything: one `mu` has the blob break into a
+field of ring-shaped cells that maintain themselves and then keep rearranging without ever growing or
+dying — the mean field settles into a band and stays there — while the other loses more than it gains and
+runs down to nothing. Same code, same seed, one number.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lenia.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-lenia-video" alt="two Lenia fields from the same seed under different growth-window centres: one breaks into self-maintaining ring cells, the other runs down to nothing"}
+:::static
+:::fold the two fields, on a fixed 0..1 inferno range
+// inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
+// is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
+// renders black and becomes indistinguishable from death, which cost this family a figure once.
+fun fields(x: Img, y: Img, n: Int) = listOf(
+    "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
+    "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
+)
+:::endfold
+
+// Same seed, same ring kernel, one number different: where the growth window is centred.
+// 240 Lenia steps over 140 displayed frames, so two steps per frame.
+val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
+val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
+animateEvolution(
+    leniaSeed(96, 96, a, blobRadii = 1.6, seed = 9L) to leniaSeed(96, 96, b, blobRadii = 1.6, seed = 9L),
+    totalSteps = 240,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 384,
+    step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
+    panels = { (x, y), n -> fields(x, y, n) }
+)
+```
+
 !!! note "One rendering trap, since it produced a wrong figure once"
     A saturated field is *constant* at 1, so an auto-ranged colour map draws it at the dark end of the
     ramp — and a `SATURATION` panel renders as black, indistinguishable from `DEATH`. The panels above
@@ -512,6 +748,55 @@ showImg(
 
 ![](assets/alife_examples/boids.png)
 
+### The control arm, running beside it
+
+The two numbers above — 0.692 and 0.073 — are the same initial state with one weight changed, and side by
+side as clips they stop being numbers you have to take on trust. Both panels are the identical 400 agents
+with the identical seed; the right one has `alignmentWeight = 0` and nothing else is different. 900 steps
+in nine seconds, five per displayed frame, with the live order parameter in each caption.
+
+What to watch: **the left panel's flocks are not there at the start and nobody puts them there.** Within
+about a hundred steps local alignment has produced a handful of coherent groups, and after that the
+interesting event is the rare one — two flocks meeting and either merging or passing through. That is why
+the order parameter settles near 0.69 rather than climbing to 1: it is the global average over several
+flocks that each individually agree, and the caption's number wobbles as they merge and split. On the
+right, the population stays a gas forever. It is *moving* — the speed floor is still on — it just never
+agrees about anything.
+
+The tail is drawn longer here (6 units) than in the still (5) and the domain is drawn at one pixel per
+unit rather than 1.4. Both are frame-rate accommodations: at six steps per displayed frame an agent covers
+about eight cells between frames, so a short tail leaves visible gaps. Neither changes anything measured —
+`order()` reads the velocity array, not the picture.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/boids.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="11" fps="20" timeout="300" w="1000" embed=true name="alife-boids-video" alt="two boid populations from the same seed: the left forms coherent flocks, the right, with alignment switched off, stays a disordered gas"}
+:::static
+:::fold draw both populations, and measure the order parameter every frame
+// One pixel per domain unit, with a 6-unit motion streak behind each agent -- long enough to join
+// up at six steps per frame. `order()` reads the velocity array, so neither choice touches what is
+// measured; the number in each caption is computed fresh every frame.
+fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = listOf(
+    "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 6.0),
+    "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 6.0)
+)
+:::endfold
+
+// The same initial state, twice, stepped together -- so the ONLY difference between the two panels
+// is the alignment weight. 900 steps over 150 displayed frames: six steps per frame.
+val params = BoidParams()
+val blind = params.copy(alignmentWeight = 0.0)
+val start = BoidFlock.random(400, 260.0, 260.0, speed = 1.4, seed = 4L)
+animateEvolution(
+    start.copy() to start.copy(),
+    totalSteps = 900,
+    seconds = 9.0,
+    framesTarget = 150,
+    columns = 2,
+    cellSide = 300,
+    step = { (a, b) -> a.step(params); b.step(blind); a to b },
+    panels = { (a, b), n -> flocks(a, b, n) }
+)
+```
+
 ## 7. Physarum: a transport network that is nowhere in the code
 
 Jones' slime-mould model. Each agent deposits into a trail field, samples that field three ways ahead,
@@ -565,6 +850,77 @@ showImg(
 ```
 
 ![](assets/alife_examples/physarum.png)
+
+### Watching the network find itself
+
+`topShare` climbing from 0.05 to 0.48 is the evidence; the clip is what the number is *about*. 400 steps
+in seven seconds, three per displayed frame, both populations stepped together — and the measured
+top-5 % share recomputed and printed **every frame**, so the caption is a live instrument rather than a
+result quoted after the fact.
+
+Three things to watch, and the third is the one worth waiting for:
+
+1. The disc **expands**, in both panels. That is not the network; that is 6000 mutually exclusive agents
+   needing room.
+2. In the sensing panel the expansion goes **anisotropic** almost immediately: some directions get
+   reinforced and the rest go dark. Nothing chose those directions. They are wherever the deposit happened
+   to be a little stronger when the agents first looked.
+3. Then the interior **reorganises** — trails that were separate merge, and loops close and re-open. The
+   share number keeps climbing while the *shape* keeps changing, which is the point: the network is a
+   fixed point of the loop, not a thing that gets built and then stops.
+
+The blind panel is the same 6000 agents with `sensing = false`, so it expands and then just sits there,
+uniform, at a share that stays near a fifth of the sensing run's.
+
+!!! warning "The colour range is `deposit / (1 − decay)`, and the first cut of this clip got it wrong"
+    The still above uses `normalized()`, which is right for one figure and wrong for a clip in two ways at
+    once: a per-frame maximum makes an *empty* early field look exactly as bright as a settled network, and
+    it normalises the two panels **separately**, so the control arm is stretched to fill the same range as
+    the thing it is a control for.
+
+    The trail field is unbounded above, so there is no natural `hi` to pick — but there is a derivable one.
+    A cell that an agent occupies on every step accumulates `deposit` and keeps `decay` of what it had, so
+    it converges to `deposit / (1 − decay)` = `5 / 0.08` = **62.5**, and with `blurRadius = 1` a cell in the
+    interior of a saturated filament is surrounded by cells at the same value, so the blur does not reduce
+    it. That is the ceiling, it comes from the parameters, and both panels are drawn on it.
+
+    The first version of this clip guessed **30** instead. It rendered the entire network as flat cream with
+    holes in it: every filament was over the top of the range, so the structure the section is *about* was
+    clipped away. Caught by extracting the last frame and looking at it beside the still — which is the only
+    way that class of mistake ever gets caught.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/physarum.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1100" embed=true name="alife-physarum-video" alt="two Physarum populations from the same seed: the sensing one expands into a branching transport network, the blind one into a uniform blob"}
+:::static
+:::fold draw both trails on one derived colour range, and measure the share every frame
+// Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
+// step accumulates `deposit` and keeps `decay` of what it had, so it converges to
+// deposit / (1 - decay) = 62.5. The first cut of this clip guessed 30 and clipped the network to
+// flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
+val p = PhysarumParams()
+val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
+fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = listOf(
+    "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
+    "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling)
+)
+:::endfold
+
+// Sensing and blind, from the same seed, stepped together: 400 steps over 140 displayed frames,
+// so three deposit-sense-move rounds per frame. `step` takes its rng explicitly, so each
+// population gets its own stream -- exactly what `stepTimes(p, 400, seed = 6L)` does internally,
+// which is why these panels land on the same numbers as the figure above.
+val rngA = kotlin.random.Random(6L)
+val rngB = kotlin.random.Random(6L)
+animateEvolution(
+    PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L) to
+        PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L),
+    totalSteps = 400,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 300,
+    step = { (a, b) -> a.step(p, rngA) to b.step(p.copy(sensing = false), rngB) },
+    panels = { (a, b), n -> trails(a, b, n) }
+)
+```
 
 ## 8. DLA: the one number with a literature value
 
@@ -639,6 +995,47 @@ showImg(
 
 ![](assets/alife_examples/dla.png)
 
+### The order the branches arrived in
+
+A DLA cluster's shape is a record of *when*, and this is the one clip on the page where saying exactly what
+is being replayed matters, so: the cluster is grown **once**, by `dlaCluster`, and `Aggregate.points` is the
+order the particles stuck in. The clip reveals that recorded order at a uniform rate. It is not a
+re-simulation and it is not uniform in the original walk's wall-clock either — a late particle takes far
+longer to arrive than an early one, because it has to random-walk in from a larger circle past a bigger
+target. What is uniform is particle *count*.
+
+Watch what that shows, because it is the mechanism the fractal dimension is a consequence of.
+**Screening.** The interior stops growing almost immediately: once a branch has neighbours on both sides,
+a walker arriving from outside is overwhelmingly likely to touch a tip first, so it never reaches the
+inside. So the cluster is not a blob that grows outward uniformly — it is a small number of tips that keep
+racing outward while everything behind them is frozen. That is why a mass–radius fit gives 1.6 and not 2:
+the interior is *empty*, permanently, and it was made empty by the arrival process rather than by the rule.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/dla.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="800" embed=true name="alife-dla-video" alt="a diffusion-limited aggregation cluster appearing in the order its particles arrived: a few tips race outward while the interior freezes"}
+:::static
+:::fold colour the cluster by arrival order on the whole cluster's scale
+// `arrivalPrefixImg` fixes the colour ramp to the FULL cluster's particle count, so a branch keeps
+// the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
+// newest particle to the top of turbo on every frame. The explicit 0..1 range is the same
+// discipline one level up.
+fun cluster(dla: Aggregate, n: Int) =
+    listOf("particles " + n + " of " + dla.points.size to
+        dla.arrivalPrefixImg(n).colormap("turbo", 0f, 1f).upscaleNearest(2))
+:::endfold
+
+// Grow the cluster once, then replay `Aggregate.points` -- which IS the order the particles stuck
+// in -- at a uniform rate over seven seconds.
+val dla = dlaCluster(300, 300, particles = 6000, seed = 2L)
+animateEvolution(
+    Unit,
+    totalSteps = dla.points.size,
+    seconds = 7.0,
+    cellSide = 600,
+    step = { it },
+    panels = { _, n -> cluster(dla, n) }
+)
+```
+
 ## 9. L-systems: exact identities, not statistics
 
 L-systems are the odd one out in this family, and they belong in it for a precise reason: they are the
@@ -710,6 +1107,65 @@ showImg(
 ```
 
 ![](assets/alife_examples/lsystem.png)
+
+### The turtle, walking
+
+An L-system could be animated by *derivation depth* — generation 0, then 1, then 2 — and that was the first
+plan here. It was the wrong one: six generations over seven seconds is a slideshow with 23 duplicate frames
+between each change, and worse, each generation is a completely different picture, so there is no motion to
+read, only cuts.
+
+What an L-system actually *has* is a turtle, and a turtle walks in an order.
+[`flinePrefix`](reference/alife.md#alife-animate-kt) truncates the emitted [`FLine`](fline_examples.md)s at a
+fraction of their total segment count in walk order, so both panels below are drawn by a pen, in the
+sequence the pen moved.
+
+Which makes the bracket pair visible, and that is the point of the right-hand panel. `[` pushes the turtle's
+state and `]` pops it, so a plant is drawn **depth-first**: the pen runs all the way out to the tip of one
+branch, then jumps back to a fork it remembered and runs out to the next. You can watch it do exactly that,
+and the jumps are the stack. The Koch snowflake on the left has no brackets at all and is therefore one
+continuous stroke — 768 segments at generation 4, traced without the pen ever leaving the paper, closing
+back on its start to `2.3 × 10⁻¹⁴` of a step.
+
+!!! note "The framing has to be pinned, or nothing moves"
+    [`rasterizeFLines`](reference/alife.md#alife-lsystem-kt) fits its raster to the bounds of what it is
+    given, which for a *growing* curve means the figure is rescaled on every frame: the curve appears to
+    stay the same size while the world shrinks around it, and the growth becomes invisible.
+    [`rasterizeFLinesFramed`](reference/alife.md#alife-animate-kt) takes the framing from the finished curve
+    instead. This is the same class of mistake as an auto-ranged colour map, in geometry rather than in
+    colour.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/lsystem.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="900" embed=true name="alife-lsystem-video" alt="a Koch snowflake being traced as one continuous stroke beside a bracketed L-system plant drawn depth-first, the pen jumping back to remembered forks"}
+:::static
+:::fold rasterize each prefix in the finished curve's frame
+// `rasterizeFLinesFramed` takes its framing from the FINISHED curve. Plain `rasterizeFLines` fits
+// the raster to whatever it is handed, so a growing prefix rescales every frame: the curve appears
+// to stay the same size while the world shrinks around it, and the growth becomes invisible.
+fun drawn(koch: List<FLine>, plant: List<FLine>, f: Double): List<Pair<String, Img>> {
+    val pct = (f * 100).toInt()
+    return listOf(
+        "Koch gen 4: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(koch, f), koch, 420, 420),
+        "plant gen 5: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(plant, f), plant, 420, 420)
+    )
+}
+:::endfold
+
+// Animated by DRAWING, not by cutting between derivation depths: an L-system's turtle walks in an
+// order, and `flinePrefix` truncates the emitted FLines at a fraction of their segment count in
+// exactly that order. 240 ticks over 140 displayed frames.
+val koch = drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, TurtleParams(angle = Math.PI / 3.0, step = 1.0))
+val plant = drawLSystem(LSYSTEM_STOCHASTIC_PLANT, 5, TurtleParams(angle = Math.toRadians(24.0), step = 4.0), seed = 1L)
+val ticks = 240
+animateEvolution(
+    Unit,
+    totalSteps = ticks,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 420,
+    step = { it },
+    panels = { _, n -> drawn(koch.lines, plant.lines, n.toDouble() / ticks) }
+)
+```
 
 !!! note "`drawSymbols` exists because of a blank panel"
     The Sierpiński arrowhead curve is written `A → B−A−B`, `B → A+B+A`, where `A` and `B` are *both*
@@ -794,6 +1250,54 @@ showImg(
 ```
 
 ![](assets/alife_examples/bridges.png)
+
+### The bridge, live: a field and its contours at the same time
+
+The first of those three bridges is the one worth animating, because it is the one that produces *geometry*
+rather than a picture — and geometry that tracks a moving field is the thing you would actually want in a
+Field document. Left: the `v` field of a `spots` run, 5000 steps in seven seconds. Right: the same field's
+`v = 0.25` iso-contours, re-extracted **every frame** through `contours.kt`'s marching squares, with the
+loop count in the caption.
+
+Watch the loop count. It climbs while the spots are dividing, because each division is one loop becoming
+two, and it is the one number on this page that is a *topological* measurement rather than a statistical
+one: it changes by integers, at the moment a thing happens. And watch the contours' relationship to the
+field — the loops stay locked to the field's level set as it moves, which is what makes this a bridge rather
+than a screenshot.
+
+The step budget is the same idea as everywhere else on the page, with one extra cost: 36 frames a second of
+marching squares as well as the reaction. If a clip like this ever falls behind, the caption says so.
+
+```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/bridges.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-bridges-video" alt="a Gray-Scott spots field evolving beside its iso-contours, re-extracted every frame, with the loop count rising as spots divide"}
+:::static
+:::fold pin the contour panel's framing to the field's extent
+// The contour panel is framed by the FIELD's extent -- two invisible single-node FLines at the
+// corners of the 96x96 sample grid, in the contour extractor's own pixel coordinates. Framed by
+// the contours' own bounds instead, the early frames (two loops in one corner) would be drawn
+// zoomed right in and the whole figure would zoom out as the pattern spread.
+val fieldFrame = listOf(FLine().moveTo(0, 0), FLine().moveTo(95, 95))
+fun bridge(s: GrayScottState, n: Int): List<Pair<String, Img>> {
+    val loops = s.v.isoContourFLines(0.25, cells = 96)
+    return listOf(
+        "v field, step " + n to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(4),
+        "iso v=0.25: " + loops.size + " loops" to rasterizeFLinesFramed(loops, fieldFrame, 384, 384)
+    )
+}
+:::endfold
+
+// A reaction-diffusion field and its iso-contour FLines, re-extracted afresh every frame -- so the
+// geometry tracks the field instead of being a snapshot of it. 5000 steps over 140 displayed
+// frames: 36 reaction-diffusion steps AND one marching-squares pass per frame.
+animateEvolution(
+    grayScottSeed(96, 96, patches = 5, patchSize = 12, seed = 4L),
+    totalSteps = 5000,
+    seconds = 7.0,
+    columns = 2,
+    cellSide = 384,
+    step = { it.step(GRAY_SCOTT_SPOTS) },
+    panels = { s, n -> bridge(s, n) }
+)
+```
 
 ## Evaluating one of these in a box: the inline views
 
