@@ -173,7 +173,67 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
 # (build.gradle.kts `runJvm` -> mainClass afield.Server) and the jvm-main test
 # launcher. Matching the main class rather than the java binary is what keeps the
 # reaper off Gradle/Kotlin daemons, IDEs and unrelated JVMs.
+#
+# These say "this is a Field JVM". They do NOT say "this is OUR Field JVM" -- see
+# [_command_belongs_to] for that half, which is what keeps parallel agents in sibling
+# worktrees from SIGKILLing each other's tests.
 FIELD_JVM_MARKERS = ("afield.Server", "afield.AgentJvmMainLauncher")
+
+
+def _checkout_scope_prefix(root: Path) -> str:
+    """``root`` with exactly one trailing separator.
+
+    The separator is the whole point. ``/Users/marc/field4`` is a plain string prefix of
+    ``/Users/marc/field4-worktrees/2026-07-30-2-.../`` -- so a bare ``startswith`` run from
+    the primary checkout claims every worktree's JVM as its own, which is the bug this
+    guards. ``/Users/marc/field4/`` is a prefix of neither.
+    """
+    return str(root).rstrip(os.sep) + os.sep
+
+
+def _command_belongs_to(command: str, root: Path) -> bool:
+    """Is this ``java`` command line a JVM launched out of the checkout at ``root``?
+
+    Two independent signals, both anchored at the start of an argument rather than matched
+    loosely against the whole line:
+
+    * ``-Dafield.aot.cache.path=<root>/...`` -- ``build.gradle.kts``'s
+      ``fieldAotStatusJvmArgs`` puts this on the ``runJvm`` server, defaulting to
+      ``<root>/build/aot/field.aot``. It is the cheapest and most direct answer.
+    * a ``-classpath``/``-cp`` entry under ``<root>/build/``. Not a theoretical fallback: an
+      observed ``afield.AgentJvmMainLauncher`` running
+      ``afield.examples.DemoTranscriptExecSmokeTest`` carried **no**
+      ``-Dafield.aot.cache.path`` argument at all, and its classpath was the only thing naming
+      its checkout. The property is also emitted *empty* when ``-PfieldAotCache=false``
+      resolves the cache file to null. ``<root>/build/`` rather than ``<root>/`` on purpose: a
+      checkout's build output is unambiguous, whereas ``<root>/`` would also match incidental
+      paths such as a worktree's ``<primary>/.git/worktrees/<name>`` gitdir.
+
+    Tokenising with ``split()`` is good enough here and not more: ``ps`` prints argument values
+    unquoted (``-Dafield.aot.detail=No AOT cache was requested. ...`` really does arrive as
+    several "arguments"), so this would mis-pair a ``-cp`` whose *value* contained a space.
+    Field's own paths do not, and the first signal is a plain substring test that does not care.
+
+    A Field JVM that matches neither is *not* attributed to this checkout and is therefore
+    left alone. That is deliberately conservative: failing to reap someone else's orphan
+    costs memory, whereas reaping it destroys their run and reports a false green.
+    """
+    prefix = _checkout_scope_prefix(root)
+    if f"-Dafield.aot.cache.path={prefix}" in command:
+        return True
+
+    args = command.split()
+    build_prefix = prefix + "build" + os.sep
+    for index, arg in enumerate(args):
+        if arg in {"-classpath", "-cp", "--class-path"}:
+            classpath = args[index + 1] if index + 1 < len(args) else ""
+        elif arg.startswith(("-classpath=", "-cp=", "--class-path=")):
+            classpath = arg.partition("=")[2]
+        else:
+            continue
+        if any(entry.startswith(build_prefix) for entry in classpath.split(os.pathsep)):
+            return True
+    return False
 
 
 def _describe_pid(pid: int) -> str:
@@ -212,15 +272,21 @@ def _ancestor_pids() -> set[int]:
     return chain
 
 
-def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
+def _classify_field_jvms(*, exclude: set[int], root: Path = REPO_ROOT) -> tuple[list[int], list[int]]:
+    """Every live Field JVM, split into ``(ours, other checkouts')``.
+
+    ``ours`` is what the reaper may kill; the rest belong to another clone or git worktree --
+    very possibly another agent's run in progress -- and are only ever reported.
+    """
     try:
         out = subprocess.run(
             ["ps", "-eo", "pid=,command="], capture_output=True, text=True, timeout=15,
         ).stdout
     except (OSError, subprocess.TimeoutExpired):
-        return []
+        return [], []
     protected = exclude | _ancestor_pids()
-    pids: list[int] = []
+    ours: list[int] = []
+    foreign: list[int] = []
     for line in out.splitlines():
         line = line.strip()
         if not line:
@@ -238,13 +304,18 @@ def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
         # which in testing reaped the very shell running the reaper.
         if os.path.basename(argv0) != "java":
             continue
-        if any(marker in rest for marker in FIELD_JVM_MARKERS):
-            pids.append(pid)
-    return pids
+        if not any(marker in rest for marker in FIELD_JVM_MARKERS):
+            continue
+        (ours if _command_belongs_to(command, root) else foreign).append(pid)
+    return ours, foreign
 
 
-def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
-    """Kill Field JVMs orphaned by earlier runs, before booting ours.
+def _stale_field_jvm_pids(*, exclude: set[int]) -> list[int]:
+    return _classify_field_jvms(exclude=exclude)[0]
+
+
+def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = False) -> None:
+    """Kill *this checkout's* Field JVMs orphaned by earlier runs, before booting ours.
 
     ``recycle_field`` only ever retires the process *listening on our port*. JVMs
     orphaned by a crashed or killed earlier run keep running without holding the
@@ -252,13 +323,29 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
     backdoor websockets and 10x inflated durations rather than assertion failures,
     which reads as a flaky suite. So sweep them first.
 
-    Deliberately narrow -- only JVMs whose command line carries one of
-    [FIELD_JVM_MARKERS]. Gradle and Kotlin compile daemons are left alone: they
-    are frequently the larger memory consumers, but they are also reusable and
-    killing them makes every run pay a cold start. Use ``./gradlew --stop`` to
-    retire those, or set ``AFIELD_TEST_KILL_ALL_JAVA=1`` for the blunt hammer.
+    Narrow in two independent directions:
 
-    Best effort: never fails the run.
+    * only JVMs whose command line carries one of [FIELD_JVM_MARKERS]. Gradle and Kotlin
+      compile daemons are left alone: they are frequently the larger memory consumers, but
+      they are also reusable and killing them makes every run pay a cold start. Use
+      ``./gradlew --stop`` to retire those, or set ``AFIELD_TEST_KILL_ALL_JAVA=1`` for the
+      blunt hammer.
+    * only JVMs [_command_belongs_to] this checkout. The marker test alone matches every
+      Field JVM on the machine, so parallel agents working in sibling git worktrees used to
+      SIGKILL each other's tests -- the victim's run then died mid-suite, or worse finished
+      against a half-dead server and reported a green. ``--no-reap`` never helped, because it
+      protects everyone else from you and nobody from them.
+
+      This is not a story about the past tense. While *verifying* this very change, a
+      19-test run lost its server after 11 passes: the prewarm log ends
+      ``Process 'command ... java' finished with non-zero exit value 130 (this value may
+      indicate that the process was terminated with the SIGINT signal)`` after 45 s, and the
+      next two tests failed with ``ConnectionClosedError ... [code=1006]`` and "backdoor
+      returned no JSON result". Both passed on retry. Nothing inside a run SIGINTs its own
+      prewarm server mid-suite; a sibling checkout's unscoped preflight sweep does.
+
+    Best effort: never fails the run. Pass ``dry_run`` (``--reap-dry-run``) to print the
+    classification and kill nothing.
     """
     if os.name == "nt":
         return
@@ -266,24 +353,45 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0) -> None:
     if os.environ.get("AFIELD_TEST_KILL_ALL_JAVA", "").strip().lower() in {"1", "true", "yes", "on"}:
         print(
             "AFIELD_TEST_KILL_ALL_JAVA set: killing every java process on this machine "
-            "(includes Gradle/Kotlin daemons and any IDE or Field app).",
+            "(includes Gradle/Kotlin daemons and any IDE or Field app, and every other "
+            "checkout's tests).",
             file=sys.stderr, flush=True,
         )
+        if dry_run:
+            print("  --reap-dry-run: not killing anything.", file=sys.stderr, flush=True)
+            return
         subprocess.run(["killall", "-9", "java"], capture_output=True, text=True, timeout=30, check=False)
         return
 
     # Leave the port holder to recycle_field, which SIGINTs it first so it can
     # dispose its GPU/window resources instead of leaking them.
     keep = set(_pids_listening_on(port))
-    pids = _stale_field_jvm_pids(exclude=keep)
+    pids, foreign = _classify_field_jvms(exclude=keep)
+
+    # Always say what was spared, so a run's log shows the scoping working rather than
+    # leaving "why is that JVM still there" to be guessed at.
+    if foreign:
+        print(
+            f"Leaving {len(foreign)} Field JVM(s) from other checkouts alone: "
+            + ", ".join(_describe_pid(pid) for pid in foreign),
+            file=sys.stderr, flush=True,
+        )
     if not pids:
+        if dry_run:
+            print(
+                f"  --reap-dry-run: no Field JVM belongs to {REPO_ROOT}; nothing to reap.",
+                file=sys.stderr, flush=True,
+            )
         return
 
     print(
-        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs: "
+        f"Reaping {len(pids)} orphaned Field JVM(s) from earlier runs in {REPO_ROOT}: "
         + ", ".join(_describe_pid(pid) for pid in pids),
         file=sys.stderr, flush=True,
     )
+    if dry_run:
+        print("  --reap-dry-run: not killing anything.", file=sys.stderr, flush=True)
+        return
     for pid in pids:
         try:
             os.kill(pid, signal.SIGINT)
@@ -1292,9 +1400,18 @@ def parse_args() -> argparse.Namespace:
         "--no-reap",
         action="store_true",
         help=(
-            "Skip the preflight sweep of Field JVMs orphaned by earlier runs. "
-            "Set AFIELD_TEST_KILL_ALL_JAVA=1 instead to kill every java process, "
-            "Gradle/Kotlin daemons and IDEs included."
+            "Skip the preflight sweep of this checkout's Field JVMs orphaned by earlier "
+            "runs. Set AFIELD_TEST_KILL_ALL_JAVA=1 instead to kill every java process, "
+            "Gradle/Kotlin daemons, IDEs and other checkouts' tests included."
+        ),
+    )
+    parser.add_argument(
+        "--reap-dry-run",
+        action="store_true",
+        help=(
+            "Run the preflight sweep's classification, print which Field JVMs it attributes "
+            "to this checkout and which it would leave to other checkouts, kill nothing, "
+            "and exit."
         ),
     )
     parser.add_argument("--root", action="append", dest="roots")
@@ -1462,6 +1579,13 @@ def run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     args = parse_args()
+    if args.reap_dry_run:
+        # Before the catalog and, deliberately, before verification_lock: this is the
+        # "show me what you would kill" diagnostic, and it has to be usable while another
+        # run holds the lock.
+        print(f"Reaper scope: {_checkout_scope_prefix(REPO_ROOT)}", file=sys.stderr, flush=True)
+        reap_stale_field_jvms(args.port, dry_run=True)
+        return 0
     stream = sys.stderr if args.json else sys.stdout
     with verification_lock(
         REPO_ROOT,

@@ -17,7 +17,10 @@ private fun reportCallbackException(box: Box, throwable: Throwable, context: Str
 }
 
 var Box.onFrameChange by Delegation<MutableMap<String, (Box, Rect, Rect) -> Rect>> {
-    mutableMapOf()
+    // ConcurrentHashMap: these tables are iterated (`for (callback in box.onXChange.values)`) from
+    // whatever thread sets the property -- the runloop, macro replay, box execution -- while box code
+    // registers callbacks from its own thread. Order of callbacks was already unspecified.
+    java.util.concurrent.ConcurrentHashMap()
 }
 
 fun onFrameChange(a: HasProperties, current: Rect, incoming: Rect): Rect {
@@ -36,7 +39,10 @@ fun onFrameChange(a: HasProperties, current: Rect, incoming: Rect): Rect {
 }
 
 var Box.onViewportChange by Delegation<MutableMap<String, (Box, Rect, Rect) -> Unit>> {
-    mutableMapOf()
+    // ConcurrentHashMap: these tables are iterated (`for (callback in box.onXChange.values)`) from
+    // whatever thread sets the property -- the runloop, macro replay, box execution -- while box code
+    // registers callbacks from its own thread. Order of callbacks was already unspecified.
+    java.util.concurrent.ConcurrentHashMap()
 }
 
 fun onViewportChange(a: HasProperties, current: Rect, incoming: Rect): Rect {
@@ -55,7 +61,10 @@ fun onViewportChange(a: HasProperties, current: Rect, incoming: Rect): Rect {
 }
 
 var Box.onNameChange by Delegation<MutableMap<String, (Box, String, String) -> String>> {
-    mutableMapOf()
+    // ConcurrentHashMap: these tables are iterated (`for (callback in box.onXChange.values)`) from
+    // whatever thread sets the property -- the runloop, macro replay, box execution -- while box code
+    // registers callbacks from its own thread. Order of callbacks was already unspecified.
+    java.util.concurrent.ConcurrentHashMap()
 }
 
 fun onNameChange(a: HasProperties, current: String, incoming: String): String {
@@ -74,7 +83,10 @@ fun onNameChange(a: HasProperties, current: String, incoming: String): String {
 }
 
 var Box.onTopologyChange by Delegation<MutableMap<String, (Box, Boolean, Box) -> String>> {
-    mutableMapOf()
+    // ConcurrentHashMap: these tables are iterated (`for (callback in box.onXChange.values)`) from
+    // whatever thread sets the property -- the runloop, macro replay, box execution -- while box code
+    // registers callbacks from its own thread. Order of callbacks was already unspecified.
+    java.util.concurrent.ConcurrentHashMap()
 }
 
 fun onTopologyChange(a: Box, adding: Boolean, newChild: Box) {

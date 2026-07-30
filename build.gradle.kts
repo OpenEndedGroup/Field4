@@ -1052,9 +1052,26 @@ tasks.register<JavaExec>("checkKDocAttachment") {
     mainClass.set("afield.docs.KDocAttachmentGuard")
 }
 
+// Field's automation substrate has Python tests, and until 2026-07-30 nothing ran them. The three
+// tools/test_*.py suites pin the shared run_field_tests.py backdoor argument emitter, the
+// docs-capture freshness classifier and the smoke runner's worktree-scoped JVM reaper — all of it
+// code that every nightly run and every docs build goes through — yet they were referenced by no
+// Gradle task, no FIELD_TEST and no CI entrypoint, so they only ever executed when a human typed
+// `python -m unittest`. tools/run_python_tests.py globs them (a new tools/test_*.py is wired in by
+// existing), runs them, prints each suite's pass count and exits non-zero if any test fails or any
+// suite cannot be imported. No inputs are declared on purpose: the whole thing takes well under a
+// second, and a "cached" verification task is worth less than the second it saves.
+tasks.register<Exec>("checkPythonTools") {
+    group = "verification"
+    description = "Runs the tools/test_*.py unittest suites — the backdoor argument emitter, the docs-capture freshness classifier and the worktree-scoped JVM reaper — and prints each suite's pass count."
+    workingDir = rootDir
+    commandLine("python3", "tools/run_python_tests.py")
+}
+
 tasks.named("check") {
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
+    dependsOn("checkPythonTools")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {

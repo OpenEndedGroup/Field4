@@ -30,6 +30,7 @@
 - [`docs_capture_staleness.md`](./docs_capture_staleness.md) — why an ordinary docs build cannot detect a stale capture and how to make it one (`FIELD_DOCS_RUNNER_MODE=always`), how to tell real staleness from run-to-run capture jitter, and the 54 `functions_examples` captures still stale from 2026-07-14
 - [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
 - [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
+- [`box_shared_state_races.md`](./box_shared_state_races.md) — which threads write a box's property bag (including the *readers*, via `Delegation`'s default write-back), how the three-times-sighted `Box.resyncAll` `ConcurrentModificationException` actually worked, and how to decode a Kotlin inlined stack-trace line number that lands past the end of its own file
 
 ## Feature Notes (post-consolidation survivors)
 

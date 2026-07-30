@@ -357,11 +357,15 @@ val Once.callable by Onceing<String>()
  * `{{ a.b.c }}`) or `Resolver`s. An unresolved slot is a hard preprocessing error naming the line,
  * not a silent empty string.
  *
- * Note this defaults to a plain `HashMap` — unlike [Box.stackAutoShaderSources] — while the shader
- * *update* path reads it from a background thread, so mutating it during a live update is not safe.
+ * Concurrent, like [Box.stackAutoShaderSources]. It used to default to a plain `HashMap` while this very
+ * KDoc noted that "the shader *update* path reads it from a background thread, so mutating it during a
+ * live update is not safe" — a known hazard, left standing. It is also `gather`ed
+ * (`four/util/templating.kt`), and `gather` merges every ancestor's copy with `putAll`, i.e. *iterates*
+ * it — so this was a `ConcurrentModificationException` risk and not merely a torn-read one. See
+ * `PropertyBag.kt` and `dev_docs/box_shared_state_races.md` for the rest of that family.
  */
 val Box.shaderTemplate by Delegation<MutableMap<String, Any>>(
-    defaultValue = { HashMap<String, Any>() })
+    defaultValue = { java.util.concurrent.ConcurrentHashMap<String, Any>() })
 
 /**
  * StackSL source, by `stack.auto` slot name, for every `{{ stack.auto.foo }}` this box's shaders
