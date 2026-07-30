@@ -4,12 +4,8 @@
 package afield.stdlib
 
 import afield.graphics.FLine
-import smile.clustering.Clustering
 import smile.clustering.HierarchicalClustering
-import smile.clustering.KMedoids
 import smile.clustering.linkage.*
-import smile.math.distance.Distance
-import smile.math.distance.ManhattanDistance
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -17,14 +13,22 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
- * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`, mostly wrapping the Smile library
- * (`smile.clustering`). Hierarchical clustering — [floatAgglomerative], [vec2Agglomerative],
- * [vec3Agglomerative], [vec4Agglomerative] — returns an [AgglomerativeClustering] holding the
- * merge tree, which you cut into a [ClusterLayer] with [AgglomerativeClustering.partition],
- * [AgglomerativeClustering.partitionByHeight] or [AgglomerativeClustering.layers]. The
- * `…KMedoids` functions run Smile's `KMedoids` [KMedoidsOptions.runs] times and keep the lowest
- * distortion; the `…KMedians` functions are a local Lloyd-style L1 implementation in this file
- * with its own restarts and D²-weighted seeding. Cuts of the merge tree come back with labels
+ * Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`.
+ *
+ * **There is no k-means here, on purpose.** Every algorithm in this file returns either a *hierarchy*
+ * or a centre that is meaningful for the data it summarises: a medoid is one of your own samples, and
+ * a median is coordinate-wise robust. A k-means centroid is neither, and on a point cloud with an
+ * outlier it is the one that moves.
+ *
+ * Hierarchical clustering — [floatAgglomerative], [vec2Agglomerative], [vec3Agglomerative],
+ * [vec4Agglomerative], which wrap Smile's `HierarchicalClustering` over the seven
+ * [AgglomerativeLinkage]s — returns an [AgglomerativeClustering] holding the merge tree, which you
+ * cut into a [ClusterLayer] with [AgglomerativeClustering.partition],
+ * [AgglomerativeClustering.partitionByHeight] or [AgglomerativeClustering.layers]. The `…KMedoids`
+ * and `…KMedians` functions are both local implementations in this file, each with D²-weighted
+ * seeding and [KMedoidsOptions.runs]/[KMediansOptions.runs] restarts keeping the best objective:
+ * k-medoids alternates assignment with an exact per-cluster re-medoid, k-medians is Lloyd's algorithm
+ * on the L1 metric with a coordinate-wise median. Cuts of the merge tree come back with labels
  * renumbered by first appearance; every result type can be turned into a [ClusterLayer].
  *
  * [visualizeVec3ClusterLayers3D], [visualizeVec2ClusterLayers3D] and
@@ -50,11 +54,21 @@ enum class MedoidDistance {
     MANHATTAN
 }
 
+/**
+ * How the `…KMedoids` functions run.
+ *
+ * @param maxIterations most assign/re-medoid rounds per restart. The loop stops early the first time
+ *   the medoid set does not move, which is usually well inside ten rounds.
+ * @param runs independent restarts from different D²-weighted seeds; the lowest-distortion one wins.
+ * @param distance the metric, used both for assignment and for choosing each cluster's medoid.
+ * @param randomSeed fixes the seeding, so the whole thing is reproducible. `null` uses
+ *   [Random.Default] and successive calls may differ.
+ */
 data class KMedoidsOptions(
-    val maxIter: Int = 3,
-    val neighborRatio: Double = 0.0125,
-    val runs: Int = 4,
-    val distance: MedoidDistance = MedoidDistance.MANHATTAN
+    val maxIterations: Int = 100,
+    val runs: Int = 6,
+    val distance: MedoidDistance = MedoidDistance.MANHATTAN,
+    val randomSeed: Long? = null
 )
 
 data class KMediansOptions(
@@ -145,11 +159,26 @@ class AgglomerativeClustering internal constructor(
     }
 }
 
+/**
+ * What a `…KMedoids` call found.
+ *
+ * @param labels one cluster index per input sample, in `0 until k`.
+ * @param medoids the chosen medoids themselves — always **actual input samples**, which is the whole
+ *   point of k-medoids over k-means: `medoids[c]` is `input[medoidIndices[c]]`.
+ * @param distortion the **sum** over samples of the distance to the assigned medoid, in
+ *   [KMedoidsOptions.distance]'s metric. Lower is better; it is the quantity the restarts minimise.
+ *   It is not comparable across different `k` (more clusters always cost less) or across metrics.
+ * @param iterations assign/re-medoid rounds taken by the winning restart.
+ * @param converged `true` if that restart stopped because the medoid set repeated rather than
+ *   because it hit [KMedoidsOptions.maxIterations].
+ */
 data class KMedoidsResult<T>(
     val labels: IntArray,
     val medoids: List<T>,
     val medoidIndices: IntArray,
     val distortion: Double,
+    val iterations: Int,
+    val converged: Boolean,
     val clusterSizes: IntArray,
     val options: KMedoidsOptions
 ) {
@@ -251,6 +280,8 @@ fun floatKMedoids(
         medoids = medoids,
         medoidIndices = core.medoidIndices,
         distortion = core.distortion,
+        iterations = core.iterations,
+        converged = core.converged,
         clusterSizes = core.clusterSizes,
         options = options
     )
@@ -269,6 +300,8 @@ fun vec2KMedoids(
         medoids = medoids,
         medoidIndices = core.medoidIndices,
         distortion = core.distortion,
+        iterations = core.iterations,
+        converged = core.converged,
         clusterSizes = core.clusterSizes,
         options = options
     )
@@ -287,6 +320,8 @@ fun vec3KMedoids(
         medoids = medoids,
         medoidIndices = core.medoidIndices,
         distortion = core.distortion,
+        iterations = core.iterations,
+        converged = core.converged,
         clusterSizes = core.clusterSizes,
         options = options
     )
@@ -305,6 +340,8 @@ fun vec4KMedoids(
         medoids = medoids,
         medoidIndices = core.medoidIndices,
         distortion = core.distortion,
+        iterations = core.iterations,
+        converged = core.converged,
         clusterSizes = core.clusterSizes,
         options = options
     )
@@ -665,15 +702,48 @@ private fun agglomerative(
     return AgglomerativeClustering(linkage, model)
 }
 
-private data class IndexedSample(val index: Int, val values: DoubleArray)
-
 private data class KMedoidsCoreResult(
     val labels: IntArray,
     val medoidIndices: IntArray,
     val distortion: Double,
+    val iterations: Int,
+    val converged: Boolean,
     val clusterSizes: IntArray
 )
 
+/**
+ * k-medoids by alternating assignment and exact per-cluster re-medoiding, restarted from
+ * D²-weighted seeds.
+ *
+ * # Why this is not Smile's `KMedoids`
+ *
+ * It used to be. Smile 5's `KMedoids.fit` is CLARANS, and it derives a `maxNeighbor` from the
+ * `Clustering.Options` tolerance like this:
+ *
+ * ```
+ * maxNeighbor = round(tol * k * (n - k))
+ * maxNeighbor = max(min(100, k * (n - k)), maxNeighbor)
+ * if (maxNeighbor > n) throw IllegalArgumentException("Too large maxNeighbor: " + maxNeighbor)
+ * ```
+ *
+ * That `min(100, …)` floor is not reachable through any option, so for `k >= 2` and `k * (n - k) > n`
+ * — which is every interesting case — the call throws unless `n >= 100`. Measured: `vec2KMedoids(90
+ * points, k = 3)` with the default options threw `Too large maxNeighbor: 100`. The whole
+ * `…KMedoids` family was therefore unusable on any point cloud smaller than a hundred samples, which
+ * is most of the point clouds anyone hands it. Two of the old options were also inert: Smile clamps
+ * `maxIter` to `min(3, maxIter)`, and `neighborRatio` only ever mattered when it pushed `maxNeighbor`
+ * *above* the floor of 100 — never, at the default 0.0125.
+ *
+ * The replacement is the plain alternating algorithm ("Voronoi iteration"): assign every sample to
+ * its nearest medoid, then replace each cluster's medoid by the member of that cluster with the
+ * smallest total distance to the rest of it, and repeat until the medoid set stops moving. That step
+ * is *exact* — it enumerates the cluster — so the distortion is monotonically non-increasing and the
+ * loop terminates. It is not PAM: it will not escape a local optimum by swapping a medoid with a
+ * non-member, which is what [KMedoidsOptions.runs] restarts are for.
+ *
+ * Cost: one `n × n` distance matrix, so O(n²) time and memory in the sample count, then O(n·k) per
+ * assignment and O(n²/k) per re-medoid round. The matrix is shared across restarts.
+ */
 private fun kMedoids(
     rows: Array<DoubleArray>,
     k: Int,
@@ -686,33 +756,161 @@ private fun kMedoids(
     }
     validateKMedoidsOptions(options, fn)
 
-    val samples = Array(rows.size) { i -> IndexedSample(i, rows[i]) }
-    val distance = when (options.distance) {
-        MedoidDistance.EUCLIDEAN -> object : Distance<IndexedSample> {
-            override fun d(x: IndexedSample, y: IndexedSample): Double = l2(x.values, y.values)
-        }
-
-        MedoidDistance.MANHATTAN -> object : Distance<IndexedSample> {
-            private val l1 = ManhattanDistance()
-            override fun d(x: IndexedSample, y: IndexedSample): Double = l1.d(x.values, y.values)
+    val n = rows.size
+    val metric: (DoubleArray, DoubleArray) -> Double = when (options.distance) {
+        MedoidDistance.EUCLIDEAN -> ::l2
+        MedoidDistance.MANHATTAN -> ::l1
+    }
+    val distances = Array(n) { DoubleArray(n) }
+    for (i in 0 until n) {
+        for (j in i + 1 until n) {
+            val d = metric(rows[i], rows[j])
+            distances[i][j] = d
+            distances[j][i] = d
         }
     }
 
-    val smileOptions = Clustering.Options(k, options.maxIter, options.neighborRatio, null)
-    var best = KMedoids.fit(samples, distance, smileOptions)
-    for (run in 1 until options.runs) {
-        val candidate = KMedoids.fit(samples, distance, smileOptions)
-        if (candidate.distortion() < best.distortion()) best = candidate
+    var best: KMedoidsCoreResult? = null
+    for (run in 0 until options.runs) {
+        val rng = when (val seed = options.randomSeed) {
+            null -> Random.Default
+            else -> Random(seed + run)
+        }
+        val candidate = runKMedoids(distances, k, options.maxIterations, rng)
+        if (best == null || candidate.distortion < best.distortion) best = candidate
+    }
+    return best!!
+}
+
+/** One restart of [kMedoids]: seed, then alternate until the medoid set repeats. */
+private fun runKMedoids(
+    distances: Array<DoubleArray>,
+    k: Int,
+    maxIterations: Int,
+    rng: Random
+): KMedoidsCoreResult {
+    val n = distances.size
+    var medoids = initMedoids(distances, k, rng)
+    val labels = IntArray(n)
+    val assigned = DoubleArray(n)
+    var iterations = 0
+    var converged = false
+
+    while (iterations < maxIterations) {
+        iterations++
+        assignToMedoids(distances, medoids, labels, assigned)
+
+        val next = IntArray(k)
+        for (cluster in 0 until k) {
+            var bestMember = -1
+            var bestCost = Double.POSITIVE_INFINITY
+            for (candidate in 0 until n) {
+                if (labels[candidate] != cluster) continue
+                var cost = 0.0
+                for (other in 0 until n) {
+                    if (labels[other] == cluster) cost += distances[candidate][other]
+                }
+                if (cost < bestCost) {
+                    bestCost = cost
+                    bestMember = candidate
+                }
+            }
+            // An empty cluster keeps its medoid rather than vanishing, so `k` clusters are always
+            // reported — the caller asked for k and gets k, even if one of them has no members.
+            next[cluster] = if (bestMember >= 0) bestMember else medoids[cluster]
+        }
+
+        if (next.contentEquals(medoids)) {
+            converged = true
+            break
+        }
+        medoids = next
     }
 
-    val labels = best.group().copyOf()
-    val medoidIndices = IntArray(best.k()) { i -> best.centers()[i].index }
+    assignToMedoids(distances, medoids, labels, assigned)
     return KMedoidsCoreResult(
-        labels = labels,
-        medoidIndices = medoidIndices,
-        distortion = best.distortion(),
+        labels = labels.copyOf(),
+        medoidIndices = medoids.copyOf(),
+        distortion = assigned.sum(),
+        iterations = iterations,
+        converged = converged,
         clusterSizes = clusterSizes(labels, k)
     )
+}
+
+/**
+ * D²-weighted seeding over the precomputed [distances] — the k-means++ rule, on whichever metric
+ * built the matrix. Picking the first medoid uniformly and then favouring far-away samples spreads
+ * the seeds instead of clumping them, which is what makes a handful of restarts enough.
+ */
+private fun initMedoids(distances: Array<DoubleArray>, k: Int, rng: Random): IntArray {
+    val n = distances.size
+    if (k >= n) return IntArray(k) { it % n }
+
+    val chosen = LinkedHashSet<Int>(k)
+    val first = rng.nextInt(n)
+    chosen.add(first)
+    val nearest = DoubleArray(n) { distances[it][first] }
+
+    while (chosen.size < k) {
+        var total = 0.0
+        for (i in 0 until n) {
+            if (i in chosen) continue
+            val w = nearest[i] * nearest[i]
+            if (w.isFinite() && w > 0.0) total += w
+        }
+
+        var picked = -1
+        if (total > 1e-12) {
+            var r = rng.nextDouble() * total
+            for (i in 0 until n) {
+                if (i in chosen) continue
+                val w = nearest[i] * nearest[i]
+                if (w <= 0.0 || !w.isFinite()) continue
+                r -= w
+                if (r <= 0.0) {
+                    picked = i
+                    break
+                }
+            }
+        }
+        if (picked < 0) {
+            // Either every remaining sample coincides with a chosen medoid, or the roulette ran off
+            // the end of the weights through rounding. Any unchosen index will do.
+            var pick = rng.nextInt(n)
+            while (pick in chosen) pick = (pick + 1) % n
+            picked = pick
+        }
+        val next: Int = picked
+
+        chosen.add(next)
+        for (i in 0 until n) {
+            if (distances[i][next] < nearest[i]) nearest[i] = distances[i][next]
+        }
+    }
+
+    return chosen.toIntArray()
+}
+
+private fun assignToMedoids(
+    distances: Array<DoubleArray>,
+    medoids: IntArray,
+    labels: IntArray,
+    assigned: DoubleArray
+) {
+    for (i in distances.indices) {
+        var bestCluster = 0
+        var bestDistance = Double.POSITIVE_INFINITY
+        for (cluster in medoids.indices) {
+            val d = distances[i][medoids[cluster]]
+            if (d < bestDistance) {
+                bestDistance = d
+                bestCluster = cluster
+            }
+        }
+        labels[i] = bestCluster
+        assigned[i] = bestDistance
+    }
 }
 
 private data class KMediansCoreResult(
@@ -917,9 +1115,8 @@ private fun farthestReplacementOrder(distances: DoubleArray): IntArray =
     distances.indices.sortedByDescending { distances[it] }.toIntArray()
 
 private fun validateKMedoidsOptions(options: KMedoidsOptions, fn: String) {
-    require(options.maxIter > 0) { "$fn: maxIter must be > 0, found ${options.maxIter}" }
-    require(options.neighborRatio.isFinite() && options.neighborRatio > 0.0) {
-        "$fn: neighborRatio must be finite and > 0, found ${options.neighborRatio}"
+    require(options.maxIterations > 0) {
+        "$fn: maxIterations must be > 0, found ${options.maxIterations}"
     }
     require(options.runs > 0) { "$fn: runs must be > 0, found ${options.runs}" }
 }

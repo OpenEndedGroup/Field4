@@ -81,6 +81,9 @@ object DemoTranscriptExecSmokeTest {
         "rewrite_strategies_demo",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
+        // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
+        // so no AWT, no GPU and nothing to launch.
+        "spatial_geometry_examples",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

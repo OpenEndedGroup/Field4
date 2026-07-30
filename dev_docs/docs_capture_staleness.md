@@ -586,6 +586,70 @@ Related lint that already exists and is not a freshness check: `tools/check_doc_
 that every asset a *published* page references is committed. It answers "will this 404 on a clean
 checkout", never "is it still true".
 
+## 8. `wfc_examples` — one figure that oscillates, one that is stale (2026-07-29)
+
+Measured while checking whether a `contours.kt` change moved a downstream figure. All eleven
+`wfc_examples` screenshots regenerated with `FIELD_DOCS_RUNNER_MODE=always`, **twice**, and compared
+pixel-wise against the committed asset and against each other:
+
+| file | committed vs run 2 | run 1 vs run 2 | reading |
+| --- | --- | --- | --- |
+| `collapse-frames.png` | **0 px** | **32.1% of px, Δ226** | oscillates — run 1 was a different collapse |
+| `neighborhoods.png` | **35.7% of px, Δ204** | 59 px (noise) | reproduces run-to-run, but the committed image is **stale** |
+| the other nine | ~0.01% of px, Δ≤27 | — | noise (see §2) |
+
+So the two signals from §2 and §3 both show up on one page at once. The noise on the other nine is
+confined to `x < 20` — the channel-name gutter and its disclosure triangle — which is a useful
+fingerprint: **if every changed pixel is in the left 20 columns, nothing in the picture moved.**
+
+Neither figure is caused by any stdlib change: `collapse-frames` and `neighborhoods` are WFC solver
+output, and the branch that found this touches only `contours.kt` and `clustering.kt`. Worth fixing
+in its own commit on `main`, and `collapse-frames` needs its seed pinned before regenerating is even
+meaningful.
+
+The same run answered the question it was for, and the answer is the useful kind of negative:
+`wfc_examples.md` §7 **does** execute `Img.isoContourFLines` in a capture fence (a claim to the
+contrary was made and was wrong), but making that function close its closed loops moved
+`scalar-field.png` by **one pixel** outside the gutter — because every level set of that blurred
+field runs off the image boundary, so `isoContourClosed` returns `false` for all of them.
+
+
+## 9. Recording a *sweep*: the recorder's frame clock is not the box's (2026-07-29)
+
+Separate from staleness, and the thing that costs the most builds when adding an animated
+`diffstatic_runner` fence. Established while adding the two parameter sweeps to
+`spatial_geometry_examples.md`.
+
+A `video=` fence records until it has `duration * fps` frames and then re-times them to `fps`. It does
+**not** record for `duration` wall-clock seconds. So the real length of the recording is
+`duration * fps / captureRate`, and `captureRate` is whatever the machine manages.
+
+Three consequences, all measured:
+
+| claim | measurement |
+| --- | --- |
+| `frameNumber` is the wrong clock | the Apollonius box renders ≈4× faster than it is captured, so a ramp with period 160 *frames* ran four sweeps inside one 160-frame clip |
+| wall-clock elapsed is the right clock, but `sweepSeconds = duration` is wrong | at `sweepSeconds = 8.0` the iso box's clip contained **1.6** sweeps: 160 frames captured at ≈12.5 fps is 12.8 real seconds, not 8 |
+| the capture rate is not even constant *within* one recording | a linear there-and-back came back with limb slopes of **7.5 and 5.9 px/frame**, which a triangle ramp cannot produce |
+
+What to do:
+
+- Drive the swept parameter from `System.nanoTime()`, not `frameNumber`.
+- Calibrate `sweepSeconds` against a *recorded* clip rather than setting it to `duration`, then
+  re-record and re-measure. 9.0 and 8.6 put one sweep in an 8 s clip for those two boxes.
+- Keep the per-frame cost low. Dropping the iso box's grid from 140×84 to 100×60 moved its capture
+  rate from ≈12.5 to ≈16 fps and its picture is no worse.
+- **Use a triangle ramp on a scalar, not a closed loop in position.** Videos embed as
+  `<video controls autoplay loop muted>`, so the seam is visible on every cycle. With a triangle ramp
+  a residual phase error is a small parameter offset (measured 4.7% and 6.2% of the swept range). With
+  a circular orbit the same error is a *positional jump*: an edge-flip clip came back at 1.42
+  revolutions per clip in one run and 0.78 in the next, and at 0.78 the mover hopped 18.7% of its path
+  at the loop point — on a clip about edges snapping between configurations, indistinguishable from a
+  flip. That clip was dropped rather than shipped for exactly this reason.
+
+Measuring the achieved period does not need guesswork: extract frames with `ffmpeg -vf select`, locate
+the moving element by colour, and fit its position against the frame index.
+
 ## Reproducing a raw regeneration by hand
 
 ```sh

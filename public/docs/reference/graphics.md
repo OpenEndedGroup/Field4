@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-22 source file(s), 1315 public symbol(s), 584 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 1326 public symbol(s), 601 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -26,7 +26,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt`
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Boolean networks to FLine examples](../boolean_networks_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
@@ -1011,7 +1011,7 @@ the highest-contrast candidate it found when it cannot reach the target.
 
 `src/jvmMain/kotlin/afield/stdlib/colors.kt`
 
-**Used in:** [Colors to FLine examples](../colors_examples.md)
+**Used in:** [Colors to FLine examples](../colors_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #colors-kt-functions }
 
@@ -1046,11 +1046,52 @@ cell size instead, and the `FLine` overloads choose the sampling window from the
 grown by the tube radius.
 
 `smoothIsoContours` and `generateSmoothIsoContours` fit cubic splines through the polylines,
-treating a contour that ends on the sampling bounds as open and the rest as closed loops. Two
-known roughnesses: the four-crossing saddle cell is split arbitrarily, and the segment stitcher
-is O(m^2) in the number of segments, so very high grid resolutions get expensive.
+treating a contour that ends on the sampling bounds as open and the rest as closed loops.
+
+# The sign convention, and why it is asymmetric
+
+A grid corner is *inside* iff its sample is **strictly below** `iso`; a sample exactly *at* `iso`
+counts as outside. That asymmetry is deliberate and it matters: with a symmetric test (`below`
+on one end and `above` on the other, so "equal" is neither) a sample landing exactly on the iso
+level suppresses the crossing on *every* edge out of that corner, and the contour silently
+vanishes or shatters. It is not an exotic case — `f(x, y) = x` at `iso = 0.0` on any grid with an
+odd number of columns of samples used to return **no contour at all**, and the unit circle
+sampled over `[-2, 2]` at `nx = ny = 16` came back as four disconnected arcs, severed at the four
+points where the circle passes through a grid corner. See `ISO_CROSSING_EPSILON` for the second
+half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
+same convention for the same reason.
+
+# What the change to the marcher does and does not touch
+
+Three things changed here at once, and they have very different reach. Measured old-against-new
+over 392 (field, resolution, iso) combinations across eight fields:
+
+| change | when it can alter the output | how much |
+| --- | --- | --- |
+| the two-valued `inside` test | **only** when some grid sample is exactly equal to `iso` | unbounded — a whole contour appears where there was none, or four arcs become one loop. 96 of the 392 cases; **0** cases with no exactly-on-`iso` sample changed |
+| `ISO_CROSSING_EPSILON` | when a crossing lands within a thousandth of a cell of a grid corner | at most `1e-3` of a cell edge, an *analytic* bound; the sweep attained `9.93e-4` of a cell |
+| the saddle decider | any cell with four crossings whose bilinear saddle disagrees with the old fixed pairing — including on perfectly smooth fields | two segments are re-routed within that one cell, so up to about a cell |
+
+So only the third one reaches ordinary, non-degenerate input, and it reaches it rarely: 4 of the
+392 cases, all of them the one saddle cell of `f = x*y`.
+
+# The saddle cell
+
+The four-crossing cell is resolved by the *asymptotic decider*: the sign of the cell's bilinear
+saddle value decides which diagonal pair of corners the centre of the cell belongs to. It is a pure
+function of the cell's own four corner values, so two cells sharing an edge cannot disagree about
+the crossing on it — which is the property the stitcher needs and the old fixed pairing did not
+have. It is *not* a claim that the ambiguity has gone away: when the saddle value is exactly `iso`
+the two pairings are equally correct and the decider genuinely has nothing to go on. That case is
+settled deterministically rather than by round-off — see `SADDLE_TIE_RELATIVE_EPSILON`, which is
+where the interesting failure was.
+
+The one remaining roughness: the segment stitcher is O(m^2) in the number of segments, so very
+high grid resolutions get expensive.
 
 `src/jvmMain/kotlin/afield/stdlib/contours.kt`
+
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #contours-kt-functions }
 
@@ -1067,6 +1108,7 @@ is O(m^2) in the number of segments, so very high grid resolutions get expensive
 | <code class="highlight"><span class="k">fun</span> <span class="nf">smoothIsoContours</span><span class="p">(</span><span class="n">contours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">xMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">xMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Smooth marching-squares polylines into cubic curves. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">generateSmoothIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">pointRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">edgeRadius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">spatialStep</span> <span class="o">&#42;</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">generateSmoothIsoContours</span><span class="p">(</span><span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">spatialStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">samplesPerCubic</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">,</span> <span class="n">pointWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">edgeWeights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">spatialStep</span> <span class="o">&#42;</span> <span class="mf">0.75</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">isoContourClosed</span><span class="p">(</span><span class="n">contour</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">xMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">xMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">yMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">boundaryEpsilon</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Does this marching-squares contour close on itself, or does it run out of the sampling window? |
 
 ### ScalarField2D { #contours-kt-scalarfield2d }
 
@@ -1160,7 +1202,7 @@ Live rendered examples: `public/docs/graph_connectivity_examples.md`.
 
 `src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt`
 
-**Used in:** [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md)
+**Used in:** [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
 
 ### Top-level functions { #graph-connectivity-kt-functions }
 
@@ -2688,6 +2730,51 @@ The running loop that closes a shader's feedback circuit: read the probe, push t
 | <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span></code> | Install a `preRun` hook that calls `tick` once per frame, and return `this` for chaining. Idempotent — a second call while already installed does nothing. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">stop</span><span class="p">(</span><span class="n">runloop</span><span class="p">:</span> <span class="nc">Runloop</span> <span class="o">=</span> <span class="nc">Runloop</span><span class="p">.</span><span class="n">runLoop</span><span class="p">,</span> <span class="n">closeDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">closeDisplayOnStop</span><span class="p">,</span> <span class="n">clearDisplay</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="n">config</span><span class="p">.</span><span class="n">clearDisplayOnStop</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShaderFieldAutoController</span></code> | Remove the runloop hook, optionally tidy the display channel, and forget this controller on the box. Returns `this`, and can be re-`install`ed afterwards. |
 
+## spatial_field.kt { #spatial-field-kt }
+
+The bridges out of Field's plane-geometry results and into the things Field already draws.
+
+Every partitioner in `graph_connectivity.kt`, `dirichlet.kt`, `contours.kt` and `clustering.kt`
+answers with *structure* — cell vertex rings, circular arcs, triangle index triples, cluster
+labels — and none of them answers with geometry. This file is the missing hop: one `toFLines` per
+result type, so a Voronoi diagram, an Apollonius cell, a Delaunay triangulation or a k-medoids
+partition lands in the same drawing, animation and export machinery as anything drawn by hand.
+It is the plane counterpart of `mesh_field.kt`, which does the same job for `TriMesh`.
+
+Two layers:
+
+ 1. **Structure → `FLine`.** `PointGraph.toFLine`, `delaunayTrianglesToFLine`,
+    `VoronoiDiagram.toFLines`, `CircularDirichlet.Diagram.toFLines`,
+    `CircularDirichlet.CellBoundary.toFLines`, `ClusterLayer.toFLines` and
+    `pointCloudFLine`. Each returns styled, drawable lines and nothing else — no `Box`, no
+    output, so they are usable from a test or a renderer as readily as from a box.
+ 2. **`FLine` → a captioned figure.** `Box.showPlane` and `Box.showPlaneGrid` rasterise lines to
+    inline SVG with `drawToSVG` and push a titled card, or a grid of them, to a box output
+    channel — the fastest way to see a whole pipeline at once, and the 2D twin of
+    `Box.showMeshGrid`. `planeFigureHtml` is the markup on its own, for when you want the string.
+
+The figure helpers are AWT-free (Skia's SVG canvas, same as `Box.lines`), so they work headless,
+including inside the docs build.
+
+`src/jvmMain/kotlin/afield/stdlib/spatial_field.kt`
+
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+
+### Top-level functions { #spatial-field-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">pointCloudFLine</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">)</span><span class="p">,</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | The points themselves as one dot-drawn `FLine` — the layer every other figure here sits on top of. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PointGraph</span><span class="p">.</span><span class="nf">toFLine</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.68</span><span class="p">,</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | Every edge of this graph as one `FLine`, with `points` supplying the positions. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">delaunayTrianglesToFLine</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">triangles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Triple</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.62</span><span class="p">,</span> <span class="mf">0.74</span><span class="p">,</span> <span class="mf">0.88</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.2</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | The triangles of a triangulation as one `FLine` of closed triangle outlines. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">VoronoiDiagram</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.72</span><span class="p">,</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">)</span><span class="p">,</span> <span class="n">palette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | One closed `FLine` per Voronoi cell, in cell order. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">CircularDirichlet</span><span class="p">.</span><span class="nc">CellBoundary</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">clip</span><span class="p">:</span> <span class="nc">CircularDirichlet</span><span class="p">.</span><span class="nc">Aabb</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">maxChordError</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.02f</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.86</span><span class="p">,</span> <span class="mf">0.98</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The boundary of one multiplicatively-weighted Voronoi cell, tessellated into `FLine`s. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">CircularDirichlet</span><span class="p">.</span><span class="nc">Diagram</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">clip</span><span class="p">:</span> <span class="nc">CircularDirichlet</span><span class="p">.</span><span class="nc">Aabb</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">maxChordError</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.02f</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.86</span><span class="p">,</span> <span class="mf">0.98</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span><span class="p">,</span> <span class="n">palette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Every cell of a weighted diagram, tinted per site. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">ClusterLayer</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">centers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">palette</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec4</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">okhslSet</span><span class="p">(</span><span class="nf">maxOf</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">clusterCount</span><span class="p">)</span><span class="p">,</span> <span class="n">saturation</span> <span class="o">=</span> <span class="mf">0.78</span><span class="p">,</span> <span class="n">lightness</span> <span class="o">=</span> <span class="mf">0.62</span><span class="p">)</span><span class="p">,</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.3</span><span class="p">,</span> <span class="n">centerSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">drawSpokes</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">spokeAlpha</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.18f</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | A cluster assignment drawn over the points it labels: one dot layer per cluster, plus optional spokes from each sample to its cluster's centre. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">planeFigureHtml</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">640</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">460</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">14.0</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The markup for one titled figure: `lines` fitted into a `width` × `height` frame, rasterised to inline SVG, on the same dark card the rest of Field's inline figures use. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPlane</span><span class="p">(</span><span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">520</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">14.0</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code> | Push one plane figure to a box output channel. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showPlaneGrid</span><span class="p">(</span><span class="k">vararg</span> <span class="n">panels</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cellWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">420</span><span class="p">,</span> <span class="n">cellHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">12.0</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code> | Several plane figures side by side, each titled — the 2D twin of `Box.showMeshGrid`, and the fastest way to see a whole pipeline (sites → triangulation → dual → clipped) at a glance. |
+
 ## stacksl.kt { #stacksl-kt }
 
 Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on
@@ -2749,28 +2836,47 @@ What `slSweep` measured: the inputs it used and the `vec4` the program returned 
 Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi
 ("CircularDirichlet") for Kotlin + Field linalg.
 
-- voronoi3d(...) builds convex polyhedral cells by intersecting pairwise
-  bisector half-spaces, then closing unbounded cells against a large clip box.
-- CircularDirichlet3d.build(...) extracts approximate support patches on
-  bisector spheres / planes by clipping a sampled surface mesh with the
-  weighted score predicate.
+- `voronoi3d` builds convex polyhedral cells by intersecting pairwise bisector half-spaces. Six
+  clip-box planes are added to **every** cell, not only to the unbounded ones, so a cell always
+  comes back as a bounded polyhedron; `VoronoiCell3.bounded` is how you tell whether the answer is
+  the site's own cell or an artefact of the box. The box is the sites' bounding box grown on every
+  side by `clipPadding * scale + 1`, where `scale` is the cloud's own diagonal (floored at 1).
+- `CircularDirichlet3d.build` extracts approximate support patches on bisector spheres / planes by
+  clipping a sampled surface mesh with the weighted score predicate.
 
 The weighted contourer is renderer-oriented: it prefers stable, wound
 boundary loops over exact symbolic patch topology.
 
+# What the unweighted clipper guarantees, and what it does not
+
+Which face each corner belongs to is decided **combinatorially** — a corner records the planes that
+produced it, and a face's polygon is exactly the corners recording that plane — rather than by a
+distance test against a tolerance. See the `collectCorners` KDoc in [`Voronoi3d`](graphics.md#voronoi-kt-voronoi3d) for why that matters: with a
+tolerance scaled off the point cloud, faces near a near-cospherical site cluster claimed corners
+that were not on them, and the cells did not close (a T-junction, and a hairline crack in any mesh
+built from the faces).
+
+It is still a `Float` clipper and the repair is not total. On the sweep that ratcheted it, **4 of
+465 bounded cells** and **12 of 447 clipped cells** still fail the strict closure check — every
+edge walked by exactly two faces, in opposite directions. Those counts are pinned with `<=` in
+`VoronoiFaceTopologyTest`, so they can improve but cannot regress silently. Cell volumes tile the
+clip box to 1e-4 relative and a cubic lattice of sites gives exact unit cubes.
+
 `src/jvmMain/kotlin/afield/stdlib/voronoi.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #voronoi-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">voronoi3d</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">voronoi3d</span><span class="p">(</span><span class="n">l</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> | The 3D Voronoi diagram of `l`, with the default tolerance and a generous clip box. |
 
 ### Aabb3 { #voronoi-kt-aabb3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Aabb3</span><span class="p">(</span><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
+
+An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clipper's own window.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2781,6 +2887,8 @@ boundary loops over exact symbolic patch topology.
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Plane3</span><span class="p">(</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>
 
+The plane `normal · x = d`.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
@@ -2789,6 +2897,8 @@ boundary loops over exact symbolic patch topology.
 ### VoronoiFace { #voronoi-kt-voronoiface }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiFace</span><span class="p">(</span><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
+
+One face of a [`VoronoiCell3`](graphics.md#voronoi-kt-voronoicell3): the plane it lies in, and the cell's corners that lie on it.
 
 | Declaration | Summary |
 | --- | --- |
@@ -2802,6 +2912,8 @@ boundary loops over exact symbolic patch topology.
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiCell3</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
 
+The convex polyhedron of points nearer to `site` than to any other site, intersected with the lattice's clip box.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
@@ -2812,6 +2924,8 @@ boundary loops over exact symbolic patch topology.
 ### VoronoiLattice { #voronoi-kt-voronoilattice }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">VoronoiLattice</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span><span class="p">)</span></code>
+
+One cell per input site, in input order, plus the box they were all clipped against.
 
 | Declaration | Summary |
 | --- | --- |
