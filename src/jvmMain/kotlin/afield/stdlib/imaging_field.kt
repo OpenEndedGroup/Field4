@@ -7,6 +7,7 @@ import afield.graphics.FLine
 import afield.graphics.polylineFrom
 import afield.rectsl.Color4
 import afield.rectsl.Colormaps
+import java.util.Base64
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -341,20 +342,57 @@ fun vstack(vararg images: Img, gap: Int = 8, background: Float = 0.08f): Img {
 
 /**
  * Push an [Img] to one of this box's output channels as a real PNG, at up to [maxSide] pixels on
- * the long edge. Signed / out-of-range images are normalised for display (and the caption says so).
+ * the long edge. Signed / out-of-range images are normalised for display, and when a [caption] is
+ * asked for the caption says so.
  *
- * This is the AWT-free path: [Img.toPngBytes] → `display(channel, bytes)`, which the output
- * pipeline renders as an image, exactly as the spectral examples do for their heatmaps.
+ * With **no caption** this is the AWT-free bytes path — [Img.toPngBytes] → `display(channel, bytes)`,
+ * which the output pipeline renders as an image, exactly as the spectral examples do for their
+ * heatmaps. That is also the path an animation wants: one `display` per frame, nothing to tear.
+ *
+ * With a **caption** the picture and its caption go out as a *single* `display` payload — one
+ * `<figure>`, styled like [Box.showMesh]'s. They have to be one payload: `display(channel, …)`
+ * *replaces* that channel's contents rather than appending, so emitting them separately wrote the
+ * caption and then immediately overwrote it with the PNG, and the caption was never seen.
  */
 fun Box.showImg(img: Img, channel: String = "main", maxSide: Int = 900, caption: String? = null) {
     val scale = min(1.0, maxSide.toDouble() / max(img.width, img.height))
     val shown = if (scale >= 1.0) img else img.scaleBy(scale)
     val lo = shown.min()
     val hi = shown.max()
-    val ready = if (lo < -1e-4f || hi > 1f + 1e-4f) shown.normalized() else shown
-    if (caption != null) display(channel, caption)
-    display(channel, ready.toPngBytes())
+    val normalised = lo < -1e-4f || hi > 1f + 1e-4f
+    val ready = if (normalised) shown.normalized() else shown
+    val png = ready.toPngBytes()
+    if (caption == null) {
+        display(channel, png)
+        return
+    }
+    val b64 = Base64.getEncoder().encodeToString(png)
+    // Absolute max-width (not 100%), the same cap the bytes path uses: the box output panel is
+    // shrink-wrap, so a percentage width collapses the image instead of sizing the panel to it.
+    display(channel, buildString {
+        append("<figure style='margin:0;max-width:${SHOW_IMG_MAX_CSS_WIDTH}px'>")
+        append("<img src='data:image/png;base64,$b64' ")
+        append("style='max-width:${SHOW_IMG_MAX_CSS_WIDTH}px;height:auto;border-radius:6px;display:block' ")
+        append("alt='${escapeCaptionHtml(caption)}'/>")
+        append("<figcaption style='color:#93a4ba;font-size:12px;padding-top:6px;line-height:1.5'>")
+        append("<div>${escapeCaptionHtml(caption)}</div>")
+        if (normalised) {
+            val note = "normalised for display from %.4g … %.4g".format(lo, hi)
+            append("<div style='font-family:monospace'>${escapeCaptionHtml(note)}</div>")
+        }
+        append("</figcaption></figure>")
+    })
 }
+
+/** The CSS cap the raw-bytes display path puts on an inline raster; the `<figure>` path matches it. */
+private const val SHOW_IMG_MAX_CSS_WIDTH = 900
+
+private fun escapeCaptionHtml(text: String): String = text
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("'", "&#39;")
+    .replace("\"", "&quot;")
 
 /**
  * Lay several captioned images out on a uniform grid and return the montage as one [Img].

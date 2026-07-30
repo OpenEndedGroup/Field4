@@ -824,9 +824,9 @@ println("wfc collapse animation ready")
 
 // A few step()s per displayed frame, then push the wave to the box's output channel.
 //
-// One display() per frame, with the label drawn INTO the raster by montage(). showImg's caption
-// argument is a second display() on the same channel, and because display() replaces rather than
-// appends, a recording catches frames where the caption has landed and the image has not yet.
+// One display() per frame, with the label drawn INTO the raster by montage(). showImg(caption = …)
+// would also be a single payload, but it is an HTML figure the browser re-parses every frame; baked
+// pixels keep a 20fps recording cheap, and the label cannot lag the picture it describes.
 loop {
     if (solver.status == WfcStatus.Running) solver.step()   // one WFC iteration per displayed frame
     val label = "${(solver.resolvedFraction() * 100).toInt()}% decided — ${solver.status}"
@@ -1450,9 +1450,9 @@ four cost real time while it was being written — none of them are WFC-specific
   ahead of a script-local `val` of the same name once you are inside a lambda with its own receiver.
   `outW`/`outH`/`skyPattern` are not paranoia, and `throw` beats `error(...)`.
 - **`display(channel, x)` replaces that channel's contents; it does not append.** Text and a picture
-  need two channels. And `showImg(img, caption = …)` is two `display` calls, so in a *recording* it
-  produces frames where the caption has landed and the image has not — draw the label into the raster
-  with `montage` instead.
+  need two channels, or one payload that contains both. `showImg(img, caption = …)` is the latter —
+  a single `<figure>` — but in an *animation* prefer drawing the label into the raster with `montage`
+  and pushing the bytes: one `display` per frame, and nothing for the browser to re-parse.
 
 ## The loadable demo
 
