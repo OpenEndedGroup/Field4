@@ -7,17 +7,13 @@
 // one connected structure dominates.
 val side = 128
 val steps = 6000
-val panels = ArrayList<Pair<String, Img>>()
-for ((label, p) in listOf(
+val runs = listOf(
     "spots 0.030/0.062" to GRAY_SCOTT_SPOTS,
     "worms 0.037/0.060" to GRAY_SCOTT_WORMS,
     "maze 0.029/0.057" to GRAY_SCOTT_MAZE,
     "holes 0.039/0.058" to GRAY_SCOTT_HOLES
-)) {
-    val end = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps)
-    println(label + " -> " + end.v.morphology())
-    panels.add(label to end.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
-}
+).map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }
+for ((label, end) in runs) println(label + " -> " + end.v.morphology())
 
 // Two controls. v = 0 is a fixed point of the equations, so an unseeded field never patterns;
 // and equal diffusion coefficients destroy the Turing instability entirely, which is Turing's
@@ -27,7 +23,11 @@ println("CONTROL no seed: max autocatalyst after 500 steps = " + unseeded.v.max(
 val equalD = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L)
     .stepTimes(GrayScottParams(feed = 0.037, kill = 0.060, du = 0.08, dv = 0.08), steps)
 println("CONTROL Du == Dv -> " + equalD.v.morphology())
-panels.add("CONTROL no seed" to unseeded.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
-panels.add("CONTROL Du == Dv" to equalD.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
 
-showImg(montage(panels, columns = 3, cellSide = 260))
+showImg(
+    montage(
+        (runs + listOf("CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD))
+            .map { (label, s) -> label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2) },
+        columns = 3, cellSide = 260
+    )
+)

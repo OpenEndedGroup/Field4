@@ -26,18 +26,23 @@ println("CONTROL, growth window at B4/S234: difference " +
 
 // The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
 // this file ships no published Lenia initial pattern, so it claims none.
-val panels = ArrayList<Pair<String, Img>>()
-panels.add("discrete limit == Life" to field.upscaleNearest(8))
-panels.add("ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10))
-for (mu in listOf(0.06, 0.14)) {
+val runs = listOf(0.06, 0.14).map { mu ->
     val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
-    val run = leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
-    println("mu = " + mu + " -> " + run)
-    panels.add("mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3))
+    mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
 }
+for ((mu, run) in runs) println("mu = " + mu + " -> " + run)
 val wide = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
 val sat = leniaRun(leniaSeed(96, 96, wide, blobRadii = 1.6, seed = 9L), wide, steps = 240)
 println("a growth bell positive over the whole unit interval -> " + sat)
-panels.add("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3))
 
-showImg(montage(panels, columns = 3, cellSide = 280))
+showImg(
+    montage(
+        listOf(
+            "discrete limit == Life" to field.upscaleNearest(8),
+            "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10)
+        ) + runs.map { (mu, run) ->
+            "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
+        } + listOf("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)),
+        columns = 3, cellSide = 280
+    )
+)

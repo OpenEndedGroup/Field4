@@ -1,16 +1,22 @@
 name: alife_worked_example
 description: >
-  Spatial artificial life, one box per section of public/docs/alife_examples.md. Ten
-  independent pure-CPU boxes: Conway's Life checked against the glider, the still lifes and the
-  R-pentomino's textbook 319-at-821 and 116-at-1103 figures; Wolfram's rule 90 checked against
-  Pascal's triangle mod 2 computed from Kummer's theorem; a cyclic CA whose soup advance fraction
-  matches a closed form and then pins at 1.0; Gray-Scott's regimes told apart by isoperimetric ratio
-  with two controls that produce nothing; Lenia's discrete limit shown bit-identical to the integer
-  Life stepper; boids measured against the random-heading baseline and an alignment-off twin; a
-  Physarum network against its sensing-off twin; DLA's mass dimension against an Eden cluster and a
-  uniform sprinkle; the Koch snowflake's exact closure, length and area identities; and the bridges
-  out to iso-contour FLines, a colonization tree and a watertight marched mesh. Each box runs on its
-  own and prints the numbers the docs page quotes; none opens a Window or a Renderer.
+  Spatial artificial life, TWO boxes per section of public/docs/alife_examples.md: ten that measure
+  and ten that move. The measuring boxes are pure-CPU and print the numbers the page quotes --
+  Conway's Life checked against the glider, the still lifes and the R-pentomino's textbook
+  319-at-821 and 116-at-1103 figures; Wolfram's rule 90 checked against Pascal's triangle mod 2
+  computed from Kummer's theorem; a cyclic CA whose soup advance fraction matches a closed form and
+  then pins at 1.0; Gray-Scott's regimes told apart by isoperimetric ratio with two controls that
+  produce nothing; Lenia's discrete limit shown bit-identical to the integer Life stepper; boids
+  measured against the random-heading baseline and an alignment-off twin; a Physarum network against
+  its sensing-off twin; DLA's mass dimension against an Eden cluster and a uniform sprinkle; the Koch
+  snowflake's exact closure, length and area identities; and the bridges out to iso-contour FLines, a
+  colonization tree and a watertight marched mesh.
+  The ten boxes in the lower band are the same ten systems as time evolutions, through
+  Box.animateEvolution -- each one a schedule (how many steps, over how many seconds, on what ramp)
+  plus a way to draw the state. They must be LAUNCHED, not run: a Frames that is only built never
+  runs, so executing one of them is a compile check and nothing more. Every one of them steps the
+  real system on the real clock and burns its step counter into the frame; none of the twenty opens a
+  Window or a Renderer.
 operations:
   - create:
       box: alife_life
@@ -174,17 +180,13 @@ operations:
           // one connected structure dominates.
           val side = 128
           val steps = 6000
-          val panels = ArrayList<Pair<String, Img>>()
-          for ((label, p) in listOf(
+          val runs = listOf(
               "spots 0.030/0.062" to GRAY_SCOTT_SPOTS,
               "worms 0.037/0.060" to GRAY_SCOTT_WORMS,
               "maze 0.029/0.057" to GRAY_SCOTT_MAZE,
               "holes 0.039/0.058" to GRAY_SCOTT_HOLES
-          )) {
-              val end = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps)
-              println(label + " -> " + end.v.morphology())
-              panels.add(label to end.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
-          }
+          ).map { (label, p) -> label to grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L).stepTimes(p, steps) }
+          for ((label, end) in runs) println(label + " -> " + end.v.morphology())
 
           // Two controls. v = 0 is a fixed point of the equations, so an unseeded field never patterns;
           // and equal diffusion coefficients destroy the Turing instability entirely, which is Turing's
@@ -194,10 +196,14 @@ operations:
           val equalD = grayScottSeed(side, side, patches = 6, patchSize = 14, seed = 11L)
               .stepTimes(GrayScottParams(feed = 0.037, kill = 0.060, du = 0.08, dv = 0.08), steps)
           println("CONTROL Du == Dv -> " + equalD.v.morphology())
-          panels.add("CONTROL no seed" to unseeded.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
-          panels.add("CONTROL Du == Dv" to equalD.v.colormap("magma", 0f, 0.5f).upscaleNearest(2))
 
-          showImg(montage(panels, columns = 3, cellSide = 260))
+          showImg(
+              montage(
+                  (runs + listOf("CONTROL no seed" to unseeded, "CONTROL Du == Dv" to equalD))
+                      .map { (label, s) -> label to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(2) },
+                  columns = 3, cellSide = 260
+              )
+          )
   - create:
       box: alife_lenia
       name: "5 — Lenia: exact in its discrete limit"
@@ -236,21 +242,26 @@ operations:
 
           // The continuous regime, reported as a measured phase trichotomy rather than as a named creature:
           // this file ships no published Lenia initial pattern, so it claims none.
-          val panels = ArrayList<Pair<String, Img>>()
-          panels.add("discrete limit == Life" to field.upscaleNearest(8))
-          panels.add("ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10))
-          for (mu in listOf(0.06, 0.14)) {
+          val runs = listOf(0.06, 0.14).map { mu ->
               val r = LeniaPresets.ring(mu, sigma = 0.017, radius = 8, dt = 0.12)
-              val run = leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
-              println("mu = " + mu + " -> " + run)
-              panels.add("mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3))
+              mu to leniaRun(leniaSeed(96, 96, r, blobRadii = 1.6, seed = 9L), r, steps = 240)
           }
+          for ((mu, run) in runs) println("mu = " + mu + " -> " + run)
           val wide = LeniaPresets.ring(0.60, sigma = 0.60, radius = 8, dt = 0.12)
           val sat = leniaRun(leniaSeed(96, 96, wide, blobRadii = 1.6, seed = 9L), wide, steps = 240)
           println("a growth bell positive over the whole unit interval -> " + sat)
-          panels.add("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3))
 
-          showImg(montage(panels, columns = 3, cellSide = 280))
+          showImg(
+              montage(
+                  listOf(
+                      "discrete limit == Life" to field.upscaleNearest(8),
+                      "ring kernel R=8" to LeniaPresets.ring(0.15, radius = 8).kernelImg().normalized().upscaleNearest(10)
+                  ) + runs.map { (mu, run) ->
+                      "mu=" + mu + " " + run.phase.name.lowercase() to run.field.colormap("inferno", 0f, 1f).upscaleNearest(3)
+                  } + listOf("wide sigma: saturation" to sat.field.colormap("inferno", 0f, 1f).upscaleNearest(3)),
+                  columns = 3, cellSide = 280
+              )
+          )
   - create:
       box: alife_boids
       name: "6 — Boids: order above the random baseline"
@@ -473,6 +484,400 @@ operations:
                   columns = 3, cellSide = 280
               )
           )
+  - create:
+      box: alife_life_moving
+      name: "1 — Conway's Life, moving — launch me"
+      frame:
+        x: 60.0
+        y: 760.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // Both boards are integer-upscaled to the same 384 pixels, so a cell is a block you can count:
+          // twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-cell walled
+          // board. Small boards on purpose -- see the note above this clip, which measures why.
+          fun boards(g: IntGrid, r: IntGrid, n: Int) = listOf(
+              "glider, gen " + n to g.toImg(2).upscaleNearest(24),
+              "R-pent " + n + ": " + r.population() + " live" to r.toImg(2).upscaleNearest(6)
+          )
+
+          // 400 generations over 200 displayed frames: TWO generations per frame. Slower than every other
+          // clip on this page on purpose -- the glider's period is FOUR generations, and a spaceship stepped
+          // nine generations at a time is a strobe rather than a spaceship.
+          animateEvolution(
+              LifePatterns.glider.centeredOn(16, 16) to
+                  LifePatterns.rPentomino.centeredOn(64, 64, wrap = false),
+              totalSteps = 400,
+              seconds = 7.0,
+              framesTarget = 200,
+              columns = 2,
+              cellSide = 384,
+              step = { (g, r) -> g.step(LIFE) to r.step(LIFE) },
+              panels = { (g, r), n -> boards(g, r, n) }
+          )
+  - create:
+      box: alife_elementary_moving
+      name: "2 — Four elementary rules, filling in — launch me"
+      frame:
+        x: 60.0
+        y: 960.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // Compute the four space-time diagrams once, in full: 257 cells wide, 128 generations tall.
+          val seedRow = IntArray(257) { if ((it * 7919) % 3 == 0) 1 else 0 }
+          val diagrams = listOf(
+              "rule 90" to elementaryCa(90, 257, 128).toImg(2),
+              "rule 30" to elementaryCa(30, 257, 128).toImg(2),
+              "rule 110" to elementaryCa(110, 257, 128, IntArray(257) { if (it % 13 == 0) 1 else 0 }).toImg(2),
+              "rule 184" to elementaryCa(184, 257, 128, seedRow).toImg(2)
+          )
+
+          // 128 generations over 128 displayed frames: ONE row of every diagram per frame. The upscale comes
+          // AFTER the reveal, so `n` counts generations rather than pixels -- and `rowsRevealed` keeps the
+          // full height, so montage frames each panel identically instead of rescaling a growing image.
+          animateEvolution(
+              Unit,
+              totalSteps = 128,
+              seconds = 6.0,
+              framesTarget = 128,
+              columns = 2,
+              cellSide = 520,
+              step = { it },
+              panels = { _, n ->
+                  diagrams.map { (name, img) -> name + ", gen " + n to img.rowsRevealed(n).upscaleNearest(2) }
+              }
+          )
+  - create:
+      box: alife_cyclic_moving
+      name: "3 — Cyclic CA: the two phases, running — launch me"
+      frame:
+        x: 60.0
+        y: 1160.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // One palette per rule, FIXED -- it is a function of the rule's state count, never of the frame,
+          // which is what makes generation 0 and generation 400 the same picture of the same thing. Three
+          // pixels to a cell, nearest-neighbour, so the bands are countable and the encoder sees flat blocks.
+          val pal = cyclicPalette(CYCLIC_LABYRINTH.states)
+          val exPal = cyclicPalette(CYCLIC_EXCITABLE.states)
+          fun soups(a: IntGrid, b: IntGrid, n: Int) = listOf(
+              "labyrinth, gen " + n to a.toImg(pal).upscaleNearest(3),
+              "excitable, gen " + n to b.toImg(exPal).upscaleNearest(3)
+          )
+
+          // Two cyclic rules from the same kind of soup, stepped together so the schedule is shared:
+          // 400 generations over 130 displayed frames, so a little over THREE generations per frame.
+          val rule = CYCLIC_LABYRINTH
+          val ex = CYCLIC_EXCITABLE
+          animateEvolution(
+              IntGrid.random(96, 96, states = rule.states, seed = 7L) to
+                  IntGrid.random(96, 96, states = ex.states, seed = 7L),
+              totalSteps = 400,
+              seconds = 6.5,
+              framesTarget = 130,
+              columns = 2,
+              cellSide = 288,
+              step = { (a, b) -> a.step(rule) to b.step(ex) },
+              panels = { (a, b), n -> soups(a, b, n) }
+          )
+  - create:
+      box: alife_gray_scott_moving
+      name: "4 — Gray-Scott: 6000 steps, ramped — launch me"
+      frame:
+        x: 420.0
+        y: 760.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // The autocatalyst field on a FIXED 0..0.5 magma range. Auto-ranging per frame is what makes an
+          // animation of a growing pattern appear to stand still, and it is the single easiest way to turn
+          // a reaction-diffusion clip into a lie.
+          fun view(s: GrayScottState, n: Int) =
+              listOf("maze - step " + n + " of 6000" to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(3))
+
+          // The `maze` preset, the same 6000 steps the figure above measures, over 140 displayed frames --
+          // but NOT 43 steps per frame. `ramp = 40` makes the last displayed frame advance forty times as
+          // many steps as the first, which is the schedule a log-time process needs: the mid-point of the
+          // clip is step 819 rather than step 3000. This is the number to change if you disagree.
+          animateEvolution(
+              grayScottSeed(128, 128, patches = 6, patchSize = 14, seed = 11L),
+              totalSteps = 6000,
+              seconds = 7.0,
+              ramp = 40.0,
+              cellSide = 420,
+              step = { it.step(GRAY_SCOTT_MAZE) },
+              panels = { s, n -> view(s, n) }
+          )
+  - create:
+      box: alife_lenia_moving
+      name: "5 — Lenia: two growth windows, running — launch me"
+      frame:
+        x: 420.0
+        y: 960.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // inferno on a FIXED 0..1 scale, and the mean field recomputed every frame so the phase verdict
+          // is measured while you watch. See the note below this clip: an auto-ranged SATURATION field
+          // renders black and becomes indistinguishable from death, which cost this family a figure once.
+          fun fields(x: Img, y: Img, n: Int) = listOf(
+              "mu=0.06 " + n + " mean " + "%.3f".format(x.mean()) to x.colormap("inferno", 0f, 1f).upscaleNearest(4),
+              "mu=0.14 " + n + " mean " + "%.3f".format(y.mean()) to y.colormap("inferno", 0f, 1f).upscaleNearest(4)
+          )
+
+          // Same seed, same ring kernel, one number different: where the growth window is centred.
+          // 240 Lenia steps over 140 displayed frames -- but geometrically, not two per frame: `ramp = 25`
+          // spends the first half of the clip on the first 40 steps, because that is where the blob decides
+          // what it is going to be. Everything after is maintenance.
+          val a = LeniaPresets.ring(0.06, sigma = 0.017, radius = 8, dt = 0.12)
+          val b = LeniaPresets.ring(0.14, sigma = 0.017, radius = 8, dt = 0.12)
+          animateEvolution(
+              leniaSeed(96, 96, a, blobRadii = 1.6, seed = 9L) to leniaSeed(96, 96, b, blobRadii = 1.6, seed = 9L),
+              totalSteps = 240,
+              seconds = 7.0,
+              ramp = 25.0,
+              columns = 2,
+              cellSide = 384,
+              step = { (x, y) -> x.leniaTimes(a, 1) to y.leniaTimes(b, 1) },
+              panels = { (x, y), n -> fields(x, y, n) }
+          )
+  - create:
+      box: alife_boids_moving
+      name: "6 — Boids: the control arm, running — launch me"
+      frame:
+        x: 420.0
+        y: 1160.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // One pixel per domain unit, with an 8-unit motion streak behind each agent -- long enough to join
+          // up at nine units of travel per frame. `order()` reads the velocity array, so neither choice
+          // touches what is measured; the number in each caption is computed fresh every frame.
+          fun flocks(a: BoidFlock, b: BoidFlock, n: Int) = listOf(
+              "flock " + n + ": order " + "%.2f".format(a.order()) to a.toImg(1.0, tail = 8.0),
+              "no align " + n + ": " + "%.2f".format(b.order()) to b.toImg(1.0, tail = 8.0)
+          )
+
+          // The same initial state, twice, stepped together -- so the ONLY difference between the two panels
+          // is the alignment weight. 900 steps over 140 displayed frames: six or seven steps per frame, and
+          // no ramp -- a flock's rate of change is roughly constant, which is exactly when linear is right.
+          val params = BoidParams()
+          val blind = params.copy(alignmentWeight = 0.0)
+          val start = BoidFlock.random(400, 260.0, 260.0, speed = 1.4, seed = 4L)
+          animateEvolution(
+              start.copy() to start.copy(),
+              totalSteps = 900,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 300,
+              step = { (a, b) -> a.step(params); b.step(blind); a to b },
+              panels = { (a, b), n -> flocks(a, b, n) }
+          )
+  - create:
+      box: alife_physarum_moving
+      name: "7 — Physarum: the network finding itself — launch me"
+      frame:
+        x: 780.0
+        y: 760.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // Both panels on ONE derived range, not on each other's maxima: a cell an agent occupies every
+          // step accumulates `deposit` and keeps `decay` of what it had, so it converges to
+          // deposit / (1 - decay) = 62.5. The first cut of this clip guessed 30 and clipped the network to
+          // flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
+          val p = PhysarumParams()
+          val ceiling = (p.deposit / (1.0 - p.decay)).toFloat()
+          fun trails(a: PhysarumSwarm, b: PhysarumSwarm, n: Int) = listOf(
+              "sensing " + n + "  " + "%.3f".format(a.trail.topShare(0.05)) to a.trail.colormap("magma", 0f, ceiling),
+              "blind " + n + "  " + "%.3f".format(b.trail.topShare(0.05)) to b.trail.colormap("magma", 0f, ceiling)
+          )
+
+          // Sensing and blind, from the same seed, stepped together: 400 steps over 140 displayed frames,
+          // so three deposit-sense-move rounds per frame. `step` takes its rng explicitly, so each
+          // population gets its own stream -- exactly what `stepTimes(p, 400, seed = 6L)` does internally,
+          // which is why these panels land on the same numbers as the figure above.
+          val rngA = kotlin.random.Random(6L)
+          val rngB = kotlin.random.Random(6L)
+          animateEvolution(
+              PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L) to
+                  PhysarumSwarm.disc(256, 256, 6000, 0.55, seed = 6L),
+              totalSteps = 400,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 300,
+              step = { (a, b) -> a.step(p, rngA) to b.step(p.copy(sensing = false), rngB) },
+              panels = { (a, b), n -> trails(a, b, n) }
+          )
+  - create:
+      box: alife_dla_moving
+      name: "8 — DLA: the order the branches arrived in — launch me"
+      frame:
+        x: 780.0
+        y: 960.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // Grow the cluster once, then replay `Aggregate.points` -- which IS the order the particles stuck
+          // in -- at a uniform rate over seven seconds.
+          val dla = dlaCluster(300, 300, particles = 6000, seed = 2L)
+
+          // The crop is the colour-range discipline in geometry: taken ONCE, from the finished cluster, never
+          // from the frame -- a crop that tracked the growing prefix would zoom out as the cluster grew and
+          // the screening this clip is about would be the one thing you could not see.
+          //
+          // Per AXIS rather than a square around maxRadius: a DLA cluster is anisotropic, and maxRadius is set
+          // by its single longest arm, so a square crop leaves a third of the panel permanently empty.
+          val pad = 2
+          val x0 = (dla.points.minOf { it.x }.toInt() - pad).coerceAtLeast(0)
+          val y0 = (dla.points.minOf { it.y }.toInt() - pad).coerceAtLeast(0)
+          val cw = (dla.points.maxOf { it.x }.toInt() + pad + 1 - x0).coerceAtMost(300 - x0)
+          val ch = (dla.points.maxOf { it.y }.toInt() + pad + 1 - y0).coerceAtMost(300 - y0)
+
+          // `arrivalPrefixImg` fixes the colour ramp to the FULL cluster's particle count, so a branch keeps
+          // the colour it arrived with; `arrivalOrderImg` normalises by its own count and would re-map the
+          // newest particle to the top of turbo on every frame.
+          fun cluster(dla: Aggregate, n: Int) =
+              listOf("particles " + n + " of " + dla.points.size to
+                  dla.arrivalPrefixImg(n).crop(x0, y0, cw, ch).colormap("turbo", 0f, 1f).upscaleNearest(3))
+
+          // Why the crop: a cluster is a fixed amount of ink, and how legible its growth is depends entirely on
+          // how much of the frame that ink occupies. Note the particle count in the first line -- `particles`
+          // is a ceiling, not a promise, and this cluster stopped well short of the 6000 asked for.
+          println(dla)
+          println("cropped to " + cw + " x " + ch + " of 300 x 300, so " +
+              "%.1f".format(100.0 * dla.points.size / (cw * ch)) + "% of the panel is ever lit, against " +
+              "%.1f".format(100.0 * dla.points.size / 90000.0) + "% uncropped")
+
+          animateEvolution(
+              Unit,
+              totalSteps = dla.points.size,
+              seconds = 7.0,
+              cellSide = 660,
+              step = { it },
+              panels = { _, n -> cluster(dla, n) }
+          )
+  - create:
+      box: alife_lsystem_moving
+      name: "9 — L-systems: the turtle, walking — launch me"
+      frame:
+        x: 780.0
+        y: 1160.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // `rasterizeFLinesFramed` takes its framing from the FINISHED curve. Plain `rasterizeFLines` fits
+          // the raster to whatever it is handed, so a growing prefix rescales every frame: the curve appears
+          // to stay the same size while the world shrinks around it, and the growth becomes invisible.
+          fun drawn(koch: List<FLine>, plant: List<FLine>, f: Double): List<Pair<String, Img>> {
+              val pct = (f * 100).toInt()
+              return listOf(
+                  "Koch gen 4: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(koch, f), koch, 420, 420),
+                  "plant gen 5: " + pct + "% drawn" to rasterizeFLinesFramed(flinePrefix(plant, f), plant, 420, 420)
+              )
+          }
+
+          // Animated by DRAWING, not by cutting between derivation depths: an L-system's turtle walks in an
+          // order, and `flinePrefix` truncates the emitted FLines at a fraction of their segment count in
+          // exactly that order. 240 ticks over 140 displayed frames.
+          val koch = drawLSystem(LSYSTEM_KOCH_SNOWFLAKE, 4, TurtleParams(angle = Math.PI / 3.0, step = 1.0))
+          val plant = drawLSystem(LSYSTEM_STOCHASTIC_PLANT, 5, TurtleParams(angle = Math.toRadians(24.0), step = 4.0), seed = 1L)
+          val ticks = 240
+          animateEvolution(
+              Unit,
+              totalSteps = ticks,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 420,
+              step = { it },
+              panels = { _, n -> drawn(koch.lines, plant.lines, n.toDouble() / ticks) }
+          )
+  - create:
+      box: alife_bridges_moving
+      name: "10 — A field and its contours, live — launch me"
+      frame:
+        x: 1140.0
+        y: 760.0
+        w: 340.0
+        h: 190.0
+      properties:
+        code: |
+          // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
+          // `Frames`, and a `Frames` that is only built never runs -- run this box and it prints nothing and
+          // animates nothing. Launched, it steps the system on the schedule below and pushes a montage PNG to
+          // the box's output every displayed frame, then holds the final frame forever.
+          // The contour panel is framed by the FIELD's extent -- two invisible single-node FLines at the
+          // corners of the 96x96 sample grid, in the contour extractor's own pixel coordinates. Framed by
+          // the contours' own bounds instead, the early frames (two loops in one corner) would be drawn
+          // zoomed right in and the whole figure would zoom out as the pattern spread.
+          val fieldFrame = listOf(FLine().moveTo(0, 0), FLine().moveTo(95, 95))
+          fun bridge(s: GrayScottState, n: Int): List<Pair<String, Img>> {
+              val loops = s.v.isoContourFLines(0.25, cells = 96)
+              return listOf(
+                  "v field, step " + n to s.v.colormap("magma", 0f, 0.5f).upscaleNearest(4),
+                  "iso v=0.25: " + loops.size + " loops" to rasterizeFLinesFramed(loops, fieldFrame, 384, 384)
+              )
+          }
+
+          // A reaction-diffusion field and its iso-contour FLines, re-extracted afresh every frame -- so the
+          // geometry tracks the field instead of being a snapshot of it. 5000 steps over 140 displayed
+          // frames: 36 reaction-diffusion steps AND one marching-squares pass per frame.
+          animateEvolution(
+              grayScottSeed(96, 96, patches = 5, patchSize = 12, seed = 4L),
+              totalSteps = 5000,
+              seconds = 7.0,
+              columns = 2,
+              cellSide = 384,
+              step = { it.step(GRAY_SCOTT_SPOTS) },
+              panels = { s, n -> bridge(s, n) }
+          )
   - execute:
       box: alife_life
       property: code
@@ -511,6 +916,46 @@ operations:
       type: fragment
   - execute:
       box: alife_bridges
+      property: code
+      type: fragment
+  - execute:
+      box: alife_life_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_elementary_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_cyclic_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_gray_scott_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_lenia_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_boids_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_physarum_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_dla_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_lsystem_moving
+      property: code
+      type: fragment
+  - execute:
+      box: alife_bridges_moving
       property: code
       type: fragment
   - await:
