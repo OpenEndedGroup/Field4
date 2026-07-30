@@ -61,7 +61,7 @@ internal class FLineEditSession(
     }
 
     fun beginLine(update: FLineBeginLine): FLine? {
-        val firstPoint = modelPoint(update.point, update.space).takeIf(::isFiniteVec3) ?: return null
+        val firstPoint = modelPoint(update.point, update.space).takeIf { it.isFinite() } ?: return null
         val line = styledLine(update.style ?: drawStyle).apply {
             moveTo(firstPoint)
         }
@@ -75,7 +75,7 @@ internal class FLineEditSession(
     }
 
     fun appendLine(update: FLineAppendLine) {
-        val modelPoints = update.points.mapNotNull { modelPoint(it, update.space).takeIf(::isFiniteVec3) }
+        val modelPoints = update.points.mapNotNull { modelPoint(it, update.space).takeIf { it.isFinite() } }
         if (modelPoints.isEmpty()) return
 
         synchronized(this) {
@@ -107,7 +107,7 @@ internal class FLineEditSession(
         val sourcePoints = update.points.distinct()
         if (sourcePoints.size < 2) return null
 
-        val modelPoints = sourcePoints.mapNotNull { modelPoint(it, update.space).takeIf(::isFiniteVec3) }
+        val modelPoints = sourcePoints.mapNotNull { modelPoint(it, update.space).takeIf { it.isFinite() } }
 
         if (modelPoints.size < 2) return null
 
@@ -203,7 +203,6 @@ private fun FloatArray.toVec4() = afield.stdlib.vec(
     getOrElse(3) { 1f }
 )
 
-private fun isFiniteVec3(value: Vec3): Boolean = value.x.isFinite() && value.y.isFinite() && value.z.isFinite()
 
 private fun Vec3.samePosition(other: Vec3, epsilon: Float = 1e-5f): Boolean =
     kotlin.math.abs(x - other.x) <= epsilon &&

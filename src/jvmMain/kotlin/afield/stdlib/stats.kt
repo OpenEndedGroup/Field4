@@ -572,7 +572,7 @@ class Vec2SummaryStatsBuffer(
     fun add(value: Vec2?): Vec2SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec2)
-        if (v == null || !v.isFiniteVec2()) {
+        if (v == null || !v.isFinite()) {
             droppedNonFinite++
             return this
         }
@@ -675,7 +675,7 @@ class Vec3SummaryStatsBuffer(
     fun add(value: Vec3?): Vec3SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec3)
-        if (v == null || !v.isFiniteVec3()) {
+        if (v == null || !v.isFinite()) {
             droppedNonFinite++
             return this
         }
@@ -778,7 +778,7 @@ class Vec4SummaryStatsBuffer(
     fun add(value: Vec4?): Vec4SummaryStatsBuffer {
         samplesSeen++
         val v = value?.let(::Vec4)
-        if (v == null || !v.isFiniteVec4()) {
+        if (v == null || !v.isFinite()) {
             droppedNonFinite++
             return this
         }
@@ -935,7 +935,7 @@ fun buildVec2SummaryStats(
     onDrop: ((droppedCount: Int) -> Unit)? = null
 ): Vec2SummaryStats {
     val all = rawValues.toList()
-    val finite = all.filter { it.isFiniteVec2() }
+    val finite = all.filter { it.isFinite() }
     val dropped = droppedCount + (all.size - finite.size)
     if (dropped > 0) onDrop?.invoke(dropped)
 
@@ -984,7 +984,7 @@ fun buildVec3SummaryStats(
     onDrop: ((droppedCount: Int) -> Unit)? = null
 ): Vec3SummaryStats {
     val all = rawValues.toList()
-    val finite = all.filter { it.isFiniteVec3() }
+    val finite = all.filter { it.isFinite() }
     val dropped = droppedCount + (all.size - finite.size)
     if (dropped > 0) onDrop?.invoke(dropped)
 
@@ -1037,7 +1037,7 @@ fun buildVec4SummaryStats(
     onDrop: ((droppedCount: Int) -> Unit)? = null
 ): Vec4SummaryStats {
     val all = rawValues.toList()
-    val finite = all.filter { it.isFiniteVec4() }
+    val finite = all.filter { it.isFinite() }
     val dropped = droppedCount + (all.size - finite.size)
     if (dropped > 0) onDrop?.invoke(dropped)
 
@@ -1661,9 +1661,6 @@ fun summaryStatsBoxToHtml(
     """.trimIndent()
 }
 
-private fun Vec2.isFiniteVec2(): Boolean = x.isFinite() && y.isFinite()
-private fun Vec3.isFiniteVec3(): Boolean = x.isFinite() && y.isFinite() && z.isFinite()
-private fun Vec4.isFiniteVec4(): Boolean = x.isFinite() && y.isFinite() && z.isFinite() && w.isFinite()
 
 private fun correlation(a: DoubleArray, b: DoubleArray): Double {
     if (a.size != b.size || a.size < 2) return Double.NaN
