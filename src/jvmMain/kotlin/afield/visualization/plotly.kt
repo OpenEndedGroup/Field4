@@ -8,7 +8,6 @@ import kotlinx.html.*
 import kotlinx.html.stream.createHTML
 import space.kscience.plotly.*
 import space.kscience.plotly.models.Dash
-import space.kscience.plotly.models.LegendOrientation
 import space.kscience.plotly.models.ScatterMode
 import space.kscience.plotly.models.ViolinPoints
 import space.kscience.plotly.models.XAnchor
@@ -226,6 +225,12 @@ fun Box.showSignals(
  * so, 22px if not. Set the title first, or a title added afterwards is squeezed into the slim band.
  * Axis `automargin` stays on, so tick labels and axis titles still get the room they need. Everything
  * else in this file already calls this for you — you only need it on a `Plot` you built by hand.
+ *
+ * The legend sits **outside** the plot area, against its right edge, so it cannot cover data.
+ * Until 2026-07-30 it was pinned *inside* at the lower right, where it hid the tail of every series
+ * that descended to the right — 11 published panels across 6 pages were losing data to it. Plotly's
+ * autoMargin reserves the width, so a plot with long trace labels gets a narrower data area rather
+ * than a clipped legend; keep the labels short if the data area matters more.
  */
 fun Plot.darkMode(): Plot {
     val hasTitle = !this.layout.title.isNullOrEmpty()
@@ -237,12 +242,28 @@ fun Plot.darkMode(): Plot {
                 size = 15
             }
         }
+        // The legend sits OUTSIDE the plot area, to its right. Until 2026-07-30 it was pinned inside
+        // at the lower right (yanchor top, y 0.2), where it silently covered the tail of any series
+        // descending to the right — a decaying error curve, or the right tail of a null histogram,
+        // which is exactly the shape you most want to read. The upper right is no better, only
+        // differently wrong: rising traces end there. No position inside the frame is safe for a
+        // shared helper.
+        //
+        // Above the frame does not work either, because these legends are *vertical*. `orientation`
+        // is deliberately not set here: this plotly-kt serialises the Kotlin enum by name, emitting
+        // `orientation: "horizontal"` where Plotly.js accepts only "h" or "v", so it is rejected and
+        // the default vertical stack is drawn. Every committed figure on the site shows that stack,
+        // including ones with 11 entries — far too tall for a top band. Setting the property at all
+        // only puts an invalid attribute in the payload, so it is gone.
+        //
+        // x = 1.02 in paper coordinates is just past the plot area's right edge; Plotly's autoMargin
+        // then reserves the width the legend needs on top of the `margin.r` below, which is why that
+        // number does not have to know how long the labels are.
         legend {
-            orientation = LegendOrientation.horizontal
             yanchor = YAnchor.top
-            xanchor= XAnchor.right
-            y = 0.2
-            x = 1.0
+            xanchor = XAnchor.left
+            y = 1.0
+            x = 1.02
         }
         paper_bgcolor("rgb(17,17,17)")
         plot_bgcolor("rgb(17,17,17)")
@@ -268,6 +289,9 @@ fun Plot.darkMode(): Plot {
         // Give the title only a slim band (or almost none when untitled) so the plot
         // area gets the space. Axis `automargin` above still grows the left/bottom
         // gutters as needed, so tick labels and axis titles never clip.
+        // `r` stays slim because the legend is not competing for it: sitting outside the plot area
+        // it goes through Plotly's autoMargin, which expands the right gutter past this figure by
+        // however much the labels actually need (`margin.autoexpand` defaults on).
         margin {
             t = if (hasTitle) 46 else 22
             b = 34
