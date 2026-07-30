@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-23 source file(s), 1326 public symbol(s), 601 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+25 source file(s), 1460 public symbol(s), 698 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1692,7 +1692,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 
@@ -2076,7 +2076,7 @@ corrupt the march.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #mesh-sdf-kt-functions }
 
@@ -2152,7 +2152,7 @@ println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Spatial artificial life](../alife_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Spatial artificial life](../alife_examples.md)
 
 ### Top-level functions { #mesh-topology-kt-functions }
 
@@ -2830,6 +2830,358 @@ What `slSweep` measured: the inputs it used and the `vec4` the program returned 
 | <code class="highlight"><span class="k">fun</span> <span class="nf">channel</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Float</span><span class="p">&gt;</span></code> | One output channel across the whole sweep, as a list ready for a plot: `0` is x/r, `1` y/g, `2` z/b, `3` w/a. Any other index throws `IllegalArgumentException`. Non-finite samples are handed back as they are — it is the plot, not this, that filters them. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The sweep drawn as a self-contained SVG plot: one polyline per output channel, dots and guide lines on each channel's extremes, the first and last input/output pair, and a per-channel avg/min/median/max table. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A one-line summary — sample count plus the first and last output — for logs and assertions. |
+
+## typography.kt { #typography-kt }
+
+Text as geometry: a string becomes contours, and from there everything Field already does to
+geometry applies to letters.
+
+Field can draw, mesh, filter, cluster, contour and evolve geometry, and before this file it could
+not turn *a string* into any of it. Every `java.awt.Font` in the tree paints a label into a
+raster — `MeshGallery`, `ImagingGallery`, `montage`'s 5x7 bitmap font — and none of them produces a
+value you can extrude, march, sample or animate. This file and its bridge companion
+`typography_field.kt` are that missing layer, and they need no new dependency:
+`Font.createGlyphVector(...).getOutline()` hands back real quadratic/cubic glyph outlines, and it
+works headless.
+
+# The three values
+
+ - [`Typeface`](graphics.md#typography-kt-typeface) — a font at a size, from a logical/system name (`typeface`) or a `.ttf`/`.otf` on
+   disk (`typefaceFromFile`). Carries the vertical metrics (ascent, descent, leading) a layout
+   needs.
+ - [`Glyph`](graphics.md#typography-kt-glyph) — one glyph's outline, cached per typeface and glyph code, in its own frame with its
+   origin on its own baseline. Both representations live side by side: `Glyph.contours` are
+   flattened, nesting-classified, winding-normalised polygons for geometry work, and
+   `Glyph.outline` is the same rings as an `FLine` of *real cubics* for drawing.
+ - [`TextLayout`](graphics.md#typography-kt-textlayout) — glyphs placed on baselines by AWT's own advances and kerning, plus tracking,
+   multi-line and alignment. Every glyph in it is a [`PlacedGlyph`](graphics.md#typography-kt-placedglyph) carrying **mutable transform
+   handles** (offset, rotation, scale, pivot). Those handles are the API, not an afterthought:
+   they are what makes kinetic typography a two-line box body, and `TextLayout.onCurve` is
+   nothing but a routine that sets them from an `FLine`'s arc length.
+
+# Text space
+
+Glyph and layout coordinates are **x right, y down**, origin at the first baseline, units = the
+typeface's size in points. That is AWT's own glyph frame and it is also the frame Field's 2D
+outputs use (`Rect`'s y grows downwards), so text handed straight to `Box.lines` or
+`Box.showText` reads the right way up with no transform. The 3D bridges in `typography_field.kt`
+flip y at their own boundary, because a mesh wants y up.
+
+# The winding convention
+
+A glyph's counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so, and
+"whatever the font shipped" is not good enough: `isoContourFLines` in `contours.kt` leaves winding
+arbitrary and every consumer downstream has to cope. So this file *decides*:
+
+> For a ring `p0..pn`, signed area is `½Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)` in text space. **Outer contours are
+> positive; holes are negative.** A ring's `GlyphContour.depth` — how many other rings of the same
+> glyph contain it — is authoritative: even depth is an outer contour, odd depth is a hole. A ring
+> whose area sign disagrees with its depth is *reversed* on the way out.
+
+Both representations obey it, so `contours.filter { it.isHole }` and the subpaths of
+`Glyph.outline` agree, and `TypographyTest` asserts it on glyphs whose answer is known by eye
+(`o` has one hole, `l` has none, `%` has two). Depth comes from point-in-polygon containment and
+the sign comes from the area formula, so the assertion compares two independent computations
+rather than restating one of them.
+
+# AWT and the main run loop
+
+`imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
+`Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
+with GLFW for the main run loop, and `Server.main` deliberately never initialises the toolkit. This
+family cannot avoid the font manager — it *is* the font manager — so it contains the hazard in one
+place, `Typefaces.warm`, whose KDoc carries the measured stack trace and the conclusion:
+
+> **A JVM that wants glyph outlines and passes `-XstartOnFirstThread` must also pass
+> `-Djava.awt.headless=true`.** Otherwise `CFontManager.loadFonts` dispatches to the process's first
+> thread and waits forever for a run loop nobody is pumping.
+
+`Typefaces.warm` detects that in four seconds and throws with that sentence in it, rather than
+hanging the editor. Every jvm-main gallery in the tree already sets the property in the first line
+of `main`, `jvmTest` does not need it (Gradle's test JVM has no `-XstartOnFirstThread`), and an
+interactive Field window pumps its run loop through `glfwPollEvents` and so is expected to be
+fine — expected, not tested; see `Typefaces.warm`. Everything after that one touch is pure
+computation over cached outlines.
+
+`src/jvmMain/kotlin/afield/stdlib/typography.kt`
+
+**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md)
+
+### Top-level functions { #typography-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">typeface</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">Font</span><span class="p">.</span><span class="nc">SANS&#95;SERIF</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">64.0</span><span class="p">,</span> <span class="n">bold</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">italic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | A logical or installed font by name — the short form of `Typefaces.named`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">typefaceFromFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">64.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | A `.ttf`/`.otf` from disk — the short form of `Typefaces.fromFile`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">layoutText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">typeface</span><span class="p">:</span> <span class="nc">Typeface</span><span class="p">,</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">lineSpacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">align</span><span class="p">:</span> <span class="nc">TextAlign</span> <span class="o">=</span> <span class="nc">TextAlign</span><span class="p">.</span><span class="nc">LEFT</span><span class="p">,</span> <span class="n">flatness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">typeface</span><span class="p">.</span><span class="n">size</span> <span class="p">/</span> <span class="mf">400.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | Lay a string out: AWT advances and kerning, plus tracking, line breaks and alignment. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Typeface</span><span class="p">.</span><span class="nf">layout</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">lineSpacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">align</span><span class="p">:</span> <span class="nc">TextAlign</span> <span class="o">=</span> <span class="nc">TextAlign</span><span class="p">.</span><span class="nc">LEFT</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | `layoutText` with the typeface first — reads better when you keep a typeface around. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">onCurve</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="n">startOffset</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">align</span><span class="p">:</span> <span class="nc">TextAlign</span> <span class="o">=</span> <span class="kc">this</span><span class="p">.</span><span class="n">align</span><span class="p">,</span> <span class="n">flip</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">clampToPath</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | Bend a layout onto an `FLine` by arc length. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">textCircle</span><span class="p">(</span><span class="n">radius</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">centre</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">,</span> <span class="n">clockwise</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">segments</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">96</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | A circle as an `FLine`, clockwise from the top — the path `onCurve` wants for a roundel. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">textArc</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">from</span><span class="p">:</span> <span class="nc">Vec2</span> <span class="o">=</span> <span class="nc">Vec2</span><span class="p">(</span><span class="mi">0f</span><span class="p">,</span> <span class="mi">0f</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | A cubic arch through three points — a quick path for `onCurve` when you do not want to draw one. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">FLine</span><span class="p">.</span><span class="nf">arcLength</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Total arc length of a path, the number `onCurve`'s `startOffset` is measured in. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">wrapText</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">typeface</span><span class="p">:</span> <span class="nc">Typeface</span><span class="p">,</span> <span class="n">maxWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The classic single-line word-wrap, in text-space units. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">textWidth</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">typeface</span><span class="p">:</span> <span class="nc">Typeface</span><span class="p">,</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Advance width of a string without building a layout you keep. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">GlyphContour</span><span class="p">.</span><span class="nf">resample</span><span class="p">(</span><span class="n">spacing</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> | Even samples along a ring, by arc length — the primitive the point-cloud bridge is built from. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">GlyphContour</span><span class="p">.</span><span class="nf">distanceTo</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Straight-line distance from `p` to this ring's boundary. Always non-negative. |
+
+### Typeface { #typography-kt-typeface }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">Typeface</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">awtFont</span><span class="p">:</span> <span class="nc">Font</span><span class="p">)</span></code>
+
+A font at a size: the thing you ask for glyphs and layouts.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Double</span></code> | Point size, as a `Double` — `awtFont.size` truncates to `Int`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">familyName</span><span class="p">:</span> <span class="nc">String</span></code> | e.g. `Helvetica`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">fontName</span><span class="p">:</span> <span class="nc">String</span></code> | e.g. `Helvetica-Bold`, which is what a `.ttf` reports and what round-trips through AWT. |
+| <code class="highlight"><span class="k">val</span> <span class="n">ascent</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the baseline up to the top of most glyphs, positive, in text-space units. |
+| <code class="highlight"><span class="k">val</span> <span class="n">descent</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the baseline down to the bottom of descenders, positive. |
+| <code class="highlight"><span class="k">val</span> <span class="n">leading</span><span class="p">:</span> <span class="nc">Double</span></code> | The font's recommended extra space between lines, positive. |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineHeight</span><span class="p">:</span> <span class="nc">Double</span></code> | `ascent + descent + leading` — the natural baseline-to-baseline distance at this size. |
+| <code class="highlight"><span class="k">val</span> <span class="n">kerning</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Whether AWT will apply this font's kerning pairs during layout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">atSize</span><span class="p">(</span><span class="n">size</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | The same font at a different size. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withKerning</span><span class="p">(</span><span class="n">on</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | The same font with AWT's kerning-pair lookup switched on or off. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withStyle</span><span class="p">(</span><span class="n">bold</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">italic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | The same font emboldened / italicised through AWT's style bits (synthetic if the family lacks it). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">canDisplay</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when this font has a glyph for every character of `text`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">glyph</span><span class="p">(</span><span class="n">c</span><span class="p">:</span> <span class="nc">Char</span><span class="p">)</span><span class="p">:</span> <span class="nc">Glyph</span></code> | One glyph's outline, by character. Convenience over `layoutText` for a single letter. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">equals</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">hashCode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+
+### Typefaces { #typography-kt-typefaces }
+
+<code class="highlight"><span class="k">object</span> <span class="nc">Typefaces</span></code>
+
+Font loading, the glyph cache, and the one dangerous moment in this family.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">warm</span><span class="p">(</span><span class="p">)</span></code> | Initialise the AWT font manager once, on a helper thread, and refuse to hang if it will not answer. |
+| <code class="highlight"><span class="k">var</span> <span class="n">lastWarmStall</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Where the last stalled warm attempt was, top frames first. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">named</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">Font</span><span class="p">.</span><span class="nc">SANS&#95;SERIF</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">64.0</span><span class="p">,</span> <span class="n">bold</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">italic</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">kerning</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">strict</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | A logical or installed font by name. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fromFile</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">64.0</span><span class="p">,</span> <span class="n">kerning</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | A `.ttf` / `.otf` / `.ttc` from disk, through `Font.createFont(TRUETYPE_FONT, file)`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">available</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Every font family the graphics environment can see, sorted. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">firstAvailable</span><span class="p">(</span><span class="k">vararg</span> <span class="n">candidates</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">64.0</span><span class="p">,</span> <span class="n">fallback</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">Font</span><span class="p">.</span><span class="nc">SANS&#95;SERIF</span><span class="p">)</span><span class="p">:</span> <span class="nc">Typeface</span></code> | The first of `candidates` that is actually installed, else `fallback`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">clearCache</span><span class="p">(</span><span class="p">)</span></code> | Drop every extracted outline. Only useful if you are churning through fonts from disk. |
+| <code class="highlight"><span class="k">val</span> <span class="n">cachedGlyphCount</span><span class="p">:</span> <span class="nc">Int</span></code> | How many glyph outlines are currently cached — the number `TypographyTest` checks caching by. |
+
+### GlyphContour { #typography-kt-glyphcontour }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">GlyphContour</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">depth</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
+
+One closed ring of a glyph outline, flattened to a polygon and classified.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">signedArea</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isHole</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for the counter of an `o` — an odd nesting depth, and so a negative `signedArea`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isOuter</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for the bowl of an `o` — an even nesting depth, and so a positive `signedArea`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span></code> | Tight bounds in text space. |
+| <code class="highlight"><span class="k">val</span> <span class="n">perimeter</span><span class="p">:</span> <span class="nc">Double</span></code> | Closed-ring perimeter, in text-space units. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toPolyline</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | This ring as its own closed `FLine` — a polyline, not the original cubics. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">contains</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Winding-number test against this ring alone, ignoring nesting. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### Glyph { #typography-kt-glyph }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">Glyph</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">glyphCode</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">chars</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">advance</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">contours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlyphContour</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">outline</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">,</span> <span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span><span class="p">)</span></code>
+
+One glyph's outline, in its own frame with the origin on its own baseline.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">glyphCode</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">chars</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">advance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">contours</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlyphContour</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">outline</span><span class="p">:</span> <span class="nc">FLine</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isBlank</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True for a space, a tab, or any glyph the font draws nothing for. |
+| <code class="highlight"><span class="k">val</span> <span class="n">contourCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Rings in total. |
+| <code class="highlight"><span class="k">val</span> <span class="n">holeCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Rings at odd nesting depth: 1 for `o`, 2 for `%`, 0 for `l`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">outerCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Rings at even nesting depth: 1 for `o`, 2 for `i` (stem and tittle). |
+| <code class="highlight"><span class="k">val</span> <span class="n">inkArea</span><span class="p">:</span> <span class="nc">Double</span></code> | Ink area: outer rings minus holes. Always >= 0 for a well-formed glyph. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### TextAlign { #typography-kt-textalign }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TextAlign</span></code>
+
+Where a line's glyphs sit relative to the widest line of the layout.
+
+Constants: `LEFT`, `CENTER`, `RIGHT`.
+
+### PlacedGlyph { #typography-kt-placedglyph }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">PlacedGlyph</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">glyph</span><span class="p">:</span> <span class="nc">Glyph</span><span class="p">,</span> <span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">,</span> <span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">charIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>
+
+One glyph placed on a baseline, plus the handles that make it kinetic.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">glyph</span><span class="p">:</span> <span class="nc">Glyph</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">origin</span><span class="p">:</span> <span class="nc">Vec2</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">charIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">var</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Vec2</span></code> | Extra translation, in text-space units, applied after layout. |
+| <code class="highlight"><span class="k">var</span> <span class="n">rotation</span><span class="p">:</span> <span class="nc">Double</span></code> | Rotation about `pivot`, radians, positive clockwise on screen (because y is down). |
+| <code class="highlight"><span class="k">var</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Vec2</span></code> | Scale about `pivot`. Negative components mirror, and the geometry bridges cope. |
+| <code class="highlight"><span class="k">var</span> <span class="n">pivot</span><span class="p">:</span> <span class="nc">Vec2</span><span class="o">?</span></code> | Rotation/scale centre in the glyph's own coordinates; `null` means the visual-bounds centre. |
+| <code class="highlight"><span class="k">var</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span></code> | Per-glyph colour override for `TextLayout.toFLines`; `null` means take the caller's colour. |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> | The characters this placement renders — one, or several for a ligature. |
+| <code class="highlight"><span class="k">val</span> <span class="n">resolvedPivot</span><span class="p">:</span> <span class="nc">Vec2</span></code> | The resolved pivot, in glyph coordinates. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">transform</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">AffineTransform</span></code> | The affine this placement's geometry goes through. A fresh instance each call. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isUntransformed</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when nothing has been asked of the handles, so the transform is a pure translation. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### TextLine { #typography-kt-textline }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">TextLine</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">baselineY</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">advanceWidth</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">glyphs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlacedGlyph</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+One baseline's worth of a layout.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">baselineY</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">advanceWidth</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">glyphs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlacedGlyph</span><span class="p">&gt;</span></code> |  |
+
+### TextLayout { #typography-kt-textlayout }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">TextLayout</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">typeface</span><span class="p">:</span> <span class="nc">Typeface</span><span class="p">,</span> <span class="k">val</span> <span class="n">glyphs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlacedGlyph</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TextLine</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">lineHeight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">align</span><span class="p">:</span> <span class="nc">TextAlign</span><span class="p">)</span></code>
+
+A laid-out string: glyphs on baselines, with handles.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">typeface</span><span class="p">:</span> <span class="nc">Typeface</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">glyphs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlacedGlyph</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lines</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TextLine</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tracking</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineHeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">align</span><span class="p">:</span> <span class="nc">TextAlign</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ascent</span><span class="p">:</span> <span class="nc">Double</span></code> | Positive, from the typeface. |
+| <code class="highlight"><span class="k">val</span> <span class="n">descent</span><span class="p">:</span> <span class="nc">Double</span></code> | Positive, from the typeface. |
+| <code class="highlight"><span class="k">val</span> <span class="n">advanceWidth</span><span class="p">:</span> <span class="nc">Double</span></code> | The widest line's advance width. Tracking is included; the trailing gap is not. |
+| <code class="highlight"><span class="k">val</span> <span class="n">layoutHeight</span><span class="p">:</span> <span class="nc">Double</span></code> | Baseline-to-baseline of the first and last line, plus one line's ascent and descent. |
+| <code class="highlight"><span class="k">val</span> <span class="n">layoutBounds</span><span class="p">:</span> <span class="nc">Rect</span></code> | The em box: the rectangle layout reserved, ignoring what the glyphs actually inked. |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span></code> | Tight bounds of the *inked* geometry with every handle applied. Empty for whitespace-only text. |
+| <code class="highlight"><span class="k">val</span> <span class="n">inkedGlyphs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PlacedGlyph</span><span class="p">&gt;</span></code> | Every glyph that inks something. Whitespace is in `glyphs` and not here. |
+| <code class="highlight"><span class="k">val</span> <span class="n">contourCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Total contour count across the layout — outer rings plus holes. |
+| <code class="highlight"><span class="k">val</span> <span class="n">holeCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Total hole count across the layout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">eachGlyph</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="nc">PlacedGlyph</span><span class="p">.</span><span class="p">(</span><span class="nc">Int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | Set the handles glyph by glyph, and hand the layout back for chaining. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">resetHandles</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | Reset every handle to its identity. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">copyLayout</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextLayout</span></code> | A deep copy: same structure, independent handles. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+## typography_field.kt { #typography-field-kt }
+
+The bridges out of a [`TextLayout`](graphics.md#typography-kt-textlayout) and into the four families Field already has.
+
+`typography.kt` answers with *structure* — rings, depths, advances, handles — and structure is not
+yet a drawing, a mesh, an image or a point cloud. This file is the missing hop, and it is the
+reason the typography family is worth having at all: once a string is contours, letters get to be
+inputs to machinery that never knew about text.
+
+It is the typographic counterpart of `spatial_field.kt` (plane geometry → `FLine`) and
+`mesh_field.kt` (`TriMesh` → `FLine`), and it is written to the same rule: every function here
+returns a *value* — no `Box`, no output — except the two figure helpers at the bottom, which are
+`drawToSVG` and so work headless, in a test and in the docs build.
+
+Five bridges:
+
+ 1. **→ `FLine`** (`TextLayout.toFLines`, `TextLayout.toFLine`, `Glyph.toFLine`). One line per
+    glyph, so a per-glyph handle actually moves something, with the font's real cubics intact.
+    Filling works because of `typography.kt`'s winding convention and nothing else: Skia and
+    Java2D both fill non-zero, so a counter is a hole precisely because its ring runs the other
+    way. `TextLayout.toFLines` takes `honourHoles = false` to show you the blob you get without a
+    convention, which is the control arm the docs figure uses.
+ 2. **→ [`TriMesh`](graphics.md#mesh-kt-trimesh)** (`TextLayout.toMesh`). Hole-aware extrusion: `extrudeMesh` in
+    `mesh_generate.kt:619` and `triangulatePolygon` (`:547`) explicitly cannot do holes, so the
+    caps here go through `FloatEarcut` with hole indices and the walls are emitted ring by ring
+    from the *same* flattened vertices, which is what makes the result watertight — and makes an
+    extruded `o` genus 1 and an extruded `l` genus 0.
+ 3. **→ an SDF** (`TextLayout.toSdf`). A 2D signed-distance grid, bilinearly sampled and extruded
+    in z, so letters compose with `sdfSphere`, `sdfSmoothUnion`, `.twisted()` and everything else
+    in `mesh_sdf.kt`, and `marchingCubes` will mesh the result.
+ 4. **→ [`Img`](imaging.md#imaging-kt-img)** (`rasterizeText`). An analytic even-odd scanline fill of the layout's own rings —
+    deliberately *not* `Graphics2D.drawString`, both because AWT text rendering in-process is what
+    `imaging_field.kt:417` forbids and because filling our own outlines means a legible PNG is
+    evidence about *this* code rather than about AWT's rasteriser.
+ 5. **→ points** (`TextLayout.samplePoints`, `TextLayout.toPointFLine`). Even-by-arc-length
+    samples along the outlines, which is what the alife agents, the clusterers and the
+    contourers in `clustering.kt` / `alife_agents.kt` consume.
+
+Frames: bridges 1, 3, 4 and 5 stay in text space (y **down**, origin on the first baseline);
+bridge 2 flips y at its boundary, because a mesh wants y up, and re-normalises winding when it
+does.
+
+`src/jvmMain/kotlin/afield/stdlib/typography_field.kt`
+
+**Used in:** [Typography as geometry — a string becomes contours](../typography_examples.md)
+
+### Top-level functions { #typography-field-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Glyph</span><span class="p">.</span><span class="nf">toFLine</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | This glyph's outline as a drawable `FLine`, with the font's cubics kept. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">honourHoles</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | One `FLine` per inked glyph, each with that glyph's handles applied. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toFLine</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | The whole layout as a single `FLine` — every glyph's every ring as subpaths of one line. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toContours</span><span class="p">(</span><span class="n">honourHoles</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlyphContour</span><span class="p">&gt;</span></code> | Every ring of the layout, with the handles applied, still classified. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">samplePoints</span><span class="p">(</span><span class="n">spacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">typeface</span><span class="p">.</span><span class="n">size</span> <span class="p">/</span> <span class="mf">20.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code> | Even-by-arc-length samples along every outline of the layout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toPointFLine</span><span class="p">(</span><span class="n">spacing</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="n">typeface</span><span class="p">.</span><span class="n">size</span> <span class="p">/</span> <span class="mf">20.0</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.55</span><span class="p">,</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span><span class="p">,</span> <span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.6</span><span class="p">)</span><span class="p">:</span> <span class="nc">FLine</span></code> | `samplePoints` as a dot-drawn `FLine`, via `spatial_field.kt`'s `pointCloudFLine`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toMesh</span><span class="p">(</span><span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="n">typeface</span><span class="p">.</span><span class="n">size</span> <span class="o">&#42;</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">yUp</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">centre</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | Extrude the layout into a watertight [`TriMesh`](graphics.md#mesh-kt-trimesh), counters included. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">distanceField</span><span class="p">(</span><span class="n">resolution</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.15</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextDistanceField</span></code> | Build a [`TextDistanceField`](graphics.md#typography-field-kt-textdistancefield) over this layout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toSdf</span><span class="p">(</span><span class="n">depth</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">gridResolution</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">320</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">)</span><span class="p">:</span> <span class="nc">TextSdf</span></code> | A layout as a 3D signed-distance field, ready for `marchingCubes` and every combinator in `mesh_sdf.kt`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">rasterizeText</span><span class="p">(</span><span class="n">layout</span><span class="p">:</span> <span class="nc">TextLayout</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">,</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">fillRule</span><span class="p">:</span> <span class="nc">TextFillRule</span> <span class="o">=</span> <span class="nc">TextFillRule</span><span class="p">.</span><span class="nc">NON&#95;ZERO</span><span class="p">,</span> <span class="n">rings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlyphContour</span><span class="p">&gt;</span> <span class="o">=</span> <span class="n">layout</span><span class="p">.</span><span class="nf">toContours</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Rasterise a layout by filling its own rings: an analytic-in-x, supersampled-in-y scanline fill. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.06</span><span class="p">,</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">window</span><span class="p">:</span> <span class="nc">Rect</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">fillRule</span><span class="p">:</span> <span class="nc">TextFillRule</span> <span class="o">=</span> <span class="nc">TextFillRule</span><span class="p">.</span><span class="nc">NON&#95;ZERO</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | `rasterizeText` with the layout as receiver. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">inkFraction</span><span class="p">(</span><span class="n">threshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.5f</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | What fraction of the raster the ink covers. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showText</span><span class="p">(</span><span class="n">layout</span><span class="p">:</span> <span class="nc">TextLayout</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">720</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">260</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.93</span><span class="p">,</span> <span class="mf">0.96</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">,</span> <span class="n">showBaseline</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code> | A titled figure of a layout in a box output — `drawToSVG`, so no AWT rasteriser and no GPU. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showTextGrid</span><span class="p">(</span><span class="k">vararg</span> <span class="n">panels</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">TextLayout</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;main&quot;</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">cellWidth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">420</span><span class="p">,</span> <span class="n">cellHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">filled</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">stroked</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.93</span><span class="p">,</span> <span class="mf">0.96</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">)</span></code> | Several `showText` figures side by side; `label` may carry a caption after a newline. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">metricsFLines</span><span class="p">(</span><span class="n">baselineColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.65</span><span class="p">)</span><span class="p">,</span> <span class="n">guideColor</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.52</span><span class="p">,</span> <span class="mf">0.62</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The layout's metric lines — baseline, ascent, descent, and the advance box — as drawable `FLine`s. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">TextLayout</span><span class="p">.</span><span class="nf">advanceBoxFLines</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Vec4</span> <span class="o">=</span> <span class="nf">vec</span><span class="p">(</span><span class="mf">0.95</span><span class="p">,</span> <span class="mf">0.62</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | A per-glyph advance-box diagram: one rectangle per glyph, at its handles. |
+
+### TextDistanceField { #typography-field-kt-textdistancefield }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">TextDistanceField</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span><span class="p">,</span> <span class="k">val</span> <span class="n">nx</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">ny</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span></code>
+
+A signed-distance grid over a layout, in text space, negative inside the ink.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">Rect</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">nx</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">ny</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Bilinear sample. Outside `bounds` the nearest edge value is used plus the distance to the box — which keeps the field monotone far away, so a marcher never finds a spurious surface out there. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">Vec2</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Bilinear sample at a point. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | The grid as a one-channel [`Img`](imaging.md#imaging-kt-img), distance mapped to 0..1 — for looking at the field itself. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">deepestInside</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Largest inscribed distance: how far inside the ink you can get. A stroke-weight measure. |
+
+### TextSdf { #typography-field-kt-textsdf }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">TextSdf</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">ScalarField3D</span><span class="p">,</span> <span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">AxisAlignedBoundingBox3D</span><span class="p">,</span> <span class="k">val</span> <span class="n">distanceField</span><span class="p">:</span> <span class="nc">TextDistanceField</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+A layout's SDF plus the bounds it lives in — the pair `marchingCubes` wants.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">field</span><span class="p">:</span> <span class="nc">ScalarField3D</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounds</span><span class="p">:</span> <span class="nc">AxisAlignedBoundingBox3D</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distanceField</span><span class="p">:</span> <span class="nc">TextDistanceField</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">march</span><span class="p">(</span><span class="n">resolution</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">96</span><span class="p">,</span> <span class="n">vertexNormals</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | March the field. `resolution` is cells along the longest axis, as in `marchingCubes`. |
+
+### TextFillRule { #typography-field-kt-textfillrule }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">TextFillRule</span></code>
+
+How a scanline decides whether a crossing count means "inside".
+
+Constants: `NON_ZERO`, `EVEN_ODD`.
 
 ## voronoi.kt { #voronoi-kt }
 

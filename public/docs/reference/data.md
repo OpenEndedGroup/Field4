@@ -373,7 +373,7 @@ return `FLine`s in a map keyed `"cluster-points"`, `"cluster-points-halo"`,
 
 `src/jvmMain/kotlin/afield/stdlib/clustering.kt`
 
-**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md)
+**Used in:** [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #clustering-kt-functions }
 
