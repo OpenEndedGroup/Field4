@@ -1,6 +1,7 @@
 package afield.stdlib
 
 import kotlin.math.abs
+import kotlin.math.ulp
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -95,31 +96,50 @@ class RollingDependenceTest {
      * The oracle is analytic rather than a recorded number. Under Chatterjee's prescription (break
      * x-ties uniformly at random) a single tie group of size n with distinct y gives
      * `E[sum |R_{i+1} - R_i|] = (n^2 - 1)/3` while the denominator is `2 * n(n+1)(n-1)/6`, so
-     * `xi = 1 - n(n^2-1)/3 / (n(n^2-1)/3)` is **exactly** zero for every n. Hence the 0.0 tolerance:
-     * it is not a tight empirical fit, it is the closed form.
+     * `xi = 1 - n(n^2-1)/3 / (n(n^2-1)/3)` is **exactly** zero for every n *in exact arithmetic*.
+     *
+     * It is not exactly zero in `Double`, and this test sweeps n rather than picking one precisely
+     * because picking one hides that. Over n = 2..400, 54 values of n come back non-zero; the
+     * largest deviation is 2.220446e-16, which is one ulp of 1.0 — the last subtraction in
+     * `1 - numerator/denominator` rounding against itself. n = 100 happens to land on exact 0.0, so
+     * an n = 100 test with a 0.0 tolerance passes and says nothing. One ulp is the honest bound.
      *
      * Before `correlations.kt` computed that expectation it broke x-ties by input index, and this
      * case returned 0.970297 — a near-perfect dependence score for a predictor carrying nothing.
      */
     @Test
-    fun `xi on a constant predictor is exactly zero, whatever order the pairs arrived in`() {
+    fun `xi on a constant predictor is zero to within one ulp, whatever order the pairs arrived in`() {
+        val oneUlp = 1.0.ulp // 2.220446049250313e-16
+        var worst = 0.0
+        var worstN = -1
+        for (n in 2..400) {
+            val const = DoubleArray(n) { 4.0 }
+            val v = StatsDependence.chatterjeeXi(const, DoubleArray(n) { it.toDouble() })
+            if (abs(v) > abs(worst)) {
+                worst = v
+                worstN = n
+            }
+        }
+        assertTrue(
+            abs(worst) <= oneUlp,
+            "a constant predictor explains nothing: the closed form is exactly 0, so Double must " +
+                "land within one ulp of it — worst was $worst at n=$worstN",
+        )
+
+        // Order invariance is a stronger claim than the magnitude one, and it *is* exact: the same
+        // multiset of pairs must give the bit-identical answer however it is shuffled in.
         val n = 100
         val const = DoubleArray(n) { 4.0 }
         val inArrivalOrder = DoubleArray(n) { it.toDouble() }
-        assertEquals(
-            0.0,
-            StatsDependence.chatterjeeXi(const, inArrivalOrder),
-            0.0,
-            "a constant predictor explains nothing; the closed form is exactly 0",
-        )
         val shuffled = (0 until n).shuffled(java.util.Random(2)).map { it.toDouble() }.toDoubleArray()
         assertEquals(
-            0.0,
+            StatsDependence.chatterjeeXi(const, inArrivalOrder),
             StatsDependence.chatterjeeXi(const, shuffled),
             0.0,
-            "and the same 0 regardless of arrival order",
+            "the same 0 regardless of arrival order",
         )
-        // the "all y identical -> 0.0" branch is unaffected
+        // the "all y identical -> 0.0" branch is unaffected, and that one really is exactly 0.0:
+        // it is an early return, not a computed quotient.
         assertEquals(0.0, StatsDependence.chatterjeeXi(inArrivalOrder, const), 0.0)
     }
 

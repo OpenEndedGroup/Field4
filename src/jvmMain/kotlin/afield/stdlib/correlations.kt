@@ -273,8 +273,9 @@ object StatsDependence {
      * **Ties.** Chatterjee's estimator is only defined up to a *random* breaking of the ties among the
      * `x` values, so on tied `x` this returns the exact expectation of xi over all such breakings —
      * deterministic, reproducible, and invariant to the order you present the pairs in. Two consequences
-     * worth knowing: a constant predictor gives exactly 0.0 (the closed form is exactly zero for every n,
-     * not merely close to it), and quantised or categorical `x` is answered honestly rather than being
+     * worth knowing: a constant predictor reads 0 — the closed form is *exactly* zero for every n, and in
+     * `Double` it lands within one ulp of that (over n = 2..400, 54 values of n come back non-zero, the
+     * largest being 2.2e-16) — and quantised or categorical `x` is answered honestly rather than being
      * scored on arrival order. Inputs with all-distinct `x` are unaffected, bit for bit.
      *
      * Until 2026-07-30 x-ties broke by input index instead, so a constant predictor read **0.970** and a
