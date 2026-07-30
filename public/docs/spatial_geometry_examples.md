@@ -241,6 +241,84 @@ the Apollonius circle is centred at `(k² p_i − p_j) / (k² − 1)`, and
 `SpatialGeometryTest.aHeavySiteSwallowsItsNeighbourIntoACompleteDisc` asserts exactly that against
 `arc.support.center`.
 
+### Watch the bisector bow
+
+Three still panels at three weights argue that the straight bisector becomes a circle. They cannot
+*show* it, and the interesting part is the part between the panels. So here is the same construction
+with one number swept: site 1's weight, from 1.0 up to 2.7 and back, eight seconds there and back.
+
+Watch three things. First, only the edges that **touch site 1** bow. A bisector between two sites of
+*equal* weight stays exactly straight however heavy their neighbour gets, which is why the caption
+reports both counts and why they trade against each other as the weight climbs — `8 arcs / 10 straight`
+at weight 1.12, `12 arcs / 6 straight` by 2.02 — and every arc bulges *away* from the heavy site.
+
+Second, those counts do not drift; they **jump**. The bulge grows until two of the light neighbours'
+cells pinch shut into complete discs — `enclosed` goes from 0 to 2 somewhere between weight 2.02 and
+2.45 — and the total piece count *falls* when that happens, because a swallowed cell needs one
+full-sweep circle where it used to need several arcs and a line. The topology of the diagram is
+changing, not just its shape.
+
+Third, on the way back down the discs re-open and the arcs flatten, and at exactly 1.0 the whole
+diagram snaps back to straight lines. That snap is real rather than a rendering artefact: the type of
+every boundary piece is decided by an *exact* equality of weights, so it is genuinely discontinuous in
+the geometry while looking continuous in the picture.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/apollonius_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="apollonius-weight-sweep" alt="an Apollonius diagram of five sites with one site's weight rising from 1.0 to 2.7 and falling back, its straight bisectors bowing into circular arcs that grow until two neighbouring cells pinch shut into complete discs, then re-open and flatten"}
+:::static
+:::fold the same five sites, a fixed window, the palette, and the clock
+val positions = listOf(
+    vec(0.0, 0.0), vec(2.2, 0.3), vec(0.9, 2.0), vec(-1.4, 1.1), vec(1.1, -1.6),
+)
+val clip = CircularDirichlet.Aabb(vec(-3.4, -3.4), vec(4.6, 4.6))
+// A FIXED window, not the default fit-to-contents. Left to fit each frame's own bounds the picture
+// would rescale as the arcs swell, and the sweep would appear to stand still — the same trap that
+// makes an auto-ranging heatmap of a WFC collapse look like it is going nowhere.
+val window = Rect(-3.4, -3.4, 8.0, 8.0)
+val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
+val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
+val heavy = 1              // the site whose weight is swept; the other four stay at 1.0
+// Elapsed seconds, NOT `frameNumber`: this box renders far faster than the docs recorder samples it,
+// so a frame-indexed ramp completes several sweeps per clip. Wall clock is the thing the recorder
+// also measures, so matching this to the fence's `duration` gives one sweep per clip.
+// 9.0 rather than the clip's 8: measured, this box's sweep came out at 142 of the clip's 160 frames,
+// so the period is scaled by 160/142 to put exactly one there-and-back in the recording.
+val sweepSeconds = 9.0
+val started = System.nanoTime()
+:::endfold
+
+// The line that turns elapsed time into the swept parameter — the one line worth reading, and the one
+// you would change. A triangle ramp rather than a saw, so the clip runs out to 2.7 and back to 1.0
+// and loops with no jump at the seam.
+fun weightAt(elapsed: Double): Double {
+    val phase = (elapsed / sweepSeconds) % 1.0
+    return 1.0 + 1.7 * (1.0 - abs(1.0 - 2.0 * phase))          // 1.0 -> 2.7 -> 1.0
+}
+
+animate {
+    val w = weightAt((System.nanoTime() - started) / 1e9)
+    val diagram = CircularDirichlet.build(
+        positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
+    )
+    val arcs = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.ArcPiece } }
+    val straight = diagram.cells.sumOf { c -> c.pieces.count { it is CircularDirichlet.LinePiece } }
+    // A cell bounded by one full-sweep arc is a cell that has been entirely swallowed.
+    val enclosed = diagram.cells.count { c ->
+        c.pieces.size == 1 &&
+            (c.pieces[0] as? CircularDirichlet.ArcPiece)?.let { it.sweepAngle > 6.283 } == true
+    }
+    showPlane(
+        // 0.005 rather than the stills' 0.01: a swallowed cell is a whole circle at this scale, and a
+        // coarser chord error makes it visibly a dodecagon.
+        diagram.toFLines(clip = clip, maxChordError = 0.005f, palette = palette, thickness = 1.6) + cloud,
+        title = "site 1 weight %.2f".format(w),
+        caption = "$arcs arcs, $straight straight, enclosed $enclosed",
+        width = 660,
+        height = 660,
+        window = window,
+    )
+}
+```
+
 Three things to know about the implementation, stated plainly because the KDoc does:
 
 - **It is aimed at modest site counts.** The construction is triple-nested over the sites — every
@@ -633,6 +711,75 @@ same commit* disagreed about the pairing. Two JITs, one input, two answers.
 **What is still rough:** the segment stitcher joins crossings by proximity and is O(*m*²) in the
 number of segments, so a very high grid resolution gets expensive. `marchingCubes` avoids this
 entirely by keying shared vertices on grid-edge identity; the 2D marcher does not, yet.
+
+### Sweep the level and the ambiguous cell stops being hypothetical
+
+Everything above argues about a single cell. The reason that cell matters is what happens to the
+*whole* level set when the iso level crosses a saddle, and no still can show it, because the whole
+event is a change of topology in the limit of one particular level.
+
+Two Gaussian bumps, then, and one number swept: the iso level, from 0.18 up to 0.78 and back. The col
+between the two peaks sits at **0.391** — the box computes it as `field(0.0, 0.0)` rather than taking
+it on trust — and it is marked in orange. Below it there is **one** contour enclosing both peaks; above
+it there are **two**, one per peak; and the changeover is a single frame in which the marcher is looking
+at a cell whose four corners give it no unambiguous answer. Each contour is coloured by its index, so
+the merge is visible as a colour vanishing, not just as a number in the caption changing.
+
+```diffstatic_runner {data-lang=kotlin video="assets/spatial_geometry_examples/iso_sweep.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="iso-level-sweep" alt="the level set of two Gaussian bumps as the iso level sweeps from 0.18 to 0.78 and back: one large loop enclosing both peaks pinches at the saddle marked in orange and separates into two loops, one per peak, then rejoins on the way back down"}
+:::static
+:::fold two Gaussian bumps, the sampling window, the palette, and the clock
+val field: ScalarField2D = { x, y ->
+    exp(-((x - 1.4) * (x - 1.4) + y * y) / 1.2) + exp(-((x + 1.4) * (x + 1.4) + y * y) / 1.2)
+}
+// The sampled rectangle, and a FIXED display window so the picture does not rescale as the loops
+// shrink — the contours would otherwise stay the same size on screen and the sweep would look still.
+val x0 = -3.2; val x1 = 3.2; val y0 = -1.9; val y1 = 1.9
+val window = Rect(-3.0, -1.7, 6.0, 3.4)
+val peakDots = pointCloudFLine(
+    listOf(vec(1.4, 0.0), vec(-1.4, 0.0)), color = vec(1.0, 1.0, 1.0, 0.85), pointSize = 1.4,
+)
+val saddleDot = pointCloudFLine(
+    listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
+)
+val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
+// 8.6, not 8: measured, one sweep of this box came out at 149 of the clip's 160 frames.
+val sweepSeconds = 8.6
+val started = System.nanoTime()
+:::endfold
+
+// The saddle level, measured rather than assumed: the field's own value at the col between the peaks.
+val saddle = field(0.0, 0.0)
+
+// The line that turns elapsed time into the swept parameter. A triangle ramp over a range that
+// straddles `saddle` with room either side, so the topology change happens twice per loop, once each
+// way.
+fun isoAt(elapsed: Double): Double {
+    val phase = (elapsed / sweepSeconds) % 1.0
+    return 0.18 + 0.60 * (1.0 - abs(1.0 - 2.0 * phase))        // 0.18 -> 0.78 -> 0.18
+}
+
+animate {
+    val iso = isoAt((System.nanoTime() - started) / 1e9)
+    // 100 x 60, not 140 x 84: the recorder samples this box at its own rate, and a per-frame cost that
+    // drops the render rate below the capture rate stretches the sweep across more than one clip.
+    val contours = generateIsoContours(field, x0, x1, y0, y1, 100, 60, iso).filter { it.size >= 2 }
+    val lines = contours.mapIndexed { i, c ->
+        polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, boundaryEpsilon = 0.05)).also {
+            it.color = byIndex[i % byIndex.size]
+            it.thickness = 2.0
+        }
+    }
+    showPlane(
+        lines + peakDots + saddleDot,
+        title = "iso %.3f — %d contour(s)".format(iso, contours.size),
+        caption = if (iso > saddle) "above the saddle %.3f — one loop per peak".format(saddle)
+        else "below the saddle %.3f — one loop around both".format(saddle),
+        width = 660,
+        height = 374,
+        window = window,
+    )
+}
+```
 
 ## Partitioning the cloud instead of the plane
 
