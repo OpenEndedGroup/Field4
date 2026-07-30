@@ -16,10 +16,59 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
 var needsResync = ConcurrentSet<Pair<Box, String>>()
+
+/**
+ * The box graph's edge sets — the properties whose value is a `MutableSet<Box>`.
+ *
+ * They are the second half of the race diagnosed in `PropertyBag.kt`: fixing the property *bag* stopped
+ * `resyncAll` throwing, but the sets stored *in* the bag were still plain `LinkedHashSet`s, walked on the
+ * main runloop and structurally mutated from replay and execution threads:
+ *
+ *  - `doResync`'s `"children"` / `"nested"` branches do `(value as? Collection<*>)?.mapNotNull { … }`
+ *    over the live set, on the runloop, every 500 ms;
+ *  - [visitParents] does `nextFringe.addAll(it.parents)` over the live set, and is how [gather] — and so
+ *    `doResync`'s `"actions"` branch, and every preamble/shader/actor lookup — reaches a box's ancestors;
+ *  - meanwhile `Box.connect` / `Box.disconnect` do `accessor() += to` from macro replay on
+ *    `Dispatchers.IO`, and `nestInto` mutates `nested` directly.
+ *
+ * See [asTopologySet] for why the fix is a `CopyOnWriteArraySet` here where it was a bespoke class for
+ * the bag, and `setPropertyRaw` for where it is applied.
+ */
+private val topologySetProperties = setOf("children", "parents", "nested")
+
+/**
+ * A topology edge set as a `CopyOnWriteArraySet`, which is exactly the right JDK class here and needs no
+ * bespoke replacement:
+ *
+ *  - **insertion-ordered**, which matters — `SavingContext` persists `children` in iteration order and the
+ *    frontend receives `set-topology` in it;
+ *  - **iteration is over an immutable array snapshot**, so no walker can ever see a
+ *    `ConcurrentModificationException`, whatever another thread is doing;
+ *  - `removeIf` / `removeAll` / `retainAll` are overridden by the class rather than falling back to
+ *    `iterator().remove()`, so `agent_backdoor.kt`'s tombstone sweep (`children.removeIf { … }`) keeps
+ *    working;
+ *  - `add` and `contains` become O(n), which is nothing on sets this size (a handful of edges, worst case
+ *    a few hundred children on a document root) against the message serialisation that follows every
+ *    topology change. It is not on any per-frame path.
+ *
+ * Serialisation is unaffected: `SavingContext.normalizeValue` and `withoutMetarootTopology` both match on
+ * `is Set<*>` and build their own `LinkedHashSet`, so a `CopyOnWriteArraySet` goes through them unchanged
+ * and in the same order.
+ *
+ * Values that are not sets are returned untouched — `nestedIn` holds a single `Box`, and a property can
+ * hold anything.
+ */
+private fun asTopologySet(value: Any): Any = when {
+    value !is Set<*> -> value
+    value is java.util.concurrent.CopyOnWriteArraySet<*> -> value
+    else -> java.util.concurrent.CopyOnWriteArraySet(value)
+}
+
 var Box.offline by Delegation<Boolean>(defaultValue = { true }) // boxes are offline until they've finished their stdlib execution
 var Box.preamble by Delegation<String>(defaultValue = { "" })
 var Box.introduction by Delegation<String>(defaultValue = { "" })
@@ -172,8 +221,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var visible by Delegation<Boolean>()
 
     init {
-        children = mutableSetOf()
-        parents = mutableSetOf()
+        // CopyOnWriteArraySet, not mutableSetOf(): the box graph's edge sets are walked on the main
+        // runloop while replay threads connect and disconnect boxes. See [topologySetProperties].
+        children = CopyOnWriteArraySet()
+        parents = CopyOnWriteArraySet()
     }
 
     val root: Box
@@ -596,15 +647,20 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     }
 
     override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
+        // The one choke point every whole-set assignment to a topology property passes through --
+        // Delegation.setValue for `box.children = ...`, and the document loader, which calls
+        // setPropertyRaw directly with a plain LinkedHashSet (saving.kt). Normalising here is what
+        // makes the guarantee hold for *loaded* documents and not just freshly constructed boxes.
+        val incoming = if (name in topologySetProperties) asTopologySet(value) else value
         val oldValue = properties[name]
         if (doResync && uiResyncProperties.any { it.matches(name) }) {
-            if (oldValue != value) needsResync.add(this to name)
-            properties[name] = value
+            if (oldValue != incoming) needsResync.add(this to name)
+            properties[name] = incoming
         } else {
-            properties[name] = value
+            properties[name] = incoming
         }
 
-        FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, value)
+        FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, incoming)
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {
