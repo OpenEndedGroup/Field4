@@ -87,10 +87,12 @@ var worst = 0.0
 for (y in 0 until withConvention.height) for (x in 0 until withConvention.width) {
     worst = maxOf(worst, kotlin.math.abs(withConvention.at(x, y, 0) - evenOdd.at(x, y, 0)).toDouble())
 }
+// Captions are drawn by montage's own 5x7 bitmap table and are clipped to the cell, so keep
+// them short enough to survive.
 showImgGrid(
-    "NON_ZERO, convention on — %.1f%% inked".format(100 * withConvention.inkFraction()) to withConvention,
-    "NON_ZERO, convention off — %.1f%% inked".format(100 * withoutConvention.inkFraction()) to withoutConvention,
-    "EVEN_ODD over the same correct rings — worst difference from cell 1: %.5f".format(worst) to evenOdd,
+    "convention on — %.1f%% ink".format(100 * withConvention.inkFraction()) to withConvention,
+    "convention off — %.1f%% ink".format(100 * withoutConvention.inkFraction()) to withoutConvention,
+    "EVEN_ODD: max diff %.5f".format(worst) to evenOdd,
     columns = 3, cellSide = 380,
 )
 :::endfold
@@ -149,7 +151,7 @@ the counters are, which is what "a letter is a ring *system*" means in practice.
 letter-spacing, alignment, and a mutable transform handle per glyph. Two identities are worth
 drawing, because they are how you find out that something silently rounded.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/layout.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="1080" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/layout.png" wait="3.5" capture="box" open-outputs="true" w="1000" h="1160" padding="14"}
 :::static
 :::fold one face, and prose to wrap
 val face = typeface("SansSerif", 120.0)
@@ -172,25 +174,26 @@ val tight = layoutText("TYPE", face)
 val loose = layoutText("TYPE", face, tracking = t)
 
 :::fold draw the metrics diagram, then the same wrapped paragraph in all three alignments
+// Two figures, so two CHANNELS: a second display on the same channel replaces the first.
 showPlaneGrid(
     "tracking 0 — %.0f units; advanceWidth − Σadvances = %.1e".format(tight.advanceWidth, drift) to
         (tight.metricsFLines() + tight.advanceBoxFLines() + tight.toFLines(thickness = 1.0)),
     "tracking 0.16em — %.0f units, i.e. exactly %d gaps × %.1f wider"
         .format(loose.advanceWidth, tight.glyphs.size - 1, t) to
         (loose.metricsFLines() + loose.advanceBoxFLines() + loose.toFLines(thickness = 1.0)),
-    columns = 1, cellWidth = 900, cellHeight = 250,
+    channel = "metrics", columns = 1, cellWidth = 880, cellHeight = 240,
     window = afield.Rect(-20.0, -face.ascent - 20, loose.advanceWidth + 40, face.lineHeight + 40),
 )
 showImgGrid(
     *TextAlign.entries.map { a ->
         a.name.lowercase() to rasterizeText(layoutText(prose, face.atSize(44.0), align = a, lineSpacing = 1.12), 700, 380)
     }.toTypedArray(),
-    columns = 3, cellSide = 300,
+    channel = "alignment", columns = 3, cellSide = 290,
 )
 :::endfold
 ```
 
-![Two baselines of TYPE with ascent and descent guides and one advance box per glyph, the second visibly looser, above the same five-line paragraph set left, centred and right](assets/typography_examples/layout.png)
+![Two baselines of TYPE with ascent and descent guides and one advance box per glyph, the second visibly looser, above the same four-line paragraph set left, centred and right](assets/typography_examples/layout.png)
 
 The first two panels are the diagram of the *decisions* rather than of the letters:
 `metricsFLines()` draws baseline, ascent and descent; `advanceBoxFLines()` draws one box per glyph —
@@ -208,7 +211,7 @@ along the path — `FLine.cursor()`'s arc-length table, the same machinery `samp
 spacing is even in distance rather than in curve parameter, and a multi-line layout follows the curve
 in bands instead of collapsing onto it.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/on_a_curve.png" wait="3.0" capture="box" open-outputs="true" w="1080" h="740" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/on_a_curve.png" wait="3.0" capture="box" open-outputs="true" w="940" h="1080" padding="14"}
 :::static
 :::fold a face, a string, and a cubic to bend the second one along
 val face = typeface("SansSerif", 78.0)
@@ -225,28 +228,31 @@ val circle = textCircle(radius = ring.advanceWidth / (2 * Math.PI))
 val onCircle = ring.onCurve(circle, align = TextAlign.CENTER)
 val onWave = layoutText("a rolling line of type", face, tracking = 2.0).onCurve(wave, align = TextAlign.CENTER)
 
-:::fold draw both, plus the circle path with the letters as outlines over it
+:::fold the filled rasters, then the paths they sit on
+// Two figures, two CHANNELS: a second display on one channel replaces the first.
 showImgGrid(
-    "on a circle — circumference %.1f vs layout width %.1f".format(circle.arcLength(), ring.advanceWidth) to
+    "circumference %.1f vs width %.1f".format(circle.arcLength(), ring.advanceWidth) to
         rasterizeText(onCircle, 620, 620),
-    "on a cubic — %d of %d glyphs turned with the curve"
-        .format(onWave.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }, onWave.glyphs.size) to
-        rasterizeText(onWave, 900, 420),
-    columns = 2, cellSide = 430,
+    "%d of %d glyphs turned".format(onWave.glyphs.count { kotlin.math.abs(it.rotation) > 0.05 }, onWave.glyphs.size) to
+        rasterizeText(onWave, 620, 620),
+    channel = "rasters", columns = 2, cellSide = 420,
 )
 showPlaneGrid(
-    "the path and the letters as outlines — the original layout is still straight: ${ring.glyphs.all { it.isUntransformed }}" to
-        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.5); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
-    columns = 1, cellWidth = 460, cellHeight = 420,
+    "the circle it sits on — original untouched: ${ring.glyphs.all { it.isUntransformed }}" to
+        (listOf(circle.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onCircle.toFLines(thickness = 1.0)),
+    "the cubic it sits on" to
+        (listOf(wave.copy { color = vec(0.4, 0.6, 0.8, 0.6); thickness = 1.0 }) + onWave.toFLines(thickness = 1.0)),
+    channel = "paths", columns = 2, cellWidth = 430, cellHeight = 430,
 )
 :::endfold
 ```
 
-![AROUND AND AROUND set clockwise around a circle, a rolling line of type following an S-curve, and the circle path with the letters drawn as outlines on it](assets/typography_examples/on_a_curve.png)
+![AROUND AND AROUND set clockwise around a circle beside a rolling line of type following an S-curve, and below them the circle and the cubic drawn as thin paths with the same letters as outlines sitting on them](assets/typography_examples/on_a_curve.png)
 
-Read the first caption: the circumference and the layout width agree to a fraction of a unit, which
-is what "closes exactly" means and is the reason to size the circle from the text. `onCurve` returns
-a **copy** — the third caption says so — so the straight layout is still straight and can be bent
+Read the first caption: **998.7** of circumference against **998.9** of layout width, which is what
+"closes exactly" means and is the reason to size the circle from the text rather than the other way
+round. The lower row is the paths themselves with the letters as outlines on them — and its caption
+records that `onCurve` returned a **copy**, so the straight layout is still straight and can be bent
 along something else.
 
 ## Kinetic typography
@@ -304,7 +310,7 @@ and a letter is a ring *system*. So `toMesh` triangulates the caps with `FloatEa
 indices, and builds the walls from the **same flattened vertices the caps used** — which is what
 makes the result watertight, and what makes `genus()` a meaningful question about a letter.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="900" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/mesh.png" wait="4.0" capture="box" open-outputs="true" w="960" h="1140" padding="14"}
 :::static
 :::fold three extrusions off the same contour extractor
 val face = typeface("SansSerif", 170.0)
@@ -331,11 +337,12 @@ val measured = layoutText("o", face).toMesh(depth = 46.0, yUp = false).volume()
 showMeshGrid(
     "o — genus ${o.genus()}, 2D hole count $holesIn2D, watertight ${o.isWatertight()}" to o,
     "l — genus ${l.genus()}, watertight ${l.isWatertight()}" to l,
-    columns = 2, cellWidth = 420,
+    channel = "letters", columns = 2, cellWidth = 420,
     view = MeshView(yawDegrees = 26.0, pitchDegrees = 16.0, distance = 3.2),
 )
 showMesh(
     word,
+    channel = "word",
     view = MeshView(yawDegrees = 22.0, pitchDegrees = 14.0, distance = 2.6, width = 820, height = 340),
     title = "extruded from the same contours the raster filled",
     caption = "'o': ink area × depth = %.0f, mesh volume %.0f, relative difference %.2e"
@@ -347,10 +354,11 @@ showMesh(
 ![An extruded lowercase o as a ring you can see through beside an extruded l as a solid slab, and the word mesh extruded in 3D](assets/typography_examples/mesh.png)
 
 Two claims are being *checked* there rather than illustrated. **Genus 1 for `o` and 0 for `l`** is a
-2D count (rings nested at odd depth) agreeing with a 3D one (Euler characteristic over the mesh's
-edges and faces). And the volume matches the ink area times the depth to a relative `1e-4` — a
-shoelace sum against the divergence theorem. A dropped cap triangle, a wall wound the wrong way or an
-unpunched counter all break one of those.
+2D count (rings nested at odd depth) agreeing with a 3D one (χ over the mesh's vertices, edges and
+faces) — read the auto-captions, which `showMesh` computes from the mesh you actually handed it. And
+the volume matches the ink area times the depth to `8.7e-16` relative, which is a shoelace sum
+agreeing with the divergence theorem to the last bit of a double. A dropped cap triangle, a wall
+wound the wrong way or an unpunched counter all break one of those.
 
 Back-face culling is on in `MeshView`, so an inside-out wall would be a *missing* wall in that render
 rather than merely odd shading — the same failure a GPU would show you.
@@ -370,7 +378,7 @@ rather than merely odd shading — the same failure a GPU would show you.
 `toSdf` builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes it in z.
 From there a word is just another `ScalarField3D`, which is the entire point.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/sdf.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="1120" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/typography_examples/sdf.png" wait="5.0" capture="box" open-outputs="true" w="980" h="1420" padding="14"}
 :::static
 val layout = layoutText("SDF", typeface("SansSerif", 170.0))
 val sdf = layout.toSdf(depth = 0.24, gridResolution = 340)
@@ -384,17 +392,20 @@ val wrung = marchingCubes(sdf.field.twisted(0.5), sdf.bounds, 130)
 
 :::fold draw the grid and the four surfaces
 val grid = sdf.distanceField
-showImg(
-    grid.toImg(),
-    caption = "the 2D signed distance field, %dx%d — mid grey is the outline, deepest inside the ink %.1f units"
-        .format(grid.nx, grid.ny, grid.deepestInside()),
+// showImgGrid rather than showImg: showImg sends its caption as a separate output message,
+// which the image then replaces, so the caption never survives to the page. montage only ever
+// scales a tile DOWN, so upscale the grid first or it lands as a 340px thumbnail.
+showImgGrid(
+    "signed distance field, %dx%d grid, deepest %.0f".format(grid.nx, grid.ny, grid.deepestInside()) to
+        grid.toImg().upscaleNearest(2),
+    channel = "grid", columns = 1, cellSide = 880,
 )
 showMeshGrid(
     "marchingCubes on the letters — ${marched.triangleCount} triangles, genus ${marched.genus()}" to marched,
     "sdfSmoothUnion with a sphere — ${melted.triangleCount}" to melted,
     "field.shell(0.02) — ${hollow.triangleCount}" to hollow,
     "field.twisted(0.5) — ${wrung.triangleCount}" to wrung,
-    columns = 2, cellWidth = 420,
+    channel = "surfaces", columns = 2, cellWidth = 420,
     view = MeshView(yawDegrees = 18.0, pitchDegrees = 12.0, distance = 2.6),
 )
 :::endfold
