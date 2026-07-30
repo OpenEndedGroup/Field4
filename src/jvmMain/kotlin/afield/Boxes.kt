@@ -103,7 +103,11 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     lateinit var inside: SessionInformation
     fun isInsideInitialized() = ::inside.isInitialized
 
-    val properties = mutableMapOf<String, Any?>()
+    // A [PropertyBag], not a `mutableMapOf()`: this map is read, written and *iterated* by the main
+    // runloop, macro/transcript replay on Dispatchers.IO, the AI auto-namer's pool and box execution at
+    // the same time, and an unsynchronised LinkedHashMap made every walk of it (resyncAll, saving,
+    // history diffing, ...) a ConcurrentModificationException waiting to happen. See PropertyBag.kt.
+    val properties: MutableMap<String, Any?> = PropertyBag()
     val markers = mutableMapOf<String, Marker>()
 
     // Kept as a named delegate (not an anonymous `by lazyVar { }`) so disposeKi()
