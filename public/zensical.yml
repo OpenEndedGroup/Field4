@@ -66,6 +66,7 @@ nav:
       - Drawing From Data:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
+        - Differentiating Functions: autodiff_examples.md
         - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
         - Timeseries Examples: timeseries_examples.md
         - State Estimation Examples: state_estimation_examples.md

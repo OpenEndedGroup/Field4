@@ -11,14 +11,18 @@ Five files, in dependency order:
 | file | what it is |
 | --- | --- |
 | `afield/stdlib/autodiff.kt` | reverse mode: `ADTape`, `AD`, the op vocabulary, `grad` / `gradAt` / `valueAndGrad` / `jacobian` / `hessian` |
+| `afield/stdlib/autodiff_formula.kt` | `FnExpr` + `FnFormulas`: one declaration of each `Fn` op's semantics, walked in `Double` and in `AD`; plus `FnNonDifferentiable`, the reasoned classification of the other 90 ops |
 | `afield/stdlib/autodiff_forward.kt` | second-order forward mode: `Dual2`, `taylor2`, `secondDerivative`, `directionalDerivative`, `gradForward` |
 | `afield/stdlib/autodiff_optimize.kt` | `minimize` over SGD+momentum, Adam and line-searched L-BFGS |
 | `afield/stdlib/autodiff_fn.kt` | the Field bridge: differentiating the `Fn` graph, `FnAdMetric`, `exactFitObjective` |
 | `afield/stdlib/autodiff_geometry.kt` | `ADVec2` / `ADVec3`, planar inverse kinematics, differentiable circle packing |
 
-The loadable demo is `dev_docs/agents/transcripts/autodiff_worked_example.yaml` — five boxes,
-replayable with `field_run_transcript` or the backdoor's `macro write` / `macro run`. Committed
-captures of every box's real output are in `public/docs/assets/autodiff/`.
+The public worked example is `public/docs/autodiff_examples.md` ("Differentiating Functions" in the
+nav), whose four figures are `diffstatic_runner` fences the docs build **executes**, so they cannot go
+stale silently. The loadable demo is `dev_docs/agents/transcripts/autodiff_worked_example.yaml` — five
+boxes, replayable with `field_run_transcript` or the backdoor's `macro write` / `macro run`; its own
+captures, taken through the backdoor rather than the docs runner, are in
+`public/docs/assets/autodiff/`.
 
 ## Reverse mode
 
