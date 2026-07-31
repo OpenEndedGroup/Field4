@@ -4,14 +4,14 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**4675 public symbols across 85 source files**, 2708 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**4678 public symbols across 85 source files**, 2711 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 14 | 1292 | 917 (70%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
-| [Data](data.md) | 17 | 672 | 243 (36%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
+| [Data](data.md) | 17 | 675 | 246 (36%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 23 | 1326 | 607 (45%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
@@ -41,7 +41,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [contours.kt](graphics.md#contours-kt) | Graphics | 13 | 7 | Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to contour. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
-| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 8 | 8 | The one honest way to *look at* `dynamic_graph_systems.kt` — a raster of the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
+| [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [essentiaAnalysis.kt](audio.md#essentiaanalysis-kt) | Audio | 126 | 0 | Readers for two on-disk audio-analysis products, so a box can query them by time. |  |
 | [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. |  |

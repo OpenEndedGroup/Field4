@@ -138,8 +138,8 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
 )
 
 // The claim each panel makes, as numbers rather than as an impression: how many edges, what fraction
-// of them close a triangle, and -- because brightness is on a FIXED scale -- how much of the shared
-// ceiling the system's weights actually reached.
+// of them close a triangle, and -- because colour and thickness are on a FIXED scale -- how much of
+// the shared ceiling the system's weights actually reached.
 val panels = systems.map { (name, system) ->
     val (state, edges) = build(system)
     val adjacency = Array(state.pointCount) { HashSet<Int>() }
@@ -150,18 +150,29 @@ val panels = systems.map { (name, system) ->
     println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
         name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
         wmax, 100.0 * wmax / ceiling))
+    // dynamicGraphFLines, not dynamicGraphPanel: a still figure on this page is VECTOR -- one FLine
+    // per edge through showPlaneGrid -> drawToSVG. The raster is for the clips further down, where
+    // animateEvolution needs an Img. Weight drives colour AND stroke width, both against `ceiling`.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-        dynamicGraphPanel(state.points, edges.values(), window, 400, 400, ceiling, "magma")
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
 }
 
-showImg(montage(panels, columns = 3, cellSide = 400))
+// One shared window for all six panels, so nothing but the topology differs between them.
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 3, cellWidth = 400, cellHeight = 400,
+    window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ![six graphs built over the same 220-point phyllotaxis disc: a bright mutual k-nearest-neighbour mesh, a sparse pinwheel of flowline arcs, a dense fully triangulated tangent fan, a sparse dim proximity mesh, a dim forest of routing chains, and a dim fully triangulated alpha-event graph](assets/dynamic_graph_systems_examples/six_systems.png)
 
-Brightness is `weight / 4.0` — the ceiling all six were given — so it is a *fixed* scale rather than a
-per-panel normalisation, and a dim panel is a system whose weights genuinely stayed low. That is why
-the last column looks faint, and the last column of the table is why:
+Every panel is real vector geometry — `dynamicGraphFLines` emits one `FLine` per edge and
+`showPlaneGrid` puts them through `drawToSVG`, so the figure scales and each edge carries its own
+weight. That weight is read as `weight / 4.0`, the ceiling all six were given, and it drives **both**
+the colour and the stroke width: a *fixed* scale rather than a per-panel normalisation, so a faint,
+thin panel is a system whose weights genuinely stayed low. That is why the last column looks like
+that, and the last column of the table is why:
 
 | system | edges | in a triangle | mean degree | max weight reached |
 | --- | --- | --- | --- | --- |
@@ -291,13 +302,19 @@ println("rExit 0.10 (control arm): formed at d=0.05 = %s, survives d=0.13 = %s".
 // What that buys on a real cloud: a 200-point disc, every point given a per-frame wobble of +-0.012
 // -- a fifth of rEnter, enough to cross the threshold and not enough to rearrange the neighbourhood.
 // Count how much WORK the graph does to stay where it is.
-fun flicker(rExit: Double): List<Any> {
-    val n = 200
-    val base = List(n) { i ->
-        val a = i * 2.39996322972865332
-        val r = 0.45 * Math.sqrt((i + 0.5) / n)
-        Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-    }
+val n = 200
+val base = List(n) { i ->
+    val a = i * 2.39996322972865332
+    val r = 0.45 * Math.sqrt((i + 0.5) / n)
+    Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+}
+// One window, computed once from the cloud at rest, shared by both panels -- otherwise the sparser
+// arm is drawn at its own scale and the comparison says nothing.
+val window = dynamicGraphWindow(base, padFraction = 0.06)
+
+class Flicker(val appeared: Int, val vanished: Int, val standing: Int, val lines: List<FLine>)
+
+fun flicker(rExit: Double): Flicker {
     val state = DynamicPointState(base.map { Vec3(it) }.toMutableList())
     val edges = DynamicEdgeList(n)
     val hash = Vec3SpatialHash(0.06)
@@ -318,22 +335,24 @@ fun flicker(rExit: Double): List<Any> {
         vanished += (present - now).size
         present = now
     }
-    val window = dynamicGraphWindow(base, padFraction = 0.06)
-    return listOf(appeared, vanished, present.size,
-        dynamicGraphPanel(state.points, edges.values(), window, 460, 460, 3.0, "magma"))
+    return Flicker(appeared, vanished, present.size,
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"))
 }
 
 val on = flicker(rExit = 0.075)
 val off = flicker(rExit = 0.055)
-println("hysteresis on:  ${on[0]} edges created, ${on[1]} lost, ${on[2]} standing after 150 frames")
-println("hysteresis off: ${off[0]} edges created, ${off[1]} lost, ${off[2]} standing after 150 frames")
+println("hysteresis on:  ${on.appeared} edges created, ${on.vanished} lost, ${on.standing} standing after 150 frames")
+println("hysteresis off: ${off.appeared} edges created, ${off.vanished} lost, ${off.standing} standing after 150 frames")
 println("...so the memoryless arm creates %.2fx as many edges and loses %.1fx as many".format(
-    (off[0] as Int).toDouble() / (on[0] as Int), (off[1] as Int).toDouble() / (on[1] as Int)))
+    off.appeared.toDouble() / on.appeared, off.vanished.toDouble() / on.vanished))
+// The figure is not allowed to crop its own subject silently.
+println("points outside the shared window: ${dynamicGraphOutsideWindow(base, window)}")
 
-showImg(montage(listOf(
-    "rExit 0.075: ${on[0]} in, ${on[1]} out" to on[3] as Img,
-    "rExit = rEnter: ${off[0]} in, ${off[1]} out" to off[3] as Img
-), columns = 2, cellSide = 460))
+showPlaneGrid(
+    "rExit 0.075: ${on.appeared} in, ${on.vanished} out" to on.lines,
+    "rExit = rEnter: ${off.appeared} in, ${off.vanished} out" to off.lines,
+    columns = 2, cellWidth = 460, cellHeight = 460, window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ![two proximity graphs over the same wobbling 200-point disc: the left, with hysteresis, is a full connected mesh; the right, with the hysteresis removed, is visibly sparser and more broken up](assets/dynamic_graph_systems_examples/hysteresis.png)
@@ -361,7 +380,7 @@ change on screen is a change in the graph and not a change in the geometry.
 a stretch along that axis that breathes between 0.25 and 2.0. So "the five nearest points" becomes a
 time-varying question asked of a cloud standing perfectly still.
 
-```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="9" fps="20" timeout="300" w="1000" embed=true name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
+```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1000" embed=true name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
 :::static
 // The cloud NEVER MOVES in this clip. Every edge that appears or disappears is the anisotropic
 // metric breathing -- an axis that rotates with the clock and a stretch along it between 0.25 and
@@ -424,13 +443,15 @@ animateEvolution(
 
 <video controls muted loop playsinline preload="metadata" width="1000" aria-label="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"><source src="assets/dynamic_graph_systems_examples/breathing.mp4" type="video/mp4"></video>
 
-The control arm does the work here, and it does it in the caption. Sampling every eighteenth frame of
-the recorded mp4 — steps 19, 77, 132, 187, 241, 295, 353, 406 and 420 — the frozen panel reads
-**590 edges every single time**. The breathing panel over the same nine frames reads 619, 621, 636,
-610, 611, 593, 610, 601 and 601, and its triangulated patches visibly rake around as the stretch axis
-turns. When the stretch is high, "near" means "near *along* the current axis", so long thin chains form
-in that direction and the perpendicular links are dropped; as it relaxes toward 0.25 the graph returns
-to something isotropic. Same cloud, same `k`, same budget, same code path.
+The control arm does the work here, and it does it in the caption. Sampling the recorded mp4 every
+0.8 s — nine frames, whose right-hand labels read steps 13, 64, 111, 161, 210, 261, 311, 360 and 406 —
+the frozen panel reads **590 edges every single time**. The breathing panel over the same nine frames
+reads 609, 616, 617, 654, 613, 611, 609, 608 and 601, and its triangulated patches visibly rake around
+as the stretch axis turns. When the stretch is high, "near" means "near *along* the current axis", so
+long thin chains form in that direction and the perpendicular links are dropped; as it relaxes toward
+0.25 the graph returns to something isotropic. Same cloud, same `k`, same budget, same code path. The
+clip's own last frame reads **step 420** of the 420 it was given, which is how you know the recording
+covers the whole schedule rather than stopping short of it.
 
 Both panels use `ttl = 0.25 s` and an aggressive `λ = 2.5`, so the graph remembers about a quarter of a
 second. That is deliberate: with a long ttl the union of every metric the warp passes through
@@ -623,7 +644,10 @@ fun componentSizes(graph: PointGraph): List<Int> {
     return sizes.values.sortedDescending()
 }
 
+// Pinned rather than fitted, because the clusters are somewhere else at t = 0 and at t = 4 s: a
+// window derived from the final frame would frame a different picture from the one the run made.
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
+println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
     val graph = edges.toPointGraph(minWeight = cut)
     val groups = componentSizes(graph).filter { it > 1 }
@@ -632,9 +656,12 @@ val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
         cut, graph.edges.size, cross, groups))
     val kept = edges.values().filter { it.weight > cut }
     "w>%.1f  %de  %d groups".format(cut, graph.edges.size, groups.size) to
-        dynamicGraphPanel(state.points, kept, window, 430, 430, ceiling, "magma")
+        dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma")
 }
-showImg(montage(panels, columns = 2, cellSide = 430))
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2, cellWidth = 430, cellHeight = 430, window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ![four snapshots of the same dynamic graph at rising weight thresholds: at the two low thresholds three bright knots are tied into the surrounding background mesh by dim purple streamers, and at the two high thresholds the streamers are gone and the knots float free of the mesh](assets/dynamic_graph_systems_examples/snapshot.png)
