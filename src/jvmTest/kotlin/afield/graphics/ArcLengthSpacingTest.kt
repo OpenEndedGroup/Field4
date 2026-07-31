@@ -235,6 +235,20 @@ object ArcLengthTestCurves {
         Vec3(450f, 0.001f, 0f), Vec3(480f, -0.001f, 0f), Vec3(500f, 0f, 0f)
     )
 
+    /**
+     * Collinear *and* symmetric about the chord midpoint, so `B(0.5)` lands exactly on the chord's
+     * midpoint: both terms of the subdivision error are zero at the top level even though `t` runs
+     * 16% fast through the middle. Only a forced minimum subdivision catches this one.
+     */
+    fun symmetricCollinearCubic(): FLine = FLine().moveTo(0f, 0f).cubicTo(
+        Vec3(240f, 0f, 0f), Vec3(260f, 0f, 0f), Vec3(500f, 0f, 0f)
+    )
+
+    /** a perfectly ordinary straight cubic: control points at the thirds. This is the cost case. */
+    fun uniformStraightCubic(): FLine = FLine().moveTo(0f, 0f).cubicTo(
+        Vec3(500f / 3f, 0f, 0f), Vec3(1000f / 3f, 0f, 0f), Vec3(500f, 0f, 0f)
+    )
+
     /** collinear *and* with a cusp-ish reversal in speed. */
     fun collinearBackAndForth(): FLine = FLine().moveTo(0f, 0f).cubicTo(
         Vec3(900f, 0f, 0f), Vec3(-400f, 0f, 0f), Vec3(500f, 0f, 0f)
@@ -258,6 +272,8 @@ object ArcLengthTestCurves {
     fun all(): List<Pair<String, FLine>> = listOf(
         "collinearCubic" to collinearCubic(),
         "nearCollinearCubic" to nearCollinearCubic(),
+        "symmetricCollinear" to symmetricCollinearCubic(),
+        "uniformStraightCubic" to uniformStraightCubic(),
         "collinearBackAndForth" to collinearBackAndForth(),
         "sCurve" to sCurve(),
         "sharplyCurved" to sharplyCurved(),
@@ -307,6 +323,40 @@ class ArcLengthSpacingTest {
             if (ratio > 2.0) "$name ${"%.2f".format(ratio)}x" else null
         }
         assertTrue(offenders.isEmpty(), "sampleByDistance is uneven on: ${offenders.joinToString("; ")}")
+    }
+
+    /**
+     * Not an assertion about wall time — machines differ — but a printed record of what the
+     * subdivision criterion costs, plus a hard ceiling on the leaf count so a future change cannot
+     * quietly make the flattener quadratic.
+     */
+    @Test
+    fun subdivisionCostStaysBounded() {
+        // a thousand-segment polyline expressed as cubics: the case where a minimum-subdivision
+        // floor costs the most, because every one of these would otherwise be a single leaf.
+        val polyline = FLine().moveTo(0f, 0f)
+        for (i in 1..1000) {
+            val x0 = (i - 1) * 10f
+            val x1 = i * 10f
+            polyline.cubicTo(
+                Vec3(x0 + (x1 - x0) / 3f, 0f, 0f),
+                Vec3(x0 + 2 * (x1 - x0) / 3f, 0f, 0f),
+                Vec3(x1, 0f, 0f)
+            )
+        }
+
+        val cases = ArcLengthTestCurves.all() + ("polyline1000" to polyline)
+        for ((name, line) in cases) {
+            repeat(3) { PathFlattener(line, 0.01f) } // warm
+            val start = System.nanoTime()
+            var leaves = 0
+            repeat(10) { leaves = PathFlattener(line, 0.01f).mappings.size }
+            val micros = (System.nanoTime() - start) / 10_000.0
+            println("$name leaves=$leaves build=${"%.1f".format(micros)}us")
+        }
+
+        val leaves = PathFlattener(polyline, 0.01f).mappings.size
+        assertTrue(leaves <= 8000, "1000 straight cubics flattened to $leaves leaves")
     }
 
     @Test
