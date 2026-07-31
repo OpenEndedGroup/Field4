@@ -458,6 +458,16 @@ second. That is deliberate: with a long ttl the union of every metric the warp p
 accumulates, and the picture saturates into a mesh that never changes again. The forgetting is what
 makes the motion visible.
 
+!!! note "This clip and the next are the only two figures here that are pixels"
+    Every still on this page is vector — `dynamicGraphFLines` into `showPlaneGrid`. The two clips are
+    not, and cannot be: `animateEvolution`'s `panels` lambda is typed
+    `List<Pair<String, Img>>`, and the docs runner records a box's PNG output channel, so a clip is a
+    raster by construction. That is what
+    [`dynamicGraphPanel`](reference/data.md#dynamic-graph-field-kt-functions) is for and the
+    only thing it is for. It is also why it cannot be swapped for `rasterizeFLines` from the ALife
+    family, which plots a constant intensity: every edge would come out the same brightness and the
+    weight — the entire subject of this family — would be gone.
+
 ## 5. Morphogenesis: when the population is an output
 
 The other half of the family moves the points. Nine `DynamicPointProcess`es compose in a
