@@ -155,9 +155,22 @@ but the chord between them still short-cut the curve — glyphish dash lengths w
 did exactly that in sixteen places. Two ways to hit it: park the cursor at the end of a closed line
 (`clamp(index + 1)` collapses onto `index`, `segmentIsClose()` is then true for the Close itself), or
 step past an interior Close in a multi-subpath line. Every arc-length operation was therefore
-unusable on *any* closed line — every glyph outline, every closed shape. Fixed with one `endOf(i)`
-accessor that resolves a Close to the start of the subpath it closes, which is genuinely where that
-instruction leaves the pen. Covered by `CursorClosedLineTest`.
+unusable on any line that actually carries a `Close` node. Fixed with one `endOf(i)` accessor that
+resolves a Close to the start of the subpath it closes, which is genuinely where that instruction
+leaves the pen. Covered by `CursorClosedLineTest`.
+
+**But not "every glyph outline", which is what this page said first.** Glyph outlines arrive through
+`FLinesAndJavaShapes.javaShapeToFLine`, whose `SEG_CLOSE` branch emits an explicit `lineTo` back to
+the last `moveTo` (`FLinesAndJavaShapes.kt:2183-2187`) and never calls `close()` — so an AWT glyph
+outline contains **no `Close` node at all** and never had one to trip over. The lines that did are the
+ones Field code closes itself with `.close()`. The crash was real and the fix is real; the population
+it was hurting was smaller and differently shaped than the first draft of this page asserted.
+
+One caveat on the fix's completeness, so nobody reads this as closed: the `nodes[i - 1].to` pattern
+that caused this appears in roughly a dozen further sites outside `Cursor` — `byReversing`,
+`findSelfIntersections`, `bySubdividing` (which additionally drops `Close` nodes silently), `tcbTo`,
+and the `intersect` family — and an **interior** `Close` still throws there. No test covers that case
+yet.
 
 ## Seeing it
 
