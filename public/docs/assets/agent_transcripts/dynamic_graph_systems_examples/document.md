@@ -20,7 +20,7 @@ weight / 4.0 -- the shared ceiling -- so it is a FIXED scale and a dim panel is 
 whose weights genuinely stayed low.
 
 ```edn [field-box id="dgs_six_systems" role="properties"]
-{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 55 "characters" 3155 "sha256" "c59a79aa55e95559bf86fa0255120783d08b7f6dc3aa95a6c5f8d3143a32e023"}]}
+{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 62 "characters" 3515 "sha256" "6860da5bfddfb932c8760b734fd725b4134aad4ea2bb244c2ba3da1204331ddb"}]}
 ```
 
 ```kotlin [field-property box="dgs_six_systems" name="code" path="dgs_six_systems_code_.kt"]
@@ -74,11 +74,18 @@ val panels = systems.map { (name, system) ->
     println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
         name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
         wmax, 100.0 * wmax / ceiling))
+    // dynamicGraphFLines, not dynamicGraphPanel: a still figure is VECTOR here -- one FLine
+    // per edge, weight driving colour AND thickness, through showPlaneGrid -> drawToSVG.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-        dynamicGraphPanel(state.points, edges.values(), window, 400, 400, ceiling, "magma")
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
 }
 
-showImg(montage(panels, columns = 3, cellSide = 400))
+// One shared window, so nothing but the topology differs between the six panels.
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 3, cellWidth = 400, cellHeight = 400,
+    window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ## 2. 2 — reinforcement and forgetting
@@ -162,7 +169,7 @@ within rExit. The control arm is rExit == rEnter -- the identical system with th
 removed and nothing else changed.
 
 ```edn [field-box id="dgs_hysteresis" role="properties"]
-{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [800.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 62 "characters" 3214 "sha256" "7f9566ac9e9d6c61c1903e15fc9665d8966302ff7b0b3e76966e3ec676076f5f"}]}
+{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [800.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 70 "characters" 3686 "sha256" "b41885c96d0a7a75336fdd9d8c394dbd1a54f89b7eb0753d4073526ce7050aa7"}]}
 ```
 
 ```kotlin [field-property box="dgs_hysteresis" name="code" path="dgs_hysteresis_code_.kt"]
@@ -187,13 +194,19 @@ println("rExit 0.10 (control arm): formed at d=0.05 = %s, survives d=0.13 = %s".
     walk(0.10).first, walk(0.10).second))
 
 // On a wobbling cloud the difference is how much WORK the graph does to stay put.
-fun flicker(rExit: Double): List<Any> {
-    val n = 200
-    val base = List(n) { i ->
-        val a = i * 2.39996322972865332
-        val r = 0.45 * Math.sqrt((i + 0.5) / n)
-        Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-    }
+val n = 200
+val base = List(n) { i ->
+    val a = i * 2.39996322972865332
+    val r = 0.45 * Math.sqrt((i + 0.5) / n)
+    Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+}
+// One window, from the cloud at rest, shared by both panels -- otherwise the sparser arm is
+// drawn at its own scale and the comparison says nothing.
+val window = dynamicGraphWindow(base, padFraction = 0.06)
+
+class Flicker(val appeared: Int, val vanished: Int, val standing: Int, val lines: List<FLine>)
+
+fun flicker(rExit: Double): Flicker {
     val state = DynamicPointState(base.map { Vec3(it) }.toMutableList())
     val edges = DynamicEdgeList(n)
     val hash = Vec3SpatialHash(0.06)
@@ -214,20 +227,22 @@ fun flicker(rExit: Double): List<Any> {
         vanished += (present - now).size
         present = now
     }
-    val window = dynamicGraphWindow(base, padFraction = 0.06)
-    return listOf(appeared, vanished, present.size,
-        dynamicGraphPanel(state.points, edges.values(), window, 460, 460, 3.0, "magma"))
+    return Flicker(appeared, vanished, present.size,
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"))
 }
 val on = flicker(rExit = 0.075)
 val off = flicker(rExit = 0.055)
-println("hysteresis on:  ${on[0]} created, ${on[1]} lost, ${on[2]} standing after 150 frames")
-println("hysteresis off: ${off[0]} created, ${off[1]} lost, ${off[2]} standing after 150 frames")
+println("hysteresis on:  ${on.appeared} created, ${on.vanished} lost, ${on.standing} standing after 150 frames")
+println("hysteresis off: ${off.appeared} created, ${off.vanished} lost, ${off.standing} standing after 150 frames")
 println("...the memoryless arm creates %.2fx as many and loses %.1fx as many".format(
-    (off[0] as Int).toDouble() / (on[0] as Int), (off[1] as Int).toDouble() / (on[1] as Int)))
-showImg(montage(listOf(
-    "rExit 0.075: ${on[0]} in, ${on[1]} out" to on[3] as Img,
-    "rExit = rEnter: ${off[0]} in, ${off[1]} out" to off[3] as Img
-), columns = 2, cellSide = 460))
+    off.appeared.toDouble() / on.appeared, off.vanished.toDouble() / on.vanished))
+// The figure is not allowed to crop its own subject silently.
+println("points outside the shared window: ${dynamicGraphOutsideWindow(base, window)}")
+showPlaneGrid(
+    "rExit 0.075: ${on.appeared} in, ${on.vanished} out" to on.lines,
+    "rExit = rEnter: ${off.appeared} in, ${off.vanished} out" to off.lines,
+    columns = 2, cellWidth = 460, cellHeight = 460, window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ## 4. 6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin
@@ -345,7 +360,7 @@ pairs only in passing. The minWeight cut has to tell those apart using nothing b
 accumulated weight -- and it recovers the groups exactly.
 
 ```edn [field-box id="dgs_threshold" role="properties"]
-{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 66 "characters" 2992 "sha256" "1f08142cff1e4effeb7a4d410d06f14b3a2116019405af09055d1cec9cf6f9dd"}]}
+{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 72 "characters" 3352 "sha256" "a6d045efeb3f39fbc214c42c7f87781f9ab24d6107deac592781138fd3a0befe"}]}
 ```
 
 ```kotlin [field-property box="dgs_threshold" name="code" path="dgs_threshold_code_.kt"]
@@ -403,7 +418,10 @@ fun componentSizes(graph: PointGraph): List<Int> {
     return sizes.values.sortedDescending()
 }
 
+// Pinned rather than fitted: the clusters are somewhere else at t = 0 and at t = 4 s, so a
+// window derived from the final frame would frame a different picture from the run's.
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
+println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
     val graph = edges.toPointGraph(minWeight = cut)
     val groups = componentSizes(graph).filter { it > 1 }
@@ -412,9 +430,12 @@ val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
         cut, graph.edges.size, cross, groups))
     val kept = edges.values().filter { it.weight > cut }
     "w>%.1f  %de  %d groups".format(cut, graph.edges.size, groups.size) to
-        dynamicGraphPanel(state.points, kept, window, 430, 430, ceiling, "magma")
+        dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma")
 }
-showImg(montage(panels, columns = 2, cellSide = 430))
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2, cellWidth = 430, cellHeight = 430, window = dynamicGraphPlaneWindow(window),
+)
 ```
 
 ## 6. 5 — LAUNCH ME: the graph rewiring while nothing moves

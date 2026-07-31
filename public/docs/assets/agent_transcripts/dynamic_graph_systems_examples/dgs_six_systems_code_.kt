@@ -48,8 +48,15 @@ val panels = systems.map { (name, system) ->
     println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
         name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
         wmax, 100.0 * wmax / ceiling))
+    // dynamicGraphFLines, not dynamicGraphPanel: a still figure is VECTOR here -- one FLine
+    // per edge, weight driving colour AND thickness, through showPlaneGrid -> drawToSVG.
     "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-        dynamicGraphPanel(state.points, edges.values(), window, 400, 400, ceiling, "magma")
+        dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
 }
 
-showImg(montage(panels, columns = 3, cellSide = 400))
+// One shared window, so nothing but the topology differs between the six panels.
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 3, cellWidth = 400, cellHeight = 400,
+    window = dynamicGraphPlaneWindow(window),
+)

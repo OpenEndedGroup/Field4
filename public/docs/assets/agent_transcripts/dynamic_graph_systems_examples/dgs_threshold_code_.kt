@@ -52,7 +52,10 @@ fun componentSizes(graph: PointGraph): List<Int> {
     return sizes.values.sortedDescending()
 }
 
+// Pinned rather than fitted: the clusters are somewhere else at t = 0 and at t = 4 s, so a
+// window derived from the final frame would frame a different picture from the run's.
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
+println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
 val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
     val graph = edges.toPointGraph(minWeight = cut)
     val groups = componentSizes(graph).filter { it > 1 }
@@ -61,6 +64,9 @@ val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
         cut, graph.edges.size, cross, groups))
     val kept = edges.values().filter { it.weight > cut }
     "w>%.1f  %de  %d groups".format(cut, graph.edges.size, groups.size) to
-        dynamicGraphPanel(state.points, kept, window, 430, 430, ceiling, "magma")
+        dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma")
 }
-showImg(montage(panels, columns = 2, cellSide = 430))
+showPlaneGrid(
+    *panels.toTypedArray(),
+    columns = 2, cellWidth = 430, cellHeight = 430, window = dynamicGraphPlaneWindow(window),
+)

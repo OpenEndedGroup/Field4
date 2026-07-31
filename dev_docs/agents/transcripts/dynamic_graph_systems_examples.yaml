@@ -16,6 +16,10 @@ description: >
   the anisotropic metric turning, and the right-hand panel is the identical system with its clock
   pinned at zero. The morphogenesis box grows a 64-point ring into a branching filament against the
   same pipeline with tip growth removed. None of the six opens a Window or a Renderer.
+  The three graph figures are VECTOR -- dynamicGraphFLines into showPlaneGrid, so one FLine per
+  edge with weight driving colour and thickness -- and only the two clips use the dynamicGraphPanel
+  raster, because animateEvolution's panels are typed on Img. Reach for dynamicGraphFLines when you
+  are writing a new still here.
 operations:
   - create:
       box: dgs_six_systems
@@ -77,11 +81,18 @@ operations:
               println("%-16s %4d edges  %5.1f%% in a triangle  mean degree %.2f  wmax %.4f (%.1f%% of ceiling)".format(
                   name, edges.values().size, 100.0 * fraction, 2.0 * edges.values().size / state.pointCount,
                   wmax, 100.0 * wmax / ceiling))
+              // dynamicGraphFLines, not dynamicGraphPanel: a still figure is VECTOR here -- one FLine
+              // per edge, weight driving colour AND thickness, through showPlaneGrid -> drawToSVG.
               "%s: %de %d%%tri".format(name, edges.values().size, Math.round(100.0 * fraction)) to
-                  dynamicGraphPanel(state.points, edges.values(), window, 400, 400, ceiling, "magma")
+                  dynamicGraphFLines(state.points, edges.values(), maxWeight = ceiling, colormap = "magma")
           }
 
-          showImg(montage(panels, columns = 3, cellSide = 400))
+          // One shared window, so nothing but the topology differs between the six panels.
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 3, cellWidth = 400, cellHeight = 400,
+              window = dynamicGraphPlaneWindow(window),
+          )
   - create:
       box: dgs_decay
       name: "2 — reinforcement and forgetting"
@@ -172,13 +183,19 @@ operations:
               walk(0.10).first, walk(0.10).second))
 
           // On a wobbling cloud the difference is how much WORK the graph does to stay put.
-          fun flicker(rExit: Double): List<Any> {
-              val n = 200
-              val base = List(n) { i ->
-                  val a = i * 2.39996322972865332
-                  val r = 0.45 * Math.sqrt((i + 0.5) / n)
-                  Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
-              }
+          val n = 200
+          val base = List(n) { i ->
+              val a = i * 2.39996322972865332
+              val r = 0.45 * Math.sqrt((i + 0.5) / n)
+              Vec3((r * Math.cos(a)).toFloat(), (r * Math.sin(a)).toFloat(), 0f)
+          }
+          // One window, from the cloud at rest, shared by both panels -- otherwise the sparser arm is
+          // drawn at its own scale and the comparison says nothing.
+          val window = dynamicGraphWindow(base, padFraction = 0.06)
+
+          class Flicker(val appeared: Int, val vanished: Int, val standing: Int, val lines: List<FLine>)
+
+          fun flicker(rExit: Double): Flicker {
               val state = DynamicPointState(base.map { Vec3(it) }.toMutableList())
               val edges = DynamicEdgeList(n)
               val hash = Vec3SpatialHash(0.06)
@@ -199,20 +216,22 @@ operations:
                   vanished += (present - now).size
                   present = now
               }
-              val window = dynamicGraphWindow(base, padFraction = 0.06)
-              return listOf(appeared, vanished, present.size,
-                  dynamicGraphPanel(state.points, edges.values(), window, 460, 460, 3.0, "magma"))
+              return Flicker(appeared, vanished, present.size,
+                  dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0, colormap = "magma"))
           }
           val on = flicker(rExit = 0.075)
           val off = flicker(rExit = 0.055)
-          println("hysteresis on:  ${on[0]} created, ${on[1]} lost, ${on[2]} standing after 150 frames")
-          println("hysteresis off: ${off[0]} created, ${off[1]} lost, ${off[2]} standing after 150 frames")
+          println("hysteresis on:  ${on.appeared} created, ${on.vanished} lost, ${on.standing} standing after 150 frames")
+          println("hysteresis off: ${off.appeared} created, ${off.vanished} lost, ${off.standing} standing after 150 frames")
           println("...the memoryless arm creates %.2fx as many and loses %.1fx as many".format(
-              (off[0] as Int).toDouble() / (on[0] as Int), (off[1] as Int).toDouble() / (on[1] as Int)))
-          showImg(montage(listOf(
-              "rExit 0.075: ${on[0]} in, ${on[1]} out" to on[3] as Img,
-              "rExit = rEnter: ${off[0]} in, ${off[1]} out" to off[3] as Img
-          ), columns = 2, cellSide = 460))
+              off.appeared.toDouble() / on.appeared, off.vanished.toDouble() / on.vanished))
+          // The figure is not allowed to crop its own subject silently.
+          println("points outside the shared window: ${dynamicGraphOutsideWindow(base, window)}")
+          showPlaneGrid(
+              "rExit 0.075: ${on.appeared} in, ${on.vanished} out" to on.lines,
+              "rExit = rEnter: ${off.appeared} in, ${off.vanished} out" to off.lines,
+              columns = 2, cellWidth = 460, cellHeight = 460, window = dynamicGraphPlaneWindow(window),
+          )
   - create:
       box: dgs_threshold
       name: "4 — the weight threshold recovers the co-moving groups"
@@ -277,7 +296,10 @@ operations:
               return sizes.values.sortedDescending()
           }
 
+          // Pinned rather than fitted: the clusters are somewhere else at t = 0 and at t = 4 s, so a
+          // window derived from the final frame would frame a different picture from the run's.
           val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
+          println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
           val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
               val graph = edges.toPointGraph(minWeight = cut)
               val groups = componentSizes(graph).filter { it > 1 }
@@ -286,9 +308,12 @@ operations:
                   cut, graph.edges.size, cross, groups))
               val kept = edges.values().filter { it.weight > cut }
               "w>%.1f  %de  %d groups".format(cut, graph.edges.size, groups.size) to
-                  dynamicGraphPanel(state.points, kept, window, 430, 430, ceiling, "magma")
+                  dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma")
           }
-          showImg(montage(panels, columns = 2, cellSide = 430))
+          showPlaneGrid(
+              *panels.toTypedArray(),
+              columns = 2, cellWidth = 430, cellHeight = 430, window = dynamicGraphPlaneWindow(window),
+          )
   - create:
       box: dgs_breathing
       name: "5 — LAUNCH ME: the graph rewiring while nothing moves"
