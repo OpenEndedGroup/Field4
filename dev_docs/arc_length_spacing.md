@@ -30,9 +30,21 @@ so the recursion terminated at **one leaf** and the arc-length table for a 500-u
 single linear ramp. `B(0.5)` on that cubic is at x = 411.25, not 250, so "the point half way along"
 came out 161 units — a third of the whole curve — from where it belonged.
 
-This is not an exotic input. A straight stem stored as a cubic is what font outlines and imported
-SVG are full of, and the glyph-ish test curve in the harness shows the same defect inside an
-otherwise well-behaved closed outline.
+**How common is that input? Less common than this page originally claimed, and the correction is
+worth reading.** The first draft of this section asserted that "a straight stem stored as a cubic is
+what font outlines and imported SVG are full of". That was reasoning, not measurement, and when it
+was measured it turned out to be false for the case it named: `GlyphArcLengthTest` pulls twelve real
+outlines out of the JVM's logical `SANS_SERIF` via `Font.createGlyphVector(...).outline` and finds
+**zero flatness-blind cubics in any of them** — the font stores straight stems as `LineTo`, and its
+curved cubics keep their control points well off the chord, so the old criterion already subdivided
+them correctly. Arc-length spacing on real glyphs measures **1.001× before this fix and 1.000× after**.
+
+So the honest statement of the blast radius is narrower: the defective shape is a cubic whose control
+points sit on (or very near) its chord, it is trivially constructible by hand, `ArcLengthTestCurves`'
+hand-built `glyphish` curve exercises it (1.107× → 1.000×), and it is exactly what a bulk
+`cubicTo`-emitting generator produces — but the claim that real font outlines are full of it did not
+survive contact with a font. Imported SVG remains **unmeasured**; do not repeat the original claim
+about it either without checking.
 
 ## The fix
 
@@ -96,9 +108,24 @@ fix that changed the reported length would have been suspect.
 
 ## Cost
 
-`PathFlattener` is **not** on the GPU render path. Nothing outside `FLinesAndJavaShapes` constructs
-one, and `FLinesAndJavaShapes.positions` — the only other consumer of its `mappings` — has no
-callers in `src/`. So this is the cost of geometry operations, not of frames.
+`PathFlattener` is **not** on the GPU render path. It is constructed in exactly one place in all of
+main source (`FLinesAndJavaShapes.kt:810`, inside `Cursor.pathFlattener`), and
+`FLinesAndJavaShapes.positions` — the only other consumer of its `mappings` — has no callers in
+`src/`. So this is the cost of geometry operations, not of frames.
+
+**Field has a second, independent flattener, and it is the one that draws.** `StandardDrawing.linesOut`
+(`StandardDrawing.kt:206`) calls `FLine.uniform_linearize` (`FLine.kt:857`), which emits a fixed
+`samplesPerCubic` (default 100) samples per `CubicTo` at **uniform parameter**; fills reach the same
+function through `FLine.tessellate`, and `ThreeJsViewer.kt` is a third caller. Nothing on that path
+constructs a `PathFlattener` or a `Cursor`.
+
+That second flattener does **not** share this defect, and the reason is structural rather than lucky:
+it never reports a distance, so it cannot report a wrong one. Its samples are unevenly spaced *along*
+a badly parameterised cubic, but every sample lies exactly on the curve, so the drawn shape is right.
+`RenderPathFlatteningTest` pins this — and measures the corollary that matters if anyone is ever
+tempted to unify the two: at equal sample budget, spacing by arc length is **two orders of magnitude
+worse for shape fidelity** than the uniform-parameter spacing the renderer already uses. Unifying
+them would be a regression, not a cleanup.
 
 The worst case is a polyline stored as straight cubics, where `minSubDiv` is pure overhead: 1000
 straight cubics go from 1000 to 4000 leaves and from 277.7us to 341.6us to build (1.23x — the leaf
