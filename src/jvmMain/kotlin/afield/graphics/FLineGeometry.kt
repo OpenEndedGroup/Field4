@@ -1199,7 +1199,8 @@ fun FLine.byReversing(): FLine {
     if (this.nodes.isEmpty()) return result
 
     // Start at the end
-    result.moveTo(this.nodes.last().to)
+    // `.to` throws on a Close, and reversing a closed shape is an entirely ordinary thing to ask.
+    result.moveTo(currentPoint ?: return result)
 
     // Traverse backwards
     for (i in this.nodes.size - 1 downTo 1) {
@@ -2287,7 +2288,7 @@ fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine {
     }
     if (nodes.isEmpty()) return moveTo(p1)
 
-    val p0 = nodes.last().to
+    val p0 = currentPoint ?: return moveTo(p1)
     if (radius <= 0f) return lineTo(p1)
 
     val v1 = Vec3(p0).sub(p1)
@@ -2365,7 +2366,7 @@ fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine {
         return lineTo(end)
     }
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(through).lineTo(end)
     val arc = arcThrough3Points(start, through, end, segments)
     arc.nodes.drop(1).forEach { lineTo(it.to) }
     return this
@@ -2414,7 +2415,7 @@ fun FLine.polarCubicTo(
         return moveTo(endPoint)
     }
     val plane = plane2DOrDefault()
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val c1 = Vec3(start).add(polarVector(c1Angle, c1Length, plane))
     val c2 = Vec3(endPoint).add(polarVector(c2Angle, c2Length, plane))
     return cubicTo(c1, c2, endPoint)
@@ -2794,7 +2795,7 @@ fun FLine.biarcTo(
     }
     if (nodes.isEmpty()) return moveTo(endPoint)
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val chord = Vec3(endPoint).sub(start)
     val chordLen = chord.length()
     if (chordLen < 1e-6f) return lineTo(endPoint)
@@ -3061,7 +3062,7 @@ fun FLine.byAppendingQuadratic(controlPoint: Vec3, endPoint: Vec3): FLine {
         return this
     }
 
-    val start = this.nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
 
     // Convert quadratic to cubic
     // C1 = start + 2/3 * (control - start)
@@ -3089,7 +3090,7 @@ fun FLine.byAppendingArcByTangent(
         return this
     }
 
-    val start = this.nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
 
     // Find center as intersection of perpendiculars to tangents
     val startPerp = Vec3(startTangent).normalize()
@@ -4131,7 +4132,8 @@ fun FLine.byEulerSpiralTo(
     headingScale: Float = 1f,
     turn: Float = 0f
 ): FLine {
-    val start = nodes.lastOrNull()?.to ?: vec(0f, 0f, 0f)
+    // `?.` guards a missing node, not a Close's empty storage — currentPoint guards both.
+    val start = currentPoint ?: vec(0f, 0f, 0f)
     val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
     val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
 
@@ -4172,7 +4174,7 @@ fun FLine.eulerSpiralTo(
     }
     if (nodes.isEmpty()) return moveTo(endPoint)
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
     val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
 

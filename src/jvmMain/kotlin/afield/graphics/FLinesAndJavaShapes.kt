@@ -182,7 +182,7 @@ class FLinesAndJavaShapes {
                 val node = on.nodes[i]
                 if (node is FLine.MoveTo) return Vec3(node.to)
             }
-            return Vec3(on.nodes.firstOrNull()?.to ?: Vec3())
+            return Vec3(on.nodes.firstOrNull()?.toOrNull ?: Vec3())
         }
 
         /**
@@ -2414,40 +2414,51 @@ class FLinesAndJavaShapes {
         fun closestT(to: FLine, point: Vec3): Float {
             var best = Float.POSITIVE_INFINITY
             var tt = 0.0
+
+            // The straight-segment case, shared by LineTo and Close — a Close *is* a straight
+            // segment, just one whose end point has to be resolved rather than read.
+            fun considerSegment(i: Int, p0: Vec3, p1: Vec3) {
+                val dir: Vec3 = Vec3(p1).sub(p0)
+                val len: Float = dir.length()
+                if (len == 0.0f) {
+                    val dd: Float = p1.distance(point)
+                    if (dd <= best) {
+                        best = dd
+                        tt = (i - 1).toDouble()
+                    }
+                    return
+                }
+                dir.mul(1 / len)
+                var d: Float = dir.dot(Vec3(point).sub(p0))
+                if (d < 0) d = 0.0f
+                if (d > len) d = len
+                val at: Vec3 = p0 + dir * d
+                val dd: Float = at.distance(point)
+                if (dd < best) {
+                    best = dd
+                    tt = (d / len + (i - 1)).toDouble()
+                }
+            }
+
             for (i in 1 until to.nodes.size) {
                 val n1: FLine.Node = to.nodes.get(i)
-                val n0: FLine.Node = to.nodes.get(i - 1)
-                if (n1 is FLine.MoveTo) continue
+                // endPointOf, not `.to`: in a multi-subpath line the previous node can be a Close,
+                // which stores no point of its own.
+                val p0: Vec3 = to.endPointOf(i - 1)
 
-                if (n1 is FLine.LineTo) {
-                    val dir: Vec3 = Vec3(n1.to).sub(n0.to)
-                    if (dir.length() == 0.0f) {
-                        val dd: Float = n1.to.distance(point)
-                        if (dd <= best) {
-                            best = dd
-
-                            tt = (i - 1).toDouble()
-                        }
-                    } else {
-                        val len: Float = dir.length()
-                        dir.mul(1 / len)
-                        var d: Float = dir.dot(Vec3(point).sub(n0.to))
-                        if (d < 0) d = 0.0f
-                        if (d > len) d = len
-                        val at: Vec3 = n0.to + dir * d
-                        val dd: Float = at.distance(point)
+                when (n1) {
+                    is FLine.MoveTo -> continue
+                    is FLine.LineTo -> considerSegment(i, p0, n1.to)
+                    // This was an unguarded `else` casting to CubicTo, so a Close threw
+                    // ClassCastException — hit-testing blew up on every closed shape.
+                    is FLine.Close -> considerSegment(i, p0, to.endPointOf(i))
+                    is FLine.CubicTo -> {
+                        val t = CubicSegment3(p0, n1.c1, n1.c2, n1.to).closestToPoint(point)
+                        val dd: Float = evaluateCubicFrame(p0, n1.c1, n1.c2, n1.to, t, Vec3()).distance(point)
                         if (dd < best) {
                             best = dd
-                            tt = (d / len + (i - 1)).toDouble()
+                            tt = (t + (i - 1)).toDouble()
                         }
-                    }
-                } else {
-                    val c = n1 as FLine.CubicTo
-                    val t = CubicSegment3(n0.to, c.c1, c.c2, c.to).closestToPoint(point)
-                    val dd: Float = evaluateCubicFrame(n0.to, c.c1, c.c2, c.to, t, Vec3()).distance(point)
-                    if (dd < best) {
-                        best = dd
-                        tt = (t + (i - 1)).toDouble()
                     }
                 }
             }

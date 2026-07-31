@@ -500,8 +500,9 @@ class FLine : HasProperties {
     }
 
     private fun anchor3(a: ListAnchor): Vec3 = when (a) {
-        ListAnchor.Start -> nodes.firstOrNull()?.to?.let(::Vec3) ?: Vec3()
-        ListAnchor.End -> nodes.lastOrNull()?.to?.let(::Vec3) ?: Vec3()
+        // endPointOf, not `.to`: the last node of a closed line is a Close, which stores no point.
+        ListAnchor.Start -> if (nodes.isEmpty()) Vec3() else Vec3(endPointOf(0))
+        ListAnchor.End -> if (nodes.isEmpty()) Vec3() else Vec3(endPointOf(nodes.size - 1))
         ListAnchor.Midpoint -> midPoint()
         ListAnchor.Center -> center()
     }
