@@ -1,10 +1,12 @@
 package afield.stdlib
 
+import afield.graphics.FLine
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.ln
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -1005,6 +1007,244 @@ class DynamicGraphSystemsTest {
         assertTrue(summary.startsWith("6 pts, 1 edges"), summary)
         assertTrue(summary.contains("4 isolated"), "four of the six points touch no edge: $summary")
         assertTrue(summary.contains("t=1.50s"), summary)
+    }
+
+    // ==========================================================================================
+    // dynamic_graph_field.kt — the FLines the page's *still* figures are made of
+    //
+    // The raster above is the animation path and nothing else. Every still on the page goes through
+    // `dynamicGraphFLines` -> `showPlaneGrid` -> `drawToSVG`, so these assert the emitted geometry and
+    // then the emitted SVG, not that a call returned a non-empty list.
+    // ==========================================================================================
+
+    /** Luminance of a colour, for asserting that a colour ramp actually ramps. */
+    private fun luma(c: Vec4): Double =
+        0.2126 * c.x + 0.7152 * c.y + 0.0722 * c.z
+
+    /**
+     * The shape of the drawing: one two-node polyline per edge, then exactly one dot-drawn line
+     * carrying the whole population. The dot layer is separate and last because the population has to
+     * stay legible when the graph has decayed to nothing — a cloud of isolated points and an empty
+     * frame are different states and a figure that draws only edges cannot tell them apart.
+     */
+    @Test
+    fun theFigureIsOnePolylinePerEdgePlusOneLayerOfDots() {
+        val points = listOf(Vec3(-1f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(0f, 1f, 0f))
+        val edges = DynamicEdgeList(3)
+        edges.reinforce(0, 1, 1.0, 10f, 4.0)
+        edges.reinforce(1, 2, 2.0, 10f, 4.0)
+        edges.reinforce(0, 2, 4.0, 10f, 4.0)
+
+        val lines = dynamicGraphFLines(points, edges.values(), maxWeight = 4.0)
+        assertEquals(3 + 1, lines.size, "three edges and one dot layer")
+
+        val edgeLines = lines.dropLast(1)
+        for ((n, l) in edgeLines.withIndex()) {
+            assertEquals(2, l.nodes.size, "edge line $n must be a single segment, not a path")
+            assertTrue(l.stroked, "edge line $n must be stroked")
+            assertTrue(!l.pointed, "edge line $n must not be pointed — that is the dot layer's job")
+            assertTrue(!l.filled, "edge line $n must not be filled")
+        }
+
+        val dots = lines.last()
+        assertEquals(points.size, dots.nodes.size, "every point gets a node in the dot layer")
+        assertTrue(dots.pointed && !dots.stroked, "the dot layer is drawn as dots, not joined up")
+
+        // Three isolated points still make a figure; without the dot layer this would be empty.
+        assertEquals(1, dynamicGraphFLines(points, emptyList()).size)
+        assertEquals(points.size, dynamicGraphFLines(points, emptyList())[0].nodes.size)
+
+        // pointSize = 0 is the way to ask for edges alone, and it removes the layer rather than
+        // emitting an invisible one.
+        assertEquals(3, dynamicGraphFLines(points, edges.values(), maxWeight = 4.0, pointSize = 0.0).size)
+
+        // An endpoint outside the index space is skipped rather than throwing mid-figure.
+        val stale = DynamicEdgeList(9).also { it.reinforce(0, 7, 1.0, 10f, 4.0) }
+        assertEquals(1, dynamicGraphFLines(points, stale.values(), maxWeight = 4.0).size, "only the dot layer")
+    }
+
+    /**
+     * Weight is encoded **twice** — in colour and in stroke width — which is what makes the figure
+     * survive being printed or read by someone who cannot separate magma's purple from its cream.
+     *
+     * Both are asserted against a caller-named `maxWeight` rather than against the edge set's own
+     * range, so the control arm is the pair of runs at the bottom: the same edge drawn against two
+     * different ceilings must come out differently, or the ceiling is decoration.
+     */
+    @Test
+    fun weightDrivesBothColourAndThicknessMonotonically() {
+        val points = listOf(Vec3(0f, 0f, 0f), Vec3(1f, 0f, 0f))
+        fun drawn(weight: Double, ceiling: Double = 8.0, thin: Double = 0.5, thick: Double = 2.5): FLine {
+            val edges = DynamicEdgeList(2).also { it.reinforce(0, 1, weight, 10f, maxWeight = 32.0) }
+            assertEquals(weight, edges.get(0, 1)!!.weight, 1e-12)
+            return dynamicGraphFLines(
+                points, edges.values(), maxWeight = ceiling, thinEdge = thin, thickEdge = thick,
+            )[0]
+        }
+
+        val weights = listOf(0.0, 0.5, 1.0, 2.0, 4.0, 8.0)
+        val drawnLines = weights.map { drawn(it) }
+        for (i in 1 until drawnLines.size) {
+            val a = drawnLines[i - 1]
+            val b = drawnLines[i]
+            assertTrue(
+                b.thickness!! > a.thickness!!,
+                "thickness must rise with weight: w=${weights[i - 1]} gave ${a.thickness}, " +
+                    "w=${weights[i]} gave ${b.thickness}",
+            )
+            assertTrue(
+                luma(b.color) > luma(a.color),
+                "colour must brighten with weight: w=${weights[i - 1]} gave luma ${luma(a.color)}, " +
+                    "w=${weights[i]} gave ${luma(b.color)}",
+            )
+        }
+        // The ends are exact, so the caption's "thickest stroke is the ceiling" is true and not roughly true.
+        assertEquals(0.5, drawnLines.first().thickness!!, 1e-12)
+        assertEquals(2.5, drawnLines.last().thickness!!, 1e-12)
+
+        // Past the ceiling it clamps rather than running away. (16 rather than 64 because `reinforce`
+        // saturates the fixture's own store at 32 and `drawn` refuses to lie about the weight it drew.)
+        assertEquals(2.5, drawn(16.0).thickness!!, 1e-12)
+        assertEquals(luma(drawnLines.last().color), luma(drawn(16.0).color), 1e-12)
+
+        // Control arm one: with thinEdge == thickEdge the width stops carrying anything, which proves
+        // the ramp above is the mapping and not an artefact of the assertion.
+        assertEquals(1.0, drawn(0.0, thin = 1.0, thick = 1.0).thickness!!, 1e-12)
+        assertEquals(1.0, drawn(8.0, thin = 1.0, thick = 1.0).thickness!!, 1e-12)
+
+        // Control arm two: the SAME edge against two ceilings is two different strokes. A per-figure
+        // normalisation would make these identical — the failure the file's range policy is about.
+        assertTrue(
+            drawn(2.0, ceiling = 2.0).thickness!! > drawn(2.0, ceiling = 8.0).thickness!!,
+            "an edge at its ceiling must be drawn heavier than the same edge at a quarter of a larger one",
+        )
+        assertTrue(luma(drawn(2.0, ceiling = 2.0).color) > luma(drawn(2.0, ceiling = 8.0).color))
+
+        // A weight of ~0 is still visible: minEdgeIntensity lifts it off the bottom of the ramp, and
+        // setting it to 0 is how you ask for the black it would otherwise be.
+        assertTrue(luma(drawn(0.0).color) > 0.0, "a fresh faint edge must not be invisible")
+        val floorless = dynamicGraphFLines(
+            points,
+            DynamicEdgeList(2).also { it.reinforce(0, 1, 0.0, 10f, 8.0) }.values(),
+            maxWeight = 8.0, minEdgeIntensity = 0.0,
+        )[0]
+        assertTrue(
+            luma(floorless.color) < luma(drawn(0.0).color),
+            "minEdgeIntensity = 0 must sit below the default's lifted floor",
+        )
+    }
+
+    /**
+     * The two paths must draw the **same picture**, and the part of that most likely to silently
+     * disagree is the vertical axis: SVG's y grows downward and the raster's does not, so
+     * `dynamicGraphFLines` negates y and `dynamicGraphPlaneWindow` negates the window to match. Get
+     * that wrong and the still figures on the page are mirror images of the clips beside them.
+     *
+     * So this asserts against the real emitted markup rather than against the FLines: the `<circle>`
+     * centres `planeFigureHtml` writes out, compared pixel for pixel with the raster's own point
+     * coordinates over the same world window.
+     */
+    @Test
+    fun theFigureAndTheAnimationFrameAgreeOnWhereEveryPointLands() {
+        // Deliberately not symmetric about either axis, so a flip or a transpose cannot pass.
+        val points = listOf(Vec3(-1f, 0f, 0f), Vec3(1f, 0f, 0f), Vec3(0f, 1.5f, 0f), Vec3(0.5f, -0.5f, 0f))
+        val edges = DynamicEdgeList(points.size)
+        edges.reinforce(0, 1, 4.0, 10f, 8.0)
+        edges.reinforce(2, 3, 8.0, 10f, 8.0)
+
+        val window = doubleArrayOf(-2.0, -2.0, 2.0, 2.0)
+        // 101 raster pixels and a 100-pixel frame at zero padding both scale the 4-unit window by 25,
+        // so the two paths are directly comparable and no fudge factor is hiding a bug.
+        val html = planeFigureHtml(
+            dynamicGraphFLines(points, edges.values(), maxWeight = 8.0),
+            width = 100, height = 100, padding = 0.0, window = dynamicGraphPlaneWindow(window),
+        )
+        val circles = Regex("""<circle cx="([-0-9.]+)" cy="([-0-9.]+)" r="([-0-9.]+)"""")
+            .findAll(html)
+            .map { Triple(it.groupValues[1].toDouble(), it.groupValues[2].toDouble(), it.groupValues[3].toDouble()) }
+            .toList()
+        assertEquals(points.size, circles.size, "one <circle> per point, in the emitted markup")
+
+        // …and the raster agrees, which is the claim that matters: still and clip are one picture. Its
+        // own coordinates are rounded to whole pixels, so the comparison rounds the same way.
+        val raster = dynamicGraphImg(points, emptyList(), window, 101, 101, pointRadius = 0).img
+        for ((n, p) in points.withIndex()) {
+            val expectedX = (p.x.toDouble() + 2.0) * 25.0
+            val expectedY = 100.0 - (p.y.toDouble() + 2.0) * 25.0
+            assertEquals(expectedX, circles[n].first, 1e-6, "point $n x")
+            assertEquals(expectedY, circles[n].second, 1e-6, "point $n y (SVG y grows downward)")
+            assertEquals(
+                1f, raster.at(expectedX.roundToInt(), expectedY.roundToInt()),
+                "the raster lights the same pixel the vector figure puts point $n on",
+            )
+        }
+        // planeFigureHtml's radius convention is 3 * pointSize; the default 0.5 is the raster's 1-pixel dot.
+        assertEquals(1.5, circles[0].third, 1e-6)
+
+        assertEquals(afield.Rect(-2.0, -2.0, 4.0, 4.0), dynamicGraphPlaneWindow(window))
+        // A window off-centre in y is where a sign error shows up, so pin that too.
+        assertEquals(afield.Rect(0.0, -3.0, 1.0, 2.0), dynamicGraphPlaneWindow(doubleArrayOf(0.0, 1.0, 1.0, 3.0)))
+    }
+
+    /**
+     * A figure that crops part of its subject has to admit it. `dynamicGraphOutsideWindow` is the
+     * vector path's version of `DynamicGraphRaster.clipped`, and the two must not disagree — a caption
+     * that says "0 clipped" under a figure missing half its cloud is worse than no caption.
+     */
+    @Test
+    fun bothPathsCountWhatFallsOutsideTheWindowTheSameWay() {
+        val points = listOf(Vec3(0f, 0f, 0f), Vec3(50f, 0f, 0f), Vec3(-50f, 0f, 0f), Vec3(0f, 9f, 0f))
+        val window = doubleArrayOf(-1.0, -1.0, 1.0, 1.0)
+        assertEquals(3, dynamicGraphOutsideWindow(points, window))
+        assertEquals(
+            dynamicGraphImg(points, emptyList(), window, 64, 64).clipped,
+            dynamicGraphOutsideWindow(points, window),
+            "the vector and raster paths must report the same clipping",
+        )
+        val roomy = dynamicGraphWindow(points, padFraction = 0.1)
+        assertEquals(0, dynamicGraphOutsideWindow(points, roomy))
+        assertEquals(0, dynamicGraphImg(points, emptyList(), roomy, 64, 64).clipped)
+    }
+
+    /**
+     * The cost of one FLine per edge, measured, because the KDoc makes a claim about it and because the
+     * way this gets 30× worse is a one-word mistake: `planeFigureHtml` writes a `pointed` node out as
+     * ~5 kB of Skia Bézier (`spatial_field.kt`'s own note), so leaving `pointed` on the edge lines
+     * would take the page's biggest figure from a couple of hundred kB to several megabytes.
+     *
+     * The graph here is the scale of figure 6's densest panel — 306 points, ~1300 edges.
+     */
+    @Test
+    fun theEmittedSvgCostsAboutWhatTheKDocSaysPerEdge() {
+        val cloud = disc(306, 0.5)
+        val state = DynamicPointState(cloud)
+        val edges = DynamicEdgeList(state.pointCount)
+        val hash = Vec3SpatialHash(0.055)
+        val system = Vec3PersistentProximityHysteresisSystem(
+            rEnter = 0.062, rExit = 0.075, ttl = 0.4f, reinforce = 2.5, maxWeight = 3.0,
+        )
+        repeat(40) { stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.30) }
+        val edgeCount = edges.values().size
+        assertTrue(edgeCount > 600, "the fixture needs a dense graph to be worth measuring; got $edgeCount")
+
+        val lines = dynamicGraphFLines(state.points, edges.values(), maxWeight = 3.0)
+        assertEquals(edgeCount + 1, lines.size)
+        val html = planeFigureHtml(
+            lines, width = 430, height = 430,
+            window = dynamicGraphPlaneWindow(dynamicGraphWindow(cloud, padFraction = 0.06)),
+        )
+        assertEquals(
+            state.pointCount,
+            Regex("<circle ").findAll(html).count(),
+            "the dots are <circle> elements, not tessellated Bézier paths",
+        )
+        val perEdge = html.length.toDouble() / edgeCount
+        assertTrue(
+            perEdge < 250.0,
+            "one edge should cost of order 150 bytes of SVG; $edgeCount edges came to ${html.length} " +
+                "chars, ${"%.0f".format(perEdge)} per edge — if this exploded, something turned `pointed` " +
+                "back on for the edge lines",
+        )
     }
 
     // ==========================================================================================
