@@ -7,3 +7,8 @@ arg#Vector3f-empty	VmVjdG9yM2Yo4oC4KQ==	x
 arg#Vector3f-afterX	VmVjdG9yM2YoeD0zLjAs4oC4KQ==	y
 hand#safe-dot	dmFsIHM6IFN0cmluZz8gPSBudWxsCnM/LmxlbuKAuA==	length
 hand#Vec-alias	VmVj4oC4	Vec3
+enum#FnGradientMode	Rm5HcmFkaWVudE1vZGUu4oC4	EXACT
+enum#OptimizeMethod	T3B0aW1pemVNZXRob2Qu4oC4	LBFGS
+enum#FnRewriteSeverity	Rm5SZXdyaXRlU2V2ZXJpdHku4oC4	WARNING
+enum#RectifyMode-nested	YWZpZWxkLnN0ZGxpYi5GdW5jdGlvbnMuUmVjdGlmeU1vZGUu4oC4	FULL
+enum#in-arg	d2l0aChhZmllbGQuc3RkbGliLkZ1bmN0aW9ucykgewogICB2YWwgZiA9IGNvcygyKQogICBmaXRHcmFkaWVudChmLCBmLCBncmFkaWVudCA9IEZuR3JhZGllbnRNb2RlLuKAuCkKfQ==	EXACT
