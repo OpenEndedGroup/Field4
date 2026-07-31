@@ -181,7 +181,19 @@ object OpRegistry {
         OpSpec("wrapY", "transform", emptySet()) { buildUnary(it) { f -> f.wrapY(it.childOr(-1.0, "min"), it.childOr(1.0, "max")) } },
         OpSpec("rectify", "transform", setOf("rectifier")) { buildUnary(it) { f -> f.rectify(parseEnum(it.str("mode"), Functions.RectifyMode.FULL)) } },
         OpSpec("quantize", "transform", setOf("quant")) { buildUnary(it) { f -> f.quantize(it.childOr(8.0, "levels")) } },
-        OpSpec("crush", "transform", setOf("bitcrush", "bitCrush")) { buildUnary(it) { f -> f.bitCrush(it.childOr(8.0, "bits")) } }
+        OpSpec("crush", "transform", setOf("bitcrush", "bitCrush")) { buildUnary(it) { f -> f.bitCrush(it.childOr(8.0, "bits")) } },
+        // The four ex-`mapY` shapers. They used to hide inside an opaque lambda node labelled with
+        // their *child's* name, so the graph did not record that an abs (or an exp) had happened at
+        // all — invisible to `op=`, to the rewrite/evolve layer and to the exact gradient alike.
+        // `exp` is here so it is the transmutable partner of `log` rather than an opaque lambda
+        // beside it. None carries scalar metadata, so each rebuilds from its `source` child alone.
+        // `abs`, `flip` and `exp` also have derivatives (see `FnFormulas`); `sign` deliberately does
+        // not — its derivative is zero wherever it exists, so `FnNonDifferentiable` files it with a
+        // reason rather than letting a fit descend a gradient that is always exactly zero.
+        OpSpec("exp", "transform", emptySet()) { buildUnary(it) { f -> f.exp() } },
+        OpSpec("abs", "transform", setOf("absoluteValue")) { buildUnary(it) { f -> f.abs() } },
+        OpSpec("flip", "transform", setOf("negate")) { buildUnary(it) { f -> f.flip() } },
+        OpSpec("sign", "transform", setOf("signum")) { buildUnary(it) { f -> f.sign() } }
     )
 
     private val specByName: Map<String, OpSpec> = buildMap {

@@ -95,6 +95,9 @@ object DemoTranscriptExecSmokeTest {
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.
         "dynamic_graph_systems_examples",
+        // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
+        // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
+        "autodiff_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

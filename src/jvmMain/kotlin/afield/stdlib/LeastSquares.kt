@@ -16,11 +16,16 @@ import kotlin.math.sqrt
  * reports the parameters, final residuals, cost, iteration count, an `rms`, and a `reason` string
  * — one of "gradient", "step", "improvement", "no accepted step" or "max iterations".
  *
- * The Jacobian is central finite differences, so you never supply derivatives but each iteration
- * costs `2 * parameters` extra residual evaluations. The damped normal equations are solved by
- * Gaussian elimination with partial pivoting; a singular system or a non-finite candidate raises
- * the damping and retries (up to 12 times per iteration) rather than failing. Non-finite initial
- * residuals throw.
+ * The Jacobian is central finite differences **by default**, so you never have to supply
+ * derivatives, but each iteration then costs `2 * parameters` extra residual evaluations. Pass an
+ * explicit [jacobian] — or, easier, write the residuals in [AD] arithmetic and call
+ * [leastSquaresAD], which derives an exact Jacobian by reverse-mode automatic differentiation — to
+ * trade those `2n` evaluations for one backward sweep and get derivatives that are exact rather
+ * than truncated. Omitting [jacobian] leaves the historic path bit-for-bit unchanged.
+ *
+ * The damped normal equations are solved by Gaussian elimination with partial pivoting; a singular
+ * system or a non-finite candidate raises the damping and retries (up to 12 times per iteration)
+ * rather than failing. Non-finite initial residuals throw.
  */
 
 data class LeastSquaresOptions(
@@ -56,9 +61,21 @@ data class LeastSquaresResult(
     val rms: Double get() = if (residuals.isEmpty()) 0.0 else sqrt(2.0 * cost / residuals.size)
 }
 
+/**
+ * Levenberg-Marquardt minimisation of half the squared residual norm.
+ *
+ * @param initial the starting parameter vector; must be non-empty and give finite residuals.
+ * @param options the iteration cap, damping schedule and convergence tolerances.
+ * @param jacobian an exact `∂rᵢ/∂xⱼ` (rows = residuals, columns = parameters). When null — the
+ *        default, and bit-for-bit the historic behaviour — the Jacobian is central finite
+ *        differences at `2n` extra residual evaluations per iteration. [leastSquaresAD] fills this
+ *        in for you from residuals written in [AD] arithmetic.
+ * @param residuals the residual vector at a parameter vector.
+ */
 fun leastSquares(
     initial: DoubleArray,
     options: LeastSquaresOptions = LeastSquaresOptions(),
+    jacobian: ((DoubleArray) -> Array<DoubleArray>)? = null,
     residuals: (DoubleArray) -> DoubleArray
 ): LeastSquaresResult {
     require(initial.isNotEmpty()) { "initial must not be empty" }
@@ -70,7 +87,7 @@ fun leastSquares(
     var damping = options.initialDamping
 
     repeat(options.maxIterations) { iteration ->
-        val j = finiteDifferenceJacobian(x, r, options.finiteDifferenceStep, residuals)
+        val j = jacobian?.invoke(x) ?: finiteDifferenceJacobian(x, r, options.finiteDifferenceStep, residuals)
         val normal = Array(x.size) { DoubleArray(x.size) }
         val gradient = DoubleArray(x.size)
 
@@ -149,6 +166,41 @@ fun leastSquares(
 
     return LeastSquaresResult(x, r, cost, options.maxIterations, converged = false, reason = "max iterations")
 }
+
+/**
+ * [leastSquares] with an **exact** Jacobian, from residuals written once in [AD] arithmetic.
+ *
+ * The residual lambda takes the parameters as tracked [AD] values and returns the residual list; the
+ * plain values drive the Levenberg-Marquardt loop and one reverse-mode sweep per row supplies the
+ * Jacobian. That replaces `2n` residual evaluations per iteration with a single forward pass, and
+ * removes [LeastSquaresOptions.finiteDifferenceStep] from the things you have to get right.
+ *
+ * ```kotlin
+ * val xs = doubleArrayOf(0.0, 0.25, 0.5, 0.75, 1.0)
+ * val ys = xs.map { 2.3 * exp(-1.7 * it) + 0.4 }
+ * val fit = leastSquaresAD(doubleArrayOf(1.0, -1.0, 0.0)) { p ->
+ *     xs.indices.map { i -> p[0] * exp(p[1] * xs[i]) + p[2] - ys[i] }
+ * }
+ * ```
+ *
+ * The residual lambda must be expressible in [AD] arithmetic all the way down — a table lookup or a
+ * `when` on a parameter's value will differentiate only the branch taken, which is correct for the
+ * piecewise function but not for the one you may have meant.
+ */
+fun leastSquaresAD(
+    initial: DoubleArray,
+    options: LeastSquaresOptions = LeastSquaresOptions(),
+    residuals: (List<AD>) -> List<AD>
+): LeastSquaresResult = leastSquares(
+    initial = initial,
+    options = options,
+    jacobian = { x -> jacobian(x) { p -> residuals(p) } },
+    residuals = { x ->
+        val tape = ADTape()
+        val inputs = tape.variables(x)
+        residuals(inputs).map { it.value }.toDoubleArray()
+    }
+)
 
 private fun finiteDifferenceJacobian(
     x: DoubleArray,

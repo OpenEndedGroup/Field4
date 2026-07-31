@@ -113,7 +113,9 @@ data class FnFitConfig(
     val samples: Int,
     val domain: Functions.Domain,
     val rngSeed: Long,
-    val initJitter: Double
+    val initJitter: Double,
+    /** Which gradient the run was *asked* for; [FnFitRun.usedExactGradient] says what it got. */
+    val gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE
 )
 
 /**
@@ -136,7 +138,15 @@ data class FnFitRun(
     val finalError: Double,
     val iterations: Int,
     val evaluations: Int,
-    val config: FnFitConfig
+    val config: FnFitConfig,
+    /**
+     * Whether the run really used the exact reverse-mode gradient from `autodiff_fn.kt`.
+     *
+     * Distinct from `config.gradient`, which records what was *asked* for:
+     * [FnGradientMode.AUTO] falls back to finite differences without complaining, and this is how
+     * you find out. See [exactFitRefusal] for why.
+     */
+    val usedExactGradient: Boolean = false
 ) {
     /** True when the fit ended strictly closer to the target than it started. */
     val improved: Boolean get() = finalError < initialError
@@ -219,6 +229,17 @@ private fun finiteDifferenceGradient(
  *        [FnMetric.huber] or [FnMetric.lp] to reshape the loss landscape.
  * @param initJitter if > 0, θ is perturbed by `±initJitter*(1+|θ|)` before descent using
  *        [rngSeed] — a deterministic warm-shake for escaping a flat start.
+ * @param gradient how the descent direction is obtained. The default
+ *        [FnGradientMode.FINITE_DIFFERENCE] is the historic path and is bit-for-bit unchanged.
+ *        [FnGradientMode.EXACT] differentiates the graph itself (`autodiff_fn.kt`) — one loss
+ *        evaluation per step instead of `2n+1`, and no `fdStep` to tune — and throws with a
+ *        diagnostic if the graph or metric is outside the supported set.
+ *        [FnGradientMode.AUTO] takes the exact path where it applies and quietly falls back;
+ *        [FnFitRun.usedExactGradient] reports which happened.
+ * @param adMetric the differentiable form of [metric], for the exact path. When omitted it is
+ *        derived from [metric] via [FnAdMetric.of], which recognises the singleton
+ *        [FnMetric.rmse] / [FnMetric.mae] / [FnMetric.logCosh]; pass it explicitly for a bespoke
+ *        objective.
  * @return an [FnFitRun] with the fitted graph and the full loss trajectory.
  */
 fun fitGradient(
@@ -235,6 +256,8 @@ fun fitGradient(
     metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
     initJitter: Double = 0.0,
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null,
     onIteration: ((iteration: Int, total: Int) -> Unit)? = null
 ): FnFitRun {
     require(iterations >= 0) { "iterations must be non-negative" }
@@ -243,10 +266,30 @@ fun fitGradient(
 
     val dom = domain.asFnDomain()
     val config = FnFitConfig(
-        iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter
+        iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter, gradient
     )
     val loss = metric.lossAgainst(target, dom, samples)
     val lossOfTheta: (DoubleArray) -> Double = { theta -> loss(seed.applyParameters(theta)) }
+
+    // The exact gradient, or null when this run stays on finite differences. Resolved once, before
+    // the loop, so the descent itself has no per-step branch beyond a null check.
+    val exactGradient: ((DoubleArray) -> ADGradient)? =
+        if (gradient == FnGradientMode.FINITE_DIFFERENCE) {
+            null
+        } else {
+            val differentiable = adMetric ?: FnAdMetric.of(metric)
+            val built = differentiable?.let { exactFitObjective(target, seed, dom, samples, it) }
+            if (gradient == FnGradientMode.EXACT && built == null) {
+                val why = if (differentiable == null) {
+                    "the metric has no differentiable form — pass adMetric = ... explicitly " +
+                        "(FnAdMetric.of only recognises the singleton FnMetric.rmse / mae / logCosh)"
+                } else {
+                    exactFitRefusal(target, seed, dom, samples) ?: "unknown"
+                }
+                error("fitGradient(gradient = EXACT) cannot differentiate this fit: $why")
+            }
+            built
+        }
 
     val rng = Random(rngSeed)
     val initialTheta = seed.extractParameters()
@@ -279,7 +322,12 @@ fun fitGradient(
 
     try {
         for (iteration in 1..iterations) {
-            val grad = finiteDifferenceGradient(theta, fdStep) { evalLoss(it) }
+            val grad = if (exactGradient != null) {
+                evaluations++
+                exactGradient(theta).gradient
+            } else {
+                finiteDifferenceGradient(theta, fdStep) { evalLoss(it) }
+            }
             val t = iteration
             for (i in theta.indices) {
                 val g = grad[i]
@@ -311,7 +359,8 @@ fun fitGradient(
         finalError = finalLoss,
         iterations = iterations,
         evaluations = evaluations,
-        config = config
+        config = config,
+        usedExactGradient = exactGradient != null
     )
 }
 
@@ -351,7 +400,9 @@ fun fitBest(
     samples: Int = 128,
     metric: FnMetric = FnMetric.rmse,
     restartJitter: Double = 0.6,
-    rngSeed: Long = 0L
+    rngSeed: Long = 0L,
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null
 ): FnFitRun {
     require(restarts >= 1) { "restarts must be >= 1" }
     val reporter = afield.progressReporter("fit best")
@@ -374,6 +425,8 @@ fun fitBest(
                 metric = metric,
                 rngSeed = rngSeed + k,
                 initJitter = jitter,
+                gradient = gradient,
+                adMetric = adMetric,
                 onIteration = { _, _ -> } // suppress inner bars; the outer one tracks restarts
             )
             if (best == null || run.finalError < best.finalError) best = run
@@ -424,7 +477,9 @@ fun fitHybrid(
     complexityWeight: Double = 0.0,
     metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
-    mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
+    mutations: List<Pair<String, FnMutation>> = FnMutations.defaults(),
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null
 ): FnHybridRun {
     val dom = domain.asFnDomain()
     val fitness = matchFitness(target, dom, samples, complexityWeight, metric)
@@ -448,7 +503,196 @@ fun fitHybrid(
         fdStep = fdStep,
         samples = samples,
         metric = metric,
-        rngSeed = rngSeed + 1
+        rngSeed = rngSeed + 1,
+        gradient = gradient,
+        adMetric = adMetric
     )
     return FnHybridRun(evolveRun, fitRun)
+}
+
+/**
+ * Rewrites **every** numeric leaf of this graph as a `const`, whether or not its value changed — so a
+ * fitted graph and its seed have the same leaf *representation* and can be compared structurally.
+ *
+ * This exists because of a real trap in [applyParameters]. It rides on
+ * [Functions.Fn.mapGraphNumbers], which replaces a leaf only when the transform returns a *different*
+ * value, and the replacement is always a `const`. So after a fit, a leaf whose θ moved has become
+ * `const` while a leaf whose θ happened to land on its original value is still `param` — and
+ * [graphSignature] records `op` and `tags`, so two fits of the same seed can produce graphs whose
+ * signatures differ *structurally* for a reason that has nothing to do with structure. That is the
+ * "gradient-fitted graphs re-entering evolution" landmine: a structural-novelty or dedup pass over
+ * fitted graphs sees phantom variety.
+ *
+ * Normalising to `const` everywhere removes that inconsistency. It does **not** make the signature
+ * value-blind — [graphSignature] deliberately includes `numbers`, so a graph whose constants moved is
+ * still a different signature, which is correct. What it fixes is the part that was an artefact.
+ *
+ * Values, domains and names are preserved exactly, so this changes no evaluation:
+ * `normalizeNumericLeaves().eval(x) == eval(x)` for every x.
+ */
+fun Functions.Fn.normalizeNumericLeaves(): Functions.Fn = rewriteGraph(preserveSharing = false) { context, copy ->
+    val value = context.node.numbers["value"] ?: return@rewriteGraph copy
+    if (context.node.op == "const") copy else Functions.c(value, copy.domain).withName(copy.name)
+}
+
+/** One round of [fitEvolveRounds]: what the structural search found, and what the fit did to it. */
+data class FnRefineRound(
+    /** 1-based round index. */
+    val round: Int,
+    /** The structural search for this round. */
+    val evolveRun: FnEvolveRun,
+    /** The numeric refinement of [evolveRun]'s best. */
+    val fitRun: FnFitRun,
+    /** Whether this round's refinement really got the exact gradient, or fell back. */
+    val usedExactGradient: Boolean,
+    /** Why the exact path was refused this round, when it was. Null when it was used. */
+    val refusal: String?
+) {
+    /** The error after this round's refinement. */
+    val error: Double get() = fitRun.finalError
+}
+
+/** Result and provenance of a [fitEvolveRounds] run. */
+data class FnRefineRun(
+    /** The best graph found across all rounds, with its numeric leaves normalised. */
+    val best: Functions.Fn,
+    /** The error of [best]. */
+    val bestError: Double,
+    /** The error of the original seed, for the improvement ratio. */
+    val seedError: Double,
+    /** Every round, in order. */
+    val rounds: List<FnRefineRound>
+) {
+    /** How many rounds got the exact gradient rather than falling back to finite differences. */
+    val exactRounds: Int get() = rounds.count { it.usedExactGradient }
+
+    /** The error after each round, so the alternation is plottable. */
+    val errors: List<Double> get() = rounds.map { it.error }
+}
+
+/**
+ * Alternates **structural** search and **numeric** refinement for [rounds] rounds — the marriage the
+ * two halves of this package were always heading for, and the thing [fitHybrid] only does once.
+ *
+ * Each round runs [evolve] to look for a better *shape*, then hands that shape's numeric leaves to
+ * [fitGradient] to nail its *constants*, then normalises the result with [normalizeNumericLeaves] and
+ * feeds it back in as the next round's seed. Genetic search is good at finding operators and topology
+ * and bad at exact constants; gradient descent is the reverse.
+ *
+ * ## Measured, and it is not the free win it sounds like
+ *
+ * The motivating hypothesis was that a *polished* graph is a better starting point for the next
+ * mutation than an unpolished one, because a mutation's fitness is then judged against a shape that
+ * has been given its best shot. `FnRefineRoundsTest` tested that at equal budget on
+ * `cos(2)·sin(1.5, …)` from `cos(3.4)·sin(1.0, …)` — one 160-iteration evolve plus one 480-iteration
+ * fit ([fitHybrid]) against four interleaved rounds of 40 + 120 — and **the single pass won**: RMSE
+ * 0.1935 against 0.2644, from a seed at 1.1857. On that landscape, spending the evolve budget in four
+ * short bursts costs more than the polishing between them buys, because a 40-iteration `evolve` is a
+ * much weaker structural search than a 160-iteration one and the polish does not make up for it.
+ *
+ * So this is offered as a *tool with a shape*, not an improvement: it is the right thing when the
+ * structural search is cheap relative to the fit, when you want to *watch* the alternation (the
+ * per-round record is plottable), or when a round's polish genuinely unlocks a mutation the unpolished
+ * shape would have had rejected. It is the wrong thing when one long structural search would do. Try
+ * both; [FnRefineRun.errors] and [FnHybridRun] both report honestly.
+ *
+ * The normalisation between rounds is not cosmetic — see [normalizeNumericLeaves] for the trap it
+ * closes. Without it, whether a leaf comes back as `param` or `const` depends on whether its value
+ * happened to move, and a fitted graph re-entering evolution carries that inconsistency into every
+ * structural comparison downstream.
+ *
+ * [gradient] defaults to [FnGradientMode.AUTO] rather than `EXACT` because `evolve`'s op-substitution
+ * mutations freely produce graphs the exact path cannot differentiate (a `sin` becomes a `saw`, and
+ * `saw` is a piecewise oscillator with no formula — see [FnNonDifferentiable]). `EXACT` would abort
+ * such a round; `AUTO` refines it with finite differences instead, and
+ * [FnRefineRound.usedExactGradient] plus [FnRefineRound.refusal] record what happened, so
+ * [FnRefineRun.exactRounds] tells you honestly how much of the run got exact derivatives.
+ *
+ * What exact gradients buy *here* is also measured, and it is precision rather than speed: over four
+ * rounds of the case above, finite differences reached RMSE 0.182600 in 585 ms using 14884 loss
+ * evaluations, and the exact path 0.182557 in 592 ms using 964. A **15× reduction in evaluations that
+ * is not a wall-clock win at all** — building the tape costs about what those extra graph evaluations
+ * did. The exact path's real advantages are that it is exact, has no `fdStep` to tune, and scales far
+ * better as the parameter count grows (finite differences is `2n` evaluations per step; reverse mode is
+ * one, whatever `n` is). Do not reach for it expecting it to be faster on a four-parameter graph.
+ *
+ * Deterministic given [rngSeed]: round *k* evolves from `rngSeed + 2k` and fits from `rngSeed + 2k+1`.
+ */
+fun fitEvolveRounds(
+    target: Functions.Fn,
+    seed: Functions.Fn,
+    domain: ClosedRange<Double> = Functions.Domain.DEFAULT,
+    rounds: Int = 4,
+    evolveIterations: Int = 40,
+    evolveLambda: Int = 6,
+    fitIterations: Int = 120,
+    lr: Double = 0.05,
+    fdStep: Double = 1e-4,
+    samples: Int = 128,
+    complexityWeight: Double = 0.0,
+    metric: FnMetric = FnMetric.rmse,
+    gradient: FnGradientMode = FnGradientMode.AUTO,
+    adMetric: FnAdMetric? = null,
+    rngSeed: Long = 0L,
+    mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
+): FnRefineRun {
+    require(rounds >= 1) { "rounds must be >= 1" }
+    val dom = domain.asFnDomain()
+    val loss = metric.lossAgainst(target, dom, samples)
+    val fitness = matchFitness(target, dom, samples, complexityWeight, metric)
+
+    var current = seed.normalizeNumericLeaves()
+    val seedError = loss(current)
+    var best = current
+    var bestError = seedError
+    val records = mutableListOf<FnRefineRound>()
+
+    val reporter = afield.progressReporter("refine")
+    try {
+        for (round in 1..rounds) {
+            val evolveRun = evolve(
+                seed = current,
+                iterations = evolveIterations,
+                lambda = evolveLambda,
+                rngSeed = rngSeed + 2L * round,
+                mutations = mutations,
+                fitness = fitness
+            )
+            val refusal = exactFitRefusal(target, evolveRun.best, dom, samples)
+            val fitRun = fitGradient(
+                target = target,
+                seed = evolveRun.best,
+                domain = dom,
+                iterations = fitIterations,
+                lr = lr,
+                fdStep = fdStep,
+                samples = samples,
+                metric = metric,
+                rngSeed = rngSeed + 2L * round + 1L,
+                gradient = gradient,
+                adMetric = adMetric,
+                onIteration = { _, _ -> }
+            )
+            records += FnRefineRound(
+                round = round,
+                evolveRun = evolveRun,
+                fitRun = fitRun,
+                usedExactGradient = fitRun.usedExactGradient,
+                refusal = if (fitRun.usedExactGradient) null else refusal
+            )
+            // Normalise before re-entry: the next round's evolve, and anything comparing signatures
+            // downstream, must not see a leaf-representation artefact.
+            current = fitRun.fitted.normalizeNumericLeaves()
+            val error = loss(current)
+            if (error < bestError) {
+                bestError = error
+                best = current
+            }
+            reporter.update(round.toLong(), rounds.toLong())
+        }
+    } finally {
+        reporter.finish()
+    }
+
+    return FnRefineRun(best, bestError, seedError, records)
 }
