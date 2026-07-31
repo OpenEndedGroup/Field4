@@ -84,6 +84,7 @@ nav:
         - Boolean Network Music Examples: boolean_network_music_examples.md
         - Wave Function Collapse Examples: wfc_examples.md
         - Spatial Artificial Life: alife_examples.md
+        - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
 
 # Note: declaring this key at all replaces Zensical's DEFAULT_MARKDOWN_EXTENSIONS
 # wholesale (it is only a `config.get(..., DEFAULT)` fallback) — only `toc` and

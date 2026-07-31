@@ -948,7 +948,7 @@ one-line delegate to the matching `kotlin.math` function and always returns `Dou
 
 `src/jvmMain/kotlin/afield/stdlib/math.kt`
 
-**Used in:** [Colors to FLine examples](../colors_examples.md), [Field Probes — instrumenting shaders](../field_probes.md), [FLine examples (Field graphics)](../fline_examples.md)
+**Used in:** [Colors to FLine examples](../colors_examples.md), [Graphs that change while you watch](../dynamic_graph_systems_examples.md), [Field Probes — instrumenting shaders](../field_probes.md)
 
 ### Top-level functions { #math-kt-functions }
 
