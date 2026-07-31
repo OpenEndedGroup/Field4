@@ -26,6 +26,13 @@ import kotlin.math.sin
  * [DynamicEdgeList.toPointGraph] convert the live edge store into the static `PointGraph` the rest
  * of the graph library expects, and [exampleDynamicMorphogenesisStep] wires a whole frame
  * together. Pure Kotlin, single-threaded, no external dependency.
+ *
+ * **The population is not fixed, and three things have to agree about its size**: `state.points`,
+ * [DynamicPointKinetics] (via [DynamicPointKinetics.ensureSize]) and [DynamicEdgeList.pointCount]
+ * (via [DynamicEdgeList.ensurePointCount] / [DynamicEdgeList.setPointCount]). [stepDynamicGraph],
+ * [DynamicProcessPipeline.step] and [exampleDynamicMorphogenesisStep] keep all three in step for
+ * you; a hand-written [DynamicPointProcess] that appends a point *and* joins an edge to it in the
+ * same call has to widen the store itself. See [DynamicEdgeList] for what happens when it does not.
  */
 
 /**
@@ -72,12 +79,32 @@ fun dynamicGraphSnapshot(
 
 /**
  * Evolving edge store. Undirected by default to match GraphEdge equality semantics.
+ *
+ * [pointCount] is the store's **index space**, and it has to follow the cloud rather than the cloud's
+ * size at construction: three of the [DynamicPointProcess]es append points and two of them remove
+ * points. It used to be a constructor `val`, which made the whole process half of this file unable to
+ * complete a run — the first birth in [DirectedTipGrowthProcess] reinforces `parent -> newIndex` in
+ * the same step it creates the child, and [getOrCreate]'s range check threw. Grow it with
+ * [ensurePointCount] after adding points; set it exactly with [setPointCount] after compacting.
+ * [stepDynamicGraph] and [DynamicProcessPipeline.step] both call [ensurePointCount] for you, so the
+ * only code that has to think about this is a process that adds a point *and* an edge to it.
  */
 class DynamicEdgeList(
-    val pointCount: Int,
+    pointCount: Int,
     val undirected: Boolean = true
 ) {
+    /** The index space: every edge endpoint must lie in `0 until pointCount`. */
+    var pointCount: Int = pointCount
+        private set
+
     private val edges = LinkedHashMap<Long, DynamicGraphEdge>()
+
+    // Incidence index for `incident()`, rebuilt lazily whenever `version` has moved. Every mutator
+    // below bumps `version`; the index is O(V + E) to build and is what makes a per-point neighbour
+    // walk linear instead of quadratic. See `incident`.
+    private var version = 0L
+    private var indexedVersion = -1L
+    private var incidence: Array<MutableList<DynamicGraphEdge>>? = null
 
     private fun edgeKey(a: Int, b: Int): Long {
         val lo = min(a, b).toLong() and 0xffffffffL
@@ -93,23 +120,91 @@ class DynamicEdgeList(
 
     fun get(a: Int, b: Int): DynamicGraphEdge? = edges[edgeKey(a, b)]
 
+    /**
+     * Widen the index space to at least [n]. Never narrows, so it is always safe: call it right after
+     * appending points to a [DynamicPointState] and before joining an edge to the new index.
+     */
+    fun ensurePointCount(n: Int) {
+        require(n >= 0) { "DynamicEdgeList.ensurePointCount: n must be >= 0, found $n" }
+        if (n > pointCount) {
+            pointCount = n
+            version++
+        }
+    }
+
+    /**
+     * Set the index space to exactly [n], which is what a *compaction* needs — after
+     * `removeDeadPointsInPlace` has renumbered the survivors, a store still claiming the old count
+     * makes [toPointGraph] hand every traversal downstream a `PointGraph` full of vertices that no
+     * longer exist.
+     *
+     * Refuses to narrow past a live edge rather than leaving one dangling.
+     */
+    fun setPointCount(n: Int) {
+        require(n >= 0) { "DynamicEdgeList.setPointCount: n must be >= 0, found $n" }
+        val dangling = edges.values.firstOrNull { it.i >= n || it.j >= n }
+        require(dangling == null) {
+            "DynamicEdgeList.setPointCount: edge (${dangling?.i}, ${dangling?.j}) would dangle outside 0 until $n"
+        }
+        if (n != pointCount) {
+            pointCount = n
+            version++
+        }
+    }
+
+    /**
+     * Every edge with [index] as an endpoint, in O(1) after an O(V + E) index build that is shared by
+     * every call until the store next changes.
+     *
+     * The reason this is on the store rather than a `values().filter { … }` at the call site — which is
+     * what the five processes in this file used to do — is that the filter is O(E) *per point*, so a
+     * process that walks each point's neighbours is O(V·E) per step. Under
+     * [exampleDynamicMorphogenesisStep], whose population grows, that alone made the whole pipeline
+     * unrunnable: a 40-point ring stepped past ten seconds of clip went from "finishes" to "still
+     * running after ten minutes" once the growth defect above was fixed and the cloud could actually
+     * grow.
+     *
+     * The returned lists hold the live [DynamicGraphEdge] objects, so mutating an edge's weight
+     * through one of them is intended and does not invalidate anything. *Adding or removing* an edge
+     * does, and is detected.
+     */
+    fun incident(index: Int): List<DynamicGraphEdge> {
+        require(index in 0 until pointCount) { "DynamicEdgeList.incident: index out of range: $index" }
+        return incidenceIndex()[index]
+    }
+
+    private fun incidenceIndex(): Array<MutableList<DynamicGraphEdge>> {
+        val cached = incidence
+        if (cached != null && indexedVersion == version) return cached
+        val built = Array(pointCount) { mutableListOf<DynamicGraphEdge>() }
+        for (e in edges.values) {
+            built[e.i].add(e)
+            if (e.j != e.i) built[e.j].add(e)
+        }
+        incidence = built
+        indexedVersion = version
+        return built
+    }
+
     fun getOrCreate(a: Int, b: Int, initialWeight: Double = 0.0, ttl: Float = 0f): DynamicGraphEdge {
         require(a in 0 until pointCount) { "DynamicEdgeList.getOrCreate: a out of range: $a" }
         require(b in 0 until pointCount) { "DynamicEdgeList.getOrCreate: b out of range: $b" }
 
         val key = edgeKey(a, b)
-        return edges.getOrPut(key) {
-            val i0: Int
-            val j0: Int
-            if (undirected && a > b) {
-                i0 = b
-                j0 = a
-            } else {
-                i0 = a
-                j0 = b
-            }
-            DynamicGraphEdge(i0, j0, initialWeight, 0f, ttl, 0)
+        edges[key]?.let { return it }
+        val i0: Int
+        val j0: Int
+        if (undirected && a > b) {
+            i0 = b
+            j0 = a
+        } else {
+            i0 = a
+            j0 = b
         }
+        val created = DynamicGraphEdge(i0, j0, initialWeight, 0f, ttl, 0)
+        edges[key] = created
+        version++
+        return created
     }
 
     fun reinforce(a: Int, b: Int, addWeight: Double, ttl: Float, maxWeight: Double) {
@@ -119,6 +214,7 @@ class DynamicEdgeList(
     }
 
     fun clear() {
+        if (edges.isNotEmpty()) version++
         edges.clear()
     }
 
@@ -131,6 +227,7 @@ class DynamicEdgeList(
             e.weight = max(0.0, e.weight - weightDecayPerSecond * dt)
             if (e.ttl <= 0f || e.weight <= 0.0) {
                 it.remove()
+                version++
             }
         }
     }
@@ -145,6 +242,7 @@ class DynamicEdgeList(
             e.weight *= factor
             if (e.ttl <= 0f || e.weight <= 1e-9) {
                 it.remove()
+                version++
             }
         }
     }
@@ -165,23 +263,63 @@ class DynamicEdgeList(
 /**
  * Spatial hash for dynamic local-neighborhood queries.
  * This is the best fit here because the point cloud is expected to move each frame.
+ *
+ * **Every query here is required to return exactly what brute force would**, which is not a free
+ * property of a cell hash and was not true of this one; `DynamicGraphSystemsTest` pins all three
+ * against an O(N²) oracle. Two things have to be got right, and both were wrong:
+ *
+ *  - **The bucket key is lossy.** [hash] XORs three multiplied cell indices into a `Long`, so two
+ *    different cells can land in the same bucket. That never produces a *wrong* neighbour (the
+ *    distance test filters), but it does produce a **duplicated** one, because the scan visits one
+ *    bucket once per colliding cell offset in its window. A ring of eight points answered
+ *    `sample(centre, 0.31)` with ten entries. Every query therefore deduplicates by index.
+ *  - **"I found k" is not "I found the nearest k".** Scanning the cells within `cr` of the query
+ *    guarantees only that every point within `cr · cellSize` has been seen; a point one ring further
+ *    out can still be nearer than one already in hand from a diagonal corner cell. [kNearest] used to
+ *    stop at the first `cr` that produced `k` candidates and returned a wrong answer for it — on a
+ *    300-point disc, the 9th of 12 neighbours came back 17 % too far. It now keeps expanding until
+ *    the k-th distance is inside the guaranteed radius.
  */
 class Vec3SpatialHash(var cellSize: Double) {
     private val buckets = HashMap<Long, MutableList<Int>>()
     private var points: List<Vec3> = emptyList()
 
+    // The occupied cell extent, recorded at rebuild. A ring wider than this cannot reach a cell that
+    // holds anything, which is the exact termination condition kNearest was missing: with the default
+    // maxRadius of +Infinity its `searchRadius >= maxRadius` exit never fires, so a cloud holding
+    // fewer than k other points used to grind out to the hard cr = 128 cap -- 257^3 bucket probes,
+    // measured at 2569 ms for a single call on a four-point cloud.
+    private var minCell = intArrayOf(0, 0, 0)
+    private var maxCell = intArrayOf(0, 0, 0)
+
     fun rebuild(points: List<Vec3>) {
         require(cellSize > 0.0) { "Vec3SpatialHash.rebuild: cellSize must be > 0, found $cellSize" }
         this.points = points
         buckets.clear()
+        minCell = intArrayOf(0, 0, 0)
+        maxCell = intArrayOf(0, 0, 0)
         for (i in points.indices) {
             val p = points[i]
             val ix = floor(p.x / cellSize).toInt()
             val iy = floor(p.y / cellSize).toInt()
             val iz = floor(p.z / cellSize).toInt()
+            if (i == 0) {
+                minCell = intArrayOf(ix, iy, iz)
+                maxCell = intArrayOf(ix, iy, iz)
+            } else {
+                minCell[0] = min(minCell[0], ix); maxCell[0] = max(maxCell[0], ix)
+                minCell[1] = min(minCell[1], iy); maxCell[1] = max(maxCell[1], iy)
+                minCell[2] = min(minCell[2], iz); maxCell[2] = max(maxCell[2], iz)
+            }
             buckets.getOrPut(hash(ix, iy, iz)) { ArrayList() }.add(i)
         }
     }
+
+    /** The smallest cell ring around `(cx, cy, cz)` that already encloses every occupied cell. */
+    private fun enclosingRing(cx: Int, cy: Int, cz: Int): Int = max(
+        max(max(cx - minCell[0], maxCell[0] - cx), max(cy - minCell[1], maxCell[1] - cy)),
+        max(cz - minCell[2], maxCell[2] - cz)
+    )
 
     fun radiusNeighbors(i: Int, radius: Double): List<Neighbor> {
         require(i in points.indices) { "Vec3SpatialHash.radiusNeighbors: i out of range: $i" }
@@ -195,12 +333,13 @@ class Vec3SpatialHash(var cellSize: Double) {
         val cr = max(1, ceil(radius / cellSize).toInt())
 
         val out = ArrayList<Neighbor>()
+        val seen = HashSet<Int>()
         for (dz in -cr..cr) {
             for (dy in -cr..cr) {
                 for (dx in -cr..cr) {
                     val cell = buckets[hash(cx + dx, cy + dy, cz + dz)] ?: continue
                     for (j in cell) {
-                        if (j == i) continue
+                        if (j == i || !seen.add(j)) continue
                         val d2 = points[i].distanceSquared(points[j]).toDouble()
                         if (d2 <= r2) out.add(Neighbor(j, d2))
                     }
@@ -219,12 +358,17 @@ class Vec3SpatialHash(var cellSize: Double) {
         val cy = floor(p.y / cellSize).toInt()
         val cz = floor(p.z / cellSize).toInt()
 
+        // Rings beyond this reach only empty cells, so no expansion past it can ever help. The cap
+        // also keeps the pathological case (a cloud with fewer than k other points and no maxRadius)
+        // bounded by the cloud's own extent instead of by the hard cr = 128 ceiling.
+        val enclosing = enclosingRing(cx, cy, cz)
+
         var cr = 1
-        val out = ArrayList<Neighbor>()
+        var out = ArrayList<Neighbor>()
         val seen = HashSet<Int>()
 
         while (true) {
-            out.clear()
+            out = ArrayList()
             seen.clear()
             for (dz in -cr..cr) {
                 for (dy in -cr..cr) {
@@ -240,9 +384,17 @@ class Vec3SpatialHash(var cellSize: Double) {
                     }
                 }
             }
-            if (out.size >= k) break
-            val searchRadius = cr * cellSize
-            if (searchRadius >= maxRadius || cr > 128) break
+
+            // Cells within `cr` of the query cell cover, at minimum, the ball of radius
+            // `cr * cellSize` about p -- p sits somewhere inside its own cell, and the nearest face
+            // of the scanned box is at least that far away on every axis. So the k-th candidate is
+            // only certainly the k-th *nearest* once it lies inside that ball.
+            val guaranteed = cr * cellSize
+            if (out.size >= k) {
+                val kth = out.sortedBy { it.distanceSquared }[k - 1].distanceSquared
+                if (kth <= guaranteed * guaranteed) break
+            }
+            if (guaranteed >= maxRadius || cr >= enclosing || cr > 128) break
             cr++
         }
 
@@ -250,7 +402,8 @@ class Vec3SpatialHash(var cellSize: Double) {
     }
 
     /**
-     * Direct sample query for off-point field evaluation.
+     * Direct sample query for off-point field evaluation. Unlike [radiusNeighbors] this includes a
+     * point sitting exactly on [center] — it is a query about a position, not about a member.
      */
     fun sample(center: Vec3, radius: Double): List<Neighbor> {
         require(radius >= 0.0) { "Vec3SpatialHash.sample: radius must be >= 0, found $radius" }
@@ -261,12 +414,14 @@ class Vec3SpatialHash(var cellSize: Double) {
         val cz = floor(center.z / cellSize).toInt()
         val cr = max(1, ceil(radius / cellSize).toInt())
         val out = ArrayList<Neighbor>()
+        val seen = HashSet<Int>()
 
         for (dz in -cr..cr) {
             for (dy in -cr..cr) {
                 for (dx in -cr..cr) {
                     val cell = buckets[hash(cx + dx, cy + dy, cz + dz)] ?: continue
                     for (j in cell) {
+                        if (!seen.add(j)) continue
                         val d2 = points[j].distanceSquared(center).toDouble()
                         if (d2 <= r2) out.add(Neighbor(j, d2))
                     }
@@ -624,6 +779,16 @@ class Vec3SignalRoutingGraphSystem(
 // System 6: Alpha-event / simplex-birth inspired hypergraph collapse
 // -------------------------------------------------------------------------------------
 
+/**
+ * Closes triangles rather than adding edges one at a time: every triple whose three sides all fit
+ * inside [alphaRadius] and whose area clears [minArea] gets all three of its sides reinforced by the
+ * same amount, so the graph this builds is made of *faces*.
+ *
+ * @param minArea the smallest triangle that counts, **in area** — the guard used to compare it
+ *   against the *squared* area, which made its effective units area² and the default 1e-5 a rejection
+ *   of everything under 3.2e-3, 316× larger than it reads. On a 140-point disc of radius 0.5 with
+ *   `alphaRadius = 0.1` that left three edges standing where there should have been hundreds.
+ */
 class Vec3AlphaEventHypergraphCollapseSystem(
     var neighborhoodK: Int,
     var alphaRadius: Double,
@@ -658,8 +823,11 @@ class Vec3AlphaEventHypergraphCollapseSystem(
                     val va = Vec3(pa).sub(pi)
                     val vb = Vec3(pb).sub(pi)
                     val cross = Vec3(va).cross(vb)
+                    // |va x vb| is twice the triangle's area, so this is the area SQUARED. Compare it
+                    // against minArea squared -- comparing it against minArea itself is the units
+                    // error described on the class.
                     val area2 = cross.lengthSquared().toDouble() * 0.25
-                    if (area2 < minArea) continue
+                    if (area2 < minArea * minArea) continue
 
                     val labelFactor = if (state.labels != null) {
                         val l0 = state.labels[i]
@@ -699,6 +867,9 @@ fun stepDynamicGraph(
     spatialHash: Vec3SpatialHash,
     system: DynamicGraphSystem
 ) {
+    // The cloud may have grown since the store was built -- a DynamicPointProcess run between frames
+    // adds points, and every system below indexes `0 until state.pointCount`.
+    edges.ensurePointCount(state.pointCount)
     spatialHash.rebuild(state.points)
     system.step(dt, state, edges, spatialHash)
 }
@@ -771,9 +942,12 @@ private fun averageVec3(values: List<Vec3>): Vec3 {
     return acc.mul(1f / values.size)
 }
 
-private fun edgeNeighbors(index: Int, edges: DynamicEdgeList): List<DynamicGraphEdge> {
-    return edges.values().filter { it.i == index || it.j == index }
-}
+/**
+ * Kept as a name because five processes read better for it, but it is now the store's O(1) incidence
+ * lookup rather than the O(E) scan it used to be. See [DynamicEdgeList.incident].
+ */
+private fun edgeNeighbors(index: Int, edges: DynamicEdgeList): List<DynamicGraphEdge> =
+    edges.incident(index)
 
 private fun otherIndex(index: Int, edge: DynamicGraphEdge): Int {
     return if (edge.i == index) edge.j else edge.i
@@ -850,6 +1024,9 @@ private fun removeDeadPointsInPlace(
     kinetics.alive.addAll(newAlive)
 
     edges.clear()
+    // The index space has to shrink with the cloud, or toPointGraph() hands every traversal
+    // downstream a PointGraph full of vertices that were compacted away.
+    edges.setPointCount(newPoints.size)
     for (edge in rebuiltEdges.values()) {
         val restored = edges.getOrCreate(edge.i, edge.j, edge.weight, edge.ttl)
         restored.age = edge.age
@@ -861,6 +1038,18 @@ private fun removeDeadPointsInPlace(
 // Mutable point processes
 // -------------------------------------------------------------------------------------
 
+/**
+ * Hooke's law along the live edges: each edge pulls its endpoints toward a rest length, damped, with
+ * the speed clamped.
+ *
+ * @param restLengthScale **not a length.** The rest length of an edge is `restLengthScale / weight`,
+ *   so a heavily reinforced edge wants to be short and a faint one wants to be long, and the units of
+ *   this parameter are length × weight. That matters because the weights these systems actually
+ *   produce are small — `reinforce · dt / (1 + d)` is of order 0.02 — and the default 1.0 therefore
+ *   asks for a rest length of **50 world units** in a cloud one unit across, i.e. every spring is a
+ *   saturated repulsion. Set it to `desiredRestLength × typicalWeight`.
+ * @param edgeWeightFloor edges at or below this weight are skipped entirely.
+ */
 class SpringMotionProcess(
     var springK: Double = 1.0,
     var damping: Double = 0.15,
@@ -887,7 +1076,9 @@ class SpringMotionProcess(
             if (len <= 1e-9) continue
 
             val dir = delta.mul((1.0 / len).toFloat())
-            val rest = restLengthScale / max(edgeWeightFloor, edge.weight)
+            // `edge.weight > edgeWeightFloor` is guaranteed by the skip above, so no clamp is needed
+            // here -- the max() this replaces could never take its first branch.
+            val rest = restLengthScale / edge.weight
             val magnitude = springK * edge.weight * (len - rest)
             val force = dir.mul(magnitude.toFloat())
 
@@ -940,6 +1131,26 @@ class DirectedEdgeAdvectionProcess(
     }
 }
 
+/**
+ * Births a child ahead of any point whose incident edges pull *coherently* in one direction — the
+ * family's growth rule, and the one process here that makes the population a variable.
+ *
+ * **It has no intrinsic ceiling, and nothing else in this file supplies one.** Measured on the
+ * 40-point ring of `DynamicGraphSystemsTest`, driven by
+ * [Vec3PersistentProximityHysteresisSystem] through [exampleDynamicMorphogenesisStep]: the population
+ * sits at exactly 40 for 109 frames while the ring's edges are reinforced up toward
+ * [coherenceThreshold], the first birth lands on frame 109 (1.82 s of simulated time), and from there
+ * it multiplies by about 1.05 **per frame** — 3603 points and 78 360 edges by frame 199. That is the
+ * correct behaviour of an uncapped growth rule and it is not usable in a live box, so set
+ * [maxPointCount].
+ *
+ * @param coherenceThreshold the length of the weighted sum of unit directions to the point's
+ *   neighbours that counts as "a tip". Note the scale: the weights these systems produce *per step*
+ *   are of order 0.02, so 1.25 means an edge set that has been reinforced for a while, not a fresh one
+ *   — which is why the ring above takes 109 frames to grow at all.
+ * @param maxPointCount no birth happens once the cloud has reached this many points. The default is
+ *   no ceiling, which is what the process has always done.
+ */
 class DirectedTipGrowthProcess(
     var coherenceThreshold: Double = 1.25,
     var spawnDistance: Double = 0.05,
@@ -949,7 +1160,8 @@ class DirectedTipGrowthProcess(
     var maxWeight: Double = 8.0,
     var inheritResourceFactor: Double = 0.5,
     var localDensityRadius: Double = 0.10,
-    var localDensityMax: Int = 8
+    var localDensityMax: Int = 8,
+    var maxPointCount: Int = Int.MAX_VALUE
 ) : DynamicPointProcess {
     override fun step(
         dt: Float,
@@ -960,8 +1172,12 @@ class DirectedTipGrowthProcess(
     ) {
         kinetics.ensureSize(state.pointCount)
 
+        val budget = maxPointCount - state.pointCount
+        if (budget <= 0) return
+
         val births = mutableListOf<Triple<Int, Vec3, Vec4?>>()
         for (i in 0 until state.pointCount) {
+            if (births.size >= budget) break
             if (!kinetics.alive[i]) continue
             val dir = weightedDirectionFromEdges(i, state, edges)
             val magnitude = dir.length().toDouble()
@@ -980,6 +1196,9 @@ class DirectedTipGrowthProcess(
             state.points += pos
             if (mutableLabels != null && label != null) mutableLabels += label
 
+            // The child is joined to its parent three lines below, so the edge store's index space
+            // has to admit it first.
+            edges.ensurePointCount(state.points.size)
             kinetics.ensureSize(state.points.size)
             kinetics.velocity[newIndex] = Vec3(kinetics.velocity[parent]).mul(0.35f)
             kinetics.resource[newIndex] = kinetics.resource[parent] * inheritResourceFactor
@@ -994,6 +1213,25 @@ class DirectedTipGrowthProcess(
     }
 }
 
+/** Set on an edge that arrived on its endpoint by way of a [MergeClosePointsProcess] transfer. */
+const val DYNAMIC_EDGE_FLAG_MERGED = 1
+
+/**
+ * Collapses pairs of points that are both within [mergeDistance] of each other *and* joined by an
+ * edge of at least [minCombinedWeight]: the higher-indexed one is absorbed into the lower, which
+ * takes the blended position, the blended velocity, the summed resource **and every edge the absorbed
+ * point had**.
+ *
+ * That last clause is the part that used to be missing. The process marked the absorbed point's
+ * incident edges with [DYNAMIC_EDGE_FLAG_MERGED] and then let `removeDeadPointsInPlace` delete
+ * exactly those edges — the flag was written to objects discarded three lines later, so a "merge"
+ * severed the survivor from everything only the absorbed point had reached. They are now re-pointed
+ * at the survivor first, with their weights added and their ttls taken at the max.
+ *
+ * @param minCombinedWeight the weight the joining edge must carry. Note that the weights these
+ *   systems produce per step are of order 0.02, so the default 1.5 means "an edge that has been
+ *   continuously reinforced for a while", not "any edge".
+ */
 class MergeClosePointsProcess(
     var mergeDistance: Double = 0.025,
     var minCombinedWeight: Double = 1.5,
@@ -1027,8 +1265,17 @@ class MergeClosePointsProcess(
                     .add(Vec3(kinetics.velocity[j]).mul(blend.toFloat()))
                 kinetics.resource[i] += kinetics.resource[j]
 
-                for (existing in edges.values()) {
-                    if (existing.i == j || existing.j == j) existing.flags = existing.flags or 1
+                // Re-point j's edges at i BEFORE j is compacted away, or the merge disconnects the
+                // survivor. Snapshot first: getOrCreate inserts into the same map being iterated.
+                val inherited = edges.incident(j).toList()
+                for (existing in inherited) {
+                    val other = otherIndex(j, existing)
+                    if (other == i) continue
+                    val moved = edges.getOrCreate(i, other, 0.0, existing.ttl)
+                    moved.weight += existing.weight
+                    moved.ttl = max(moved.ttl, existing.ttl)
+                    moved.age = max(moved.age, existing.age)
+                    moved.flags = moved.flags or DYNAMIC_EDGE_FLAG_MERGED
                 }
 
                 kinetics.alive[j] = false
@@ -1130,6 +1377,7 @@ class AddNearLowDensityProcess(
                 mutableLabels += mutableLabels[sparse]
             }
 
+            edges.ensurePointCount(state.points.size)
             kinetics.ensureSize(state.points.size)
             kinetics.velocity[newIndex] = Vec3(dir).mul(0.02f)
             kinetics.resource[newIndex] = kinetics.resource[sparse] * 0.5
@@ -1174,6 +1422,7 @@ class AddNearHighDensityProcess(
                 mutableLabels += mutableLabels[dense]
             }
 
+            edges.ensurePointCount(state.points.size)
             kinetics.ensureSize(state.points.size)
             kinetics.velocity[newIndex] = Vec3(jitter)
             kinetics.resource[newIndex] = kinetics.resource[dense] * 0.35
@@ -1210,6 +1459,17 @@ class RelaxToMidpointProcess(
     }
 }
 
+/**
+ * Kills, and then compacts away, every point below [minDegree] incident edges or below [minResource]
+ * resource.
+ *
+ * **Both defaults are deliberately near-inert and `minDegree = 0` is exactly inert**, which is worth
+ * knowing before you configure one: `degree < 0` cannot hold, and `resource < -Double.MAX_VALUE`
+ * cannot hold, so `PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op — it marks nothing,
+ * and `removeDeadPointsInPlace` then returns early. That is how [exampleDynamicMorphogenesisStep] is
+ * configured, which is why the growth in [DirectedTipGrowthProcess]'s KDoc runs away: the pipeline it
+ * demonstrates pairs a growth rule with a death rule that cannot fire.
+ */
 class PruneIsolatedPointsProcess(
     var minDegree: Int = 1,
     var minResource: Double = -Double.MAX_VALUE
@@ -1266,20 +1526,44 @@ class DynamicProcessPipeline(
         spatialHash: Vec3SpatialHash
     ) {
         for (process in processes) {
+            // A stage that grew the cloud leaves the next stage indexing points the store has never
+            // heard of; a stage that shrank it has already called setPointCount itself.
+            edges.ensurePointCount(state.pointCount)
+            kinetics.ensureSize(state.pointCount)
             spatialHash.rebuild(state.points)
             process.step(dt, state, kinetics, edges, spatialHash)
         }
     }
 }
 
+/**
+ * One whole frame of morphogenesis: build and decay the graph with [edgeSystem], then run the six
+ * standard processes over it in order — diffuse resource and climb its gradient, relax the springs,
+ * grow tips, merge what has collided, smooth, prune.
+ *
+ * **Read [DirectedTipGrowthProcess] and [PruneIsolatedPointsProcess] before using this.** The
+ * composition below is the family's shop window and it is deliberately left as it shipped, which means
+ * it pairs an uncapped growth rule with a prune configured (`minDegree = 0`) so that it provably
+ * cannot fire. On the 40-point ring in `DynamicGraphSystemsTest` the population is exactly 40 for 109
+ * frames and then multiplies by about 1.05 per frame: 3603 points by frame 199. [maxPointCount] is the
+ * one knob added to make that bounded; it defaults to no ceiling, so the default call is byte-for-byte
+ * the behaviour this function has always described. A real piece is better served by writing its own
+ * [DynamicProcessPipeline] — the point of this function is to show what the pieces are and what order
+ * they go in.
+ *
+ * @param maxPointCount forwarded to [DirectedTipGrowthProcess.maxPointCount]
+ */
 fun exampleDynamicMorphogenesisStep(
     state: DynamicPointState,
     kinetics: DynamicPointKinetics,
     edges: DynamicEdgeList,
     spatialHash: Vec3SpatialHash,
     edgeSystem: DynamicGraphSystem,
-    dt: Float = 1f / 60f
+    dt: Float = 1f / 60f,
+    maxPointCount: Int = Int.MAX_VALUE
 ) {
+    edges.ensurePointCount(state.pointCount)
+    kinetics.ensureSize(state.pointCount)
     spatialHash.rebuild(state.points)
     edgeSystem.step(dt, state, edges, spatialHash)
     edges.decayExponential(dt, 0.35)
@@ -1288,7 +1572,7 @@ fun exampleDynamicMorphogenesisStep(
         listOf(
             SignalDiffusionAndChemotaxisProcess(),
             SpringMotionProcess(),
-            DirectedTipGrowthProcess(),
+            DirectedTipGrowthProcess(maxPointCount = maxPointCount),
             MergeClosePointsProcess(),
             RelaxToMidpointProcess(gain = 0.08),
             PruneIsolatedPointsProcess(minDegree = 0)
