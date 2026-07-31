@@ -450,10 +450,149 @@ class AaCompleter(
                 return AaCandidate(nm, kind, runCatching { sym.returnType.toString() }.getOrNull(), container, iconFor(sym), paramsOf(sym))
             }
 
+            /**
+             * Resolve a dotted receiver that is a CLASS QUALIFIER rather than a value — `FnGradientMode`,
+             * `afield.stdlib.Functions.RectifyMode` — to its class symbol.
+             *
+             * There is no reference-resolution helper wired into this standalone session, but
+             * `findClassLike(ClassId)` resolves fine by exact name (the same property the binary name
+             * index relies on). So try the plausible `ClassId` splits of the receiver text: for a dotted
+             * receiver, every package/nested-class boundary; for a bare name, the file's own package plus
+             * each import (explicit and star), which is how `afield.stdlib.*` in a box body brings
+             * `FnGradientMode` into scope.
+             */
+            fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+                val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
+                    ?: return null
+                val parts = text.split('.')
+                if (parts.any { it.isEmpty() }) return null
+
+                fun classAt(pkg: List<String>, nested: List<String>): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+                    if (nested.isEmpty()) return null
+                    val id = runCatching {
+                        ClassId(
+                            if (pkg.isEmpty()) FqName.ROOT else FqName(pkg.joinToString(".")),
+                            FqName(nested.joinToString(".")),
+                            false
+                        )
+                    }.getOrNull() ?: return null
+                    return runCatching { findClassLike(id) as? org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol }
+                        .getOrNull()
+                }
+
+                if (parts.size > 1) {
+                    // Fully/partially qualified: try every package|nested split, longest package first
+                    // so `afield.stdlib` + `Functions.RectifyMode` is preferred over root + the whole path.
+                    for (split in parts.size - 1 downTo 0) {
+                        classAt(parts.take(split), parts.drop(split))?.let { return it }
+                    }
+                    return null
+                }
+
+                // Bare name: the file's package, then its imports.
+                val candidatePackages = buildList {
+                    add(file.packageFqName.asString())
+                    for (imp in file.importDirectives) {
+                        val fq = imp.importedFqName?.asString() ?: continue
+                        if (imp.isAllUnder) add(fq) else if (fq.endsWith(".$text")) add(fq.removeSuffix(".$text"))
+                    }
+                    // Box bodies lean on these two whether or not an import is written out.
+                    add("afield.stdlib")
+                    add("afield")
+                }
+                for (pkg in candidatePackages.distinct()) {
+                    classAt(if (pkg.isEmpty()) emptyList() else pkg.split('.'), listOf(text))?.let { return it }
+                }
+                return null
+            }
+
+            /**
+             * Everything reachable through a class qualifier: enum entries, `values()`/`valueOf()`/
+             * `entries`, Java statics, companion-object members, and nested classifiers. Collected from
+             * both the static scope and the companion scope because an enum's entries and its companion's
+             * members live in different places.
+             */
+            fun staticScopeCandidates(recv: KtExpression): List<AaCandidate> {
+                val cls = resolveQualifier(recv) ?: return emptyList()
+                val label = runCatching { cls.classId?.asFqNameString() }.getOrNull() ?: recv.text
+                val out = ArrayList<AaCandidate>()
+
+                fun harvest(scope: org.jetbrains.kotlin.analysis.api.scopes.KaScope?, kind: AaCandidate.Kind) {
+                    if (scope == null) return
+                    runCatching {
+                        for (sym in scope.callables(match)) {
+                            asCandidate(sym, kind, label)?.let(out::add)
+                        }
+                    }
+                    runCatching {
+                        for (sym in scope.classifiers(match)) {
+                            val nm = (sym as? KaNamedSymbol)?.name?.asString() ?: continue
+                            out.add(AaCandidate(nm, AaCandidate.Kind.CLASSIFIER, null, label, "class"))
+                        }
+                    }
+                }
+
+                runCatching { harvest(cls.staticDeclaredMemberScope, AaCandidate.Kind.MEMBER) }
+                runCatching { harvest(cls.staticMemberScope, AaCandidate.Kind.MEMBER) }
+                // `Foo.create()` on a companion is reached off the qualifier too. There is no
+                // `companionObject` accessor on KaClassSymbol in this AA version, so find it the way the
+                // language defines it: a declared nested classifier whose kind is COMPANION_OBJECT.
+                runCatching {
+                    for (nested in cls.declaredMemberScope.classifiers { true }) {
+                        val obj = nested as? org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol ?: continue
+                        if (obj.classKind == org.jetbrains.kotlin.analysis.api.symbols.KaClassKind.COMPANION_OBJECT) {
+                            harvest(obj.memberScope, AaCandidate.Kind.MEMBER)
+                        }
+                    }
+                }
+                // An enum's entries are declared members of the class itself, not of its static scope in
+                // every AA version, so include the declared scope's callables too. Instance members are
+                // NOT valid off a qualifier, so only enum entries are taken from here.
+                runCatching {
+                    for (sym in cls.declaredMemberScope.callables(match)) {
+                        if (sym is org.jetbrains.kotlin.analysis.api.symbols.KaEnumEntrySymbol) {
+                            asCandidate(sym, AaCandidate.Kind.MEMBER, label)?.let(out::add)
+                        }
+                    }
+                }
+                return out
+            }
+
             if (isDot) {
                 val dq = PsiTreeUtil.getParentOfType(leaf, KtQualifiedExpression::class.java)
                     ?: return@analyze AaCompletionResult(emptyList(), "no qualified expr")
                 val recv: KtExpression = dq.receiverExpression
+
+                // A receiver can be a VALUE (`someList.`, `Functions.`) or a TYPE QUALIFIER
+                // (`FnGradientMode.`, `Functions.RectifyMode.`). K2 gives a qualifier a perfectly good
+                // `expressionType` — the class's own type — so the member path below runs and returns the
+                // type's INSTANCE members. For a qualifier those are exactly the wrong answer: it offered
+                // `equals`/`hashCode`/`toString` and none of the enum's entries, `values()`, `valueOf()`
+                // or `entries`. That is what `SomeEnum.` did for EVERY enum in Field, and K1 surfaced the
+                // entries, so the 2026-07-20 cutover to this backend lost the whole class silently — the
+                // differential corpus had no `Enum.` fixture, so the gate could not see it. The `enum#*`
+                // fixtures in tools/completion-corpus/name-fixtures.tsv now cover it, including two enums
+                // that predate the autodiff work as a control arm.
+                //
+                // Objects are the case that must NOT change: `Functions.` IS a value, its instance
+                // members are correct, and it is how the head APIs are browsed. So switch on the resolved
+                // class kind rather than on "did the name start with a capital".
+                val qualifierClass = resolveQualifier(recv)
+                val qualifierKind = qualifierClass?.classKind
+                val isTypeQualifier = qualifierClass != null &&
+                    qualifierKind != org.jetbrains.kotlin.analysis.api.symbols.KaClassKind.OBJECT &&
+                    qualifierKind != org.jetbrains.kotlin.analysis.api.symbols.KaClassKind.COMPANION_OBJECT &&
+                    qualifierKind != org.jetbrains.kotlin.analysis.api.symbols.KaClassKind.ANONYMOUS_OBJECT
+                if (isTypeQualifier) {
+                    val out = staticScopeCandidates(recv)
+                        .filterNot { it.isSynthetic }.filter(jsFilter)
+                        .distinctBy { it.dedupKey }.sortedBy { it.name }
+                    return@analyze AaCompletionResult(
+                        out,
+                        if (out.isEmpty()) "0 matched; type qualifier=${recv.text} kind=$qualifierKind" else ""
+                    )
+                }
+
                 val type = recv.expressionType
                     ?: return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED: ${recv.text}")
                 val typeStr = runCatching { type.toString() }.getOrDefault("?")
