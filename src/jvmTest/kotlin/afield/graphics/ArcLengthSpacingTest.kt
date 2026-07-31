@@ -76,8 +76,6 @@ class ArcLengthOracle(line: FLine, private val samplesPerSegment: Int = 8192) {
                     }
                     previous = node.to
                 }
-
-                else -> throw IllegalStateException("unhandled node $node")
             }
         }
     }

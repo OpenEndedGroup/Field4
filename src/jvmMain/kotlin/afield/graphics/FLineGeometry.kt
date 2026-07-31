@@ -2077,40 +2077,40 @@ fun FLine.byArcLengthParameterizing(spacing: Float): FLine {
 
 /**
  * Create a dashed version of the curve.
- * @param dashLength length of each dash
- * @param gapLength length of each gap
+ *
+ * Each dash follows the curve. Dashes used to be emitted as a single straight segment between
+ * their two endpoints, which is only right on a straight stretch: on anything curved the dash cut
+ * the corner, so a "18 unit" dash across a bend drew as a visibly shorter chord and the dashes
+ * drifted off the line they were dashing.
+ *
+ * @param dashLength length of each dash, along the curve
+ * @param gapLength length of each gap, along the curve
+ * @param resolution longest straight piece used to follow the curve inside one dash
  */
-fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
+fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f): List<FLine> {
     val result = mutableListOf<FLine>()
+    if (dashLength <= 0f || gapLength <= 0f) return result
+
     val cursor = this.cursor()
     val totalLength = cursor.lengthD()
+    if (totalLength <= 0f) return result
+
+    val step = resolution.coerceAtLeast(1e-4f)
 
     var distance = 0f
-    var inDash = true
-    var currentSegment: FLine? = null
-
     while (distance < totalLength) {
-        cursor.setD(distance)
-        val pos = cursor.position()
+        val end = min(distance + dashLength, totalLength)
+        val pieces = max(1, ceil((end - distance) / step).toInt())
 
-        if (inDash) {
-            if (currentSegment == null) {
-                currentSegment = FLine()
-                currentSegment.moveTo(pos)
-            } else {
-                currentSegment.lineTo(pos)
-            }
-
-            distance += dashLength
-            cursor.setD(minOf(distance, totalLength))
-            currentSegment.lineTo(cursor.position())
-            result.add(currentSegment)
-            currentSegment = null
-            inDash = false
-        } else {
-            distance += gapLength
-            inDash = true
+        val dash = FLine()
+        for (i in 0..pieces) {
+            cursor.setD(distance + (end - distance) * i / pieces)
+            val p = cursor.position()
+            if (i == 0) dash.moveTo(p) else dash.lineTo(p)
         }
+        result.add(dash)
+
+        distance = end + gapLength
     }
 
     return result
