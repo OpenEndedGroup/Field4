@@ -14,8 +14,10 @@ nearest unclaimed space — and something global and large happens that the rule
 spaceship, a coastline, a transport network, a dendrite with a fractional dimension. This page is
 about the *spatial* half of that: grids, continuous fields and populations of agents. The
 graph-rewriting half lives in [`growing.kt`](reference/data.md#growing-kt) and
-[interaction nets](interaction_nets_examples.md), and the constraint-based generative half is
-[Wave Function Collapse](wfc_examples.md).
+[interaction nets](interaction_nets_examples.md), the constraint-based generative half is
+[Wave Function Collapse](wfc_examples.md), and the half where a *moving* point cloud carries a
+decaying graph with it is [graphs that change while you
+watch](dynamic_graph_systems_examples.md).
 
 The awkward thing about this material is that it is *very* easy to fake. Almost any local rule applied
 to noise produces something that looks organic, so a screenshot proves nothing at all — and the

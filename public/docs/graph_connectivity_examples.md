@@ -349,3 +349,9 @@ out from the anchor; the bright A* overlay shows how to get somewhere specific.
 That combination is useful in navigation, decomposition, interactive layouts, and
 systems that need both territory and route. For statistics and dependence measures
 on related datasets, continue with [Values over time: interpolants, keyframes & estimation](interpolants_examples.md).
+
+Everything on this page assumes the points sit still and the edges are given. When they do not —
+when the cloud moves every frame and the graph has to be continually proposed, reinforced and
+forgotten — the family to reach for is [graphs that change while you
+watch](dynamic_graph_systems_examples.md), which snapshots back into the `PointGraph` this page
+consumes with a `minWeight` cut that keeps only what has persisted.
