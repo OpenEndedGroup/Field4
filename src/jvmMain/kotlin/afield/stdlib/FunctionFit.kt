@@ -113,7 +113,9 @@ data class FnFitConfig(
     val samples: Int,
     val domain: Functions.Domain,
     val rngSeed: Long,
-    val initJitter: Double
+    val initJitter: Double,
+    /** Which gradient the run was *asked* for; [FnFitRun.usedExactGradient] says what it got. */
+    val gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE
 )
 
 /**
@@ -136,7 +138,15 @@ data class FnFitRun(
     val finalError: Double,
     val iterations: Int,
     val evaluations: Int,
-    val config: FnFitConfig
+    val config: FnFitConfig,
+    /**
+     * Whether the run really used the exact reverse-mode gradient from `autodiff_fn.kt`.
+     *
+     * Distinct from `config.gradient`, which records what was *asked* for:
+     * [FnGradientMode.AUTO] falls back to finite differences without complaining, and this is how
+     * you find out. See [exactFitRefusal] for why.
+     */
+    val usedExactGradient: Boolean = false
 ) {
     /** True when the fit ended strictly closer to the target than it started. */
     val improved: Boolean get() = finalError < initialError
@@ -219,6 +229,17 @@ private fun finiteDifferenceGradient(
  *        [FnMetric.huber] or [FnMetric.lp] to reshape the loss landscape.
  * @param initJitter if > 0, θ is perturbed by `±initJitter*(1+|θ|)` before descent using
  *        [rngSeed] — a deterministic warm-shake for escaping a flat start.
+ * @param gradient how the descent direction is obtained. The default
+ *        [FnGradientMode.FINITE_DIFFERENCE] is the historic path and is bit-for-bit unchanged.
+ *        [FnGradientMode.EXACT] differentiates the graph itself (`autodiff_fn.kt`) — one loss
+ *        evaluation per step instead of `2n+1`, and no `fdStep` to tune — and throws with a
+ *        diagnostic if the graph or metric is outside the supported set.
+ *        [FnGradientMode.AUTO] takes the exact path where it applies and quietly falls back;
+ *        [FnFitRun.usedExactGradient] reports which happened.
+ * @param adMetric the differentiable form of [metric], for the exact path. When omitted it is
+ *        derived from [metric] via [FnAdMetric.of], which recognises the singleton
+ *        [FnMetric.rmse] / [FnMetric.mae] / [FnMetric.logCosh]; pass it explicitly for a bespoke
+ *        objective.
  * @return an [FnFitRun] with the fitted graph and the full loss trajectory.
  */
 fun fitGradient(
@@ -235,6 +256,8 @@ fun fitGradient(
     metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
     initJitter: Double = 0.0,
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null,
     onIteration: ((iteration: Int, total: Int) -> Unit)? = null
 ): FnFitRun {
     require(iterations >= 0) { "iterations must be non-negative" }
@@ -243,10 +266,30 @@ fun fitGradient(
 
     val dom = domain.asFnDomain()
     val config = FnFitConfig(
-        iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter
+        iterations, lr, beta1, beta2, epsilon, fdStep, samples, dom, rngSeed, initJitter, gradient
     )
     val loss = metric.lossAgainst(target, dom, samples)
     val lossOfTheta: (DoubleArray) -> Double = { theta -> loss(seed.applyParameters(theta)) }
+
+    // The exact gradient, or null when this run stays on finite differences. Resolved once, before
+    // the loop, so the descent itself has no per-step branch beyond a null check.
+    val exactGradient: ((DoubleArray) -> ADGradient)? =
+        if (gradient == FnGradientMode.FINITE_DIFFERENCE) {
+            null
+        } else {
+            val differentiable = adMetric ?: FnAdMetric.of(metric)
+            val built = differentiable?.let { exactFitObjective(target, seed, dom, samples, it) }
+            if (gradient == FnGradientMode.EXACT && built == null) {
+                val why = if (differentiable == null) {
+                    "the metric has no differentiable form — pass adMetric = ... explicitly " +
+                        "(FnAdMetric.of only recognises the singleton FnMetric.rmse / mae / logCosh)"
+                } else {
+                    exactFitRefusal(target, seed, dom, samples) ?: "unknown"
+                }
+                error("fitGradient(gradient = EXACT) cannot differentiate this fit: $why")
+            }
+            built
+        }
 
     val rng = Random(rngSeed)
     val initialTheta = seed.extractParameters()
@@ -279,7 +322,12 @@ fun fitGradient(
 
     try {
         for (iteration in 1..iterations) {
-            val grad = finiteDifferenceGradient(theta, fdStep) { evalLoss(it) }
+            val grad = if (exactGradient != null) {
+                evaluations++
+                exactGradient(theta).gradient
+            } else {
+                finiteDifferenceGradient(theta, fdStep) { evalLoss(it) }
+            }
             val t = iteration
             for (i in theta.indices) {
                 val g = grad[i]
@@ -311,7 +359,8 @@ fun fitGradient(
         finalError = finalLoss,
         iterations = iterations,
         evaluations = evaluations,
-        config = config
+        config = config,
+        usedExactGradient = exactGradient != null
     )
 }
 
@@ -351,7 +400,9 @@ fun fitBest(
     samples: Int = 128,
     metric: FnMetric = FnMetric.rmse,
     restartJitter: Double = 0.6,
-    rngSeed: Long = 0L
+    rngSeed: Long = 0L,
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null
 ): FnFitRun {
     require(restarts >= 1) { "restarts must be >= 1" }
     val reporter = afield.progressReporter("fit best")
@@ -374,6 +425,8 @@ fun fitBest(
                 metric = metric,
                 rngSeed = rngSeed + k,
                 initJitter = jitter,
+                gradient = gradient,
+                adMetric = adMetric,
                 onIteration = { _, _ -> } // suppress inner bars; the outer one tracks restarts
             )
             if (best == null || run.finalError < best.finalError) best = run
@@ -424,7 +477,9 @@ fun fitHybrid(
     complexityWeight: Double = 0.0,
     metric: FnMetric = FnMetric.rmse,
     rngSeed: Long = 0L,
-    mutations: List<Pair<String, FnMutation>> = FnMutations.defaults()
+    mutations: List<Pair<String, FnMutation>> = FnMutations.defaults(),
+    gradient: FnGradientMode = FnGradientMode.FINITE_DIFFERENCE,
+    adMetric: FnAdMetric? = null
 ): FnHybridRun {
     val dom = domain.asFnDomain()
     val fitness = matchFitness(target, dom, samples, complexityWeight, metric)
@@ -448,7 +503,9 @@ fun fitHybrid(
         fdStep = fdStep,
         samples = samples,
         metric = metric,
-        rngSeed = rngSeed + 1
+        rngSeed = rngSeed + 1,
+        gradient = gradient,
+        adMetric = adMetric
     )
     return FnHybridRun(evolveRun, fitRun)
 }
