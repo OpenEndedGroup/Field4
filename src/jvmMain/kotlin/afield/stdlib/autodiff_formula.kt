@@ -111,6 +111,17 @@ sealed interface FnExpr {
     /** Negation. */
     data class Neg(val a: FnExpr) : FnExpr
 
+    /**
+     * Absolute value — `kotlin.math.abs`.
+     *
+     * Kinked at zero, and the derivative reported there is **0**: this library splits a tie evenly,
+     * and `|x| = max(x, -x)` under a 0.5/0.5 split gives `0.5·1 + 0.5·(-1) = 0`. That is also
+     * exactly what a central difference reports at the corner, so the analytic gradient and the
+     * finite-difference oracle agree *at* the kink and not merely either side of it. See the kink
+     * convention in `autodiff.kt`.
+     */
+    data class Abs(val a: FnExpr) : FnExpr
+
     /** `sin` in radians. */
     data class Sin(val a: FnExpr) : FnExpr
 
@@ -215,6 +226,13 @@ object FnFormulas {
         put("offsety", FnExpr.Add(child("source"), child("offset")))
         put("pow", FnExpr.Pow(child("source"), child("exponent")))
         put("log", FnExpr.Div(FnExpr.Ln(child("source")), FnExpr.Ln(child("base"))))
+        // `exp` is `log`'s counterpart and was for a long time the asymmetry that gave this family
+        // away: `log` was a real graph node and `exp` was a `mapY` lambda, so a fit could descend
+        // through one and was refused by the other for no mathematical reason. Its derivative is
+        // itself. `flip` is a negation (derivative -1) and `abs` a kink (0 at zero, even split).
+        put("exp", FnExpr.Exp(child("source")))
+        put("flip", FnExpr.Neg(child("source")))
+        put("abs", FnExpr.Abs(child("source")))
         put("clamp", FnExpr.CoerceIn(child("source"), child("min"), child("max")))
         put(
             "softclip",
@@ -337,6 +355,7 @@ fun evalFormula(
     is FnExpr.Mul -> evalFormula(expr.a, x, alpha, childValue) * evalFormula(expr.b, x, alpha, childValue)
     is FnExpr.Div -> evalFormula(expr.a, x, alpha, childValue) / evalFormula(expr.b, x, alpha, childValue)
     is FnExpr.Neg -> -evalFormula(expr.a, x, alpha, childValue)
+    is FnExpr.Abs -> kotlin.math.abs(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Sin -> kotlin.math.sin(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> kotlin.math.cos(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Exp -> kotlin.math.exp(evalFormula(expr.a, x, alpha, childValue))
@@ -404,6 +423,8 @@ fun evalFormulaAD(
     is FnExpr.Mul -> evalFormulaAD(expr.a, x, alpha, childValue) * evalFormulaAD(expr.b, x, alpha, childValue)
     is FnExpr.Div -> evalFormulaAD(expr.a, x, alpha, childValue) / evalFormulaAD(expr.b, x, alpha, childValue)
     is FnExpr.Neg -> -evalFormulaAD(expr.a, x, alpha, childValue)
+    // `abs`'s tracked twin already reports 0 at exactly zero — the even-split convention.
+    is FnExpr.Abs -> abs(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Sin -> sin(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> cos(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Exp -> exp(evalFormulaAD(expr.a, x, alpha, childValue))
@@ -486,10 +507,15 @@ data class FnOpStatus(
  * a formula or an explicit "no, because…" is therefore not shippable.
  *
  * Measured by `FnOpCoverageTest`, which prints the fraction rather than asking you to trust it:
- * **28 of 118 canonical ops are differentiable (23.7%)** — 26 formulas plus the two numeric-leaf ops —
- * and of the 90 declared non-differentiable, **36 are closable**. The single highest-value entry in
+ * **31 of 122 canonical ops are differentiable (25.4%)** — 29 formulas plus the two numeric-leaf ops —
+ * and of the 91 declared non-differentiable, **35 are closable**. The single highest-value entry in
  * that backlog is the piecewise-oscillator group (`saw`, `triangle`, `square`, the pulses), which
  * needs only an `FnExpr.Floor`, because oscillator fitting is the flagship use of [fitGradient].
+ *
+ * The 2026-07-31 pass moved four ops out of `mapY` and into the registry, which is why both the
+ * numerator and the denominator grew: `abs`, `flip` and `exp` gained formulas, and `sign` gained a
+ * node but no derivative. `step` moved from the closable backlog into the same reasoned refusal as
+ * `sign`, which is why the closable count fell by one while the declared count rose.
  */
 object FnNonDifferentiable {
 
@@ -570,9 +596,27 @@ object FnNonDifferentiable {
             "a non-smooth value transform: quantising (derivative 0 almost everywhere) or reflecting " +
                 "(piecewise linear with corners)",
             closable = true,
-            missing = "clip and saturate are two-line transcriptions; wrapY, fold, quantize, crush, " +
-                "rectify and step additionally need FnExpr.Floor and/or Abs",
-            "clip", "saturate", "fold", "wrapY", "quantize", "crush", "rectify", "step"
+            missing = "clip and saturate are two-line transcriptions; wrapY, quantize and crush " +
+                "additionally need FnExpr.Floor, and fold an arc-sine. FnExpr.Abs now exists — abs " +
+                "uses it — so rectify is pointwise-expressible, and the one thing it still lacks is " +
+                "a way to dispatch on the RectifyMode string the node carries, which no FnExpr kind " +
+                "can read",
+            "clip", "saturate", "fold", "wrapY", "quantize", "crush", "rectify"
+        )
+        group(
+            "a step function of its input: the derivative is zero everywhere it exists and undefined " +
+                "on the crossing itself, so a formula would be honest arithmetic and a dishonest " +
+                "gradient — every partial threaded through one is exactly zero, and a fit would " +
+                "report convergence without ever having moved. Refusing says that; returning zero " +
+                "would hide it",
+            closable = false, missing = "",
+            // `sign` arrived with the 2026-07-31 first-class-op pass, which gave abs/flip/exp
+            // formulas and left this one out on purpose. `step` moved here from the non-smooth
+            // value-transform group above at the same time: it was declared closable pending
+            // "FnExpr.Floor and/or Abs", but it needs neither (`IfLt` already expresses it) and the
+            // real reason it has no formula is the one stated here. Refusing `sign` on this ground
+            // while calling `step` a backlog item would have been incoherent.
+            "sign", "step"
         )
         group(
             "evaluates a Chebyshev recurrence to a depth given by a *child*, so the expression's own " +

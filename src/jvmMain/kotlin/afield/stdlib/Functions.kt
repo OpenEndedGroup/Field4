@@ -7044,14 +7044,53 @@ canvas {
     /** Plays this function backwards, mirrored about the coordinate [about]. Unlike the no-argument form there is no reliance on a finite domain centre. */
     fun Fn.reverse(about: Number): Fn = reverse(param(about))
 
-    /** Negates every value, turning the signal upside down. This flips it in **value**; [reverse] flips it in time. */
-    fun Fn.flip(): Fn = mapY(name) { -it }
+    // The four value transforms below used to be built with `mapY { … }`, which buried the whole
+    // function in an opaque `(Double) -> Double` closure and — because `mapY` labels its node with
+    // the *child's* name — did not even record in the graph that an abs (or an exp) had happened.
+    // That made them invisible twice over: the rewrite/evolve layer could replace the node but
+    // never reason about it, and the exact-gradient path refused them for the same reason it
+    // rightly refuses a user's lambda. `log` was a real node and `exp` was not, so a fit could
+    // descend through one and not its inverse — an asymmetry with no mathematical content at all.
+    // Each is now a first-class node in the `log`/`pow` shape, so `OpRegistry` can transmute it and
+    // `FnFormulas` can carry its derivative. `sign` is the deliberate exception: it gets the node
+    // (so the graph records it) but no formula — see FnNonDifferentiable.
 
-    /** The absolute value of the signal — full-wave rectification, folding the negative half upward. `rectify(FULL)` is the same shape as a first-class, rewritable graph node. */
-    fun Fn.abs(): Fn = mapY(name) { kotlin.math.abs(it) }
+    /** Negates every value, turning the signal upside down. This flips it in **value**; [reverse] flips it in time. Differentiable, with derivative `-1` everywhere. */
+    fun Fn.flip(): Fn = graphFn(
+        domain,
+        name,
+        node("flip", children = listOf(fnEdge("source", this)), rebuild = { it[0].flip() })
+    ) { x -> -eval(x) }
 
-    /** The sign of the signal: `-1`, `0` or `+1`. A hard three-level comparator — everything about the magnitude is discarded. */
-    fun Fn.sign(): Fn = mapY(name) { kotlin.math.sign(it) }
+    /**
+     * The absolute value of the signal — full-wave rectification, folding the negative half upward.
+     * The same shape as `rectify(FULL)`, and like it a first-class, rewritable graph node.
+     *
+     * Differentiable away from zero, and **zero at exactly zero** at the kink: this library splits a
+     * tie evenly, and `|x| = max(x, -x)` with an even split gives `0.5·1 + 0.5·(-1) = 0`. That is
+     * also precisely what a central difference reports there, so the analytic gradient and the
+     * finite-difference oracle agree at the corner too. See the kink convention in `autodiff.kt`.
+     */
+    fun Fn.abs(): Fn = graphFn(
+        domain,
+        name,
+        node("abs", children = listOf(fnEdge("source", this)), rebuild = { it[0].abs() })
+    ) { x -> kotlin.math.abs(eval(x)) }
+
+    /**
+     * The sign of the signal: `-1`, `0` or `+1`. A hard three-level comparator — everything about the
+     * magnitude is discarded.
+     *
+     * A first-class node, so a rewrite can see it, but deliberately **not** differentiable: its
+     * derivative is zero wherever it exists, so a gradient threaded through it would be exactly
+     * zero and a fit would report convergence without ever having moved. `FnGradientMode.EXACT`
+     * refuses instead of returning that, and says why.
+     */
+    fun Fn.sign(): Fn = graphFn(
+        domain,
+        name,
+        node("sign", children = listOf(fnEdge("source", this)), rebuild = { it[0].sign() })
+    ) { x -> kotlin.math.sign(eval(x)) }
 
     /**
      * Raises every value to the power [exponent], which may itself be a signal.
@@ -7072,8 +7111,17 @@ canvas {
     /** Raises every value to the power [exponent]. Unguarded, so negative values under fractional exponents give NaN. */
     fun Fn.pow(exponent: Number): Fn = pow(param(exponent))
 
-    /** `e` to the power of every value. Grows fast: a signal reaching 10 comes out above 22000, so expect to scale afterwards. */
-    fun Fn.exp(): Fn = mapY(name) { kotlin.math.exp(it) }
+    /**
+     * `e` to the power of every value. Grows fast: a signal reaching 10 comes out above 22000, so
+     * expect to scale afterwards.
+     *
+     * A first-class node and the differentiable counterpart of [log] — its derivative is itself.
+     */
+    fun Fn.exp(): Fn = graphFn(
+        domain,
+        name,
+        node("exp", children = listOf(fnEdge("source", this)), rebuild = { it[0].exp() })
+    ) { x -> kotlin.math.exp(eval(x)) }
 
     /**
      * The logarithm of every value, in base [base] (natural by default), computed as `ln(v) / ln(base)`.

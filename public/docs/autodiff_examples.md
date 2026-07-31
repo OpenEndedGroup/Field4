@@ -158,11 +158,30 @@ building the tape costs about what the extra graph evaluations did. The exact pa
 are that it is exact, has no `fdStep` to tune, and costs one sweep per step whatever the parameter
 count, where finite differences costs `2n`.
 
-And the refusal line matters as much as the fit. Only 28 of `OpRegistry`'s 118 canonical ops have a
+And the refusal line matters as much as the fit. Only 31 of `OpRegistry`'s 122 canonical ops have a
 derivative; the piecewise oscillators, the seeded noise generators, the table-backed interpolants and
 the windowed numeric operators do not. `FnGradientMode.EXACT` throws with the reason,
 `FnGradientMode.AUTO` falls back to finite differences and `FnFitRun.usedExactGradient` tells you which
 happened. Nothing here quietly returns the gradient of a function you did not ask about.
+
+Which ops those are is a question about *representation* rather than about calculus. `abs`, `flip` and
+`exp` were refused until 2026-07-31 — not because absolute value is hard to differentiate, but because
+they were built out of `Fn.mapY { … }`, which stores an opaque Kotlin lambda in the graph node. There
+was nothing to read a formula out of, so `log` was differentiable and `exp` was not, and `clamp` was
+and `abs` was not. All three are now first-class graph ops with derivatives, and a genuine
+`mapY { … }` of your own is still refused — which is the honest answer, not a gap.
+
+`abs` has a corner at zero, and the subgradient reported there is `0`: the even split, which is also
+exactly what a central difference reports at a kink, so the exact gradient and the finite-difference
+oracle agree *at* the corner rather than only either side of it.
+
+Removing the refusal is not the same as making the fit easy, and the numbers say so. Swap the seed
+above for `cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs — but it plateaus at
+RMSE ≈ 0.137 where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes
+it to 0.135. On that seed the exact and finite-difference arms finish within 0.1% of each other, so
+what the exact path buys is the evaluation count (801 against 6801) rather than the accuracy it also
+buys on the smooth one. Rectifying the envelope creates a local minimum, and no gradient argues a
+descent out of a local minimum.
 
 ## Inverse kinematics, because it makes pixels
 

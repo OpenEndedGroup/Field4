@@ -103,6 +103,18 @@ class AutoDiffFnBridgeTest {
             "log" to sin(1.0, amplitude = 0.4, offset = 2.0).log(2.0),
             "clamp" to sin(1.4, amplitude = 1.5).clamp(-0.8, 0.8),
             "softClip" to sin(1.1, amplitude = 1.2).softClip(1.5),
+            // The ex-`mapY` shapers, first-class ops since 2026-07-31. `exp` is kept on a source in
+            // roughly -0.2..0.8 so the value stays O(1) and the oracle's relative tolerance means
+            // something. `abs` is deliberately given a source that genuinely *crosses* zero — the
+            // whole point of the op — so the folded branch is exercised, and x = 0 is on both sample
+            // grids with `sin(…, phase = 0)` exactly zero there, so the kink itself is inside the
+            // oracle comparison rather than only either side of it.
+            "exp" to sin(1.0, amplitude = 0.5, offset = 0.3).exp(),
+            "flip" to sin(1.2, amplitude = 0.7).flip(),
+            "abs" to sin(1.3, amplitude = 0.9).abs(),
+            // The user-reported acceptance shape: an abs in the middle of a product, which is what
+            // `fitGradient(gradient = EXACT)` used to refuse outright.
+            "cos.abs*sin" to (cos(1.9).abs() * sin(1.3, amplitude = 1.0)),
             // x-domain transforms.
             "scaleX" to sin(2.0, amplitude = 0.6).scaleX(1.5, 0.25),
             "warp" to sin(2.0, amplitude = 0.6).warp(cos(1.0), 0.1),

@@ -108,24 +108,62 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — twenty-five ops:
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-one of `OpRegistry`'s 122
+canonical ops, which `FnOpCoverageTest` prints as **25.4%** rather than asking you to trust it:
 
 | group | ops |
 | --- | --- |
 | leaves and label-only wrappers | `const param identity name over` |
 | pointwise arithmetic | `add subtract multiply divide` |
 | smooth oscillators | `sin cos` |
-| value transforms | `scaleY offsetY pow log clamp softClip` |
+| value transforms | `scaleY offsetY pow log exp clamp softClip abs flip` |
 | x-domain transforms | `shift scaleX warp` |
 | shapes and windows | `gaussian ramp remap smoothstep hannWindow hammingWindow` |
 | modulation | `amplitudeMod ringMod` |
+
+(This said "twenty-five ops" until 2026-07-31 while the table below it already listed twenty-eight —
+the count was stale, not the table. Nothing generates this page, so the number here is hand-kept:
+`./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest --rerun` prints the authoritative
+`OP COVERAGE:` line, and that is what to check it against.)
 
 Not covered — and honestly reported by name by `unsupportedOps` — are the piecewise oscillators
 (`saw`, `triangle`, `square`, `pulseTrain`), everything table- or data-backed (`piecewise`,
 `timeline`, `rbf`, the interpolants), the seeded noise family (whose generators are not
 differentiable in their parameters at all), the reflecting/quantising transforms (`fold`, `quantize`,
-`bitCrush`, `rectify`), the easings, and everything built on `mapY`/`mapX` (whose node carries a
-lambda, not a recipe). Every name in the set is in `OpRegistry.knownOps`, and a test asserts it.
+`bitCrush`, `rectify`), the easings, the step functions (`sign`, `step` — see below), and everything
+built on `mapY`/`mapX` (whose node carries a lambda, not a recipe). Every name in the set is in
+`OpRegistry.knownOps`, and a test asserts it.
+
+### `abs`, `flip`, `exp` — and why `sign` is refused (2026-07-31)
+
+`abs`, `flip`, `sign` and `exp` used to be built with `mapY { … }`, which stores an opaque
+`(Double) -> Double` closure and labels its node with the *child's* name — so the graph did not record
+that an abs had happened at all, and the exact path refused them for exactly the reason it rightly
+refuses a user's lambda. That produced an asymmetry with no mathematical content: `log` was a real
+graph node and `exp` was not, so a fit could descend through one and not its inverse; `clamp` was
+differentiable and `abs` was not. All four are now first-class ops in the `log`/`pow` shape, and
+`abs`, `flip` and `exp` carry `FnFormulas` entries.
+
+`abs` is kinked at zero, and the subgradient reported there is **0** — this library's even-split tie
+convention (`|x| = max(x, -x)` with a 0.5/0.5 split), which is also exactly what a central difference
+reports at a corner. So the analytic gradient and the finite-difference oracle agree *at* the kink and
+not merely either side of it, and `FirstClassShaperOpsTest` checks precisely that.
+
+`sign` deliberately did **not** get a formula, and `step` was moved to join it. Both are step
+functions of their input: the derivative is zero everywhere it exists and undefined on the crossing.
+A formula would be honest arithmetic and a dishonest gradient — every partial threaded through one is
+exactly zero, so a fit would report convergence without ever having moved. Refusing says that;
+returning zero would hide it. `step` had been filed as closable "pending `FnExpr.Floor` and/or `Abs`",
+which was wrong twice over: `IfLt` already expresses it, and the real obstacle is the one above.
+
+Making `abs` differentiable removes the *refusal*; it does not make the landscape nice. Fitting
+`cos(1.9).abs() * sin(1.3, amplitude = 1.0)` to `cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)`
+plateaus at RMSE ≈ 0.137 where the same fit on the smooth seed reaches ≈ 0.0096, and it is a genuine
+plateau rather than slow progress — sixteen times the iteration budget only moves it to 0.135. Exact
+and finite-difference gradients land within 0.1% of each other there (0.13873 against 0.13884), so on
+this seed the exact path's advantage is the evaluation count (801 against 6801, 8.5×) and not the
+accuracy, where on the smooth seed it also reaches a 1.5× lower residual. The rectified envelope
+creates a local minimum that Adam settles into, and no gradient is going to argue it out of one.
 
 Three of the ops — `ramp` and the two windows — read a normalised position within a **shape domain**
 that `Functions` samples through a private `finiteSweep()` fallback for an unbounded domain. Rather
