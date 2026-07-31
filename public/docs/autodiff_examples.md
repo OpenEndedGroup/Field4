@@ -141,10 +141,23 @@ with(Functions) {
         title = "RMSE per Adam step - same optimiser, different gradient",
         xTitle = "step", yTitle = "RMSE"
     )
+    // The refusal names every differentiable op, which is one ~700-character line. Left unwrapped it
+    // sets the width of the whole capture — the plots above end up small inside a very wide, mostly
+    // empty frame. Wrap it on comma boundaries so the figure is sized by its plots, not by its prose.
+    fun wrap(text: String, at: Int = 96): String {
+        val out = StringBuilder()
+        var column = 0
+        for ((i, piece) in text.split(", ").withIndex()) {
+            val token = if (i == 0) piece else ", $piece"
+            if (column + token.length > at) { out.append(",\n     ").append(piece); column = 5 + piece.length }
+            else { out.append(token); column += token.length }
+        }
+        return out.toString()
+    }
     display("4 numbers", "<pre style='font-family:monospace;font-size:11px;color:#7f92a8'>" +
         "finite differences: RMSE " + fd.initialError + " -> " + fd.finalError + " in " + fd.evaluations + " loss evaluations\n" +
         "exact reverse mode: RMSE " + exact.initialError + " -> " + exact.finalError + " in " + exact.evaluations + " loss evaluations\n" +
-        "a saw-based seed is refused, with a reason:\n  " + refusal + "</pre>")
+        "a saw-based seed is refused, with a reason:\n  " + wrap(refusal ?: "(none)") + "</pre>")
 :::endfold
 }
 ```
