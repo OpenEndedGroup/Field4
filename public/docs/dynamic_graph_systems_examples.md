@@ -171,8 +171,9 @@ Every panel is real vector geometry — `dynamicGraphFLines` emits one `FLine` p
 `showPlaneGrid` puts them through `drawToSVG`, so the figure scales and each edge carries its own
 weight. That weight is read as `weight / 4.0`, the ceiling all six were given, and it drives **both**
 the colour and the stroke width: a *fixed* scale rather than a per-panel normalisation, so a faint,
-thin panel is a system whose weights genuinely stayed low. That is why the last column looks like
-that, and the last column of the table is why:
+thin panel is a system whose weights genuinely stayed low. Compare the top-left and bottom-right
+panels — cream and heavy against thin and purple, over the same cloud and the same reinforcement
+budget — and the last column of the table is why:
 
 | system | edges | in a triangle | mean degree | max weight reached |
 | --- | --- | --- | --- | --- |
