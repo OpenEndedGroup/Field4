@@ -64,6 +64,101 @@ class DynamicGraphSystemsTest {
         edges.values().count { it.i == index || it.j == index }
 
     // ==========================================================================================
+    // DynamicEdgeList.incident — the O(1) lookup that replaced an O(E) scan
+    // ==========================================================================================
+
+    /**
+     * `edgeNeighbors` used to be an O(E) scan of the whole edge store, called once per point by five
+     * processes, so a step was O(V·E) — invisible while the population could not grow, and the binding
+     * constraint the moment it could. It now delegates to `DynamicEdgeList.incident`, a version-cached
+     * incidence index.
+     *
+     * That swap had **no test of any kind**, which is worth stating plainly: the page's claim about it
+     * rested on a wall-clock figure and nothing else, and a wrong-but-fast incidence lookup would have
+     * been a far worse bug than the slow scan it replaced. So this asserts the two properties the
+     * conversion could plausibly have broken — agreement with the scan it replaced, and cache
+     * invalidation — rather than a timing.
+     *
+     * Included deliberately: a **self-loop**, because `incidenceIndex` guards it with
+     * `if (e.j != e.i)` and the old scan's `it.i == index || it.j == index` did not, so a self-loop is
+     * exactly where a list-vs-scan disagreement would show up.
+     */
+    @Test
+    fun theIncidenceIndexAgreesWithTheScanItReplaced() {
+        val n = 60
+        val state = DynamicPointState(disc(n, 0.5).toMutableList())
+        val edges = DynamicEdgeList(n)
+
+        // A deterministic spread of edges, plus a self-loop and a duplicated pair.
+        // Explicit ttl on every edge. The default is `0f`, and `decayLinear` decrements ttl before
+        // testing `ttl <= 0f`, so default-ttl edges are ALL removed by the first decay tick of any
+        // size — which is what happened on the first run of this test. Every path inside the family
+        // reaches the store through `reinforce(..., ttl, ...)` with a real ttl, so nothing in-family
+        // hits that, but it is a live trap for hand-built edges and is filed as a follow-up.
+        for (i in 0 until n step 3) edges.getOrCreate(i, (i + 7) % n, 1.0, ttl = 100f)
+        for (i in 1 until n step 5) edges.getOrCreate(i, (i + 23) % n, 0.5, ttl = 100f)
+        edges.getOrCreate(11, 11, 2.0, ttl = 100f)
+        edges.getOrCreate(3, 10, 3.0, ttl = 100f)
+
+        // The O(E) scan this replaced, written out here as the oracle.
+        fun scan(index: Int) = edges.values().filter { it.i == index || it.j == index }.toSet()
+
+        for (i in 0 until n) {
+            val incident = edges.incident(i)
+            assertEquals(scan(i), incident.toSet(), "incident($i) must equal the O(E) scan")
+            assertEquals(
+                incident.toSet().size, incident.size,
+                "incident($i) listed an edge twice: $incident",
+            )
+        }
+
+        // The self-loop appears once, not twice, and the point is genuinely incident to it.
+        val selfLoop = edges.incident(11).filter { it.i == it.j }
+        assertEquals(1, selfLoop.size, "the self-loop at 11 must appear exactly once in incident(11)")
+
+        // Degrees must sum to 2E - (self-loops), the handshake identity.
+        val selfLoops = edges.values().count { it.i == it.j }
+        assertEquals(
+            2 * edges.values().size - selfLoops,
+            (0 until n).sumOf { edges.incident(it).size },
+            "sum of degrees must be 2E minus one per self-loop",
+        )
+
+        // Cache invalidation: the index is memoised against `version`, so a mutation between two
+        // reads must be visible. This is the failure a version-cached index actually has.
+        // Pick a partner 4 is not already joined to — the generators above are dense enough that a
+        // hand-picked index is liable to exist already, in which case `getOrCreate` is a no-op and
+        // this would assert nothing. (It did, on the first run: (41,4) is created by the second loop.)
+        var fresh = -1
+        for (cand in 0 until n) {
+            if (cand != 4 && edges.get(4, cand) == null) {
+                fresh = cand
+                break
+            }
+        }
+        assertTrue(fresh >= 0, "point 4 is joined to everything; pick a sparser generator")
+        val before = edges.incident(4).size
+        edges.getOrCreate(4, fresh, 1.0, ttl = 100f)
+        assertEquals(before + 1, edges.incident(4).size, "a new edge (4,$fresh) must appear in a re-read of incident(4)")
+        assertEquals(scan(4), edges.incident(4).toSet(), "and it must still agree with the scan")
+
+        // Removal is the other direction, and it happens through decay rather than an explicit
+        // delete: `decayLinear` drops every edge whose weight reaches 0 and bumps `version`. A decay
+        // of 0.75/s for 1s takes the 0.5-weight edges out and leaves the 1.0-weight ones, so the
+        // index must both shrink and still agree everywhere.
+        val edgesBeforeDecay = edges.values().size
+        edges.decayLinear(1.0f, 0.75)
+        val edgesAfterDecay = edges.values().size
+        assertTrue(
+            edgesAfterDecay in 1 until edgesBeforeDecay,
+            "the decay must remove some edges but not all: $edgesBeforeDecay -> $edgesAfterDecay",
+        )
+        for (i in 0 until n) {
+            assertEquals(scan(i), edges.incident(i).toSet(), "incident($i) must agree after a removal")
+        }
+    }
+
+    // ==========================================================================================
     // Vec3SpatialHash — the neighbour query everything else is built on
     // ==========================================================================================
 
@@ -87,9 +182,28 @@ class DynamicGraphSystemsTest {
             // Radius query: the *set* must match exactly. (Ties in distance make the order of equal
             // -distance entries unspecified, so compare sets of indices.)
             val r = 0.12
-            val got = hash.radiusNeighbors(i, r).map { it.index }.toSet()
+            val gotList = hash.radiusNeighbors(i, r).map { it.index }
+            val got = gotList.toSet()
             val want = brute.filter { it.distanceSquared <= r * r }.map { it.index }.toSet()
             assertEquals(want, got, "radiusNeighbors($i, $r) must equal the brute-force answer")
+
+            // ...and it must not repeat anyone. Comparing sets on BOTH sides — which is all this test
+            // did originally — is blind by construction to the duplicate-emission half of the defect
+            // it exists to pin: a point sitting in more than one probed cell used to come back once
+            // per cell, and `toSet()` silently repaired that before the comparison, so the assertion
+            // passed either way. The count is the only thing that can see it.
+            assertEquals(
+                got.size, gotList.size,
+                "radiusNeighbors($i, $r) returned ${gotList.size} entries for ${got.size} distinct " +
+                    "points -- duplicates are back: $gotList",
+            )
+
+            // Same for the free-standing ball query, which shares the traversal.
+            val sampled = hash.sample(points[i], r).map { it.index }
+            assertEquals(
+                sampled.toSet().size, sampled.size,
+                "sample(points[$i], $r) repeated a point: $sampled",
+            )
 
             // kNN: distances must match element-for-element (indices can differ only on a tie).
             val k = 12

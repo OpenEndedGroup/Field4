@@ -24,7 +24,7 @@ That is a different mental model, and worth spelling out before any code:
   [`Vec3SpatialHash`](reference/data.md#dynamic-graph-systems-kt-vec3spatialhash) is for, and
   `stepDynamicGraph` and `DynamicProcessPipeline` rebuild it for you.
 - **The population is a variable.** A [`DynamicPointProcess`](reference/data.md#dynamic-graph-systems-kt-dynamicpointprocess)
-  moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the nine
+  moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the ten
   shipped processes add points and two remove them.
 
 ## Before anything else: this page is the first time this code ran
@@ -32,8 +32,18 @@ That is a different mental model, and worth spelling out before any code:
 Read everything below with one fact in view. `dynamic_graph_systems.kt` shipped 1298 lines, 27 public
 declarations and a careful file-level KDoc, and until this page was written it had **no tests, no
 worked example and no way at all to draw its output**. Writing the first coverage for it turned up
-nine defects — including one that meant the entire `DynamicPointProcess` half had never completed a
-single run.
+nine defects — including one that meant the entire `DynamicPointProcess` half had never successfully
+**added a point**, which is the one thing that half of the family exists to do.
+
+To be exact about that, because the stronger version of the sentence overstates it: the throw happens
+on the frame of a *birth*, not on the first frame. `DynamicEdgeList.pointCount` was a constructor
+`val` while `DirectedTipGrowthProcess` sets `newIndex = state.points.size` *before* appending — so
+`newIndex == pointCount` exactly, and `require(b in 0 until pointCount)` necessarily fails the first
+time a point is born. It is unconditional when it happens, but **only three of the ten
+`DynamicPointProcess` implementations append points at all** (`DirectedTipGrowthProcess`,
+`AddNearLowDensityProcess`, `AddNearHighDensityProcess`), so a pipeline built from the other seven ran
+fine, and a pipeline that included one ran fine right up until its first birth. What had never worked
+is growth, not every frame.
 
 That is less a criticism of the file than a demonstration of the thing this documentation set keeps
 rediscovering: a family with a good KDoc and no executed evidence is a family whose behaviour nobody
@@ -51,8 +61,16 @@ knows. So the table comes first, and every row of it is a measurement.
 | `edgeNeighbors` was an O(E) scan, called once per point by five processes | O(V·E) per step — invisible while the population could not grow, and the binding constraint the moment it could. 200 frames of morphogenesis from a 40-point ring: **did not finish in ten minutes** of CPU, against **9.8 s** through an incidence index. |
 | a `max()` in `SpringMotionProcess` whose first branch was unreachable | dead, because the loop `continue`s above it on exactly that condition |
 
-All nine are fixed and all nine are pinned by `DynamicGraphSystemsTest` — 29 tests, 4.8 s, every claim
-either an exact identity or a control arm. Two further oddities are documented rather than changed,
+All nine are fixed. **Eight of the nine are pinned by `DynamicGraphSystemsTest` — 34 tests, 11.6 s,
+every claim either an exact identity or a control arm — and it is worth being exact about the ninth
+rather than rounding up.** The dead `max()` in `SpringMotionProcess` was a bit-identical cleanup, so
+there is no behaviour for a test to hold: nothing can distinguish the two versions, which is precisely
+why it was safe to remove. Separately, the `edgeNeighbors` entry above is pinned for *correctness* —
+the incidence index is asserted to agree edge-for-edge with the O(E) scan it replaced, including on a
+self-loop, and to survive cache invalidation on both insertion and removal — but its ">ten minutes →
+9.8 s" figure is a measurement, not an assertion; no test in this suite fails if that regresses.
+
+Two further oddities are documented rather than changed,
 because there is no ground truth to change them *to*, and both are things you have to know before you
 configure anything here:
 
