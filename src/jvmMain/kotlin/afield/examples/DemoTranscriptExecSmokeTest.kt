@@ -89,6 +89,9 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",
+        // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
+        // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
+        "autodiff_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

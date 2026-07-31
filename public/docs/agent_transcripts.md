@@ -142,6 +142,49 @@ edges: `evaluate(-1.0)` returning −21.1 outside the fitted knots, and the 0.20
 or an n and re-run it.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/statistics_examples/metadata.edn)
 
+**autodiff_worked_example** — Field's **automatic-differentiation layer** as five independent
+boxes, one per layer of the stack. *Basics* differentiates one expression three ways that have to agree
+— a reverse-mode tape sweep, a second-order forward-mode `Dual2` number, and a central-difference
+oracle — and plots `f`, `f'` and `f''` from a **single** sweep, because the second derivative comes
+free with the forward pass. It also prints the exact 2×2 Rosenbrock Hessian, which is a polarised
+`Dual2` result rather than a finite difference of a gradient.
+
+![f, f prime and f double-prime of exp(-x^2) sin(6x), plotted from one forward sweep](assets/autodiff/autodiff_basics.png)
+
+*Optimizers* walks the same Rosenbrock valley three times on the same exact gradients. The picture is
+the argument for a line search: L-BFGS plunges past 10⁻²⁴ in about 42 iterations and stops, while
+SGD+momentum is still zig-zagging near 10⁻³ at iteration 300 and Adam has barely left 10⁰.
+
+![log10 Rosenbrock loss per iteration for SGD, Adam and L-BFGS](assets/autodiff/autodiff_optimizers.png)
+
+*Fn fit* is the Field-specific bridge, and the reason this is not a generic AD library. `Functions.Fn`
+is a closure over `Double` and cannot be differentiated by overloading its arithmetic — but every `Fn`
+the stdlib builds carries an inspectable graph, and that graph is re-interpreted in tracked arithmetic.
+The box makes the *same* `fitGradient` call twice, once on the historic central-difference gradient and
+once with `gradient = FnGradientMode.EXACT`: same optimiser, same step size, same landscape. Both
+start at RMSE 0.3605; finite differences ends at 0.0142 after 6801 loss evaluations, the exact
+gradient at 0.0096 after 801 — better, for an eighth of the work. It then asks `exactFitRefusal` why a
+`saw`-based seed is turned away, because the exact path re-checks its own interpreter against `Fn.eval`
+before it will trust itself.
+
+![the target signal, the exactly-fitted signal, and both RMSE trajectories](assets/autodiff/autodiff_fit.png)
+
+*IK* solves inverse kinematics on a four-link `FLine` chain. Forward kinematics is a cumulative angle
+sum, so it differentiates cleanly and 18 L-BFGS iterations put the tip dead centre in the target
+reticle. The third panel is the smoothness knob, shown as the honest trade it is: the pose straightens
+and it *costs* 0.006 units of reach.
+
+![a four-link chain at rest, solved, and solved with a smoothness penalty](assets/autodiff/autodiff_ik.png)
+
+*Pack* packs twelve discs by descending `relu(overlap)²` pairwise plus `relu(penetration)²` against the
+walls — worst overlap 48.3 units → 0.35. This is where the library's even-split kink convention earns
+itself: at the instant two discs touch, the hinge's derivative is half a one-sided rule's, so the
+packing settles instead of chattering across the contact.
+
+![twelve discs before and after a differentiable packing](assets/autodiff/autodiff_pack.png)
+
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/autodiff_worked_example/metadata.edn)
+
 
 ## visionOS device scenes
 
