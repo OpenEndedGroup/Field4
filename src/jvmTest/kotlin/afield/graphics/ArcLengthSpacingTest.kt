@@ -383,6 +383,32 @@ class ArcLengthSpacingTest {
         assertTrue(worstGeneral < 1.10, "general cubic spaced ${"%.3f".format(worstGeneral)}x on $worstGeneralName")
     }
 
+    /**
+     * Hitting `maxSubDiv` used to drop that piece of the curve out of the table altogether, which
+     * under-reports the total length and shifts every distance past it. Forced here by turning the
+     * ceiling down to nothing.
+     */
+    @Test
+    fun hittingMaxSubDivStillAccountsForTheWholeCurve() {
+        val line = ArcLengthTestCurves.sharplyCurved()
+        val oracle = ArcLengthOracle(line)
+        val was = PathFlattener.maxSubDiv
+        try {
+            PathFlattener.maxSubDiv = 0
+            val flattener = PathFlattener(line, 0.01f)
+            println("maxSubDiv=0 leaves=${flattener.mappings.size} length=${flattener.length()} oracle=${oracle.length}")
+            assertTrue(flattener.mappings.isNotEmpty(), "the whole cubic vanished from the table")
+            // one forced level, so two chords across a quarter-turn-ish curve: coarse, but it must
+            // account for the curve rather than for none of it.
+            assertTrue(
+                flattener.length() > oracle.length * 0.8,
+                "length ${flattener.length()} is nowhere near the oracle's ${oracle.length}"
+            )
+        } finally {
+            PathFlattener.maxSubDiv = was
+        }
+    }
+
     @Test
     fun degenerateInputsDoNotHangOrProduceNaN() {
         val line = ArcLengthTestCurves.sCurve()

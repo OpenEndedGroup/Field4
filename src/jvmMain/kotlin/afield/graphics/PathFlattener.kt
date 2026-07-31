@@ -137,14 +137,16 @@ class PathFlattener(private val c: FLine, tol: Float) {
         var c1: Vec3 = c1
         var c2: Vec3 = c2
         if (sub > maxSubDiv) {
+            // Report both terms: reporting only the flatness is actively misleading now, because the
+            // curves that recurse deepest are the ones whose flatness is 0.
             System.err.println(
-                "warning: maxSubDiv reached :" + dotStart + " " + dotEnd + " " + a + " " + c1 + " " + c2 + " " + b + " -> " + flatnessFor(
-                    a,
-                    c1,
-                    c2,
-                    b
-                )
+                "warning: maxSubDiv reached :" + dotStart + " " + dotEnd + " " + a + " " + c1 + " " + c2 + " " + b +
+                    " -> flatness " + flatnessFor(a, c1, c2, b) + " skew " + parameterSkewFor(a, c1, c2, b)
             )
+            // Emit the chord anyway. Returning empty-handed dropped this piece of the curve out of
+            // the table entirely, which silently under-reports `length()` and shifts every distance
+            // past this point — a much worse failure than a coarse mapping.
+            emitLinearFrame(dotStart, dotEnd, a, b)
             return
         }
         val f = subdivisionErrorFor(a, c1, c2, b)
