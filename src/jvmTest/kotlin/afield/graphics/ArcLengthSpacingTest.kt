@@ -324,6 +324,87 @@ class ArcLengthSpacingTest {
     }
 
     /**
+     * The hand-picked curves are only as good as my imagination. `minSubDiv = 2` rests on the claim
+     * that two forced levels of subdivision break every symmetry that can zero *both* terms of the
+     * error metric, and the honest way to test a claim like that is to try to break it: 400 random
+     * collinear cubics (control points anywhere along the chord, in any order, including reversals
+     * that make the curve double back) and 400 random general cubics.
+     */
+    @Test
+    fun randomCurvesAreAlsoEvenlySpaced() {
+        val rng = java.util.Random(20260731L)
+        var worstCollinear = 0.0
+        var worstCollinearName = ""
+        var worstGeneral = 0.0
+        var worstGeneralName = ""
+
+        fun ratioOf(line: FLine): Double {
+            val oracle = ArcLengthOracle(line, samplesPerSegment = 4096)
+            if (oracle.length < 1.0) return 1.0
+            val cursor = line.cursor()
+            val total = cursor.lengthD()
+            val trueD = DoubleArray(48) {
+                cursor.setD(total * it / 47f)
+                oracle.distanceAt(cursor.t.toDouble())
+            }
+            val gaps = DoubleArray(47) { trueD[it + 1] - trueD[it] }.sortedArray()
+            val median = gaps[gaps.size / 2]
+            return if (median <= 0.0) 1.0 else gaps.last() / median
+        }
+
+        repeat(400) {
+            // collinear: every control point on the x axis, so flatness is 0 wherever the control
+            // points also stay between the ends, and the whole curve is geometrically a segment.
+            val c1x = rng.nextFloat() * 500f
+            val c2x = rng.nextFloat() * 500f
+            val line = FLine().moveTo(0f, 0f).cubicTo(Vec3(c1x, 0f, 0f), Vec3(c2x, 0f, 0f), Vec3(500f, 0f, 0f))
+            val r = ratioOf(line)
+            if (r > worstCollinear) {
+                worstCollinear = r
+                worstCollinearName = "cubicTo(($c1x,0),($c2x,0),(500,0))"
+            }
+        }
+
+        repeat(400) {
+            fun p() = Vec3(rng.nextFloat() * 500f - 100f, rng.nextFloat() * 500f - 100f, rng.nextFloat() * 60f)
+            val a = p()
+            val line = FLine().moveTo(a).cubicTo(p(), p(), p())
+            val r = ratioOf(line)
+            if (r > worstGeneral) {
+                worstGeneral = r
+                worstGeneralName = line.nodes.joinToString(" ")
+            }
+        }
+
+        println("random collinear worst max/median = ${"%.4f".format(worstCollinear)}  $worstCollinearName")
+        println("random general   worst max/median = ${"%.4f".format(worstGeneral)}  $worstGeneralName")
+
+        assertTrue(worstCollinear < 1.10, "collinear cubic spaced ${"%.3f".format(worstCollinear)}x on $worstCollinearName")
+        assertTrue(worstGeneral < 1.10, "general cubic spaced ${"%.3f".format(worstGeneral)}x on $worstGeneralName")
+    }
+
+    @Test
+    fun degenerateInputsDoNotHangOrProduceNaN() {
+        val line = ArcLengthTestCurves.sCurve()
+
+        // one sample: steps - 1 == 0, so the loop's divisor is zero
+        val one = line.sampleByNumber(1)
+        assertTrue(one.size == 1, "expected one sample, got ${one.size}")
+        assertTrue(one[0].x.isFinite() && one[0].y.isFinite(), "sampleByNumber(1) produced ${one[0]}")
+
+        val two = line.sampleByNumber(2)
+        assertTrue(two.size == 2 && two.all { it.x.isFinite() }, "sampleByNumber(2) produced $two")
+
+        // a line with nothing to walk along
+        assertTrue(FLine().moveTo(3f, 4f).cursor().lengthD() == 0f)
+        assertTrue(FLine().moveTo(3f, 4f).byDashing(5f, 5f).isEmpty())
+
+        // a zero gap used to spin forever
+        assertTrue(line.byDashing(5f, 0f).isEmpty(), "a zero gap should be rejected, not looped on")
+        assertTrue(line.byDashing(0f, 5f).isEmpty(), "a zero dash should be rejected, not looped on")
+    }
+
+    /**
      * The audit: every public entry point that promises a *distance along the curve*, scored
      * against the oracle. Each one funnels into `Cursor.setD` and so into `PathFlattener`, and each
      * one was wrong by the same mechanism.
