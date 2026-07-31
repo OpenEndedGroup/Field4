@@ -400,6 +400,11 @@ class FLinesAndJavaShapes {
 
         /**
          * returns the normal at this point in the line. This is always perpendicular to the line at the current point.
+         *
+         * It is **not** normalized — it is [tangent] rotated a quarter turn, so its magnitude is
+         * `|B'(t)|`, which for a curve a few hundred units across is itself a few hundred. Divide by
+         * its own length before using it as a direction, or whatever you offset by it flies off the
+         * page.
          */
         fun normal2(): Vec2? {
             val t: Vec3? = tangent()
@@ -2025,8 +2030,6 @@ class FLinesAndJavaShapes {
             out.x = a.x * oma3 + 3 * c1.x * alphaoma2 + 3 * c2.x * alpha2oma + b.x * alpha3
             out.y = a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3
             out.z = a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3
-
-            println(a.toString() + " " + c1 + " " + c2 + " " + b + " " + alpha + " == " + out)
 
             return out
         }
