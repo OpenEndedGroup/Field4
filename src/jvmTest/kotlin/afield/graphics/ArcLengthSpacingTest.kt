@@ -1,6 +1,7 @@
 package afield.graphics
 
 import afield.stdlib.Vec3
+import field.graphics.FLinesAndJavaShapes
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -258,6 +259,36 @@ object ArcLengthTestCurves {
     fun sharplyCurved(): FLine = FLine().moveTo(0f, 0f)
         .cubicTo(Vec3(0f, 300f, 0f), Vec3(300f, 300f, 0f), Vec3(300f, 0f, 0f))
 
+    /**
+     * A closed outline whose subpath-closing segment is long, so spacing has to stay even *across*
+     * the `Close` boundary and not merely within each cubic. A different question from the `Close`
+     * crash: the crash was about reading a node, this is about the table spanning one.
+     */
+    fun closedWithLongCloseSegment(): FLine = FLine().moveTo(0f, 0f)
+        .cubicTo(Vec3(120f, 0f, 0f), Vec3(280f, 0f, 0f), Vec3(400f, 0f, 0f))
+        .cubicTo(Vec3(400f, 120f, 0f), Vec3(400f, 280f, 0f), Vec3(400f, 400f, 0f))
+        .close() // ~566 units back to the origin, longer than either cubic
+
+    /** two subpaths, so the table must span a MoveTo jump that contributes no length. */
+    fun twoSubpaths(): FLine = FLine().moveTo(0f, 0f)
+        .cubicTo(Vec3(150f, 0f, 0f), Vec3(280f, 0f, 0f), Vec3(300f, 0f, 0f))
+        .moveTo(0f, 200f)
+        .cubicTo(Vec3(20f, 200f, 0f), Vec3(150f, 200f, 0f), Vec3(300f, 200f, 0f))
+
+    /**
+     * Real z variation with the pathology living *in z*. `flatnessFor` is 3-D
+     * (`FLinesAndJavaShapes.ptSegDistSq3`), so the skew term this branch added had better be 3-D too
+     * or a curve bunched along z slips straight through it.
+     */
+    fun collinearInZ(): FLine = FLine().moveTo(0f, 0f, 0f).cubicTo(
+        Vec3(0f, 0f, 450f), Vec3(0f, 0f, 480f), Vec3(0f, 0f, 500f)
+    )
+
+    /** a genuinely three-dimensional badly-parameterised curve, as the 3-D control arm. */
+    fun skewedInThreeD(): FLine = FLine().moveTo(0f, 0f, 0f).cubicTo(
+        Vec3(300f, 40f, 260f), Vec3(320f, 60f, 280f), Vec3(100f, 200f, 300f)
+    )
+
     /** a glyph-ish closed outline: a couple of near-straight stems plus round joins. */
     fun glyphish(): FLine = FLine().moveTo(0f, 0f)
         .cubicTo(Vec3(0f, 260f, 0f), Vec3(0f, 480f, 0f), Vec3(0f, 700f, 0f)) // straight stem as a cubic
@@ -275,7 +306,39 @@ object ArcLengthTestCurves {
         "collinearBackAndForth" to collinearBackAndForth(),
         "sCurve" to sCurve(),
         "sharplyCurved" to sharplyCurved(),
-        "glyphish" to glyphish()
+        "glyphish" to glyphish(),
+        "closedLongClose" to closedWithLongCloseSegment(),
+        "twoSubpaths" to twoSubpaths(),
+        "collinearInZ" to collinearInZ(),
+        "skewedInThreeD" to skewedInThreeD()
+    )
+
+    /**
+     * [all], but with every multi-subpath curve broken into its subpaths.
+     *
+     * For metrics that read a *Euclidean* distance between consecutive samples — which is the
+     * arc-length distance only within one subpath — this is the domain on which the metric is
+     * meaningful. `FLine.pieces()` returns the line itself for a single-subpath curve, so the
+     * control arms are unaffected.
+     */
+    fun allSubpaths(): List<Pair<String, FLine>> = all().flatMap { (name, line) ->
+        val parts = line.pieces()
+        if (parts.size <= 1) listOf(name to line)
+        else parts.mapIndexed { i, part -> "$name#${i + 1}" to part }
+    }
+
+    /** Degenerate shapes, kept out of [all] because "evenly spaced" is meaningless for them. */
+    fun degenerate(): List<Pair<String, FLine>> = listOf(
+        "zeroLengthCubic" to FLine().moveTo(50f, 50f)
+            .cubicTo(Vec3(50f, 50f, 0f), Vec3(50f, 50f, 0f), Vec3(50f, 50f, 0f)),
+        "coincidentControls" to FLine().moveTo(0f, 0f)
+            .cubicTo(Vec3(0f, 0f, 0f), Vec3(0f, 0f, 0f), Vec3(300f, 0f, 0f)),
+        "bothControlsAtEnd" to FLine().moveTo(0f, 0f)
+            .cubicTo(Vec3(300f, 0f, 0f), Vec3(300f, 0f, 0f), Vec3(300f, 0f, 0f)),
+        "moveToOnly" to FLine().moveTo(7f, 9f),
+        "emptyLine" to FLine(),
+        "closeWithNothingToClose" to FLine().moveTo(1f, 1f).close(),
+        "repeatedMoveTos" to FLine().moveTo(0f, 0f).moveTo(10f, 0f).moveTo(20f, 0f)
     )
 }
 
@@ -306,9 +369,17 @@ class ArcLengthSpacingTest {
         assertTrue(wrong.isEmpty(), "PathFlattener under-measures length on: ${wrong.joinToString("; ")}")
     }
 
+    /**
+     * NOTE ON THE METRIC. This measures the *Euclidean* gap between consecutive returned points,
+     * which is only the arc-length gap within a single subpath: across a `moveTo` jump two points
+     * that are adjacent in arc length are far apart in space. So the metric runs per subpath. The
+     * whole-line behaviour of a multi-subpath curve is covered by
+     * [spacingIsEvenAcrossSubpathBoundaries], which measures gaps in arc length via the oracle and
+     * therefore reads them correctly.
+     */
     @Test
     fun sampleByDistanceProducesEvenlySpacedPoints() {
-        val offenders = ArcLengthTestCurves.all().mapNotNull { (name, line) ->
+        val offenders = ArcLengthTestCurves.allSubpaths().mapNotNull { (name, line) ->
             val oracle = ArcLengthOracle(line)
             val spacing = (oracle.length / 40).toFloat()
             val pts = line.sampleByDistance(spacing)
@@ -409,6 +480,143 @@ class ArcLengthSpacingTest {
         }
     }
 
+    /**
+     * Three arc-length consumers pass 1 missed, found by grepping for every `Cursor` construction in
+     * `src/jvmMain` rather than from memory:
+     *
+     *   `FLinesAndJavaShapes.Cursor.split()`          FLinesAndJavaShapes.kt:583
+     *   `FLinesAndJavaShapes.Cursor.splitD(list)`     FLinesAndJavaShapes.kt:635
+     *   `FLinesAndJavaShapes.samplePoints(f, d)`      FLinesAndJavaShapes.kt:2349
+     *
+     * `splitD` is the most exposed of the three: "give me this line cut at 3.2, 4 and 8 units along"
+     * is a promise about distance and nothing else.
+     */
+    @Test
+    fun splittingByDistanceCutsWhereItSaysItWill() {
+        val offenders = mutableListOf<String>()
+
+        for ((name, line) in ArcLengthTestCurves.allSubpaths()) {
+            val oracle = ArcLengthOracle(line)
+            val total = oracle.length
+            if (total < 1.0) continue
+
+            // split(): the first piece should be exactly as long as asked for
+            val at = (total * 0.4).toFloat()
+            val (left, _) = line.cursor().setD(at).split()
+            if (left != null) {
+                val leftLength = ArcLengthOracle(left).length
+                val error = kotlin.math.abs(leftLength - at) / total
+                println("${name.padEnd(22)} split at $at gave a first piece ${"%.3f".format(leftLength)} long")
+                if (error > 0.01) offenders += "$name split ${"%.2f".format(error * 100)}%"
+            }
+
+            // splitD(): every requested cut, in one call
+            val cuts = listOf(0.2, 0.45, 0.7).map { (total * it).toFloat() }
+            val pieces = line.cursor().splitD(cuts)
+            if (pieces.size >= 2) {
+                var cumulative = 0.0
+                val boundaries = pieces.dropLast(1).map { cumulative += ArcLengthOracle(it).length; cumulative }
+                boundaries.forEachIndexed { i, got ->
+                    if (i < cuts.size) {
+                        val error = kotlin.math.abs(got - cuts[i]) / total
+                        if (error > 0.01) offenders += "$name splitD cut ${cuts[i]} landed at ${"%.1f".format(got)}"
+                    }
+                }
+                println("${name.padEnd(22)} splitD $cuts -> boundaries ${boundaries.map { "%.1f".format(it) }}")
+            }
+
+            // samplePoints: the older twin of sampleByDistance
+            val spacing = (total / 30).toFloat()
+            val pts = FLinesAndJavaShapes.samplePoints(line, spacing)
+            if (pts.size >= 4) {
+                val gaps = (1 until pts.size).map { pts[it].distance(pts[it - 1]).toDouble() }.sorted()
+                val ratio = gaps.last() / gaps[gaps.size / 2]
+                println("${name.padEnd(22)} samplePoints n=${pts.size} max/median=${"%.3f".format(ratio)}")
+                if (ratio > 2.0) offenders += "$name samplePoints ${"%.2f".format(ratio)}x"
+            }
+        }
+
+        assertTrue(offenders.isEmpty(), "distance-based splitting/sampling is off on: ${offenders.joinToString("; ")}")
+    }
+
+    /**
+     * Spacing has to stay even *across* a subpath boundary, not merely within each cubic. This is a
+     * different question from the `Close`-node crash: that was about reading a node, this is about
+     * the arc-length table spanning one. `twoSubpaths` also checks the `MoveTo` jump, which
+     * contributes no length but does advance `node.t`.
+     */
+    @Test
+    fun spacingIsEvenAcrossSubpathBoundaries() {
+        val offenders = mutableListOf<String>()
+        for (name in listOf("closedLongClose", "twoSubpaths", "glyphish")) {
+            val line = ArcLengthTestCurves.all().first { it.first == name }.second
+            val report = scoreArcLengthSpacing(name, line, steps = 96)
+            println(report)
+            if (report.maxOverMedianStep > 1.5) offenders += "$name ${"%.2f".format(report.maxOverMedianStep)}x"
+            // and the flattener's own length must include the closing/jumping segments
+            val relative = kotlin.math.abs(report.flattenerLength - report.oracleLength) / report.oracleLength
+            if (relative > 0.01) offenders += "$name length off by ${"%.2f".format(relative * 100)}%"
+        }
+        assertTrue(offenders.isEmpty(), "spacing breaks across a subpath boundary on: ${offenders.joinToString("; ")}")
+    }
+
+    /**
+     * `flatnessFor` is 3-D, so the parameter-skew term added by this branch has to be 3-D too. A
+     * curve whose control points are collinear and bunched *along z* is the test that catches a
+     * 2-D-only skew term.
+     */
+    @Test
+    fun theSkewTermIsThreeDimensional() {
+        for (name in listOf("collinearInZ", "skewedInThreeD")) {
+            val line = ArcLengthTestCurves.all().first { it.first == name }.second
+            val report = scoreArcLengthSpacing(name, line, steps = 64)
+            println(report)
+            assertTrue(
+                report.maxOverMedianStep < 1.10,
+                "$name is spaced ${"%.3f".format(report.maxOverMedianStep)}x — the skew term is " +
+                    "ignoring a dimension"
+            )
+            assertTrue(
+                report.worstPositionError < report.oracleLength * 0.005,
+                "$name positional error ${report.worstPositionError} on a curve ${report.oracleLength} long"
+            )
+        }
+    }
+
+    /**
+     * Degenerate geometry: zero-length cubics, coincident control points, lines with no drawable
+     * segment at all. "Evenly spaced" is meaningless for these, so the bar is simply that nothing
+     * throws, hangs or returns NaN — the things that turn a live document into a dead one.
+     */
+    @Test
+    fun degenerateGeometryIsSurvivable() {
+        for ((name, line) in ArcLengthTestCurves.degenerate()) {
+            val cursor = line.cursor()
+            val length = cursor.lengthD()
+            assertTrue(length.isFinite() && length >= 0f, "$name lengthD = $length")
+
+            for (f in listOf(0f, 0.25f, 0.5f, 1f)) {
+                cursor.setD(length * f)
+                if (line.nodes.isNotEmpty()) {
+                    val p = cursor.position()
+                    assertTrue(
+                        p.x.isFinite() && p.y.isFinite() && p.z.isFinite(),
+                        "$name position at f=$f was $p"
+                    )
+                }
+            }
+
+            val samples = line.sampleByDistance(5f)
+            assertTrue(samples.all { it.x.isFinite() }, "$name sampleByDistance produced a non-finite point")
+            val dashes = line.byDashing(5f, 3f)
+            assertTrue(dashes.size < 10_000, "$name byDashing produced ${dashes.size} dashes — runaway loop")
+            val leaves = PathFlattener(line, 0.01f).mappings.size
+            assertTrue(leaves < 5000, "$name flattened to $leaves leaves")
+
+            println("${name.padEnd(24)} lengthD=$length samples=${samples.size} dashes=${dashes.size} leaves=$leaves")
+        }
+    }
+
     @Test
     fun degenerateInputsDoNotHangOrProduceNaN() {
         val line = ArcLengthTestCurves.sCurve()
@@ -439,9 +647,14 @@ class ArcLengthSpacingTest {
     fun everyArcLengthConsumerAgreesWithTheOracle() {
         val offenders = mutableListOf<String>()
 
-        for ((name, line) in ArcLengthTestCurves.all()) {
+        // Per subpath: `oracle.positionAt` is ambiguous exactly at a `moveTo` jump, where the
+        // cumulative-length table has a plateau and both sides of it are legitimately "that far
+        // along". Scoring subpath by subpath removes the ambiguity instead of papering over it;
+        // [spacingIsEvenAcrossSubpathBoundaries] covers the whole-line case.
+        for ((name, line) in ArcLengthTestCurves.allSubpaths()) {
             val oracle = ArcLengthOracle(line)
             val total = oracle.length
+            if (total < 1.0) continue
 
             // FLine.midPoint(): the point at half the arc length
             val mid = line.midPoint()
@@ -543,7 +756,7 @@ class ArcLengthSpacingTest {
 
     @Test
     fun dashesHaveTheLengthTheyWereAskedFor() {
-        val offenders = ArcLengthTestCurves.all().mapNotNull { (name, line) ->
+        val offenders = ArcLengthTestCurves.allSubpaths().mapNotNull { (name, line) ->
             val oracle = ArcLengthOracle(line)
             val dash = (oracle.length / 24).toFloat()
             val gap = dash / 2

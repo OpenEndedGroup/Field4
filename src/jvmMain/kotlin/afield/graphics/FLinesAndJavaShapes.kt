@@ -145,29 +145,39 @@ class FLinesAndJavaShapes {
          * returns whether the current segment is a .lineTo
          */
         fun segmentIsLinear(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.LineTo
+            return nodeAt(index + 1) is FLine.LineTo
         }
 
         /**
          * returns whether the current segment is a .cubicTo
          */
         fun segmentIsCubic(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.CubicTo
+            return nodeAt(index + 1) is FLine.CubicTo
         }
 
         /**
          * returns whether the current segment is a .moveTo
          */
         fun segmentIsMove(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.MoveTo
+            return nodeAt(index + 1) is FLine.MoveTo
         }
 
         /**
          * returns whether the current segment is a .close
          */
         fun segmentIsClose(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.Close
+            return nodeAt(index + 1) is FLine.Close
         }
+
+        /**
+         * The node at [i], clamped, or `null` if this line has no nodes at all.
+         *
+         * `clamp` returns `nodes.size - 1`, which is **-1** for an empty line, so every
+         * `nodes[clamp(...)]` read threw IndexOutOfBoundsException on an FLine with no nodes — and
+         * `position()` reaches four of them. `FLine().sampleByDistance(5f)` blew up.
+         */
+        private fun nodeAt(i: Int): FLine.Node? =
+            if (on.nodes.isEmpty()) null else on.nodes[clamp(i)]
 
         /**
          * Resolve the target point for a close segment: the start of the subpath being closed.
@@ -238,6 +248,7 @@ class FLinesAndJavaShapes {
          * returns the position of the cursor
          */
         fun position(): Vec3 {
+            if (on.nodes.isEmpty()) return Vec3()
             return if (segmentIsMove()) {
                 if (alpha < 0.5) Vec3(endOf(index))
                 else Vec3(on.nodes.get(clamp(index + 1)).to)
@@ -603,6 +614,19 @@ class FLinesAndJavaShapes {
                 for (i in index + 1 until on.nodes.size) {
                     right.copyTo(on.nodes.get(i))
                 }
+            } else if (segmentIsClose()) {
+                // A Close is a straight segment back to the subpath start, so cutting inside one
+                // works like the linear case — except the right-hand piece is an open run from the
+                // cut point to that start, the contour no longer being closed. Without this branch
+                // `split()` fell straight through, returning a truncated left piece and an empty
+                // right one, so `splitD` could not cut past the last cubic of a closed line: asking
+                // a 1365-unit closed outline for a cut at 956 got one at 800.
+                left.lineTo(position())
+                right.moveTo(position())
+                right.lineTo(closeTarget())
+                for (i in index + 2 until on.nodes.size) {
+                    right.copyTo(on.nodes.get(i))
+                }
             } else if (segmentIsCubic()) {
                 val a: Vec3 = Vec3(endOf(index))
                 val c1: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1)
@@ -647,7 +671,12 @@ class FLinesAndJavaShapes {
 
                     val left = s.first ?: return f
                     f.add(left)
-                    soFar = at
+                    // `soFar` is how far along the ORIGINAL line the remaining piece now starts, so
+                    // it accumulates to d[i], not to the relative offset `at`. It used to be
+                    // `soFar = at`, which is right for the first two cuts by coincidence (at == d[1]
+                    // - d[0] measured from a piece starting at d[0]) and then drifts: splitD on a
+                    // 500-unit line asking for [100, 225, 350] cut at 100, 225 and 450.
+                    soFar = d[i]
                     right = s.second
                     val nextRight = right ?: return f
                     cursor = Cursor(nextRight, 0.1f)

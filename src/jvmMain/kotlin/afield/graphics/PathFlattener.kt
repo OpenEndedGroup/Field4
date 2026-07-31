@@ -75,6 +75,12 @@ class PathFlattener(private val c: FLine, tol: Float) {
     }
 
     fun dotToLength(dot: Float): Float {
+        // `lengthToDot` guards this case and `dotToLength` did not, so a line with no drawable
+        // segment at all — a bare `moveTo`, or an empty FLine — reached `mappings[-1]` below and
+        // threw IndexOutOfBoundsException out of `Cursor.d`. `sampleByDistance` reads `Cursor.d` in
+        // its loop condition, so `FLine().moveTo(x, y).sampleByDistance(5f)` blew up.
+        if (mappings.isEmpty()) return 0.0f
+
         val found = Collections.binarySearch<Any>(mappings, dot, searchDot)
 
         if (found >= 0) return mappings[found].cumulativeDistanceAtEnd

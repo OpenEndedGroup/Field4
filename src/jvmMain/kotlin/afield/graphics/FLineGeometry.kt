@@ -2084,6 +2084,8 @@ fun FLine.byArcLengthParameterizing(spacing: Float): FLine {
  * the corner, so a "18 unit" dash across a bend drew as a visibly shorter chord and the dashes
  * drifted off the line they were dashing.
  *
+ * Each subpath is dashed independently, so a dash never bridges the gap between two subpaths.
+ *
  * @param dashLength length of each dash, along the curve
  * @param gapLength length of each gap, along the curve
  * @param resolution longest straight piece used to follow the curve inside one dash
@@ -2091,6 +2093,16 @@ fun FLine.byArcLengthParameterizing(spacing: Float): FLine {
 fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f): List<FLine> {
     val result = mutableListOf<FLine>()
     if (dashLength <= 0f || gapLength <= 0f) return result
+
+    // One subpath at a time. A single walk over a multi-subpath line has no idea where the `moveTo`
+    // jumps are, so a dash straddling one drew a straight segment right across the gap between two
+    // subpaths — a 25-unit dash across a 360-unit jump measured 1428% long. Each subpath gets its
+    // own dash phase, which is also what you want when dashing a glyph's separate contours.
+    val subpaths = pieces()
+    if (subpaths.size > 1) {
+        subpaths.forEach { result += it.byDashing(dashLength, gapLength, resolution) }
+        return result
+    }
 
     val cursor = this.cursor()
     val totalLength = cursor.lengthD()
