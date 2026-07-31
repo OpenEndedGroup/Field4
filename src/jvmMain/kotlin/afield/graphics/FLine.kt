@@ -163,11 +163,29 @@ class FLine : HasProperties {
             return next
         }
 
+        /**
+         * The point this instruction ends at.
+         *
+         * **Throws on a [Close]**, which is `Node(0)` and stores no point of its own — its end point
+         * is the start of the subpath it closes, which a lone node cannot know. Reach for
+         * [FLine.endPointOf] / [FLine.currentPoint] (which resolve it) or [toOrNull] (which admits
+         * it) whenever the node might be a `Close` — that is, whenever the line might be closed.
+         */
         var to: Vec3
-            get() = storage[0]
+            get() = storage.getOrNull(0) ?: throw IndexOutOfBoundsException(
+                "$this stores no point of its own, so `Node.to` is undefined for it. A Close's end " +
+                    "point is the start of the subpath it closes: use FLine.endPointOf(index), " +
+                    "FLine.currentPoint, or Node.toOrNull instead."
+            )
             set(v) {
                 storage[0] = v
             }
+
+        /**
+         * [to], or `null` for a [Close]. For "where does the pen end up", which is what callers
+         * usually mean, see [FLine.endPointOf].
+         */
+        val toOrNull: Vec3? get() = storage.getOrNull(0)
 
         override fun setPropertyRaw(name: String, value: Any, doResync: Boolean) {
             properties.put(name, value)
@@ -184,6 +202,35 @@ class FLine : HasProperties {
      * The most recently added node.
      */
     val here: Node get() = nodes.last()
+
+    /**
+     * Where the instruction at [index] leaves the pen.
+     *
+     * The same thing as `nodes[index].to` for every node type except [Close], which stores no point
+     * and whose end point is the start of the subpath it closes. Use this instead of `.to` wherever
+     * the node might be a `Close`, i.e. wherever the line might be closed — `.to` throws there.
+     *
+     * [index] is clamped into range.
+     */
+    fun endPointOf(index: Int): Vec3 {
+        if (nodes.isEmpty()) return Vec3()
+        val at = index.coerceIn(0, nodes.size - 1)
+        nodes[at].toOrNull?.let { return it }
+        for (i in at downTo 0) {
+            val node = nodes[i]
+            if (node is MoveTo) return Vec3(node.to)
+        }
+        return Vec3(nodes[0].toOrNull ?: Vec3())
+    }
+
+    /**
+     * Where the pen sits after the last instruction — the point a `lineTo`/`cubicTo` would start
+     * from — or `null` for a line with no instructions at all.
+     *
+     * This is what `nodes.last().to` is reaching for, and unlike `nodes.last().to` it survives a
+     * line that ends in a [Close].
+     */
+    val currentPoint: Vec3? get() = if (nodes.isEmpty()) null else endPointOf(nodes.size - 1)
 
     /**
      * Move instruction (starts a new subpath).
