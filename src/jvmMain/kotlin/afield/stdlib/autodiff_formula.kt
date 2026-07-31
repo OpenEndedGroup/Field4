@@ -27,9 +27,10 @@ package afield.stdlib
  * gradient follows for free, and the number of places a transcription error can hide drops from
  * "once per op" to "once per [FnExpr] kind" — and each kind is oracle-checked once.
  *
- * `FnFormulaAgreementTest` closes the loop: for every op with a formula it asserts the `Double`
- * walker's output is bit-identical (`toRawBits`) to `Functions`' own `eval` across a grid **and** at
- * perturbed parameters. A formula that is not a faithful transcription cannot reach `main`.
+ * `AutoDiffFnBridgeTest.theFormulaTableIsABitIdenticalTranscriptionOfFnEval` closes the loop: for
+ * every op with a formula it asserts the `Double` walker's output is bit-identical (`toRawBits`) to
+ * `Functions`' own `eval` across a grid **and** at perturbed parameters. A formula that is not a
+ * faithful transcription cannot reach `main`.
  *
  * ## Why `Fn.eval` is not simply replaced by the walker
  *
@@ -452,4 +453,176 @@ fun evalFormulaAD(
         alpha,
         childValue
     )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The other 90 ops: why not, and which of them are closable
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Why an `Fn` op has no derivative, and whether that is permanent.
+ *
+ * [closable] is the honest distinction the coverage story needs: `NOT_DIFFERENTIABLE` means there is
+ * no derivative to write (a seeded hash, a baked table, an opaque lambda), while `closable = true`
+ * means the formula exists and simply has not been transcribed yet, with [missing] naming what it
+ * would take. Both are failures of coverage; only one is a failure of *ambition*.
+ */
+data class FnOpStatus(
+    /** One line, in prose, for a diagnostic or a docs table. */
+    val reason: String,
+    /** True when a derivative could be written; false when there genuinely is not one. */
+    val closable: Boolean,
+    /** What is missing, when [closable]. Empty otherwise. */
+    val missing: String = ""
+)
+
+/**
+ * Every op in [OpRegistry] that [FnAutoDiff] cannot differentiate, with a declared reason.
+ *
+ * This exists so the gap cannot grow silently. `FnOpCoverageTest` enumerates
+ * [OpRegistry.knownOps], resolves aliases to canonical names, and **fails** if any op appears in
+ * neither [FnAutoDiff.differentiableOps] nor here — the same "make the guard part of the build"
+ * pattern the KDoc-attachment check uses. Adding an op to `Functions` and `OpRegistry` without either
+ * a formula or an explicit "no, because…" is therefore not shippable.
+ *
+ * Measured by `FnOpCoverageTest`, which prints the fraction rather than asking you to trust it:
+ * **28 of 118 canonical ops are differentiable (23.7%)** — 26 formulas plus the two numeric-leaf ops —
+ * and of the 90 declared non-differentiable, **36 are closable**. The single highest-value entry in
+ * that backlog is the piecewise-oscillator group (`saw`, `triangle`, `square`, the pulses), which
+ * needs only an `FnExpr.Floor`, because oscillator fitting is the flagship use of [fitGradient].
+ */
+object FnNonDifferentiable {
+
+    private fun MutableMap<String, FnOpStatus>.group(
+        reason: String,
+        closable: Boolean,
+        missing: String,
+        vararg ops: String
+    ) {
+        for (op in ops) put(op.lowercase(), FnOpStatus(reason, closable, if (closable) missing else ""))
+    }
+
+    private val table: Map<String, FnOpStatus> = buildMap {
+        group(
+            "the node carries a user lambda, not a recipe — there is nothing to read a formula out of",
+            closable = false, missing = "",
+            "lambda", "opaque", "mapX", "mapY", "withEdge"
+        )
+        group(
+            "shapes x or the value through an Easing enum, so the formula is chosen by a string at " +
+                "evaluation time rather than fixed by the node",
+            closable = true,
+            missing = "one FnExpr per Easing constant plus a string-dispatch FnExpr kind (13 easings)",
+            "ease", "tween"
+        )
+        group(
+            "a piecewise oscillator: differentiable almost everywhere, with a countable set of corners " +
+                "the sample grid will usually miss",
+            closable = true,
+            missing = "FnExpr.Floor (derivative 0) and a modulo built from it; then the saw/triangle/" +
+                "square/pulse formulas transcribe directly. The highest-value gap left, since " +
+                "oscillator fitting is the flagship use of fitGradient",
+            "saw", "triangle", "square", "pulseTrain", "pulseburst", "pulsepattern"
+        )
+        group(
+            "a seeded generator: the value is a hash of position, so it has no derivative with respect " +
+                "to frequency or seed at all (only with respect to amplitude, which is not worth a " +
+                "special case on its own)",
+            closable = false, missing = "",
+            "whiteNoise", "valueNoise", "perlinNoise", "fbm", "fbmPerlin", "randomWalk"
+        )
+        group(
+            "identity lives in baked point/knot data the node carries rather than in role-addressed " +
+                "children, so there is no closed form in terms of children to differentiate",
+            closable = false, missing = "",
+            "piecewise", "piecewiseLinear", "catmullRom", "monotoneCubic", "hermite",
+            "bSplineQuadratic", "cosineInterp", "smoothStepInterp", "smootherStepInterp",
+            "stepHold", "nearestValue", "rbf", "granular"
+        )
+        group(
+            "selects which sub-Fn is in force from data-defined breakpoints in x, so it is piecewise " +
+                "with a variable number of pieces",
+            closable = false, missing = "",
+            "timeline", "timelineTap", "spliceWindow", "sequence", "sequenceLoop", "randomSequence",
+            "weightedSequence", "randomPermute", "randomPermuteLoop", "palindrome", "roundRobin",
+            "array", "cut", "replace", "echo", "copyPaste", "randomCopyPaste", "randomRepeat"
+        )
+        group(
+            "restructures the x axis by folding, tiling or wrapping the lookup, which is piecewise in x",
+            closable = true,
+            missing = "FnExpr.Floor for the period arithmetic; then each is an AtX over a wrapped x",
+            "repeat", "mirror", "mirrorRepeat", "tile", "pad", "stretch", "reverse", "quantizeX", "jitterX"
+        )
+        group(
+            "holds the last sampled value, so its output depends on evaluation history rather than on x " +
+                "alone",
+            closable = false, missing = "",
+            "sampleHold", "gateHold"
+        )
+        group(
+            "blends or selects among an arbitrary number of item children",
+            closable = true,
+            missing = "an n-ary FnExpr kind addressing item0..itemN, which the current Child(role) " +
+                "cannot express",
+            "average", "stack", "select", "morph", "crossfade"
+        )
+        group(
+            "a non-smooth value transform: quantising (derivative 0 almost everywhere) or reflecting " +
+                "(piecewise linear with corners)",
+            closable = true,
+            missing = "clip and saturate are two-line transcriptions; wrapY, fold, quantize, crush, " +
+                "rectify and step additionally need FnExpr.Floor and/or Abs",
+            "clip", "saturate", "fold", "wrapY", "quantize", "crush", "rectify", "step"
+        )
+        group(
+            "evaluates a Chebyshev recurrence to a depth given by a *child*, so the expression's own " +
+                "shape depends on a runtime value",
+            closable = true,
+            missing = "a bounded-recurrence FnExpr kind, or a formula per integer order",
+            "chebyshev"
+        )
+        group(
+            "not pointwise: computes over a window of samples, so its derivative is with respect to a " +
+                "whole neighbourhood rather than one x",
+            closable = false, missing = "",
+            "derivative", "differentiate", "integral", "convolve", "movingAverage", "blur",
+            "gaussianSmooth", "autoScale", "zNormalize", "whitenCdf"
+        )
+        group(
+            "reads a normalised position within a *shape* domain that the node does not carry in a " +
+                "recoverable form",
+            closable = true,
+            missing = "blackmanWindow is recoverable from fn.domain today (three cosine terms); " +
+                "gaussianWindow keeps its shape domain only as a formatted string and would need it " +
+                "stored structurally first",
+            "gaussianWindow", "blackmanWindow"
+        )
+        group(
+            "a parameter helper that reciprocates or rescales a single child",
+            closable = true,
+            missing = "three one-line FnExpr entries; skipped only because these rarely carry the " +
+                "parameters a fit is tuning",
+            "period", "periodFromFrequency", "dutyFromWidth"
+        )
+    }
+
+    /** The declared status of [op], or null when this op has a formula (or is unknown to the registry). */
+    fun statusOf(op: String): FnOpStatus? = table[op.trim().lowercase()]
+
+    /** Every op declared non-differentiable, lower-cased. */
+    val ops: Set<String> get() = table.keys
+
+    /** Ops whose derivative could be written but has not been — the honest backlog. */
+    val closable: List<String> get() = table.entries.filter { it.value.closable }.map { it.key }.sorted()
+
+    /**
+     * A one-line explanation for a diagnostic: either the declared reason, or a note that the op is
+     * differentiable, or that nothing is known about it.
+     */
+    fun explain(op: String): String {
+        val key = op.trim().lowercase()
+        statusOf(key)?.let { return "'$op' is not differentiable: ${it.reason}" + if (it.closable) " (closable: ${it.missing})" else "" }
+        if (key in FnAutoDiff.differentiableOps) return "'$op' is differentiable"
+        return "'$op' is not classified — see FnFormulas and FnNonDifferentiable"
+    }
 }
