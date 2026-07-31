@@ -177,11 +177,53 @@ oracle agree *at* the corner rather than only either side of it.
 
 Removing the refusal is not the same as making the fit easy, and the numbers say so. Swap the seed
 above for `cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs — but it plateaus at
-RMSE ≈ 0.137 where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes
+RMSE ≈ 0.139 where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes
 it to 0.135. On that seed the exact and finite-difference arms finish within 0.1% of each other, so
 what the exact path buys is the evaluation count (801 against 6801) rather than the accuracy it also
 buys on the smooth one. Rectifying the envelope creates a local minimum, and no gradient argues a
 descent out of a local minimum.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/abs_seed.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="900" padding="16"}
+:::static
+import afield.stdlib.Functions
+import afield.stdlib.FnGradientMode
+
+with(Functions) {
+    val target = cos(2) * sin(1.5, amplitude = 0.8, offset = 0.2)
+
+    // The seed from the figure above, and the same seed rectified. Until abs became a real op the
+    // second of these was refused outright, with `mapY` named as the culprit.
+    val kinked = cos(1.9).abs() * sin(1.3, amplitude = 1.0)
+
+    val fd = fitGradient(target, kinked, iterations = 400, lr = 0.05)
+    val exact = fitGradient(target, kinked, iterations = 400, lr = 0.05, gradient = FnGradientMode.EXACT)
+:::fold plot the seed, the fit and both loss curves
+    plot(kinked, channel = "1 seed", title = "the rectified seed   cos(1.9).abs() * sin(1.3)")
+    plot(exact.fitted, channel = "2 fitted", title = "fitted with exact reverse-mode gradients")
+    showSignals(
+        "finite differences" to fd.losses,
+        "exact reverse mode" to exact.losses,
+        channel = "3 loss",
+        title = "RMSE per Adam step - the rectified seed",
+        xTitle = "step",
+        yTitle = "RMSE"
+    )
+:::endfold
+    "refused now? " + (exactFitRefusal(target, kinked, Functions.Domain.DEFAULT) ?: "no - accepted") + "\n" +
+    "finite differences: RMSE " + fd.finalError + " in " + fd.evaluations + " loss evaluations\n" +
+    "exact reverse mode:  RMSE " + exact.finalError + " in " + exact.evaluations + " loss evaluations\n" +
+    "sign is still refused: " +
+        (exactFitRefusal(target, cos(1.9).sign() * sin(1.3), Functions.Domain.DEFAULT) ?: "no")
+}
+```
+
+![The rectified seed drawn as a wave whose troughs are folded up into cusps, the fitted result beneath it, and a loss chart on which the finite-difference and exact-gradient curves lie almost on top of each other and both flatten early](assets/autodiff_examples/abs_seed.png)
+
+Read the two loss curves against the ones in the previous figure. There, exact gradients reached a
+lower error. Here the two arms are indistinguishable and both stop early, and the printed line says
+why it is still worth doing: the same descent for **801 loss evaluations instead of 6801**. The last
+line is the boundary — `sign` is refused on purpose, because its derivative is zero wherever it
+exists, and a fit that descends a permanently-zero gradient is worse off than one that is told no.
 
 ## Inverse kinematics, because it makes pixels
 
@@ -233,13 +275,72 @@ reach error goes *up*. That default is `0.0` for exactly this reason — a curva
 with the reach term, and near the base, where reaching at all needs tight folds, it will refuse to
 fold and settle short. `IkSolution.reachError` always reports the truth.
 
+## A packing that descends instead of relaxing
+
+Circle packing is usually written as a relaxation loop: look for overlaps, nudge them apart, repeat.
+Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge —
+`relu(r₁ + r₂ − distance)²`, exactly zero while two discs are disjoint and growing quadratically once
+they interpenetrate — and the walls are the same shape. Every term is differentiable, so L-BFGS can
+take a real step instead of a heuristic one.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/packing.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
+:::static
+val radii = doubleArrayOf(38.0, 32.0, 30.0, 26.0, 24.0, 22.0, 20.0, 18.0, 16.0, 14.0, 12.0, 10.0)
+val boxWidth = 340.0
+val boxHeight = 250.0
+val packing = packCircles(radii, boxWidth, boxHeight, rngSeed = 5L)
+
+// run.initialX is the seeded scatter the descent actually started from, so "before" is not a re-roll.
+val before = radii.indices.map {
+    PackedCircle(vec(packing.run.initialX[2 * it], packing.run.initialX[2 * it + 1]), radii[it])
+}
+:::fold draw both states in one shared window
+fun frame() = fline {
+    moveTo(0.0, 0.0); lineTo(boxWidth, 0.0); lineTo(boxWidth, boxHeight); lineTo(0.0, boxHeight)
+    close(); color = vec(0.36, 0.44, 0.56, 0.7); thickness = 1.2
+}
+fun rings(circles: List<PackedCircle>, r: Double, g: Double, b: Double) = circles.map {
+    it.toFLine(52).apply { color = vec(r, g, b, 0.95); thickness = 1.8 }
+}
+fun worstOverlapOf(circles: List<PackedCircle>): Double {
+    var worst = 0.0
+    for (i in circles.indices) for (j in i + 1 until circles.size) {
+        val d = kotlin.math.hypot(
+            (circles[i].centre.x - circles[j].centre.x).toDouble(),
+            (circles[i].centre.y - circles[j].centre.y).toDouble()
+        )
+        worst = kotlin.math.max(worst, circles[i].radius + circles[j].radius - d)
+    }
+    return worst
+}
+showPlaneGrid(
+    "before\nseeded scatter, worst overlap " + worstOverlapOf(before) + " units" to
+        (rings(before, 0.52, 0.58, 0.72) + frame()),
+    "after\n" + packing.run.iterations + " L-BFGS iterations, worst overlap " + packing.worstOverlap + " units" to
+        (rings(packing.circles, 0.42, 0.86, 0.62) + frame()),
+    channel = "1 packing", columns = 2, cellWidth = 380,
+    window = Rect(-20.0, -20.0, boxWidth + 40.0, boxHeight + 40.0)
+)
+:::endfold
+"worst pairwise overlap " + worstOverlapOf(before) + " -> " + packing.worstOverlap + " units\n" +
+"worst escape beyond the wall: " + packing.worstEscape + " units\n" +
+"loss " + packing.run.initialValue + " -> " + packing.run.value +
+" in " + packing.run.iterations + " iterations (" + packing.run.reason + ")"
+```
+
+![Two panels sharing a frame: on the left a dozen circles of mixed sizes scattered and heavily overlapping inside a rectangle, on the right the same circles nested tightly against each other and the walls with no visible interpenetration](assets/autodiff_examples/packing.png)
+
+The residual overlap does not go to zero, and that is the interesting part rather than a failure. A
+gentle pull toward the centre is a *competing* term, and the number you see is where the two balance;
+set `pullWeight` to `0.0` and it vanishes, taking the compactness with it. This is also the example
+that pays for the even-split kink convention: at the instant two discs touch, the hinge's derivative
+is half what a one-sided rule would report, so the packing settles into contact instead of chattering
+across it.
+
 ## Where to go next
 
 - `dev_docs/autodiff.md` is the developer-facing account: the tape layout, the kink convention and why
   it is the internally consistent one, the `Fn`-graph bridge and its honesty guard, the
   byte-identical-default proof, and an explicit list of what is *not* covered.
 - The [agent transcript gallery](agent_transcripts.md) has `autodiff_worked_example`, which is this
-  page plus a differentiable circle packing as an openable document you can edit and re-run.
-- `packCircles` is the other geometry demo: overlap as a `relu(...)²` hinge, which is where the
-  library's even-split kink convention earns itself — at the instant two discs touch the hinge's
-  derivative is half a one-sided rule's, so the packing settles instead of chattering across contact.
+  page as an openable document you can edit and re-run.
