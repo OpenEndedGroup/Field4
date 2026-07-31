@@ -250,8 +250,8 @@ for (i in 0 until samples) {
     b.decayLinear(1f / 60f, 0.35)
 }
 showSignals(
-    "decayExponential(lambda = 0.35)" to expo.toList(),
-    "decayLinear(0.35 per second)" to lin.toList(),
+    "exponential, λ = 0.35" to expo.toList(),
+    "linear, 0.35 / s" to lin.toList(),
     x = (0 until samples).map { it / 60.0 }
 )
 :::endfold
@@ -381,7 +381,7 @@ change on screen is a change in the graph and not a change in the geometry.
 a stretch along that axis that breathes between 0.25 and 2.0. So "the five nearest points" becomes a
 time-varying question asked of a cloud standing perfectly still.
 
-```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1000" embed=true name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
+```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/breathing.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="7" fps="20" timeout="300" w="1000" name="dgs-breathing-video" alt="a k-nearest-neighbour graph over a stationary point cloud rewiring itself as the distance metric stretches and rotates, beside the same cloud under a frozen metric whose edge count never changes"}
 :::static
 // The cloud NEVER MOVES in this clip. Every edge that appears or disappears is the anisotropic
 // metric breathing -- an axis that rotates with the clock and a stretch along it between 0.25 and
@@ -482,7 +482,7 @@ this page for the growth curve — so the clip below caps at 900 points and uses
 schedule** (`ramp`), because the birth phase is over in the first sixth of the run and a linear
 schedule spends five sixths of the clip on the aftermath.
 
-```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="11" fps="20" timeout="360" w="1060" embed=true name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
+```diffstatic_runner {data-lang=kotlin video="assets/dynamic_graph_systems_examples/morphogenesis.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="13" fps="20" timeout="360" w="1060" name="dgs-morphogenesis-video" alt="a ring of points growing into a branching filamentous structure while its graph is continually rebuilt, beside a control arm with tip growth switched off in which the ring stays a ring"}
 :::static
 // The full pipeline: diffuse a resource along the edges and climb its gradient, relax the springs,
 // grow tips where the incident edges pull coherently, merge what has collided, smooth, jitter.
@@ -588,7 +588,17 @@ the springs winning: the initial birth burst piles 900 points into the ring's fo
 every pair is inside `rEnter`; as the springs push the structure apart into filaments, most of those
 proximity edges are lost and what is left is the branching skeleton. The step counter is in the frame
 for the reason the [ALife page](alife_examples.md) gives — a clip whose final label reads
-`s 210 / 560` is a failed clip and says so on its face.
+`s 210 / 560` is a failed clip and says so on its face. This clip's own last frame reads **s560** in
+both panels — `899pts 2950e` beside `56pts 86e`, the table's last row digit for digit — so the
+recording covers the whole schedule *and* agrees with it.
+
+That took three seconds of recording slack (`duration = 13` against `seconds = 10`) rather than the
+one or two [`animateEvolution`](reference/alife.md#alife-animate-kt)'s docs ask for, and the ramp is
+why: `ramp = 25` makes the *last* frames' step batches the largest in the run, so the capture falls
+furthest behind exactly where it has least clock left to recover. Measured on the recorded mp4, the
+picture is still changing at 11.90 s — a full 1.9 s after the schedule's own clock ran out — and the
+remaining 1.1 s is the hold on the settled result. At `duration = 11` the recorder stopped
+mid-catch-up: two takes ended at `s528` and `s513`.
 
 ## 6. The threshold is the whole point
 
