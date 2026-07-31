@@ -74,31 +74,14 @@ enum class FnGradientMode {
 object FnAutoDiff {
 
     /**
-     * The ops the interpreter re-implements in [AD] arithmetic, lower-cased.
+     * The ops the gradient can handle, lower-cased — **derived**, not restated: every op with an
+     * [FnFormulas] entry, plus the two numeric-leaf ops that are θ rather than a formula.
      *
-     * The smooth algebraic core: constants and parameters, the identity, the two label-only
-     * wrappers, the four pointwise arithmetic ops, the two trigonometric oscillators, the two
-     * value transforms, the x-shift and the Gaussian bump. Deliberately *not* here: the piecewise
-     * oscillators (`saw`, `triangle`, `square`, `pulsetrain`), everything table- or data-backed
-     * (`piecewise`, `timeline`, `rbf`, the interpolants), the noise family (whose seeded generators
-     * are not differentiable in their parameters at all), and the clipping/folding transforms.
+     * Deliberately a subset of the vocabulary. What is *out* and why is declared op by op in
+     * [FnNonDifferentiable], and `FnOpCoverageTest` fails if an op in [OpRegistry] appears in
+     * neither this set nor that one — which is what stops the gap growing silently.
      */
-    val differentiableOps: Set<String> = setOf(
-        // leaves and label-only wrappers
-        "const", "param", "identity", "name", "over",
-        // pointwise arithmetic
-        "add", "subtract", "multiply", "divide",
-        // smooth oscillators
-        "sin", "cos",
-        // value transforms
-        "scaley", "offsety", "pow", "log", "clamp", "softclip",
-        // x-domain transforms
-        "shift", "scalex", "warp",
-        // shapes and windows
-        "gaussian", "ramp", "remap", "smoothstep", "hannwindow", "hammingwindow",
-        // modulation
-        "amplitudemod", "ringmod"
-    )
+    val differentiableOps: Set<String> = FnFormulas.ops + setOf("const", "param")
 
     /** True when every node of [fn]'s graph is in [differentiableOps]. */
     fun supports(fn: Functions.Fn): Boolean = unsupportedOps(fn).isEmpty()
@@ -176,11 +159,16 @@ object FnAutoDiff {
     fun agrees(fn: Functions.Fn, samples: DoubleArray, tolerance: Double = 1e-9): Boolean =
         supports(fn) && worstValueDisagreement(fn, samples) <= tolerance
 
-    private const val TAU = Math.PI * 2.0
-
     /**
-     * Re-evaluates one node in [AD] arithmetic. [x] is itself tracked, so an x-domain transform
-     * (`shift`) composes correctly with a θ-dependent offset.
+     * Re-evaluates one node in [AD] arithmetic by walking its [FnFormulas] entry.
+     *
+     * There is deliberately **no per-op code here**. The only thing this function knows about ops is
+     * that a node carrying `numbers["value"]` is a θ leaf; everything else is looked up in the one
+     * formula table that `Fn.eval` is pinned against, and walked by [evalFormulaAD]. That is what
+     * makes adding a differentiable op a one-line change with no second transcription to get wrong.
+     *
+     * [x] is itself tracked, so an x-domain transform ([FnExpr.AtX]) composes with a θ-dependent
+     * offset without a special case.
      */
     internal fun interpret(
         fn: Functions.Fn,
@@ -194,118 +182,42 @@ object FnAutoDiff {
             val index = indices[path] ?: error("no theta index for leaf at path $path")
             return theta[index]
         }
-        fun child(role: String): AD? {
-            val position = node.children.indexOfFirst { it.role == role }
-            if (position < 0) return null
-            return interpret(node.children[position].fn, x, theta, indices, path + position)
-        }
-        fun required(role: String): AD =
-            child(role) ?: error("op ${node.op} is missing its '$role' child")
-
-        return when (node.op.lowercase()) {
-            "identity" -> x
-            "name", "over" -> required("source")
-            "add" -> required("left") + required("right")
-            "subtract" -> required("left") - required("right")
-            "multiply" -> required("left") * required("right")
-            "divide" -> required("left") / required("right")
-            // offset + amplitude * sin(TAU * frequency * x + phase), matching Functions.sin exactly.
-            "sin" -> required("offset") + required("amplitude") * sin(TAU * required("frequency") * x + required("phase"))
-            "cos" -> required("offset") + required("amplitude") * cos(TAU * required("frequency") * x + required("phase"))
-            "scaley" -> required("source") * required("scale")
-            "offsety" -> required("source") + required("offset")
-            "pow" -> pow(required("source"), required("exponent"))
-            "log" -> ln(required("source")) / ln(required("base"))
-            // Fn.clamp is coerceIn, which throws for an inverted range where min/max simply swap.
-            // The interpreter's answer is therefore only trustworthy for a well-ordered range, and
-            // the value-agreement guard is what notices when it is not.
-            "clamp" -> min(max(required("source"), required("min")), required("max"))
-            "softclip" -> {
-                val amount = required("amount")
-                if (amount.value == 0.0) x.tape.constant(0.0)
-                else tanh(required("source") * amount) / tanh(amount)
+        val formula = FnFormulas.of(node.op)
+            ?: error("op '${node.op}' is not differentiable; see FnAutoDiff.differentiableOps")
+        return evalFormulaAD(
+            formula,
+            x,
+            alpha = { at -> alphaOf(fn, at) },
+            childValue = { role, at ->
+                val position = node.children.indexOfFirst { it.role == role }
+                require(position >= 0) { "op ${node.op} is missing its '$role' child" }
+                interpret(node.children[position].fn, at, theta, indices, path + position)
             }
-            "amplitudemod" -> required("source") * (required("bias") + required("depth") * required("mod"))
-            "ringmod" -> required("source") * (required("depth") * required("mod"))
-            // x-domain transforms: re-enter the source at a moved x, which is exactly why x is tracked.
-            "shift" -> atMovedX(node, x, theta, indices, path) { dx -> x - dx("dx") }
-            "warp" -> atMovedX(node, x, theta, indices, path) { child ->
-                x + child("depth") * child("mod")
-            }
-            "scalex" -> atMovedX(node, x, theta, indices, path) { child ->
-                val about = child("about")
-                val scale = child("scale")
-                // Functions.scaleX collapses a zero scale onto the value at `about`, as taken.
-                if (scale.value == 0.0) about else (x - about) / scale + about
-            }
-            "gaussian" -> {
-                val sigma = required("sigma")
-                // Functions.gaussian short-circuits a zero sigma to the constant zero; the branch is
-                // differentiated as taken, which is correct off the switch-over and zero on it.
-                if (sigma.value == 0.0) x.tape.constant(0.0)
-                else required("amplitude") * exp(-0.5 * ((x - required("mean")) / sigma).sq())
-            }
-            "ramp" -> {
-                val start = required("start")
-                val end = required("end")
-                val a = alphaOf(fn, x)
-                start + (end - start) * a
-            }
-            "remap" -> {
-                val from = required("from")
-                val to = required("to")
-                val length = to - from
-                if (length.value == 0.0) x.tape.constant(0.0) else (x - from) / length
-            }
-            "smoothstep" -> {
-                val a = required("edge0")
-                val b = required("edge1")
-                val low = min(a, b)
-                val high = max(a, b)
-                if (high.value == low.value) {
-                    // Degenerates to a hard step, which has no useful derivative; as taken.
-                    x.tape.constant(if (x.value < low.value) 0.0 else 1.0)
-                } else {
-                    val t = ((x - low) / (high - low)).clamp(0.0, 1.0)
-                    t.sq() * (3.0 - 2.0 * t)
-                }
-            }
-            "hannwindow" -> {
-                val t = alphaOf(fn, x).clamp(0.0, 1.0)
-                0.5 - 0.5 * cos(TAU * t)
-            }
-            "hammingwindow" -> {
-                val t = alphaOf(fn, x).clamp(0.0, 1.0)
-                0.54 - 0.46 * cos(TAU * t)
-            }
-            else -> error("op '${node.op}' is not differentiable; see FnAutoDiff.differentiableOps")
-        }
+        )
     }
 
     /**
-     * Re-enters an op's `source` child at a **moved x**, given a rule for the move written in terms of
-     * the op's other role-addressed children.
+     * Re-evaluates one node in plain `Double` arithmetic by walking the *same* [FnFormulas] entry —
+     * the reference the agreement test compares against [Functions.Fn.eval] bit for bit.
      *
-     * The shared shape of `shift`, `warp` and `scaleX`. All three sample their modulating children at
-     * the *original* x and only then displace the lookup, which is what the two-stage lambda here
-     * enforces; getting that order wrong would make `warp` recursive rather than a single displacement.
+     * If this and `eval` ever disagree, one of them is wrong and `FnFormulaAgreementTest` says so at
+     * test time. Nothing in production calls this; it exists to be the pin.
      */
-    private inline fun atMovedX(
-        node: FnGraphNode,
-        x: AD,
-        theta: List<AD>,
-        indices: Map<List<Int>, Int>,
-        path: List<Int>,
-        move: ((String) -> AD) -> AD
-    ): AD {
-        val sourcePosition = node.children.indexOfFirst { it.role == "source" }
-        require(sourcePosition >= 0) { "op ${node.op} is missing its 'source' child" }
-        val child: (String) -> AD = { role ->
-            val position = node.children.indexOfFirst { it.role == role }
-            require(position >= 0) { "op ${node.op} is missing its '$role' child" }
-            interpret(node.children[position].fn, x, theta, indices, path + position)
-        }
-        return interpret(node.children[sourcePosition].fn, move(child), theta, indices, path + sourcePosition)
+    fun evalByFormula(fn: Functions.Fn, x: Double): Double {
+        val node = fn.graphNode()
+        node.numbers["value"]?.let { return it }
+        val formula = FnFormulas.of(node.op)
+            ?: error("op '${node.op}' has no formula; see FnFormulas")
+        return evalFormula(
+            formula,
+            x,
+            alpha = { at -> alphaOfDouble(fn, at) },
+            childValue = { role, at ->
+                val position = node.children.indexOfFirst { it.role == role }
+                require(position >= 0) { "op ${node.op} is missing its '$role' child" }
+                evalByFormula(node.children[position].fn, at)
+            }
+        )
     }
 
     /**
@@ -313,18 +225,31 @@ object FnAutoDiff {
      * `Domain.finiteSweep().alphaOf(x)`, which `ramp` and the window ops sample.
      *
      * Only defined for a **finite** domain. `Functions` falls back to a plot-safe preview window for an
-     * unbounded one, and that fallback is private to `Functions`; rather than guess at it, this throws
-     * and lets [worstValueDisagreement] demote the run to finite differences.
+     * unbounded one, and that fallback is private to `Functions` (`Functions.kt:3148`); rather than
+     * guess at it, this throws and lets [worstValueDisagreement] demote the run to finite differences.
      */
     private fun alphaOf(fn: Functions.Fn, x: AD): AD {
-        val domain = fn.domain
-        require(domain.isFinite) {
-            "the x-window of this op is ${domain}, which is not finite; the exact path only handles a " +
-                "bounded shape domain"
-        }
+        val domain = requireFiniteShapeDomain(fn)
         val length = domain.length
         if (length == 0.0) return x.tape.constant(0.0)
         return (x - domain.min) / length
+    }
+
+    /** [alphaOf] in plain `Double`, for [evalByFormula]. */
+    private fun alphaOfDouble(fn: Functions.Fn, x: Double): Double {
+        val domain = requireFiniteShapeDomain(fn)
+        val length = domain.length
+        if (length == 0.0) return 0.0
+        return (x - domain.min) / length
+    }
+
+    private fun requireFiniteShapeDomain(fn: Functions.Fn): Functions.Domain {
+        val domain = fn.domain
+        require(domain.isFinite) {
+            "the x-window of this op is $domain, which is not finite; the exact path only handles a " +
+                "bounded shape domain"
+        }
+        return domain
     }
 }
 

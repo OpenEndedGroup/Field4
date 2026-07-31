@@ -154,6 +154,62 @@ class AutoDiffFnBridgeTest {
         }
     }
 
+    /**
+     * **The pin.** For every graph above, the `Double` walk of the one [FnFormulas] entry must be
+     * *bit-identical* to `Functions`' own `eval` — not close, identical, compared as raw bits — across
+     * a 129-point grid and at three perturbed parameter vectors.
+     *
+     * This is what replaces "two interpreters held together by a runtime guard" with "one declaration
+     * and a test-time proof that it is a faithful transcription". Change an op's formula in
+     * `Functions.kt` without changing [FnFormulas] and this goes red before it can ship, instead of
+     * the exact gradient silently differentiating the old formula and the runtime guard quietly
+     * demoting the run.
+     */
+    @Test
+    fun theFormulaTableIsABitIdenticalTranscriptionOfFnEval() {
+        val grid = DoubleArray(129) { it / 128.0 }
+        for ((name, fn) in differentiableGraphs()) {
+            val base = fn.extractParameters()
+            val thetas = listOf(
+                base,
+                DoubleArray(base.size) { base[it] * 1.3 + 0.11 },
+                DoubleArray(base.size) { base[it] - 0.19 }
+            )
+            for ((index, theta) in thetas.withIndex()) {
+                val applied = fn.applyParameters(theta)
+                for (x in grid) {
+                    val direct = applied.eval(x)
+                    val viaFormula = FnAutoDiff.evalByFormula(applied, x)
+                    assertEquals(
+                        direct.toRawBits(), viaFormula.toRawBits(),
+                        "$name/theta$index at x=$x: Fn.eval gave $direct, the formula walk gave $viaFormula"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * The AD walk and the `Double` walk of the same formula must agree on the *value* too — the third
+     * corner of the triangle, and the one the runtime guard checks. Held to 1e-13 rather than bits
+     * because the AD path accumulates through tape nodes.
+     */
+    @Test
+    fun theAdWalkAgreesWithTheDoubleWalkOnValue() {
+        val grid = DoubleArray(65) { it / 64.0 }
+        for ((name, fn) in differentiableGraphs()) {
+            for (x in grid) {
+                val viaFormula = FnAutoDiff.evalByFormula(fn, x)
+                val viaAd = fn.gradientAt(x).value
+                if (!viaFormula.isFinite() && !viaAd.isFinite()) continue
+                assertEquals(
+                    viaFormula, viaAd, 1e-13 * (1.0 + kotlin.math.abs(viaFormula)),
+                    "$name at x=$x: Double walk $viaFormula, AD walk $viaAd"
+                )
+            }
+        }
+    }
+
     @Test
     fun leafIndicesLineUpWithExtractParameters() {
         for ((name, fn) in differentiableGraphs()) {
