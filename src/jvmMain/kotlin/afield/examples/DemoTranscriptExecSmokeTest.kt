@@ -89,6 +89,8 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",
+        // Two pure-CPU FLine boxes; showPlaneGrid is drawToSVG -> display, so no AWT and no GPU.
+        "arclength_spacing_demo",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

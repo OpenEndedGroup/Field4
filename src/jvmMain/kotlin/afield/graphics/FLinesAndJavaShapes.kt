@@ -145,47 +145,75 @@ class FLinesAndJavaShapes {
          * returns whether the current segment is a .lineTo
          */
         fun segmentIsLinear(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.LineTo
+            return nodeAt(index + 1) is FLine.LineTo
         }
 
         /**
          * returns whether the current segment is a .cubicTo
          */
         fun segmentIsCubic(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.CubicTo
+            return nodeAt(index + 1) is FLine.CubicTo
         }
 
         /**
          * returns whether the current segment is a .moveTo
          */
         fun segmentIsMove(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.MoveTo
+            return nodeAt(index + 1) is FLine.MoveTo
         }
 
         /**
          * returns whether the current segment is a .close
          */
         fun segmentIsClose(): Boolean {
-            return on.nodes.get(clamp(index + 1)) is FLine.Close
+            return nodeAt(index + 1) is FLine.Close
         }
 
         /**
-         * Resolve the target point for a close segment by walking back to the
-         * most recent MoveTo in the current subpath.
+         * The node at [i], clamped, or `null` if this line has no nodes at all.
+         *
+         * `clamp` returns `nodes.size - 1`, which is **-1** for an empty line, so every
+         * `nodes[clamp(...)]` read threw IndexOutOfBoundsException on an FLine with no nodes — and
+         * `position()` reaches four of them. `FLine().sampleByDistance(5f)` blew up.
          */
-        private fun closeTarget(): Vec3 {
-            val start = clamp(index)
-            for (i in start downTo 0) {
+        private fun nodeAt(i: Int): FLine.Node? =
+            if (on.nodes.isEmpty()) null else on.nodes[clamp(i)]
+
+        /**
+         * Resolve the target point for a close segment: the start of the subpath being closed.
+         */
+        private fun closeTarget(): Vec3 = subpathStartAt(clamp(index))
+
+        /**
+         * Walk back from [from] to the most recent [FLine.MoveTo] and return its point.
+         */
+        private fun subpathStartAt(from: Int): Vec3 {
+            for (i in from downTo 0) {
                 val node = on.nodes[i]
                 if (node is FLine.MoveTo) return Vec3(node.to)
             }
-            return Vec3(on.nodes.firstOrNull()?.to ?: Vec3())
+            return Vec3(on.nodes.firstOrNull()?.toOrNull ?: Vec3())
+        }
+
+        /**
+         * Where the instruction at [i] leaves the pen.
+         *
+         * A [FLine.Close] stores no point of its own — reading `Node.to` on one throws
+         * `IndexOutOfBoundsException`, because `to` is `storage[0]` and a `Close` has empty storage.
+         * Its end point is the start of the subpath it closes. Every "start of the current segment"
+         * read in this class goes through here, so a cursor can sit on, or immediately after, a
+         * `Close` without blowing up.
+         */
+        private fun endOf(i: Int): Vec3 {
+            val at = clamp(i)
+            val node = on.nodes[at]
+            return if (node is FLine.Close) subpathStartAt(at) else node.to
         }
 
         fun next(): Array<Vec3> {
             try {
                 return if (segmentIsCubic()) arrayOf<Vec3>(
-                    Vec3(on.nodes[clamp(index)].to),
+                    Vec3(endOf(index)),
                     Vec3((on.nodes[clamp(index + 1)] as FLine.CubicTo).c1),
                     Vec3(
                         (on.nodes[clamp(index + 1)] as FLine.CubicTo).c2
@@ -193,14 +221,14 @@ class FLinesAndJavaShapes {
                     Vec3((on.nodes[clamp(index + 1)] as FLine.CubicTo).to)
                 )
                 else if (segmentIsLinear()) arrayOf<Vec3>(
-                    Vec3(on.nodes[clamp(index)].to),
+                    Vec3(endOf(index)),
                     Vec3(on.nodes[clamp(index + 1)].to)
                 )
                 else if (segmentIsClose()) arrayOf<Vec3>(
-                    Vec3(on.nodes[clamp(index)].to),
+                    Vec3(endOf(index)),
                     closeTarget()
                 )
-                else if (segmentIsMove()) arrayOf<Vec3>(Vec3(on.nodes[clamp(index)].to))
+                else if (segmentIsMove()) arrayOf<Vec3>(Vec3(endOf(index)))
                 else throw java.lang.IllegalStateException(" segment not implemented ")
             } finally {
                 index++
@@ -220,16 +248,17 @@ class FLinesAndJavaShapes {
          * returns the position of the cursor
          */
         fun position(): Vec3 {
+            if (on.nodes.isEmpty()) return Vec3()
             return if (segmentIsMove()) {
-                if (alpha < 0.5) Vec3(on.nodes.get(clamp(index)).to)
+                if (alpha < 0.5) Vec3(endOf(index))
                 else Vec3(on.nodes.get(clamp(index + 1)).to)
             } else if (segmentIsLinear()) {
-                on.nodes.get(clamp(index)).to.lerp(on.nodes.get(clamp(index + 1)).to, alpha, Vec3())
+                endOf(index).lerp(on.nodes.get(clamp(index + 1)).to, alpha, Vec3())
             } else if (segmentIsClose()) {
-                on.nodes.get(clamp(index)).to.lerp(closeTarget(), alpha, Vec3())
+                endOf(index).lerp(closeTarget(), alpha, Vec3())
             } else if (segmentIsCubic()) {
                 evaluateCubicFrame(
-                    on.nodes.get(clamp(index)).to,
+                    endOf(index),
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
@@ -246,12 +275,12 @@ class FLinesAndJavaShapes {
             return if (segmentIsMove()) {
                 null
             } else if (segmentIsLinear()) {
-                on.nodes.get(clamp(index + 1)).to - on.nodes.get(clamp(index)).to
+                on.nodes.get(clamp(index + 1)).to - endOf(index)
             } else if (segmentIsClose()) {
-                closeTarget() - on.nodes.get(clamp(index)).to
+                closeTarget() - endOf(index)
             } else if (segmentIsCubic()) {
                 evaluateDCubicFrame(
-                    on.nodes.get(clamp(index)).to,
+                    endOf(index),
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
@@ -286,7 +315,7 @@ class FLinesAndJavaShapes {
                 Vec3()
             } else if (segmentIsCubic()) {
                 evaluateDDCubicFrame(
-                    on.nodes.get(clamp(index)).to,
+                    endOf(index),
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2,
                     (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to,
@@ -382,6 +411,11 @@ class FLinesAndJavaShapes {
 
         /**
          * returns the normal at this point in the line. This is always perpendicular to the line at the current point.
+         *
+         * It is **not** normalized — it is [tangent] rotated a quarter turn, so its magnitude is
+         * `|B'(t)|`, which for a curve a few hundred units across is itself a few hundred. Divide by
+         * its own length before using it as a direction, or whatever you offset by it flies off the
+         * page.
          */
         fun normal2(): Vec2? {
             val t: Vec3? = tangent()
@@ -398,7 +432,7 @@ class FLinesAndJavaShapes {
          */
         fun radiusOfCurvature(): Vec3? {
             if (segmentIsCubic()) {
-                val p0: Vec3 = on.nodes.get(clamp(index)).to
+                val p0: Vec3 = endOf(index)
                 val p1: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1
                 val p2: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2
                 val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
@@ -411,7 +445,7 @@ class FLinesAndJavaShapes {
 
         fun currentSegment(): CubicSegment3? {
             if (segmentIsCubic()) {
-                val p0: Vec3 = on.nodes.get(clamp(index)).to
+                val p0: Vec3 = endOf(index)
                 val p1: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1
                 val p2: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2
                 val p3: Vec3 = (on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to
@@ -580,8 +614,21 @@ class FLinesAndJavaShapes {
                 for (i in index + 1 until on.nodes.size) {
                     right.copyTo(on.nodes.get(i))
                 }
+            } else if (segmentIsClose()) {
+                // A Close is a straight segment back to the subpath start, so cutting inside one
+                // works like the linear case — except the right-hand piece is an open run from the
+                // cut point to that start, the contour no longer being closed. Without this branch
+                // `split()` fell straight through, returning a truncated left piece and an empty
+                // right one, so `splitD` could not cut past the last cubic of a closed line: asking
+                // a 1365-unit closed outline for a cut at 956 got one at 800.
+                left.lineTo(position())
+                right.moveTo(position())
+                right.lineTo(closeTarget())
+                for (i in index + 2 until on.nodes.size) {
+                    right.copyTo(on.nodes.get(i))
+                }
             } else if (segmentIsCubic()) {
-                val a: Vec3 = Vec3(on.nodes.get(clamp(index)).to)
+                val a: Vec3 = Vec3(endOf(index))
                 val c1: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1)
                 val c2: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2)
                 val b: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to)
@@ -624,7 +671,12 @@ class FLinesAndJavaShapes {
 
                     val left = s.first ?: return f
                     f.add(left)
-                    soFar = at
+                    // `soFar` is how far along the ORIGINAL line the remaining piece now starts, so
+                    // it accumulates to d[i], not to the relative offset `at`. It used to be
+                    // `soFar = at`, which is right for the first two cuts by coincidence (at == d[1]
+                    // - d[0] measured from a piece starting at d[0]) and then drifts: splitD on a
+                    // 500-unit line asking for [100, 225, 350] cut at 100, 225 and 450.
+                    soFar = d[i]
                     right = s.second
                     val nextRight = right ?: return f
                     cursor = Cursor(nextRight, 0.1f)
@@ -670,7 +722,7 @@ class FLinesAndJavaShapes {
                 index++
                 return on.nodes.get(index + 1)
             } else if (segmentIsCubic()) {
-                val a: Vec3 = Vec3(on.nodes.get(clamp(index)).to)
+                val a: Vec3 = Vec3(endOf(index))
                 val c1: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c1)
                 val c2: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).c2)
                 val b: Vec3 = Vec3((on.nodes.get(clamp(index + 1)) as FLine.CubicTo).to)
@@ -2008,8 +2060,6 @@ class FLinesAndJavaShapes {
             out.y = a.y * oma3 + 3 * c1.y * alphaoma2 + 3 * c2.y * alpha2oma + b.y * alpha3
             out.z = a.z * oma3 + 3 * c1.z * alphaoma2 + 3 * c2.z * alpha2oma + b.z * alpha3
 
-            println(a.toString() + " " + c1 + " " + c2 + " " + b + " " + alpha + " == " + out)
-
             return out
         }
 
@@ -2393,40 +2443,51 @@ class FLinesAndJavaShapes {
         fun closestT(to: FLine, point: Vec3): Float {
             var best = Float.POSITIVE_INFINITY
             var tt = 0.0
+
+            // The straight-segment case, shared by LineTo and Close — a Close *is* a straight
+            // segment, just one whose end point has to be resolved rather than read.
+            fun considerSegment(i: Int, p0: Vec3, p1: Vec3) {
+                val dir: Vec3 = Vec3(p1).sub(p0)
+                val len: Float = dir.length()
+                if (len == 0.0f) {
+                    val dd: Float = p1.distance(point)
+                    if (dd <= best) {
+                        best = dd
+                        tt = (i - 1).toDouble()
+                    }
+                    return
+                }
+                dir.mul(1 / len)
+                var d: Float = dir.dot(Vec3(point).sub(p0))
+                if (d < 0) d = 0.0f
+                if (d > len) d = len
+                val at: Vec3 = p0 + dir * d
+                val dd: Float = at.distance(point)
+                if (dd < best) {
+                    best = dd
+                    tt = (d / len + (i - 1)).toDouble()
+                }
+            }
+
             for (i in 1 until to.nodes.size) {
                 val n1: FLine.Node = to.nodes.get(i)
-                val n0: FLine.Node = to.nodes.get(i - 1)
-                if (n1 is FLine.MoveTo) continue
+                // endPointOf, not `.to`: in a multi-subpath line the previous node can be a Close,
+                // which stores no point of its own.
+                val p0: Vec3 = to.endPointOf(i - 1)
 
-                if (n1 is FLine.LineTo) {
-                    val dir: Vec3 = Vec3(n1.to).sub(n0.to)
-                    if (dir.length() == 0.0f) {
-                        val dd: Float = n1.to.distance(point)
-                        if (dd <= best) {
-                            best = dd
-
-                            tt = (i - 1).toDouble()
-                        }
-                    } else {
-                        val len: Float = dir.length()
-                        dir.mul(1 / len)
-                        var d: Float = dir.dot(Vec3(point).sub(n0.to))
-                        if (d < 0) d = 0.0f
-                        if (d > len) d = len
-                        val at: Vec3 = n0.to + dir * d
-                        val dd: Float = at.distance(point)
+                when (n1) {
+                    is FLine.MoveTo -> continue
+                    is FLine.LineTo -> considerSegment(i, p0, n1.to)
+                    // This was an unguarded `else` casting to CubicTo, so a Close threw
+                    // ClassCastException — hit-testing blew up on every closed shape.
+                    is FLine.Close -> considerSegment(i, p0, to.endPointOf(i))
+                    is FLine.CubicTo -> {
+                        val t = CubicSegment3(p0, n1.c1, n1.c2, n1.to).closestToPoint(point)
+                        val dd: Float = evaluateCubicFrame(p0, n1.c1, n1.c2, n1.to, t, Vec3()).distance(point)
                         if (dd < best) {
                             best = dd
-                            tt = (d / len + (i - 1)).toDouble()
+                            tt = (t + (i - 1)).toDouble()
                         }
-                    }
-                } else {
-                    val c = n1 as FLine.CubicTo
-                    val t = CubicSegment3(n0.to, c.c1, c.c2, c.to).closestToPoint(point)
-                    val dd: Float = evaluateCubicFrame(n0.to, c.c1, c.c2, c.to, t, Vec3()).distance(point)
-                    if (dd < best) {
-                        best = dd
-                        tt = (t + (i - 1)).toDouble()
                     }
                 }
             }

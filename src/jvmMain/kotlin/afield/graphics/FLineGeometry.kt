@@ -1199,7 +1199,8 @@ fun FLine.byReversing(): FLine {
     if (this.nodes.isEmpty()) return result
 
     // Start at the end
-    result.moveTo(this.nodes.last().to)
+    // `.to` throws on a Close, and reversing a closed shape is an entirely ordinary thing to ask.
+    result.moveTo(currentPoint ?: return result)
 
     // Traverse backwards
     for (i in this.nodes.size - 1 downTo 1) {
@@ -2077,40 +2078,52 @@ fun FLine.byArcLengthParameterizing(spacing: Float): FLine {
 
 /**
  * Create a dashed version of the curve.
- * @param dashLength length of each dash
- * @param gapLength length of each gap
+ *
+ * Each dash follows the curve. Dashes used to be emitted as a single straight segment between
+ * their two endpoints, which is only right on a straight stretch: on anything curved the dash cut
+ * the corner, so a "18 unit" dash across a bend drew as a visibly shorter chord and the dashes
+ * drifted off the line they were dashing.
+ *
+ * Each subpath is dashed independently, so a dash never bridges the gap between two subpaths.
+ *
+ * @param dashLength length of each dash, along the curve
+ * @param gapLength length of each gap, along the curve
+ * @param resolution longest straight piece used to follow the curve inside one dash
  */
-fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine> {
+fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f): List<FLine> {
     val result = mutableListOf<FLine>()
+    if (dashLength <= 0f || gapLength <= 0f) return result
+
+    // One subpath at a time. A single walk over a multi-subpath line has no idea where the `moveTo`
+    // jumps are, so a dash straddling one drew a straight segment right across the gap between two
+    // subpaths — a 25-unit dash across a 360-unit jump measured 1428% long. Each subpath gets its
+    // own dash phase, which is also what you want when dashing a glyph's separate contours.
+    val subpaths = pieces()
+    if (subpaths.size > 1) {
+        subpaths.forEach { result += it.byDashing(dashLength, gapLength, resolution) }
+        return result
+    }
+
     val cursor = this.cursor()
     val totalLength = cursor.lengthD()
+    if (totalLength <= 0f) return result
+
+    val step = resolution.coerceAtLeast(1e-4f)
 
     var distance = 0f
-    var inDash = true
-    var currentSegment: FLine? = null
-
     while (distance < totalLength) {
-        cursor.setD(distance)
-        val pos = cursor.position()
+        val end = min(distance + dashLength, totalLength)
+        val pieces = max(1, ceil((end - distance) / step).toInt())
 
-        if (inDash) {
-            if (currentSegment == null) {
-                currentSegment = FLine()
-                currentSegment.moveTo(pos)
-            } else {
-                currentSegment.lineTo(pos)
-            }
-
-            distance += dashLength
-            cursor.setD(minOf(distance, totalLength))
-            currentSegment.lineTo(cursor.position())
-            result.add(currentSegment)
-            currentSegment = null
-            inDash = false
-        } else {
-            distance += gapLength
-            inDash = true
+        val dash = FLine()
+        for (i in 0..pieces) {
+            cursor.setD(distance + (end - distance) * i / pieces)
+            val p = cursor.position()
+            if (i == 0) dash.moveTo(p) else dash.lineTo(p)
         }
+        result.add(dash)
+
+        distance = end + gapLength
     }
 
     return result
@@ -2287,7 +2300,7 @@ fun FLine.arcTo(p1: Vec3, p2: Vec3, radius: Float, segments: Int = 32): FLine {
     }
     if (nodes.isEmpty()) return moveTo(p1)
 
-    val p0 = nodes.last().to
+    val p0 = currentPoint ?: return moveTo(p1)
     if (radius <= 0f) return lineTo(p1)
 
     val v1 = Vec3(p0).sub(p1)
@@ -2365,7 +2378,7 @@ fun FLine.circleThroughTo(through: Vec3, end: Vec3, segments: Int = 32): FLine {
         return lineTo(end)
     }
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(through).lineTo(end)
     val arc = arcThrough3Points(start, through, end, segments)
     arc.nodes.drop(1).forEach { lineTo(it.to) }
     return this
@@ -2414,7 +2427,7 @@ fun FLine.polarCubicTo(
         return moveTo(endPoint)
     }
     val plane = plane2DOrDefault()
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val c1 = Vec3(start).add(polarVector(c1Angle, c1Length, plane))
     val c2 = Vec3(endPoint).add(polarVector(c2Angle, c2Length, plane))
     return cubicTo(c1, c2, endPoint)
@@ -2794,7 +2807,7 @@ fun FLine.biarcTo(
     }
     if (nodes.isEmpty()) return moveTo(endPoint)
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val chord = Vec3(endPoint).sub(start)
     val chordLen = chord.length()
     if (chordLen < 1e-6f) return lineTo(endPoint)
@@ -3061,7 +3074,7 @@ fun FLine.byAppendingQuadratic(controlPoint: Vec3, endPoint: Vec3): FLine {
         return this
     }
 
-    val start = this.nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
 
     // Convert quadratic to cubic
     // C1 = start + 2/3 * (control - start)
@@ -3089,7 +3102,7 @@ fun FLine.byAppendingArcByTangent(
         return this
     }
 
-    val start = this.nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
 
     // Find center as intersection of perpendiculars to tangents
     val startPerp = Vec3(startTangent).normalize()
@@ -4131,7 +4144,8 @@ fun FLine.byEulerSpiralTo(
     headingScale: Float = 1f,
     turn: Float = 0f
 ): FLine {
-    val start = nodes.lastOrNull()?.to ?: vec(0f, 0f, 0f)
+    // `?.` guards a missing node, not a Close's empty storage — currentPoint guards both.
+    val start = currentPoint ?: vec(0f, 0f, 0f)
     val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
     val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
 
@@ -4172,7 +4186,7 @@ fun FLine.eulerSpiralTo(
     }
     if (nodes.isEmpty()) return moveTo(endPoint)
 
-    val start = nodes.last().to
+    val start = currentPoint ?: return moveTo(endPoint)
     val startDirResolved = startDirection ?: outgoingTangent3D() ?: Vec3(endPoint).sub(start)
     val endDirResolved = endDirection ?: Vec3(endPoint).sub(start)
 

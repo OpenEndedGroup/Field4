@@ -142,6 +142,19 @@ edges: `evaluate(-1.0)` returning −21.1 outside the fitted knots, and the 0.20
 or an n and re-run it.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/statistics_examples/metadata.edn)
 
+**arclength_spacing_demo** — Two boxes on the difference between spacing a curve by its *parameter*
+and spacing it by its *arc length*. A cubic can be perfectly straight and still be parameterised so
+unevenly that `t = 0.5` is four fifths of the way along it, and until 2026-07-31 Field's arc-length
+table was blind to exactly that case. *Dashes* dashes the same two curves twice — marching `t` in
+equal steps down the left column, `byDashing` down the right — and captions each panel with the
+shortest and longest dash it actually drew (18.8 .. 25.0 against a requested 22.0 for a mere S-curve;
+far worse for the collinear one). *Ticks* puts 24 equal steps of parameter beside 24 equal steps of
+arc length with the max/median gap on each (2.821 against 1.000 on the collinear cubic), and returns
+the mechanism as numbers: the old subdivision metric reading 0.000 on a curve the new one scores 161.
+Both boxes compute both spacings live, so neither picture is stored. Move a control point towards the
+middle of the chord and re-run to watch the two columns converge.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/arclength_spacing_demo/metadata.edn)
+
 
 ## visionOS device scenes
 
