@@ -10,3 +10,10 @@ system. Each function is documented via KDoc directly on its declaration in
 For single-contour `FLine` morphing (`FLineInterpolator`, `interpolatorTo`,
 `byInterpolatingTo`), see KDoc in
 `src/jvmMain/kotlin/afield/graphics/FLineInterpolation.kt`.
+
+Anything that spaces by *distance along the curve* — `Cursor.setD`, `midPoint`,
+`fractionAlong`, `sampleByNumber`, `sampleByDistance`, `byDashing`,
+`byArcLengthParameterizing`, `FLineSamplers.byDistance` — goes through
+`PathFlattener`. See [arc_length_spacing.md](arc_length_spacing.md) for how that
+works, the class of curve it got wrong until 2026-07-31, and the measured
+before/after.

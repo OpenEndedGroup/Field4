@@ -1654,10 +1654,13 @@ lines(listOf(base, left, right), w = 420.0, h = 260.0, fitToSize = true)
 
 ```diffstatic {data-lang=kotlin}
 :::static
-fun FLine.byDashing(dashLength: Float, gapLength: Float): List<FLine>
+fun FLine.byDashing(dashLength: Float, gapLength: Float, resolution: Float = 2f): List<FLine>
 ```
 
-Breaks a path into multiple `FLine`s representing dash segments.
+Breaks a path into multiple `FLine`s representing dash segments. Both lengths are measured *along
+the curve*, and each dash follows the curve rather than cutting across it — `resolution` is the
+longest straight piece used to do that, so lower it if a dash around a tight bend still looks
+faceted.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/dashing.png" embed=true}
 :::static
