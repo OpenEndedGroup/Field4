@@ -324,6 +324,83 @@ class ArcLengthSpacingTest {
     }
 
     /**
+     * The audit: every public entry point that promises a *distance along the curve*, scored
+     * against the oracle. Each one funnels into `Cursor.setD` and so into `PathFlattener`, and each
+     * one was wrong by the same mechanism.
+     */
+    @Test
+    fun everyArcLengthConsumerAgreesWithTheOracle() {
+        val offenders = mutableListOf<String>()
+
+        for ((name, line) in ArcLengthTestCurves.all()) {
+            val oracle = ArcLengthOracle(line)
+            val total = oracle.length
+
+            // FLine.midPoint(): the point at half the arc length
+            val mid = line.midPoint()
+            val wantMid = oracle.positionAt(total / 2)
+            val midError = dist(mid.x, mid.y, mid.z, wantMid)
+
+            // fractionAlong: the point a given fraction of the arc length in. The anchor resolver
+            // is private, so probe it the way a user would — scale the line to nothing about the
+            // anchor and read where every point collapsed to.
+            var worstFraction = 0.0
+            for (f in listOf(0.1f, 0.25f, 0.5f, 0.75f, 0.9f)) {
+                val got = line.scale(0f, fractionAlong(f)).nodes[0].to
+                val want = oracle.positionAt(total * f)
+                worstFraction = maxOf(worstFraction, dist(got.x, got.y, got.z, want))
+            }
+
+            // FLine.sampleByNumber: n points evenly along the arc length
+            val byNumber = line.sampleByNumber(33)
+            var worstByNumber = 0.0
+            byNumber.forEachIndexed { i, p ->
+                val want = oracle.positionAt(total * i / 32.0)
+                worstByNumber = maxOf(worstByNumber, dist(p.x, p.y, p.z, want))
+            }
+
+            // byArcLengthParameterizing: resample the whole line at a fixed spacing
+            val spacing = (total / 40).toFloat()
+            val reparam = line.byArcLengthParameterizing(spacing)
+            val gaps = (2 until reparam.nodes.size).map {
+                reparam.nodes[it].to.distance(reparam.nodes[it - 1].to).toDouble()
+            }
+            val reparamRatio = if (gaps.size < 3) 1.0 else gaps.sorted().last() / gaps.sorted()[gaps.size / 2]
+
+            // FLineSamplers.byDistance: the composable sampler wrapper
+            val sampled = FLineSamplers.byDistance(spacing).sample(line, FLineSampleContext())
+            val sampledGaps = (1 until sampled.size).map {
+                sampled[it].point.distance(sampled[it - 1].point).toDouble()
+            }
+            val sampledRatio =
+                if (sampledGaps.size < 3) 1.0 else sampledGaps.sorted().last() / sampledGaps.sorted()[sampledGaps.size / 2]
+
+            println(
+                name.padEnd(24) +
+                    " midPoint err=" + "%.3f".format(midError) +
+                    " fractionAlong err=" + "%.3f".format(worstFraction) +
+                    " sampleByNumber err=" + "%.3f".format(worstByNumber) +
+                    " byArcLengthParam max/med=" + "%.3f".format(reparamRatio) +
+                    " samplers.byDistance max/med=" + "%.3f".format(sampledRatio)
+            )
+
+            // 0.5% of the line's length is a generous ceiling for a *positional* error on
+            // something claiming to be an exact distance along it.
+            val ceiling = total * 0.005
+            if (midError > ceiling) offenders += "$name midPoint ${"%.1f".format(midError)}"
+            if (worstFraction > ceiling) offenders += "$name fractionAlong ${"%.1f".format(worstFraction)}"
+            if (worstByNumber > ceiling) offenders += "$name sampleByNumber ${"%.1f".format(worstByNumber)}"
+            if (reparamRatio > 2.0) offenders += "$name byArcLengthParameterizing ${"%.2f".format(reparamRatio)}x"
+            if (sampledRatio > 2.0) offenders += "$name samplers.byDistance ${"%.2f".format(sampledRatio)}x"
+        }
+
+        assertTrue(offenders.isEmpty(), "arc-length consumers disagree with the oracle: ${offenders.joinToString("; ")}")
+    }
+
+    private fun dist(x: Float, y: Float, z: Float, to: DoubleArray): Double =
+        sqrt((x - to[0]) * (x - to[0]) + (y - to[1]) * (y - to[1]) + (z - to[2]) * (z - to[2]))
+
+    /**
      * Not an assertion about wall time — machines differ — but a printed record of what the
      * subdivision criterion costs, plus a hard ceiling on the leaf count so a future change cannot
      * quietly make the flattener quadratic.
