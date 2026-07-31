@@ -96,7 +96,50 @@ class AutoDiffFnBridgeTest {
             "shift" to sin(2.0, amplitude = 0.55).shift(0.1),
             "gaussian" to gaussian(0.5, 0.2, 1.0),
             "gaussian*sin" to (gaussian(0.45, 0.25, 0.9) * sin(3.0, amplitude = 0.8, offset = 1.0)),
-            "named" to sin(1.4, amplitude = 0.65).withName("gesture")
+            "named" to sin(1.4, amplitude = 0.65).withName("gesture"),
+            // Value transforms. `pow` and `log` keep their source strictly positive at every theta the
+            // oracle test probes, so neither the base nor the exponent partial goes undefined.
+            "pow" to sin(1.2, amplitude = 0.8, offset = 1.5).pow(2.0),
+            "log" to sin(1.0, amplitude = 0.4, offset = 2.0).log(2.0),
+            "clamp" to sin(1.4, amplitude = 1.5).clamp(-0.8, 0.8),
+            "softClip" to sin(1.1, amplitude = 1.2).softClip(1.5),
+            // x-domain transforms.
+            "scaleX" to sin(2.0, amplitude = 0.6).scaleX(1.5, 0.25),
+            "warp" to sin(2.0, amplitude = 0.6).warp(cos(1.0), 0.1),
+            // Modulation.
+            "amplitudeMod" to sin(2.0, amplitude = 0.7).amplitudeMod(cos(1.0), 0.5, 1.0),
+            "ringMod" to sin(2.0, amplitude = 0.7).ringMod(cos(1.0), 0.6),
+            // Shapes and windows, all on a bounded shape domain — the exact path refuses an unbounded
+            // one rather than guessing at the plot-safe preview window Functions falls back to.
+            "ramp" to ramp(0.2, 0.9, Functions.Domain(0.0, 1.0)),
+            "remap" to remap(0.1, 0.9, Functions.Domain(0.0, 1.0)),
+            "smoothstep" to smoothStep(0.25, 0.75, Functions.Domain(0.0, 1.0)),
+            "sin*hann" to (sin(1.3, amplitude = 0.8) * hannWindow(Functions.Domain(0.0, 1.0))),
+            "sin*hamming" to (sin(1.1, amplitude = 0.7) * hammingWindow(Functions.Domain(0.0, 1.0))),
+            // `identity` is x itself; `over` is the relabel-only domain wrapper withDomain() emits.
+            "identity*sin" to (identity(Functions.Domain(0.0, 1.0)) * sin(1.6, amplitude = 0.9)),
+            "over" to sin(1.25, amplitude = 0.7).withDomain(Functions.Domain(0.0, 1.0))
+        )
+    }
+
+    /**
+     * Guards [differentiableGraphs] against drift: every op in [FnAutoDiff.differentiableOps] must
+     * actually appear in one of the graphs above, so adding an op to the interpreter without an
+     * agreement-and-gradient check fails here rather than shipping unverified.
+     */
+    @Test
+    fun everyDifferentiableOpAppearsInAtLeastOneCheckedGraph() {
+        val seen = mutableSetOf<String>()
+        fun walk(fn: Functions.Fn) {
+            val node = fn.graphNode()
+            seen += node.op.lowercase()
+            for (edge in node.children) walk(edge.fn)
+        }
+        for ((_, fn) in differentiableGraphs()) walk(fn)
+        val unchecked = FnAutoDiff.differentiableOps.filterNot { it in seen }
+        assertTrue(
+            unchecked.isEmpty(),
+            "ops in FnAutoDiff.differentiableOps with no graph in differentiableGraphs(): $unchecked"
         )
     }
 

@@ -104,12 +104,36 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset**: `const param identity name over add
-subtract multiply divide sin cos scaleY offsetY shift gaussian`. Not covered — and honestly reported
-by `unsupportedOps` — are the piecewise oscillators (`saw`, `triangle`, `square`, `pulseTrain`),
-everything table- or data-backed (`piecewise`, `timeline`, `rbf`, the interpolants), the seeded noise
-family, and the clipping/folding transforms. Every name in the set is in `OpRegistry.knownOps`, and a
-test asserts it.
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — twenty-five ops:
+
+| group | ops |
+| --- | --- |
+| leaves and label-only wrappers | `const param identity name over` |
+| pointwise arithmetic | `add subtract multiply divide` |
+| smooth oscillators | `sin cos` |
+| value transforms | `scaleY offsetY pow log clamp softClip` |
+| x-domain transforms | `shift scaleX warp` |
+| shapes and windows | `gaussian ramp remap smoothstep hannWindow hammingWindow` |
+| modulation | `amplitudeMod ringMod` |
+
+Not covered — and honestly reported by name by `unsupportedOps` — are the piecewise oscillators
+(`saw`, `triangle`, `square`, `pulseTrain`), everything table- or data-backed (`piecewise`,
+`timeline`, `rbf`, the interpolants), the seeded noise family (whose generators are not
+differentiable in their parameters at all), the reflecting/quantising transforms (`fold`, `quantize`,
+`bitCrush`, `rectify`), the easings, and everything built on `mapY`/`mapX` (whose node carries a
+lambda, not a recipe). Every name in the set is in `OpRegistry.knownOps`, and a test asserts it.
+
+Three of the ops — `ramp` and the two windows — read a normalised position within a **shape domain**
+that `Functions` samples through a private `finiteSweep()` fallback for an unbounded domain. Rather
+than guess at that fallback, `alphaOf` requires a finite domain and throws otherwise;
+`worstValueDisagreement` catches the throw and demotes the run to finite differences. The same
+swallow-and-demote applies to `Fn.clamp` with an inverted range, where `coerceIn` throws but the
+interpreter's `min(max(...))` would silently swap the bounds.
+
+The three x-domain transforms (`shift`, `warp`, `scaleX`) all share one shape: sample the modulating
+children at the *original* x, then re-enter the source at a displaced x. `atMovedX` enforces that
+order in one place, because getting it wrong would make `warp` recursive rather than a single
+displacement. This is the reason `x` is itself a tracked `AD` rather than a plain `Double`.
 
 ### The honesty guard
 
@@ -202,7 +226,7 @@ hinge. Set `pullWeight = 0.0` and it goes to zero, along with the compactness.
 | --- | --- |
 | `AutoDiffGradientCheckTest` | 28 unary ops, 9 binary ops (both partials), 8 reductions, mixed `Double`/`Int` operator forms, deep compositions, `jacobian`, `hessian`, forward-vs-reverse agreement — every one against a finite-difference oracle at **≥ 3 distinct inputs**. A fourth-order five-point stencil away from kinks, a two-point central difference at them. `everyDeclaredOpIsCovered` fails if an op is added without an oracle check. |
 | `AutoDiffOptimizeTest` | problems with known exact minima, so "converged" means arrived at the right answer; determinism; seeded jitter; Armijo's monotone-descent guarantee |
-| `AutoDiffFnBridgeTest` | the byte-identical goldens; the interpreter reproducing `Fn.eval` to `< 1e-12` on 10 graph shapes; the exact θ-gradient against a central difference at 3 θ points per graph, for both a raw sum objective and the real RMSE loss; every refusal path; `leastSquaresAD` |
+| `AutoDiffFnBridgeTest` | the byte-identical goldens; the interpreter reproducing `Fn.eval` to `< 1e-12` on 22 graph shapes covering all 25 ops; the exact θ-gradient against a central difference at 3 θ points per graph, for both a raw sum objective and the real RMSE loss; `everyDifferentiableOpAppearsInAtLeastOneCheckedGraph` so an op cannot be added without a check; every refusal path; `leastSquaresAD` |
 | `AutoDiffGeometryTest` | 16 `ADVec2` and 13 `ADVec3` expressions differentiated in every component against an oracle at 4/3 points; the IK Jacobian against an oracle; IK reaching 4 targets; the smoothness trade asserted in *both* directions; packing convergence and reproducibility |
 | `examples.demo-transcript.exec` | the loadable demo really runs, all five boxes, no diagnostics |
 
@@ -222,6 +246,6 @@ three of `AutoDiffGradientCheckTest`'s tests red, so the tolerances bite.
   and at their jumps no finite-difference oracle exists to check against.
 - **Tape memory.** The tape grows with the number of *operations executed*, not with `n`. A loss over
   100k samples builds a 100k-node tape per evaluation. There is no checkpointing or chunking.
-- **Most of the `Fn` op vocabulary.** Fourteen ops of a much larger registry; see the subset above.
-  Anything else falls back to finite differences.
+- **Most of the `Fn` op vocabulary.** Twenty-five ops of a much larger registry; see the table
+  above. Anything else falls back to finite differences (silently under `AUTO`, loudly under `EXACT`).
 - **GPU.** Everything here is CPU `Double`. Nothing is differentiated through a shader.

@@ -84,11 +84,20 @@ object FnAutoDiff {
      * are not differentiable in their parameters at all), and the clipping/folding transforms.
      */
     val differentiableOps: Set<String> = setOf(
+        // leaves and label-only wrappers
         "const", "param", "identity", "name", "over",
+        // pointwise arithmetic
         "add", "subtract", "multiply", "divide",
+        // smooth oscillators
         "sin", "cos",
-        "scaley", "offsety", "shift",
-        "gaussian"
+        // value transforms
+        "scaley", "offsety", "pow", "log", "clamp", "softclip",
+        // x-domain transforms
+        "shift", "scalex", "warp",
+        // shapes and windows
+        "gaussian", "ramp", "remap", "smoothstep", "hannwindow", "hammingwindow",
+        // modulation
+        "amplitudemod", "ringmod"
     )
 
     /** True when every node of [fn]'s graph is in [differentiableOps]. */
@@ -143,8 +152,13 @@ object FnAutoDiff {
         val tape = ADTape()
         val params = tape.variables(theta)
         for (x in samples) {
-            val direct = fn.eval(x)
-            val interpreted = interpret(fn, tape.constant(x), params, indices, emptyList()).value
+            // Either side can throw — Fn.clamp with an inverted range, an op whose x-domain window is
+            // not recoverable from the node. A throw is a disagreement, not a crash: reporting +inf
+            // demotes the run to finite differences, which is always available.
+            val direct = runCatching { fn.eval(x) }.getOrNull() ?: return Double.POSITIVE_INFINITY
+            val interpreted = runCatching {
+                interpret(fn, tape.constant(x), params, indices, emptyList()).value
+            }.getOrNull() ?: return Double.POSITIVE_INFINITY
             if (!direct.isFinite() && !interpreted.isFinite()) continue
             val delta = (direct - interpreted).absoluteValue / (1.0 + direct.absoluteValue)
             if (delta > worst || delta.isNaN()) worst = delta
@@ -200,12 +214,29 @@ object FnAutoDiff {
             "cos" -> required("offset") + required("amplitude") * cos(TAU * required("frequency") * x + required("phase"))
             "scaley" -> required("source") * required("scale")
             "offsety" -> required("source") + required("offset")
-            "shift" -> {
-                val dxPosition = node.children.indexOfFirst { it.role == "dx" }
-                val sourcePosition = node.children.indexOfFirst { it.role == "source" }
-                require(dxPosition >= 0 && sourcePosition >= 0) { "shift is missing a child" }
-                val dx = interpret(node.children[dxPosition].fn, x, theta, indices, path + dxPosition)
-                interpret(node.children[sourcePosition].fn, x - dx, theta, indices, path + sourcePosition)
+            "pow" -> pow(required("source"), required("exponent"))
+            "log" -> ln(required("source")) / ln(required("base"))
+            // Fn.clamp is coerceIn, which throws for an inverted range where min/max simply swap.
+            // The interpreter's answer is therefore only trustworthy for a well-ordered range, and
+            // the value-agreement guard is what notices when it is not.
+            "clamp" -> min(max(required("source"), required("min")), required("max"))
+            "softclip" -> {
+                val amount = required("amount")
+                if (amount.value == 0.0) x.tape.constant(0.0)
+                else tanh(required("source") * amount) / tanh(amount)
+            }
+            "amplitudemod" -> required("source") * (required("bias") + required("depth") * required("mod"))
+            "ringmod" -> required("source") * (required("depth") * required("mod"))
+            // x-domain transforms: re-enter the source at a moved x, which is exactly why x is tracked.
+            "shift" -> atMovedX(node, x, theta, indices, path) { dx -> x - dx("dx") }
+            "warp" -> atMovedX(node, x, theta, indices, path) { child ->
+                x + child("depth") * child("mod")
+            }
+            "scalex" -> atMovedX(node, x, theta, indices, path) { child ->
+                val about = child("about")
+                val scale = child("scale")
+                // Functions.scaleX collapses a zero scale onto the value at `about`, as taken.
+                if (scale.value == 0.0) about else (x - about) / scale + about
             }
             "gaussian" -> {
                 val sigma = required("sigma")
@@ -214,8 +245,86 @@ object FnAutoDiff {
                 if (sigma.value == 0.0) x.tape.constant(0.0)
                 else required("amplitude") * exp(-0.5 * ((x - required("mean")) / sigma).sq())
             }
+            "ramp" -> {
+                val start = required("start")
+                val end = required("end")
+                val a = alphaOf(fn, x)
+                start + (end - start) * a
+            }
+            "remap" -> {
+                val from = required("from")
+                val to = required("to")
+                val length = to - from
+                if (length.value == 0.0) x.tape.constant(0.0) else (x - from) / length
+            }
+            "smoothstep" -> {
+                val a = required("edge0")
+                val b = required("edge1")
+                val low = min(a, b)
+                val high = max(a, b)
+                if (high.value == low.value) {
+                    // Degenerates to a hard step, which has no useful derivative; as taken.
+                    x.tape.constant(if (x.value < low.value) 0.0 else 1.0)
+                } else {
+                    val t = ((x - low) / (high - low)).clamp(0.0, 1.0)
+                    t.sq() * (3.0 - 2.0 * t)
+                }
+            }
+            "hannwindow" -> {
+                val t = alphaOf(fn, x).clamp(0.0, 1.0)
+                0.5 - 0.5 * cos(TAU * t)
+            }
+            "hammingwindow" -> {
+                val t = alphaOf(fn, x).clamp(0.0, 1.0)
+                0.54 - 0.46 * cos(TAU * t)
+            }
             else -> error("op '${node.op}' is not differentiable; see FnAutoDiff.differentiableOps")
         }
+    }
+
+    /**
+     * Re-enters an op's `source` child at a **moved x**, given a rule for the move written in terms of
+     * the op's other role-addressed children.
+     *
+     * The shared shape of `shift`, `warp` and `scaleX`. All three sample their modulating children at
+     * the *original* x and only then displace the lookup, which is what the two-stage lambda here
+     * enforces; getting that order wrong would make `warp` recursive rather than a single displacement.
+     */
+    private inline fun atMovedX(
+        node: FnGraphNode,
+        x: AD,
+        theta: List<AD>,
+        indices: Map<List<Int>, Int>,
+        path: List<Int>,
+        move: ((String) -> AD) -> AD
+    ): AD {
+        val sourcePosition = node.children.indexOfFirst { it.role == "source" }
+        require(sourcePosition >= 0) { "op ${node.op} is missing its 'source' child" }
+        val child: (String) -> AD = { role ->
+            val position = node.children.indexOfFirst { it.role == role }
+            require(position >= 0) { "op ${node.op} is missing its '$role' child" }
+            interpret(node.children[position].fn, x, theta, indices, path + position)
+        }
+        return interpret(node.children[sourcePosition].fn, move(child), theta, indices, path + sourcePosition)
+    }
+
+    /**
+     * The normalised position of [x] within [fn]'s own domain — the tracked twin of
+     * `Domain.finiteSweep().alphaOf(x)`, which `ramp` and the window ops sample.
+     *
+     * Only defined for a **finite** domain. `Functions` falls back to a plot-safe preview window for an
+     * unbounded one, and that fallback is private to `Functions`; rather than guess at it, this throws
+     * and lets [worstValueDisagreement] demote the run to finite differences.
+     */
+    private fun alphaOf(fn: Functions.Fn, x: AD): AD {
+        val domain = fn.domain
+        require(domain.isFinite) {
+            "the x-window of this op is ${domain}, which is not finite; the exact path only handles a " +
+                "bounded shape domain"
+        }
+        val length = domain.length
+        if (length == 0.0) return x.tape.constant(0.0)
+        return (x - domain.min) / length
     }
 }
 
