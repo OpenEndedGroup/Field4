@@ -892,4 +892,225 @@ class DynamicGraphSystemsTest {
         assertTrue(summary.contains("4 isolated"), "four of the six points touch no edge: $summary")
         assertTrue(summary.contains("t=1.50s"), summary)
     }
+
+    // ==========================================================================================
+    // The numbers public/docs/dynamic_graph_systems_examples.md prints
+    //
+    // Each of these reproduces one of the page's fence bodies exactly and asserts the figure it
+    // publishes. The page quotes them in prose and burns them into its panel labels, so without
+    // these a parameter change would silently make the page a work of fiction.
+    // ==========================================================================================
+
+    /** Figure 1's table: edges, triangle-closure fraction and peak weight for all six systems. */
+    @Test
+    fun pageFigureOneSixSystemsTable() {
+        val cloud = disc(220, 0.5)
+        val ceiling = 4.0
+        fun measure(system: DynamicGraphSystem): Triple<Int, Int, Double> {
+            val state = DynamicPointState(cloud.map { Vec3(it) }.toMutableList())
+            val edges = DynamicEdgeList(state.pointCount)
+            val hash = Vec3SpatialHash(0.06)
+            repeat(20) { stepDynamicGraph(1f / 60f, state, edges, hash, system) }
+            val adjacency = Array(state.pointCount) { HashSet<Int>() }
+            for (e in edges.values()) { adjacency[e.i].add(e.j); adjacency[e.j].add(e.i) }
+            val closed = edges.values().count { e -> adjacency[e.i].any { it != e.j && adjacency[e.j].contains(it) } }
+            val percent = Math.round(100.0 * closed / edges.values().size).toInt()
+            return Triple(edges.values().size, percent, edges.values().maxOf { it.weight })
+        }
+
+        // "534e 88%tri" etc. -- the strings the figure's own panel labels carry.
+        val knn = measure(Vec3BreathingAnisotropicKnnSystem(5, 10f, 4.0, ceiling, true, 0.12))
+        assertEquals(534, knn.first); assertEquals(88, knn.second)
+        val flowline = measure(Vec3FlowlineAdvectionGraphSystem(0.10, 0.08, 10f, 4.0, ceiling))
+        assertEquals(158, flowline.first)
+        assertEquals(0, flowline.second, "flowline advection is a functional map: exactly 0 % of its edges close")
+        val fan = measure(Vec3LocalTangentTriangulationSystem(6, 10f, 4.0, ceiling, 0.10))
+        assertEquals(715, fan.first); assertEquals(100, fan.second, "the tangent fan builds faces")
+        val hyst = measure(Vec3PersistentProximityHysteresisSystem(0.055, 0.075, 10f, 4.0, ceiling))
+        assertEquals(153, hyst.first); assertEquals(2, hyst.second)
+        val routing = measure(Vec3SignalRoutingGraphSystem(6, 10f, 1.0, ceiling, 1, 0.10))
+        assertEquals(260, routing.first); assertEquals(2, routing.second)
+        val alpha = measure(Vec3AlphaEventHypergraphCollapseSystem(6, 0.075, 10f, 4.0, ceiling, 0.09, 1e-4))
+        assertEquals(351, alpha.first)
+        assertEquals(100, alpha.second, "the alpha-event system builds faces")
+
+        // The page's warning box: the alpha system's increment is scaled by triangle area, so its
+        // weights land three orders of magnitude below everyone else's on the SAME reinforce and
+        // ceiling. That is the reason its panel is faint on a fixed brightness scale.
+        assertEquals(4.0, knn.third, 1e-12, "kNN saturates at the shared ceiling")
+        assertEquals(4.0, fan.third, 1e-12, "so does the tangent fan")
+        assertTrue(abs(alpha.third - 0.0137) < 0.0002, "alpha-event peak weight was ${alpha.third}, page says 0.0137")
+        assertTrue(alpha.third < 0.005 * ceiling, "…which is under 0.5 % of the ceiling")
+    }
+
+    /** Figure 3's table: how much work each arm does to hold a graph over a wobbling cloud. */
+    @Test
+    fun pageFigureThreeHysteresisFlickerCounts() {
+        fun flicker(rExit: Double): Triple<Int, Int, Int> {
+            val n = 200
+            val base = disc(n, 0.45)
+            val state = DynamicPointState(base.map { Vec3(it) }.toMutableList())
+            val edges = DynamicEdgeList(n)
+            val hash = Vec3SpatialHash(0.06)
+            val system = Vec3PersistentProximityHysteresisSystem(0.055, rExit, 0.35f, 3.0, 3.0)
+            var appeared = 0
+            var vanished = 0
+            var present = HashSet<Pair<Int, Int>>()
+            repeat(150) { frame ->
+                for (i in 0 until n) {
+                    val phase = 0.31 * i + 0.16 * frame
+                    state.points[i] = Vec3(base[i]).add(vec(0.012 * cos(phase), 0.012 * sin(1.7 * phase), 0.0))
+                }
+                stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.9)
+                val now = edges.values().map { it.i to it.j }.toHashSet()
+                appeared += (now - present).size
+                vanished += (present - now).size
+                present = now
+            }
+            return Triple(appeared, vanished, present.size)
+        }
+
+        assertEquals(Triple(553, 81, 472), flicker(rExit = 0.075), "the hysteresis arm, as the page's table states")
+        assertEquals(Triple(996, 637, 359), flicker(rExit = 0.055), "the rExit == rEnter control arm")
+    }
+
+    /**
+     * Figure 6, which is the page's strongest claim: a weight threshold recovers the co-moving groups
+     * out of a graph that has only ever seen positions and a clock.
+     */
+    @Test
+    fun pageFigureSixThresholdRecoversTheCoMovingGroups() {
+        val nBg = 240
+        val perCluster = 22
+        val n = nBg + 3 * perCluster
+        val background = disc(nBg, 0.50)
+        val blobs = List(3) { disc(perCluster, 0.070) }
+        val starts = listOf(Vec3(-0.44f, -0.20f, 0f), Vec3(-0.30f, 0.40f, 0f), Vec3(0.34f, -0.44f, 0f))
+        val velocities = listOf(Vec3(0.20f, 0.07f, 0f), Vec3(0.16f, -0.19f, 0f), Vec3(-0.12f, 0.20f, 0f))
+        val group = IntArray(n) { if (it < nBg) -1 else (it - nBg) / perCluster }
+
+        val points = MutableList(n) { Vec3(0f, 0f, 0f) }
+        for (i in 0 until nBg) points[i] = Vec3(background[i])
+        val state = DynamicPointState(points)
+        val edges = DynamicEdgeList(n)
+        val hash = Vec3SpatialHash(0.055)
+        val system = Vec3PersistentProximityHysteresisSystem(0.062, 0.075, 0.4f, 2.5, 3.0)
+        repeat(240) { f ->
+            val t = f / 60.0
+            for (c in 0 until 3) {
+                val centre = Vec3(starts[c]).add(Vec3(velocities[c]).mul(t.toFloat()))
+                for (k in 0 until perCluster) {
+                    state.points[nBg + c * perCluster + k] = Vec3(blobs[c][k]).add(centre)
+                }
+            }
+            stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.30)
+        }
+
+        fun componentSizes(graph: PointGraph): List<Int> {
+            val parent = IntArray(graph.pointCount) { it }
+            fun find(a: Int): Int {
+                var x = a
+                while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x] }
+                return x
+            }
+            for (e in graph.edges) { val ra = find(e.i); val rb = find(e.j); if (ra != rb) parent[ra] = rb }
+            val sizes = HashMap<Int, Int>()
+            for (v in 0 until graph.pointCount) sizes.merge(find(v), 1) { a, b -> a + b }
+            return sizes.values.sortedDescending()
+        }
+
+        fun row(cut: Double): Triple<Int, Int, List<Int>> {
+            val g = edges.toPointGraph(minWeight = cut)
+            return Triple(g.edges.size, g.edges.count { group[it.i] != group[it.j] }, componentSizes(g).filter { it > 1 })
+        }
+
+        // The page's table, row for row.
+        assertEquals(Triple(1313, 450, listOf(306)), row(0.0), "minWeight 0: everything welded into one blob")
+        assertEquals(Triple(1027, 190, listOf(306)), row(0.5), "minWeight 0.5: still one blob")
+        assertEquals(
+            Triple(791, 0, listOf(240, 22, 22, 22)), row(1.2),
+            "minWeight 1.2 must recover exactly the background mesh and the three clusters",
+        )
+        assertEquals(Triple(664, 0, listOf(240, 22, 22, 22)), row(2.0))
+
+        // The control arm for the whole figure: the same threshold on a graph built from a cloud that
+        // never moved has nothing to separate, because no edge is transient. (The clusters are pinned
+        // at their starting positions; everything else is identical.)
+        val stillPoints = MutableList(n) { Vec3(0f, 0f, 0f) }
+        for (i in 0 until nBg) stillPoints[i] = Vec3(background[i])
+        for (c in 0 until 3) for (k in 0 until perCluster) {
+            stillPoints[nBg + c * perCluster + k] = Vec3(blobs[c][k]).add(starts[c])
+        }
+        val still = DynamicPointState(stillPoints)
+        val stillEdges = DynamicEdgeList(n)
+        val stillHash = Vec3SpatialHash(0.055)
+        val stillSystem = Vec3PersistentProximityHysteresisSystem(0.062, 0.075, 0.4f, 2.5, 3.0)
+        repeat(240) { stepDynamicGraphWithExponentialDecay(1f / 60f, still, stillEdges, stillHash, stillSystem, 0.30) }
+        val lowCut = stillEdges.toPointGraph(minWeight = 0.0).edges.size
+        val highCut = stillEdges.toPointGraph(minWeight = 1.2).edges.size
+        assertTrue(
+            highCut > 0.9 * lowCut,
+            "on a static cloud the threshold has nothing to remove: $lowCut -> $highCut. " +
+                "That is why the figure has to move something.",
+        )
+    }
+
+    /** Figure 5's table: the growing pipeline against the same pipeline with tip growth removed. */
+    @Test
+    fun pageFigureFiveMorphogenesisCounts() {
+        val seedRing = MutableList(64) { i ->
+            val a = 2.0 * PI * i / 64
+            Vec3((0.42 * cos(a)).toFloat(), (0.42 * sin(a)).toFloat(), 0f)
+        }
+        val ceiling = 3.0
+        fun run(grow: Boolean): Pair<Map<Int, Pair<Int, Int>>, Int> {
+            val state = DynamicPointState(seedRing.map { Vec3(it) }.toMutableList())
+            val kin = kinetics(state.pointCount)
+            for (i in 0 until 16) kin.resource[i] = 6.0
+            val stages = mutableListOf<DynamicPointProcess>(
+                SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
+                SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthScale = 0.075, maxSpeed = 0.30),
+            )
+            if (grow) stages += DirectedTipGrowthProcess(
+                coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,
+                localDensityMax = 6, childEdgeWeight = 1.5, childEdgeTtl = 1.5f, maxWeight = ceiling,
+                maxPointCount = 900,
+            )
+            stages += MergeClosePointsProcess(mergeDistance = 0.012, minCombinedWeight = 2.0)
+            stages += RelaxToMidpointProcess(gain = 1.5)
+            stages += JitterProcess(amplitude = 0.04)
+            val pipeline = DynamicProcessPipeline(stages)
+            val edges = DynamicEdgeList(state.pointCount)
+            val hash = Vec3SpatialHash(0.05)
+            val system = Vec3PersistentProximityHysteresisSystem(0.05, 0.07, 0.8f, 3.0, ceiling)
+            val samples = HashMap<Int, Pair<Int, Int>>()
+            var cappedAt = -1
+            for (s in 1..560) {
+                stepDynamicGraphWithExponentialDecay(1f / 60f, state, edges, hash, system, 0.6)
+                pipeline.step(1f / 60f, state, kin, edges, hash)
+                if (cappedAt < 0 && state.pointCount >= 900) cappedAt = s
+                if (s % 80 == 0) samples[s] = state.pointCount to edges.values().size
+            }
+            return samples to cappedAt
+        }
+
+        val (grown, cappedAt) = run(grow = true)
+        assertEquals(79, cappedAt, "the page says the 900-point cap is reached at step 79")
+        assertEquals(900 to 9065, grown[80], "step 80")
+        assertEquals(900 to 2673, grown[160], "step 160")
+        assertEquals(900 to 1344, grown[240], "step 240 -- the springs have pulled the burst apart")
+        assertEquals(899 to 2376, grown[400], "step 400")
+        assertEquals(899 to 2950, grown[560], "step 560")
+
+        val (flat, neverCapped) = run(grow = false)
+        assertEquals(-1, neverCapped, "the control arm must never approach the cap")
+        assertEquals(64 to 76, flat[80], "step 80")
+        assertEquals(64 to 55, flat[160], "step 160")
+        assertEquals(64 to 61, flat[240], "step 240")
+        assertEquals(62 to 94, flat[400], "step 400 -- the merges have begun")
+        assertEquals(
+            56 to 86, flat[560],
+            "step 560: the control arm ends at 56, NOT 64 -- MergeClosePointsProcess is in both pipelines",
+        )
+    }
 }

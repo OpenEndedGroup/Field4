@@ -142,6 +142,31 @@ edges: `evaluate(-1.0)` returning −21.1 outside the fitted knots, and the 0.20
 or an n and re-run it.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/statistics_examples/metadata.edn)
 
+**dynamic_graph_systems_examples** — [Graphs that change while you
+watch](dynamic_graph_systems_examples.md) as six independent boxes: point clouds that move while the
+graph joining them is continually reinforced and forgotten. *Six systems* runs all six
+`DynamicGraphSystem`s over one 220-point disc for the same 20 frames with the same reinforcement and
+ceiling, and tells them apart by the one exact structural fact that separates them — the fraction of
+edges that close a triangle, which is 0.0 % for flowline advection (a functional map, one arc per point)
+and 100 % for both face-builders, the local tangent fan and alpha-event collapse. It also prints the peak
+weight each system reached against the shared ceiling, which is how you find out that the alpha-event
+system's area-scaled increment tops out at 0.3 % of it. *Decay* pins both forgetting laws against their
+closed forms at 1, 4 and 120 steps (`e^-0.7 = 0.496585304` and `0.300000000`), halves a weight with
+`ln 2 / λ`, and expires an edge by `ttl` while it is still at its ceiling — the two independent ways an
+edge can die. *Hysteresis* walks two points apart from 0.05 to 0.13, past `rEnter` and inside `rExit`,
+and shows the edge surviving where the `rExit == rEnter` control arm loses it; then 150 frames of a
+wobbling 200-point disc measure what that buys — 553 edges created and 81 lost against 996 and 637, so
+the memoryless arm creates 1.80× as many and loses 7.9× as many and its edge set never accumulates
+enough weight to be a memory of anything. *Threshold* is the centrepiece: a static 240-point background
+mesh with three rigid 22-point clusters crossing it, where a `minWeight` cut of 1.2 leaves **zero** edges
+crossing a group boundary and components of exactly `[240, 22, 22, 22]` — the co-moving groups recovered
+out of a graph that has only ever seen positions and a clock. The last two boxes must be **launched**,
+not executed: *breathing* rewires a k-nearest-neighbour graph over a cloud that never moves, beside the
+identical system with its clock pinned at zero (which holds exactly 590 edges for all 420 steps), and
+*morphogenesis* grows a 64-point ring into a branching filament beside the same nine-stage pipeline with
+tip growth removed. Every box is pure CPU; no `Window`, no `Renderer`.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/dynamic_graph_systems_examples/metadata.edn)
+
 
 ## visionOS device scenes
 

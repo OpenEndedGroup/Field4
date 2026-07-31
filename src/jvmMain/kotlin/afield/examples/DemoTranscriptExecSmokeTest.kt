@@ -89,6 +89,10 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU statistics boxes; showPlaneGrid is drawToSVG -> display,
         // showSignals is a plotly HTML fragment -> display, histogramToSvg is just a string.
         "statistics_examples",
+        // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showImg /
+        // showSignals; the other two build a Frames through animateEvolution, so executing them is a
+        // compile check and the animation only runs when the box is launched. No Window, no Renderer.
+        "dynamic_graph_systems_examples",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
