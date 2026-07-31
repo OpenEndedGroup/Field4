@@ -809,4 +809,87 @@ class DynamicGraphSystemsTest {
         val cover = afield.examples.stdlib.exampleDynamicGraphToPathCover(points, anchor = 0)
         assertTrue(cover.paths.isNotEmpty(), "the snapshot must be usable by the static path utilities")
     }
+
+    // ==========================================================================================
+    // dynamic_graph_field.kt — the raster the page's figures are made of
+    // ==========================================================================================
+
+    /**
+     * A figure nobody has looked at pixel by pixel is decoration. Two points and one edge, in a window
+     * chosen so both endpoints land on exactly known raster coordinates: the endpoints must be lit at
+     * full intensity, the midpoint at the edge's own `weight / maxWeight`, and a pixel off the line at
+     * nothing at all.
+     */
+    @Test
+    fun theRasterPutsPixelsWhereTheGeometrySaysAndAtTheWeightItClaims() {
+        val points = listOf(Vec3(-1f, 0f, 0f), Vec3(1f, 0f, 0f))
+        val edges = DynamicEdgeList(2)
+        edges.reinforce(0, 1, 2.0, 10f, maxWeight = 8.0)
+
+        val window = doubleArrayOf(-2.0, -2.0, 2.0, 2.0)
+        val raster = dynamicGraphImg(
+            points, edges.values(), window, width = 101, height = 101,
+            maxWeight = 8.0, pointRadius = 0, minEdgeIntensity = 0.0f,
+        )
+        assertEquals(0, raster.clipped, "nothing is outside a window twice the cloud's size")
+        assertEquals(2.0, raster.heaviestWeight, 1e-12)
+
+        val img = raster.img
+        // The window spans -2..2 over 101 pixels, so world x maps to pixel (x + 2) * 25.
+        assertEquals(1f, img.at(25, 50), "point 0 at world (-1, 0) is pixel (25, 50), at full intensity")
+        assertEquals(1f, img.at(75, 50), "point 1 at world (1, 0) is pixel (75, 50)")
+        // The midpoint of the edge carries weight / maxWeight = 2 / 8.
+        assertEquals(0.25f, img.at(50, 50), 1e-6f, "the edge's own brightness is its weight over maxWeight")
+        assertEquals(0f, img.at(50, 40), "…and ten pixels off the line, nothing")
+
+        // The control arm: an edge at the ceiling is drawn at 1.0, an edge at nothing at 0.0. If
+        // brightness were normalised per frame these two would be indistinguishable.
+        val heavy = DynamicEdgeList(2).also { it.reinforce(0, 1, 8.0, 10f, 8.0) }
+        assertEquals(
+            1f,
+            dynamicGraphImg(points, heavy.values(), window, 101, 101, maxWeight = 8.0, pointRadius = 0).img.at(50, 50),
+        )
+        val faint = DynamicEdgeList(2).also { it.reinforce(0, 1, 1e-9, 10f, 8.0) }
+        assertEquals(
+            0f,
+            dynamicGraphImg(
+                points, faint.values(), window, 101, 101,
+                maxWeight = 8.0, pointRadius = 0, minEdgeIntensity = 0f,
+            ).img.at(50, 50),
+            1e-6f,
+        )
+    }
+
+    /** Clipping is reported rather than silently cropping the subject. */
+    @Test
+    fun theRasterReportsWhatItCouldNotFit() {
+        val points = listOf(Vec3(0f, 0f, 0f), Vec3(50f, 0f, 0f), Vec3(-50f, 0f, 0f))
+        val raster = dynamicGraphImg(points, emptyList(), doubleArrayOf(-1.0, -1.0, 1.0, 1.0), 64, 64)
+        assertEquals(2, raster.clipped, "two of three points are outside the window")
+        assertTrue(raster.img.max() > 0f, "…and the one inside it is still drawn")
+    }
+
+    /** `dynamicGraphWindow` is square and encloses the cloud with room to spare. */
+    @Test
+    fun theWindowIsSquareAndEnclosesTheCloud() {
+        val points = disc(50, 0.4)
+        val w = dynamicGraphWindow(points, padFraction = 0.2)
+        assertEquals(w[2] - w[0], w[3] - w[1], 1e-9, "the window must be square")
+        for (p in points) {
+            assertTrue(p.x > w[0] && p.x < w[2] && p.y > w[1] && p.y < w[3], "$p is outside $${w.toList()}")
+        }
+        assertEquals(0, dynamicGraphImg(points, emptyList(), w, 128, 128).clipped)
+    }
+
+    /** The caption line reports the state, including the case a figure must not hide: isolation. */
+    @Test
+    fun theSummaryLineNamesTheStateItIsDrawing() {
+        val state = DynamicPointState(ring(6, 0.3), time = 1.5f)
+        val edges = DynamicEdgeList(6)
+        edges.reinforce(0, 1, 2.0, 10f, 8.0)
+        val summary = dynamicGraphSummary(state, edges)
+        assertTrue(summary.startsWith("6 pts, 1 edges"), summary)
+        assertTrue(summary.contains("4 isolated"), "four of the six points touch no edge: $summary")
+        assertTrue(summary.contains("t=1.50s"), summary)
+    }
 }
