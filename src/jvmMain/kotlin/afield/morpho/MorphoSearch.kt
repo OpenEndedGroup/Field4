@@ -180,6 +180,8 @@ object MorphoSearch {
      * The elitist form: parents survive, so the best design found can never be lost to a bad
      * generation. λ children are produced per generation and the whole μ+λ pool is truncated back
      * to μ.
+     *
+     * @param seeds programs to start from — how a curriculum stage inherits the previous stage's work.
      */
     fun evolve(
         spec: MorphoSpec,
@@ -193,7 +195,6 @@ object MorphoSearch {
         crossoverRate: Double = 0.25,
         immigrantRate: Double = 0.12,
         optimize: Boolean = true,
-        /** Programs to start from — how a curriculum stage inherits the previous stage's work. */
         seeds: List<MorphoGenome> = emptyList(),
         label: String = "evolution",
     ): MorphoSearchRun {
