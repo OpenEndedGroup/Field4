@@ -106,6 +106,11 @@ object DemoTranscriptExecSmokeTest {
         // CameraPose arithmetic without ever touching a live `Camera`, and persistence writes to a
         // temp directory. showPlaneGrid is drawToSVG -> display, so no AWT and nothing to launch.
         "keyframer_worked_example",
+        // Three pure-compute MorphoHDL circuit-search boxes. Every candidate is compiled by
+        // morpho's own JS compiler on GraalJS and simulated by MorphoSim; the figures go through
+        // showPlaneGrid (drawToSVG -> display), so no Window and no Renderer. The searches are
+        // budgeted in compiler invocations and take a few seconds each.
+        "morpho_circuit_search",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

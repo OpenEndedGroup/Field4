@@ -104,6 +104,25 @@ object MorphoRuntime {
     internal fun call(member: String, vararg args: Any?): Value =
         withJs { driver.getMember(member).execute(*args) }
 
+    /**
+     * Ask whatever the guest is currently doing to stop, from *another* thread.
+     *
+     * Hand-written MorphoHDL is written by someone who wants a circuit, so nothing in the box
+     * language needs this. Generated MorphoHDL is not: `materialize` recurses once per cell
+     * expansion (`compiler.js:1088`) and only bottoms out when a `SPLIT` runs out of bits, so a
+     * synthesised body whose self-call does not narrow its arguments never returns.
+     * [afield.morpho.MorphoEvaluator] arms this before every compile so a bad candidate costs one
+     * timeout instead of the process.
+     *
+     * Interrupting is safe here and closing would not be: a [Context] survives an interrupt and
+     * stays usable, which matters because every other morpho box in the document shares this one.
+     * It must not be called from a thread that is inside [withJs] — hence "another thread".
+     *
+     * @return true if the guest acknowledged within [timeout].
+     */
+    internal fun interruptGuest(timeout: java.time.Duration = java.time.Duration.ofSeconds(2)): Boolean =
+        runCatching { context.interrupt(timeout); true }.getOrDefault(false)
+
     internal fun callLayout(member: String, vararg args: Any?): Value =
         withJs { layoutModule.getMember(member).execute(*args) }
 
