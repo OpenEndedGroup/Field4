@@ -339,6 +339,77 @@ list. Checked; no unrelated churn.
 - Disk fell from 11 GiB to ~7.7 GiB over both passes, mostly Gradle and docs output. Well above the
   3 GiB floor, but a third pass on this machine should check first.
 
+---
+
+## Pass 3 — build it, serve it, open it, look at it
+
+Everything before this pass was read or measured. This pass **rendered** the page and looked at it
+as a reader would. It found two defects, both invisible from the source, and both real.
+
+**Served at:** `http://127.0.0.1:8791/keyframer_examples/` — `python3 -m http.server 8791 --bind
+127.0.0.1` from `<worktree>/public/field4` after
+`FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9489 … --page keyframer_examples`.
+Inspected with headless Chrome screenshots (`--headless=new --window-size=1440,…`) plus live DOM
+measurement in the preview pane at 1440px and 390px.
+
+### Found: the same figure attached twice
+
+`gpu_tint.png` appeared **twice** in the rendered page — the live DOM had 6 `<img>` elements for 5
+figures. Cause: I had copied `embed=true` onto the GPU fence from `afield_four_graphics.md`, where
+the fences carry no explicit image line. `embed=true` makes the runner insert its own `<img>` (with
+the *fence name*, `keyframer-gpu-tint`, as alt text), and my own `![…]()` line then added a second.
+A reader saw the same 1134×1134 fan twice in a row.
+
+Fixed by dropping `embed=true` and keeping the markdown line, which carries real descriptive alt
+text and matches the other four fences on the page. This is the same class as the duplicated videos
+found by hand on 2026-07-31.
+
+### Found: the page's first and densest figure rendered at under half width
+
+`capture_apply.png` rendered at **338 CSS px** while every other figure filled the 743px column. Not
+a coincidence: `public/docs/assets/image-lightbox.js:7` sets `SMALL_IMAGE_MAX_WIDTH = 560`, and any
+capture whose CSS size (natural ÷ 2, since box captures are 2×) is at or under that is given
+`field-docs-image-native-sized` and shown at true size rather than upscaled and blurred. My card was
+only 338 CSS px wide because — unlike the persistence figure, where I pinned the width in pass 1
+after a clipping problem — I had never pinned this one. So the figure the prose explicitly tells the
+reader to "read carefully" was rendering at under half the width of everything else, with
+correspondingly tiny text.
+
+Fixed by pinning the card to 820px, exactly as the persistence figure already was. Recaptured:
+676×942 → **1728×942** (864 CSS px, comfortably over the 560 threshold), and it now fills the column
+like the rest. Content unchanged, so no prose needed changing.
+
+A third, smaller thing I introduced and then removed in this same pass: the width-pin fix initially
+carried a four-line comment about `image-lightbox.js` and `SMALL_IMAGE_MAX_WIDTH` **inside the
+published code sample**. Seeing it rendered made obvious that build-system trivia does not belong in
+a reader-facing API example; trimmed to one line.
+
+### Checked and found clean
+
+- **Every asset 200.** All 97 local refs on the page, including all five figures. No broken images.
+- **No duplicate media** after the fix: 5 `<img>`, each asset exactly once, no `<video>` at all.
+- **Uniform figure sizing**: all five now render at 743px, none `native-sized`.
+- **No horizontal page overflow** at 1440px or at 390px.
+- **Code fences** do not overflow their container at desktop (`clientWidth == scrollWidth == 744`).
+- **Both new tables** (the `NaN`/signed-zero table and the uncovered-declarations table) fit the
+  column at 1440px (594/626px) and at 390px (272/304px).
+- **Anchors**: both internal links (`#the-same-thing-driving-a-live-gpu-uniform`,
+  `#what-is-actually-tested`) resolve; no dangling `href="#…"` anywhere on the page.
+- **Rasterisation**: no figure is a raster that should have been vector. The camera figure is
+  `FLine` → `showPlaneGrid` → `drawToSVG`; the three output-card figures are screenshots of the
+  tool's own HTML, which is what they are meant to be; the GPU still is a native Vulkan window,
+  which cannot be anything but a raster.
+- **Captions match**: re-read each of the five against its figure; all agree.
+
+### Known, pre-existing, and deliberately not touched
+
+At 390px the code fences render 422px wide against a 390px viewport and are **clipped, not
+scrollable**, because `public/docs/assets/code-diff-player/code-diff-player.css:190` sets
+`overflow-x: hidden` on `.code-diff-pre`. That is shared by all **59** docs pages using these
+fences, so it is pre-existing site-wide behaviour and not something this branch introduced. Changing
+shared player CSS from a docs branch would be an unrequested, site-wide change; recorded here
+instead.
+
 ### Demo artifact
 
 `dev_docs/agents/transcripts/keyframer_worked_example.yaml` — replay into a fresh Field with:

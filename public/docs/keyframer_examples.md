@@ -84,9 +84,11 @@ val liveRows = listOf(
 captured()
 val restored = scope.capture()
 
+// The card's width is pinned so the figure stays legible — see the persistence example below.
 display(
     "keys",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px'>" +
+    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;" +
+        "width:820px;max-width:820px'>" +
         "<div><div style='color:#c586c0;margin-bottom:4px'>1 &mdash; capture()</div>" + captured.h + "</div>" +
         "<div><div style='color:#c586c0;margin-bottom:4px'>2 &mdash; edited, then applied</div>" +
         captured.diffHtml(edited, "captured", "edited") + "</div>" +
@@ -147,7 +149,7 @@ window, a `moduleHere()` graphics module, a fan of **white** triangles — where
 colour in the entire frame is a `vec4 tint` in the shader's uniform block, and the only thing that
 ever writes that uniform is a keyframe.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.stdlib.KeyframeScope
