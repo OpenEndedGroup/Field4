@@ -752,10 +752,17 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 ### What is actually tested
 
 `KeyframerTest` is 66 tests written against this page, so every number stated here is asserted
-there. A companion ledger, `KeyframerCoverageTest`, enumerates `keyframer.kt`'s public surface **by
-reflection** and requires each declaration to be classified, so the claim below is measured rather
-than asserted and cannot quietly rot — adding a public declaration fails the build until it is
-accounted for:
+there. A companion ledger, `KeyframerCoverageTest`, reflects over the **members of a hand-listed set
+of `keyframer.kt`'s classes** and requires every public one to be classified as either covered or
+unreachable-with-a-stated-reason. That half genuinely cannot rot: add a method or a property to one
+of those classes and the build fails until it is accounted for.
+
+It is worth being exact about what that does *not* guarantee, because the mechanism reads as
+stronger than it is. The enumeration *within* the listed classes is measured; the class list itself,
+and the total below, are maintained by hand. A new **top-level** declaration is invisible to it —
+and `enum class KeyDiffKind` (`keyframer.kt:915`) is exactly that: public, absent from the ledger,
+and the suite is green. It is exercised by the tests; it simply is not counted, which pushes the
+figure below down rather than up.
 
 **93 of 101 public behavioural declarations are exercised (92.1%).** Data-class members the Kotlin
 compiler generates are excluded, on the same grounds the
