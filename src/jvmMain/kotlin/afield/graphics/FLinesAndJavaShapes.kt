@@ -866,8 +866,14 @@ class FLinesAndJavaShapes {
             this.d = Vec3(d)
         }
 
+        /**
+         * The cubic segment that *ends* at `f.nodes[index]`, so [index] must be at least 1 — index
+         * 0 has no segment, only a start point. `endPointOf`, not `.to`, for the start: the node
+         * before a cubic can be a `Close`, which stores no point of its own.
+         */
         constructor(f: FLine, index: Int) {
-            this.a = Vec3(f.nodes.get(index - 1).to)
+            require(index >= 1) { "CubicSegment3(FLine, $index): a segment needs the node before it, so index must be >= 1" }
+            this.a = Vec3(f.endPointOf(index - 1))
             this.b = Vec3((f.nodes.get(index) as FLine.CubicTo).c1)
             this.c = Vec3((f.nodes.get(index) as FLine.CubicTo).c2)
             this.d = Vec3((f.nodes.get(index) as FLine.CubicTo).to)
@@ -1929,13 +1935,29 @@ class FLinesAndJavaShapes {
 
         private fun _flineToJavaShape(f: FLine): GeneralPath {
             val p = GeneralPath()
+            // AWT insists on an explicit initial moveTo and throws IllegalPathStateException
+            // without one; the renderer does not, and treats a leading LineTo/CubicTo as a moveTo
+            // (someSkiko.kt:332-337, :339-352). Following the renderer, so that a line that draws
+            // is a line that converts.
+            var hasCurrentPoint = false
 
             for (n in f.nodes) {
-                if (n is FLine.MoveTo) p.moveTo(n.to.x, n.to.y)
-                else if (n is FLine.LineTo) p.lineTo(n.to.x, n.to.y)
-                else if (n is FLine.CubicTo) p.curveTo(
-                    n.c1.x, n.c1.y, n.c2.x, n.c2.y, n.to.x, n.to.y
-                )
+                if (n is FLine.MoveTo) {
+                    p.moveTo(n.to.x, n.to.y); hasCurrentPoint = true
+                } else if (n is FLine.LineTo) {
+                    if (hasCurrentPoint) p.lineTo(n.to.x, n.to.y)
+                    else { p.moveTo(n.to.x, n.to.y); hasCurrentPoint = true }
+                } else if (n is FLine.CubicTo) {
+                    if (hasCurrentPoint) p.curveTo(n.c1.x, n.c1.y, n.c2.x, n.c2.y, n.to.x, n.to.y)
+                    else { p.moveTo(n.to.x, n.to.y); hasCurrentPoint = true }
+                }
+                // a Close has no branch here at all until now, so it was silently dropped and the
+                // contour arrived at AWT open. Everything downstream of this — the four boolean
+                // ops (FLineGeometry.kt:1006-1042), thickening, hit-testing against an Area — then
+                // worked on a shape that was not the shape it was handed. Guarded on there being a
+                // current point, because GeneralPath.closePath() throws IllegalPathStateException
+                // without one and `FLine().close()` is a shape someone can hand us.
+                else if (n is FLine.Close && hasCurrentPoint) p.closePath()
             }
             return p
         }
@@ -2310,11 +2332,14 @@ class FLinesAndJavaShapes {
                 var d = Float.POSITIVE_INFINITY
                 var z = 0.0
                 for (n2 in copyDepthFrom.nodes) {
-                    run {
-                        val dd = (n2.to.x - n.x) * (n2.to.x - n.x) + (n2.to.y - n.y) * (n2.to.y - n.y)
+                    // `toOrNull`: the depth source is a caller-supplied FLine, so it can be closed,
+                    // and a Close stores no point to take a depth from — its end point is the
+                    // subpath's `moveTo`, already in this loop.
+                    n2.toOrNull?.let { to ->
+                        val dd = (to.x - n.x) * (to.x - n.x) + (to.y - n.y) * (to.y - n.y)
                         if (dd < d) {
                             d = dd
-                            z = n2.to.z.toDouble()
+                            z = to.z.toDouble()
                         }
                     }
                     if (n2 is FLine.CubicTo) {
@@ -2343,8 +2368,10 @@ class FLinesAndJavaShapes {
 
         private fun copyDepthFrom(s1: FLine, close: Function<Vec2, Float>) {
             for (n in s1.nodes) {
-                var z = close.apply(n.to.v2)
-                n.to.z = z
+                // `toOrNull`: nothing to give a z to on a Close, which stores no point.
+                val to = n.toOrNull ?: continue
+                var z = close.apply(to.v2)
+                to.z = z
                 if (n is FLine.CubicTo) {
                     z = close.apply(n.c1.v2)
                     n.c1.z = z
@@ -2514,17 +2541,29 @@ class FLinesAndJavaShapes {
         }
 
 
+        /**
+         * Every point where [a] crosses [b].
+         *
+         * Both loops start at 1, not 0. A segment needs the node before it to say where it starts,
+         * so index 0 has no segment of its own — the loops used to start at 0 and read
+         * `nodes.get(-1)`, an outright IndexOutOfBoundsException on any line whose *first* node is
+         * a LineTo or a CubicTo. (An FLine normally opens with a MoveTo, which is neither, and that
+         * is the only reason this went unnoticed: `FLine().lineTo(...)` is perfectly legal and it
+         * threw.) And the start point is read with [FLine.endPointOf] rather than `Node.to`,
+         * because a `Close` stores no point and the instruction after one starts from where the
+         * `close()` left the pen.
+         */
         fun intersect(a: FLine, b: FLine): List<Vec3> {
             val ret: MutableList<Vec3> = ArrayList<Vec3>()
 
-            for (i in 0 until a.nodes.size) {
+            for (i in 1 until a.nodes.size) {
                 val ni: FLine.Node = a.nodes.get(i)
                 if (ni is FLine.CubicTo) {
-                    val ci = CubicSegment3(a.nodes.get(i - 1).to, ni.c1, (ni).c2, ni.to)
-                    for (j in 0 until b.nodes.size) {
+                    val ci = CubicSegment3(a.endPointOf(i - 1), ni.c1, (ni).c2, ni.to)
+                    for (j in 1 until b.nodes.size) {
                         val nj: FLine.Node = b.nodes.get(j)
                         if (nj is FLine.CubicTo) {
-                            val cj = CubicSegment3(b.nodes.get(j - 1).to, (nj).c1, (nj).c2, nj.to)
+                            val cj = CubicSegment3(b.endPointOf(j - 1), (nj).c1, (nj).c2, nj.to)
                             val intersections = ci.intersection(cj, 1f)
                             intersections.forEach(Consumer<Pair<CubicSegment3, CubicSegment3>> { x: Pair<CubicSegment3, CubicSegment3?> ->
                                 ret.add(
@@ -2532,7 +2571,7 @@ class FLinesAndJavaShapes {
                                 )
                             })
                         } else if (nj is FLine.LineTo) {
-                            val intersections = ci.intersection(CubicSegment3(b.nodes.get(j - 1).to, nj.to), 1f)
+                            val intersections = ci.intersection(CubicSegment3(b.endPointOf(j - 1), nj.to), 1f)
                             intersections.forEach(Consumer<Pair<CubicSegment3, CubicSegment3>> { x: Pair<CubicSegment3, CubicSegment3?> ->
                                 ret.add(
                                     Vec3(x.first.a).add(x.first.d).mul(0.5f)
@@ -2541,11 +2580,11 @@ class FLinesAndJavaShapes {
                         }
                     }
                 } else if (ni is FLine.LineTo) {
-                    for (j in 0 until b.nodes.size) {
+                    for (j in 1 until b.nodes.size) {
                         val nj: FLine.Node = b.nodes.get(j)
                         if (nj is FLine.CubicTo) {
-                            val cj = CubicSegment3(b.nodes.get(j - 1).to, (nj).c1, (nj).c2, nj.to)
-                            val intersections = cj.intersection(CubicSegment3(a.nodes.get(i - 1).to, ni.to), 1f)
+                            val cj = CubicSegment3(b.endPointOf(j - 1), (nj).c1, (nj).c2, nj.to)
+                            val intersections = cj.intersection(CubicSegment3(a.endPointOf(i - 1), ni.to), 1f)
                             intersections.forEach(Consumer<Pair<CubicSegment3, CubicSegment3>> { x: Pair<CubicSegment3, CubicSegment3?> ->
                                 ret.add(
                                     Vec3(x.first.a).add(x.first.d).mul(0.5f)
@@ -2553,7 +2592,7 @@ class FLinesAndJavaShapes {
                             })
                         } else if (nj is FLine.LineTo) {
                             val aa: Vec3? =
-                                intersectTwoLineSegments(b.nodes.get(j - 1).to, nj.to, a.nodes.get(i - 1).to, ni.to)
+                                intersectTwoLineSegments(b.endPointOf(j - 1), nj.to, a.endPointOf(i - 1), ni.to)
                             if (aa != null) ret.add(aa)
                         }
                     }
@@ -2562,13 +2601,14 @@ class FLinesAndJavaShapes {
             return ret
         }
 
+        /** Where [a] crosses the vertical line `x`. Same `i - 1` rules as [intersect]. */
         fun intersectX(a: FLine, x: Float): List<Vec3> {
             val ret: MutableList<Vec3> = ArrayList<Vec3>()
 
-            for (i in 0 until a.nodes.size) {
+            for (i in 1 until a.nodes.size) {
                 val ni: FLine.Node = a.nodes.get(i)
                 if (ni is FLine.CubicTo) {
-                    val ci = CubicSegment3(a.nodes.get(i - 1).to, (ni).c1, (ni).c2, ni.to, -x)
+                    val ci = CubicSegment3(a.endPointOf(i - 1), (ni).c1, (ni).c2, ni.to, -x)
                     val roots = ci.findXZeroRoots()
                     roots.forEach(Consumer<Float> { xx: Float ->
                         val vv: Vec3 = ci.evaluate(xx)
@@ -2576,7 +2616,7 @@ class FLinesAndJavaShapes {
                         ret.add(vv)
                     })
                 } else if (ni is FLine.LineTo) {
-                    val aa: Vec3 = a.nodes.get(i - 1).to
+                    val aa: Vec3 = a.endPointOf(i - 1)
                     val bb: Vec3 = ni.to
                     if (Math.min(aa.x, bb.x) <= x && Math.max(aa.x, bb.x) >= x) {
                         val ii: Vec3? = intersectTwoLineSegments(
@@ -2592,14 +2632,15 @@ class FLinesAndJavaShapes {
             return ret
         }
 
+        /** Where [a] crosses the horizontal line `x`. Same `i - 1` rules as [intersect]. */
         fun intersectY(a: FLine, x: Float): List<Vec3> {
             val ret: MutableList<Vec3> = ArrayList<Vec3>()
 
-            for (i in 0 until a.nodes.size) {
+            for (i in 1 until a.nodes.size) {
                 val ni: FLine.Node = a.nodes.get(i)
                 if (ni is FLine.CubicTo) {
                     val ci =
-                        CubicSegment3(a.nodes.get(i - 1).to, (ni).c1, (ni).c2, ni.to, 0.0f, -x)
+                        CubicSegment3(a.endPointOf(i - 1), (ni).c1, (ni).c2, ni.to, 0.0f, -x)
                     val roots = ci.findYZeroRoots()
                     roots.forEach(Consumer<Float> { xx: Float ->
                         val vv: Vec3 = ci.evaluate(xx)
@@ -2607,7 +2648,7 @@ class FLinesAndJavaShapes {
                         ret.add(vv)
                     })
                 } else if (ni is FLine.LineTo) {
-                    val aa: Vec3 = a.nodes.get(i - 1).to
+                    val aa: Vec3 = a.endPointOf(i - 1)
                     val bb: Vec3 = ni.to
                     if (Math.min(aa.x, bb.x) <= x && Math.max(aa.x, bb.x) >= x) {
                         val ii: Vec3? = intersectTwoLineSegments(

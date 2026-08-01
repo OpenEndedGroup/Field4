@@ -754,22 +754,71 @@ class ArcLengthSpacingTest {
         assertTrue(leaves <= 8000, "1000 straight cubics flattened to $leaves leaves")
     }
 
+    /**
+     * NOTE ON THE DOMAIN — and it is `all()`, deliberately, unlike the three tests above.
+     *
+     * This measures each dash's *own* drawn length, which is a within-dash quantity and therefore
+     * perfectly well defined on a whole multi-subpath line. The three Euclidean-gap tests above run
+     * per subpath because a gap *between* samples is only an arc length within one subpath; that
+     * reasoning does not reach this one, and applying it here removed the only coverage the
+     * multi-subpath dashing fix ever had. 673e7d5c introduced `byDashing`'s `pieces()` decomposition
+     * (FLineGeometry.kt:2198-2202) and switched this test to `allSubpaths()` in the same commit,
+     * which decomposes the two-subpath fixture *before* it is measured — so the fix's published
+     * "1428% -> 0.0%" figure was, from that commit onwards, not reproducible from the tree.
+     * `theTwoSubpathFixtureIsWhatCatchesIt` below is the guard against that happening again.
+     */
     @Test
     fun dashesHaveTheLengthTheyWereAskedFor() {
-        val offenders = ArcLengthTestCurves.allSubpaths().mapNotNull { (name, line) ->
-            val oracle = ArcLengthOracle(line)
-            val dash = (oracle.length / 24).toFloat()
-            val gap = dash / 2
-            val dashes = FLine().let { _ -> line.byDashing(dash, gap) }
-            if (dashes.size < 3) return@mapNotNull null
-            // measure each dash's own drawn length; interior dashes should all be `dash` long
-            val lengths = dashes.dropLast(1).map { d ->
-                (1 until d.nodes.size).sumOf { d.nodes[it].to.distance(d.nodes[it - 1].to).toDouble() }
-            }.filter { it > 0 }
-            val worst = lengths.maxOf { abs(it - dash) / dash }
-            println("$name byDashing n=${dashes.size} asked=$dash worst relative error=${"%.3f".format(worst)}")
+        val offenders = ArcLengthTestCurves.all().mapNotNull { (name, line) ->
+            val worst = worstDashError(name, line) ?: return@mapNotNull null
             if (worst > 0.25) "$name ${"%.1f".format(worst * 100)}%" else null
         }
         assertTrue(offenders.isEmpty(), "byDashing produces wrong-length dashes on: ${offenders.joinToString("; ")}")
+    }
+
+    /**
+     * The measurement above only bites if the corpus it runs on actually contains a line with more
+     * than one subpath — the whole failure mode is a dash straddling a `moveTo` jump. Asserted
+     * rather than assumed, because it is exactly the property that quietly went away.
+     */
+    @Test
+    fun theTwoSubpathFixtureIsWhatCatchesIt() {
+        val multi = ArcLengthTestCurves.all().filter { (_, l) -> l.pieces().size > 1 }
+        assertTrue(
+            multi.isNotEmpty(),
+            "dashesHaveTheLengthTheyWereAskedFor has no multi-subpath curve to run on, so it " +
+                "cannot see the bug it exists to guard"
+        )
+        // and the gap it has to straddle must be big enough to show up: the 1428% figure came from
+        // a 25-unit dash drawn across a 360-unit jump.
+        for ((name, line) in multi) {
+            val parts = line.pieces()
+            val jump = (1 until parts.size).maxOf { i ->
+                parts[i].endPointOf(0).distance(parts[i - 1].endPointOf(parts[i - 1].nodes.size - 1))
+            }
+            val dash = (ArcLengthOracle(line).length / 24).toFloat()
+            assertTrue(
+                jump > dash * 4,
+                "$name's subpath gap is $jump against a $dash dash: too small to expose a dash " +
+                    "drawn straight across it"
+            )
+            println("$name multi-subpath: ${parts.size} subpaths, widest gap $jump, dash $dash")
+        }
+    }
+
+    /** worst relative error of any interior dash on [line], or null if it does not dash at all. */
+    private fun worstDashError(name: String, line: FLine): Double? {
+        val oracle = ArcLengthOracle(line)
+        val dash = (oracle.length / 24).toFloat()
+        val gap = dash / 2
+        val dashes = line.byDashing(dash, gap)
+        if (dashes.size < 3) return null
+        // measure each dash's own drawn length; interior dashes should all be `dash` long
+        val lengths = dashes.dropLast(1).map { d ->
+            (1 until d.nodes.size).sumOf { d.nodes[it].to.distance(d.nodes[it - 1].to).toDouble() }
+        }.filter { it > 0 }
+        val worst = lengths.maxOf { abs(it - dash) / dash }
+        println("$name byDashing n=${dashes.size} asked=$dash worst relative error=${"%.3f".format(worst)}")
+        return worst
     }
 }

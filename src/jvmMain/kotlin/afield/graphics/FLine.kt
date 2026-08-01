@@ -424,20 +424,27 @@ class FLine : HasProperties {
      * is replaced with a [MoveTo] to preserve subpaths.
      */
     fun byFiltering(predicate: (Vec3?, Node) -> Boolean): FLine {
-        fun removeInstruction(at: Vec3?, node: Node, inside: FLine) {
+        // endPointOf, not `.to`, in both places: a Close stores no point of its own, so `.to`
+        // throws on one, and its end point is the start of the subpath it closes — which is both
+        // the right "previous point" for the instruction after it and the right place to leave a
+        // MoveTo if the Close itself is filtered out.
+        fun removeInstruction(at: Vec3?, node: Node, replacement: Vec3, inside: FLine) {
             val i = inside.nodes.indexOf(node)
             if (at == null) {
                 inside.nodes.removeAt(i)
-            } else inside.nodes[i] = MoveTo().set(node.to)
+            } else inside.nodes[i] = MoveTo().set(replacement)
         }
         return copy {
             val segments = ArrayList(this.nodes)
+            // resolved up front: `removeInstruction` mutates `this.nodes` as we go, so indices into
+            // it stop meaning what they meant a moment ago.
+            val endPoints = segments.indices.map { Vec3(endPointOf(it)) }
             var at: Vec3? = null
             segments.forEachIndexed { i, node ->
                 if (!predicate(at, node)) {
-                    removeInstruction(at, node, this)
+                    removeInstruction(at, node, endPoints[i], this)
                 }
-                at = node.to
+                at = endPoints[i]
             }
         }
     }
@@ -800,7 +807,10 @@ class FLine : HasProperties {
     fun fast2DBounds(): Rect {
         var r: Rect? = null
         nodes.forEach {
-            if (r == null) r = Rect(it.to.x.d, it.to.y.d, 0.0, 0.0)
+            // `toOrNull`, not `.to`: a Close stores no point, so it contributes nothing to the
+            // bounds — but a line whose *first* node is a Close used to throw here rather than
+            // going on to look at the rest.
+            if (r == null) it.toOrNull?.let { p -> r = Rect(p.x.d, p.y.d, 0.0, 0.0) }
             else {
                 it.storage.forEach { X ->
                     val mix = Math.min(r!!.x.d, X.x.d)

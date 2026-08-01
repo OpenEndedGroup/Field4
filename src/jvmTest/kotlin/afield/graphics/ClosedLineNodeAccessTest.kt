@@ -59,10 +59,21 @@ class ClosedLineNodeAccessTest {
     /** FLineGeometry.kt:1202 — `result.moveTo(this.nodes.last().to)` */
     @Test
     fun byReversingWorksOnAClosedLine() {
-        val reversed = closedSquare().byReversing()
+        val line = closedSquare()
+        val reversed = line.byReversing()
         assertTrue(reversed.nodes.isNotEmpty(), "reversing a closed square produced nothing")
-        // reversal starts where the forward line ended, i.e. back at the moveTo
-        assertEquals(vec(0f, 0f, 0f), reversed.nodes[0].to)
+        // A closed contour is a cycle, and reversing a cycle gives you a cycle: the reversal walks
+        // the square the other way round and closes it again, so it starts at the *last drawn*
+        // corner and its `close` is the old closing segment travelled backwards.
+        //
+        // (This assertion used to read `vec(0, 0, 0)`, on the reading that "reversal starts where
+        // the forward line ended" — where a Close leaves the pen, i.e. the moveTo. That reading
+        // does not survive contact with the rest of the reversal: it makes the `close` the *first*
+        // instruction after the moveTo, which is not a closed square, and it does not round-trip.
+        // See InteriorCloseNodeTest.reversingTwiceIsTheIdentity.)
+        assertEquals(vec(0f, 100f, 0f), reversed.nodes[0].to)
+        assertEquals(line.nodes.size, reversed.nodes.size, "reversal changed the node count")
+        assertTrue(reversed.nodes.last() is FLine.Close, "the reversal of a closed square is closed")
     }
 
     /** FLineGeometry.kt:2290 — `val p0 = nodes.last().to` */
