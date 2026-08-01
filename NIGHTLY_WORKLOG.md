@@ -70,4 +70,99 @@ the right answer expressible: `Node.toOrNull` (FLine.kt:188), `FLine.endPointOf(
 
 ## Execution
 
-(filled in below as the pass proceeds)
+Six commits. The plan held; the audit found more than the brief listed, and two of the "landmines"
+turned out not to be armed.
+
+| commit | what |
+|---|---|
+| `63aa8897` | the plan above |
+| `84855fc6` | the interior-`Close` fixes — eleven sites, `byReversing` and `windingNumber` rewritten, the `intersect` off-by-one |
+| `e81e3e63` | the restored multi-subpath dashing regression + a guard on its corpus |
+| `5171a852` | the three before/after vector figures |
+| `25fd4cd8` | the blast radius, measured |
+| `5cf1db57` | dev doc, replayable demo, citation-drift guard |
+
+### Files
+
+| file | why |
+|---|---|
+| `src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt` | ten `.to` reads through `endPointOf`; `byReversing` rewritten subpath-wise; `windingNumber` rewritten to walk subpaths; `bySubdividing` no longer drops a `Close` |
+| `src/jvmMain/kotlin/afield/graphics/FLine.kt` | `byFiltering`, `fast2DBounds` |
+| `src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt` | `intersect`/`intersectX`/`intersectY` `get(-1)` off-by-one; `_flineToJavaShape` emits `closePath` and tolerates a leading `LineTo`; `CubicSegment3(FLine, index)`; `copyDepthFrom` |
+| `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` | register the new demo transcript (it fails the build as UNCLASSIFIED otherwise) |
+| `src/jvmTest/.../InteriorCloseNodeTest.kt` | new — 10-curve corpus, 24-operation audit sweep, per-site tests, blast radius |
+| `src/jvmTest/.../InteriorCloseFigureTest.kt` | new — the figure generator, plus assertions that run every build |
+| `src/jvmTest/.../CloseNodeCitationDriftTest.kt` | new — pins 46 `file:line` citations |
+| `src/jvmTest/.../ArcLengthSpacingTest.kt` | dashing regression back on `all()`, plus a corpus guard |
+| `src/jvmTest/.../ClosedLineNodeAccessTest.kt` | one assertion updated — my `byReversing` change refutes it |
+| `dev_docs/fline_close_nodes.md` | new — the whole `Close` contract |
+| `dev_docs/arc_length_spacing.md` | its caveat struck through, with two corrections to it |
+| `dev_docs/assets/interior_close/` | six vector figures + one `showPlaneGrid` grid |
+| `dev_docs/agents/transcripts/close_node_demo.yaml` + `public/docs/assets/agent_transcripts/close_node_demo/` | the replayable demo and its materialized starting point |
+
+### Verification
+
+Everything below was run, not reasoned about.
+
+- **Red first, quoted.** The audit sweep found **49 operation/curve pairs across 10 operations**
+  throwing `IndexOutOfBoundsException`. Green after: `afield.graphics.*` **74/74**, full
+  **`jvmTest` 957/0**.
+- **The dashing regression, red on a reverted fix.** `pieces()` block commented out →
+  `byDashing produces wrong-length dashes on: twoSubpaths 1428.2%`, matching `673e7d5c`'s published
+  1428% to a decimal. Restored → `worst relative error=0.000`.
+- **The blast-radius test, red on a reverted fix.** `_flineToJavaShape`'s `closePath` removed →
+  `the thickened outline is a single region, so it is a U rather than a closed band`.
+- **The figures, looked at.** Rasterised with `rsvg-convert` and viewed. Not black, not garbled:
+  the reversal "before" is visibly a triangle with a diagonal across the square; the subdivision
+  "before" is visibly missing both contours' closing runs; the dashing "before" has one enormous
+  dash running diagonally across the whole figure. All three "after"s are correct.
+- **The demo, replayed.** `applied=4 skipped=0 errors=0` in a fresh scratch document, with the box
+  outputs read back (`683 of 800 units retraced (85%)` etc.).
+- **`examples.demo-transcript.exec` PASS**, **`examples.agent-transcripts.materialize` PASS**, both
+  through `python3 tools/run_field_tests.py --id …`.
+- **The citation guard, proved non-vacuous** by perturbing one entry.
+
+Not verified: nothing in the GPU/renderer path was touched or exercised — I read every render path
+(`outputTo`, `planeFigureHtml`, `ThreeJsViewer`, `StandardDrawing`'s point writer,
+`FLineInstructionTrajectories`) and all of them already had a `Close` branch, which is why the
+figures render identically before and after except where the *geometry* changed. No docs site build
+was run (disk).
+
+### Refuted along the way
+
+Four claims I or the brief started with that did not survive:
+
+1. **"a before/after dashing figure at the base tree".** `byDashing`'s multi-subpath fix already
+   landed in `673e7d5c`, so at `7abe8736` that figure is byte-identical to today's — md5-checked.
+   What was missing there was the test. The panel's "before" is a surgical revert instead, said so
+   in the commit and the doc.
+2. **"`Dyn4jScene.flattenClosedFLineLoops` needs the `Close`".** Its name says so and it switches on
+   `SEG_CLOSE`, but its final `flush(requireClosed = false)` accepts the subpath anyway and a dyn4j
+   polygon is implicitly closed. Passes either way. Recorded rather than fixed decoratively.
+3. **"the boolean ops were broken by the dropped `Close`".** `java.awt.geom.Area` fills an open path
+   by implicitly closing it, so a union of two open squares is a union of two squares. Also passes
+   either way; now pinned at three points regardless.
+4. **"the reversal of a closed square starts at its `moveTo`"** — `0954ebfb`'s own assertion. It
+   does not: that convention puts the `close` immediately after the `moveTo`, which is not a closed
+   square, and it does not round-trip. Assertion and its comment updated in the same commit as the
+   change.
+
+### Risks
+
+- **`byReversing`'s output convention changed.** Node count, subpath count and `Close` count are all
+  preserved and it is now an involution, but the reversal of a closed contour starts at a different
+  corner than it used to. Only two production callers, both in `FLineGeometryExamples` on open
+  lines, where the output is unchanged; `GlyphArcLengthTest`'s node-count assertion still holds.
+- **`windingNumber` changed semantics** (subpath-aware, implicit closure). The three existing
+  callers close their squares with an explicit `lineTo`, so their numbers do not move — but a user
+  relying on the old cross-subpath behaviour would see a different answer. It was wrong before.
+- **46 pinned line numbers** are a maintenance surface. That is the trade for citations that cannot
+  silently rot; the failure message says exactly what to do.
+- **Disk** ran from 11 GiB to ~7.8 GiB free over the pass. No docs-site build was attempted.
+
+### Recommendation
+
+**Merge.** The core is a real bug class closed with red-then-green evidence at every site, one
+genuine production defect found and fixed (`byJavaOffsetting` losing an edge), a regression test
+restored and proved to bite, and the two behaviour changes are argued, tested and documented where
+a reader lands. The blast radius is honestly small and says so.
