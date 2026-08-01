@@ -388,14 +388,15 @@ var t = 0.0
 frames {
     while (true) {
         stats.latest(0)?.let { s ->
-            display("stats", """
-                <div style="font-family:Iosevka,monospace;color:#0af;padding:12px">
-                  <b>speed — channel 0 (GPU)</b><br>
-                  n=${s.finiteCount}  mean=${"%.4f".format(s.mean)}
-                  σ=${"%.4f".format(s.standardDeviation)}<br>
-                  min=${"%.4f".format(s.min)}  median=${"%.4f".format(s.quantile(0.5))}
-                  max=${"%.4f".format(s.max)}
-                </div>""".trimIndent())
+            :::fold render the aggregates as a small table
+            markdown("stats", """
+                #### speed — channel 0 (GPU)
+
+                | n | mean | σ | min | median | max |
+                |---|------|---|-----|--------|-----|
+                | ${s.finiteCount} | ${"%.4f".format(s.mean)} | ${"%.4f".format(s.standardDeviation)} | ${"%.4f".format(s.min)} | ${"%.4f".format(s.quantile(0.5))} | ${"%.4f".format(s.max)} |
+            """)
+            :::endfold
         }
         t += 0.016
         frame()

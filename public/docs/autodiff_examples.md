@@ -47,11 +47,16 @@ showSignals(
 )
 val worstPair = xs.indices.maxOf { kotlin.math.abs(taylor[it].first - reverse[it]) }
 val worstOracle = xs.indices.maxOf { kotlin.math.abs(reverse[it] - oracle[it]) }
-display("agreement", "<pre style='font-family:monospace;font-size:11px;color:#7f92a8'>" +
+val agreement =
     "grad Rosenbrock at (-1.2, 1.0) = " + g(doubleArrayOf(-1.2, 1.0)).toList() + "\n" +
     "exact Hessian there            = [[" + h[0][0] + ", " + h[0][1] + "], [" + h[1][0] + ", " + h[1][1] + "]]\n" +
     "forward vs reverse f', worst of 301 samples: " + worstPair + "\n" +
-    "reverse vs central difference,  worst of 301: " + worstOracle + "</pre>")
+    "reverse vs central difference,  worst of 301: " + worstOracle
+markdown("agreement", """
+    ~~~
+$agreement
+    ~~~
+""")
 :::endfold
 ```
 
@@ -95,8 +100,12 @@ showSignals(
 fun report(label: String, run: OptimizeRun) =
     label.padEnd(15) + " value " + run.value + " after " + run.iterations +
     " iterations / " + run.evaluations + " evaluations (" + run.reason + ")"
-display("results", "<pre style='font-family:monospace;font-size:11px;color:#7f92a8'>" +
-    report("SGD+momentum", sgdRun) + "\n" + report("Adam", adamRun) + "\n" + report("L-BFGS", lbfgsRun) + "</pre>")
+val results = report("SGD+momentum", sgdRun) + "\n" + report("Adam", adamRun) + "\n" + report("L-BFGS", lbfgsRun)
+markdown("results", """
+    ~~~
+$results
+    ~~~
+""")
 :::endfold
 ```
 
@@ -154,10 +163,15 @@ with(Functions) {
         }
         return out.toString()
     }
-    display("4 numbers", "<pre style='font-family:monospace;font-size:11px;color:#7f92a8'>" +
+    val numbers =
         "finite differences: RMSE " + fd.initialError + " -> " + fd.finalError + " in " + fd.evaluations + " loss evaluations\n" +
         "exact reverse mode: RMSE " + exact.initialError + " -> " + exact.finalError + " in " + exact.evaluations + " loss evaluations\n" +
-        "a saw-based seed is refused, with a reason:\n  " + wrap(refusal ?: "(none)") + "</pre>")
+        "a saw-based seed is refused, with a reason:\n  " + wrap(refusal ?: "(none)")
+    markdown("4 numbers", """
+        ~~~
+$numbers
+        ~~~
+    """)
 :::endfold
 }
 ```

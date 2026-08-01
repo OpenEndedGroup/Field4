@@ -243,10 +243,7 @@ This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...
 :::static
 
 val status: (String) -> Unit = { message ->
-    display(
-        "callback-log",
-        "<div style='padding:10px;font-family:monospace'>2D callback: $message</div>"
-    )
+    markdown("callback-log", "2D callback: ${mdEscape(message)}")
 }
 
 status("click a shape")
@@ -288,10 +285,7 @@ In practice this is useful for picking diagram elements, selecting generated for
 :::static
 
 val status: (String) -> Unit = { message ->
-    display(
-        "callback-log-3d",
-        "<div style='padding:10px;font-family:monospace'>3D callback: $message</div>"
-    )
+    markdown("callback-log-3d", "3D callback: ${mdEscape(message)}")
 }
 
 status("orbit, hover, then click")

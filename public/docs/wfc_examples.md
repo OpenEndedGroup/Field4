@@ -111,11 +111,16 @@ val table = (0..2).joinToString("<br>") { a ->
     "may sit east of <b>${names[a]}</b>: " +
         (0..2).filter { rules.allows(WFC_EAST, a, it) }.joinToString(", ") { names[it] }
 }
+:::fold render the rule table and the tallies
 // One display() per channel: a second display() on the same channel REPLACES the first.
-display("rules", "<div style='font:13px/1.6 monospace;padding:8px'>$table<br><br>" +
-    "solved in ${outcome.attempts} attempt(s) &middot; symmetric: ${rules.findAsymmetry() ?: "yes"}<br>" +
-    "${grid.count { it == SEA }} sea, ${grid.count { it == SAND }} sand, ${grid.count { it == GRASS }} grass" +
-    " of ${grid.size} cells</div>")
+markdown("rules", """
+    $table
+
+    solved in ${outcome.attempts} attempt(s) · symmetric: ${rules.findAsymmetry() ?: "yes"}
+
+    ${grid.count { it == SEA }} sea, ${grid.count { it == SAND }} sand, ${grid.count { it == GRASS }} grass of ${grid.size} cells
+""")
+:::endfold
 
 :::fold render one flat colour per cell, big enough to count them
 val palette = listOf(
@@ -228,10 +233,17 @@ fun histogram(cells: IntArray, bandOf: (Int) -> Int): String =
         bandNames[b] + " " + (cells.count { bandOf(it) == b } * 100 / cells.size).toString().padStart(2) + "%"
     }
 
-display("bands", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
+:::fold render the three band histograms as text
+val bandReport =
     "source    ${histogram(bands) { it }}\n" +
     "learned   ${histogram(learned) { bandOfTile[it] }}\n" +
-    "boosted   ${histogram(boosted) { bandOfTile[it] }}</pre>")
+    "boosted   ${histogram(boosted) { bandOfTile[it] }}"
+markdown("bands", """
+    ~~~
+$bandReport
+    ~~~
+""")
+:::endfold
 
 // Scale factors chosen so every panel is 360px tall: montage gives each cell the height of the
 // tallest one, so mismatched panels leave a big empty band.
@@ -353,10 +365,17 @@ for (id in 0 until patterns.tileCount) {
 }
 
 val successors: String = (0..3).joinToString("  ") { d -> "dir " + d + " " + rules.allowedCount(d, uniformDeep) }
-display("model", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
-    "${patterns.tileCount} distinct 3x3 windows &middot; ${panels.size}/${seeds.size} seeds solved, " +
+:::fold render the model summary
+val modelReport =
+    "${patterns.tileCount} distinct 3x3 windows · ${panels.size}/${seeds.size} seeds solved, " +
     "$firstAttempt on the first attempt\n" +
-    "the all-deep window may be followed by: " + successors + "</pre>")
+    "the all-deep window may be followed by: " + successors
+markdown("model", """
+    ~~~
+$modelReport
+    ~~~
+""")
+:::endfold
 
 display("main", montage(panels, columns = 4, cellSide = 300).toPngBytes())
 ```
@@ -489,9 +508,11 @@ val grid = solver.resolvedTileGridOrNull()!!
 // aspect ratios, and a uniform grid would give the strip a cell 5 times taller than it needs.
 display("tiles", tiles.sampleToImg().upscaleNearest(6).toPngBytes())
 display("main", tiles.toImg(grid, 34, 22).upscaleNearest(2).toPngBytes())
-display("counts", "<div style='font:13px/1.6 monospace;padding:8px'>" +
-    "${outcome.attempts} attempt(s) &middot; ${grid.count { it == 7 }} crossings &middot; " +
-    "${grid.count { it == 0 }} blank of ${grid.size} cells</div>")
+:::fold render the cell tallies
+markdown("counts",
+    "${outcome.attempts} attempt(s) · ${grid.count { it == 7 }} crossings · " +
+        "${grid.count { it == 0 }} blank of ${grid.size} cells")
+:::endfold
 ```
 
 ![the eight-tile socket atlas above a 34x22 WFC output in which every circuit trace connects with no dangling ends](assets/wfc_examples/circuit.png)
@@ -585,9 +606,11 @@ val outcome = solver.solveWithRetries(maxAttempts = 30) {
 }
 val out = patterns.toImg(solver.resolvedTileGridOrNull()!!, outW, outH)
 
-display("model", "<div style='font:13px/1.6 monospace;padding:8px'>" +
-    "${patterns.tileCount} distinct 3x3 patterns &middot; ground pattern #$groundPattern, sky pattern #$skyPattern &middot; " +
-    "solved in ${outcome.attempts} attempt(s)</div>")
+:::fold render the pattern summary
+markdown("model",
+    "${patterns.tileCount} distinct 3x3 patterns · ground pattern \\#$groundPattern, " +
+        "sky pattern \\#$skyPattern · solved in ${outcome.attempts} attempt(s)")
+:::endfold
 showImgGrid(
     "source 26x18" to source.upscaleNearest(9),
     "no ground constraint" to freeOut.upscaleNearest(9),
@@ -654,9 +677,11 @@ fun solveStripes(neighborhood: WfcNeighborhood): Pair<Img, Int> {
 val (vn, vnBreaks) = solveStripes(WfcNeighborhood.VonNeumann)
 val (moore, mooreBreaks) = solveStripes(WfcNeighborhood.Moore)
 
-display("breaks", "<div style='font:13px/1.6 monospace;padding:8px'>" +
-    "anti-diagonal breaks out of 39 x 25 pairs &mdash; " +
-    "von Neumann: <b>$vnBreaks</b> &middot; Moore: <b>$mooreBreaks</b></div>")
+:::fold render the break counts
+markdown("breaks",
+    "anti-diagonal breaks out of 39 x 25 pairs — " +
+        "von Neumann: **$vnBreaks** · Moore: **$mooreBreaks**")
+:::endfold
 showImgGrid(
     "source 24x16" to source.upscaleNearest(12),
     "von Neumann (4)" to vn.upscaleNearest(7),
@@ -753,8 +778,7 @@ while (solver.step() == WfcStatus.Running) {
 }
 sample()
 
-display("steps", "<div style='font:13px/1.6 monospace;padding:8px'>" +
-    "$steps steps &middot; ${waves.size} sampled frames &middot; ended ${solver.status}</div>")
+markdown("steps", "$steps steps · ${waves.size} sampled frames · ended ${solver.status}")
 
 // display() the raster directly rather than via showImg: showImg clamps to maxSide with an
 // area-averaging resize, and area-averaging a pixel grid is exactly what upscaleNearest avoided.
@@ -925,13 +949,20 @@ val stuck = WfcSolver(6, 6, strict, seed = 1L)
 stuck.run()
 display("b. contradicted", stuck.h)
 
+:::fold render the numbers behind the two panels
 // And the numbers the panels are drawn from, so the picture can be checked against them.
-display("c. read back", "<pre style='font:13px monospace;line-height:1.5'>" +
+val readBack =
     "mid-collapse: ${solver}\n" +
     "  entropy range drawn: 0 .. ${"%.3f".format(rules.fullSetEntropy())} nats" +
     " (${solver.entropyHeatmap().nonFiniteCount} cells undefined)\n" +
     "contradicted: ${stuck}\n" +
-    "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}</pre>")
+    "  cells with no possibilities left: ${stuck.possibilityCountGrid().count { it == 0 }}"
+markdown("c. read back", """
+    ~~~
+$readBack
+    ~~~
+""")
+:::endfold
 ```
 
 ![two rows of three small heatmaps each: a 34x24 solver 45% through a collapse, with a dark decided mass, a teal speckled frontier and a bright yellow untouched region, and below it a contradicted 6x6 solver whose emptied cell is magenta in the count panel and cyan in the entropy panel](assets/wfc_examples/inline-view.png)
@@ -1084,7 +1115,8 @@ val symLines = symFields.joinToString("\n") { entry ->
         ", ratio ${"%.1f".format(maxOf(g.first, g.second) / maxOf(1e-6, minOf(g.first, g.second)))}x"
 }
 
-display("stats", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
+:::fold render the grain statistics
+val statsReport =
     "${tiles.tileCount} levels; ${patterns.tileCount} distinct 3x3 windows -> " +
     "${symmetric.tileCount} once closed under D4\n" +
     "1x1 tiles          mean ${"%.2f".format(tiledHeights.average())}, " +
@@ -1092,7 +1124,13 @@ display("stats", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
     "3x3 patterns       grain along rows ${"%.3f".format(plainGrain.first)} / down columns " +
     "${"%.3f".format(plainGrain.second)}" +
     ", ratio ${"%.1f".format(maxOf(plainGrain.first, plainGrain.second) / maxOf(1e-6, minOf(plainGrain.first, plainGrain.second)))}x\n" +
-    symLines + "</pre>")
+    symLines
+markdown("stats", """
+    ~~~
+$statsReport
+    ~~~
+""")
+:::endfold
 
 // Terraced levels contour into blocky steps, so smooth before extracting geometry. This is the whole
 // point of ending up in a FloatArray rather than in pixels: iso-contours are FLines. Contour the D4
@@ -1262,7 +1300,13 @@ val report = listOf(
     "  east of 2:    ${(0..2).filter { relaxed.allows(WFC_EAST, 2, it) }}",
     "  symmetric?    ${relaxed.findAsymmetry() ?: "yes"}"
 ).joinToString("<br>")
-display("deadlock", "<pre style='font:13px monospace;line-height:1.5'>$report</pre>")
+:::fold render the deadlock report
+markdown("deadlock", """
+    ~~~
+$report
+    ~~~
+""")
+:::endfold
 
 :::fold same rules, two seeds, side by side
 val chain = wfcRules(tileCount = 3) {

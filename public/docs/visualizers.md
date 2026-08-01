@@ -417,6 +417,72 @@ println("display helpers ready")
 
 Use `.h` when the structure is small enough that you want a pleasant, immediate rendering. Use `.h2` when you want to browse a large map, list, array, or buffer without turning the output area into soup.
 
+### Markdown, when the figure is captions and tables
+
+The escape hatch above has a way of taking over. A figure that wants a heading, a key/value table and a block of computed text ends up as a hundred lines of string concatenation, with a hand-picked font stack, a `<tr><td style=…>` builder and a local `fun esc(s: String)` — reliably longer than the code it was meant to illustrate, and reaching for a different shade of grey each time.
+
+`markdown("channel", "…")` says the same thing in markdown, and picks up Field's own `--field-*` tokens instead of re-inventing them:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.markdown
+runner: backdoor-box
+tags: [docs, visualizers, display, markdown]
+timeoutSec: 45
+waitSec: 2.0
+expect:
+  outputContains:
+    - "markdown figure ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-markdown.png" wait="2.0" capture="box" open-outputs="true" w="900" embed=true name="display-markdown"}
+:::static
+val readings = linkedMapOf("tempo" to 122, "drift" to -0.004, "voice" to "saw 110 *")
+val rows = readings.entries.joinToString("\n") { (k, v) -> "| ${mdEscape(k)} | ${mdEscape(v)} |" }
+val report = "converged in 41 steps\nresidual 3.2e-7"
+
+markdown("figure", """
+    ### what the run settled on
+
+    | reading | value |
+    |---------|-------|
+    $rows
+
+    status: {ok:**stable**} · budget: {warn:83% used} · {muted:no retries}
+
+    :::row
+    #### before
+    ${mapOf("gain" to 0.2).h}
+    ---
+    #### after
+    ${mapOf("gain" to 0.9).h}
+    :::end
+
+    #### solver output
+    ~~~
+$report
+    ~~~
+""", width = 820)
+
+println("markdown figure ready")
+```
+
+Three things make this work on real figures rather than just on prose:
+
+- **HTML passes through, inline and block.** `.h`, `diffHtml()`, `graphSvg()` and friends already return HTML; interpolate them directly and they land verbatim, table cells included. Only text you actually wrote as markdown gets escaped.
+- **`mdEscape(value)` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Wrap anything you did not write yourself.
+- **Fenced bodies are interpolated at column zero**, hard left, the way `$report` is above. Inside a fence whitespace is the content, and splicing at the surrounding indentation would indent only the value's first line.
+
+Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written.
+
+Close a row with `:::end`, not a bare `:::`. Both work in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes and quietly swallows the rest of the card, in the built page only.
+
+You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card, which matters for a docs `capture="box"` screenshot: that clips to the output card, so an unpinned card sized by its widest unbreakable line loses everything past the clip.
+
 ### Trees and columns
 
 Sometimes the right answer is not “render this as a card”, it is “let me inspect this like a little filesystem”.
@@ -598,19 +664,18 @@ controlGroup("surface") {
     }
 }
 
-display(
-    "preview",
-    """
-    <div style="width:620px;padding:18px;background:#07131b;border:1px solid #164a63;color:#83e6ff">
-      <div style="font-size:20px;letter-spacing:0.08em;text-transform:uppercase">$label</div>
-      <div style="margin-top:12px;height:96px;background:
-        radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),
-        linear-gradient(135deg, rgba(255,120,40,0.18), rgba(40,210,255,0.20));
-        border:1px solid rgba(131,230,255,0.35)"></div>
-      <div style="margin-top:10px">wind=(${wind.x}, ${wind.y}) bloom=$bloom trails=$trails</div>
-    </div>
-    """.trimIndent()
-)
+// The gradient swatch is the bespoke part and stays as HTML; the card around it does not
+// have to be hand-built any more.
+markdown("preview", """
+    #### ${mdEscape(label)}
+
+    <div style="height:96px;background:
+      radial-gradient(circle at 35% 45%, rgba(64,190,255,0.65), transparent 22%),
+      linear-gradient(135deg, rgba(255,120,40,0.18), rgba(40,210,255,0.20));
+      border:1px solid rgba(131,230,255,0.35)"></div>
+
+    wind=({accent:${wind.x}}, {accent:${wind.y}}) · bloom={accent:$bloom} · trails={accent:$trails}
+""", width = 620)
 
 println("mixed controls ready")
 ```

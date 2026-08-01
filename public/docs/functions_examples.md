@@ -65,7 +65,7 @@ with(Functions) {
     )
 
     lines(guides + waveform, channel = "harmonic-graph", w = 980.0, h = 430.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>1D stack</b><br/>sin + overtone + value noise, windowed and soft-clipped.</div>")
+    markdown("notes", "**1D stack**\n\nsin + overtone + value noise, windowed and soft-clipped.")
 }
 ```
 
@@ -124,7 +124,7 @@ with(Functions) {
     }
 
     lines(listOf(frame, center, a, b, c), channel = "pulse-stack", w = 980.0, h = 400.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>Pulse stack</b><br/>pulseTrain → clip → blur → sampleHold</div>")
+    markdown("notes", "**Pulse stack**\n\npulseTrain → clip → blur → sampleHold")
 }
 ```
 
@@ -178,7 +178,7 @@ with(Functions) {
     val fittedLine = asLine(run.fitted, vec(0.97, 0.45, 0.18, 1.0), 2.2)  // orange, thin, on top
 
     lines(guides + targetLine + fittedLine, channel = "fit-graph", w = 980.0, h = 440.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>fit to target</b> &mdash; target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}</div>")
+    markdown("notes", "**fit to target** — target (cyan) vs gradient-fitted (orange), RMSE ${"%.4f".format(run.finalError)}")
     run
 }
 ```
@@ -251,7 +251,7 @@ with(Functions) {
     }
 
     lines(listOf(frame) + cross + curve, channel = "xy-parametric", w = 1000.0, h = 500.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>2D parametric</b><br/>x(t) and y(t) are independent Functions stacks.</div>")
+    markdown("notes", "**2D parametric**\n\nx(t) and y(t) are independent Functions stacks.")
 }
 ```
 
@@ -325,7 +325,7 @@ with(Functions) {
     }
 
     lines(listOf(frame, ringGuide, line), channel = "xy-rosette", w = 1000.0, h = 500.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>2D rosette</b><br/>radial(t) + angle(t) stack mapped into x/y.</div>")
+    markdown("notes", "**2D rosette**\n\nradial(t) + angle(t) stack mapped into x/y.")
 }
 ```
 
@@ -365,7 +365,7 @@ with(Functions) {
     }
 
     lines(listOf(frame, line), channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>Before</b>: simple sin + pulse stack.</div>")
+    markdown("notes", "**Before**: simple sin + pulse stack.")
 }
 :::after
 import afield.graphics.FLine
@@ -400,7 +400,7 @@ with(Functions) {
     }
 
     lines(listOf(frame, center, line), channel = "edited-stack", w = 980.0, h = 420.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>After</b>: shaped pulse + fbm detail + stronger soft clip.</div>")
+    markdown("notes", "**After**: shaped pulse + fbm detail + stronger soft clip.")
 }
 ```
 
@@ -3418,23 +3418,16 @@ sin/*/saw => op=triangle
 sin/**/[tag=number][value>0.2] => = 0.5
 """)
 
-    display(
-        "graph",
-        """
-        <div style="font-family:Iosevka Web, monospace; background:#050505; color:#e8e8e8; border:1px solid #303030; padding:14px; max-width:1120px;">
-          <div style="display:grid; grid-template-columns:1fr; gap:14px; align-items:start;">
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">before</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${base.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}</div>
-            </div>
-            <div>
-              <div style="font-weight:700; margin:0 0 8px 2px;">after</div>
-              <div style="overflow:hidden; border:1px solid #202020;">${changed.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}</div>
-            </div>
-          </div>
-        </div>
-        """.trimIndent()
-    )
+    :::fold render the before/after graphs
+    // The two graphs are stacked, not side by side — the original grid was a single column.
+    markdown("graph", """
+        #### before
+        ${base.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}
+
+        #### after
+        ${changed.graphSvg(width = 1060, nodeWidth = 186.0, nodeHeight = 52.0, xGap = 200.0, yGap = 70.0, maxDepth = 5)}
+    """, width = 1120)
+    :::endfold
 }
 ```
 
@@ -3831,7 +3824,7 @@ with(Functions) {
     val bestLine   = asLine(run.best, vec(0.12, 0.47, 0.71, 1.0), 2.4)   // blue: evolved best, on top
 
     lines(guides + seedLine + targetLine + bestLine, channel = "evolve-overlay", w = 980.0, h = 440.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>evolve</b> &mdash; seed cosine (grey) &rarr; target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} &rarr; ${"%.4f".format(run.bestScore)}</div>")
+    markdown("notes", "**evolve** — seed cosine (grey) → target sine (red); the evolved best (blue) tracks the target. score ${"%.4f".format(run.initialScore)} → ${"%.4f".format(run.bestScore)}")
     run
 }
 ```
@@ -3940,7 +3933,7 @@ with(Functions) {
     }
 
     lines(out, channel = "evolve-variety", w = 980.0, h = 440.0, fitToSize = false)
-    display("notes", "<div style='padding:10px'><b>evolveVariety</b> &mdash; ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)</div>")
+    markdown("notes", "**evolveVariety** — ${variety.results.size} behaviourally distinct gestures from one seed, meanPairwiseDistance ${"%.3f".format(variety.meanPairwiseDistance)} (normalized shape)")
     variety
 }
 ```

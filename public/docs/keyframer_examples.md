@@ -69,35 +69,40 @@ edited()
 
 // Read the live structures back to prove the write actually landed — and that it landed on the
 // bare property name, not on the qualified key name.
-fun live(s: Structure, p: String) = s.bindings[p]?.invoke()?.toString() ?: "&lt;unbound&gt;"
+fun live(s: Structure, p: String) = s.bindings[p]?.invoke()?.toString() ?: "{dim:unbound}"
+// Read now, while the edit is still applied — the next line puts the old values back.
 val liveRows = listOf(
     "glow.radius" to live(glow, "radius"),
     "glow.intensity" to live(glow, "intensity"),
     "blur.radius" to live(blur, "radius"),
-    "glow.<i>glow@radius</i>" to live(glow, "glow@radius")
-).joinToString("") { (k, v) ->
-    "<tr><td style='padding:2px 12px 2px 0;color:#9cdcfe'>$k</td>" +
-        "<td style='color:#d4d4d4'>$v</td></tr>"
-}
+    "glow.*glow@radius*" to live(glow, "glow@radius")
+).joinToString("\n") { (k, v) -> "| $k | $v |" }
 
 // Put the original back, and diff to show the scope is exactly where it started.
 captured()
 val restored = scope.capture()
 
+:::fold render the four panels
 // The card's width is pinned so the figure stays legible — see the persistence example below.
-display(
-    "keys",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;" +
-        "width:820px;max-width:820px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>1 &mdash; capture()</div>" + captured.h + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>2 &mdash; edited, then applied</div>" +
-        captured.diffHtml(edited, "captured", "edited") + "</div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>3 &mdash; the live structures, read back</div>" +
-        "<table style='border-collapse:collapse'>" + liveRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>4 &mdash; captured() again, then re-captured</div>" +
-        captured.diffText(restored, "captured", "restored") + "</div>" +
-    "</div>"
-)
+markdown("keys", """
+    #### 1 — capture()
+    ${captured.h}
+
+    #### 2 — edited, then applied
+    ${captured.diffHtml(edited, "captured", "edited")}
+
+    #### 3 — the live structures, read back
+
+    | binding | value |
+    |---------|-------|
+    $liveRows
+
+    #### 4 — captured() again, then re-captured
+    ~~~
+${captured.diffText(restored, "captured", "restored")}
+    ~~~
+""", width = 820)
+:::endfold
 ```
 
 ![Four stacked panels: the captured key of three values, a diff showing glow@radius and glow@intensity changed, a read-back of the live structures showing radius 9.0 and intensity 0.8 on the unqualified property names with glow@radius itself unbound, and the text "No key differences." after restoring](assets/keyframer_examples/capture_apply.png)
@@ -524,13 +529,12 @@ showPlaneGrid(
         listOf(dScrew, dChord),
     columns = 2, cellWidth = 440, cellHeight = 380
 )
-display(
-    "aim",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;padding:8px 0'>" +
-        "worst-case aiming error along the sclerp path: <b>%.6f</b> world units &mdash; ".format(worstAim) +
-        "the subject never leaves the centre of frame." +
-    "</div>"
-)
+:::fold render the aiming-error note
+markdown("aim", """
+    worst-case aiming error along the sclerp path: **%.6f** world units —
+    {muted:the subject never leaves the centre of frame.}
+""".format(worstAim))
+:::endfold
 ```
 
 ![Two panels. Left, a plan view: a blue quarter-circle arc from one camera position to the other with faint equal-length sight lines to a circle at the origin, and an orange straight chord cutting across it whose sight lines are visibly shorter in the middle. Right, distance against time: a flat blue line at 8.2462 and an orange curve dipping to 6.0 at the midpoint](assets/keyframer_examples/camera_screw.png)
@@ -607,10 +611,8 @@ val lossy = scope.Key(mutableMapOf(
 scope.saveKey(path, lossy, note = "with unsupported values")
 
 val versions = scope.keyVersions(path)
-val versionRows = versions.joinToString("") { v ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>${v.index}</td>" +
-        "<td style='padding-right:14px;color:#888'>${v.file}</td>" +
-        "<td style='color:#d4d4d4'>${v.note ?: "&mdash;"}</td></tr>"
+val versionRows = versions.joinToString("\n") { v ->
+    "| ${v.index} | ${mdEscape(v.file)} | ${v.note?.let(::mdEscape) ?: "—"} |"
 }
 
 val reloaded = scope.loadKey(path)
@@ -623,37 +625,41 @@ newer.missingKey("wet", 0.5f)                  // applies to every file this sco
 newer.missingKey(1, "mode", "legacy-v1")       // only to files stamped schemaVersion = 1
 val migrated = newer.loadKey(path, version = 0)
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
+:::fold render the persistence card
 // Rendered as flat text rather than through `migrated.h`. The Key's own HTML gives a Vector3f the
 // interactive 3D axis widget, which is lovely in a box and wrong here: it loads asynchronously and
 // reflowed the card mid-screenshot, so the first capture of this figure came out clipped.
-val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("") { (k, v) ->
-    "<tr><td style='padding:1px 14px 1px 0;color:#9cdcfe'>" + esc(k) + "</td>" +
-        "<td style='color:#d4d4d4'>" + esc(v.toString()) + "</td></tr>"
+val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
+    "| ${mdEscape(k)} | ${mdEscape(v)} |"
 }
 
 // The width is pinned on purpose. A `capture="box"` screenshot clips to the output card, and an
 // unpinned card sized by its widest unbreakable line loses everything past the clip.
-display(
-    "persist",
-    "<div style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;display:grid;gap:14px;" +
-        "width:820px;max-width:820px'>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version history after three saves</div>" +
-        "<table style='border-collapse:collapse'>" + versionRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>third save: what survived</div>" +
-        "kept: <b>" + kept + "</b><br>dropped in silence: <b style='color:#f88'>" +
-        droppedNames.joinToString(", ") + "</b></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0, reloaded into a scope that has " +
-        "since grown a 'wet' parameter (" + migrated.values.size + " values)</div>" +
-        "<table style='border-collapse:collapse'>" + migratedRows + "</table></div>" +
-        "<div><div style='color:#c586c0;margin-bottom:4px'>version 0 on disk, as written</div>" +
-        "<pre style='margin:0;padding:6px 8px;background:rgba(255,255,255,0.04);" +
-        "border-left:2px solid #555;white-space:pre-wrap;width:800px;max-width:800px'>" +
-        esc(java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))) +
-        "</pre></div>" +
-    "</div>"
-)
+markdown("persist", """
+    #### version history after three saves
+
+    | # | file | note |
+    |---|------|------|
+    $versionRows
+
+    #### third save: what survived
+
+    kept: **$kept**
+
+    dropped in silence: {bad:**${droppedNames.joinToString(", ")}**}
+
+    #### version 0, reloaded into a scope that has since grown a 'wet' parameter (${migrated.values.size} values)
+
+    | name | value |
+    |------|-------|
+    $migratedRows
+
+    #### version 0 on disk, as written
+    ~~~json
+${java.nio.file.Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))}
+    ~~~
+""", width = 820)
+:::endfold
 ```
 
 ![Four panels: a three-row version history numbered 0 to 2 with notes; a line reading kept gain and dropped absent, enabled, taps; a reloaded key showing gain, pos, voice plus the filled-in wet and mode defaults; and the pretty-printed JSON of version zero](assets/keyframer_examples/persistence.png)
@@ -720,7 +726,14 @@ val key = scope.Key(mutableMapOf(
     "notes" to listOf("unsupported", "on purpose")
 ))
 
-display("code", "<pre>" + key.updateCode("look") + "</pre>")
+:::fold render the generated update code
+// A multi-line value goes into a fence at column zero, so it arrives byte for byte.
+markdown("code", """
+    ~~~kotlin
+${key.updateCode("look")}
+    ~~~
+""")
+:::endfold
 ```
 
 ![The emitted Kotlin: look.updateAndApply with assignments sorted by name, showing an escaped source-block string with a backslash before its dollar, gain as 0.65f, a fully-qualified Quaternionf constructor, seed as 99L, and the unsupported list emitted as null behind a block comment](assets/keyframer_examples/update_code.png)

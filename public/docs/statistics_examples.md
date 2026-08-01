@@ -71,8 +71,7 @@ val note = "n=${s.count}, dropped=${s.droppedCount}; " +
     "skew=${"%.3f".format(s.skewness)}  excess kurtosis=${"%.3f".format(s.kurtosisExcess)}"
 :::fold render the card
 display("card", buf.summaryHtml(widthPx = 620, chartHeightPx = 150, decimals = 3))
-display("read this off the card", "<div style='font-family:monospace;font-size:11px;color:#7f92a8;" +
-    "max-width:620px;line-height:1.6'>$note</div>")
+markdown("read this off the card", "{muted:$note}", width = 620)
 :::endfold
 ```
 
@@ -152,8 +151,11 @@ val svgs = listOf(
     histogramToSvg(buildHistogram(bimodal), widthPx = 470, heightPx = 270, padTop = 26, title = "two modes at -2 and +2, n=500", decimals = 3),
 )
 display("histograms", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
-display("the rule, re-derived", "<div style='font-family:monospace;font-size:11px;color:#7f92a8;" +
-    "max-width:960px;line-height:1.7'>$skewedNote<br>$bimodalNote</div>")
+markdown("the rule, re-derived", """
+    {muted:$skewedNote}
+
+    {muted:$bimodalNote}
+""", width = 960)
 :::endfold
 ```
 
@@ -382,21 +384,18 @@ showSignals(
     xTitle = "1 / sqrt(n)   (n=400 left, n=25 right)",
     yTitle = "dCor",
 )
-display(
-    "verdict",
-    "<div style='font-family:monospace;font-size:11px;color:#7f92a8;max-width:900px;line-height:1.7'>" +
-        "observed dCor = ${"%.4f".format(observedDcor)}; null mean ${"%.4f".format(nullDcor.average())}, " +
-        "95th pct ${"%.4f".format(p95)}, max ${"%.4f".format(sortedD.last())}; " +
-        "re-pairings reaching the observed value: $exceed / $reps<br>" +
-        "observed xi = ${"%.4f".format(observedXi)}; xi null 95th pct " +
-        "${"%.4f".format(nullXi.sortedArray()[(reps * 0.95).toInt()])}; " +
-        "re-pairings reaching it: $xiExceed / $reps<br>" +
-        "null 95th pct vs n (measured / 2.5-over-root-n): " +
-        sizes.indices.joinToString("&nbsp;&nbsp; ") {
-            "n=${sizes[it]} ${"%.3f".format(thresholds[it])}/${"%.3f".format(fitted[it])}"
-        } +
-        "</div>",
-)
+markdown("verdict", """
+    {muted:observed dCor = ${"%.4f".format(observedDcor)}; null mean ${"%.4f".format(nullDcor.average())},
+    95th pct ${"%.4f".format(p95)}, max ${"%.4f".format(sortedD.last())};
+    re-pairings reaching the observed value: $exceed / $reps}
+
+    {muted:observed xi = ${"%.4f".format(observedXi)}; xi null 95th pct
+    ${"%.4f".format(nullXi.sortedArray()[(reps * 0.95).toInt()])};
+    re-pairings reaching it: $xiExceed / $reps}
+
+    {muted:null 95th pct vs n (measured / 2.5-over-root-n):
+    ${sizes.indices.joinToString(" · ") { "n=${sizes[it]} ${"%.3f".format(thresholds[it])}/${"%.3f".format(fitted[it])}" }}}
+""", width = 900)
 :::endfold
 ```
 
@@ -484,22 +483,19 @@ showSignals(
     yTitle = "coefficient",
     marks = listOf("regime change" to change),
 )
-display(
-    "numbers",
-    "<div style='font-family:monospace;font-size:11px;color:#7f92a8;max-width:900px;line-height:1.7'>" +
-        "window-full to the change (i=$w..${change - 1}): " +
-        "dCor ${"%.3f".format(dSeries.subList(w, change).average())}, " +
-        "xi ${"%.3f".format(xiSeries.subList(w, change).average())}, " +
-        "|r| ${"%.3f".format(absR.subList(w, change).average())}<br>" +
-        "settled after the change (i=${change + w}..${total - 1}): " +
-        "dCor ${"%.3f".format(dSeries.subList(change + w, total).average())}, " +
-        "xi ${"%.3f".format(xiSeries.subList(change + w, total).average())}, " +
-        "|r| ${"%.3f".format(absR.subList(change + w, total).average())}<br>" +
-        "threshold ${"%.3f".format(threshold)} first crossed by dCor at +${firstD!! - change} samples, " +
-        "by xi at +${firstXi!! - change}<br>" +
-        "incremental vs batch on the final window: |difference| = $agreement" +
-        "</div>",
-)
+// The two windows are the same three coefficients measured twice, so they read as a table.
+// The pipes in `|r|` are escaped, or they would split the cell they sit in.
+markdown("numbers", """
+    | window | dCor | xi | \|r\| |
+    |--------|------|----|-------|
+    | window-full to the change (i=$w..${change - 1}) | ${"%.3f".format(dSeries.subList(w, change).average())} | ${"%.3f".format(xiSeries.subList(w, change).average())} | ${"%.3f".format(absR.subList(w, change).average())} |
+    | settled after the change (i=${change + w}..${total - 1}) | ${"%.3f".format(dSeries.subList(change + w, total).average())} | ${"%.3f".format(xiSeries.subList(change + w, total).average())} | ${"%.3f".format(absR.subList(change + w, total).average())} |
+
+    {muted:threshold ${"%.3f".format(threshold)} first crossed by dCor at +${firstD!! - change} samples,
+    by xi at +${firstXi!! - change}}
+
+    {muted:incremental vs batch on the final window: |difference| = $agreement}
+""", width = 900)
 :::endfold
 ```
 
@@ -595,18 +591,19 @@ val svgs = listOf(
     ),
 )
 display("distributions", "<div style='display:flex;gap:12px'>" + svgs.joinToString("") { "<div>$it</div>" } + "</div>")
-display(
-    "numbers",
-    "<div style='font-family:monospace;font-size:11px;color:#7f92a8;max-width:900px;line-height:1.7'>" +
-        "held-out before: mean ${"%.3f".format(before.mean)}, sd ${"%.3f".format(before.sampleStdDev)}, " +
-        "skew ${"%.3f".format(before.skewness)}, excess kurtosis ${"%.1f".format(before.kurtosisExcess)}<br>" +
-        "held-out after:  mean ${"%.4f".format(after.mean)}, sd ${"%.4f".format(after.sampleStdDev)}, " +
-        "skew ${"%.4f".format(after.skewness)}, excess kurtosis ${"%.4f".format(after.kurtosisExcess)}<br>" +
-        "input knots:  ${state.inputKnots.joinToString { "%.3f".format(it) }}<br>" +
-        "target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}<br>" +
-        "worst |PCHIP - exact| over the 2nd..98th percentile: ${"%.4f".format(worst)}" +
-        "</div>",
-)
+// before/after over the same four moments: a table says it in a quarter of the characters.
+markdown("numbers", """
+    | held-out | mean | sd | skew | excess kurtosis |
+    |----------|------|----|------|-----------------|
+    | before | ${"%.3f".format(before.mean)} | ${"%.3f".format(before.sampleStdDev)} | ${"%.3f".format(before.skewness)} | ${"%.1f".format(before.kurtosisExcess)} |
+    | after | ${"%.4f".format(after.mean)} | ${"%.4f".format(after.sampleStdDev)} | ${"%.4f".format(after.skewness)} | ${"%.4f".format(after.kurtosisExcess)} |
+
+    {muted:input knots: ${state.inputKnots.joinToString { "%.3f".format(it) }}}
+
+    {muted:target knots: ${state.targetKnots.joinToString { "%.3f".format(it) }}}
+
+    {muted:worst |PCHIP - exact| over the 2nd..98th percentile: ${"%.4f".format(worst)}}
+""", width = 900)
 :::endfold
 ```
 

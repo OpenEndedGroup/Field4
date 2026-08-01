@@ -505,6 +505,159 @@
     background: rgba(var(--field-black-rgb), 0.82);
 }
 
+/* --------------------------------------------------------------------------
+   Output-area markdown: the card emitted by Box.markdown (see MarkdownOutput.kt).
+
+   These exist so a figure in an output pane does not have to carry its own hex
+   colours and font stack inline. Everything below is a --field-* token, so a
+   figure re-themes with the rest of the app. Deliberately compact: these cards
+   are read at a glance, and in the docs they are screenshot at box size.
+
+   .disclosure-content forces font-size: 10px, hence the explicit size here.
+   -------------------------------------------------------------------------- */
+
+.field-md {
+    font-family: var(--field-font-code);
+    font-size: 12px;
+    font-weight: var(--field-font-weight);
+    line-height: 1.55;
+    color: var(--field-fg-body);
+}
+
+.field-md > :first-child { margin-top: 0; }
+.field-md > :last-child { margin-bottom: 0; }
+
+.field-md h1,
+.field-md h2,
+.field-md h3,
+.field-md h4,
+.field-md h5,
+.field-md h6 {
+    margin: 14px 0 6px 0;
+    font-family: var(--field-font-code);
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.field-md h1 { font-size: 16px; color: var(--field-fg-bright); }
+.field-md h2 { font-size: 14px; color: var(--field-fg-strong); }
+.field-md h3 { font-size: 12px; color: var(--field-accent-text); }
+
+/* h4 and below are the "step caption" role — the thing figures used to spell
+   as <div style='color:#c586c0;margin-bottom:4px'>. */
+.field-md h4,
+.field-md h5,
+.field-md h6 {
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--field-fg-dim);
+}
+
+.field-md p { margin: 0 0 8px 0; }
+
+.field-md ul,
+.field-md ol {
+    margin: 0 0 8px 0;
+    padding-left: 18px;
+}
+
+.field-md li { margin: 1px 0; }
+.field-md li > p { margin: 0; }
+
+.field-md a {
+    color: var(--field-link);
+    text-decoration: none;
+    border-bottom: 1px solid var(--field-accent-muted);
+}
+
+.field-md code {
+    font-family: var(--field-font-code);
+    color: var(--field-code-accent);
+    background: var(--field-surface-quiet);
+    padding: 0 3px;
+}
+
+.field-md pre {
+    margin: 0 0 8px 0;
+    padding: 6px 9px;
+    background: var(--field-panel-solid);
+    border-left: 2px solid var(--field-border-medium);
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.field-md pre code {
+    background: none;
+    padding: 0;
+    color: var(--field-fg-soft);
+}
+
+/* Key/value tables are the commonest figure shape, so they are ruled rather
+   than boxed — quieter, and it reads as a listing instead of a spreadsheet. */
+.field-md table {
+    border-collapse: collapse;
+    margin: 0 0 8px 0;
+    font-size: inherit;
+}
+
+.field-md th,
+.field-md td {
+    padding: 2px 14px 2px 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.field-md th {
+    padding-bottom: 4px;
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--field-fg-dim);
+    border-bottom: 1px solid var(--field-border-subtle);
+}
+
+.field-md td:first-child { color: var(--field-accent-text); }
+.field-md tbody tr + tr td { border-top: 1px solid var(--field-border-muted); }
+
+.field-md blockquote {
+    margin: 0 0 8px 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--field-border-medium);
+    color: var(--field-fg-muted);
+}
+
+.field-md hr {
+    margin: 12px 0;
+    border: 0;
+    border-top: 1px solid var(--field-border-subtle);
+}
+
+/* :::row ... ::: — equal columns, split on a --- line. The before/after shape. */
+.field-md-row {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 16px;
+    align-items: start;
+    margin: 0 0 8px 0;
+}
+
+.field-md-col { min-width: 0; }
+.field-md-col > :first-child { margin-top: 0; }
+.field-md-col > :last-child { margin-bottom: 0; }
+
+/* {role:text} inline spans. */
+.field-md-accent { color: var(--field-accent-text); }
+.field-md-muted { color: var(--field-fg-muted); }
+.field-md-dim { color: var(--field-fg-dim); }
+.field-md-ok { color: var(--field-success); }
+.field-md-warn { color: var(--field-warning); }
+.field-md-bad { color: var(--field-danger); }
+
 .ai-chat-markdown {
     font-size: 11px;
     line-height: 1.35;

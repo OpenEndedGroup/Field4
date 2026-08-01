@@ -148,14 +148,15 @@ val stepLine = trace(samples.map { it.elapsed to it.byStep }, vec(1.0, 0.72, 0.3
 val timeLine = trace(samples.map { it.elapsed to it.byTime }, vec(0.56, 1.0, 0.68, 0.95), 3.0)
 
 lines(guides + stepLine + timeLine, channel = "interpolants-diff", w = 1080.0, h = 640.0, fitToSize = true)
-display(
-    "legend",
-    "<div style='padding:10px 12px;background:#111;color:#d7d7d7;font-family:monospace'>" +
-        "<span style='color:#ffb85a'>orange</span>: fixed 140 calls; " +
-        "<span style='color:#8fffad'>green</span>: 1.2 seconds; " +
-        "vertical guide = requested duration" +
-    "</div>"
-)
+:::fold render the colour key
+// The two colours name the trace colours above, so they stay as spans. The card around
+// them does not need spelling out.
+markdown("legend", """
+    <span style='color:#ffb85a'>orange</span>: fixed 140 calls;
+    <span style='color:#8fffad'>green</span>: 1.2 seconds;
+    vertical guide = requested duration
+""")
+:::endfold
 ```
 
 ![Step-based versus time-based smoothing under an uneven sampling cadence](assets/interpolants_examples/smooth_duration.png)
@@ -237,14 +238,14 @@ val code = fline {
 }
 
 lines(listOf(path, gain, code), channel = "keyframe-morph", w = 1080.0, h = 640.0, fitToSize = true)
-display(
-    "keys",
-    "<div style='padding:10px 12px;background:#111;color:#d7d7d7;font-family:monospace'>" +
-        "<span style='color:#8fe6ff'>blue</span>: gain, eased (smoothstep); " +
-        "<span style='color:#ffb185'>orange</span>: pos, linear path; " +
-        "<span style='color:#a6ff8c'>green</span>: voice code — one discrete switch at the end" +
-    "</div>"
-)
+:::fold render the colour key
+// As above: the three colours are the trace colours, the card around them is not.
+markdown("keys", """
+    <span style='color:#8fe6ff'>blue</span>: gain, eased (smoothstep);
+    <span style='color:#ffb185'>orange</span>: pos, linear path;
+    <span style='color:#a6ff8c'>green</span>: voice code — one discrete switch at the end
+""")
+:::endfold
 ```
 
 ![A KeyframeScope morph: an eased gain curve, a linear vector path, and a code value that steps once at the end](assets/interpolants_examples/keyframe_morph.png)

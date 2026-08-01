@@ -53,18 +53,16 @@ val process =
 
 val preview = process.notesBetween(0.0, 2.5).take(8).joinToString("\n")
 
-display(
-    "main",
-    """
-    <div style="padding:22px;background:linear-gradient(180deg,#0d141d,#090b10);color:#eef3ff">
-      <div style="font:600 13px Iosevka Web, IBM Plex Mono, monospace;letter-spacing:0.04em;margin-bottom:12px">
-        seed ${chosen.seed} · period ${chosen.attr.period} · initial ${chosen.attr.cycle.first().joinToString("") { if (it) "1" else "0" }}
-      </div>
-      ${process.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 6.0, title = "Boolean attractor -> NoteProcess")}
-      <pre style="margin:14px 0 0 0;padding:14px;background:#0f1722;border:1px solid rgba(255,255,255,0.08);font:12px/1.4 Iosevka Web, IBM Plex Mono, monospace;white-space:pre-wrap">${preview}</pre>
-    </div>
-    """.trimIndent()
-)
+:::fold render the piano roll and the first notes
+markdown("main", """
+    #### seed ${chosen.seed} · period ${chosen.attr.period} · initial ${chosen.attr.cycle.first().joinToString("") { if (it) "1" else "0" }}
+    ${process.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 6.0, title = "Boolean attractor -> NoteProcess")}
+
+    ~~~
+$preview
+    ~~~
+""")
+:::endfold
 ```
 
 The network is still the source of structure, but the resulting object is a standard `NoteProcess`. It can be visualized, sliced, cached, and combined with the rest of the synth tooling.
@@ -102,17 +100,12 @@ val preview =
         }
     }
 
-display(
-    "main",
-    """
-    <div style="padding:22px;background:linear-gradient(180deg,#18120d,#090909);color:#f9f0df">
-      <div style="font:600 13px Iosevka Web, IBM Plex Mono, monospace;letter-spacing:0.04em;margin-bottom:12px">
-        seed 27 · longest attractor period ${attr.period} · labels are direct Dirt tokens
-      </div>
-      ${preview.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 8.0, title = "Boolean attractor -> Dirt token preview")}
-    </div>
-    """.trimIndent()
-)
+:::fold render the Dirt-token piano roll
+markdown("main", """
+    #### seed 27 · longest attractor period ${attr.period} · labels are direct Dirt tokens
+    ${preview.pianoRollSvg(widthPx = 860, heightPx = 210, pastSeconds = 0.0, futureSeconds = 8.0, title = "Boolean attractor -> Dirt token preview")}
+""")
+:::endfold
 ```
 
 The preview shows timing behavior and the exact sample symbols a live Dirt player would receive. You can decide whether the network is musically interesting before it touches the audio engine.
@@ -201,18 +194,16 @@ val summary =
         "${ch.layer.label} seed ${ch.layer.seed} · period ${ch.attr.period} · ${ch.layer.mode} every ${ch.layer.stepDuration}s"
     }
 
-display(
-    "main",
-    """
-    <div style="padding:22px;background:linear-gradient(180deg,#151018,#09090c);color:#f8f4ff">
-      <div style="font:600 13px Iosevka Web, IBM Plex Mono, monospace;letter-spacing:0.04em;margin-bottom:12px">
-        Three attractors, three clocks, one shared note space
-      </div>
-      ${process.pianoRollSvg(widthPx = 900, heightPx = 260, pastSeconds = 0.0, futureSeconds = 8.0, title = "Braided Boolean rhythm")}
-      <pre style="margin:14px 0 0 0;padding:14px;background:#100f16;border:1px solid rgba(255,255,255,0.08);font:12px/1.45 Iosevka Web, IBM Plex Mono, monospace;white-space:pre-wrap">${summary}</pre>
-    </div>
-    """.trimIndent()
-)
+:::fold render the braided piano roll and the layer summary
+markdown("main", """
+    #### Three attractors, three clocks, one shared note space
+    ${process.pianoRollSvg(widthPx = 900, heightPx = 260, pastSeconds = 0.0, futureSeconds = 8.0, title = "Braided Boolean rhythm")}
+
+    ~~~
+$summary
+    ~~~
+""")
+:::endfold
 ```
 
 Each layer is still a state machine, but the combined piano roll behaves like a small rhythmic ensemble.
@@ -287,17 +278,12 @@ lines(
     fitToSize = true,
 )
 
-display(
-    "main",
-    """
-    <div style="padding:18px;background:linear-gradient(180deg,#11161b,#090b0f);color:#eaf4ff">
-      <div style="font:600 13px Iosevka Web, IBM Plex Mono, monospace;letter-spacing:0.04em;margin-bottom:10px">
-        lane 0 is a sine-derived square wave; lanes 1-4 are the network's response
-      </div>
-      ${process.pianoRollSvg(widthPx = 900, heightPx = 220, pastSeconds = 0.0, futureSeconds = 8.0, title = "Oscillator-driven Boolean network")}
-    </div>
-    """.trimIndent()
-)
+:::fold render the driven piano roll
+markdown("main", """
+    #### lane 0 is a sine-derived square wave; lanes 1-4 are the network's response
+    ${process.pianoRollSvg(widthPx = 900, heightPx = 220, pastSeconds = 0.0, futureSeconds = 8.0, title = "Oscillator-driven Boolean network")}
+""")
+:::endfold
 ```
 
 The upper grid shows raw Boolean state evolution. The piano roll underneath shows the same run interpreted as musical events. External periodic structure can push a Boolean network, and the network can still be read back out through standard synth objects.
