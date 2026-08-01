@@ -205,6 +205,139 @@ because nothing here ran it. It is the obvious next task for a branch with a qui
   fence, so the new page deliberately cross-links rather than restates it. If the human would rather
   have had one merged page, this is the thing to change.
 - Only the plain-`Structure` target family is exercised anywhere. See above.
+  *(Pass 2: still true of the unit tests, but a real GPU fence now exercises that family against a
+  live module uniform — see below.)*
+
+---
+
+## Pass 2 — adversarial audit, measured coverage, second defect, GPU still
+
+Status: **complete**. Recommendation still **merge**, more confidently.
+
+### 1. I audited the page trying to get it retracted, and found five false claims
+
+All five were the page contradicting the branch's own work. Each is fixed in the commit that found
+it, in the prose a reader actually lands on.
+
+| claim the page made | verdict |
+| --- | --- |
+| "The whole surface is covered by `KeyframerTest` (53 tests)" | **FALSE**, and contradicted by *this page's own note* two screens earlier saying the module-pointer targets are not exercised. Replaced with a measured 93/101 and a table of the gap |
+| "Every public declaration used below is listed … in the codebase reference" | **FALSE** for the two supporting types the examples lean on. `Structure` is `afield.four.buffers`, `CameraPose` is `afield.four.util`; the reference covers `afield.stdlib` + `afield.visualization` only, as `reference/index.md` states at the foot of its file table |
+| "The one case where the `Double` really does lose information is a `Long` past 2^53" | **FALSE** — and disproved by a test I had *already written in pass 1*. Any `Number` outside the six `NumKind`s (`BigDecimal`, `BigInteger`) is stored as `DOUBLE` and returns a `Double`, so the type is lost too. Now two cases, with a new test |
+| "Everything below runs on the CPU" | **FALSE** once the GPU fence landed. Now "almost everything", with links |
+| "the registration is the one part of this file that cannot be exercised headlessly" | **FALSE** — it is one of eight. Now says so and links the table |
+
+Two more were imprecise rather than wrong and were tightened: "that name is unbound and *always will
+be*" (now states the mechanism), and "these numbers are asserted at eleven sample points" (only the
+constant distance/height/aim are 11-point; the midpoint figures are once each).
+
+### 2. Coverage is now measured, not asserted
+
+`src/jvmTest/kotlin/afield/stdlib/KeyframerCoverageTest.kt` enumerates `keyframer.kt`'s public
+surface **by reflection** and requires every declaration to be classified covered-or-not **with a
+reason** — the `FnOpCoverageTest` shape. Adding a public declaration fails the build until it is
+accounted for, and a third test enforces that "unreachable" can *only* mean a live `Renderer` or the
+AWT clipboard, so the category cannot become a dumping ground.
+
+**93 of 101 public behavioural declarations (92.1%).** Data-class generated members excluded, on the
+same grounds the codebase reference excludes them. The 8 uncovered are the 3 `target(…Pointer)`
+overloads, the 3 `stackAuto` overloads, `camera(…)`, and `copyUpdateCodeToClipboard`.
+
+**Writing the ledger caught it about to lie on four entries** this suite claimed to reach and did
+not: `applyKey`, the schema-qualified `missingKey` lambda overload, `StackSLString.toString`, and
+the individual components of `DualQuat`/`CameraPoseValue` — the byte-identical round-trip test would
+happily agree with itself about a consistently swapped field. All four closed with real tests rather
+than by downgrading the ledger.
+
+### 3. A second defect class, found by probing before asserting
+
+`keyValuesEqual` applies two comparison rules that are **exact opposites** on the two values where
+floating point is awkward:
+
+| | bare number (`==` on `Any?` → `Double.equals`, bitwise) | vector component (primitive `Float ==`, IEEE) |
+| --- | --- | --- |
+| `NaN` vs `NaN` | equal | **not** equal → phantom change |
+| `-0.0` vs `0.0` | **not** equal → reported change | equal → sign flip hidden |
+
+So a key holding `NaN` in a `Vector3f` diffs as changed against an identical copy of itself.
+Confirmed by a throwaway probe *before* any assertion was written — deliberately, because in pass 1
+my first regression test passed for the wrong reason. Pinned as a characterization test and
+documented in both the `KeyDiff` KDoc and the page. **Deliberately not "fixed":** either rule is
+defensible alone, and changing one would move what every `KeyDiff` table shows. That is the human's
+call, not a drive-by.
+
+Hostile inputs additionally probed and pinned, all of which turned out **fine** (no defect): keys
+named `type` (the JSON discriminator) and `values`/`schemaVersion` (`KeyDTO`'s own fields); a note
+with quotes, a backslash and a newline; an empty key; `interpolate` at `t = NaN`; a key name ending
+in `@`. Also corrected a KDoc overstatement — the schema-specific `missingKey` lambda is evaluated
+*only when the file lacks the name*, never otherwise (now tested: `lambdaCalls == 0`).
+
+### 4. The GPU stretch goal landed
+
+Load fell to 7.85 as the sibling agents finished, clearing the ≳10 threshold I declined on in pass 1,
+so I retried — on a `zz_` scratch page first, per the debugging recipe, so a failure could not touch
+the real page.
+
+New shader pair `assets/canonical_graphics/keyframer-look_{vertex,fragment}_.glsl`: one UBO block
+carrying `p`, `m` and a `vec4 tint`, and a fan of 48 triangles whose vertex colours are all
+`(1,1,1,1)` — so the only colour in the frame comes from the uniform, and the only writer of that
+uniform is a `Key`.
+
+**The first capture refuted its own purpose.** It used `interpolate(cool, warm, 0.5)`, but the two
+are near-complementary, so the midpoint is `(0.60, 0.575, 0.56)` — a grey indistinguishable from an
+untinted fan. The picture was equally consistent with "the keyframe worked" and "no tint at all", so
+it proved nothing. Re-shot at `t = 0.25`.
+
+Verified quantitatively, not by eye: the capture holds exactly two colours, black and
+`rgb(170, 205, 229)` over 497,142 pixels; the keyframed linear value is `(0.40, 0.6125, 0.78)` and
+its sRGB encoding is `(170, 205, 229)` on all three channels, to the byte. The fence is a **cache
+hit** on rebuild (`regenerated=0, cache_hits=5`), so it does not re-run the GPU on every docs build.
+
+This does **not** move the coverage number: it uses the plain `Structure` overload against
+`module.look`, not `target(ModulePointer, name)`. The module-pointer note is strengthened (now
+citing `Module.kt:559` and `ComputeModule.kt:163`, which show `liveUniformStructures` is keyed by
+*block* name while its members are the block's fields) but still labelled a source reading, because
+nothing executes those overloads.
+
+### 5. The drift claim from pass 1 — verified, not withdrawn
+
+Confirmed at `file:line`. At my base `7abe8736`, `src/jvmMain/kotlin/afield/stdlib/stdlib.kt:846`
+declares `override fun removePropertyRaw(name: String, doResync: Boolean)`, while
+`public/docs/reference/workspace.md` contained **zero** occurrences of `removePropertyRaw` and
+claimed "77 public symbol(s), 74 of them carrying KDoc". `6acaa999` ("assigning null to a nullable
+property erases it", 2026-07-31) **is an ancestor** of my base. This branch never touches
+`stdlib.kt`. So `checkCodebaseReference` was already red before I started, and the `77 → 78` /
+`74 → 75` moves in commit `a8f888b6` are that pre-existing gap, not my work. Claim stands as written.
+
+A later reference regeneration in this pass *is* mine and is explicable: the GPU section uses
+`stdlib.kt` symbols (`vec`, `Mesh`), so `keyframer_examples` now appears in that file's "Used in"
+list. Checked; no unrelated churn.
+
+### Pass 2 verification
+
+- Full `./gradlew jvmTest`: **1002 tests, 0 failures** (was 986). `KeyframerTest` 66,
+  `KeyframerCoverageTest` 3.
+- `checkKDocAttachment` ok (703 files, 8282 blocks); `checkCodebaseReference` green.
+- `run_field_tests.py --id examples.demo-transcript.exec` re-run after all changes: PASS,
+  `[execute] PASS keyframer_worked_example (applied=8, output lines=20)`.
+- Page rebuilds strict: `OK — every referenced asset is committed`, `No issues found`.
+- **Figures opened this pass:** `gpu_tint.png` twice — the grey first attempt (rejected) and the blue
+  re-shoot (accepted, and pixel-measured). The four pass-1 figures were not re-captured; their
+  fences are unchanged and reported as cache hits.
+- Rendered HTML checked directly for: the two new tables, both new anchors resolving, no dangling
+  internal links, and the absence of the stale "53 tests".
+- All branch commit messages scanned for backtick command-substitution damage after one was found
+  and amended; no others affected.
+
+### Pass 2 residual risks
+
+- The `NaN` / signed-zero inconsistency is documented and tested but **not fixed** — a deliberate
+  deferral to the human, since either rule is defensible and the change is user-visible.
+- The `target(ModulePointer, …)` reading is now supported by three source files but is still not
+  executed anywhere. It is the one claim on the page resting on reading rather than running, and it
+  is labelled as such.
+- Disk fell from 11 GiB to ~7.7 GiB over both passes, mostly Gradle and docs output. Well above the
+  3 GiB floor, but a third pass on this machine should check first.
 
 ### Demo artifact
 
