@@ -33,6 +33,7 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 188, "toOrNull"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 219, "fun endPointOf"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 237, "val currentPoint"),
+        Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 412, "byThickening"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 431, "removeInstruction"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 813, "toOrNull"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1161, "plusAssign(other: FLine)"),
@@ -57,6 +58,7 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 4231, "endPointOf(nodes.size - 2)"),
 
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 874, "constructor(f: FLine, index: Int)"),
+        Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 1920, "fun flineToJavaShape"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 1960, "closePath()"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 2205, "SEG_CLOSE"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 2269, "SEG_CLOSE"),
@@ -85,6 +87,10 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/four/physics/Dyn4jScene.kt", 307, "flush(requireClosed = false)"),
 
         Triple("src/jvmTest/kotlin/afield/graphics/ClosedLineNodeAccessTest.kt", 74, "vec(0f, 100f, 0f)"),
+
+        Triple("src/jvmMain/kotlin/afield/examples/graphics/FLineGeometryExamples.kt", 789, "insideContains"),
+        Triple("src/jvmMain/kotlin/afield/examples/graphics/FLineGeometryExamples.kt", 846, "byReversing"),
+        Triple("src/jvmMain/kotlin/afield/examples/graphics/FLineGeometryExamples.kt", 1419, "windingNumber"),
     )
 
     @Test
@@ -127,7 +133,16 @@ class CloseNodeCitationDriftTest {
         val doc = File(root, "dev_docs/fline_close_nodes.md")
         assertTrue(doc.isFile, "no dev_docs/fline_close_nodes.md")
 
-        val known = citations.map { (p, l, _) -> p.substringAfterLast('/') to l }.toSet()
+        // Citations into `src/personal`, which is gitignored and absent from this worktree
+        // altogether. They cannot be pinned from here, so they are declared instead: this list is
+        // the admission that CI does not verify them, and it is short on purpose.
+        val outsideThisRepo = setOf(
+            "flinesAndJTS.kt" to 69,    // src/personal/kotlin/euclid — the deprecated JTS shim
+            "Flines.kt" to 28,          // src/personal/kotlin/sentences — how it builds its curves
+            "FLineLinearizer.kt" to 91, // src/personal/kotlin/organic — the adjacent finding, not fixed
+        )
+
+        val known = citations.map { (p, l, _) -> p.substringAfterLast('/') to l }.toSet() + outsideThisRepo
         // `Foo.kt:123` and `Foo.kt:123-456`; a range is checked at its first line
         val pattern = Regex("""([A-Za-z_0-9]+\.kt):(\d+)(?:-\d+)?""")
         val unchecked = pattern.findAll(doc.readText())

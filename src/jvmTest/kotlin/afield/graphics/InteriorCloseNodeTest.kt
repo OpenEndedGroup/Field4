@@ -4,6 +4,7 @@ import afield.stdlib.Vec3
 import afield.stdlib.arrow
 import afield.stdlib.vec
 import field.graphics.FLinesAndJavaShapes
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -486,6 +487,37 @@ class InteriorCloseNodeTest {
     }
 
     /**
+     * `FLine.byThickening` (FLine.kt:412) is the *second* public API with the same defect, and the
+     * more prominent one — it is a member of `FLine` itself rather than an extension in a
+     * thickening file. It goes through `flineToJavaShape` (FLinesAndJavaShapes.kt:1920), which
+     * strokes `_flineToJavaShape`'s output, so it lost the same edge for the same reason.
+     *
+     * Recorded here because the blast-radius answer for both is the same and slightly surprising:
+     * **neither has a single caller in the repo**, `src/personal` included. The defect is a real
+     * one on a real public API, and it shipped for nine months — `_flineToJavaShape` has had no
+     * `Close` branch since 52a1d563e (2025-11-03), the first commit of this build layout — without
+     * anything in the tree exercising it.
+     */
+    @Test
+    fun byThickeningHasTheSameDefectAndTheSameFix() {
+        val square = FLine().moveTo(0f, 0f).lineTo(200f, 0f).lineTo(200f, 200f).lineTo(0f, 200f).close()
+        val area = java.awt.geom.Area(FLinesAndJavaShapes.flineToJavaShape_notThickened(square.byThickening(20f)))
+        assertTrue(!area.isSingular, "byThickening produced a U rather than a closed band")
+        assertTrue(area.contains(0.0, 100.0), "the left edge is missing from byThickening's output")
+
+        // and the same square closed the long way must thicken identically — the invariant a reader
+        // would expect, and the one the old code did not have
+        val longWay = FLine().moveTo(0f, 0f).lineTo(200f, 0f).lineTo(200f, 200f).lineTo(0f, 200f).lineTo(0f, 0f)
+        val longArea = java.awt.geom.Area(FLinesAndJavaShapes.flineToJavaShape_notThickened(longWay.byThickening(20f)))
+        val difference = java.awt.geom.Area(area).also { it.exclusiveOr(longArea) }
+        assertTrue(
+            difference.isEmpty,
+            "`close()` and an explicit lineTo back should thicken identically; they differ by " +
+                difference.bounds2D
+        )
+    }
+
+    /**
      * The same converter feeds the four boolean ops (FLineGeometry.kt:1006-1042) via
      * `flineToJavaShape`. A union of two `close()`-terminated squares was a union of two open
      * paths, and `java.awt.geom.Area` fills an open path by implicitly closing it — so the result
@@ -526,6 +558,80 @@ class InteriorCloseNodeTest {
         val loops = afield.four.physics.Dyn4jScene.flattenClosedFLineLoops(square)
         assertEquals(1, loops.size, "expected one loop, got ${loops.size}")
         assertEquals(4, loops[0].size, "expected four vertices, got ${loops[0].size}")
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // The declared population. A sweep is only worth anything if the next person who adds a
+    // node-type branch has to declare themselves too.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * Every source file that branches on `FLine.MoveTo` / `LineTo` / `CubicTo` must also mention
+     * `FLine.Close` — or be listed here with a reason. A `when` over three of the four node types
+     * either throws on the fourth or silently drops it, and both of those are bugs this branch
+     * spent the night on.
+     *
+     * The exemptions are the whole point of the table: each one is a claim someone had to write
+     * down, and a new file cannot join the list by accident.
+     */
+    @Test
+    fun everyFileThatBranchesOnNodeTypeHasConsideredClose() {
+        val exempt = mapOf(
+            "FLineSampling.kt" to
+                "isPointSetLike (:338) is a predicate, not a read — and pointLikeNodes (:341-344) " +
+                    "filters `storage.isNotEmpty()` before `.to`, which is `toOrNull` by another name. " +
+                    "That filter is load-bearing: `moveTo(a).moveTo(b).close()` is point-set-like.",
+            "PolynomialTreeFittingSmokeTest.kt" to
+                "lengthOf (:363-364) is the classic nodes[i-1].to loop, but its only inputs come from " +
+                    "PolynomialTreeFitting.toLeafFLines, whose emitters (PolynomialTreeFitting.kt:61-62, " +
+                    ":1533-1540, :1546-1550) call only moveTo/lineTo. `close()` appears nowhere in that file.",
+            "FLineInstructionTrajectoryTrackerSmokeTest.kt" to
+                "reads .last().to / .first().to on FLineSideways.trajectories(), whose tracks are built " +
+                    "only with moveTo/lineTo at FLineInstructionTrajectories.kt:263-281.",
+            "ArcLengthCostTest.kt" to
+                "a cost benchmark over locally-built cubic corpora; it constructs every line it measures " +
+                    "and none of them calls close().",
+        )
+
+        val root = repoRoot()
+        val src = File(root, "src")
+        val branchers = src.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { f ->
+                val t = f.readText()
+                t.contains("is FLine.LineTo") || t.contains("is FLine.CubicTo") || t.contains("is FLine.MoveTo")
+            }
+            .toList()
+
+        assertTrue(branchers.size >= 20, "only ${branchers.size} files branch on node type — the scan is broken")
+
+        val undeclared = branchers
+            .filter { !it.readText().contains("FLine.Close") }
+            .map { it.name }
+            .filter { it !in exempt }
+
+        assertTrue(
+            undeclared.isEmpty(),
+            "${undeclared.size} file(s) branch on FLine node type without a Close branch and without " +
+                "an entry in this test's exemption table: ${undeclared.joinToString(", ")}. Either add " +
+                "the `is FLine.Close ->` branch, or add the file here with a reason it cannot receive one."
+        )
+
+        // and a stale exemption is a lie too
+        val stale = exempt.keys.filter { name -> branchers.none { it.name == name } }
+        assertTrue(stale.isEmpty(), "exemptions for files that no longer branch on node type: $stale")
+        val cured = exempt.keys.filter { name -> branchers.any { it.name == name && it.readText().contains("FLine.Close") } }
+        assertTrue(cured.isEmpty(), "these files now handle Close, so drop their exemption: $cured")
+
+        println("node-type branchers: ${branchers.size} files, ${exempt.size} declared exempt")
+    }
+
+    private fun repoRoot(): File {
+        var d = File(System.getProperty("user.dir")).absoluteFile
+        while (!File(d, "settings.gradle.kts").isFile) {
+            d = d.parentFile ?: error("no repo root above ${System.getProperty("user.dir")}")
+        }
+        return d
     }
 
     /** FLine.kt:431/438 — `byFiltering` set `at = node.to` for every node. */

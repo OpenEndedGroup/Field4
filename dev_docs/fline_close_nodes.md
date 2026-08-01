@@ -22,9 +22,15 @@ leaves the pen. So `endPointOf` is the answer, not a workaround.
 
 **Interior `Close`** — `nodes[i - 1].to` inside a loop, or a bare `node.to` over every node. Fixed
 2026-08-01. That pass found the field was both larger and differently shaped than
-[`arc_length_spacing.md`](arc_length_spacing.md) had guessed: **49 operation/curve pairs across 10
-public functions**, found by running the surface rather than reading it
-(`InteriorCloseNodeTest.noGeometryOperationThrowsOnAnInteriorClose`).
+[`arc_length_spacing.md`](arc_length_spacing.md) had guessed: **80 of the 290 operation/curve pairs
+in `InteriorCloseNodeTest.noGeometryOperationThrowsOnAnInteriorClose` throw at `7abe8736`, across 18
+of its 29 operations** — found by running the surface, not by reading it.
+
+(An earlier draft of this page said 49 across 10. That was the honest number at the time and is
+stale now rather than wrong: it was measured before the corpus grew from 7 curves and 24 operations
+to 10 and 29. The figure above is the current one, re-measured against the base tree with the corpus
+as it now stands. Counts in prose rot; this one is regenerable by checking the graphics sources out
+at `7abe8736` and running that one test.)
 
 | function | file:line | what it did |
 |---|---|---|
@@ -110,7 +116,25 @@ The new `close` is the old closing segment travelled backwards. Node count, subp
 `Close` count all survive, and `byReversing().byReversing()` is the identity —
 `reversingTwiceIsTheIdentity` checks that at 5 curves.
 
-Two normalisations, documented on the function and tested:
+Two **independent** judges agree, neither of which knows anything about that model:
+`aReversalEnclosesTheSameRegion` compares `java.awt.geom.Area` before and after at 54 shapes, and
+`aReversalTracesTheSamePointsBackwards` resamples both by arc length at 20 subpaths. Both fail on
+the old implementation.
+
+**The reversal of a closed contour starts one segment round the cycle**, at the last drawn point
+rather than at the `moveTo`. A cycle has no canonical starting point, so this is a free choice, and
+it is the one that keeps the `Close` while remaining an involution — the alternative (start at `p0`,
+emit the closing segment as an explicit `lineTo`) preserves the start point but yields a subpath
+with no `Close` node at all, closed only implicitly, and reversing *that* gives a different
+instruction sequence. Since the `Close` is what `Cursor.segmentIsClose`, `FLine.pieces` and
+`Dyn4jScene.flattenClosedFLineLoops` all branch on, keeping it wins.
+
+This is worth stating because it is invisible in the geometry and easy to trip over: the first draft
+of the arc-length oracle compared the two pointwise and reported 11 "failures", every one a closed
+subpath, every one off by exactly one segment. The code was right and the test was wrong.
+`theReversalOfAClosedContourStartsOneSegmentRoundTheCycle` pins the choice so it cannot drift.
+
+Two further normalisations, documented on the function and tested:
 
 - a `Close` that is **not** the last instruction of its subpath (`close()` then more drawing, with
   no `moveTo` between — legal, because `close()` leaves the pen at the subpath start) comes back as
@@ -130,6 +154,25 @@ and contributes no segment, and every subpath is closed back to its own `moveTo`
 says so. That is what makes it right on a glyph with a counter: the two contours wind opposite ways
 and cancel inside the hole.
 
+**It was also giving wrong answers on lines with no `Close` in them at all**, which is the part the
+crash was hiding. `java.awt.geom.Path2D.contains` is an entirely separate implementation of the
+nonzero winding rule, and
+`CloseNodeSemanticOracleTest.containsAgreesWithAwtOnCloseFreeMultiContourShapes` differential-tests
+against it on shapes closed the long way, with an explicit `lineTo` back — so the old code runs and
+simply answers. At `7abe8736`, **100 of 1764 probes disagreed**; now 0. And not marginally:
+
+```
+ringHole at (-137.1, -68.6): FLine.contains=true awt=false
+```
+
+a point 57 units clear of a ring whose outer edge is at -80, called *inside* it, because the phantom
+edge from the outer contour's last point to the inner contour's `moveTo` swept the test ray. A
+`moveTo`-and-three-`lineTo`s square with no closing instruction of any kind was wrong too, for the
+other half of the change.
+
+On the main corpus the same oracle runs 8648 probes over 66 contours — including a pentagram, a
+bowtie and 60 randomised multi-subpath polygons — with 0 disagreements.
+
 ## Blast radius
 
 Most of these have no production caller. `bySimplifying`, `byConvexHull2D`, `windingNumber`,
@@ -138,18 +181,57 @@ Most of these have no production caller. `bySimplifying`, `byConvexHull2D`, `win
 `intersectX` and `intersectY` have no caller outside tests. So for most of it the honest verdict is
 **latent**: real bugs on the public API, waiting for the first user who closes a line.
 
-One was not latent, and it is the dropped `Close` rather than any `nodes[i - 1]` read.
-`flineToJavaShape_notThickened` has three production callers — `byJavaOffsetting`
-(`FLineThickening.kt:160`), the JTS bridge's `toMultiLineString` (`:384`) and
-`Dyn4jScene.flattenClosedFLineLoops` (`Dyn4jScene.kt:244`) — and it dropped every `Close`, handing
-AWT an open path.
+### The two changed semantics are invisible to every caller — shown, not argued
 
-**`byJavaOffsetting` lost an edge.** Thickening a 200×200 square closed with `close()` stroked three
-sides: AWT got `moveTo, lineTo, lineTo, lineTo` and no `closePath`, so the edge from (0,200) back to
-(0,0) was simply not there. `thickeningAClosedSquareKeepsAllFourSides` is red without the fix ("the
-thickened outline is a single region, so it is a U rather than a closed band") and green with it.
+`byReversing`, `windingNumber` and `contains` between them have four non-test callers in the whole
+repo: `FLineGeometryExamples.kt:846` (`pathOperationsExample`), `:789` (`geometricQueriesExample`),
+the `runAllExamples` sweep at `:1419-1427`, and the docs box "Reverse blend extract"
+(`public/docs/fline_examples.md:1958`, code at
+`public/docs/assets/fline_examples/metadata.edn:34`) — the last of which is a *rendering* path with
+a committed screenshot at `public/docs/assets/reverse_blend_extract.png`.
 
-**Two things that look broken and are not**, both worth writing down rather than fixing decoratively:
+`CloseNodeSemanticOracleTest.everyProductionCallerProducesExactlyWhatItDidBefore` runs all of them
+and dumps every node of every result — 691 lines, including the four boolean ops, which share the
+converter — into `src/jvmTest/resources/afield/graphics/close_node_caller_audit.txt`. That file was
+generated with the graphics sources checked out at `7abe8736` and is byte-identical to what HEAD
+produces. So **nothing on `main` renders differently**, and the committed screenshot has not gone
+stale.
+
+### The one defect that was not latent
+
+The dropped `Close`, not any `nodes[i - 1]` read. `_flineToJavaShape` is reached two ways:
+
+- `flineToJavaShape_notThickened` → `byJavaOffsetting` (`FLineThickening.kt:160`), the JTS bridge's
+  `toMultiLineString` (`:384`), `Dyn4jScene.flattenClosedFLineLoops` (`Dyn4jScene.kt:244`);
+- `flineToJavaShape` (`FLinesAndJavaShapes.kt:1920`), which strokes the result → the four boolean
+  ops (`FLineGeometry.kt:1006-1042`) and **`FLine.byThickening`** (`FLine.kt:412`).
+
+**Two public APIs lost an edge**: `byJavaOffsetting` and `byThickening`. Thickening a 200×200 square
+closed with `close()` stroked three sides — AWT got `moveTo, lineTo, lineTo, lineTo` and no
+`closePath`, so the edge from (0,200) back to (0,0) was simply not there.
+`thickeningAClosedSquareKeepsAllFourSides` and `byThickeningHasTheSameDefectAndTheSameFix` are both
+red without the fix ("the thickened outline is a single region, so it is a U rather than a closed
+band").
+
+**How long, and who was hurt.** `_flineToJavaShape` has had no `Close` branch since `52a1d563e`
+(2025-11-03), the first commit of this build layout — nine months. And **neither affected API has a
+single caller anywhere in the repo, `src/personal` included**. The only `flineToJavaShape` call in
+the human's own code is `src/personal/kotlin/euclid/flinesAndJTS.kt:69`, inside a `@Deprecated` shim
+whose public functions have no callers, and whose input is AWT-derived and therefore `Close`-free
+anyway. So: a real defect, on real public API, that shipped for nine months and demonstrably bit
+nobody.
+
+**Not the sentence diagrams.** `src/personal/kotlin/sentences/` builds all its geometry three ways —
+`moveTo`+`cubicTo` per curve (`Flines.kt:28-35`), one deliberately open `lineTo` bracket
+(`:124-128`), and glyph outlines from `font.createGlyphVector(frc, text).outline` through
+`javaShapeToFLine` (`:196`, `:204`). It calls `.close()` nowhere, never uses the `'z'` path DSL, and
+never `+=`s an FLine; and since `javaShapeToFLine` converts `SEG_CLOSE` to a `lineTo`, its glyph
+outlines carry no `Close` node to begin with. It also calls none of the affected functions — its
+only Field graphics call is the inbound AWT→FLine direction. Either reason alone is sufficient.
+
+### Two things that look broken and are not
+
+Both worth writing down rather than fixing decoratively:
 
 - the four boolean ops go through the same converter, and their test passes at the old behaviour
   too. `java.awt.geom.Area` fills an open path by implicitly closing it, so a union of two open
@@ -158,6 +240,25 @@ thickened outline is a single region, so it is a U rather than a closed band") a
   switches on `SEG_CLOSE` off the `PathIterator` — and it passes either way. Its final
   `flush(requireClosed = false)` (`:307`) accepts the subpath regardless, and a dyn4j polygon is
   implicitly closed, so it gets the same four vertices.
+
+### The rest of the repo
+
+A sweep of every `.kt` under `src/` outside the graphics package found **26 further places that read
+an `FLine.Node`, and none of them is unsafe** — every one either already has a `Close` branch
+(`ValueVisualizer`, `ImagingGallery`, `contours.kt`, `fline_graph_connectivity.kt`,
+`alife_lsystem.kt`, `alife_animate.kt`, `spatial_field.kt`) or is provably unreachable by a `Close`
+because it only ever sees locally-built `moveTo`/`lineTo` geometry.
+
+That negative is enforced rather than remembered:
+`InteriorCloseNodeTest.everyFileThatBranchesOnNodeTypeHasConsideredClose` requires every file that
+branches on `FLine.MoveTo`/`LineTo`/`CubicTo` — 25 of them today — either to mention `FLine.Close`
+or to appear in a four-entry exemption table with a written reason. A new `when` that forgets the
+fourth node type fails the build, and an exemption that stops being true fails it too.
+
+One adjacent finding, **not fixed**, because it is in gitignored personal code this branch treats as
+read-only: `src/personal/kotlin/organic/FLineLinearizer.kt:91-101` walks `line.nodes` with
+`when (node) { is FLine.MoveTo -> …; is FLine.LineTo -> …; else -> Unit }`. That `else` swallows
+both `CubicTo` and `Close` — the same shape of bug `_flineToJavaShape` had.
 
 ## Seeing it
 

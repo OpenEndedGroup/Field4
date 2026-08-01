@@ -90,9 +90,9 @@ turned out not to be armed.
 | `src/jvmMain/kotlin/afield/graphics/FLine.kt` | `byFiltering`, `fast2DBounds` |
 | `src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt` | `intersect`/`intersectX`/`intersectY` `get(-1)` off-by-one; `_flineToJavaShape` emits `closePath` and tolerates a leading `LineTo`; `CubicSegment3(FLine, index)`; `copyDepthFrom` |
 | `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` | register the new demo transcript (it fails the build as UNCLASSIFIED otherwise) |
-| `src/jvmTest/.../InteriorCloseNodeTest.kt` | new — 10-curve corpus, 24-operation audit sweep, per-site tests, blast radius |
+| `src/jvmTest/.../InteriorCloseNodeTest.kt` | new — 10-curve corpus, 29-operation audit sweep, per-site tests, blast radius, the node-type exemption table |
 | `src/jvmTest/.../InteriorCloseFigureTest.kt` | new — the figure generator, plus assertions that run every build |
-| `src/jvmTest/.../CloseNodeCitationDriftTest.kt` | new — pins 46 `file:line` citations |
+| `src/jvmTest/.../CloseNodeCitationDriftTest.kt` | new — pins 52 `file:line` citations |
 | `src/jvmTest/.../ArcLengthSpacingTest.kt` | dashing regression back on `all()`, plus a corpus guard |
 | `src/jvmTest/.../ClosedLineNodeAccessTest.kt` | one assertion updated — my `byReversing` change refutes it |
 | `dev_docs/fline_close_nodes.md` | new — the whole `Close` contract |
@@ -105,8 +105,9 @@ turned out not to be armed.
 Everything below was run, not reasoned about.
 
 - **Red first, quoted.** The audit sweep found **49 operation/curve pairs across 10 operations**
-  throwing `IndexOutOfBoundsException`. Green after: `afield.graphics.*` **74/74**, full
-  **`jvmTest` 957/0**.
+  throwing `IndexOutOfBoundsException` (re-measured in pass 2 against the final corpus: 80 of 290
+  pairs across 18 of 29 operations). Green after: `afield.graphics.*` **83/83**, full
+  **`jvmTest` 966/0**.
 - **The dashing regression, red on a reverted fix.** `pieces()` block commented out →
   `byDashing produces wrong-length dashes on: twoSubpaths 1428.2%`, matching `673e7d5c`'s published
   1428% to a decimal. Restored → `worst relative error=0.000`.
@@ -160,9 +161,112 @@ Four claims I or the brief started with that did not survive:
   silently rot; the failure message says exactly what to do.
 - **Disk** ran from 11 GiB to ~7.8 GiB free over the pass. No docs-site build was attempted.
 
-### Recommendation
+### Recommendation (pass 1)
 
 **Merge.** The core is a real bug class closed with red-then-green evidence at every site, one
 genuine production defect found and fixed (`byJavaOffsetting` losing an edge), a regression test
 restored and proved to bite, and the two behaviour changes are argued, tested and documented where
 a reader lands. The blast radius is honestly small and says so.
+
+---
+
+## Pass 2
+
+Stop *asserting* that callers are unaffected; get independent oracles onto the two semantic changes;
+blast-radius `byJavaOffsetting` properly; sweep past the graphics package; audit my own counts.
+
+### 1. "Production callers unaffected" — shown, not asserted
+
+`byReversing`, `windingNumber` and `contains` have exactly four non-test callers in the repo:
+`FLineGeometryExamples.kt:846`, `:789`, `:1419-1427`, and the docs box "Reverse blend extract"
+(`public/docs/fline_examples.md:1958`, code at
+`public/docs/assets/fline_examples/metadata.edn:34`) — a **rendering** path with a committed
+screenshot at `public/docs/assets/reverse_blend_extract.png`.
+
+`everyProductionCallerProducesExactlyWhatItDidBefore` runs all of them and dumps every node of every
+result — 691 lines, the four boolean ops included since they share the changed converter — into
+`src/jvmTest/resources/afield/graphics/close_node_caller_audit.txt`. Generated with the graphics
+sources checked out at `7abe8736`, diffed against HEAD: **IDENTICAL**. Nothing on `main` renders
+differently and the committed screenshot has not gone stale.
+
+### 2. Independent oracles
+
+`java.awt.geom.Path2D.contains` for winding, `java.awt.geom.Area` for reversal, arc-length
+resampling for retracing. The AWT path is hand-built in the test file rather than routed through
+`flineToJavaShape`, because that converter is one of the things this branch changed and using it
+would make the oracle a mirror of the code under test.
+
+**Against `7abe8736`, 5 of the 6 tests fail. The one that passes is the caller audit.**
+
+Sharpest is `containsAgreesWithAwtOnCloseFreeMultiContourShapes`, which runs on shapes with no
+`Close` anywhere so the old code answers instead of throwing: **100 of 1764 probes disagreed with
+AWT at base, 0 now** — and not at boundaries:
+`ringHole at (-137.1, -68.6): FLine.contains=true awt=false`, a point 57 units clear of a ring whose
+outer edge is at -80.
+
+### 3. `byJavaOffsetting` blast radius
+
+- **Second affected API found**: `FLine.byThickening` (`FLine.kt:412`), a member of `FLine` itself,
+  goes through `flineToJavaShape` (`:1920`) and lost the same edge.
+- **Age**: `_flineToJavaShape` has had no `Close` branch since `52a1d563e` (2025-11-03), the first
+  commit of this build layout — nine months.
+- **Callers**: neither affected API has one, anywhere, `src/personal` included. The only
+  `flineToJavaShape` call in personal code is `euclid/flinesAndJTS.kt:69`, inside a `@Deprecated`
+  shim with no callers, whose input is AWT-derived and so `Close`-free.
+- **The `sentences` path: would not have hit it.** `src/personal/kotlin/sentences/` builds geometry
+  three ways — `moveTo`+`cubicTo` (`Flines.kt:28-35`), one deliberately open bracket (`:124-128`),
+  and glyph outlines from `createGlyphVector(...).outline` via `javaShapeToFLine` (`:196`, `:204`).
+  No `.close()`, no `'z'` DSL, no FLine `+=`, and it calls none of the affected functions. Two
+  independent sufficient reasons.
+
+### 4. The rest of the repo
+
+26 further `FLine.Node` reads outside the graphics package, in 11 files. **None unsafe**: each
+either already has a `Close` branch or is provably unreachable by one. `FLineSampling.kt:341-344`
+looked like a miss — it branches on node type with no `Close` — but its `storage.isNotEmpty()`
+filter is `toOrNull` by another name, and that filter is load-bearing.
+
+Enforced rather than remembered: `everyFileThatBranchesOnNodeTypeHasConsideredClose` requires all 25
+files that branch on `FLine.MoveTo`/`LineTo`/`CubicTo` either to mention `FLine.Close` or to sit in a
+four-entry exemption table with a written reason, and fails on a stale exemption too.
+
+Adjacent, **not fixed** (gitignored, read-only):
+`src/personal/kotlin/organic/FLineLinearizer.kt:91-101` has `else -> Unit` swallowing both `CubicTo`
+and `Close`.
+
+### 5. Prose audit — the fifth wrong claim, and three more
+
+- **"49 operation/curve pairs across 10 functions" was stale.** Honest when written, measured before
+  the corpus grew from 7 curves × 24 operations to 10 × 29. Re-measured against base with the corpus
+  as it stands: **80 of 290 pairs, across 18 of 29 operations**. Corrected in
+  `fline_close_nodes.md`, `arc_length_spacing.md` and `close_node_demo.yaml`, with the reason beside
+  it.
+- **`java.awt.geom.Area` declares `equals(Area)` and never overrides `Object.equals`.** Java picks
+  the geometric overload statically; **Kotlin's `==` falls through to identity**. One assertion was
+  comparing object references.
+- **My own oracle nearly shipped unable to fail.** The Close-free differential probed only inside
+  `bounds2D` — 1722 probes, 0 disagreements, apparently proving the semantics unchanged. The old
+  error mostly misreads points *outside* the shape. Inflated by 40%: 100 disagreements at base.
+- **The pointwise reversal oracle was mis-stated, not the code**: 11 "failures", all closed
+  subpaths, all off by exactly one segment. A cycle has no canonical start. Now compared cyclically,
+  with the phase choice pinned separately and its reasoning written down.
+
+### Verification (pass 2)
+
+`afield.graphics.*` **83/83**, full **`jvmTest` 966/0**, `examples.agent-transcripts.materialize`
+**PASS**, `examples.demo-transcript.exec` **PASS**, caller audit **byte-identical** to `7abe8736`.
+Disk 7.6 GiB free at the end, never below 7.
+
+### Risks (revised)
+
+The pass-1 risk "byReversing/windingNumber changed semantics, production callers unaffected" is now
+**measured rather than argued** and stands. The remaining maintenance surface is larger: 52 pinned line numbers, a 691-line golden file and a 25-file exemption table. Each has a failure message that
+says what to do, and the alternative is prose nobody can check.
+
+### Recommendation (final)
+
+**Merge.** Pass 2 weakened nothing. It replaced the two asserted claims with measured ones and both
+came back favourable: the semantic changes are provably invisible to every caller, and independently
+correct against AWT where the old code was measurably wrong on 100 probes. The population outside
+the graphics package is proven empty and now guarded. Five of my own claims were wrong across the
+two passes; all five are corrected in place.

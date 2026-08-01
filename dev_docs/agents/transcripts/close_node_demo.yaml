@@ -7,8 +7,8 @@ description: >
   THE DEFECT. `FLine.Close` is `Node(0)` and stores no point of its own, while `Node.to` is
   `storage[0]` — so reading `.to` on a Close throws IndexOutOfBoundsException. 0954ebfb fixed every
   *trailing* Close, the `nodes.last().to` pattern. This is the *interior* one: `nodes[i - 1].to`
-  inside a loop, which fires whenever a Close has more geometry after it. 49 operation/curve pairs
-  across 10 public functions threw.
+  inside a loop, which fires whenever a Close has more geometry after it. Of the 290 operation/curve
+  pairs in the regression corpus, 80 threw at 7abe8736, across 18 distinct public functions.
 
   And two functions were producing the wrong answer rather than throwing: `byReversing` could not
   reverse a closed contour at all (its `close()` came out where the reversed subpath's *first*

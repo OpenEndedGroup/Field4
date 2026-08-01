@@ -517,6 +517,13 @@ class CloseNodeSemanticOracleTest {
         appendLine("# FLineGeometryExamples.geometricQueriesExample  (FLineGeometryExamples.kt:789-792)")
         FLineGeometryExamples.geometricQueriesExample().toSortedMap().forEach { (k, v) -> emit(k, v) }
 
+        // The other half of the `_flineToJavaShape` fan-out. The four boolean ops
+        // (FLineGeometry.kt:1007/1019/1031/1043) go through `flineToJavaShape`, which is the same
+        // converter that used to drop the Close — so this is the "does anything on main render
+        // differently now" question, answered by dumping it rather than by arguing about it.
+        appendLine("# FLineGeometryExamples.booleanOperationsExample  (FLineGeometryExamples.kt:79)")
+        FLineGeometryExamples.booleanOperationsExample().toSortedMap().forEach { (k, v) -> emit(k, v) }
+
         // public/docs/assets/fline_examples/metadata.edn:34 — the "Reverse blend extract" box,
         // whose rendered output is committed at public/docs/assets/reverse_blend_extract.png.
         appendLine("# docs box 'Reverse blend extract'  (fline_examples.md:1958)")
