@@ -223,6 +223,26 @@ packing settles instead of chattering across the contact.
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/autodiff_worked_example/metadata.edn)
 
+**keyframer_worked_example** — `KeyframeScope`, the thing that stops a look you spent twenty minutes
+arriving at from existing only as the contents of a running process. Four pure-CPU boxes: *targets*
+registers two uniform `Structure`s, captures them into a `Key`, edits it, invokes it to write the
+state back, and reads the live structures to prove it landed — including the trap that `capture()`
+sees a structure's *bindings* and never its *set values*, so a property written by value snapshots as
+null in silence. *Persist* shows that every `saveKey` also appends to a `.versions` history, that a
+`Boolean` or a list is dropped from a saved key with no warning at all, and how `missingKey` lets a
+scope that has grown a parameter still load an older file. *Updatecode* turns a captured look back
+into pasteable Kotlin whose literals keep their *types*.
+
+The fourth box is the argument for storing a camera as a `CameraPose` rather than a position: a
+dual-quaternion `sclerp` is a screw motion, so it holds the subject at a constant 8.2462 units and
+dead centre of frame for the whole move, while lerping the two positions cuts the corner and swings
+27.2% closer at the midpoint.
+
+![Left, a plan view: a blue quarter-circle sclerp path with equal-length sight lines to the subject, and an orange straight chord cutting across it. Right, distance to the subject over the move: flat blue at 8.2462, orange dipping to 6.0](assets/keyframer_examples/camera_screw.png)
+
+Walkthrough: [Capturing & replaying live state](keyframer_examples.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframer_worked_example/metadata.edn)
+
 
 ## visionOS device scenes
 

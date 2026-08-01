@@ -98,6 +98,11 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",
+        // Four independent pure-CPU keyframer boxes. A KeyframeScope needs no GPU: a uniform
+        // `Structure` is constructible bare and its bindings are plain maps, the camera box does
+        // CameraPose arithmetic without ever touching a live `Camera`, and persistence writes to a
+        // temp directory. showPlaneGrid is drawToSVG -> display, so no AWT and nothing to launch.
+        "keyframer_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
