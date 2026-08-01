@@ -448,6 +448,86 @@ class InteriorCloseNodeTest {
         }
     }
 
+    // ---------------------------------------------------------------------------------------
+    // Blast radius. Most of the functions above are called only from FLineGeometryExamples, the
+    // docs gallery, on open lines. These are the ones with a real caller that reaches them with a
+    // closed line, so these are the ones where the bug was doing damage rather than waiting.
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * `byJavaOffsetting` (FLineThickening.kt:154) strokes through
+     * `flineToJavaShape_notThickened`, which dropped the `Close`. So AWT was handed an *open*
+     * three-sided path and stroked three sides: thickening a square closed with `close()` came back
+     * missing its fourth edge entirely. Measured as area, because "missing an edge" is exactly the
+     * kind of claim that deserves a number.
+     */
+    @Test
+    fun thickeningAClosedSquareKeepsAllFourSides() {
+        val square = FLine().moveTo(0f, 0f).lineTo(200f, 0f).lineTo(200f, 200f).lineTo(0f, 200f).close()
+        val thick = square.byJavaOffsetting(20f)
+        val area = java.awt.geom.Area(FLinesAndJavaShapes.flineToJavaShape_notThickened(thick))
+
+        // the stroked outline of a closed 200x200 square at width 20 is a 20-unit-wide band all the
+        // way round: roughly 4 * 200 * 20 = 16000 plus the corners. Three sides would be ~12000.
+        val bounds = area.bounds2D
+        assertTrue(bounds.width > 215 && bounds.height > 215, "stroked bounds $bounds are not the full square")
+
+        // the decisive measure: the band has a hole in the middle. Three sides do not enclose one.
+        assertTrue(
+            !area.isSingular,
+            "the thickened outline is a single region, so it is a U rather than a closed band — " +
+                "the fourth side was dropped"
+        )
+        // and the hole is where the square's interior is
+        assertTrue(!area.contains(100.0, 100.0), "the band should not cover the square's middle")
+        assertTrue(area.contains(100.0, 0.0), "the band should cover the bottom edge")
+        assertTrue(area.contains(0.0, 100.0), "the band should cover the LEFT edge, the one that went missing")
+        println("thickened closed square: bounds=$bounds singular=${area.isSingular}")
+    }
+
+    /**
+     * The same converter feeds the four boolean ops (FLineGeometry.kt:1000-1043) via
+     * `flineToJavaShape`. A union of two `close()`-terminated squares was a union of two open
+     * paths, and `java.awt.geom.Area` fills an open path by implicitly closing it — so the result
+     * happened to survive, which is why nobody noticed. Pinned at three points so it stays that way
+     * now that the Close is real.
+     */
+    @Test
+    fun booleanOpsOnClosedSquaresAgreeWithTheirOwnGeometry() {
+        fun square(x: Float) = FLine().moveTo(x, 0f).lineTo(x + 100f, 0f)
+            .lineTo(x + 100f, 100f).lineTo(x, 100f).close()
+
+        val union = square(0f).byUnionWith(square(50f))
+        val inter = square(0f).byIntersectionWith(square(50f))
+        val diff = square(0f).byDifferenceWith(square(50f))
+
+        fun area(l: FLine): Double {
+            val a = java.awt.geom.Area(FLinesAndJavaShapes.flineToJavaShape_notThickened(l))
+            val b = a.bounds2D
+            return b.width * b.height
+        }
+        // union spans x in [0, 150], intersection [50, 100], difference [0, 50]; all 100 tall
+        assertTrue(kotlin.math.abs(area(union) - 15000.0) < 500.0, "union area ${area(union)}")
+        assertTrue(kotlin.math.abs(area(inter) - 5000.0) < 500.0, "intersection area ${area(inter)}")
+        assertTrue(kotlin.math.abs(area(diff) - 5000.0) < 500.0, "difference area ${area(diff)}")
+    }
+
+    /**
+     * `Dyn4jScene.flattenClosedFLineLoops` (Dyn4jScene.kt:239) is the one caller whose *name* says
+     * it needs the Close, and it is the interesting negative result: it reads `SEG_CLOSE` off the
+     * PathIterator, so the dropped Close meant it never saw one — but its final
+     * `flush(requireClosed = false)` (:305) accepted the subpath anyway, and a dyn4j polygon is
+     * implicitly closed, so it got the same four vertices either way. A landmine that turns out not
+     * to be armed at this call site, which is worth writing down rather than fixing decoratively.
+     */
+    @Test
+    fun theDyn4jLoopFlattenerWasNeverActuallyBroken() {
+        val square = FLine().moveTo(0f, 0f).lineTo(200f, 0f).lineTo(200f, 200f).lineTo(0f, 200f).close()
+        val loops = afield.four.physics.Dyn4jScene.flattenClosedFLineLoops(square)
+        assertEquals(1, loops.size, "expected one loop, got ${loops.size}")
+        assertEquals(4, loops[0].size, "expected four vertices, got ${loops[0].size}")
+    }
+
     /** FLine.kt:431/440 — `byFiltering` set `at = node.to` for every node. */
     @Test
     fun byFilteringSurvivesAnInteriorClose() {
