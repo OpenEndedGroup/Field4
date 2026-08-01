@@ -1388,7 +1388,7 @@ Keys render themselves as HTML for box output ([`KeyDiff`](graphics.md#keyframer
 
 `src/jvmMain/kotlin/afield/stdlib/keyframer.kt`
 
-**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md)
+**Used in:** [Values over time: interpolants & keyframes](../interpolants_examples.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md)
 
 ### Top-level functions { #keyframer-kt-functions }
 

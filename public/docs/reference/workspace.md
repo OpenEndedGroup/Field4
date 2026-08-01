@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-2 source file(s), 77 public symbol(s), 74 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+2 source file(s), 78 public symbol(s), 75 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -183,6 +183,7 @@ A named property bag attached to a box — somewhere to hang state that belongs 
 | <code class="highlight"><span class="k">val</span> <span class="n">properties</span></code> | This marker's state, as a plain map. In memory only; nothing here is persisted with the document. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">setPropertyRaw</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="p">,</span> <span class="n">doResync</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code> | Stores a value under `name`. The `doResync` flag is ignored — a marker has no client to notify. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">getPropertyRaw</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code> | The value stored under `name`, or `default` if this marker has never been given one. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">removePropertyRaw</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">doResync</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code> | Erases `name`. The `doResync` flag is ignored — a marker has no client to notify. |
 | <code class="highlight"><span class="k">override</span> <span class="k">var</span> <span class="n">children</span><span class="p">:</span> <span class="nc">MutableSet</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span></code> | Always empty: a marker is a leaf. Assigning to it does nothing. |
 | <code class="highlight"><span class="k">override</span> <span class="k">var</span> <span class="n">parents</span><span class="p">:</span> <span class="nc">MutableSet</span><span class="p">&lt;</span><span class="nc">Box</span><span class="p">&gt;</span></code> | Just the owning box, so a parent walk reaches it. Assigning to it does nothing. |
 
