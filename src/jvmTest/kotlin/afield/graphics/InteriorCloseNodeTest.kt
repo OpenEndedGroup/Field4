@@ -594,8 +594,18 @@ class InteriorCloseNodeTest {
         )
 
         val root = repoRoot()
-        val src = File(root, "src")
-        val branchers = src.walkTopDown()
+        // Repository source only. `src/personal` is the human's gitignored sketch tree: it is absent
+        // from a worktree and present on the real checkout, so walking it makes this guard pass here
+        // and fail there. That is exactly how 2026-07-28's `checkKDocAttachment` shipped green at 625
+        // files and went red at 735 on merge (fixed the same way, in 639b4fa5). Concretely, today
+        // `src/personal/kotlin/organic/FLineLinearizer.kt:91-101` branches on MoveTo/LineTo with an
+        // `else -> Unit` and never names Close — see the note in dev_docs/fline_close_nodes.md, which
+        // records it as a deliberately-unfixed adjacent finding, not as something this guard owns.
+        val sourceRoots = listOf("jvmMain", "jvmTest", "commonMain", "jsMain")
+            .map { File(root, "src/$it") }
+            .filter { it.isDirectory }
+        val branchers = sourceRoots.asSequence()
+            .flatMap { it.walkTopDown() }
             .filter { it.isFile && it.extension == "kt" }
             .filter { f ->
                 val t = f.readText()
