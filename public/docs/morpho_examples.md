@@ -589,6 +589,106 @@ away. `MorphoProjection.XY` gives the view directly comparable with morpho's own
 
 ---
 
+## Searching for circuits nobody wrote
+
+A hosted language you can only *run* is half a language. `afield.morpho` also has a search layer:
+`MorphoSpec` / `MorphoEvaluator` (what a circuit should compute, at which widths, and what it
+costs), `MorphoGenome` / `MorphoProgramGenerator` (candidate programs, and small changes to them),
+and `MorphoSearch` (random sampling, hill climbing, a (μ+λ) population, and a width curriculum).
+
+The genome is **MorphoHDL source text**. Every candidate is compiled by upstream's own
+`compileModule()` and run by `MorphoSim`, so a search result is a program you can read and paste
+into a morpho box — and so the search is optimising against MorphoHDL rather than against Field's
+idea of it. That is the same principle the rest of this page is built on, applied to generation.
+
+```diffstatic {data-lang=kotlin}
+import afield.morpho.*
+
+// A problem is an oracle plus a *width family* plus a grammar. `ripple_adder` is eleven lines and
+// is simultaneously a 4-bit and a 64-bit adder, so a design here is a claim quantified over all N:
+// every candidate is compiled and simulated once per width and is correct only if all of them are.
+val problem = MorphoProblems.orReduce()          // y = (x != 0), checked at 2, 4 and 8 bits
+
+val control = MorphoSearch.random(problem.spec, problem.generator, budget = 6000, seed = 2)
+val evolved = MorphoSearch.evolve(problem.spec, problem.generator, budget = 6000, seed = 2)
+
+// Cyan is the control arm and orange the population, on one set of axes at one budget.
+showPlaneGrid(
+    "or-reduce — best-so-far bit error vs compiler invocations\n" +
+        morphoRunCaption(listOf(control, evolved)) to
+        morphoConvergenceFLines(listOf(control, evolved)),
+    columns = 1, cellWidth = 700, cellHeight = 420, window = morphoPlotWindow()
+)
+```
+
+One unit of budget is one invocation of morpho's compiler, which on a three-width adder problem —
+parse, compile, expand, extract, simulate, three times over — costs about **1 ms** once Graal is
+warm. Roughly a thousand candidates a second, single-threaded because a Graal `Context` is not safe
+for concurrent access.
+
+### What it found, with the control arm next to it
+
+Five seeds per cell, three for the last two rows. Regenerate with
+`./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
+
+| problem | budget | random (control) | hill climb | evolution |
+| --- | --- | --- | --- | --- |
+| bitwise xor (the harness canary) | 2 000 | 5/5 | 5/5 | 5/5 |
+| one-bit full adder | 4 000 | **0/5** | 4/5 | **5/5** |
+| or-reduce, `y = (x != 0)` | 6 000 | 5/5 | 3/5 | 4/5 |
+| and-reduce, `y = (x == ~0)` | 6 000 | 5/5 | 5/5 | 5/5 |
+| recursive 8-bit adder | 20 000 | 0/3 | 0/3 | 0/3 |
+| the same, with both `SPLIT`s given | 20 000 | 0/3 | 0/3 | 0/3 |
+
+**The full adder is where selection earns its keep.** Random sampling never finds it and plateaus at
+a bit-error rate of 0.125 — that is `sum = Xor3(a, b, c)` with `c_out = And(a, b)`, right on six of
+the eight truth-table rows and one gate swap short. Evolution finds it every time, in 165 to 1152
+invocations. Same generator, same seeds, same budget: the only difference is selection.
+
+**And it is the only row where selection helps.** On or-reduce the control is the *most* reliable of
+the three. That space is small enough that sampling it is a perfectly good algorithm, and quoting
+the full-adder row without this one would be cherry-picking.
+
+**Or-reduce is the interesting positive result** because it cannot be done without recursion.
+Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones, so no gate and no
+combination of gates turns eight wires into one bit — the only route down is to keep `SPLIT`ting.
+Every correct answer is genuinely divide-and-conquer. The designs found come out at 7 gates and
+depth 3 at eight bits, a balanced tree, and the same source text is then re-compiled and checked at
+16, 32 and 48 bits, widths nothing was ever selected on.
+
+### The recursive adder is not found, and that is the finding
+
+Nobody finds a divide-and-conquer adder. Not random sampling, not hill climbing, not a population,
+not with lexicase selection over per-bit test cases, not with a width curriculum, and not with both
+`SPLIT`s handed over as an unremovable prologue.
+
+The near miss is worth reporting precisely, because it is not a uniform failure. Random sampling and
+hill climbing stop on **depth-1** circuits — broadcast logic, no recursion at all, bit-error rates
+around 0.25 to 0.27. Evolution at 20 000 invocations gets to **16 gates and depth 8**, which is
+`ripple_adder`'s cost profile exactly, and is still **17.9% wrong**. It has found the shape and not
+the wiring: eight levels of something chained across the width, carrying the wrong thing.
+
+Three measurements say why the rest of the way is so far, rather than leaving it as a shrug.
+
+*The target is in the space.* The ripple skeleton, written by hand in the generator's own grammar,
+is five statements and scores exactly `ripple_adder`: 16 gates and depth 8 at eight bits, 64 gates
+and depth 32 at thirty-two. `the recursive adder is reachable in the genome grammar` asserts it.
+
+*The recursion is being tried and is not paying.* Of 4 000 random programs on the guided problem,
+511 — 12.8% — contain a self-call in the compiled circuit. The best of those scores 0.293 and the
+best purely combinational candidate scores 0.305. An eighth of the population is recursing, for
+about one percent of the error.
+
+*And the reason is arithmetic about the answer.* A correct adder needs both halves recursed, both
+carries chained in the right order, and the two sums `CAT`ed back — four statements worth nothing
+until all four are right and wired to the outputs. Or-reduce needs two, and half of it already pays.
+
+That negative result is asserted, not merely described: `the recursive adder is not solved at this
+budget` fails if a later change solves it, and the failure message says to come back and rewrite
+this section.
+
+---
+
 ## What this cost, as a template
 
 If you want to bring another language into Field, this is the shape of the job:
@@ -607,6 +707,9 @@ If you want to bring another language into Field, this is the shape of the job:
 | tests | `MorphoBridgeTest`, `MorphoLanguageTest`, `MorphoRegistrationTest` | 628 |
 | measurement run | `MorphoMeasurements.kt` | 78 |
 
+(The search layer of the previous section is a separate ~1 700 lines on top of this, and needed
+nothing from the bridge that was not already there.)
+
 (Line counts include KDoc, which in this codebase is a substantial fraction of every file.)
 
 The registration proper — `MorphoExecution : BoxExecution` plus one
@@ -619,5 +722,7 @@ The ratio is the point. Getting a language *registered* in Field is nearly free.
 deciding what the language should *do* when it is running, and — if you are bridging rather than
 porting — reading the other implementation carefully enough to not quietly disagree with it.
 
-*Every claim on this page is checked by `MorphoBridgeTest`, `MorphoLanguageTest` and
-`MorphoRegistrationTest` — 24 tests — or measured by `MorphoMeasurements`.*
+*Every claim on this page is checked by `MorphoBridgeTest`, `MorphoLanguageTest`,
+`MorphoRegistrationTest` and `MorphoSearchTest` — 38 tests — or measured by `MorphoMeasurements` and
+`MorphoSearchMeasurements`. The search layer's design notes, and what to try next on the adder, are
+in `dev_docs/morpho_circuit_search.md`.*

@@ -367,8 +367,7 @@ class MorphoSearchTest {
         }
 
         val pareto = morphoParetoFLines(
-            runs.flatMap { it.costPoints() },
-            listOf(MorphoCostPoint("ripple_adder", 16, 8, reference = true)),
+            runs.flatMap { it.costPoints() } + MorphoCostPoint("ripple_adder", 16, 8, reference = true)
         )
         pareto.forEach { line ->
             line.nodes.forEach { n ->
