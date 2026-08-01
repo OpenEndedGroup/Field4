@@ -584,10 +584,10 @@ fun FLine.byGaussianSmoothing(
  * @param epsilon maximum distance threshold for point elimination
  */
 fun FLine.bySimplifying(epsilon: Float): FLine {
-    val points = mutableListOf<Vec3>()
-    this.nodes.forEach { node ->
-        points.add(Vec3(node.to))
-    }
+    // endPointOf, not `.to`: a Close stores no point and `.to` throws on one. Its end point is the
+    // start of the subpath it closes, which is exactly the polyline vertex the closing segment
+    // arrives at, so it belongs in the list rather than being skipped.
+    val points = this.nodes.indices.map { Vec3(endPointOf(it)) }
 
     if (points.size < 3) return this.copy()
 
@@ -668,8 +668,11 @@ fun FLine.findSelfIntersections(tolerance: Float = 1f): List<Vec3> {
             val nj = this.nodes[j]
 
             if (ni is FLine.CubicTo && nj is FLine.CubicTo) {
-                val ci = CubicSegment3(this.nodes[i - 1].to, ni.c1, ni.c2, ni.to)
-                val cj = CubicSegment3(this.nodes[j - 1].to, nj.c1, nj.c2, nj.to)
+                // endPointOf, not `.to`: the node a cubic starts from can be a Close — `close()`
+                // leaves the pen at the start of the subpath it closed, and drawing on from there
+                // is legal — and a Close stores no point, so `.to` throws.
+                val ci = CubicSegment3(endPointOf(i - 1), ni.c1, ni.c2, ni.to)
+                val cj = CubicSegment3(endPointOf(j - 1), nj.c1, nj.c2, nj.to)
 
                 val found = ci.intersection(cj, tolerance)
                 found.forEach { pair ->
@@ -822,7 +825,10 @@ fun FLine.findHighCurvaturePoints(threshold: Float = 0.1f, samples: Int = 100): 
  * @return FLine representing the convex hull
  */
 fun FLine.byConvexHull2D(): FLine {
-    val points = this.nodes.map { Vec2(it.to.x, it.to.y) }.toMutableList()
+    // endPointOf, not `.to`: `.to` throws on a Close. A Close's end point is the start of the
+    // subpath it closes, already in the list, so it adds nothing to the hull — but it must not
+    // throw either.
+    val points = this.nodes.indices.map { val p = endPointOf(it); Vec2(p.x, p.y) }.toMutableList()
 
     if (points.size < 3) return this.copy()
 
@@ -1057,35 +1063,76 @@ fun FLine.closestPoint(point: Vec3): Pair<Vec3, Float> {
 
 /**
  * Calculate winding number (for point-in-polygon test).
- * Winding number > 0 means point is inside the curve (if closed).
+ * Winding number != 0 means the point is inside the curve.
+ *
+ * Every subpath is treated as closed, whether or not it ends in an explicit [FLine.Close] — a
+ * winding number is only defined for closed contours, so an open subpath is closed back to its
+ * `moveTo` for the purposes of the count. Conversely, the jump *between* two subpaths is not a
+ * segment and contributes nothing, which is what makes this right on a glyph with a counter: the
+ * outer contour and the inner one wind in opposite directions and cancel inside the hole.
+ *
+ * Curves are counted by their end points, so a cubic contributes its chord. Sample first (see
+ * [byArcLengthParameterizing]) if you need the curve itself.
+ *
  * @return winding number
  */
 fun FLine.windingNumber(point: Vec2): Int {
     var winding = 0
     var prevPoint: Vec2? = null
+    var subpathStart: Vec2? = null
 
-    this.nodes.forEach { node ->
-        val currentPoint = Vec2(node.to.x, node.to.y)
+    fun cross(previous: Vec2, currentPoint: Vec2) {
+        if (previous.y <= point.y) {
+            if (currentPoint.y > point.y) {
+                if (isLeft(previous, currentPoint, point) > 0) {
+                    winding++
+                }
+            }
+        } else {
+            if (currentPoint.y <= point.y) {
+                if (isLeft(previous, currentPoint, point) < 0) {
+                    winding--
+                }
+            }
+        }
+    }
 
+    /** the segment back to the `moveTo`, which a winding number always has whether it is drawn or not. */
+    fun closeSubpath() {
         val previous = prevPoint
-        if (previous != null) {
-            if (previous.y <= point.y) {
-                if (currentPoint.y > point.y) {
-                    if (isLeft(previous, currentPoint, point) > 0) {
-                        winding++
-                    }
-                }
-            } else {
-                if (currentPoint.y <= point.y) {
-                    if (isLeft(previous, currentPoint, point) < 0) {
-                        winding--
-                    }
-                }
+        val start = subpathStart
+        if (previous != null && start != null) cross(previous, start)
+    }
+
+    this.nodes.forEachIndexed { i, node ->
+        // endPointOf, not `.to`: a Close stores no point, and its end point — the start of the
+        // subpath it closes — is precisely where the closing segment lands.
+        val end = endPointOf(i)
+        val currentPoint = Vec2(end.x, end.y)
+
+        when (node) {
+            is FLine.MoveTo -> {
+                // a `moveTo` lifts the pen: the jump is not a segment, and whatever subpath it
+                // interrupted is closed off first.
+                closeSubpath()
+                subpathStart = currentPoint
+            }
+
+            is FLine.Close -> {
+                prevPoint?.let { cross(it, currentPoint) }
+                // an explicit Close has now done the job closeSubpath() would have
+                subpathStart = currentPoint
+            }
+
+            else -> {
+                if (subpathStart == null) subpathStart = currentPoint
+                else prevPoint?.let { cross(it, currentPoint) }
             }
         }
 
         prevPoint = currentPoint
     }
+    closeSubpath()
 
     return winding
 }
@@ -1142,10 +1189,14 @@ fun FLine.signedArea2D(): Float {
 fun FLine.centroid2D(): Vec2 {
     val area = signedArea2D()
     if (abs(area) < 1e-6f) {
-        // Degenerate case: return average of points
+        // Degenerate case: return average of points. Skipping a Close, exactly as the main loop
+        // below already did (:1208) and as signedArea2D does (:1160) — a Close carries no point of
+        // its own, so averaging it in would double-count the subpath's start, and reading `.to` on
+        // one throws outright. This branch was the one place the guard was missing.
         var sum = Vec2()
         var count = 0
         this.nodes.forEach {
+            if (it is FLine.Close) return@forEach
             sum.add(Vec2(it.to.x, it.to.y))
             count++
         }
@@ -1192,36 +1243,73 @@ fun FLine.centroid2D(): Vec2 {
 
 /**
  * Reverse the direction of a curve.
+ *
+ * Subpath by subpath, last subpath first, each subpath's own instructions reversed. That structure
+ * is what makes the result a *reversal* rather than merely a backwards walk: node count, subpath
+ * count and [FLine.Close] count all come out the same as the input, and `byReversing().byReversing()`
+ * gets you back where you started.
+ *
+ * A closed subpath `moveTo p0, S1 -> p1, ..., Sn -> pn, close` reverses to
+ * `moveTo pn, Sn' -> pn-1, ..., S1' -> p0, close`. The new `close` is the old closing segment,
+ * traversed the other way — which is why the reversal of a closed contour is still closed, and
+ * still has as many nodes. (A single backwards walk cannot do this: it emits the `close` where the
+ * *first* instruction of the reversed subpath should be, so the contour comes apart.)
+ *
+ * Two normalisations, both forced and both harmless to the drawing:
+ *  - a `Close` that is **not** the last instruction of its subpath — `close()` then more drawing,
+ *    with no `moveTo` in between, which is legal because `close()` leaves the pen at the subpath
+ *    start — comes back as an explicit straight segment. There is no way to write "close,
+ *    backwards" as a `Close`, because in the reversed traversal the pen is not at the subpath
+ *    start when it reaches that segment.
+ *  - a subpath with no leading `moveTo` acquires one, matching the renderer, which already treats
+ *    a leading `LineTo` as a `moveTo` (someSkiko.kt:332-337).
+ *
+ * Outside those two cases `byReversing().byReversing()` is the identity on the nose.
  */
 fun FLine.byReversing(): FLine {
     val result = FLine()
-
     if (this.nodes.isEmpty()) return result
 
-    // Start at the end
-    // `.to` throws on a Close, and reversing a closed shape is an entirely ordinary thing to ask.
-    result.moveTo(currentPoint ?: return result)
+    // subpath boundaries: every MoveTo starts one, and anything before the first MoveTo is its own.
+    val starts = mutableListOf(0)
+    for (i in 1 until nodes.size) if (nodes[i] is FLine.MoveTo) starts.add(i)
 
-    // Traverse backwards
-    for (i in this.nodes.size - 1 downTo 1) {
-        val node = this.nodes[i]
-        val prevNode = this.nodes[i - 1]
+    for (s in starts.indices.reversed()) {
+        val from = starts[s]
+        val until = if (s + 1 < starts.size) starts[s + 1] else nodes.size
 
-        when (node) {
-            is FLine.LineTo -> {
-                result.lineTo(prevNode.to)
-            }
-            is FLine.CubicTo -> {
-                // Reverse control points
-                result.cubicTo(node.c2, node.c1, prevNode.to)
-            }
-            is FLine.MoveTo -> {
-                result.moveTo(prevNode.to)
-            }
-            is FLine.Close -> {
-                result.close()
+        val closed = nodes[until - 1] is FLine.Close
+        // whatever opens the subpath places the pen and draws nothing: a MoveTo, or — with no
+        // MoveTo — the first instruction, exactly as the renderer reads it.
+        val firstDrawn = from + 1
+        val lastDrawn = if (closed) until - 2 else until - 1
+
+        if (lastDrawn < firstDrawn) {
+            // a subpath with nothing drawn in it: a bare `moveTo`, or a `close` with nothing to
+            // close. Reproduce it rather than inventing a point for it.
+            if (nodes[from] !is FLine.Close) result.moveTo(endPointOf(from))
+            if (closed) result.close()
+            continue
+        }
+
+        // the point the reversed subpath starts from: the end of its last drawing instruction
+        result.moveTo(endPointOf(lastDrawn))
+
+        for (i in lastDrawn downTo firstDrawn) {
+            // endPointOf, not `.to`: the point an instruction starts from can be a Close's, since
+            // `close()` leaves the pen at the start of the subpath it closed.
+            val landsOn = endPointOf(i - 1)
+            when (val node = nodes[i]) {
+                is FLine.LineTo -> result.lineTo(landsOn)
+                is FLine.CubicTo -> result.cubicTo(node.c2, node.c1, landsOn)
+                // an interior Close: a straight run back to the subpath start, so its reverse is a
+                // straight run away from it
+                is FLine.Close -> result.lineTo(landsOn)
+                is FLine.MoveTo -> {}
             }
         }
+
+        if (closed) result.close()
     }
 
     return result
@@ -2017,6 +2105,10 @@ fun pointsToFLine(points: List<Vec2>, strategy: String = "adaptive"): FLine {
 /**
  * Subdivide a curve using De Casteljau's algorithm.
  * This creates a smoother approximation with more control points.
+ *
+ * A [FLine.Close] is carried through untouched — its segment is the straight run back to the
+ * `moveTo` and there is nothing in it to subdivide — so a closed contour stays closed and a glyph
+ * keeps its contour count. It used to fall through every branch here and be dropped.
  */
 fun FLine.bySubdividing(levels: Int = 1): FLine {
     var result = copy()
@@ -2026,16 +2118,21 @@ fun FLine.bySubdividing(levels: Int = 1): FLine {
         var first = true
 
         result.nodes.forEachIndexed { i, node ->
-            if (i == 0 || node is FLine.MoveTo) {
-                newResult.moveTo(node.to)
+            // endPointOf, not `.to`, throughout: a Close stores no point, and `close()` leaves the
+            // pen at the start of the subpath it closed, so the *next* instruction genuinely does
+            // start from a Close's resolved end point.
+            if (node is FLine.Close) {
+                newResult.close()
+            } else if (i == 0 || node is FLine.MoveTo) {
+                newResult.moveTo(result.endPointOf(i))
                 first = false
             } else if (node is FLine.LineTo) {
-                val prev = result.nodes[i - 1].to
+                val prev = result.endPointOf(i - 1)
                 val mid = Vec3(prev).lerp(node.to, 0.5f)
                 newResult.lineTo(mid)
                 newResult.lineTo(node.to)
             } else if (node is FLine.CubicTo) {
-                val prev = result.nodes[i - 1].to
+                val prev = result.endPointOf(i - 1)
 
                 // De Casteljau subdivision at t=0.5
                 val q0 = Vec3(prev).lerp(node.c1, 0.5f)
@@ -2644,7 +2741,10 @@ fun FLine.smoothTo(endPoint: Vec3, smoothness: Float = 1f): FLine {
     if (last is FLine.MoveTo) return lineTo(endPoint)
     if (last is FLine.Close) return moveTo(endPoint)
 
-    val prev = nodes.getOrNull(nodes.size - 2)?.to ?: last.to
+    // endPointOf, not `.to`: `?.` guards a *missing* node, not a Close's empty storage. `last` is
+    // neither a MoveTo nor a Close by here, but the node before it can perfectly well be a Close —
+    // `moveTo, lineTo, close, lineTo` is a legal line and the pen really is at the subpath start.
+    val prev = if (nodes.size >= 2) endPointOf(nodes.size - 2) else last.to
     val current = last.to
     val handle = Vec3(endPoint).sub(prev).mul(smoothness / 6f)
 
@@ -2726,8 +2826,10 @@ fun FLine.tcbTo(
         return attachParams()
     }
 
-    val prevPrev = prevNode.to
-    val prevPrevPrev = nodes.getOrNull(nodes.size - 3)?.to ?: prevPrev
+    // endPointOf, not `.to`: `last` has already been ruled out as a Close, but the two nodes behind
+    // it have not, and `moveTo, lineTo, close, lineTo` puts a Close exactly there.
+    val prevPrev = endPointOf(nodes.size - 2)
+    val prevPrevPrev = if (nodes.size >= 3) endPointOf(nodes.size - 3) else prevPrev
 
     val paramsPrev = tcbParams(last)
     val paramsPrevPrev = tcbParams(prevNode)
@@ -2816,7 +2918,9 @@ fun FLine.biarcTo(
         val last = nodes.last()
         when (last) {
             is FLine.LineTo -> {
-                val prev = nodes.getOrNull(nodes.size - 2)?.to ?: start
+                // endPointOf, not `.to`: the node behind the last one can be a Close, whose `.to`
+                // throws — `moveTo, lineTo, close, lineTo` puts one exactly there.
+                val prev = if (nodes.size >= 2) endPointOf(nodes.size - 2) else start
                 Vec3(start).sub(prev)
             }
 
@@ -4123,7 +4227,8 @@ fun eulerSpiralBetween3D(
 private fun FLine.outgoingTangent3D(): Vec3? {
     if (nodes.isEmpty()) return null
     val last = nodes.last()
-    val prev = nodes.getOrNull(nodes.size - 2)?.to
+    // endPointOf, not `.to`: `?.` guards a missing node, not a Close's empty storage.
+    val prev = if (nodes.size >= 2) endPointOf(nodes.size - 2) else null
     return when (last) {
         is FLine.CubicTo -> Vec3(last.to).sub(last.c2)
         is FLine.LineTo -> if (prev != null) Vec3(last.to).sub(prev) else null
