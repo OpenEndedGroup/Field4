@@ -1937,7 +1937,7 @@ class FLinesAndJavaShapes {
             val p = GeneralPath()
             // AWT insists on an explicit initial moveTo and throws IllegalPathStateException
             // without one; the renderer does not, and treats a leading LineTo/CubicTo as a moveTo
-            // (someSkiko.kt:332-337, :340-342). Following the renderer, so that a line that draws
+            // (someSkiko.kt:332-337, :339-352). Following the renderer, so that a line that draws
             // is a line that converts.
             var hasCurrentPoint = false
 
@@ -1953,7 +1953,7 @@ class FLinesAndJavaShapes {
                 }
                 // a Close has no branch here at all until now, so it was silently dropped and the
                 // contour arrived at AWT open. Everything downstream of this — the four boolean
-                // ops (FLineGeometry.kt:1000-1043), thickening, hit-testing against an Area — then
+                // ops (FLineGeometry.kt:1006-1042), thickening, hit-testing against an Area — then
                 // worked on a shape that was not the shape it was handed. Guarded on there being a
                 // current point, because GeneralPath.closePath() throws IllegalPathStateException
                 // without one and `FLine().close()` is a shape someone can hand us.

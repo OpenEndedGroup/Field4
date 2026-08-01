@@ -166,11 +166,19 @@ outline contains **no `Close` node at all** and never had one to trip over. The 
 ones Field code closes itself with `.close()`. The crash was real and the fix is real; the population
 it was hurting was smaller and differently shaped than the first draft of this page asserted.
 
-One caveat on the fix's completeness, so nobody reads this as closed: the `nodes[i - 1].to` pattern
+~~One caveat on the fix's completeness, so nobody reads this as closed: the `nodes[i - 1].to` pattern
 that caused this appears in roughly a dozen further sites outside `Cursor` — `byReversing`,
 `findSelfIntersections`, `bySubdividing` (which additionally drops `Close` nodes silently), `tcbTo`,
 and the `intersect` family — and an **interior** `Close` still throws there. No test covers that case
-yet.
+yet.~~
+
+**Closed out 2026-08-01** — see [`fline_close_nodes.md`](fline_close_nodes.md), which carries the
+whole `Close` story now, interior and trailing, plus the blast radius. Two corrections to the
+paragraph above, both from actually running it rather than reading the source: the count was not
+"roughly a dozen" but **49 operation/curve pairs across 10 operations**, and it reached further than
+this list — `windingNumber` and therefore `FLine.contains`, `bySimplifying`, `byConvexHull2D`,
+`byFiltering` and `fast2DBounds` were all in it. The `intersect` family turned out to be carrying a
+*different* bug as well, a `nodes.get(-1)` off-by-one with nothing to do with `Close`.
 
 ## Seeing it
 

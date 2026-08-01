@@ -91,6 +91,9 @@ object DemoTranscriptExecSmokeTest {
         "statistics_examples",
         // Two pure-CPU FLine boxes; showPlaneGrid is drawToSVG -> display, so no AWT and no GPU.
         "arclength_spacing_demo",
+        // Two more of the same shape: the interior-Close demo reverses, subdivides and dashes
+        // closed contours and reports the numbers, all through showPlaneGrid.
+        "close_node_demo",
         // Six independent pure-CPU dynamic-graph boxes. Four print and draw through showPlaneGrid /
         // showSignals; the other two build a Frames through animateEvolution, so executing them is a
         // compile check and the animation only runs when the box is launched. No Window, no Renderer.

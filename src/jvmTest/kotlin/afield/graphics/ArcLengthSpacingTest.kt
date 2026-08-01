@@ -762,7 +762,7 @@ class ArcLengthSpacingTest {
      * per subpath because a gap *between* samples is only an arc length within one subpath; that
      * reasoning does not reach this one, and applying it here removed the only coverage the
      * multi-subpath dashing fix ever had. 673e7d5c introduced `byDashing`'s `pieces()` decomposition
-     * (FLineGeometry.kt:2178-2182) and switched this test to `allSubpaths()` in the same commit,
+     * (FLineGeometry.kt:2198-2202) and switched this test to `allSubpaths()` in the same commit,
      * which decomposes the two-subpath fixture *before* it is measured — so the fix's published
      * "1428% -> 0.0%" figure was, from that commit onwards, not reproducible from the tree.
      * `theTwoSubpathFixtureIsWhatCatchesIt` below is the guard against that happening again.

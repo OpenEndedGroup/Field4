@@ -22,7 +22,7 @@ import kotlin.test.assertTrue
  * so an interior `Close` falls out of a shipped drawing primitive with no user cleverness at all.
  *
  * Note what is **not** a source: AWT. `FLinesAndJavaShapes.javaShapeToFLine` turns `SEG_CLOSE` into
- * a `lineTo` back to the last `moveTo` (:2247-2251), as does `javaShapeToFLineFlat` (:2183-2187),
+ * a `lineTo` back to the last `moveTo` (:2269-2273), as does `javaShapeToFLineFlat` (:2205-2209),
  * so text and glyph outlines arriving from `java.awt.Shape` carry no `Close` node whatsoever.
  * [awtNeverEmitsACloseNode] pins that, because it is the fact that bounds this whole blast radius.
  */
@@ -240,10 +240,10 @@ class InteriorCloseNodeTest {
             assertTrue(
                 line.nodes.none { it is FLine.Close },
                 "$name produced a Close node, which javaShapeToFLine is not supposed to emit " +
-                    "(FLinesAndJavaShapes.kt:2247-2251 turns SEG_CLOSE into a lineTo)"
+                    "(FLinesAndJavaShapes.kt:2269-2273 turns SEG_CLOSE into a lineTo)"
             )
         }
-        // and the flattening variant, same rule (:2183-2187)
+        // and the flattening variant, same rule (:2205-2209)
         val flat = FLinesAndJavaShapes.javaShapeToFLineFlat(
             java.awt.geom.Ellipse2D.Double(0.0, 0.0, 100.0, 60.0), 0.5f, 8
         )
@@ -267,14 +267,14 @@ class InteriorCloseNodeTest {
     // Per-site tests. Each names the function and the read that used to throw.
     // ---------------------------------------------------------------------------------------
 
-    /** FLineGeometry.kt:671 — `CubicSegment3(this.nodes[i - 1].to, ...)` */
+    /** FLineGeometry.kt:674 — `CubicSegment3(this.nodes[i - 1].to, ...)` */
     @Test
     fun findSelfIntersectionsSurvivesAnInteriorClose() {
         val found = InteriorCloseCurves.closedThenCubicTail().findSelfIntersections()
         assertTrue(found.all { it.x.isFinite() }, "non-finite intersection in $found")
     }
 
-    /** FLineGeometry.kt:1212/1216/1219 — `result.lineTo(prevNode.to)` and friends. */
+    /** FLineGeometry.kt:1301 — `result.lineTo(prevNode.to)` and friends. */
     @Test
     fun byReversingSurvivesAnInteriorClose() {
         val line = InteriorCloseCurves.closedThenOpenTail()
@@ -389,7 +389,7 @@ class InteriorCloseNodeTest {
         }
     }
 
-    /** FLineGeometry.kt:2033/2038 — `val prev = result.nodes[i - 1].to`, plus a dropped Close. */
+    /** FLineGeometry.kt:2130 — `val prev = result.nodes[i - 1].to`, plus a dropped Close. */
     @Test
     fun bySubdividingSurvivesAnInteriorCloseAndKeepsIt() {
         val line = InteriorCloseCurves.twoContourGlyph()
@@ -406,7 +406,7 @@ class InteriorCloseNodeTest {
         )
     }
 
-    /** FLineGeometry.kt:2729 — `val prevPrev = prevNode.to` with a Close two back. */
+    /** FLineGeometry.kt:2831 — `val prevPrev = prevNode.to` with a Close two back. */
     @Test
     fun tcbToSurvivesACloseTwoNodesBack() {
         // MoveTo LineTo LineTo Close MoveTo LineTo  -> tcbTo sees last = LineTo, prev = MoveTo,
@@ -417,10 +417,10 @@ class InteriorCloseNodeTest {
         assertTrue(out.currentPoint!!.distance(vec(300f, 90f, 0f)) < 1e-3f)
     }
 
-    /** FLineGeometry.kt:1068 — `windingNumber` read `node.to` with no Close branch at all. */
+    /** FLineGeometry.kt:1110 — `windingNumber` read `node.to` with no Close branch at all. */
     @Test
     fun windingNumberAndContainsSurviveAClose() {
-        // its two siblings signedArea2D (:1114) and centroid2D (:1161) always skipped a Close;
+        // its two siblings signedArea2D (:1161) and centroid2D (:1212) always skipped a Close;
         // windingNumber did not, and `contains` is nothing but a call to it.
         val glyph = InteriorCloseCurves.twoContourGlyph()
         assertTrue(glyph.contains(afield.stdlib.vec(140f, 30f)), "point in the outer contour")
@@ -430,7 +430,7 @@ class InteriorCloseNodeTest {
         assertTrue(!square.contains(afield.stdlib.vec(500f, 50f)), "point outside a closed square")
     }
 
-    /** FLineGeometry.kt:1149 — centroid2D's *degenerate* branch had no Close guard. */
+    /** FLineGeometry.kt:1192 — centroid2D's *degenerate* branch had no Close guard. */
     @Test
     fun centroid2DSurvivesACloseInItsDegenerateBranch() {
         // zero signed area sends centroid2D down the "average of the points" branch
@@ -439,7 +439,7 @@ class InteriorCloseNodeTest {
         assertTrue(c.x.isFinite() && c.y.isFinite(), "centroid2D returned $c")
     }
 
-    /** FLineGeometry.kt:589 / :825 — whole-line reads with no Close branch. */
+    /** FLineGeometry.kt:590 / :831 — whole-line reads with no Close branch. */
     @Test
     fun bySimplifyingAndByConvexHullSurviveAClose() {
         for ((name, line) in InteriorCloseCurves.all()) {
@@ -486,7 +486,7 @@ class InteriorCloseNodeTest {
     }
 
     /**
-     * The same converter feeds the four boolean ops (FLineGeometry.kt:1000-1043) via
+     * The same converter feeds the four boolean ops (FLineGeometry.kt:1006-1042) via
      * `flineToJavaShape`. A union of two `close()`-terminated squares was a union of two open
      * paths, and `java.awt.geom.Area` fills an open path by implicitly closing it — so the result
      * happened to survive, which is why nobody noticed. Pinned at three points so it stays that way
@@ -516,7 +516,7 @@ class InteriorCloseNodeTest {
      * `Dyn4jScene.flattenClosedFLineLoops` (Dyn4jScene.kt:239) is the one caller whose *name* says
      * it needs the Close, and it is the interesting negative result: it reads `SEG_CLOSE` off the
      * PathIterator, so the dropped Close meant it never saw one — but its final
-     * `flush(requireClosed = false)` (:305) accepted the subpath anyway, and a dyn4j polygon is
+     * `flush(requireClosed = false)` (:307) accepted the subpath anyway, and a dyn4j polygon is
      * implicitly closed, so it got the same four vertices either way. A landmine that turns out not
      * to be armed at this call site, which is worth writing down rather than fixing decoratively.
      */
@@ -528,7 +528,7 @@ class InteriorCloseNodeTest {
         assertEquals(4, loops[0].size, "expected four vertices, got ${loops[0].size}")
     }
 
-    /** FLine.kt:431/440 — `byFiltering` set `at = node.to` for every node. */
+    /** FLine.kt:431/438 — `byFiltering` set `at = node.to` for every node. */
     @Test
     fun byFilteringSurvivesAnInteriorClose() {
         val line = InteriorCloseCurves.closedThenOpenTail()
