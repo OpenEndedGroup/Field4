@@ -309,12 +309,16 @@ object ValueVisualizer {
         is Plot -> value.toHtml()
         is Function<*> -> formatFunction(value, null)
 
+        // Imaging / computer-vision family — Gradient, the pyramids, FlowField, ComponentLabelling.
+        // Lives in ImagingVisualizer.kt and returns null for anything it does not own, so the
+        // reflective paths below stay the default.
         // Data classes
-        else -> if (value::class.isData) {
-            formatDataClass(value, depth, visited, respectDepthLimit)
-        } else {
-            formatFallbackObject(value)
-        }
+        else -> ImagingVisualizer.format(value)
+            ?: if (value::class.isData) {
+                formatDataClass(value, depth, visited, respectDepthLimit)
+            } else {
+                formatFallbackObject(value)
+            }
     }
 
     private fun formatDepthLimitedValue(value: Any?): String = when (value) {
@@ -1652,6 +1656,10 @@ object ValueVisualizer {
         respectDepthLimit: Boolean = true
     ): String {
         if (list.isEmpty()) return "<span style='color: #888;'>[empty list]</span>"
+
+        // A homogeneous list of imaging detections (corners, Hough peaks, flow vectors, images) is a
+        // picture, not a table of records. Returns null for every other list.
+        ImagingVisualizer.formatList(list)?.let { return it }
 
         val size = list.size
         val previewCount = previewCountForListLike(size)

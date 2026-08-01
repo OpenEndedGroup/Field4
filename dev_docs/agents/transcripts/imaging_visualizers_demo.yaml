@@ -1,0 +1,210 @@
+name: imaging_visualizers_demo
+description: >
+  Self-contained demo of the inline visualizers ValueVisualizer now draws for the CPU imaging /
+  computer-vision family (afield.visualization/ImagingVisualizer.kt). Nine pure-compute boxes, no
+  Window and no Renderer. Each box evaluates ONE imaging value as its last expression, so what you
+  see under the box is the inline visualizer itself — not showImg, not display(), no explicit call
+  at all:
+    1. scene        — a 3-channel Img: aspect-correct thumbnail, `direct` mode, and a disclosure
+                      with the R/G/B strip, the per-channel histogram and the statistics.
+    2. signed_dx    — sobel().dx, a genuinely two-signed response: symmetric range so ZERO is a
+                      fixed colour, plus the coolwarm diverging ramp. Open the disclosure to see
+                      the same data read as plain grey and as viridis.
+    3. autoranged   — the same edge magnitude multiplied by 25, i.e. far outside 0..1. Rescaled for
+                      display with the TRUE range printed, instead of clipping to flat white.
+    4. non_finite   — an image carrying a NaN block and one +infinity. They are counted, excluded
+                      from the statistics and painted magenta; before this visualizer existed one
+                      NaN made the whole thumbnail silently black.
+    5. gradient     — a Gradient: dx / dy (both signed) / magnitude / hue-by-direction.
+    6. pyramid      — a GaussianPyramid as a ladder of rungs at TRUE relative scale.
+    7. corners      — harrisCorners as a scatter, strength encoded as radius and viridis colour.
+                      The four strongest land on the four corners of the planted rectangle.
+    8. hough        — houghLines drawn twice: clipped into an inferred square (a Hough line has no
+                      extent of its own, and the caption says so) and as its native (theta, rho)
+                      accumulator peaks.
+    9. flow         — pyramidal Lucas-Kanade between the scene and a rotated copy: one arrow per
+                      converged track, hue by direction, failed tracks as grey crosses. The arrows
+                      trace out the rotation that was planted.
+   10. components   — connectedComponents: the label map under a golden-ratio hue palette, with the
+                      per-blob areas and centroids behind the disclosure.
+  Replay this file into a fresh Field with the agent backdoor (field_run_transcript) and look at
+  each box's output area, then click a disclosure triangle open. Each `execute` op omits inline
+  code, so it runs the box's stored `code` property. Executed end-to-end by
+  examples.demo-transcript.exec.
+operations:
+  - create:
+      box: viz_scene
+      name: Img — thumbnail, channels, histogram
+      frame: { x: 60.0, y: 60.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // A synthetic scene with something for every detector: a bright rectangle (corners), a
+          // disc (a Hough circle), two rulings (Hough lines), a checker patch (flow texture).
+          // The value of the box IS the image, so the inline visualizer is what you see below.
+          Img.generateRGB(240, 180) { x, y ->
+              var r = 0.10f + 0.30f * (x / 239f)
+              var g = 0.12f + 0.22f * (y / 179f)
+              var b = 0.34f - 0.20f * (x / 239f)
+              if (x in 30..90 && y in 26..76) { r = 0.94f; g = 0.86f; b = 0.42f }
+              if (hypot(x - 172.0, y - 62.0) <= 30.0) { r = 0.30f; g = 0.80f; b = 0.92f }
+              if (x in 150..152 || y in 140..142) { r = 0.98f; g = 0.98f; b = 0.98f }
+              if (x in 24..104 && y in 104..164 && ((x / 8 + y / 8) % 2 == 0)) {
+                  r = 0.88f; g = 0.30f; b = 0.55f
+              }
+              Triple(r, g, b)
+          }
+  - execute: { box: viz_scene, property: code }
+
+  - create:
+      box: viz_signed
+      name: signed dx — diverging, zero fixed
+      frame: { x: 430.0, y: 60.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // sobel().dx is two-signed: positive on a dark->bright edge, negative on bright->dark.
+          // A min..max normalisation puts zero at an arbitrary grey; the diverging policy pins it.
+          val src = Img.generate(240, 180) { x, y ->
+              if (x in 30..90 && y in 26..76) 0.9f
+              else if (hypot(x - 172.0, y - 62.0) <= 30.0) 0.7f
+              else 0.15f + 0.1f * (y / 179f)
+          }
+          src.sobel().dx
+  - execute: { box: viz_signed, property: code }
+
+  - create:
+      box: viz_autoranged
+      name: auto-ranged — the true range printed
+      frame: { x: 800.0, y: 60.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // Edge magnitude x25 lands far outside 0..1. Clamping would show a flat white rectangle;
+          // the visualizer rescales for display and prints the range it rescaled from.
+          val src = Img.generate(240, 180) { x, y ->
+              if (x in 30..90 && y in 26..76) 0.9f
+              else if (hypot(x - 172.0, y - 62.0) <= 30.0) 0.7f
+              else 0.15f
+          }
+          src.sobelMagnitude() * 25f
+  - execute: { box: viz_autoranged, property: code }
+
+  - create:
+      box: viz_non_finite
+      name: NaN + infinity — counted and magenta
+      frame: { x: 60.0, y: 400.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // Non-finite samples are excluded from the range and the statistics, and painted magenta.
+          // The old behaviour: one NaN poisoned min()/max(), normalized() produced an all-NaN
+          // image, the PNG quantiser turned NaN into 0, and the thumbnail went silently black.
+          Img.generate(160, 120) { x, y ->
+              when {
+                  x in 60..75 && y in 40..55 -> Float.NaN
+                  x == 120 && y == 30 -> Float.POSITIVE_INFINITY
+                  else -> (x + y) / 278f
+              }
+          }
+  - execute: { box: viz_non_finite, property: code }
+
+  - create:
+      box: viz_gradient
+      name: Gradient — dx, dy, magnitude, direction
+      frame: { x: 430.0, y: 400.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          val src = Img.generate(240, 180) { x, y ->
+              if (x in 30..90 && y in 26..76) 0.9f
+              else if (hypot(x - 172.0, y - 62.0) <= 30.0) 0.7f
+              else 0.15f + 0.1f * (y / 179f)
+          }
+          src.sobel()
+  - execute: { box: viz_gradient, property: code }
+
+  - create:
+      box: viz_pyramid
+      name: GaussianPyramid — rungs at true scale
+      frame: { x: 800.0, y: 400.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // Each rung is drawn at its real fraction of the base resolution, bottom-aligned, so the
+          // halving is the visible fact rather than a number in a caption.
+          Img.generateRGB(240, 180) { x, y ->
+              val disc = if (hypot(x - 172.0, y - 62.0) <= 30.0) 1f else 0f
+              val rect = if (x in 30..90 && y in 26..76) 1f else 0f
+              Triple(
+                  (0.10f + 0.30f * (x / 239f) + 0.8f * rect).coerceIn(0f, 1f),
+                  (0.12f + 0.22f * (y / 179f) + 0.7f * rect + 0.6f * disc).coerceIn(0f, 1f),
+                  (0.34f - 0.20f * (x / 239f) + 0.8f * disc).coerceIn(0f, 1f)
+              )
+          }.gaussianPyramid(5)
+  - execute: { box: viz_pyramid, property: code }
+
+  - create:
+      box: viz_corners
+      name: List<Corner> — scatter by strength
+      frame: { x: 60.0, y: 740.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // The rectangle is x 30..90, y 26..76, so the four strongest corners should read back as
+          // (30, 26), (89, 26), (30, 75), (89, 75) — check the disclosure against those numbers.
+          val src = Img.generate(240, 180) { x, y ->
+              if (x in 30..90 && y in 26..76) 0.9f
+              else if (x in 150..152 || y in 140..142) 0.98f
+              else 0.15f
+          }
+          src.harrisCorners(minDistance = 8, maxCount = 40)
+  - execute: { box: viz_corners, property: code }
+
+  - create:
+      box: viz_hough
+      name: List<HoughLine> — geometry + accumulator
+      frame: { x: 430.0, y: 740.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // Two rulings planted at x=151 and y=141; the peaks should come back as rho~149 theta=0
+          // and rho~139 theta=pi/2. A HoughLine is infinite, so the left panel has to invent a
+          // canvas — it says which one, and points at linesToFLines for the in-place version.
+          val src = Img.generate(240, 180) { x, y ->
+              if (x in 150..152 || y in 140..142) 0.98f
+              else if (x in 30..90 && y in 26..76) 0.9f
+              else 0.12f
+          }
+          houghLines(src.canny(0.10, 0.25), maxLines = 8, threshold = 40)
+  - execute: { box: viz_hough, property: code }
+
+  - create:
+      box: viz_flow
+      name: FlowField — quiver, failures included
+      frame: { x: 800.0, y: 740.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // The second frame is the first rotated 0.06 rad about its centre, so the arrows should
+          // trace a rotation field: little motion near the middle, tangential motion at the edges.
+          val a = Img.generateRGB(240, 180) { x, y ->
+              val chk = if (x in 24..200 && y in 20..160 && ((x / 8 + y / 8) % 2 == 0)) 1f else 0f
+              Triple(0.15f + 0.7f * chk, 0.18f + 0.5f * chk, 0.30f + 0.4f * chk)
+          }.luma()
+          val b = a.rotate(0.06)
+          opticalFlowLK(a, b, a.goodFeaturesToTrack(maxCount = 80, minDistance = 12).map { it.toVec2() }, levels = 3)
+  - execute: { box: viz_flow, property: code }
+
+  - create:
+      box: viz_components
+      name: ComponentLabelling — one hue per blob
+      frame: { x: 60.0, y: 1080.0, w: 340.0, h: 300.0 }
+      properties:
+        code: |
+          // Adjacent label ids get unrelated hues (golden-ratio rotation), which is what makes two
+          // touching blobs distinguishable at thumbnail size.
+          Img.generate(240, 180) { x, y ->
+              val a = x in 20..70 && y in 20..70
+              val b = hypot(x - 150.0, y - 50.0) <= 32.0
+              val c = x in 40..90 && y in 110..160
+              val d = x in 170..220 && y in 120..150
+              if (a || b || c || d) 1f else 0f
+          }.connectedComponents()
+  - execute: { box: viz_components, property: code }
+
+  - await:
+      wait: pending
+  - wait:
+      millis: 400

@@ -6,7 +6,6 @@ import afield.ToHTML
 import afield.util.PngEncoder
 import java.awt.image.BufferedImage
 import java.io.File
-import java.util.Base64
 import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.math.floor
@@ -216,33 +215,17 @@ class Img(
         "Img(${width}x$height x$channels, range ${"%.3f".format(min())}..${"%.3f".format(max())})"
 
     /**
-     * Inline thumbnail for the value visualizer: the actual pixels, PNG-encoded and inlined as a
-     * data URI, plus a one-line caption. Scalar images are shown grayscale; anything outside `0..1`
-     * is auto-normalised for display only (and the caption says so).
+     * Inline picture for the value visualizer — the actual pixels, aspect-correct, PNG-encoded and
+     * inlined as a data URI, plus a readout and a disclosure holding the per-channel strip, the
+     * histogram and the statistics.
+     *
+     * The rendering lives in [afield.ImagingVisualizer], with the rest of the imaging family's
+     * visualizers, because the interesting part is not the `<img>` tag but the *policy*: this family
+     * is float-channel and unbounded, so a signed Sobel response, an unnormalised gradient and a
+     * stray NaN each need a different (and stated) treatment rather than a silent clamp. See that
+     * file's KDoc for the three display modes and why non-finite samples come out magenta.
      */
-    override fun toHTML(): String {
-        val maxSide = 240
-        val scale = min(1.0, maxSide.toDouble() / max(width, height))
-        val tw = max(1, (width * scale).roundToInt())
-        val th = max(1, (height * scale).roundToInt())
-        val lo = min()
-        val hi = max()
-        val needsNorm = lo < -1e-4f || hi > 1f + 1e-4f
-        val shown = if (needsNorm) normalized() else this
-        val thumb = if (tw == width && th == height) shown else shown.resize(tw, th)
-        val b64 = Base64.getEncoder().encodeToString(thumb.toPngBytes())
-        val kind = when (channels) { 1 -> "gray"; 3 -> "rgb"; else -> "rgba" }
-        val note = if (needsNorm) " · normalised for display" else ""
-        return """
-            <div style="font-family:monospace;font-size:11px;line-height:1.4">
-              <img src="data:image/png;base64,$b64" width="$tw" height="$th"
-                   style="image-rendering:pixelated;border:1px solid #3a3f4b;border-radius:3px;display:block"/>
-              <div style="color:#8a90a0;margin-top:3px">
-                Img ${width}&times;$height $kind · range ${"%.3f".format(lo)}&hellip;${"%.3f".format(hi)}$note
-              </div>
-            </div>
-        """.trimIndent()
-    }
+    override fun toHTML(): String = afield.ImagingVisualizer.img(this)
 
     companion object {
         /** All-zero image of the given shape. */
