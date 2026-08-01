@@ -179,6 +179,14 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         makeKI(this, reason = "box.ki lazy initialization")
     }
     var ki: KotlinScriptEngine by kiDelegate
+
+    /**
+     * This box's engine only if one was ever built. Reading [ki] would build one, which for a box
+     * that has never run is both wasteful and misleading — callers that are *inspecting* engines
+     * (see [scanForStaleClasses]) want to skip such boxes, not create work for them.
+     */
+    val liveKi: KotlinScriptEngine? get() = if (kiDelegate.isInitialized) ki else null
+
     var ke: BoxExecution = KotlinExecution()
 
     /**

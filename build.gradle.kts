@@ -347,6 +347,17 @@ fun fieldAotBuildFingerprint(
     "classpath=${fieldAotClasspathFingerprint(classpath)}",
 ).joinToString("\n")
 
+// --- the personal layer -------------------------------------------------------------------
+// src/personal is gitignored, local-only code. It compiles to its own jar (see the `personal`
+// compilation on the jvm target and the `personalJar` task) and is deliberately kept OFF the
+// launch -cp: the app loads it through afield.PersonalLayer, a URLClassLoader parented to the
+// app loader, so the whole layer can eventually be dropped and rebuilt without restarting.
+// The path is announced to the app via a system property rather than the classpath.
+val hasPersonalLayer = file("src/personal/kotlin").exists()
+val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
+/** Must match `afield.PersonalLayer.CLASSPATH_PROPERTY`. */
+val personalLayerProperty = "afield.personal.classpath"
+
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
     val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
@@ -359,6 +370,7 @@ fun requiredRunJvmArgs(): List<String> {
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
         if (!onWindowsOrLinux) {
             add("-XstartOnFirstThread")
             add("-Xdock:name=Field4")
@@ -633,6 +645,27 @@ kotlin {
             }
         }
 
+        // `src/personal` is its own JVM compilation rather than extra source dirs on jvmMain.
+        // Nothing in core references a personal package (the dependency only ever runs
+        // personal -> core), and a separate compilation makes the compiler enforce that instead
+        // of leaving it to discipline. It also gives the runtime one artifact -- `personalJar`,
+        // build/personal/afield-personal.jar -- to hand to its own classloader (see PersonalLayer).
+        //
+        // associateWith(main) hands this compilation core's output *and* core's dependency set,
+        // so everything src/personal/dependencies.gradle.kts adds to jvmMainImplementation stays
+        // visible here without being redeclared. Those dependencies deliberately stay on the main
+        // classpath: several of them (ortools, jolt-jni) load JNI natives, and a native library can
+        // only ever be loaded by one classloader per JVM, so they belong in the stable layer.
+        if (hasPersonalLayer) {
+            val jvmMainCompilation = compilations.getByName("main")
+            compilations.create("personal") {
+                associateWith(jvmMainCompilation)
+                defaultSourceSet {
+                    kotlin.setSrcDirs(listOf(file("src/personal/kotlin")))
+                    resources.setSrcDirs(listOf(file("src/personal/resources")))
+                }
+            }
+        }
     }
     js {
         useEsModules()
@@ -693,11 +726,9 @@ kotlin {
             kotlin.srcDir("src/generatedLinalg/kotlin")
             kotlin.srcDir(linalgBuildProfileDirectory)
 
-            val personalSrc = file("src/personal")
-            if (personalSrc.exists()) {
-                kotlin.srcDir("src/personal/kotlin")
-                resources.srcDir("src/personal/resources")
-            }
+            // src/personal/{kotlin,resources} are NOT source dirs here -- they compile as the
+            // separate `personal` compilation declared on the jvm target above. Only personal's
+            // *dependencies* stay on jvmMain, so the JNI-bearing ones live in the stable layer.
 
             dependencies {
 
@@ -966,7 +997,18 @@ tasks.named<Jar>("jvmJar").configure {
     }
 }
 
-
+// The personal layer's single artifact. Not on any launch -cp; the launch scripts point
+// -Dafield.personal.classpath at it and afield.PersonalLayer loads it in a child classloader.
+val personalJar = if (hasPersonalLayer) {
+    tasks.register<Jar>("personalJar") {
+        group = "build"
+        description = "Jars src/personal into ${personalLayerJar.name}, loaded at runtime by afield.PersonalLayer."
+        val personal = kotlin.jvm().compilations.getByName("personal")
+        from(personal.output.allOutputs)
+        destinationDirectory.set(personalLayerJar.parentFile)
+        archiveFileName.set(personalLayerJar.name)
+    }
+} else null
 
 tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
@@ -1084,6 +1126,25 @@ tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
     mainClass.set("afield.examples.SidecarPathParseSmokeTest")
 }
 
+tasks.register<JavaExec>("runPersonalLayerSmokeTest") {
+    group = "verification"
+    description = "Verifies src/personal is off -cp yet still resolves for the K2 REPL through afield.PersonalLayer."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    // Deliberately the plain runtime classpath, with the personal jar reaching the test only via
+    // -Dafield.personal.classpath out of requiredRunJvmArgs() — the same way the real launch does
+    // it. Adding it to `classpath` here would make the test pass for the wrong reason. The rest of
+    // those args matter too: building a KotlinInterface2 needs the java.net add-opens.
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    // As in runImGuiVrPanelDemo: -XX:+EnableJVMCI inside requiredRunJvmArgs is experimental on the
+    // default Adoptium toolchain and has to be unlocked first.
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+    personalJar?.let { dependsOn(it) }
+    mainClass.set("afield.PersonalLayerSmokeTest")
+}
+
 tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     group = "application"
     description = "Worked example of the generated bulk SIMD vector kernels and their SimdVerlet helpers (velocity read-out, spring-to-target force)."
@@ -1168,6 +1229,7 @@ tasks.named<JavaExec>("runJvm").configure {
     }
 
     dependsOn(tasks.named("jvmJar"))
+    personalJar?.let { dependsOn(it) }
     if (fieldAotAutoGenerateEnabled()) {
         dependsOn("generateFieldAotCache")
     }
@@ -1233,6 +1295,7 @@ tasks.register("generateFieldAotCache") {
 
     dependsOn(tasks.named("jvmJar"))
     dependsOn(tasks.named("generateLocalKeystore"))
+    personalJar?.let { dependsOn(it) }
     inputs.files(providers.provider {
         val runJvmTask = tasks.named<JavaExec>("runJvm").get()
         fieldAotRuntimeClasspathFiles(runJvmTask.classpath)
@@ -1496,6 +1559,7 @@ tasks.register("dumpFieldLaunch") {
     dependsOn(tasks.named("jvmJar"))
     dependsOn(tasks.named("generateLocalKeystore"))
     dependsOn(electronInstall)
+    personalJar?.let { dependsOn(it) }
     outputs.upToDateWhen { false }
 
     doLast {
@@ -1549,6 +1613,7 @@ tasks.register("runDesktop") {
     dependsOn(electronInstall)
     dependsOn(tasks.named("jvmJar"))
     dependsOn(tasks.named("generateLocalKeystore"))
+    personalJar?.let { dependsOn(it) }
     if (fieldAotAutoGenerateEnabled()) {
         dependsOn("generateFieldAotCache")
     }

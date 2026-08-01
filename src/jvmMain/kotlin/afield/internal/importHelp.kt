@@ -7,7 +7,12 @@ import kotlin.time.measureTime
 
 val cache: Map<String, List<String>> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
     val v = mutableMapOf<String, MutableList<String>>()
+    // Name PersonalLayer explicitly rather than relying on the context classloader: this cache can
+    // be built from any thread, and src/personal is only reachable through that layer now that it
+    // is off -cp. ClassGraph still walks the layer's parents, so this is a superset of the default
+    // scan; with no personal code `current` is just the app loader and nothing changes.
     ClassGraph().enableClassInfo().enableSystemJarsAndModules().enableMemoryMapping()
+        .addClassLoader(PersonalLayer.current)
         .scan().use { scanResult ->                // Start the scan
             for (cz in scanResult.allStandardClasses) {
                 v.computeIfAbsent(cz.simpleName) { mutableListOf() }.add(cz.name)

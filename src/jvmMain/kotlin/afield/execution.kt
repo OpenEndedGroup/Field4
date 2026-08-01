@@ -1495,13 +1495,13 @@ class KotlinExecution : BoxExecution {
          * the exception type + message plus the top few stack frames. The full trace still scrolls via the
          * `error,execution` line; this is the always-visible summary. Cleared on the next run of the box.
          */
-        private fun pinEvalException(box: Box, throwable: Throwable) {
+        private fun pinEvalException(box: Box, throwable: Throwable, stale: String? = null) {
             val head = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.name
             val frames = throwable.stackTrace.take(6).map { "at $it" }
             PinnedConsole.error(
                 box.id,
                 "exception · ${box.id.take(8)}",
-                listOf("${throwable.javaClass.simpleName}: $head") + frames
+                listOfNotNull(stale) + listOf("${throwable.javaClass.simpleName}: $head") + frames
             )
         }
 
@@ -1594,7 +1594,14 @@ class KotlinExecution : BoxExecution {
         ) {
             lprintln("error,execution", "exception thrown in $context inside box $box")
             lprintln("error,execution", throwable.stackTraceToString())
-            pinEvalException(box, throwable)
+
+            // "class kiwi.Solver cannot be cast to class kiwi.Solver" is what a reloaded personal
+            // layer looks like from here, and it is unreadable. If that is what happened, lead with
+            // the explanation instead; staleLayerDiagnosis also flags the box for re-running, which
+            // is the fix. Costs a boolean in any session that never reloaded.
+            val stale = runCatching { staleLayerDiagnosis(box, throwable) }.getOrNull()
+            if (stale != null) lprintln("error,execution,personal", "box ${box.id}: $stale")
+            pinEvalException(box, throwable, stale)
 
             val location = editorLocationForEvalException(box, throwable)
             val stack = stackLocationsForEvalException(box, throwable, location, fallbackProperty)
@@ -1606,7 +1613,9 @@ class KotlinExecution : BoxExecution {
                     line = location?.line ?: lineOffset,
                     kind = "error",
                     property = location?.property ?: fallbackProperty,
-                    html = escapeForHtml(throwable.message ?: throwable.javaClass.name),
+                    html = escapeForHtml(
+                        listOfNotNull(stale, throwable.message ?: throwable.javaClass.name).joinToString(" — ")
+                    ),
                     frame = Runloop.runLoop.frame.toInt(),
                     stack = stack
                 ),
@@ -2105,6 +2114,10 @@ class KotlinExecution : BoxExecution {
         finishedHandler: () -> Unit = {},
         handleReturn: (Any?) -> Unit
     ) {
+        // Running the box is the fix for a recycled engine, so the flag reloadPersonal set comes off
+        // here -- on the way in, not on success, since a run that fails has still rebuilt whatever
+        // it got to and the flag would otherwise stick around describing a reload two edits ago.
+        box.needsRerun = null
 
         Box.withBoxContext(box) {
             val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()

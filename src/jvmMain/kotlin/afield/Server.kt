@@ -4759,6 +4759,15 @@ class Server {
             afield.logger.PinnedConsole.installWithStartup()
             lprintln("info,startup", "booting Field…")
 
+            // src/personal is not on -cp; it hangs off the app loader in its own layer. Make that
+            // layer the context classloader before anything else starts, so the things that reach
+            // for it by convention -- ClassGraph scans, ServiceLoader, Clojure's dynamic loader,
+            // threads spawned from here on -- see personal code the way they did when it was on the
+            // classpath. Threads created before this point (there are none) would keep the old one.
+            if (PersonalLayer.isPresent) {
+                Thread.currentThread().contextClassLoader = PersonalLayer.current
+            }
+
             runAll(early)
 
             Companion.args = args

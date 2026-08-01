@@ -156,7 +156,11 @@ class KotlinInterface2(
         if (classLoader == null) classLoader = Thread.currentThread().contextClassLoader
 
         if (sharedClassLoader == null) {
-            sharedClassLoader = URLClassLoader(arrayOf(), classLoader)
+            // Parent through [PersonalLayer] so src/personal is visible to box code even though it
+            // isn't on the app -cp. Both sides come along for free: execution by ordinary parent
+            // delegation, and compilation because dependenciesFromClassloader(wholeClasspath) below
+            // walks this chain and picks up the layer's URLs. A no-op when there is no personal code.
+            sharedClassLoader = URLClassLoader(arrayOf(), PersonalLayer.wrap(classLoader!!))
         }
 
         classLoader = sharedClassLoader

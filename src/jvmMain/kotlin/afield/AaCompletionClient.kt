@@ -60,9 +60,16 @@ object AaCompletionClient {
     }
 
     /** Field's binary classpath (jars + build/classes) — includes afield's own output, unlike the
-     *  gradle `jvmRuntimeClasspath`. Computed once; the running JVM's classpath doesn't change. */
+     *  gradle `jvmRuntimeClasspath`. Computed once; the running JVM's classpath doesn't change.
+     *
+     *  Plus [PersonalLayer]'s roots, which are deliberately *not* on `java.class.path` — the box
+     *  code being completed compiles against them (KI2's loader chain includes the layer), so the
+     *  sidecar has to analyse against them too. Leaving them out doesn't error, it just returns an
+     *  AA result missing every personal symbol, which is exactly the empty-result shape that
+     *  silently suppresses the K1 fallback. */
     private val classpathRoots: List<String> by lazy {
-        (System.getProperty("java.class.path") ?: "").split(File.pathSeparatorChar)
+        ((System.getProperty("java.class.path") ?: "").split(File.pathSeparatorChar) +
+            PersonalLayer.roots.map { it.absolutePath })
             .map { it.trim() }.filter { it.isNotEmpty() && File(it).exists() }.distinct()
     }
 
