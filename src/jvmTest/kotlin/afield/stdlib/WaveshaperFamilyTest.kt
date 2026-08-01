@@ -171,7 +171,9 @@ class WaveshaperFamilyTest {
 <rect width="$w" height="$totalH" fill="white"/>
 $body
 </svg>"""
-        val out = File("waveshaper-family-proof.svg")
+        // A temp dir by default — a relative path here littered the repository (and every nightly
+        // agent worktree) with a `waveshaper-family-proof.svg`. Set AFIELD_PROOF_DIR to collect it.
+        val out = File(afield.proofDir("waveshaper-family"), "waveshaper-family-proof.svg")
         out.writeText(svg)
         println("[waveshaper-family] wrote visual proof to ${out.absolutePath} (${out.length()} bytes)")
 

@@ -1,6 +1,6 @@
 # Visualizers, Displays, and Little Instruments
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
+*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`ValueVisualizer.kt`](reference/visualization.md#valuevisualizer-kt), [`ImagingVisualizer.kt`](reference/visualization.md#imagingvisualizer-kt), [`plotly.kt`](reference/visualization.md#plotly-kt). Start from [what's already in the box](reference/index.md).*
 
 Field has a surprisingly rich vocabulary for showing values, not just computing them.
 
@@ -166,6 +166,222 @@ zero-straddling range draws a dashed baseline, and faint labels mark the value a
 domain extents (here `1.159 / −1.159` over `0 … 3`). If a function is non-finite
 everywhere, or its `evalFn` throws, the plot is simply omitted and the tree stands
 on its own — the value display is never allowed to fail.
+
+### Images, edges, corners and flow
+
+The [imaging / computer-vision family](imaging_examples.md) gets the same
+treatment, and it is the case where the picture most obviously beats the text: an
+`Img` is a `FloatArray` you cannot read, a `List<Corner>` is forty records of
+three doubles each, and a `GaussianPyramid` is `GaussianPyramid@3f1a2b`. Every
+imaging value below is rendered by
+`src/jvmMain/kotlin/afield/visualization/ImagingVisualizer.kt`, reached through the
+same `.h` you have been using all along.
+
+Evaluate an `Img` and you get the actual pixels, aspect-correct, plus a `<details>`
+disclosure holding the per-channel strip, a per-channel histogram computed over the
+*full-resolution* samples, and the numbers:
+
+```diffstatic {data-lang=kotlin}
+:::static
+val scene = Img.generateRGB(240, 180) { x, y -> /* … */ }
+scene.h
+```
+
+![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png)
+
+#### The range policy, which is the whole design
+
+This family is **float-channel and deliberately unbounded**. A Sobel `dx` is
+signed. An unnormalised response exceeds 1. An upstream division produces a NaN. A
+visualizer that just clamps everything to `0…1` answers all three questions with a
+flat white rectangle. So the renderer picks one of three modes and **always names
+the one it picked**:
+
+`direct` — every finite sample is already in `0…1`. Nothing is rescaled, and the
+caption says `direct`. That is the picture above.
+
+`signed ±m` — some sample is negative. The range is made symmetric about zero, so
+that *zero is a fixed, recognisable colour* rather than wherever `min…max` happened
+to put it, and a 1-channel image is run through the `coolwarm` diverging ramp from
+[`Colormaps`](rectsl_cheatsheet.md) — blue negative, pale zero, red positive.
+Grey simply cannot carry a sign:
+
+```diffstatic {data-lang=kotlin}
+:::static
+scene.luma().sobel().dx.h
+```
+
+![A signed Sobel dx rendered with a coolwarm diverging map](assets/imaging_visualizers/img_signed_dx.png)
+
+Read it: the rectangle's left edge is red (dark→bright going right, so `dx > 0`)
+and its right edge is blue; the disc is warm on its left limb and cool on its
+right. `mean = 0.0002` and `σ = 0.052`, with the histogram spiking at zero, is what
+a gradient of a mostly-flat image should look like. The disclosure offers the same
+data read two more ways — plain `grey` and `viridis` — so you get three readings of
+one response image.
+
+`auto-ranged` — non-negative, but the maximum is above 1. Rescaled for display
+with the **true range printed**, so a bright pixel is never mistaken for 1.0:
+
+```diffstatic {data-lang=kotlin}
+:::static
+(scene.luma().sobelMagnitude() * 25f).h
+```
+
+![An unnormalised response, auto-ranged with its true 0…10.26 range printed](assets/imaging_visualizers/img_autoranged.png)
+
+And non-finite samples — NaN, ±∞ — are counted, excluded from every statistic, and
+painted **magenta**:
+
+![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png)
+
+That last one is not a cosmetic nicety. Before this renderer existed, one NaN
+poisoned `min()`/`max()`, `normalized()` returned an all-NaN image, the PNG
+quantiser turned NaN into `0`, and you got a silently **all-black** thumbnail
+captioned `range NaN…NaN`. An image that is wrong should look wrong.
+
+Four-channel images sit on a checkerboard, so transparent black and opaque black
+are different pictures:
+
+![An RGBA image over a checkerboard, with its alpha channel broken out](assets/imaging_visualizers/img_rgba.png)
+
+#### Gradients and pyramids
+
+A `Gradient` is two signed images and a direction, so it shows all of it — `dx`,
+`dy`, the magnitude, and the hue-by-direction image the type already knows how to
+build:
+
+![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png)
+
+A pyramid is drawn as a **ladder of rungs at true relative scale**, bottom-aligned,
+so the halving is the visible fact rather than a number in a caption:
+
+![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png)
+
+![A LaplacianPyramid: signed band rungs plus a tagged residual](assets/imaging_visualizers/laplacian_pyramid.png)
+
+The Laplacian bands are signed, so they get the diverging treatment, and the one
+rung that is *not* a band is labelled `residual`.
+
+#### Detector output
+
+A `List<Corner>` becomes a scatter with detector strength as both radius and
+`viridis` colour. A corner list carries no image extent, so the canvas is the
+points' own bounding box unioned with the origin — image coordinates start at
+`(0, 0)`, and including it keeps the points where they actually sit in the frame.
+The caption states the inferred extent:
+
+![Harris corners as a strength-coded scatter](assets/imaging_visualizers/corners.png)
+
+The four strongest here read back as `(30.7, 26.7)`, `(89.3, 26.7)`,
+`(30.7, 75.3)`, `(89.3, 75.3)` — the four corners of a rectangle planted at
+`x 30…90, y 26…76` — and the single strongest is where the two rulings cross.
+
+A `HoughLine` is `(rho, theta)`: an **infinite** line with no extent of its own,
+which is why `toFLine` insists on being handed the image dimensions. With no image
+in reach the left panel clips each line into the smallest square every peak can
+still cross, says which square that was, and points at `linesToFLines` for the
+in-place version. The right panel needs no extent at all and is therefore exact:
+ρ against θ, sized by votes.
+
+![Hough lines in an inferred square, beside their (theta, rho) accumulator peaks](assets/imaging_visualizers/hough_lines.png)
+
+A circle *does* have an extent, so no assumption is needed:
+
+![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png)
+
+A `FlowField` is a quiver — one arrow per converged track, hue by direction, and
+**failed tracks drawn as grey crosses** rather than dropped. A tracker that never
+reports failure is lying, and so is a picture that hides the failures.
+Displacements are drawn at true pixel scale unless the median motion is too small
+to see, in which case an integer exaggeration factor is applied and named:
+
+![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png)
+
+The frames here differ by a 0.06 rad rotation about the centre, and that is exactly
+what the arrows trace: little motion near the middle, tangential motion at the
+edges, the hue rotating smoothly with the direction.
+
+Finally, a `ComponentLabelling` shows the label map under a golden-ratio hue
+rotation — adjacent label ids get unrelated colours, which is what makes two
+touching blobs distinguishable at thumbnail size — with the per-blob areas and
+centroids behind the disclosure:
+
+![A connected-component label map with one hue per blob](assets/imaging_visualizers/components.png)
+
+A plain `List<Img>` becomes a filmstrip, which is the shape a frame sequence or a
+parameter sweep already has:
+
+![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png)
+
+#### All of it, in a real box
+
+Everything above is a fragment rendered on its own. Here is the same renderer
+inside an actual Field box, in Field's own output areas — a whole pipeline read at
+a glance, with `.h` doing all the work:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.imaging-panels
+runner: backdoor-box
+tags: [docs, visualizers, imaging, cv]
+timeoutSec: 90
+waitSec: 1.5
+# Measured, not guessed: the captured output pane sizes itself to its CONTENT, not to the
+# box frame — setting w/h here moved the box but not the pane. So the row is `nowrap` and
+# holds four panels (~1440px); a fifth ran off the right edge of the capture, and a
+# `flex-wrap:wrap` row collapsed to one panel per line because the intrinsic width is then
+# small. ComponentLabelling has its own figure above, so four is the honest fit.
+w: 1120
+h: 420
+expect:
+  outputContains:
+    - "imaging visualizers ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-imaging-panels.png" wait="1.5" capture="box" open-outputs="true" padding="8" w="1200" h="700" embed=true name="imaging-panels"}
+:::static
+val scene = Img.generateRGB(180, 132) { x, y ->
+    var r = 0.10f + 0.30f * (x / 179f)
+    var g = 0.12f + 0.22f * (y / 131f)
+    var b = 0.34f - 0.20f * (x / 179f)
+    if (x in 24..68 && y in 20..56) { r = 0.94f; g = 0.86f; b = 0.42f }
+    if (hypot(x - 128.0, y - 46.0) <= 22.0) { r = 0.30f; g = 0.80f; b = 0.92f }
+    if (x in 112..113 || y in 104..105) { r = 0.98f; g = 0.98f; b = 0.98f }
+    Triple(r, g, b)
+}
+val gray = scene.luma()
+
+// Four stages of one pipeline, four different value types, one `.h` each. A flex row
+// keeps them in a single output channel instead of four tall ones.
+val panels = listOf(
+    scene.h,                                                // direct mode, 3 channels
+    gray.sobel().dx.h,                                      // signed -> coolwarm diverging
+    gray.gaussianPyramid(4).h,                              // rungs at true relative scale
+    gray.harrisCorners(minDistance = 6, maxCount = 20).h    // scatter, strength-coded
+)
+display("panels", "<div style='display:flex;gap:14px;flex-wrap:nowrap;align-items:flex-start'>" +
+    panels.joinToString("") + "</div>")
+
+println("imaging visualizers ready")
+```
+
+Note what is *not* in that code: no `showImg`, no PNG encoding, no colour-map
+choice, no normalisation, no per-type branching. `.h` is the whole interface, and
+the renderer decides per value whether it is looking at colour data, a signed
+response, a pyramid, or a list of detections.
+
+!!! tip "Open the demo document"
+    `dev_docs/agents/transcripts/imaging_visualizers_demo.yaml` is a loadable
+    document with one box per visualizer on this page. Replay it into a fresh
+    Field with the agent backdoor (`field_run_transcript`) and look at each box's
+    output area — every box evaluates one imaging value as its last expression, so
+    there is no `showImg`, no `display(...)` and no explicit call at all. Then
+    change a sigma or a threshold and re-run a box.
 
 The rest of this page is the *instruments* built on top of this renderer: inline
 probes that live next to a line of code, display channels, control surfaces, and

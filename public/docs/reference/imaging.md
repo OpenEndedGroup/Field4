@@ -142,7 +142,7 @@ A CPU raster image: `width * height * channels` floats, interleaved, row-major, 
 | <code class="highlight"><span class="k">fun</span> <span class="nf">sum</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code> | Sum of every sample — the "DC" of the image; convolution with a normalised kernel preserves it. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">stdDev</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code> | Population standard deviation of every sample. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline thumbnail for the value visualizer: the actual pixels, PNG-encoded and inlined as a data URI, plus a one-line caption. Scalar images are shown grayscale; anything outside `0..1` is auto-normalised for display only (and the caption says so). |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Inline picture for the value visualizer — the actual pixels, aspect-correct, PNG-encoded and inlined as a data URI, plus a readout and a disclosure holding the per-channel strip, the histogram and the statistics. |
 
 ### Border { #imaging-kt-border }
 
@@ -348,7 +348,7 @@ Two performance-relevant choices worth knowing about:
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #imaging-filters-kt-functions }
 
