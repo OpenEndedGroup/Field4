@@ -74,6 +74,7 @@ object DemoTranscriptExecSmokeTest {
         "imaging_cv_examples",
         "mesh_geometry_examples",
         "vision_metal_cube",
+<<<<<<< HEAD
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.
         "vision_geometry_desk_preview",
@@ -111,6 +112,9 @@ object DemoTranscriptExecSmokeTest {
         // showPlaneGrid (drawToSVG -> display), so no Window and no Renderer. The searches are
         // budgeted in compiler invocations and take a few seconds each.
         "morpho_circuit_search",
+        // Four independent pure-CPU heatmap boxes; showHeatmap / showImage encode a PNG and end in
+        // display(), so no AWT, no GPU and nothing to launch.
+        "viz_showheatmap",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

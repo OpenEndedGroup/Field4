@@ -1,7 +1,7 @@
 package afield.examples.rectsl
 
-import afield.rectsl.Color4
-import afield.rectsl.Colormaps
+import afield.Color4
+import afield.Colormaps
 import afield.rectsl.PaintSpec
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.SampledRect
