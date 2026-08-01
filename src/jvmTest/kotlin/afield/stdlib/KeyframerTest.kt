@@ -9,6 +9,9 @@ import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.deleteExisting
+import kotlin.io.path.listDirectoryEntries
+import kotlin.io.path.name
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 import kotlin.math.PI
@@ -781,27 +784,149 @@ class KeyframerTest {
         assertEquals(5.0, scope.loadLatestKey(path)["gain"])
     }
 
+    // ==========================================================================================
+    // The version history survives a broken manifest
+    //
+    // The numbered files are the history; the manifest is a cache of the notes and timestamps that
+    // the file names cannot carry. These four tests are all the same claim from four directions:
+    // whatever has happened to the manifest, a save is additive and never reuses an index.
+    // ==========================================================================================
+
     @Test
-    fun aCorruptManifestSilentlyRestartsNumberingAndOverwritesVersionZero() {
-        // The trap the KDoc names: readKeyVersions swallows a parse failure, and the next save
-        // numbers itself from an empty manifest.
+    fun aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex() {
         val dir = tempDir()
         val scope = KeyframeScope()
         val path = dir.resolve("look.json")
+        val versionsDir = dir.resolve("look.json.versions")
 
-        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "original")
-        val versionZero = dir.resolve("look.json.versions").resolve("000000.json")
-        assertTrue(versionZero.readText().contains("1.0"))
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "first")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 2.0)), note = "second")
 
-        dir.resolve("look.json.versions").resolve("manifest.json").writeText("{ not json at all")
-        assertEquals(emptyList(), scope.keyVersions(path), "the corrupt manifest reads as no history")
+        // Truncated by a crash mid-write, hand-edited, disk-full, half-synced — all the same shape.
+        versionsDir.resolve("manifest.json").writeText("{ not json at all")
 
-        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 2.0)), note = "after corruption")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 3.0)), note = "after corruption")
+
+        // The two earlier snapshots are still on disk, still holding what they held.
+        assertEquals(1.0, scope.loadKeyVersion(path, 0)["gain"], "version 0 was not overwritten")
+        assertEquals(2.0, scope.loadKeyVersion(path, 1)["gain"], "version 1 was not overwritten")
+        assertEquals(3.0, scope.loadKeyVersion(path, 2)["gain"], "the new save took the next index")
 
         val versions = scope.keyVersions(path)
-        assertEquals(1, versions.size, "numbering restarted")
-        assertEquals(0, versions[0].index)
-        assertTrue(versionZero.readText().contains("2.0"), "and the original 000000.json was overwritten")
+        assertEquals(listOf(0, 1, 2), versions.map { it.index }, "numbering continued from the files")
+        assertEquals(
+            listOf("000000.json", "000001.json", "000002.json"),
+            versionsDir.listDirectoryEntries("[0-9]*.json").map { it.name }.sorted(),
+            "three version files, one per save"
+        )
+        assertEquals(3.0, scope.loadLatestKey(path)["gain"])
+    }
+
+    @Test
+    fun aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten() {
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        val versionsDir = dir.resolve("look.json.versions")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "first")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 2.0)), note = "second")
+
+        val corrupt = "{ not json at all"
+        versionsDir.resolve("manifest.json").writeText(corrupt)
+
+        // Reading alone recovers the history from the files, without touching the directory.
+        val recovered = scope.keyVersions(path)
+        assertEquals(listOf(0, 1), recovered.map { it.index }, "both files are still history")
+        assertTrue(
+            recovered.all { it.note?.contains("recovered") == true },
+            "a row rebuilt from disk says so, since its note is the thing that was lost: " +
+                recovered.map { it.note }
+        )
+        assertTrue(recovered.all { it.timestamp.isNotBlank() }, "…and carries the file's own mtime")
+        assertEquals(
+            corrupt,
+            versionsDir.resolve("manifest.json").readText(),
+            "a read is a read: the bad manifest is still there for a person to look at"
+        )
+
+        // The save is what would have destroyed it, so the save moves it aside first.
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 3.0)), note = "after corruption")
+
+        val quarantined = versionsDir.listDirectoryEntries("manifest.json.corrupt*")
+        assertEquals(1, quarantined.size, "the unparseable manifest was kept, not overwritten")
+        assertEquals(corrupt, quarantined.single().readText())
+
+        // And the manifest that replaces it describes every file on disk.
+        val versions = scope.keyVersions(path)
+        assertEquals(listOf(0, 1, 2), versions.map { it.index })
+        assertEquals("after corruption", versions[2].note, "the newest row keeps its real note")
+    }
+
+    @Test
+    fun aVersionFileTheManifestNeverRecordedIsNotOverwritten() {
+        // saveKeyVersion writes the numbered file before the manifest, so a crash in between leaves
+        // a file on disk that no manifest row mentions. Numbering off the manifest alone would hand
+        // that index straight back out.
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        val versionsDir = dir.resolve("look.json.versions")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "first")
+        val orphan = versionsDir.resolve("000001.json")
+        orphan.writeText("""{"schemaVersion":0,"values":{"gain":{"type":"num","kind":"DOUBLE","value":7.0}}}""")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 3.0)), note = "next")
+
+        assertEquals(7.0, scope.loadKeyVersion(path, 1)["gain"], "the orphan file survived")
+        assertEquals(3.0, scope.loadKeyVersion(path, 2)["gain"], "the save went past it")
+        assertEquals(listOf(0, 1, 2), scope.keyVersions(path).map { it.index })
+    }
+
+    @Test
+    fun aDeletedManifestStillLeavesTheFilesAsTheHistory() {
+        // The same bug with a different trigger, and the easiest one to hit by hand: deleting the
+        // manifest used to reset numbering to 0 and overwrite the oldest snapshot.
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        val versionsDir = dir.resolve("look.json.versions")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "first")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 2.0)), note = "second")
+        versionsDir.resolve("manifest.json").deleteExisting()
+
+        assertEquals(listOf(0, 1), scope.keyVersions(path).map { it.index }, "the files are the history")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 3.0)))
+
+        assertEquals(1.0, scope.loadKeyVersion(path, 0)["gain"])
+        assertEquals(2.0, scope.loadKeyVersion(path, 1)["gain"])
+        assertEquals(3.0, scope.loadKeyVersion(path, 2)["gain"])
+    }
+
+    @Test
+    fun aManifestRowWhoseFileIsGoneIsStillListedRatherThanQuietlyDropped() {
+        // The manifest is a cache of notes, but it is also the only record that a version ever
+        // existed. Losing the file is a fact worth showing, not one to paper over — and the index
+        // must still not be handed out again.
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        val versionsDir = dir.resolve("look.json.versions")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = "first")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 2.0)), note = "second")
+        versionsDir.resolve("000000.json").deleteExisting()
+
+        val versions = scope.keyVersions(path)
+        assertEquals(listOf(0, 1), versions.map { it.index }, "the lost version is still listed")
+        assertEquals("first", versions[0].note, "with the note the manifest remembers")
+
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 3.0)))
+        assertEquals(listOf(0, 1, 2), scope.keyVersions(path).map { it.index })
+        assertEquals(2.0, scope.loadKeyVersion(path, 1)["gain"], "and version 1 is untouched")
     }
 
     @Test

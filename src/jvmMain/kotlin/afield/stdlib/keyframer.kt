@@ -8,6 +8,7 @@ import afield.four.util.CameraPose
 import afield.four.util.applyPose
 import afield.four.util.pose
 import afield.h
+import afield.logger.lprintln
 import afield.four.buffers.Structure
 import afield.four.modules.ComputeModulePointer
 import afield.four.modules.MeshModulePointer
@@ -29,6 +30,7 @@ import java.nio.file.Path
 import java.time.Instant
 import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
 
 /**
@@ -258,6 +260,10 @@ data class KeyDTO(
 /**
  * One row of a key file's version history, as recorded in the `<file>.versions/manifest.json` that
  * every `saveKey` appends to. [KeyframeScope.keyVersions] hands these back, sorted by [index].
+ *
+ * A row can also be *rebuilt* from a numbered file the manifest does not describe — see
+ * [KeyframeScope.keyVersions]. Such a row has the file's own modification time for its [timestamp]
+ * and a [note] saying so, because the note is precisely what only the manifest was holding.
  */
 @Serializable
 data class KeyVersionInfo(
@@ -266,9 +272,16 @@ data class KeyVersionInfo(
      * not a schema version and not related to [KeyDTO.schemaVersion].
      */
     val index: Int,
-    /** When the version was written, as an ISO-8601 `Instant.now()` string in UTC. */
+    /**
+     * When the version was written, as an ISO-8601 `Instant.now()` string in UTC — or, for a row
+     * rebuilt from the file alone, that file's last-modified time.
+     */
     val timestamp: String,
-    /** Whatever note was passed to `saveKey`, for telling two snapshots apart later. */
+    /**
+     * Whatever note was passed to `saveKey`, for telling two snapshots apart later. A row rebuilt
+     * from the file alone says `"(recovered from disk; the manifest row for this version was
+     * lost)"` here instead, since the real note lived only in the manifest that went missing.
+     */
     val note: String? = null,
     /** File name inside the `.versions` directory, `"%06d.json"` of [index]. */
     val file: String
@@ -813,6 +826,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
      * Saving is therefore always additive history, never just an overwrite; nothing prunes it, so a
      * hundred saves leave a hundred files.
      *
+     * "Additive" holds even when the manifest is missing, unreadable or behind: the next number comes
+     * from the numbered files themselves, the way `nextSafeSaveBackup` (`saving.kt:1816`) numbers a
+     * document backup. See [keyVersions] for what a damaged manifest costs, which is notes, not
+     * snapshots.
+     *
      * Only values [KValue.fromAny] recognises are written. Nulls and unsupported types are dropped in
      * silence, and a `SourceBackedBlock` is written as its box id plus source text, not as a live lambda.
      */
@@ -854,42 +872,138 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         loadKey(path, version)
 
     /**
-     * The save history of [path], oldest first, straight from `<path>.versions/manifest.json` — the list to
-     * show a person choosing which snapshot to go back to.
+     * The save history of [path], oldest first — the list to show a person choosing which snapshot to
+     * go back to.
      *
-     * Empty when nothing has been saved yet. Also empty, and this is the trap, when the manifest exists but
-     * cannot be parsed: the failure is swallowed rather than raised, and since the next save numbers itself
-     * from the manifest, a corrupt manifest silently restarts numbering at 0 and overwrites `000000.json`.
+     * The numbered files in `<path>.versions` **are** the history; `manifest.json` is a cache of the
+     * notes and timestamps a file name cannot carry. So this is the union of the two, and neither one
+     * alone can lose a version:
+     *
+     *  - a manifest row whose file has since been deleted is still listed, because the row is the only
+     *    surviving record that the version existed (loading it then throws, which is the honest answer);
+     *  - a numbered file the manifest does not mention is listed too, with the file's own modification
+     *    time and a note saying it was recovered. That covers a manifest deleted by hand, one truncated
+     *    mid-write, and the window inside [saveKeyVersion] between writing the file and writing the
+     *    manifest.
+     *
+     * Empty only when nothing has been saved. An unparseable manifest is reported on the
+     * `error,keyframer` log channel and recovered from — never quietly read as "no history", which is
+     * what used to make the next save renumber from 0 and overwrite `000000.json`. Throws if the
+     * `.versions` directory exists but cannot be listed, rather than guess at a history it cannot see.
      */
-    fun keyVersions(path: Path): List<KeyVersionInfo> =
-        readKeyVersions(path).versions.sortedBy { it.index }
+    fun keyVersions(path: Path): List<KeyVersionInfo> = readKeyVersions(path)
 
     private fun saveKeyVersion(path: Path, text: String, note: String?) {
         val dir = keyVersionsDir(path)
         dir.createDirectories()
 
-        val manifest = readKeyVersions(path)
-        val nextIndex = (manifest.versions.maxOfOrNull { it.index } ?: -1) + 1
+        val manifestFile = keyVersionsManifest(path)
+        val rows = parseKeyVersionManifest(manifestFile)
+        // The write at the end of this function would replace an unreadable manifest, destroying
+        // notes that nothing else records. Keep it for a person to pick over instead.
+        if (rows == null) quarantineKeyVersionManifest(manifestFile)
+
+        val known = reconcileKeyVersions(dir, rows ?: emptyList())
+        var nextIndex = (known.maxOfOrNull { it.index } ?: -1) + 1
+        // `known` already accounts for every numbered file in the directory, so this loop can only
+        // fire when something outside this call wrote one — a second process saving the same key.
+        // Step past it and say so; the one thing never to do is overwrite it.
+        while (dir.resolve(keyVersionFileName(nextIndex)).exists()) {
+            lprintln(
+                "error,keyframer",
+                "key version ${keyVersionFileName(nextIndex)} of $path appeared underneath this save; " +
+                    "using ${nextIndex + 1} rather than overwriting it"
+            )
+            nextIndex++
+        }
+
         val fileName = keyVersionFileName(nextIndex)
         Files.writeString(dir.resolve(fileName), text)
 
         val updated = KeyVersionsDTO(
-            manifest.versions + KeyVersionInfo(
+            known + KeyVersionInfo(
                 index = nextIndex,
                 timestamp = Instant.now().toString(),
                 note = note,
                 file = fileName
             )
         )
-        Files.writeString(keyVersionsManifest(path), json.encodeToString(updated))
+        Files.writeString(manifestFile, json.encodeToString(updated))
     }
 
-    private fun readKeyVersions(path: Path): KeyVersionsDTO {
-        val manifest = keyVersionsManifest(path)
-        if (!manifest.exists()) return KeyVersionsDTO()
-        return runCatching { json.decodeFromString<KeyVersionsDTO>(Files.readString(manifest)) }
-            .getOrElse { KeyVersionsDTO() }
+    private fun readKeyVersions(path: Path): List<KeyVersionInfo> {
+        val dir = keyVersionsDir(path)
+        if (!dir.exists()) return emptyList()
+        return reconcileKeyVersions(dir, parseKeyVersionManifest(keyVersionsManifest(path)) ?: emptyList())
     }
+
+    /**
+     * The manifest's rows, or null when a manifest is there but cannot be read — a distinction the
+     * callers need, because "no manifest" is ordinary (nothing saved yet, a hand-cleaned directory)
+     * while "unreadable manifest" is a fault to report and to preserve.
+     */
+    private fun parseKeyVersionManifest(manifest: Path): List<KeyVersionInfo>? {
+        if (!manifest.exists()) return emptyList()
+        return runCatching { json.decodeFromString<KeyVersionsDTO>(Files.readString(manifest)).versions }
+            .getOrElse { e ->
+                lprintln(
+                    "error,keyframer",
+                    "unreadable key version manifest $manifest (${e.message ?: e::class.simpleName}); " +
+                        "rebuilding the history from the numbered files beside it — the notes and " +
+                        "timestamps it held are lost, the snapshots themselves are not"
+                )
+                null
+            }
+    }
+
+    /**
+     * Move an unreadable manifest aside instead of letting the next write erase it, so a person can
+     * still fish the notes out of a half-written file. Never reuses a name.
+     */
+    private fun quarantineKeyVersionManifest(manifest: Path) {
+        if (!manifest.exists()) return
+        var target = manifest.resolveSibling("${manifest.name}.corrupt")
+        var n = 1
+        while (target.exists()) target = manifest.resolveSibling("${manifest.name}.corrupt-${n++}")
+        Files.move(manifest, target)
+        lprintln("error,keyframer", "kept the unreadable key version manifest as $target")
+    }
+
+    /**
+     * The manifest's rows plus a rebuilt row for every numbered file no row claims. Manifest rows win
+     * on an index they already describe, since they carry the real note and timestamp.
+     */
+    private fun reconcileKeyVersions(dir: Path, rows: List<KeyVersionInfo>): List<KeyVersionInfo> {
+        val claimed = rows.mapTo(mutableSetOf()) { it.index }
+        val recovered = keyVersionFilesOnDisk(dir)
+            .filter { (index, _) -> index !in claimed }
+            .map { (index, file) ->
+                KeyVersionInfo(
+                    index = index,
+                    timestamp = Files.getLastModifiedTime(file).toInstant().toString(),
+                    note = RECOVERED_NOTE,
+                    file = file.name
+                )
+            }
+        if (recovered.isNotEmpty()) {
+            lprintln(
+                "error,keyframer",
+                "key version file(s) ${recovered.joinToString { it.file }} in $dir are not in the " +
+                    "manifest; treating them as history, so the next save will not reuse their numbers"
+            )
+        }
+        return (rows + recovered).sortedBy { it.index }
+    }
+
+    /** Every `"%06d.json"` in a `.versions` directory, as index-to-file. Anything else is not ours. */
+    private fun keyVersionFilesOnDisk(dir: Path): List<Pair<Int, Path>> =
+        dir.listDirectoryEntries("*.json")
+            .mapNotNull { file ->
+                file.name.removeSuffix(".json").toIntOrNull()
+                    ?.takeIf { keyVersionFileName(it) == file.name }
+                    ?.let { it to file }
+            }
+            .sortedBy { it.first }
 
     private fun keyVersionsDir(path: Path): Path =
         (path.parent ?: Path.of(".")).resolve("${path.name}.versions")
@@ -906,6 +1020,13 @@ class KeyframeScope(val schemaVersion: Int = 0) {
     private fun keyVersionFileName(version: Int): String =
         "%06d.json".format(version)
 }
+
+/**
+ * The [KeyVersionInfo.note] of a history row rebuilt from a numbered file that no manifest row
+ * described. Deliberately something a person reads as wrong in the history table, because it is: the
+ * snapshot survived and the note did not.
+ */
+private const val RECOVERED_NOTE = "(recovered from disk; the manifest row for this version was lost)"
 
 /**
  * How one name differs between two keys, always read left-to-right: `ADDED` means the right key has it

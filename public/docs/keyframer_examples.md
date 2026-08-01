@@ -689,14 +689,43 @@ mantissa than a `Double` can hold and comes back changed. And any `Number` that 
 six `NumKind`s — a `BigDecimal`, a `BigInteger` — is stored as a plain `DOUBLE` and comes back a
 `Double`, so even where the value survives the **type** does not.
 
-!!! danger "A corrupt version manifest silently restarts numbering"
+### The files are the history; the manifest is a cache
 
-    `keyVersions` reads `<file>.versions/manifest.json` inside a `runCatching` that swallows the
-    failure and returns an empty list. Since the next `saveKey` numbers itself from the manifest,
-    a manifest that cannot be parsed makes the next save call itself version 0 and **overwrite
-    `000000.json`** — the oldest snapshot in the history. This is real, not theoretical; it is
-    pinned by `aCorruptManifestSilentlyRestartsNumberingAndOverwritesVersionZero`. If the history
-    matters, back up the directory, not just the key file.
+`<file>.versions` holds one numbered JSON file per save, plus a `manifest.json` carrying the two
+things a file name cannot: each version's note and its timestamp. It is worth knowing which of those
+is the record and which is the cache, because they can disagree — a manifest can be truncated by a
+crash mid-write, hand-edited, cut short by a full disk, or half-synced, and `saveKey` writes the
+numbered file *before* the manifest row, so there is a window where a file exists that no row
+mentions.
+
+The numbered files win. `keyVersions` returns the union of the two, so neither alone can lose a
+version:
+
+- A **file no row mentions** is listed anyway, with the file's own modification time and a note
+  reading `(recovered from disk; the manifest row for this version was lost)`. That marker is
+  deliberately something you notice in the history table: the snapshot survived and its note did not.
+- A **row whose file is gone** is still listed, because the row is the only surviving evidence that
+  the version existed. Loading it throws rather than quietly returning something else.
+- `saveKey` takes its next number from that union, so it never reuses an index and never overwrites
+  an existing snapshot — the same way `nextSafeSaveBackup` (`saving.kt:1816`) numbers a document
+  backup off the directory listing rather than off a side file.
+
+An unreadable manifest is reported on the `error,keyframer` log channel rather than swallowed, and
+the next `saveKey` moves it aside to `manifest.json.corrupt` instead of overwriting it, so the notes
+in a half-written file are still there for you to read. Four tests hold this down, one per way the
+manifest can go wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionIndex`,
+`aCorruptManifestIsRecoveredFromTheFilesAndQuarantinedRatherThanOverwritten`,
+`aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
+`aDeletedManifestStillLeavesTheFilesAsTheHistory`.
+
+!!! note "Until 2026-08-01 this was a data-loss bug"
+
+    `keyVersions` used to read the manifest inside a `runCatching` that swallowed the failure and
+    returned an empty list, and `saveKey` numbered itself from that — so a manifest that could not be
+    parsed made the next save call itself version 0 and **overwrite `000000.json`**, with no
+    exception and no log line. If you have a `.versions` directory that predates this fix, its
+    numbering may already have been walked over; the files that are there are still readable, but the
+    history may have gaps.
 
 ## A captured look becomes source
 
@@ -764,7 +793,7 @@ through AWT, so it throws on a headless JVM and it replaces whatever the user ha
 
 ### What is actually tested
 
-`KeyframerTest` is 66 tests written against this page, so every number stated here is asserted
+`KeyframerTest` is 70 tests written against this page, so every number stated here is asserted
 there. A companion ledger, `KeyframerCoverageTest`, reflects over the **members of a hand-listed set
 of `keyframer.kt`'s classes** and requires every public one to be classified as either covered or
 unreachable-with-a-stated-reason. That half genuinely cannot rot: add a method or a property to one
