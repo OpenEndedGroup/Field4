@@ -472,7 +472,9 @@ class KeyframeScope(val schemaVersion: Int = 0) {
          * value, sorted by name — how a state you arrived at by fiddling becomes source you can commit.
          *
          * Numbers keep their type (`1.5f`, `2L`, `.toByte()`), vectors come out as `vec(…)`, StackSL as
-         * `stackSLString(…)` and a source block as a raw string literal. A value outside that set is
+         * `stackSLString(…)` and a source block as a raw string literal — except when its source
+         * contains a `"""`, a trailing quote, or a `$`, any of which a raw string would mangle, and it
+         * falls back to a fully escaped literal instead. A value outside that set is
          * emitted as `null` behind an "unsupported" block comment, so the code still compiles but
          * quietly nulls that value.
          */
@@ -1044,7 +1046,11 @@ private fun kotlinStringLiteral(text: String): String = buildString(text.length 
 }
 
 private fun kotlinRawStringLiteral(text: String): String {
-    if (!text.contains("\"\"\"") && !text.endsWith("\"")) return "\"\"\"$text\"\"\""
+    // A raw string reads far better for a block of source, but Kotlin still expands `$` inside one,
+    // so a body mentioning `$name` or `${…}` cannot go out raw: the pasted code would either fail to
+    // compile (unresolved reference) or silently interpolate something else. kotlinStringLiteral
+    // escapes `$` along with the quotes and newlines, so fall through to it in that case too.
+    if (!text.contains("\"\"\"") && !text.endsWith("\"") && !text.contains('$')) return "\"\"\"$text\"\"\""
     return kotlinStringLiteral(text)
 }
 
