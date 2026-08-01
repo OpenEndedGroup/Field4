@@ -2,46 +2,70 @@
 # public/docs/imaging_examples.md. Regenerate the page with:
 #     python3 tools/imaging_bench_doc.py --write
 #
-# Measured 2026-07-27 on main, after the imaging merge (2bb1a117).
+# Measured 2026-07-27 (10:26–10:50) on nightly/2026-07-27/1-imaging-simd-perf, after the
+# vector-kernel work: the unrolled stencil accumulator, pyrDown's fused polyphase decimation,
+# boxBlur's row-wise running sums, and bilateral's tabulated range weight.
 #   machine : Apple Silicon, 10 cores (8 performance + 2 efficiency), 64 GB
 #   JVM     : GraalVM CE 25.0.2, C2 host JIT (-XX:+EnableJVMCI -XX:-UseJVMCICompiler),
 #             --add-modules jdk.incubator.vector
 #   JMH     : 5 warmup + 10 measurement iterations of 1s, 3 forks (Cnt 30), average time
 #   image   : 1920x1080 (2.07 Mpx), CV_32F on both sides, OpenCV 4.9 pinned to one thread
-#   load    : ordinary desktop use (load average ~6). Error bars are the 99.9% CI of the mean;
-#             worst relative error in this run is 3.2%.
+#   load    : load average 5.14 at the start of the run and 6.19 at the end, over 23m31s, with the
+#             benchmark JVM the only busy process. Quieter than that sounds: the JMH fork is
+#             single-threaded, so about 1 of 10 cores was ours.
+#
+# THREADING. Nothing here is multithreaded, on either side. OpenCV is pinned with setNumThreads(1)
+# because our implementation is single-threaded, and no arm in this file uses more than one thread.
+# There is no parallel arm; if one is ever added it must be named and labelled separately rather
+# than quietly compared against a single-threaded baseline.
+#
+# READING THIS AGAINST THE PREVIOUS RUN. The `opencv*` arms are unchanged third-party code, so they
+# serve as the control — and they read 3.3% slower on average here than in the 2026-07-27 pre-work
+# run (worst +11.2%: opencvLaplacian 1.450 -> 1.612). That is machine state, not anything we did.
+# So when comparing an ours-vs-OpenCV ratio in this file against a ratio in the older one, roughly
+# 3% of any apparent improvement is drift. The within-run ratios are self-consistent and are the
+# numbers to trust.
+#
+# NOISIEST ARM. oursBilateral reads ± 95.184 on 749.076 — 12.7% relative, far wider than anything
+# else here and wide enough that its ratio should be read as "about 1.2x". The same arm 25 minutes
+# earlier gave a minimum of 719.7 ms over 8 iterations. Every other arm is under 3% relative error.
 #
 # Correctness cross-check performed once per trial; the run fails if these diverge:
 #   gaussian  simd-vs-scalar 1.19e-7   simd-vs-opencv 2.38e-7
-#   boxBlur   ours-vs-opencv 9.89e-6
+#   boxBlur   ours-vs-opencv 7.84e-6   (was 9.89e-6 before the running sums were restructured)
 #   laplacian ours-vs-opencv 0.0
+#
+# oursBoxBlurViaKernel is a decision arm, not a published row: it computes the same radius-2 mean
+# via convolveSeparable(boxKernel1D(2)) to test whether the O(1) running sum is worth it at small
+# radius, because a live-box timing had said it was not. It is — 2.598 against 3.181 — so boxBlur
+# keeps the running sum at every radius.
 
-Benchmark                                Mode  Cnt     Score    Error  Units
-ImagingBenchmark.opencvBilateral         avgt   30   629.531 ±  5.966  ms/op
-ImagingBenchmark.opencvBoxBlur           avgt   30     1.825 ±  0.053  ms/op
-ImagingBenchmark.opencvFilter2D          avgt   30    25.579 ±  0.675  ms/op
-ImagingBenchmark.opencvGaussianGray      avgt   30     6.585 ±  0.033  ms/op
-ImagingBenchmark.opencvGaussianRgb       avgt   30    21.084 ±  0.087  ms/op
-ImagingBenchmark.opencvLaplacian         avgt   30     1.450 ±  0.008  ms/op
-ImagingBenchmark.opencvLuma              avgt   30     1.121 ±  0.008  ms/op
-ImagingBenchmark.opencvMedian            avgt   30   115.351 ±  2.726  ms/op
-ImagingBenchmark.opencvPyrDown           avgt   30     0.475 ±  0.010  ms/op
-ImagingBenchmark.opencvResizeDown        avgt   30     0.734 ±  0.012  ms/op
-ImagingBenchmark.opencvScharr            avgt   30     2.279 ±  0.073  ms/op
-ImagingBenchmark.opencvSobel             avgt   30     2.121 ±  0.046  ms/op
-ImagingBenchmark.oursBilateral           avgt   30  3788.931 ± 53.175  ms/op
-ImagingBenchmark.oursBoxBlur             avgt   30    10.817 ±  0.268  ms/op
-ImagingBenchmark.oursConvolve2D          avgt   30    58.954 ±  0.604  ms/op
-ImagingBenchmark.oursGaussianGray        avgt   30     7.034 ±  0.048  ms/op
-ImagingBenchmark.oursGaussianRgb         avgt   30    19.609 ±  0.210  ms/op
-ImagingBenchmark.oursLaplacian           avgt   30     3.874 ±  0.102  ms/op
-ImagingBenchmark.oursLuma                avgt   30     2.013 ±  0.057  ms/op
-ImagingBenchmark.oursMedian              avgt   30   417.131 ±  3.044  ms/op
-ImagingBenchmark.oursPyrDown             avgt   30     7.794 ±  0.097  ms/op
-ImagingBenchmark.oursResizeDown          avgt   30     3.621 ±  0.048  ms/op
-ImagingBenchmark.oursScharr              avgt   30     4.490 ±  0.096  ms/op
-ImagingBenchmark.oursSobel               avgt   30     4.625 ±  0.169  ms/op
-ImagingBenchmark.scalarOursGaussianGray  avgt   30    89.684 ±  1.250  ms/op
-ImagingBenchmark.scalarOursGaussianRgb   avgt   30   256.583 ±  2.689  ms/op
-ImagingBenchmark.scalarOursSobel         avgt   30    55.635 ±  1.438  ms/op
-
+Benchmark                                Mode  Cnt    Score    Error  Units
+ImagingBenchmark.opencvBilateral         avgt   30  627.844 ±  4.253  ms/op
+ImagingBenchmark.opencvBoxBlur           avgt   30    1.888 ±  0.096  ms/op
+ImagingBenchmark.opencvFilter2D          avgt   30   27.223 ±  0.914  ms/op
+ImagingBenchmark.opencvGaussianGray      avgt   30    7.132 ±  0.385  ms/op
+ImagingBenchmark.opencvGaussianRgb       avgt   30   21.808 ±  0.485  ms/op
+ImagingBenchmark.opencvLaplacian         avgt   30    1.612 ±  0.081  ms/op
+ImagingBenchmark.opencvLuma              avgt   30    1.140 ±  0.014  ms/op
+ImagingBenchmark.opencvMedian            avgt   30  120.346 ±  7.819  ms/op
+ImagingBenchmark.opencvPyrDown           avgt   30    0.503 ±  0.019  ms/op
+ImagingBenchmark.opencvResizeDown        avgt   30    0.730 ±  0.005  ms/op
+ImagingBenchmark.opencvScharr            avgt   30    2.206 ±  0.029  ms/op
+ImagingBenchmark.opencvSobel             avgt   30    2.094 ±  0.025  ms/op
+ImagingBenchmark.oursBilateral           avgt   30  749.076 ± 95.184  ms/op
+ImagingBenchmark.oursBoxBlur             avgt   30    2.598 ±  0.030  ms/op
+ImagingBenchmark.oursBoxBlurViaKernel    avgt   30    3.181 ±  0.026  ms/op
+ImagingBenchmark.oursConvolve2D          avgt   30   26.190 ±  0.210  ms/op
+ImagingBenchmark.oursGaussianGray        avgt   30    7.089 ±  0.066  ms/op
+ImagingBenchmark.oursGaussianRgb         avgt   30   19.608 ±  0.152  ms/op
+ImagingBenchmark.oursLaplacian           avgt   30    2.680 ±  0.019  ms/op
+ImagingBenchmark.oursLuma                avgt   30    1.961 ±  0.015  ms/op
+ImagingBenchmark.oursMedian              avgt   30  424.742 ±  5.296  ms/op
+ImagingBenchmark.oursPyrDown             avgt   30    2.070 ±  0.020  ms/op
+ImagingBenchmark.oursResizeDown          avgt   30    3.646 ±  0.061  ms/op
+ImagingBenchmark.oursScharr              avgt   30    4.485 ±  0.038  ms/op
+ImagingBenchmark.oursSobel               avgt   30    4.485 ±  0.036  ms/op
+ImagingBenchmark.scalarOursGaussianGray  avgt   30   91.588 ±  2.609  ms/op
+ImagingBenchmark.scalarOursGaussianRgb   avgt   30  263.226 ±  8.677  ms/op
+ImagingBenchmark.scalarOursSobel         avgt   30   52.937 ±  0.128  ms/op

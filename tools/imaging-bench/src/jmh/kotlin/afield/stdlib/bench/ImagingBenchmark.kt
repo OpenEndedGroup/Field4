@@ -7,6 +7,7 @@ import afield.stdlib.SOBEL_DERIV
 import afield.stdlib.SOBEL_SMOOTH
 import afield.stdlib.bilateral
 import afield.stdlib.boxBlur
+import afield.stdlib.boxKernel1D
 import afield.stdlib.convolve2D
 import afield.stdlib.convolveSeparable
 import afield.stdlib.convolveSeparableReference
@@ -233,6 +234,33 @@ open class ImagingBenchmark {
     // ---- ops that were NOT touched by the vectorization -----------------------------------------
 
     @Benchmark fun oursBoxBlur(bh: Blackhole) = bh.consume(gray.boxBlur(2, Border.REFLECT))
+
+    /**
+     * The same radius-2 mean computed the O(k) way, as a *decision* arm rather than a claim.
+     *
+     * [boxBlur] is a sliding running sum, O(1) per pixel at any radius, and the tempting conclusion
+     * is that it must therefore beat a 5-tap separable convolution. That is not obvious at all: a
+     * running sum is serial by nature — each output waits on the previous one — while 5 taps
+     * vectorize freely. O(1) is a statement about the asymptote, and radius 2 is nowhere near it.
+     * Measured in a live box at 1280x720, the kernel won: 1.77 ms against 2.79 ms.
+     *
+     * That measurement was not good enough to act on, which is why this arm exists. Box code runs
+     * through the REPL with implicit receivers and only two warm-up reps, so it under-reports
+     * whichever implementation depends more on C2 having fully warmed — and `oursBoxBlur`'s
+     * vectorized row accumulator is exactly that kind of code.
+     *
+     * **Answered, 2026-07-27, and the answer is the opposite of the box's:** fully JIT'd, the
+     * running sum wins. Minimum over 24 iterations across 2 forks at 1920x1080 — `oursBoxBlur`
+     * 2.477 ms, `oursBoxBlurViaKernel` 3.022 ms, `opencvBoxBlur` 1.777 ms. So [boxBlur] keeps the
+     * running sum at every radius and there is no dispatch threshold to tune. The arm stays because
+     * it is the evidence for that decision, and because it will catch the day a change to
+     * `convolveSeparable` or to the running sum moves the crossover.
+     *
+     * The wider lesson, worth more than the arm: a timing taken inside a live box is a fine way to
+     * *notice* something and a bad way to *decide* it.
+     */
+    @Benchmark fun oursBoxBlurViaKernel(bh: Blackhole) =
+        bh.consume(gray.convolveSeparable(boxKernel1D(2), boxKernel1D(2), Border.REFLECT))
 
     @Benchmark fun opencvBoxBlur(bh: Blackhole) {
         opencv_imgproc.blur(grayMat, dst, Size(5, 5), org.bytedeco.opencv.opencv_core.Point(-1, -1), opencv_core.BORDER_REFLECT101)
