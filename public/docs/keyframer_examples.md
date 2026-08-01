@@ -101,6 +101,23 @@ qualifier exists purely so one key can address two structures that use the same 
 Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
 `No key differences.`, so a `Key` really is a complete description of what the scope watches.
 
+!!! info "The module-pointer targets are not exercised on this page"
+
+    Besides a `Structure`, a scope can target a live module's uniform structures —
+    `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
+    siblings (`keyframer.kt:580`, `:584`, `:588`). Those need a real renderer, so every fence here
+    uses the plain `Structure` form instead, and no figure on this page demonstrates them.
+
+    Worth knowing what the source says before you reach for one. All three are one-line wrappers
+    over the lazily-resolved `target(name) { … }` (`keyframer.kt:562`), and they pass the *same*
+    `@`-suffixed string to two different lookups: it selects the structure, via
+    `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
+    structure (`keyframer.kt:566-567`). So the key addresses a member whose name matches the uniform
+    block's own name, rather than an arbitrary field within the block — which is not the behaviour
+    the `@` qualifier has for a plain `Structure` target, where the two are independent. This is a
+    reading of the code, not a measurement: it is untested here and no capture on this page covers
+    it. Check it against your own module before relying on it.
+
 !!! warning "`capture()` sees *bound* properties, not *set* values"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
