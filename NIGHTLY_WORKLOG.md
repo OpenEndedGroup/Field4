@@ -54,8 +54,9 @@ is two hand-written designs and nothing else — which is the honest picture and
 
 ## What was done
 
-Five commits. `git log --oneline main..HEAD` reads as one pass each: the search layer, the figures
-and tests, the documentation and demo, the width-family finding, and this worklog.
+Six commits. `git log --oneline main..HEAD` reads as one pass each: the search layer; the figures
+and tests; the documentation and demo; the width-family finding; the citation audit and re-measure;
+and the demo's cost figure plus the materialized bundle.
 
 ### Files added
 
@@ -70,7 +71,8 @@ and tests, the documentation and demo, the width-family finding, and this worklo
 | `src/jvmTest/kotlin/afield/morpho/MorphoSearchTest.kt` | ~400 | 15 tests |
 | `src/jvmTest/kotlin/afield/morpho/MorphoSearchMeasurements.kt` | ~200 | 3 measurement runs |
 | `dev_docs/morpho_circuit_search.md` | ~230 | design notes, results, what to try next |
-| `dev_docs/agents/transcripts/morpho_circuit_search.yaml` | ~200 | the loadable demo |
+| `dev_docs/agents/transcripts/morpho_circuit_search.yaml` | ~215 | the loadable demo |
+| `public/docs/assets/agent_transcripts/morpho_circuit_search/` | — | the materialized starting point (`metadata.edn` + three `.kt` files + `document.md`), produced by `AgentTranscriptMaterializer` |
 
 ### Files changed
 
@@ -171,12 +173,15 @@ silent miscompile, and it is the first mistake a person writing a divide-and-con
   backdoor-owned server on port 9481. All three boxes executed; their printed output is in the
   run result.
 * **The figures were taken to the pixels**: `screenshot-box` on all three boxes, written to
-  `build/morpho-search-evidence/{control,recursion,adder}.png` and looked at. The convergence
-  panel draws four best-so-far staircases with solve ticks; the cost panel draws exactly two cyan
-  reference points (`ripple_adder` at depth 8 / 16 gates, `brent_kung_adder` at depth 7 / 46 gates)
-  and no orange ones, which is the negative result as a picture; the recursion box draws the evolved
-  or-reduce cell as three real `MorphoFLines` circuits at 4, 8 and 16 bits. Everything is vector —
+  `build/morpho-search-evidence/{control,recursion,adder,recursion2}.png` and looked at. The
+  convergence panel draws four best-so-far staircases with solve ticks; the adder's cost panel draws
+  exactly two cyan reference points (`ripple_adder` at depth 8 / 16 gates, `brent_kung_adder` at
+  depth 7 / 46 gates) and no orange ones, which is the negative result as a picture; the or-reduce
+  cost panel draws eight orange points from the search's own output; and the recursion box draws the
+  evolved cell as three real `MorphoFLines` circuits at 4, 8 and 16 bits. Everything is vector —
   `FLine`s into `showPlaneGrid`, no raster anywhere, and `rasterizeFLinesFramed` is not referenced.
+  Two figure bugs were found *by looking* and fixed: the Pareto points sat exactly on the frame
+  (12% headroom added), and the caption promised a staircase that a single-point front does not have.
 * Throughput measured, not guessed: ~1 ms per compiler invocation on the three-width adder problem,
   0.39 ms on or-reduce.
 
@@ -186,12 +191,10 @@ silent miscompile, and it is the first mistake a person writing a divide-and-con
   build is expensive. Every fence added to `public/docs/morpho_examples.md` is plain `diffstatic`,
   never `diffstatic_runner`, and no new asset was added, so nothing on that page needs recapturing.
   Somebody should still run the docs build once before this is considered finished.
-* **The transcript is not materialized into the starting-point bundle.**
-  `AgentTranscriptMaterializer` non-recursively scans `dev_docs/agents/transcripts/*.yaml` and its
-  drift guard fails the build for a top-level yaml with no committed bundle under
-  `public/docs/assets/agent_transcripts/`. **This will fail CI until somebody runs the materializer**
-  (see the exact command below). It was left undone because the materializer wants a Field JVM and
-  the night's budget ran out; it is a two-minute job.
+* ~~The transcript is not materialized into the starting-point bundle.~~ **Done.**
+  `AgentTranscriptMaterializer` was run through the backdoor and reported `exitCode 0`,
+  `ok — materialized 31 document(s)`. `public/docs/assets/agent_transcripts/morpho_circuit_search/`
+  is committed and every other bundle came out byte-identical, so the drift guard passes.
 * `MorphoSearch.staged` (the width curriculum) is implemented and exercised only by hand during
   development; it has no test and appears in no measurement.
 * `MorphoProblems.adderFromScratch` (recursion and base case co-evolved) is implemented and was
@@ -200,20 +203,10 @@ silent miscompile, and it is the first mistake a person writing a divide-and-con
   Nothing measured depends on it — they are unsolved at every family tried — but a future adder
   result must be re-checked at width 5.
 
-### The one thing to do before merging
-
-```bash
-uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
-  --command 'run-jvm-main afield.examples.AgentTranscriptMaterializer --arg '"$PWD"'/public/docs/assets/agent_transcripts'
-```
-
-then commit the resulting `public/docs/assets/agent_transcripts/morpho_circuit_search/`.
-
 ---
 
 ## Risks and unknowns
 
-* **The materializer drift guard** (above) is a known, unfixed build break. Highest-priority item.
 * **`MorphoWidthModel` is a model.** It mirrors `primitives.js` and `compiler.js`'s broadcast rule,
   but the self-call output shape is Field's assumption, not a transcription. When it is wrong the
   candidate simply fails, and the failure rate is reported (0.0–0.7% across every run measured), but
@@ -234,7 +227,7 @@ then commit the resulting `public/docs/assets/agent_transcripts/morpho_circuit_s
 
 ## Recommendation
 
-**Merge**, after running the materializer.
+**Merge.**
 
 The layer is self-contained (one new package-mates group inside `afield.morpho`, one small addition
 to `MorphoGraal.kt`, nothing else in the tree touched), it is tested, it is documented at two levels,
