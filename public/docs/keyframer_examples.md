@@ -218,6 +218,208 @@ not the `cool` endpoint, not the `warm` one, not white.
 This also demonstrates the one thing a unit test cannot: `Key.invoke()` writing through
 `Structure.bind` into a uniform that a live Vulkan pipeline then reads.
 
+### The interpolation, rendered — four real frames off one pair of keys
+
+One still proves the uniform moves. It does not show the *interpolation*, and a keyframe system
+whose interpolation you cannot see is an abstraction. So here is the same scene rendered four times
+at four values of `t`, with **two** things keyframed at once: the `vec4 tint`, and the camera — a
+`CameraPose`, sclerped, which is the subject of the next section.
+
+Each frame below is a separate native Vulkan window capture. Nothing is tweened in the page, in an
+mp4, or on the CPU: `t` is the only difference between the four runs, and everything you see move is
+a uniform that a keyframe wrote.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t00.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true name="keyframer-strip-t00" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.four.Renderer
+import afield.four.modules.fromContext
+import afield.stdlib.KeyframeScope
+
+val renderer: Renderer = fromContext()
+
+var m = Mesh()
+var module = moduleHere()
+module += "mainMesh" to m
+renderer += module
+
+val camera = afield.four.util.Camera()
+
+// The same white fan as above — every colour on screen still comes from the tint alone.
+val N = 48
+m.set(3 * N, 1 * N) {
+    N {
+        val a0 = it / N.toDouble() * Math.PI * 2.0
+        val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
+        pos.add(
+            0.0, 0.0, 0.0,
+            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
+            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+        )
+        3 { col.add(1, 1, 1, 1) }
+        tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
+    }
+}
+
+val scope = KeyframeScope()
+scope.camera(camera)               // a CameraPose target — sclerped, not lerped
+scope.target("tint", module.look)  // the uniform block's live Structure
+
+// Two endpoints. The camera swings 90 degrees around the fan and lifts, while the tint goes cool to
+// warm. Poses are read off the camera rather than constructed, so this is exactly what capture()
+// would have stored. Tint is given by value because capture() reads bindings only (see the warning
+// above) — an unbound property would have snapshotted as null.
+camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+val poseCool = camera.pose()
+camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+val poseWarm = camera.pose()
+
+val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
+val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+
+val t = 0.0
+scope.interpolate(cool, warm, t)()
+
+// Applying the key moved the Camera object; the projection uniforms are read off it afterwards.
+module.look.p = camera.p()
+module.look.m = camera.m()
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t33.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t33" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.four.Renderer
+import afield.four.modules.fromContext
+import afield.stdlib.KeyframeScope
+
+val renderer: Renderer = fromContext()
+var m = Mesh()
+var module = moduleHere()
+module += "mainMesh" to m
+renderer += module
+val camera = afield.four.util.Camera()
+val N = 48
+m.set(3 * N, 1 * N) {
+    N {
+        val a0 = it / N.toDouble() * Math.PI * 2.0
+        val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
+        pos.add(
+            0.0, 0.0, 0.0,
+            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
+            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+        )
+        3 { col.add(1, 1, 1, 1) }
+        tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
+    }
+}
+val scope = KeyframeScope()
+scope.camera(camera)
+scope.target("tint", module.look)
+camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+val poseCool = camera.pose()
+camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+val poseWarm = camera.pose()
+val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
+val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+scope.interpolate(cool, warm, 0.333)()
+module.look.p = camera.p()
+module.look.m = camera.m()
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t66.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t66" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.four.Renderer
+import afield.four.modules.fromContext
+import afield.stdlib.KeyframeScope
+
+val renderer: Renderer = fromContext()
+var m = Mesh()
+var module = moduleHere()
+module += "mainMesh" to m
+renderer += module
+val camera = afield.four.util.Camera()
+val N = 48
+m.set(3 * N, 1 * N) {
+    N {
+        val a0 = it / N.toDouble() * Math.PI * 2.0
+        val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
+        pos.add(
+            0.0, 0.0, 0.0,
+            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
+            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+        )
+        3 { col.add(1, 1, 1, 1) }
+        tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
+    }
+}
+val scope = KeyframeScope()
+scope.camera(camera)
+scope.target("tint", module.look)
+camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+val poseCool = camera.pose()
+camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+val poseWarm = camera.pose()
+val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
+val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+scope.interpolate(cool, warm, 0.666)()
+module.look.p = camera.p()
+module.look.m = camera.m()
+```
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/strip_t10.png" wait="0.25" timeout="25" capture="native-window" native-wait-frames="4" graphics-context=true hidden=true name="keyframer-strip-t10" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.four.Renderer
+import afield.four.modules.fromContext
+import afield.stdlib.KeyframeScope
+
+val renderer: Renderer = fromContext()
+var m = Mesh()
+var module = moduleHere()
+module += "mainMesh" to m
+renderer += module
+val camera = afield.four.util.Camera()
+val N = 48
+m.set(3 * N, 1 * N) {
+    N {
+        val a0 = it / N.toDouble() * Math.PI * 2.0
+        val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
+        pos.add(
+            0.0, 0.0, 0.0,
+            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
+            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+        )
+        3 { col.add(1, 1, 1, 1) }
+        tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
+    }
+}
+val scope = KeyframeScope()
+scope.camera(camera)
+scope.target("tint", module.look)
+camera.at = vec(0, 0, 3.5); camera.target = vec(0, 0, 0)
+val poseCool = camera.pose()
+camera.at = vec(-3.03, 1.0, 1.75); camera.target = vec(0, 0, 0)
+val poseWarm = camera.pose()
+val cool = scope.Key(mutableMapOf("camera" to poseCool, "tint" to vec(0.20, 0.65, 1.00, 1.0)))
+val warm = scope.Key(mutableMapOf("camera" to poseWarm, "tint" to vec(1.00, 0.50, 0.12, 1.0)))
+scope.interpolate(cool, warm, 1.0)()
+module.look.p = camera.p()
+module.look.m = camera.m()
+```
+
+`t = 0` — the cool endpoint, the fan face-on:
+
+![The fan seen face-on, filling the native Vulkan window, every wedge tinted cool blue](assets/keyframer_examples/strip_t00.png)
+
+`t = 0.333` — the camera has begun to swing and lift, and the tint has warmed:
+
+![The same fan a third of the way through the move, foreshortened into an ellipse and tinted pale blue-grey](assets/keyframer_examples/strip_t33.png)
+
+`t = 0.666` — further round, and warmer again:
+
+![Two thirds through, the fan foreshortened further and tinted warm sand](assets/keyframer_examples/strip_t66.png)
+
+`t = 1` — the warm endpoint, the fan nearly edge-on:
+
+![The end pose, the fan compressed into a narrow ellipse and tinted warm orange](assets/keyframer_examples/strip_t10.png)
+
+`t = 0` and `t = 1` are the endpoints, so they are also a check on the whole mechanism: if either
+differed from the pose and colour that were captured, the interpolation would be lying at its own
+boundary.
+
 ## A camera move is a screw motion, not a straight line
 
 `KeyframeScope.camera` registers a `Camera` as a target. What it stores is not a position and a
@@ -518,13 +720,7 @@ val key = scope.Key(mutableMapOf(
     "notes" to listOf("unsupported", "on purpose")
 ))
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-display(
-    "code",
-    "<pre style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;margin:0;padding:8px 10px;" +
-        "background:rgba(255,255,255,0.04);border-left:2px solid #555;white-space:pre-wrap'>" +
-        esc(key.updateCode("look")) + "</pre>"
-)
+display("code", "<pre>" + key.updateCode("look") + "</pre>")
 ```
 
 ![The emitted Kotlin: look.updateAndApply with assignments sorted by name, showing an escaped source-block string with a backslash before its dollar, gain as 0.65f, a fully-qualified Quaternionf constructor, seed as 99L, and the unsupported list emitted as null behind a block comment](assets/keyframer_examples/update_code.png)
@@ -547,23 +743,6 @@ that way.
 
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
 through AWT, so it throws on a headless JVM and it replaces whatever the user had copied.
-
-!!! warning "`diff` disagrees with itself about `NaN` and about signed zero"
-
-    Two comparison rules meet inside `keyValuesEqual`, and they are opposites on exactly the two
-    values where floating point is awkward. A **bare number** is compared with `==` on an `Any?`
-    receiver, which is `java.lang.Double.equals` — a *bit* comparison. A **vector or quaternion
-    component** is compared with primitive `Float ==`, which is IEEE. So:
-
-    | value | bare number | inside a vector |
-    | --- | --- | --- |
-    | `NaN` vs `NaN` | equal — no change reported | **not** equal — a phantom change |
-    | `-0.0` vs `0.0` | **not** equal — a change reported | equal — the sign flip is hidden |
-
-    A key holding `NaN` in a `Vector3f` therefore diffs as *changed* against an identical copy of
-    itself. Pinned by `diffTreatsNaNAndSignedZeroOppositelyForANumberAndForAVectorComponent`, and
-    left alone rather than unified: either rule is defensible on its own, and changing one would move
-    what every `KeyDiff` table shows.
 
 ## Where to go next
 

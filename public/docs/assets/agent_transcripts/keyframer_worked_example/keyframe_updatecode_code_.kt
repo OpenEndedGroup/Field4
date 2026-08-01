@@ -29,12 +29,12 @@ println(code)
 // and Key.set deliberately does not re-coerce numbers.
 println("Float keeps its suffix: " + code.contains("0.65f"))
 println("Long keeps its suffix:  " + code.contains("99L"))
-println("no bare '\$' escaped the emitter: " + Regex("""(?<!\\)\$""").findAll(code).none())
+// Scoped to the source-block line on purpose. The emitter also writes an /* unsupported */
+// comment naming the Java class it dropped, and a nested class name like Arrays$ArrayList
+// legitimately contains a '$' that cannot interpolate because it sits inside a comment.
+// Checking the whole string reported a bare '$' for that comment and printed a false alarm.
+val blockLine = code.lines().first { it.contains("""this["block"]""") }
+println("the source block's $ came out escaped: " +
+    Regex("""(?<!\\)\$""").findAll(blockLine).none())
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-display(
-    "code",
-    "<pre style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;margin:0;padding:8px 10px;" +
-        "background:rgba(255,255,255,0.04);border-left:2px solid #555;white-space:pre-wrap;" +
-        "width:820px'>" + esc(code) + "</pre>"
-)
+display("code", "<pre>" + code + "</pre>")

@@ -216,7 +216,7 @@ Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Eve
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 
 ```edn [field-box id="keyframe_updatecode" role="properties"]
-{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 900.0 360.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 40 "characters" 1936 "sha256" "ca5f8c40fbbfeb38352834bdaf0f8c745823808e551b4d21aba0b03b2e2ba7a1"}]}
+{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 900.0 360.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 40 "characters" 2077 "sha256" "a016cfab9fe4d49055a19e6cabd402f8b01f1ebb8b208244e143f6ed8519beb8"}]}
 ```
 
 ```kotlin [field-property box="keyframe_updatecode" name="code" path="keyframe_updatecode_code_.kt"]
@@ -251,15 +251,15 @@ println(code)
 // and Key.set deliberately does not re-coerce numbers.
 println("Float keeps its suffix: " + code.contains("0.65f"))
 println("Long keeps its suffix:  " + code.contains("99L"))
-println("no bare '\$' escaped the emitter: " + Regex("""(?<!\\)\$""").findAll(code).none())
+// Scoped to the source-block line on purpose. The emitter also writes an /* unsupported */
+// comment naming the Java class it dropped, and a nested class name like Arrays$ArrayList
+// legitimately contains a '$' that cannot interpolate because it sits inside a comment.
+// Checking the whole string reported a bare '$' for that comment and printed a false alarm.
+val blockLine = code.lines().first { it.contains("""this["block"]""") }
+println("the source block's $ came out escaped: " +
+    Regex("""(?<!\\)\$""").findAll(blockLine).none())
 
-fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-display(
-    "code",
-    "<pre style='font:12px/1.5 Iosevka, Menlo, monospace;color:#d4d4d4;margin:0;padding:8px 10px;" +
-        "background:rgba(255,255,255,0.04);border-left:2px solid #555;white-space:pre-wrap;" +
-        "width:820px'>" + esc(code) + "</pre>"
-)
+display("code", "<pre>" + code + "</pre>")
 ```
 
 ## 4. A camera move is a screw motion
