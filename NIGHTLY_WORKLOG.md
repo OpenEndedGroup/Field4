@@ -54,8 +54,8 @@ is two hand-written designs and nothing else — which is the honest picture and
 
 ## What was done
 
-Six commits. `git log --oneline main..HEAD` reads as one pass each: the layer, the figures and
-tests, the documentation, and the width-family finding.
+Five commits. `git log --oneline main..HEAD` reads as one pass each: the search layer, the figures
+and tests, the documentation and demo, the width-family finding, and this worklog.
 
 ### Files added
 
@@ -104,33 +104,33 @@ Four things were learned by being wrong first, and each is commented at the plac
 Five seeds per cell, three for the 20 000-invocation rows. Source:
 `./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
 
-| problem | budget | random (control) | hill climb | evolution |
-| --- | --- | --- | --- | --- |
-| bitwise xor (harness canary) | 2 000 | 5/5 | 5/5 | 5/5 |
-| one-bit full adder | 4 000 | **0/5** | 4/5 | **5/5** |
-| or-reduce | 6 000 | see note | see note | see note |
-| and-reduce | 6 000 | see note | see note | see note |
-| recursive 8-bit adder | 20 000 | 0/3 | 0/3 | 0/3 |
-| the same, both `SPLIT`s given | 20 000 | 0/3 | 0/3 | 0/3 |
+| problem | widths | budget | random (control) | hill climb | evolution |
+| --- | --- | --- | --- | --- | --- |
+| bitwise xor (harness canary) | 2/4/8 | 2 000 | 5/5 | 5/5 | 5/5 |
+| one-bit full adder | 1 | 4 000 | **0/5** | 4/5 | **5/5** |
+| or-reduce | 2/3/5 | 6 000 | 3/5 | **0/5** | 3/5 |
+| and-reduce | 2/3/5 | 6 000 | 3/5 | **0/5** | 3/5 |
+| recursive 8-bit adder | 2/4/8 | 20 000 | 0/3 | 0/3 | 0/3 |
+| the same, both `SPLIT`s given | 2/4/8 | 20 000 | 0/3 | 0/3 | 0/3 |
 
-(The or-reduce / and-reduce rows were re-measured after the default width family changed from 2/4/8
-to 2/3/5 — see the finding below. At 2/4/8 they were 5/5 · 3/5 · 4/5 and 5/5 · 5/5 · 5/5. The
-re-measured numbers are in `public/docs/morpho_examples.md` and `dev_docs/morpho_circuit_search.md`;
-if those two documents and this table ever disagree, the documents are the ones kept current.)
+The two reduction rows were re-measured after the default width family changed from 2/4/8 to 2/3/5
+(finding 4 below). At 2/4/8 they read 5/5 · 3/5 · 4/5 and 5/5 · 5/5 · 5/5 — easier, and mostly with
+answers that are not actually parametric.
 
-**Three findings, in ascending order of how much they were expected.**
+**Four findings, in descending order of how much they were expected.**
 
 **1. Selection beats sampling, on exactly one problem.** The one-bit full adder: at 4 000
 invocations from the same generator with the same seeds, random sampling found it 0/5 and evolution
 5/5. Random plateaus at a bit-error rate of 0.125 — `sum = Xor3(a, b, c)`, `c_out = And(a, b)`, one
-gate swap short. It is also the *only* row where selection helps: on or-reduce at 2/4/8 the control
-was the most reliable driver of the three. Both are said in the documentation.
+gate swap short. It is also the *only* row where selection helps: on both reductions random sampling
+matches evolution exactly (3/5) and hill climbing finds nothing at all, settling on a two-gate design
+that is 3% wrong. Both halves are said in the documentation.
 
 **2. A genuine recursion is found from nothing.** `or-reduce` (`y = x != 0`) cannot be done without
-recursion — morpho broadcasts a LUT across a bus (`compiler.js:961-972`), so no combination of gates
+recursion — morpho broadcasts a LUT across a bus (`compiler.js:962-973`), so no combination of gates
 narrows one, and the only route from N wires to one is to keep `SPLIT`ting. The designs found are
-7 gates and depth 3 at eight bits, a balanced tree, and the same source text is verified at widths
-nothing was selected on. `and-reduce` is the dual and behaves the same.
+four gates and depth 3 at five bits — `n - 1` two-input gates as a balanced tree, the minimum — and
+the same source text is verified at widths nothing was selected on. `and-reduce` is the dual and behaves the same.
 
 **3. The recursive adder is not found — and the near miss is specific.** Not by any driver, not with
 lexicase selection over per-bit cases, not with a width curriculum, not with both `SPLIT`s given.

@@ -213,7 +213,7 @@ class MorphoSpec(
          * program.
          *
          * A reduction **cannot** be done without recursion in this vocabulary. Morpho's LUTs are
-         * broadcast — `compiler.js:963` sizes a LUT cell to its widest operand — so no amount of
+         * broadcast — `compiler.js:964` sizes a LUT cell to its widest operand — so no amount of
          * `Or` applied to an eight-bit bus produces one bit. The only route from N wires down to
          * one is to keep `SPLIT`ting, which means every correct answer here is genuinely
          * divide-and-conquer rather than a broadcast that happened to fit.
@@ -361,7 +361,7 @@ class MorphoFitness(
  * ## Why there is a watchdog
  *
  * MorphoHDL recursion terminates when a `SPLIT` runs out of bits — `primitives.js:41` returns
- * `null`, `compiler.js:1052` discards the graph, and the fallback takes over. A *generated* cell
+ * `null`, `compiler.js:1053` discards the graph, and the fallback takes over. A *generated* cell
  * body has no such guarantee: a self-call whose arguments are no narrower than its inputs recurses
  * forever, and one whose arguments are *wider* does so while doubling the bus each level, which
  * exhausts memory long before it exhausts the JS stack. [MorphoProgramGenerator] will not emit

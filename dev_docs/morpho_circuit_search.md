@@ -64,7 +64,7 @@ add two bits and not yet to carry across eight is progress, and a max-only score
 
 **Recursion has to be proved to terminate, statically.** MorphoHDL stops recursing by running out of
 bits: `SPLIT` below width 2 returns `null` (`primitives.js:41`), the compiler discards the body
-(`compiler.js:1052`) and the fallback answers. A generated body has no such courtesy, and the local
+(`compiler.js:1053`) and the fallback answers. A generated body has no such courtesy, and the local
 rule "the arguments are narrower than the inputs" is *not* sufficient, because the body computes
 different widths at every level. The first version emitted `evolved(ONE, t0, ONE)` where `t0` is as
 wide as `b`, which calls itself at the same signature forever. `MorphoWidthModel.terminates` walks
@@ -94,14 +94,18 @@ about three times the real work and calls it a fair fight.
 Five seeds per cell except the last two rows, which are three. "first correct" lists the invocation
 at which each solving seed first produced an exactly-correct design.
 
-| problem | budget | random (control) | hill climb | evolution |
-| --- | --- | --- | --- | --- |
-| bitwise xor (the harness canary) | 2000 | **5/5**, 6–30 | **5/5**, 3–26 | **5/5**, 7–23 |
-| one-bit full adder | 4000 | **0/5** | **4/5**, 315–3846 | **5/5**, 165–1152 |
-| or-reduce, `y = (x != 0)` | 6000 | **5/5**, 1483–3881 | **3/5**, 98–1090 | **4/5**, 2091–4410 |
-| and-reduce, `y = (x == ~0)` | 6000 | **5/5**, 180–4869 | **5/5**, 712–3423 | **5/5**, 472–3300 |
-| recursive 8-bit adder | 20000 | **0/3** | **0/3** | **0/3** |
-| the same, both `SPLIT`s given | 20000 | **0/3** | **0/3** | **0/3** |
+| problem | widths | budget | random (control) | hill climb | evolution |
+| --- | --- | --- | --- | --- | --- |
+| bitwise xor (the harness canary) | 2/4/8 | 2000 | **5/5**, 6–30 | **5/5**, 3–26 | **5/5**, 7–23 |
+| one-bit full adder | 1 | 4000 | **0/5** | **4/5**, 315–3846 | **5/5**, 165–1152 |
+| or-reduce, `y = (x != 0)` | 2/3/5 | 6000 | **3/5**, 1617–4077 | **0/5** | **3/5**, 3987–4906 |
+| and-reduce, `y = (x == ~0)` | 2/3/5 | 6000 | **3/5**, 826–5498 | **0/5** | **3/5**, 561–4975 |
+| recursive 8-bit adder | 2/4/8 | 20000 | **0/3** | **0/3** | **0/3** |
+| the same, both `SPLIT`s given | 2/4/8 | 20000 | **0/3** | **0/3** | **0/3** |
+
+The two reduction rows are at the 2/3/5 family that the width finding below argues for. At the
+2/4/8 family they read 5/5 · 3/5 · 4/5 and 5/5 · 5/5 · 5/5 — easier, and mostly with answers that
+are not actually parametric.
 
 Read it in three parts.
 
@@ -114,22 +118,24 @@ times out of five**. Random sampling plateaus at a bit-error rate of 0.125, whic
 mutation short. Selection is what crosses that last step, and the figure in the demo shows the two
 curves diverging.
 
-It is worth saying plainly that this is the *only* problem here where selection helps. On or-reduce
-the control is the most reliable of the three — 5/5 against 3/5 and 4/5 — and it is only slower to
-first success. On a space this small, sampling it is a perfectly good algorithm, and a write-up that
-quoted the full-adder row and not this one would be cherry-picking.
+It is worth saying plainly that this is the *only* problem here where selection helps. On the two
+reductions random sampling matches evolution exactly (3/5 each) and hill climbing finds nothing at
+all: it settles on a two-gate design that is 3% wrong and never leaves. On spaces that small,
+sampling is a perfectly good algorithm and a greedy climber is a bad one, and a write-up that quoted
+the full-adder row and not these would be cherry-picking.
 
 ### A real recursion, found from nothing
 
 `or-reduce` is `y = (x != 0)`: an N-bit bus reduced to one bit. It is the positive structural result
 because **it cannot be done without recursion in this vocabulary**. Morpho sizes a LUT cell to its
-widest operand and broadcasts the narrow ones (`compiler.js:961–972`), so no gate and no combination
+widest operand and broadcasts the narrow ones (`compiler.js:962–973`), so no gate and no combination
 of gates turns eight wires into one; the only route down is to keep `SPLIT`ting. Every correct
 answer is therefore genuinely divide-and-conquer.
 
-The designs found come out at **7 gates and depth 3** at eight bits, which is a balanced reduction
-tree — `log2(8) = 3`. `MorphoSearchTest` re-compiles the winner at 3, 16, 32 and 48 bits and
-requires it to be exact at all of them, and the demo draws it as a circuit at 4, 8 and 16.
+The designs found come out at **four gates and depth 3** at five bits: `n - 1` two-input gates
+arranged as a balanced tree, which is the minimum. `MorphoSearchTest` re-compiles the winner at 3,
+16, 32 and 48 bits and requires it to be exact at all of them, and the demo draws it as a circuit at
+4, 8 and 16.
 
 `and-reduce` is the dual and behaves the same way, which is the point of having it: a result on one
 truth table is a result about one truth table.
@@ -158,7 +164,7 @@ at 5, 7 and 9.
 exactly when the width is even. 5, 7 and 9 are the small widths where they are unequal *and* both
 wider than one bit. The designs found are all some form of `Or(x0, x1)` over the two halves followed
 by a recursion, so at those widths the LUT gets operands of two different widths — and
-`materializeLut` (`compiler.js:961-972`) computes `w = max(...)` and broadcasts only operands of
+`materializeLut` (`compiler.js:962-973`) computes `w = max(...)` and broadcasts only operands of
 length 1. Unequal wider operands are neither an error nor a broadcast; the pins read past the end of
 the shorter bus. Silently wrong.
 

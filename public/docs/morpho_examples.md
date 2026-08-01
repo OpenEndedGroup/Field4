@@ -631,30 +631,32 @@ for concurrent access.
 Five seeds per cell, three for the last two rows. Regenerate with
 `./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i`.
 
-| problem | budget | random (control) | hill climb | evolution |
-| --- | --- | --- | --- | --- |
-| bitwise xor (the harness canary) | 2 000 | 5/5 | 5/5 | 5/5 |
-| one-bit full adder | 4 000 | **0/5** | 4/5 | **5/5** |
-| or-reduce, `y = (x != 0)` | 6 000 | 5/5 | 3/5 | 4/5 |
-| and-reduce, `y = (x == ~0)` | 6 000 | 5/5 | 5/5 | 5/5 |
-| recursive 8-bit adder | 20 000 | 0/3 | 0/3 | 0/3 |
-| the same, with both `SPLIT`s given | 20 000 | 0/3 | 0/3 | 0/3 |
+| problem | widths | budget | random (control) | hill climb | evolution |
+| --- | --- | --- | --- | --- | --- |
+| bitwise xor (the harness canary) | 2/4/8 | 2 000 | 5/5 | 5/5 | 5/5 |
+| one-bit full adder | 1 | 4 000 | **0/5** | 4/5 | **5/5** |
+| or-reduce, `y = (x != 0)` | 2/3/5 | 6 000 | 3/5 | **0/5** | 3/5 |
+| and-reduce, `y = (x == ~0)` | 2/3/5 | 6 000 | 3/5 | **0/5** | 3/5 |
+| recursive 8-bit adder | 2/4/8 | 20 000 | 0/3 | 0/3 | 0/3 |
+| the same, with both `SPLIT`s given | 2/4/8 | 20 000 | 0/3 | 0/3 | 0/3 |
 
 **The full adder is where selection earns its keep.** Random sampling never finds it and plateaus at
 a bit-error rate of 0.125 — that is `sum = Xor3(a, b, c)` with `c_out = And(a, b)`, right on six of
 the eight truth-table rows and one gate swap short. Evolution finds it every time, in 165 to 1152
 invocations. Same generator, same seeds, same budget: the only difference is selection.
 
-**And it is the only row where selection helps.** On or-reduce the control is the *most* reliable of
-the three. That space is small enough that sampling it is a perfectly good algorithm, and quoting
-the full-adder row without this one would be cherry-picking.
+**And it is the only row where selection helps.** On the two reductions, random sampling matches
+evolution (3/5 each) and hill climbing finds nothing at all — it converges on a two-gate design
+that is 3% wrong and cannot get off it. Those spaces are small enough that sampling them is a
+perfectly good algorithm, and quoting the full-adder row without this one would be cherry-picking.
 
 **Or-reduce is the interesting positive result** because it cannot be done without recursion.
-Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones, so no gate and no
-combination of gates turns eight wires into one bit — the only route down is to keep `SPLIT`ting.
-Every correct answer is genuinely divide-and-conquer. The designs found come out at 7 gates and
-depth 3 at eight bits, a balanced tree, and the same source text is then re-compiled and checked at
-16, 32 and 48 bits, widths nothing was ever selected on.
+Morpho sizes a LUT cell to its widest operand and broadcasts the narrow ones (`compiler.js:964`), so
+no gate and no combination of gates turns eight wires into one bit — the only route down is to keep
+`SPLIT`ting.
+Every correct answer is genuinely divide-and-conquer. The designs found come out at four gates and
+depth 3 at five bits — `n - 1` two-input gates, arranged as a balanced tree — and the same source
+text is then re-compiled and checked at 16, 32 and 48 bits, widths nothing was ever selected on.
 
 ### The result nobody was looking for: a power-of-two width family is not enough
 
@@ -664,12 +666,12 @@ twelve other widths, all 400 are correct at 3, 6, 12, 16, 32 and 48 — and **39
 gives **zero of 400**.
 
 The mechanism is a hole in the language, not a quirk of the search. `SPLIT` halves a bus as
-`floor(w/2), w - floor(w/2)`, so the two halves are the same width exactly when the width is even;
-5, 7 and 9 are the small widths where they differ *and* both are wider than one bit. A LUT applied
-to both halves — `Or(x0, x1)`, which is what these designs do — then has operands of two different
-widths, and `materializeLut` takes the maximum and broadcasts only operands of width **1**. Unequal
-wider operands are neither broadcast nor rejected: the extra pins simply read past the end of the
-shorter bus. The circuit is silently wrong, and a search that has never been shown an odd width has
+`floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the two halves are the same width exactly when
+the width is even; 5, 7 and 9 are the small widths where they differ *and* both are wider than one
+bit. A LUT applied to both halves — `Or(x0, x1)`, which is what these designs do — then has operands
+of two different widths, and `materializeLut` (`compiler.js:962-973`) takes the maximum and
+broadcasts only operands of width **1**. Unequal wider operands are neither broadcast nor rejected:
+the extra pins simply read past the end of the shorter bus. The circuit is silently wrong, and a search that has never been shown an odd width has
 no way to find out.
 
 Change the family to 2, 3 and 5 — one line — and **400 of 400 designs are correct at every width

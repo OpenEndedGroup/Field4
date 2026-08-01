@@ -276,7 +276,7 @@ class MorphoSearchTest {
     /**
      * A **recursion**, found from nothing: reducing an N-bit bus to one bit.
      *
-     * Morpho broadcasts a LUT across a bus (`compiler.js:963`), so no combination of gates turns
+     * Morpho broadcasts a LUT across a bus (`compiler.js:964`), so no combination of gates turns
      * eight wires into one; the only route is to keep `SPLIT`ting. Every correct answer here is
      * therefore genuinely divide-and-conquer, which makes this the positive counterpart to the
      * adder's negative result.
@@ -309,7 +309,7 @@ class MorphoSearchTest {
      * 16, 32 and 48 — and wrong at 5, 7 and 9. `SPLIT` halves a bus as `floor(w/2), w - floor(w/2)`
      * (`primitives.js:42`), so the halves are equal exactly when the width is even; 5, 7 and 9 are
      * the small widths where they are unequal *and* both wider than one bit. A LUT applied to both
-     * halves then has operands of two different widths, and `materializeLut` (`compiler.js:961-972`)
+     * halves then has operands of two different widths, and `materializeLut` (`compiler.js:962-973`)
      * takes the maximum and broadcasts only operands of width 1 — unequal wider operands are neither
      * an error nor a broadcast. The design is silently wrong, and a search that never saw an odd
      * width has no way to find out.

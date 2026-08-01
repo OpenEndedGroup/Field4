@@ -47,7 +47,7 @@ object MorphoProblems {
      * `SPLIT` halves a bus as `floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the two halves
      * are equal exactly when the width is even, and 5, 7 and 9 are the small widths at which they
      * are unequal *and* both wider than one bit. A LUT applied to both halves — `Or(x0, x1)` — then
-     * has operands of different widths, and `materializeLut` (`compiler.js:961-972`) takes the
+     * has operands of different widths, and `materializeLut` (`compiler.js:962-973`) takes the
      * maximum and broadcasts only operands of width 1. Unequal wider operands are neither an error
      * nor a broadcast; the extra pins read off the end of the shorter bus. So the design is
      * silently wrong rather than rejected, and a search selected on even widths never has to notice.

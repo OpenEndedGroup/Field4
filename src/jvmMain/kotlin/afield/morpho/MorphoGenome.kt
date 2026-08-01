@@ -131,7 +131,7 @@ data class MorphoCellGenome(
      * Drop statements nothing reachable from [outputs] consumes.
      *
      * Not cosmetic. A dead `SPLIT` whose operand is one bit wide still returns `null`, and
-     * `compiler.js:1052` throws the *whole* body away when any instruction does — so an unused
+     * `compiler.js:1053` throws the *whole* body away when any instruction does — so an unused
      * statement can silently turn a working design into its own fallback. Pruning before compiling
      * is the difference between a search that works and one that mostly evaluates base cases.
      */
@@ -224,7 +224,7 @@ data class MorphoGenome(
  * | --- | --- | --- |
  * | `SPLIT(x)` | `floor(w/2)`, `w - floor(w/2)`; invalid below `w = 2` | `primitives.js:39-44` |
  * | `CAT(a, b)` | `w(a) + w(b)` | `primitives.js:45-47` |
- * | LUT | `max(w)`, with width-1 operands broadcast | `compiler.js:961-972` |
+ * | LUT | `max(w)`, with width-1 operands broadcast | `compiler.js:962-973` |
  * | self-call | the spec's own output shape at the argument widths | — |
  *
  * The last row is the one that is a model rather than a transcription, because the compiler works a
@@ -320,7 +320,7 @@ object MorphoWidthModel {
      *
      * The check that mattered most in practice. MorphoHDL terminates by *running out of bits*: a
      * `SPLIT` below width 2 returns `null` (`primitives.js:41`), the compiler throws the body away
-     * (`compiler.js:1052`) and the fallback answers instead. A generated body has no such courtesy,
+     * (`compiler.js:1053`) and the fallback answers instead. A generated body has no such courtesy,
      * and the first version of this file learned it the slow way — `evolved(ONE, t0, ONE)`, where
      * `t0` is as wide as `b`, calls itself at the same signature forever.
      *

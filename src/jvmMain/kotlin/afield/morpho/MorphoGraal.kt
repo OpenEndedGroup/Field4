@@ -109,7 +109,7 @@ object MorphoRuntime {
      *
      * Hand-written MorphoHDL is written by someone who wants a circuit, so nothing in the box
      * language needs this. Generated MorphoHDL is not: `materialize` recurses once per cell
-     * expansion (`compiler.js:1084`) and only bottoms out when a `SPLIT` runs out of bits, so a
+     * expansion (`compiler.js:1088`) and only bottoms out when a `SPLIT` runs out of bits, so a
      * synthesised body whose self-call does not narrow its arguments never returns.
      * [afield.morpho.MorphoEvaluator] arms this before every compile so a bad candidate costs one
      * timeout instead of the process.
