@@ -551,16 +551,37 @@ class KeyframerTest {
         assertEquals(0f, p1.x, 1e-3f)
         assertEquals(8f, p1.z, 1e-3f)
 
-        // Both endpoints look at the origin, and so does the midpoint — the screw motion keeps the
-        // subject framed, which is the reason to use it for a camera move.
-        for (t in listOf(0.0, 0.5, 1.0)) {
+        // These are the exact numbers `keyframer_examples.md` prints under its camera figure, so
+        // they are asserted here rather than merely observed. Sampled at eleven points, not three.
+        val radius = 8.246211f // |(8, 2, 0)|
+        for (i in 0..10) {
+            val t = i / 10.0
             val pose = scope.interpolate(a, b, t)["camera"] as CameraPose
-            val target = pose.target
+            // The whole path lies on one circle: the distance to the subject never moves.
+            assertEquals(radius, pose.position.length(), 1e-3f, "constant radius at t=$t")
+            // …at a constant height, so the screw has zero pitch here — a pure rotation.
+            assertEquals(2f, pose.position.y, 1e-3f, "constant height at t=$t")
+            // …and the subject stays dead centre of frame for the entire move. This is the reason
+            // to sclerp a camera rather than lerp its position. The page publishes the worst-case
+            // aiming error as 0.000003 world units, so the bound here is tight enough to mean it.
             assertTrue(
-                target.length() < 0.6f,
-                "the camera still points near the origin at t=$t (target was $target)"
+                pose.target.length() < 1e-5f,
+                "the camera still points at the origin at t=$t (target was ${pose.target})"
             )
         }
+
+        // The sclerp midpoint is the circle's midpoint, 8/sqrt(2) on each of x and z.
+        val mid = (scope.interpolate(a, b, 0.5)["camera"] as CameraPose).position
+        assertEquals(5.65685f, mid.x, 1e-3f)
+        assertEquals(5.65685f, mid.z, 1e-3f)
+
+        // …whereas lerping the two positions cuts the corner and swings 27% closer to the subject.
+        val lerpMid = Vector3f(8f, 2f, 0f).lerp(Vector3f(0f, 2f, 8f), 0.5f)
+        assertEquals(6.0f, lerpMid.length(), 1e-4f, "the straight-line midpoint is 6.0 from the subject")
+        assertEquals(
+            0.2724, (1.0 - 6.0 / radius).toDouble(), 1e-4,
+            "…which is 27.24% nearer than the sclerp path stays"
+        )
     }
 
     // ==========================================================================================
