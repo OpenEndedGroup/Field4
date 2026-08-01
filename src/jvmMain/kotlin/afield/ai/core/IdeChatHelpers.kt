@@ -55,6 +55,7 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceRg: ((WorkspaceRgRequest) -> WorkspaceRgResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -82,6 +83,7 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceRg = workspaceRg,
             visualVerificationEnabled = visualVerificationEnabled
         )
 
@@ -142,6 +144,7 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceRg: ((WorkspaceRgRequest) -> WorkspaceRgResult)? = null,
         visualVerificationEnabled: Boolean = imageUrls.isNotEmpty(),
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -172,6 +175,7 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceRg = workspaceRg,
             visualVerificationEnabled = visualVerificationEnabled || imageUrls.isNotEmpty()
         )
 
@@ -233,6 +237,7 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceRg: ((WorkspaceRgRequest) -> WorkspaceRgResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -260,6 +265,7 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceRg = workspaceRg,
             visualVerificationEnabled = visualVerificationEnabled
         )
 
@@ -323,6 +329,7 @@ class IdeChatHelpers(
         semanticRetrievalRebuild: (() -> SemanticRetrievalToolResult)? = null,
         agentMemory: AgentMemoryState? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceRg: ((WorkspaceRgRequest) -> WorkspaceRgResult)? = null,
         visualVerificationEnabled: Boolean = false,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
@@ -350,6 +357,7 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceRg = workspaceRg,
             visualVerificationEnabled = visualVerificationEnabled
         )
 

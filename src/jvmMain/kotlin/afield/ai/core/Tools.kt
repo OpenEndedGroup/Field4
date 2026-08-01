@@ -24,7 +24,9 @@ import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -710,33 +712,68 @@ fun runWorkspaceRg(
     command += query
     command += roots.map { it.absolutePath }
 
+    val root = roots.joinToString(File.pathSeparator) { it.absolutePath }
     return try {
-        val outputFile = File.createTempFile("field-workspace-rg-", ".txt")
-        val proc = ProcessBuilder(command).redirectErrorStream(true).redirectOutput(outputFile).start()
-        val finished = proc.waitFor(10, TimeUnit.SECONDS)
-        if (!finished) {
-            proc.destroyForcibly()
-            outputFile.delete()
-            return WorkspaceRgResult(false, canonicalTarget, roots.joinToString(File.pathSeparator) { it.absolutePath }, command, 0, false, "", "ripgrep timed out after 10s")
+        val proc = ProcessBuilder(command).redirectErrorStream(true).start()
+        val timedOut = AtomicBoolean(false)
+        val timeoutExecutor = Executors.newSingleThreadScheduledExecutor { runnable ->
+            Thread(runnable, "field-workspace-rg-timeout").apply { isDaemon = true }
         }
-        val raw = outputFile.readText().trimEnd()
-        outputFile.delete()
-        val lines = if (raw.isBlank()) emptyList() else raw.lines()
-        val truncated = lines.size > limit
-        val shown = if (truncated) lines.take(limit) else lines
-        val ok = proc.exitValue() == 0 || proc.exitValue() == 1
-        WorkspaceRgResult(
-            success = ok,
-            target = canonicalTarget,
-            root = roots.joinToString(File.pathSeparator) { it.absolutePath },
-            command = command,
-            matchLines = lines.size,
-            truncated = truncated,
-            output = shown.joinToString("\n"),
-            message = if (lines.isEmpty()) "No matches." else "Returned ${shown.size} of ${lines.size} matching/context line(s)."
-        )
+        val timeoutTask = timeoutExecutor.schedule({
+            timedOut.set(true)
+            proc.destroyForcibly()
+        }, 10, TimeUnit.SECONDS)
+
+        try {
+            val shown = ArrayList<String>(limit)
+            var truncated = false
+            try {
+                proc.inputStream.bufferedReader().use { reader ->
+                    while (true) {
+                        val line = reader.readLine() ?: break
+                        if (shown.size >= limit) {
+                            truncated = true
+                            proc.destroyForcibly()
+                            break
+                        }
+                        shown += line
+                    }
+                }
+            } catch (t: Throwable) {
+                if (!timedOut.get()) throw t
+            }
+
+            if (!proc.waitFor(250, TimeUnit.MILLISECONDS)) {
+                proc.destroyForcibly()
+                proc.waitFor(1, TimeUnit.SECONDS)
+            }
+            if (timedOut.get()) {
+                return WorkspaceRgResult(false, canonicalTarget, root, command, 0, false, "", "ripgrep timed out after 10s")
+            }
+
+            val exitCode = runCatching { proc.exitValue() }.getOrDefault(-1)
+            val ok = truncated || exitCode == 0 || exitCode == 1
+            WorkspaceRgResult(
+                success = ok,
+                target = canonicalTarget,
+                root = root,
+                command = command,
+                matchLines = shown.size,
+                truncated = truncated,
+                output = shown.joinToString("\n"),
+                message = when {
+                    shown.isEmpty() -> "No matches."
+                    truncated -> "Result limit reached; returned the first ${shown.size} matching/context line(s)."
+                    else -> "Returned ${shown.size} matching/context line(s)."
+                }
+            )
+        } finally {
+            timeoutTask.cancel(false)
+            timeoutExecutor.shutdownNow()
+            if (proc.isAlive) proc.destroyForcibly()
+        }
     } catch (t: Throwable) {
-        WorkspaceRgResult(false, canonicalTarget, roots.joinToString(File.pathSeparator) { it.absolutePath }, command, 0, false, "", "ripgrep failed: ${t.message}")
+        WorkspaceRgResult(false, canonicalTarget, root, command, 0, false, "", "ripgrep failed: ${t.message}")
     }
 }
 
