@@ -193,6 +193,10 @@ class FLine : HasProperties {
 
         override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
 
+        override fun removePropertyRaw(name: String, doResync: Boolean) {
+            properties.remove(name)
+        }
+
         protected fun pointsSummary(): String =
             if (storage.isEmpty()) "" else storage.joinToString(", ", prefix = "(", postfix = ")") { prettyVec3(it) }
 
@@ -747,6 +751,13 @@ class FLine : HasProperties {
     }
 
     override fun getPropertyRaw(name: String, default: Any?): Any? = properties.get(name)
+
+    // rev++ for the same reason as setPropertyRaw: clearing a property (`line.thickness = null`)
+    // changes how the line draws, so anything caching off rev has to rebuild.
+    override fun removePropertyRaw(name: String, doResync: Boolean) {
+        rev++
+        properties.remove(name)
+    }
 
     override fun toString(): String {
         val bbox = runCatching { fast2DBounds() }.getOrNull()

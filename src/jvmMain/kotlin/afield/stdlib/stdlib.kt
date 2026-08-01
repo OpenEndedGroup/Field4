@@ -110,6 +110,12 @@ class Delegation<T>(
      *
      * The hook sees the current value (or the default, when there is none yet) alongside the new one and
      * returns what actually gets stored, so it is the place clamping and coercion live.
+     *
+     * Assigning null to a `Delegation<T?>` **erases** the property rather than storing a null, because
+     * [HasProperties.setPropertyRaw] only takes a non-null value. Erased and never-set therefore read
+     * back identically — which is what the nullable delegates in this tree already assume, none of them
+     * having a non-null [defaultValue] that an erase could resurrect. The hook still runs first, so a
+     * null write reaches reverse-link bookkeeping like `nestedIn`'s.
      */
     operator fun setValue(f: HasProperties, property: KProperty<*>, v: T) {
         var _v = v
@@ -118,7 +124,9 @@ class Delegation<T>(
             if (a == null) a = defaultValue?.invoke() as T
             _v = it(f, a as T, _v)
         }
-        f.setPropertyRaw(property.name, _v as Any)
+        val value = _v
+        if (value == null) f.removePropertyRaw(property.name)
+        else f.setPropertyRaw(property.name, value)
     }
 }
 
@@ -832,6 +840,11 @@ data class Marker(val name: String, val box: Box) : HasProperties, HasHierarchy 
     /** The value stored under [name], or [default] if this marker has never been given one. */
     override fun getPropertyRaw(name: String, default: Any?): Any? {
         return properties[name] ?: default
+    }
+
+    /** Erases [name]. The `doResync` flag is ignored — a marker has no client to notify. */
+    override fun removePropertyRaw(name: String, doResync: Boolean) {
+        properties.remove(name)
     }
 
     /** Always empty: a marker is a leaf. Assigning to it does nothing. */

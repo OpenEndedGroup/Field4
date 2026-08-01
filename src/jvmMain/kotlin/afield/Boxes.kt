@@ -129,6 +129,15 @@ fun detachRootFromMetaroot(root: Box) {
 interface HasProperties {
     fun setPropertyRaw(name: String, value: Any, doResync: Boolean = true)
     fun getPropertyRaw(name: String, default: Any? = null): Any?
+
+    /**
+     * Erases [name] from the bag, leaving it *unset* rather than set to null.
+     *
+     * [setPropertyRaw] takes a non-null `Any`, so this is the only way back to the state a property
+     * was in before anything wrote it — which is what null means for a nullable property. See
+     * [afield.stdlib.Delegation.setValue], which routes null writes here.
+     */
+    fun removePropertyRaw(name: String, doResync: Boolean = true)
 }
 
 interface HasHierarchy : HasProperties {
@@ -668,6 +677,17 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
     override fun getPropertyRaw(name: String, default: Any?): Any? {
         return properties.getOrElse(name) { default }
+    }
+
+    override fun removePropertyRaw(name: String, doResync: Boolean) {
+        if (!properties.containsKey(name)) return
+        val oldValue = properties.remove(name)
+        // Same resync bookkeeping as setPropertyRaw: the UI has to hear that the property went away,
+        // not just that it changed value, or the inspector keeps showing the stale one.
+        if (doResync && uiResyncProperties.any { it.matches(name) }) {
+            if (oldValue != null) needsResync.add(this to name)
+        }
+        FlightRecorder.recordTrackedPropertyChange(this, name, oldValue, null)
     }
 
     override fun toString(): String {
