@@ -2,7 +2,7 @@ package afield.morpho
 
 import afield.Rect
 import afield.graphics.FLine
-import afield.rectsl.Colormaps
+import afield.Colormaps
 import afield.stdlib.Vec4
 import afield.stdlib.color
 import afield.stdlib.filled

@@ -4,7 +4,7 @@ package afield.stdlib
 
 import afield.Rect
 import afield.graphics.FLine
-import afield.rectsl.Colormaps
+import afield.Colormaps
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min

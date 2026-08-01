@@ -1,6 +1,6 @@
 package afield.examples.stdlib
 
-import afield.rectsl.Colormaps
+import afield.Colormaps
 import afield.stdlib.WFC_ALLOWED_COLOR
 import afield.stdlib.WFC_CONTRADICTION_COLOR
 import afield.stdlib.WFC_DISALLOWED_COLOR

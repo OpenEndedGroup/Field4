@@ -2,7 +2,7 @@
 
 package afield.stdlib
 
-import afield.rectsl.Colormaps
+import afield.Colormaps
 import java.util.Base64
 import kotlin.math.max
 import kotlin.math.roundToInt

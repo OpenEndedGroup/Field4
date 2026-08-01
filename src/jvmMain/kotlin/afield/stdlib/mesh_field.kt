@@ -267,7 +267,7 @@ fun TriMesh.toCapturedMesh(label: String = "TriMesh", creaseAngleDegrees: Double
 }
 
 /**
- * Per-vertex colours from a per-vertex scalar, through the same [afield.rectsl.Colormaps] tables
+ * Per-vertex colours from a per-vertex scalar, through the same [afield.Colormaps] tables
  * RectSL's charts and `Img.colormap` use — so a curvature field, a distance field and a bar chart in
  * the same document are coloured by one source of truth.
  *
@@ -275,7 +275,7 @@ fun TriMesh.toCapturedMesh(label: String = "TriMesh", creaseAngleDegrees: Double
  * into something you can look at.
  *
  * @param values one per vertex.
- * @param colormap a name from [afield.rectsl.Colormaps.names] — `viridis`, `magma`, `inferno`,
+ * @param colormap a name from [afield.Colormaps.names] — `viridis`, `magma`, `inferno`,
  *   `plasma`, `turbo`, `coolwarm`, `grayscale`.
  * @param low the value mapped to the bottom of the ramp; defaults to the data's own minimum.
  * @param high the value mapped to the top; defaults to the data's own maximum.
@@ -301,7 +301,7 @@ fun TriMesh.coloredByScalar(
     val out = FloatArray(vertexCount * 3)
     for (v in 0 until vertexCount) {
         val t = if (values[v].isFinite()) (values[v] - lo) / span else 0.5
-        val c = afield.rectsl.Colormaps.sample(colormap, t)
+        val c = afield.Colormaps.sample(colormap, t)
         out[v * 3] = c.r.toFloat(); out[v * 3 + 1] = c.g.toFloat(); out[v * 3 + 2] = c.b.toFloat()
     }
     return withColors(out)

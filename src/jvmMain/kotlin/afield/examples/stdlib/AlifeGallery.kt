@@ -483,7 +483,7 @@ object AlifeGallery {
 
     /** Colormap [name] at [t], packed the way [afield.stdlib.colormap] quantises it. */
     private fun ramp(name: String, t: Double): Int {
-        val c = afield.rectsl.Colormaps.sample(name, t)
+        val c = afield.Colormaps.sample(name, t)
         fun q(v: Double) = (v.coerceIn(0.0, 1.0) * 255.0 + 0.5).toInt().coerceIn(0, 255)
         return (q(c.r) shl 16) or (q(c.g) shl 8) or q(c.b)
     }

@@ -5,8 +5,8 @@ package afield.stdlib
 import afield.Box
 import afield.graphics.FLine
 import afield.graphics.polylineFrom
-import afield.rectsl.Color4
-import afield.rectsl.Colormaps
+import afield.Color4
+import afield.Colormaps
 import java.util.Base64
 import kotlin.math.abs
 import kotlin.math.atan2

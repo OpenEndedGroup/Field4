@@ -74,7 +74,6 @@ object DemoTranscriptExecSmokeTest {
         "imaging_cv_examples",
         "mesh_geometry_examples",
         "vision_metal_cube",
-<<<<<<< HEAD
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.
         "vision_geometry_desk_preview",
