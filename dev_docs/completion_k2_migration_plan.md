@@ -89,6 +89,20 @@ and named-arg completion (K1 has none).
   Opt-ins: `@OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)`.
 - **Kotlin gotcha:** don't mix `Sequence` and `List` in a `+` merge — inference collapses to `List<Any>`
   and `.sorted()` fails. Make every sub-result `List<String>`.
+- **The REPL's imports live in `afield.Boxes.intro`, and nowhere else.** A box gets that whole set for
+  free; the sidecar analyses it in another process and cannot see it, so it has to be *told*. It is sent
+  per request as `CompletionRequest.replImports`, from `afield.introImports` (derived from `intro`, so it
+  cannot drift) via `KotlinInterface2.complete` → `AaCompletionClient`.
+  Do **not** add a package to the sidecar's own list to make a box's types resolve — add it to `intro`.
+  The sidecar's `CompletionImports.fieldFallback` is a *floor* for callers that send no `replImports`
+  (the corpus spike), explicitly not authoritative. There used to be two hand-written copies of it, and
+  they had drifted from `intro` and from each other, which is exactly the bug this note exists to
+  prevent: a box using `afield.graphquery` / `afield.nano` / `afield.four.{targets,buffers,texture}` /
+  `afield.stdlib.linalg.{arena,storage}` without writing its own import resolved under the K1 delegate
+  and not under AA — and AA's empty result silently fell back, so completion looked fine and was quietly
+  worse. A package in `replImports` that the prebuilt ASM index wasn't seeded with is scanned on demand
+  (`AaCompleter.indexFor` → `AaSymbolIndex.scanPackages`, memoised), so what seeds the index and what is
+  true can differ without costing recall. Held by the `[AA+intro]` check in `kotlin.completion-aa-e2e.probe`.
 
 ## 4. How to resume cold (sanity check the spike still runs)
 

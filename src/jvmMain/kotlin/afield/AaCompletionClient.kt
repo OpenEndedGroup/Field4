@@ -28,6 +28,9 @@ object AaCompletionClient {
         /** File-scope declarations supplied by a synthetic language/runtime profile. */
         val declarations: String = "",
         val imports: List<String> = emptyList(),
+        /** The REPL's own imports (Field's [intro]) — what a box gets for free, which a headless
+         *  sidecar cannot see. Supersedes the sidecar's built-in fallback list. */
+        val replImports: List<String> = emptyList(),
         val implicitReceivers: List<String> = emptyList(),
         val classpathRoots: List<String> = emptyList(),
         /** True for a KotlinJS box → the sidecar filters JVM-only stdlib members (no JS equivalent). */
@@ -114,6 +117,10 @@ object AaCompletionClient {
         // True for a KotlinJS box (compiled to JS, no JVM): the sidecar drops JVM-only stdlib members
         // (`stream`/`spliterator`/`toArray`/…). Default false → regular Kotlin completion is unchanged.
         jsTarget: Boolean = false,
+        // The REPL imports the caller's box gets for free (`afield.introImports` for a JVM box). Left
+        // empty by the KotlinJS callers, whose scope is the stdlib jar and their own declarations —
+        // sending them Field's `afield.*` imports would name types their classpath does not contain.
+        replImports: List<String> = emptyList(),
     ): Outcome {
         endpoint() ?: return Outcome(null, "no-sidecar-url")
         val roots = classpathRootsOverride?.takeIf { it.isNotEmpty() } ?: classpathRoots
@@ -126,6 +133,7 @@ object AaCompletionClient {
                     cursor = cursor.coerceIn(0, snippet.length),
                     preamble = preamble,
                     declarations = declarations,
+                    replImports = replImports,
                     implicitReceivers = implicitReceivers,
                     classpathRoots = roots,
                     jsTarget = jsTarget,

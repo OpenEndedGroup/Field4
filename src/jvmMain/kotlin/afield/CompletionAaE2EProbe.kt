@@ -17,6 +17,12 @@ expect:
   exitCode: 0
   stdoutContains:
     - "AA E2E DONE"
+  # Every check below prints ✓ or ✗, and until now NOTHING asserted on them: all five could fail
+  # and the probe still passed, because "AA E2E DONE" prints unconditionally. That is how `d.fl`
+  # shipped answering with stdlib junk. A ✗ is never printed on the no-sidecar SKIP path, so this
+  # stays green where no sidecar is running.
+  stdoutNotContains:
+    - "✗"
 */
 /**
  * STAGE D live end-to-end: exercises the REAL KI2 → AA-sidecar completion chain in a running Field JVM.
@@ -74,6 +80,15 @@ object CompletionAaE2EProbe {
             else println("  ✗ [$expectFrom] $desc ABSENT (of ${m.size})")
         }
 
+        /** The mirror of [check]: [banned] must NOT be offered. Some bugs are wrong answers, not missing ones. */
+        fun absent(desc: String, s: String, cursor: Int, banned: String) {
+            total++
+            val m = meta(runBlocking { runCatching { ki.complete(s, cursor) }.getOrNull() })
+            val leak = m.firstOrNull { it.text.trimEnd('(', ' ', '=') == banned }
+            if (leak == null) { pass++; println("  ✓ [no-junk] $desc → $banned not offered (of ${m.size})") }
+            else println("  ✗ [no-junk] $desc LEAKED ${leak.displayText} (of ${m.size})")
+        }
+
         println("── AA chain (sidecar up) ──")
         // Named-arg completion PROVES the AA path — the K1 delegate produces none (Stage B differential).
         check("named-arg completion Vector3f(", "Vector3f(", 9, "x", "AA-only")
@@ -83,6 +98,38 @@ object CompletionAaE2EProbe {
         // Ordinary dot/name completion.
         check("dot FLine().move", "FLine().move", 12, "moveTo", "AA")
         check("name Vec → Vec3", "Vec", 3, "Vec3", "AA")
+
+        // The box's OWN import. Every check above leans on the sidecar's hardcoded REPL default
+        // imports, so nothing here (or in the differential corpus) ever exercised a box that writes
+        // `import <some package>.*` for itself — and that entire path was broken: the import line
+        // arrives inside the snippet, which the sidecar pastes into a synthetic wrapper function
+        // where an import is a syntax error, so the receiver never resolved and every member and
+        // extension of the box's own types went missing. `afield.morpho` is deliberately outside the
+        // REPL intro, so the box's own import is what makes the type resolve at all, and
+        // `MorphoCircuit.flines` mirrors the reported `SentenceDiagram.flines` through the same
+        // stdlib-colliding `fl` prefix. Checked in, so unlike a src/personal package it runs anywhere.
+        println("── the box's own imports ──")
+        val own = "import afield.morpho.*\nval c: MorphoCircuit = TODO()\nc."
+        check("own import → member at a prefix", own + "sign", own.length + 4, "signature", "AA+import")
+        check("own import → extension at a prefix", own + "fl", own.length + 2, "flines", "AA+import")
+        check("own import → extension at a bare dot", own, own.length, "flines", "AA+import")
+
+        // The REPL's OWN imports (afield.Boxes.intro) — which the box never writes and a headless
+        // sidecar cannot see. `afield.four.buffers` is in that intro and was missing from the sidecar's
+        // hand-written copy of it, so this resolved under K1 and not under AA: the same defect one level
+        // up. KotlinInterface2 now sends `introImports`, and this check is what holds it there.
+        println("── the REPL's own imports (never written by the box) ──")
+        val repl = "val s: Structure = TODO()\ns.proxy"
+        check("intro import afield.four.buffers", repl, repl.length, "proxying", "AA+intro")
+
+        // …and the seam that actually bit the human. An unresolved receiver must produce NOTHING, so
+        // KI2 falls through to K1. When AA instead answered it with every prefix-matching extension in
+        // its index (an error type is a subtype of everything, so they all "applied"), the non-empty
+        // result told KI2 that AA had served the request and suppressed the fallback — the correct
+        // answer was withheld, not merely diluted. Assert on the junk: the fallback's own answer for
+        // an unresolvable receiver is empty too, so presence of the junk is the only observable.
+        val bad = "val q: NoSuchTypeAnywhere = TODO()\nq.fl"
+        absent("unresolved receiver offers no stdlib extension", bad, bad.length, "flatMap")
 
         // Latency over the warm session (first call already paid session/index build above).
         val times = mutableListOf<Long>()

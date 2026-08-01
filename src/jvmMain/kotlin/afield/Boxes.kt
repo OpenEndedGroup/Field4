@@ -1202,6 +1202,20 @@ import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 """
 
+/**
+ * [intro] as individual `import` statements — the exact set every box gets for free, in a form other
+ * subsystems can pass around.
+ *
+ * The completion sidecar analyses a box headlessly, in another process, and cannot see this: it has to
+ * be TOLD what is in scope. It used to carry its own hand-written approximation, which had drifted —
+ * it was missing `afield.nano`, `afield.graphquery`, `afield.four.targets`, `afield.four.buffers`,
+ * `afield.four.texture` and both `afield.stdlib.linalg` sub-packages, so any box using one of those
+ * types without writing its own import resolved under the K1 delegate and not under AA, and the user
+ * silently got fallback completions. Derived here so the two can no longer disagree.
+ */
+val introImports: List<String>
+    get() = intro.lineSequence().map { it.trim() }.filter { it.startsWith("import ") }.distinct().toList()
+
 private val kotlinStartupLogIds = AtomicLong(0)
 
 private fun Box.kotlinStartupLabel(): String {

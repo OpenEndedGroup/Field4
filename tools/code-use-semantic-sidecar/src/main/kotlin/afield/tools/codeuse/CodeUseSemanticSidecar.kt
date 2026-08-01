@@ -150,6 +150,9 @@ data class CompletionRequest(
     val declarations: String = "",
     /** The box's own `import` lines (added to the default REPL imports). */
     val imports: List<String> = emptyList(),
+    /** The REPL imports the caller's boxes get for free — Field's `afield.introImports`. Supersedes the
+     *  analyzer's own fallback list, which exists only for callers that send none. */
+    val replImports: List<String> = emptyList(),
     /** Implicit receiver types in scope (e.g. `afield.Box`), modelled as `with(...)` scopes. */
     val implicitReceivers: List<String> = emptyList(),
     /** Field's binary classpath (jars + build/classes) — `System.getProperty("java.class.path")`. */
@@ -652,13 +655,12 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         Thread(task, "k2-completion-build").apply { isDaemon = true }
     }
 
-    // Kotlin default (auto) imports + Field's REPL imports — the packages the ASM index must cover.
-    private val defaultImports = listOf(
-        "kotlin.*", "kotlin.collections.*", "kotlin.sequences.*", "kotlin.text.*",
-        "kotlin.io.*", "kotlin.ranges.*", "kotlin.comparisons.*", "kotlin.math.*",
-        "afield.*", "afield.stdlib.*", "afield.stdlib.linalg.*", "afield.graphics.*",
-        "afield.four.*", "afield.four.util.*", "afield.four.synth.*", "afield.four.modules.*",
-    )
+    /**
+     * The scope a request is analysed under when it carries no [CompletionRequest.replImports], and what
+     * the ASM index is seeded with at session build. NOT the source of truth for Field's REPL imports —
+     * that is `afield.Boxes.intro`, which the live client sends per request. See [CompletionImports].
+     */
+    private val defaultImports = CompletionImports.default
 
     fun complete(req: CompletionRequest): CompletionResponse {
         if (req.snippet.isBlank()) return CompletionResponse(true, "k2-aa", "empty snippet")
@@ -678,6 +680,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 declarations = req.declarations,
                 implicitReceivers = req.implicitReceivers,
                 extraImports = req.imports,
+                replImports = req.replImports,
                 jsTarget = req.jsTarget,
             )
         }
@@ -745,7 +748,7 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
             ?: run { Disposer.dispose(disposable); return null }
         val importedPackages = defaultImports.map { it.removeSuffix(".*") }.toSet()
         val index = AaSymbolIndex.buildOrLoad(roots, importedPackages, config.scratchRoot.resolve("completion-index"))
-        return Cached(session, AaCompleter(contextFile, index, defaultImports))
+        return Cached(session, AaCompleter(contextFile, index, defaultImports, roots))
     }
 
     /** Map an AA candidate to a `SourceCodeCompletionVariant`-shaped row fieldSuggest can rank+render.

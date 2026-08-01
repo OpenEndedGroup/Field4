@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.metadata.ProtoBuf
@@ -38,6 +39,46 @@ import org.jetbrains.org.objectweb.asm.Opcodes
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * The imports a snippet is analysed under when the caller does not say.
+ *
+ * THE SOURCE OF TRUTH FOR FIELD'S REPL IMPORTS IS `afield.Boxes.intro`, surfaced as the list
+ * `afield.introImports` and sent per request as [CompletionRequest.replImports]. Nothing here is
+ * authoritative and nothing here should be edited to "add a package a box needs" — add it to `intro`.
+ *
+ * This module cannot see `afield` (it is a standalone tool built against the Kotlin compiler, not
+ * against Field), so for callers that send no `replImports` — the corpus spike, and any future
+ * harness — there has to be a floor. That floor used to be written out twice, here and in
+ * [CompletionSpike], and the two had already drifted apart from each other as well as from `intro`.
+ * One copy now, so at worst it is wrong in one place.
+ */
+object CompletionImports {
+    /** Kotlin's own auto-imports. Part of the language, identical for every caller, never sent. */
+    val kotlinLanguage = listOf(
+        "kotlin.*", "kotlin.collections.*", "kotlin.sequences.*", "kotlin.text.*",
+        "kotlin.io.*", "kotlin.ranges.*", "kotlin.comparisons.*", "kotlin.math.*",
+    )
+
+    /**
+     * A strict subset of Field's REPL imports, used ONLY when a request carries no `replImports`.
+     *
+     * It is the historical hand-written guess, kept because the corpus fixtures resolve under it —
+     * not because it is right. It is missing `afield.nano`, `afield.graphquery`, `afield.four.targets`,
+     * `afield.four.buffers`, `afield.four.texture` and the `afield.stdlib.linalg` sub-packages, all of
+     * which `intro` has. Those now arrive from the live client, which is why this is allowed to stay
+     * wrong rather than being another thing to keep in step.
+     */
+    val fieldFallback = listOf(
+        "afield.*", "afield.stdlib.*", "afield.stdlib.linalg.*", "afield.graphics.*",
+        "afield.four.*", "afield.four.util.*", "afield.four.synth.*", "afield.four.modules.*",
+    )
+
+    /** What a session's ASM prefix index is seeded with before any request has been seen. A package a
+     *  request names but this misses is scanned on demand ([AaCompleter.indexFor]). */
+    val default = kotlinLanguage + fieldFallback
+}
 
 /**
  * A single completion candidate produced by the K2 Analysis API. Structured (not a display string) so
@@ -132,10 +173,30 @@ data class AaSymbolIndex(
     val classifierCount: Int get() = classifiers.values.sumOf { it.size }
     val typeAliasCount: Int get() = typeAliases.values.sumOf { it.size }
 
+    /** Union, for folding an on-demand package scan into the prebuilt index. */
+    operator fun plus(other: AaSymbolIndex): AaSymbolIndex {
+        if (other.callables.isEmpty() && other.classifiers.isEmpty() && other.typeAliases.isEmpty()) return this
+        fun merge(a: Map<String, List<String>>, b: Map<String, List<String>>) =
+            (a.keys + b.keys).associateWith { k -> (a[k].orEmpty() + b[k].orEmpty()).distinct() }
+        return AaSymbolIndex(merge(callables, other.callables), merge(classifiers, other.classifiers),
+            merge(typeAliases, other.typeAliases))
+    }
+
     companion object {
         /** Bump when the on-disk format or the scan semantics change, to invalidate stale caches. */
         private const val FORMAT_VERSION = 2
         private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
+
+        val EMPTY = AaSymbolIndex(emptyMap(), emptyMap(), emptyMap())
+
+        /**
+         * Scan [packages] on demand, for a package the prebuilt index does not cover — anything the
+         * box imports that is not one of the REPL default imports (`sentences`, a user's own jar).
+         * Same scan as [build]; separate entry point because it happens per request rather than per
+         * session, and is memoised by the caller (~0.3s per package, once).
+         */
+        fun scanPackages(roots: List<Path>, packages: Set<String>): AaSymbolIndex =
+            if (packages.isEmpty()) EMPTY else build(roots, packages)
 
         /**
          * Build the index, or load it from [cacheDir] when a cache keyed by the same classpath
@@ -296,6 +357,9 @@ private class MetadataVisitor(private val onTypeAlias: (String) -> Unit) : Annot
     }
 }
 
+/** A line that is nothing but an `import` — `import a.b.C`, `import a.b.*`, `import a.b.C as D`. */
+private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
+
 /**
  * K2 Analysis-API completion candidate generation. Reusable across the spike harness (Stage A/B) and
  * the sidecar HTTP endpoint (Stage C). Construct once per session with a [contextFile] from that
@@ -305,10 +369,63 @@ class AaCompleter(
     private val contextFile: KtFile,
     private val index: AaSymbolIndex,
     private val defaultImports: List<String>,
+    /** The session's binary roots, so a package the box imports but [index] does not cover (anything
+     *  outside [defaultImports] — `sentences`, a user's own jar) can be scanned on demand. Empty
+     *  disables that, leaving only the prebuilt index. */
+    private val binaryRoots: List<Path> = emptyList(),
 ) {
     /** One-line index size summary, for sidecar startup logging. */
     val indexSummary: String
         get() = "${index.callableCount} callables, ${index.classifierCount} classifiers, ${index.typeAliasCount} type-aliases"
+
+    /** On-demand package scans, memoised — including empty ones, so an unknown package is probed once. */
+    private val scanned = ConcurrentHashMap<String, AaSymbolIndex>()
+
+    /** [index], plus the packages that were added to it for this request (see [indexFor]). */
+    private data class IndexScope(val index: AaSymbolIndex, val extraPackages: Set<String>)
+
+    /**
+     * The prebuilt index plus any imported package it doesn't already cover. The prebuilt index is
+     * keyed to the REPL default imports, so a box that writes its own `import sentences.*` had NO
+     * enumerable names for that package: standalone AA can't enumerate a binary package by prefix
+     * (the reason the index exists), so `sentences.flines` — a top-level extension on the box's own
+     * type — was unreachable at every prefix, whether or not the receiver resolved.
+     */
+    private fun starPackagesOf(imports: List<String>): List<String> =
+        imports.map { it.removePrefix("import ").trim().substringBefore(" as ").trim() }
+            .filter { it.endsWith(".*") }.map { it.removeSuffix(".*") }
+            .filter { it.isNotEmpty() }.distinct()
+
+    /**
+     * @param boxImports      imports this box wrote (or inherited) for itself — few, and the place its own
+     *                        extensions live, so they are worth enumerating even at an empty prefix.
+     * @param providedImports the scope the box got for free (Kotlin's auto-imports plus the caller's REPL
+     *                        imports). Indexed the same way, but deliberately NOT enumerable at an empty
+     *                        prefix: `afield.stdlib` alone would put thousands of symbol resolutions on
+     *                        every bare `.` keystroke, which is what the empty-prefix gate exists to avoid.
+     */
+    private fun indexFor(boxImports: List<String>, providedImports: List<String>): IndexScope {
+        if (binaryRoots.isEmpty()) return IndexScope(index, emptySet())
+        val fromBox = starPackagesOf(boxImports)
+        val wanted = (fromBox + starPackagesOf(providedImports)).distinct()
+            .filter { it !in index.callables && it !in index.classifiers }
+        if (wanted.isEmpty()) return IndexScope(index, emptySet())
+        val missing = wanted.filter { !scanned.containsKey(it) }
+        if (missing.isNotEmpty()) {
+            val fresh = AaSymbolIndex.scanPackages(binaryRoots, missing.toSet())
+            for (pkg in missing) {
+                scanned[pkg] = AaSymbolIndex(
+                    fresh.callables.filterKeys { it == pkg },
+                    fresh.classifiers.filterKeys { it == pkg },
+                    fresh.typeAliases.filterKeys { it == pkg },
+                )
+            }
+        }
+        return IndexScope(
+            wanted.fold(index) { acc, pkg -> acc + (scanned[pkg] ?: AaSymbolIndex.EMPTY) },
+            wanted.filter { it in fromBox }.toSet(),
+        )
+    }
 
     /**
      * @param snippet           the code being edited, WITHOUT any caret marker.
@@ -337,10 +454,18 @@ class AaCompleter(
         declarations: String = "",
         implicitReceivers: List<String> = emptyList(),
         extraImports: List<String> = emptyList(),
+        replImports: List<String> = emptyList(),
         jsTarget: Boolean = false,
     ): AaCompletionResult {
-        val before = snippet.substring(0, cursor)
-        val after = snippet.substring(cursor)
+        // A box's own `import` lines arrive inside [snippet] — but the snippet is pasted into the
+        // synthetic `fun __c() { … }` below, where an import is a syntax error. So `import sentences.*`
+        // on line 1 left `SentenceDiagram` unresolved and every member of the box's own type missing.
+        // Hoist them to the file header instead (blanked in place, same length, so [cursor] still
+        // means what the caller said). The line the caret sits on is left alone: completing an import
+        // path is a name position like any other.
+        val (body, snippetImports) = hoistImports(snippet, cursor)
+        val before = body.substring(0, cursor)
+        val after = body.substring(cursor)
         val prefix = Regex("[A-Za-z0-9_]*$").find(before)?.value ?: ""
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
         val isDot = before.dropLast(prefix.length).trimEnd().endsWith(".")
@@ -353,8 +478,13 @@ class AaCompleter(
         val (preambleImports, localStubs) = splitPreamble(preamble)
         val (declarationImports, declarationStubs) = splitPreamble(declarations)
 
+        // What the box wrote or inherited, versus what it was handed. Kept apart because only the former
+        // is small enough to enumerate at an empty prefix — see [indexFor].
+        val boxImports = extraImports + snippetImports + preambleImports + declarationImports
+        val providedImports = defaultImports + replImports
+        val allImports = providedImports + boxImports
         val sb = StringBuilder()
-        (defaultImports + extraImports + preambleImports + declarationImports).map { it.removePrefix("import ").trim() }
+        allImports.map { it.removePrefix("import ").trim() }
             .filter { it.isNotEmpty() }.distinct().forEach { sb.append("import ").append(it).append('\n') }
         sb.append('\n')
         declarations.trimIndent().lineSequence()
@@ -376,10 +506,34 @@ class AaCompleter(
         return try {
             val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
                 .createFile("AaCompletion.kt", sb.toString())
-            completeAt(file, cursorOffset, isDot, prefix, jsTarget)
+            val scope = indexFor(boxImports, providedImports)
+            completeAt(file, cursorOffset, isDot, prefix, jsTarget, scope.index, scope.extraPackages)
         } catch (t: Throwable) {
             AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
         }
+    }
+
+    /**
+     * Blank every whole-line `import` in [snippet] (leaving the one holding the caret) and return the
+     * blanked text — character-for-character the same length, so caret offsets survive — plus the
+     * import statements found. Only a line that is nothing but an import is touched, so an `import`
+     * inside a string literal or a comment is left where it is.
+     */
+    internal fun hoistImports(snippet: String, cursor: Int): Pair<String, List<String>> {
+        if (!snippet.contains("import ")) return snippet to emptyList()
+        val out = StringBuilder(snippet)
+        val imports = mutableListOf<String>()
+        var lineStart = 0
+        for (line in snippet.split('\n')) {
+            val text = line.trimEnd('\r')
+            val lineEnd = lineStart + text.length
+            if (IMPORT_LINE.matches(text) && cursor !in lineStart..lineEnd) {
+                imports += text.trim()
+                for (i in lineStart until lineEnd) out.setCharAt(i, ' ')
+            }
+            lineStart += line.length + 1
+        }
+        return out.toString() to imports
     }
 
     /**
@@ -428,7 +582,13 @@ class AaCompleter(
     }
 
     @OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)
-    private fun completeAt(file: KtFile, offset: Int, isDot: Boolean, prefix: String, jsTarget: Boolean): AaCompletionResult {
+    private fun completeAt(
+        file: KtFile, offset: Int, isDot: Boolean, prefix: String, jsTarget: Boolean,
+        /** [AaCompleter.index] widened with any package this request's imports added. */
+        index: AaSymbolIndex,
+        /** Just those added packages — small, and enumerable even at an empty prefix. */
+        extraPackages: Set<String>,
+    ): AaCompletionResult {
         val leaf = file.findElementAt((offset - 1).coerceAtLeast(0))
             ?: return AaCompletionResult(emptyList(), "no element at cursor")
         val match: (Name) -> Boolean = { n -> prefix.isEmpty() || n.asString().startsWith(prefix) }
@@ -595,6 +755,14 @@ class AaCompleter(
 
                 val type = recv.expressionType
                     ?: return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED: ${recv.text}")
+                // An ERROR type is not a type. `errorType.isSubtypeOf(anything)` is vacuously true, so
+                // the extension-conformance test below accepted EVERY prefix-matching extension in the
+                // index: `d.fl` on an unresolved `d` filled the panel with flatMap/flatten/flatShaded.
+                // Worse, a non-empty result tells AaCompletionClient that AA served the request, which
+                // suppresses the K1 fallback that would have answered correctly — so the damage was not
+                // just noise, it was the right answer being withheld. Bail like the null case above.
+                if (type is KaErrorType)
+                    return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED (error): ${recv.text}")
                 val typeStr = runCatching { type.toString() }.getOrDefault("?")
 
                 // Substituted members of the receiver type.
@@ -618,11 +786,16 @@ class AaCompleter(
                 val selector = dq.selectorExpression as? KtSimpleNameExpression
                 val checker = selector?.let { runCatching { createExtensionCandidateChecker(file, it, recv) }.getOrNull() }
                 val ctx = file.scopeContext(selector ?: dq)
-                val fromPackages = if (prefix.isEmpty()) emptySequence() else index.callables.asSequence().flatMap { (pkg, names) ->
-                    val fq = FqName(pkg)
-                    names.asSequence().filter { it.startsWith(prefix) }
-                        .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
-                }
+                val fromPackages = index.callables.asSequence()
+                    // A bare `.` must not walk the whole index — thousands of resolves per keystroke.
+                    // But [extraPackages] (the box's own `import sentences.*`) is a handful of names and
+                    // is exactly where its extensions live, so `d.` still has to offer `flines`.
+                    .filter { prefix.isNotEmpty() || it.key in extraPackages }
+                    .flatMap { (pkg, names) ->
+                        val fq = FqName(pkg)
+                        names.asSequence().filter { prefix.isEmpty() || it.startsWith(prefix) }
+                            .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
+                    }
                 val extCandidates = (ctx.compositeScope().callables(match) + fromPackages +
                     ctx.implicitReceivers.asSequence().flatMap { r ->
                         r.type.scope?.getCallableSignatures(match)?.map { it.symbol } ?: emptySequence()

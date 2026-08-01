@@ -562,7 +562,12 @@ class KotlinInterface2(
             val receiverTypes = implicitReceivers.map { it.typeName }
             val startNs = System.nanoTime()
             val outcome = withContext(Dispatchers.IO) {
-                AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)
+                // `introImports` is the scope every box gets for free. The sidecar analyses the snippet
+                // in another process and cannot see it, so it must be told; before this it fell back to
+                // its own hand-written copy, which had drifted. See the KDoc on `introImports`.
+                AaCompletionClient.complete(
+                    s, cursor, completionPreamble, receiverTypes, replImports = introImports,
+                )
             }
             val ms = (System.nanoTime() - startNs) / 1_000_000
             if (outcome.served) {

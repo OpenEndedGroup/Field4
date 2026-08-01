@@ -50,12 +50,11 @@ object CompletionSpike {
     private const val CARET = '‸'
     private val dumpJson = Json { encodeDefaults = true; prettyPrint = true }
 
-    private val defaultImports = listOf(
-        "kotlin.*", "kotlin.collections.*", "kotlin.sequences.*", "kotlin.text.*",
-        "kotlin.io.*", "kotlin.ranges.*", "kotlin.comparisons.*", "kotlin.math.*",
-        "afield.stdlib.*", "afield.stdlib.linalg.*", "afield.graphics.*",
-        "afield.four.*", "afield.four.util.*", "afield.four.synth.*",
-    )
+    /** The corpus harness has no live Field to ask, so it analyses under the shared fallback. This was
+     *  a third hand-written copy of that list, which had drifted from the sidecar's (no `afield.*`, no
+     *  `afield.four.modules.*`) — so the differential was measuring AA under a scope no real box has.
+     *  See [CompletionImports] for where the real REPL imports come from. */
+    private val defaultImports = CompletionImports.default
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -125,7 +124,7 @@ object CompletionSpike {
         val index = AaSymbolIndex.buildOrLoad(libRoots, importedPackages, cacheDir)
         System.err.println("[spike] index: ${index.callableCount} callables, ${index.classifierCount} classifiers, ${index.typeAliasCount} type-aliases")
 
-        val completer = AaCompleter(contextFile, index, defaultImports)
+        val completer = AaCompleter(contextFile, index, defaultImports, libRoots)
 
         val dump = mutableListOf<AaDumpFixture>()
         var surfaced = 0; var total = 0
