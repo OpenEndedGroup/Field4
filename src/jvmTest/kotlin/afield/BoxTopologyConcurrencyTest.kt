@@ -14,6 +14,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -335,5 +336,47 @@ class BoxTopologyConcurrencyTest {
         // And a non-set value on one of those names is left alone rather than mangled.
         a.setPropertyRaw("nestedIn", session.root)
         assertEquals(session.root, a.getPropertyRaw("nestedIn"))
+    }
+
+    /**
+     * The other half of that normalisation, and the regression it caused.
+     *
+     * Normalising inside `setPropertyRaw` means the stored object is no longer the object handed in, and
+     * `Delegation.getValue` used to fill in a missing default by writing it back and then returning the
+     * value it had *passed*, not the one now in the bag. So the first-ever read of `children` / `parents` /
+     * `nested` yielded a throwaway `LinkedHashSet` while the bag held a separate `CopyOnWriteArraySet`, and
+     * every mutation through that first reference went nowhere.
+     *
+     * It broke `nestInto`, whose whole job is `parent.nested.add(this)`: on a parent whose `nested` had
+     * never been read the child ended up with `nestedIn` correctly set and absent from the parent's
+     * `nested`, which is `examples.import.metadata-nested` failing on `require(child in nestParent.nested)`.
+     * A one-way edge like that is worse than a missing one — the child claims a parent that disowns it.
+     */
+    @Test
+    fun firstReadOfADefaultedTopologySetReturnsTheStoredObject() {
+        val session = session("topology-default")
+        val parent = boxIn(session, "parent")
+        val child = boxIn(session, "child")
+
+        listOf<Pair<String, () -> MutableSet<Box>>>(
+            "nested" to { parent.nested },
+            "children" to { parent.children },
+            "parents" to { parent.parents },
+        ).forEach { (property, read) ->
+            // The first read is the one that fills in the default and writes it back.
+            val firstRead = read()
+            assertSame(
+                parent.getPropertyRaw(property), firstRead,
+                "the first read of an unset `$property` handed back a different object than the bag holds, " +
+                    "so anything mutating it (nestInto, connect) writes into a throwaway"
+            )
+
+            // Which is the property that actually matters: a mutation through it has to survive.
+            firstRead.add(child)
+            assertEquals(
+                setOf(child), read(),
+                "mutating the object returned by the first read of `$property` did not persist"
+            )
+        }
     }
 }

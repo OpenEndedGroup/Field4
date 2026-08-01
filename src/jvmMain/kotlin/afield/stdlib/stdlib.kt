@@ -86,6 +86,15 @@ class Delegation<T>(
      * A non-null default is *written back* as a side effect, so the value the box sees is the value
      * anything else reading that property by name will see too. A default that itself returns null is
      * handed straight back without being stored.
+     *
+     * That guarantee is why the default is **re-read from the bag** after being written rather than
+     * handed back directly: [HasProperties.setPropertyRaw] is allowed to normalise what it stores, and
+     * for the topology sets (`children` / `parents` / `nested`) it does — `Boxes.asTopologySet` wraps a
+     * plain `Set` in a `CopyOnWriteArraySet`, so the stored object is *not* the one passed in. Returning
+     * `def` handed the caller a throwaway collection whose mutations went nowhere: `nestInto`'s
+     * `parent.nested.add(this)` on a never-yet-read `nested` was silently lost, leaving `nestedIn` set
+     * and the parent's `nested` empty. Re-reading costs one map lookup and makes the paragraph above
+     * true for normalising properties as well as plain ones.
      */
     operator fun getValue(f: HasProperties, property: KProperty<*>): T {
 
@@ -94,7 +103,7 @@ class Delegation<T>(
             val def = defaultValue()
             if (def != null) {
                 f.setPropertyRaw(property.name, def as Any)
-                a = def
+                a = f.getPropertyRaw(property.name) ?: def
             } else {
                 return def as T
             }
