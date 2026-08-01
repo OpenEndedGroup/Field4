@@ -495,4 +495,53 @@ class ImagingCoreTest {
         assertEquals(0.5f, down.mean(), 0.05f)
         assertTrue(down.stdDev() < 0.15f, "pyrDown aliased: stdDev ${down.stdDev()}")
     }
+
+    @Test
+    fun adaptiveThresholdBeatsAGlobalOneUnderUnevenIllumination() {
+        // thresholdAdaptive was the one consumer of boxBlur with no test of its own, which matters
+        // more than it looks: it *thresholds* the local mean, so unlike a blur it can turn a small
+        // numeric change in that mean into a flipped pixel. It is precisely the caller that a change
+        // to the running sums could break silently.
+        //
+        // Note the polarity, which is the thing to get right here: the comparison is
+        // `v > m - bias`, so a pixel stays foreground (1) unless it is *darker* than its
+        // neighbourhood. That is the dark-ink-on-lit-paper case, and on a linear ramp the mean of a
+        // symmetric window equals the centre value exactly, so bare background is 1 by construction.
+        //
+        // The scene is therefore five dark marks on paper whose illumination ramps from 0.05 to 0.85
+        // across the frame. Every mark is 0.18 below its LOCAL background, but a mark on the bright
+        // side (0.67) is *lighter* than the bare background on the dark side (0.05) — so no single
+        // global threshold can separate marks from paper, while a local-mean one can. Marks are kept
+        // at least radius+3 px clear of the probes so each probe's window contains no mark.
+        val w = 96
+        val h = 64
+        val marks = listOf(12 to 32, 32 to 20, 50 to 40, 68 to 24, 84 to 36)
+        val img = Img.generate(w, h) { x, y ->
+            val illum = 0.05f + 0.80f * (x / (w - 1).toFloat())
+            val onMark = marks.any { (mx, my) -> abs(x - mx) <= 3 && abs(y - my) <= 3 }
+            if (onMark) illum - 0.18f else illum
+        }
+
+        val probes = listOf(20 to 4, 40 to 59, 60 to 4, 78 to 59)
+        val adaptive = img.thresholdAdaptive(radius = 8, bias = 0.05f)
+
+        // Marks come out dark (0), paper comes out light (1) — at every illumination level.
+        for ((mx, my) in marks) {
+            assertEquals(0f, adaptive.at(mx, my), "adaptive threshold missed the dark mark at ($mx, $my)")
+        }
+        for ((x, y) in probes) {
+            assertEquals(1f, adaptive.at(x, y), "adaptive threshold darkened bare paper at ($x, $y)")
+        }
+
+        // And a global threshold really does fail on the same nine probes — otherwise this test
+        // proves nothing about being *adaptive*. Otsu can only split by absolute brightness, so it
+        // must either call the dark-side paper a mark or the bright-side marks paper.
+        val global = img.thresholdOtsu()
+        val globalWrong = marks.count { (mx, my) -> global.at(mx, my) != 0f } +
+            probes.count { (x, y) -> global.at(x, y) != 1f }
+        assertTrue(
+            globalWrong > 0,
+            "a global threshold was expected to misclassify some of the 9 probes, but it got all of them right"
+        )
+    }
 }

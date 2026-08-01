@@ -102,17 +102,36 @@ kotlin {
     }
 }
 
+// While optimising one operator you do not want the other 26 arms, and you certainly do not want
+// 3 forks x 15 iterations of them — that is the difference between a one-minute edit/measure loop
+// and an hour. `me.champeau.jmh` has no command-line passthrough, so wire the three knobs that
+// matter to gradle properties:
+//
+//   ./gradlew :tools:imaging-bench:jmh -Pjmh.includes='.*PyrDown.*' -Pjmh.fork=1 -Pjmh.iterations=5
+//
+// Defaults are the publishable configuration, so a bare `jmh` invocation still produces the numbers
+// that go in results-1920x1080.txt. Anything measured with these overrides is for steering only:
+// always include BOTH the `ours` and the `opencv` arm of whatever you are working on, because on a
+// loaded machine the ours/OpenCV ratio inside one run is meaningful and the absolute ms is not.
+//
+// `jmh.includes` is ONE regex, not a list. The plugin flattens its `includes` list into a single
+// comma-joined argument, so passing two patterns yields a regex containing a literal comma, which
+// matches nothing and reports "No matching benchmarks" — measured, not assumed. Select an operator's
+// pair of arms with alternation: '.*(oursPyrDown|opencvPyrDown).*'.
+fun jmhProperty(name: String): String? = providers.gradleProperty("jmh.$name").orNull
+
 jmh {
     // Deliberately more iterations than a quick sanity run needs. These numbers get published, and
     // this is a developer laptop rather than a quiet benchmark box — a 2026-07-26 run at load
     // average 6 produced `opencvBoxBlur 4.140 ± 6.585 ms/op`, an error bar larger than the mean and
     // a 2.3x swing against a calmer run. Short benchmarks (a few ms/op) are the ones scheduler noise
     // destroys, so average more of them rather than quoting a number that cannot be reproduced.
-    warmupIterations.set(5)
+    warmupIterations.set(jmhProperty("warmupIterations")?.toInt() ?: 5)
     warmup.set("1s")
-    iterations.set(10)
+    iterations.set(jmhProperty("iterations")?.toInt() ?: 10)
     timeOnIteration.set("1s")
-    fork.set(3)
+    fork.set(jmhProperty("fork")?.toInt() ?: 3)
+    jmhProperty("includes")?.let { includes.set(listOf(it)) }
     benchmarkMode.set(listOf("avgt"))
     timeUnit.set("ms")
     resultFormat.set("TEXT")

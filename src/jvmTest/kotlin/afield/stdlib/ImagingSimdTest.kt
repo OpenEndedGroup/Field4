@@ -205,4 +205,77 @@ class ImagingSimdTest {
             assertTrue(worstDy < 2e-6f, "sobel dy $border differs by $worstDy")
         }
     }
+
+    @Test
+    fun runningSumBoxBlurMatchesTheSeparableBoxKernelEverywhere() {
+        // boxBlur is a running sum in both directions and shares no code with convolveSeparable, so
+        // the box *kernel* is an independent definition of the same operation. ImagingCoreTest already
+        // checks them against each other, but only at 1 channel with Border.CLAMP — and the rewrite
+        // here changed every border path (the vertical pass now advances a whole row of accumulators
+        // at once, and the horizontal one splits into in-range and border ranges and runs four rows in
+        // flight). So sweep it properly: this is the test that catches a sliding window that adds the
+        // wrong entering row, or a four-row block that drops the remainder rows.
+        for (border in Border.entries) {
+            for (ch in listOf(1, 3, 4)) {
+                // Heights that are and are not multiples of 4, to exercise the row-block remainder.
+                for ((w, h) in listOf(16 to 16, 17 to 13, 31 to 5, 8 to 23, 12 to 4, 9 to 3, 1 to 1)) {
+                    for (r in listOf(1, 2, 5)) {
+                        val img = textured(w, h, ch)
+                        val running = img.boxBlur(r, border)
+                        val kernel = img.convolveSeparable(boxKernel1D(r), boxKernel1D(r), border)
+                        var worst = 0f
+                        var worstAt = -1
+                        for (i in running.data.indices) {
+                            val d = abs(running.data[i] - kernel.data[i])
+                            if (d > worst) { worst = d; worstAt = i }
+                        }
+                        assertTrue(
+                            worst < 1e-5f,
+                            "boxBlur ${w}x$h x$ch r=$r $border differs from the box kernel by $worst at $worstAt"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun fusedPyrDownMatchesBlurThenSubsample() {
+        // pyrDown fuses the 2x decimation into both passes and swaps their order, which is three
+        // separate chances to be off by one: the polyphase even/odd split, the interior column bounds,
+        // and the clamped edge columns. pyrDownReference is the naive "blur everything, keep a
+        // quarter" definition, so this is the differential test that the fusion changed nothing.
+        //
+        // Odd widths and heights matter most here: an odd width makes the even and odd phases
+        // different lengths, which is exactly where a polyphase split goes wrong.
+        for (ch in listOf(1, 3, 4)) {
+            for ((w, h) in listOf(
+                64 to 64, 63 to 61, 17 to 9, 8 to 33, 2 to 2, 1 to 1, 5 to 1, 1 to 7, 31 to 30
+            )) {
+                for (sigma in listOf(0.6, 1.0, 2.3)) {
+                    val img = textured(w, h, ch)
+                    val fused = img.pyrDown(sigma)
+                    val naive = img.pyrDownReference(sigma)
+                    assertTrue(
+                        fused.sameShapeAs(naive),
+                        "${w}x$h x$ch sigma=$sigma: shape ${fused.width}x${fused.height}x${fused.channels} " +
+                            "vs ${naive.width}x${naive.height}x${naive.channels}"
+                    )
+                    var worst = 0f
+                    var worstAt = -1
+                    for (i in fused.data.indices) {
+                        val d = abs(fused.data[i] - naive.data[i])
+                        if (d > worst) { worst = d; worstAt = i }
+                    }
+                    // Looser than the 2e-6f used elsewhere: the fused path sums the two passes in the
+                    // opposite order, so this is genuinely a different (equally valid) rounding, not
+                    // the same arithmetic done in fewer instructions.
+                    assertTrue(
+                        worst < 1e-5f,
+                        "pyrDown ${w}x$h x$ch sigma=$sigma: fused and naive differ by $worst at $worstAt"
+                    )
+                }
+            }
+        }
+    }
 }

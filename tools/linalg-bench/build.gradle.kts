@@ -53,13 +53,32 @@ val assembleLinalgSources = tasks.register<Copy>("assembleLinalgSources") {
     into(layout.buildDirectory.dir("linalg-sources"))
     from(root.dir("src/generatedLinalg/kotlin")) { include("afield/stdlib/linalg/**") }
     from(root.dir("src/jvmMain/kotlin")) { include("afield/stdlib/linalg/**") }
+    // Vector8h stores binary16 directly, so the generated Vectors.kt imports
+    // afield.four.util.floatToHalfBits/halfBitsToFloat. That is the ONLY thing the generated sources
+    // need from outside afield.stdlib.linalg, and 16bits.kt in turn needs nothing but Vector2f/3f/4f,
+    // which are already here — so copying it keeps the "no afield runtime" property intact. Without
+    // it :tools:linalg-bench does not compile at all (it had been failing since Vector8h landed).
+    from(root.dir("src/jvmMain/kotlin")) { include("afield/four/util/16bits.kt") }
 }
 
 kotlin {
-    jvmToolchain(25)
     sourceSets.named("main") {
         kotlin.srcDir(assembleLinalgSources)
         kotlin.srcDir(generateLinalgBuildProfile)
+    }
+}
+
+// Must be the SAME JVM the app runs on (the root build pins GRAAL_VM), or the numbers describe a JVM
+// nobody ships. It also matters mechanically, and silently: -XX:+EnableJVMCI below is a supported
+// option on GraalVM but an *experimental* one everywhere else, so a plain `jvmToolchain(25)`
+// resolves to Adoptium and every forked JMH JVM dies with "must be enabled via
+// -XX:+UnlockExperimentalVMOptions" while Gradle still reports BUILD SUCCESSFUL over an empty
+// results table. :tools:imaging-bench hit exactly this. A benchmark that reports nothing must not
+// look like a benchmark that passed.
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+        vendor.set(JvmVendorSpec.GRAAL_VM)
     }
 }
 
@@ -69,12 +88,23 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
     compilerOptions.freeCompilerArgs.add("-Xcollection-literals")
 }
 
+// Same gradle-property overrides as :tools:imaging-bench, so you can measure one arm without the
+// whole suite:
+//   ./gradlew :tools:linalg-bench:jmh -Pjmh.includes='.*Spline.*' -Pjmh.fork=1 -Pjmh.iterations=3
+//
+// `jmh.includes` is ONE regex, not a list. The plugin flattens its `includes` list into a single
+// comma-joined argument, so passing two patterns yields a regex containing a literal comma, which
+// matches nothing and reports "No matching benchmarks" — measured, not assumed. Select several arms
+// with alternation instead: '.*(heapFloatReusedDestinations|jomlReusedDestinations).*'.
+fun jmhProperty(name: String): String? = providers.gradleProperty("jmh.$name").orNull
+
 jmh {
-    warmupIterations.set(4)
+    warmupIterations.set(jmhProperty("warmupIterations")?.toInt() ?: 4)
     warmup.set("1s")
-    iterations.set(5)
+    iterations.set(jmhProperty("iterations")?.toInt() ?: 5)
     timeOnIteration.set("1s")
-    fork.set(2)
+    fork.set(jmhProperty("fork")?.toInt() ?: 2)
+    jmhProperty("includes")?.let { includes.set(listOf(it)) }
     benchmarkMode.set(listOf("avgt"))
     timeUnit.set("ns")
     resultFormat.set("TEXT")
