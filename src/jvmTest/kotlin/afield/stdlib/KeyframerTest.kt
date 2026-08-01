@@ -1116,4 +1116,214 @@ class KeyframerTest {
         ).updateCode()
         assertTrue(code.contains("\\\""), "escaped rather than raw: $code")
     }
+
+    // ==========================================================================================
+    // Second pass — gaps the coverage ledger turned up, hostile inputs, and published numbers
+    //
+    // [KeyframerCoverageTest] enumerates this file's public surface by reflection and requires every
+    // declaration to be classified. Writing that ledger exposed four entries this suite *claimed* to
+    // reach and did not — `applyKey`, the schema-qualified `missingKey` lambda overload,
+    // `StackSLString.toString`, and the individual components of `DualQuat`/`CameraPoseValue`. The
+    // first tests below close them, so the ledger states the truth rather than an intention.
+    // ==========================================================================================
+
+    @Test
+    fun applyKeyIsInvokeInChainableForm() {
+        val scope = KeyframeScope()
+        val structure = Structure().also { it.bind("gain") { 0f } }
+        scope.target("gain", structure)
+
+        val key = scope.Key(mutableMapOf("gain" to 4.0f))
+        assertTrue(key.applyKey() === key, "applyKey returns the same key")
+        assertEquals(4.0f, structure.bindings["gain"]?.invoke(), "…having written it back")
+    }
+
+    @Test
+    fun aSchemaSpecificDefaultAlsoTakesALambda() {
+        val dir = tempDir()
+        val writer = KeyframeScope(schemaVersion = 2)
+        val path = dir.resolve("v2.json")
+        writer.saveKey(path, writer.Key(mutableMapOf("gain" to 1.0)))
+
+        val reader = KeyframeScope()
+        var calls = 0
+        reader.missingKey(2, "lazy") { calls++; "made at load time" }
+
+        assertEquals("made at load time", reader.loadKey(path)["lazy"])
+        assertEquals(1, calls, "the lambda is evaluated once for a load that needs it")
+    }
+
+    @Test
+    fun aDefaultLambdaIsNotEvaluatedWhenTheFileAlreadyHasTheName() {
+        // The KDoc used to say only "evaluated once per load", which overstates it: a default whose
+        // name is already present in the file is never called at all.
+        val dir = tempDir()
+        val writer = KeyframeScope()
+        val path = dir.resolve("look.json")
+        writer.saveKey(path, writer.Key(mutableMapOf("gain" to 1.0)))
+
+        val reader = KeyframeScope()
+        var calls = 0
+        reader.missingKey("gain") { calls++; 99.0 }
+
+        assertEquals(1.0, reader.loadKey(path)["gain"], "the file's value wins")
+        assertEquals(0, calls, "…and the default lambda is never evaluated")
+    }
+
+    @Test
+    fun aStackSlStringPrintsAsItsSourceUnchanged() {
+        val source = "sin 220 * fold"
+        assertEquals(source, StackSLString(source).toString())
+        assertEquals(source, stackSLString(source).toString())
+        assertEquals(StackSLString(source), stackSLString(source), "equality is on the source text")
+    }
+
+    @Test
+    fun everyComponentOfADualQuatAndACameraPoseSurvivesFromAnyDistinctly() {
+        // Distinct values per component, so a transposition is detectable — the byte-identical
+        // round-trip test would happily agree with itself about a consistently swapped field.
+        val dq = DualQuaternionf(Quaternionf(1f, 2f, 3f, 4f), Quaternionf(5f, 6f, 7f, 8f))
+        val kd = KValue.fromAny(dq) as KValue.DualQuat
+        assertEquals(1f, kd.realX); assertEquals(2f, kd.realY)
+        assertEquals(3f, kd.realZ); assertEquals(4f, kd.realW)
+        assertEquals(5f, kd.dualX); assertEquals(6f, kd.dualY)
+        assertEquals(7f, kd.dualZ); assertEquals(8f, kd.dualW)
+
+        val kp = KValue.fromAny(CameraPose(dq, 9f)) as KValue.CameraPoseValue
+        assertEquals(1f, kp.realX); assertEquals(2f, kp.realY)
+        assertEquals(3f, kp.realZ); assertEquals(4f, kp.realW)
+        assertEquals(5f, kp.dualX); assertEquals(6f, kp.dualY)
+        assertEquals(7f, kp.dualZ); assertEquals(8f, kp.dualW)
+        assertEquals(9f, kp.focusDistance)
+
+        val v4 = KValue.fromAny(Vector4f(1f, 2f, 3f, 4f)) as KValue.Vec4
+        assertEquals(1f, v4.x); assertEquals(2f, v4.y); assertEquals(3f, v4.z); assertEquals(4f, v4.w)
+
+        val q = KValue.fromAny(Quaternionf(1f, 2f, 3f, 4f)) as KValue.Quat
+        assertEquals(1f, q.x); assertEquals(2f, q.y); assertEquals(3f, q.z); assertEquals(4f, q.w)
+    }
+
+    @Test
+    fun diffTreatsNaNAndSignedZeroOppositelyForANumberAndForAVectorComponent() {
+        // A characterization test, not a wish. `keyValuesEqual` compares a boxed number with `==`,
+        // which for an `Any?` receiver dispatches to java.lang.Double.equals — a *bit* comparison,
+        // so NaN equals NaN and -0.0 does not equal 0.0. Vector components are compared with
+        // primitive `Float ==`, which is IEEE — so NaN does NOT equal NaN and -0.0 DOES equal 0.0.
+        // The two rules are exact opposites on both values, and nothing in the KDoc mentions it.
+        val scope = KeyframeScope()
+        fun changes(a: Any?, b: Any?) =
+            scope.Key(mutableMapOf("v" to a)).diff(scope.Key(mutableMapOf("v" to b))).entries.size
+
+        assertEquals(0, changes(Double.NaN, Double.NaN), "a boxed NaN compares EQUAL to itself")
+        assertEquals(
+            1, changes(Vector3f(Float.NaN, 0f, 0f), Vector3f(Float.NaN, 0f, 0f)),
+            "…but a NaN vector component compares UNEQUAL, so a diff reports a phantom change"
+        )
+
+        assertEquals(1, changes(-0.0, 0.0), "a boxed -0.0 compares UNEQUAL to 0.0")
+        assertEquals(
+            0, changes(Vector3f(-0.0f, 0f, 0f), Vector3f(0.0f, 0f, 0f)),
+            "…but a -0.0 vector component compares EQUAL, so a diff hides a sign flip"
+        )
+
+        assertEquals(0, changes(Float.NaN, Float.NaN), "a boxed Float NaN also compares equal")
+    }
+
+    @Test
+    fun keysNamedAfterTheJsonDiscriminatorAndItsSiblingsStillRoundTrip() {
+        // `type` is the class discriminator and `values`/`schemaVersion` are KeyDTO's own fields, so
+        // a key using them as names is the obvious way to break the serializer. It does not.
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        scope.saveKey(path, scope.Key(mutableMapOf("type" to 1.0, "values" to 2.0, "schemaVersion" to 3.0)))
+
+        val back = scope.loadKey(path)
+        assertEquals(3, back.values.size)
+        assertEquals(1.0, back["type"])
+        assertEquals(2.0, back["values"])
+        assertEquals(3.0, back["schemaVersion"])
+    }
+
+    @Test
+    fun aNoteWithQuotesAndNewlinesSurvivesTheManifest() {
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        val note = "a \"quoted\", back\\slashed\nnote"
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 1.0)), note = note)
+
+        assertEquals(listOf(note), scope.keyVersions(path).map { it.note })
+    }
+
+    @Test
+    fun anEmptyKeyRoundTripsAsAnEmptyValueMap() {
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("empty.json")
+        scope.saveKey(path, scope.Key(mutableMapOf()))
+
+        assertTrue(path.readText().contains("\"values\": {}"), path.readText())
+        assertEquals(0, scope.loadKey(path).values.size)
+        assertEquals(1, scope.keyVersions(path).size, "an empty key still makes a version")
+    }
+
+    @Test
+    fun interpolatingAtNaNGivesNaNNumbersAndLeavesCodeOnTheLeft() {
+        val scope = KeyframeScope()
+        val a = scope.Key(mutableMapOf("n" to 0.0, "code" to stackSLString("a")))
+        val b = scope.Key(mutableMapOf("n" to 10.0, "code" to stackSLString("b")))
+
+        val out = scope.interpolate(a, b, Double.NaN)
+        assertTrue((out["n"] as Double).isNaN(), "the number goes NaN rather than being skipped")
+        // `NaN >= 1.0` is false, so a code value stays on the left rather than stepping.
+        assertEquals(a["code"], out["code"])
+    }
+
+    @Test
+    fun aKeyNameEndingInAtDrivesTheEmptyPropertyName() {
+        // substringAfterLast('@') of "foo@" is "", so the target is the structure's "" member. Odd,
+        // but consistent, and worth pinning so it cannot drift unnoticed.
+        val scope = KeyframeScope()
+        val structure = Structure()
+        structure.bind("") { 7.0f }
+        scope.target("foo@", structure)
+
+        assertEquals(7.0f, scope.capture()["foo@"])
+    }
+
+    @Test
+    fun theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved() {
+        // public/docs/keyframer_examples.md prints this exact pair from a real capture: 0.20f is
+        // written as the Double 0.20000000298023224, and NumKind.FLOAT narrows it back losslessly.
+        val dir = tempDir()
+        val scope = KeyframeScope()
+        val path = dir.resolve("look.json")
+        scope.saveKey(path, scope.Key(mutableMapOf("gain" to 0.20f)))
+
+        val text = path.readText()
+        assertTrue(text.contains("0.20000000298023224"), "the published on-disk value: $text")
+        assertTrue(text.contains("\"kind\": \"FLOAT\""), text)
+
+        val back = scope.loadKey(path)["gain"]
+        assertTrue(back is Float)
+        assertEquals(0.20f, back, "narrowed back to exactly the Float that was saved")
+    }
+
+    @Test
+    fun aNumberOutsideTheSixKindsLosesItsTypeOnTheRoundTrip() {
+        // The page briefly claimed a Long past 2^53 was "the one case" where the Double wire format
+        // loses information. It is not: any Number outside the six NumKinds is stored as DOUBLE and
+        // comes back a Double, so the type is gone even where the value survives.
+        val big = java.math.BigDecimal("1.5")
+        val back = KValue.fromAny(big)!!.toAny()
+        assertEquals(1.5, back, "the value survives")
+        assertTrue(back is Double, "but it is a Double now, not a BigDecimal")
+        assertNotEquals<Any>(big::class, back::class)
+
+        // A BigInteger past the Double mantissa loses the value as well.
+        val huge = java.math.BigInteger.valueOf((1L shl 53) + 1L)
+        val hugeBack = KValue.fromAny(huge)!!.toAny() as Double
+        assertNotEquals(huge.toString(), hugeBack.toLong().toString())
+    }
 }

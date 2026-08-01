@@ -1,7 +1,11 @@
 # Keyframes: capturing, persisting and replaying live state
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`keyframer.kt`](reference/graphics.md#keyframer-kt).*
+*Every `keyframer.kt` declaration used below is listed, with its KDoc, in the codebase reference:
+[`keyframer.kt`](reference/graphics.md#keyframer-kt). The two supporting types the examples lean on,
+`afield.four.buffers.Structure` and `afield.four.util.CameraPose`, are **not** — the reference covers
+`afield.stdlib` and `afield.visualization` only, and `afield.four` is documented from
+[afield.four Graphics](afield_four_graphics.md) instead
+([`reference/index.md`](reference/index.md) says so at the foot of its file table).*
 
 Live coding has a specific kind of loss built into it. You push sliders around for twenty minutes,
 arrive somewhere good, and then the thing you arrived at exists only as the current contents of a
@@ -95,8 +99,10 @@ display(
 ![Four stacked panels: the captured key of three values, a diff showing glow@radius and glow@intensity changed, a read-back of the live structures showing radius 9.0 and intensity 0.8 on the unqualified property names with glow@radius itself unbound, and the text "No key differences." after restoring](assets/keyframer_examples/capture_apply.png)
 
 Panel 3 is the one to read carefully. The edited key wrote `9.0` to `glow`'s **`radius`**, not to
-anything called `glow@radius` — that name is unbound on the structure and always will be. The
-qualifier exists purely so one key can address two structures that use the same uniform name.
+anything called `glow@radius` — that name is unbound on the structure, and applying the key does not
+create it, because the write goes through the target's bind function, which was built with the
+`@`-stripped property name. The qualifier exists purely so one key can address two structures that
+use the same uniform name.
 
 Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
 `No key differences.`, so a `Key` really is a complete description of what the scope watches.
@@ -254,8 +260,10 @@ sclerp path's aim ever strays from the origin is **0.000003 world units** — th
 is `Float` rounding and not a wobble. The subject stays framed for free, with no look-at constraint
 anywhere in the loop.
 
-These numbers are asserted, at eleven sample points, in
-`aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`.
+All of this is asserted in `aCameraPoseSclerpsItsTransformAndLerpsItsFocusDistance`: the constant
+distance, the constant height and the aim are each checked at **eleven** sample points across the
+move, and the midpoint figures — 8/√2 on each axis for the sclerp, 6.0000 and 27.24% for the
+straight line — once each, where they are defined.
 
 !!! note "The camera target itself needs a renderer"
 
@@ -377,9 +385,13 @@ is applied *after* the version-agnostic defaults, so for a matching file it wins
 One detail in that JSON is worth not being alarmed by. `gain` was saved as the `Float` `0.20f` and
 appears on disk as `0.20000000298023224`, because every number goes over the wire as a `Double`.
 The round trip is still exact: `"kind": "FLOAT"` is carried alongside, and `KValue.toAny` uses it to
-narrow the value back to a `Float`, recovering `0.2f` precisely. The one case where the `Double`
-really does lose information is a `Long` past 2^53, which has more mantissa than a `Double` can
-hold and comes back changed.
+narrow the value back to a `Float`, recovering `0.2f` precisely — asserted, against that exact
+on-disk string, in `theFloatOnDiskNarrowsBackToExactlyTheFloatThatWasSaved`.
+
+The `Double` wire format does lose information in two cases, though. A `Long` past 2^53 has more
+mantissa than a `Double` can hold and comes back changed. And any `Number` that is *not* one of the
+six `NumKind`s — a `BigDecimal`, a `BigInteger` — is stored as a plain `DOUBLE` and comes back a
+`Double`, so even where the value survives the **type** does not.
 
 !!! danger "A corrupt version manifest silently restarts numbering"
 
@@ -448,9 +460,48 @@ that way.
 `copyUpdateCodeToClipboard()` is the same string, put on the system clipboard. That one goes
 through AWT, so it throws on a headless JVM and it replaces whatever the user had copied.
 
+!!! warning "`diff` disagrees with itself about `NaN` and about signed zero"
+
+    Two comparison rules meet inside `keyValuesEqual`, and they are opposites on exactly the two
+    values where floating point is awkward. A **bare number** is compared with `==` on an `Any?`
+    receiver, which is `java.lang.Double.equals` — a *bit* comparison. A **vector or quaternion
+    component** is compared with primitive `Float ==`, which is IEEE. So:
+
+    | value | bare number | inside a vector |
+    | --- | --- | --- |
+    | `NaN` vs `NaN` | equal — no change reported | **not** equal — a phantom change |
+    | `-0.0` vs `0.0` | **not** equal — a change reported | equal — the sign flip is hidden |
+
+    A key holding `NaN` in a `Vector3f` therefore diffs as *changed* against an identical copy of
+    itself. Pinned by `diffTreatsNaNAndSignedZeroOppositelyForANumberAndForAVectorComponent`, and
+    left alone rather than unified: either rule is defensible on its own, and changing one would move
+    what every `KeyDiff` table shows.
+
 ## Where to go next
 
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
-- The whole surface is covered by `KeyframerTest` (53 tests), which is written against this page:
-  every number stated here is asserted there, so the page cannot rot quietly.
+
+### What is actually tested
+
+`KeyframerTest` is 66 tests written against this page, so every number stated here is asserted
+there. A companion ledger, `KeyframerCoverageTest`, enumerates `keyframer.kt`'s public surface **by
+reflection** and requires each declaration to be classified, so the claim below is measured rather
+than asserted and cannot quietly rot — adding a public declaration fails the build until it is
+accounted for:
+
+**93 of 101 public behavioural declarations are exercised (92.1%).** Data-class members the Kotlin
+compiler generates are excluded, on the same grounds the
+[codebase reference](reference/index.md) excludes them.
+
+The remaining **8** are the ones a unit test cannot reach, each for the same two reasons:
+
+| uncovered | why |
+| --- | --- |
+| `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures`; needs a live `Renderer` |
+| `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource`; needs a live `Renderer` |
+| `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) |
+| `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
+
+That is the whole gap, and it is the same gap the two notes above describe. Closing it needs a
+renderer in the loop, not more unit tests.

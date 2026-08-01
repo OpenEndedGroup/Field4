@@ -700,7 +700,11 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         schemaMissingKeys.getOrPut(schemaVersion) { mutableMapOf() }[name] = { value }
     }
 
-    /** The schema-specific [missingKey] with a lambda default, evaluated once per load. */
+    /**
+     * The schema-specific [missingKey] with a lambda default. Evaluated at most once per load, and
+     * **only when the file actually lacks the name** — a default whose name the file already carries
+     * is never called at all.
+     */
     fun missingKey(schemaVersion: Int, name: String, value: () -> Any?) {
         schemaMissingKeys.getOrPut(schemaVersion) { mutableMapOf() }[name] = value
     }
@@ -929,6 +933,17 @@ data class KeyDiffEntry(
  * Comparison is component-wise and exact for vectors, quaternions and camera poses, structural for a
  * source block (same box *and* same source text), and plain `==` for everything else — no float
  * tolerance anywhere, so a value that merely round-tripped through a save may still show as changed.
+ *
+ * Those two rules disagree about `NaN` and about signed zero, in opposite directions, because one is
+ * a boxed `equals` and the other a primitive comparison. A bare number goes through `==` on `Any?`,
+ * which is `java.lang.Double.equals` and therefore a *bit* comparison: `NaN` equals `NaN`, and `-0.0`
+ * does **not** equal `0.0`. A vector/quaternion component goes through primitive `Float ==`, which is
+ * IEEE: `NaN` does **not** equal `NaN`, and `-0.0` **does** equal `0.0`. So a key holding `NaN` in a
+ * vector diffs as changed against an identical copy of itself, while a key holding a bare `-0.0`
+ * diffs as changed against `0.0`. Pinned by `KeyframerTest`'s
+ * `diffTreatsNaNAndSignedZeroOppositelyForANumberAndForAVectorComponent`; left as-is rather than
+ * unified, because either rule is defensible alone and changing one would move what the `KeyDiff`
+ * table shows.
  */
 data class KeyDiff(
     /** Heading for the left-hand column — cosmetic, defaulting to `"left"` at the call site. */
