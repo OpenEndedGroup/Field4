@@ -365,6 +365,15 @@ fun requiredRunJvmArgs(): List<String> {
     return buildList {
         add("-Xmx8g")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        // Headless AWT is mandatory in any JVM that also passes -XstartOnFirstThread (below).
+        // AWT's macOS font manager dispatches to the process's first thread and blocks until it
+        // answers, but that thread belongs to GLFW and never pumps a CFRunLoop — so the first
+        // java.awt.Font.createGlyphVector deadlocks the caller forever. Headless AWT keeps the
+        // whole font/glyph/raster stack (which afield.stdlib.typography is built on) and drops
+        // only the windowing toolkit, which Field does not use: it renders through GLFW/Vulkan
+        // and its UI is Electron. Must be a -D on the command line, since it is read once when
+        // the first AWT class initialises.
+        add("-Djava.awt.headless=true")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
         add("--enable-native-access=ALL-UNNAMED")
@@ -635,6 +644,9 @@ kotlin {
                     "-Dorg.lwjgl.util.Debug=true","-Dorg.lwjgl.util.DebugLoader=true"
                 )
 
+                // See requiredRunJvmArgs: -XstartOnFirstThread makes non-headless AWT deadlock on
+                // the first glyph lookup, and Field's own UI needs no AWT toolkit.
+                args += "-Djava.awt.headless=true"
                 args += "-Dorg.lwjgl.system.stackSize=257"
                 args += "-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags"
                 args += "--enable-native-access=ALL-UNNAMED"

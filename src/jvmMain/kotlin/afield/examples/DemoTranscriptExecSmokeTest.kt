@@ -116,6 +116,12 @@ object DemoTranscriptExecSmokeTest {
         // Four independent pure-CPU heatmap boxes; showHeatmap / showImage encode a PNG and end in
         // display(), so no AWT, no GPU and nothing to launch.
         "viz_showheatmap",
+        // Eight pure-CPU typography boxes. The letters are filled from their own contours by the
+        // family's own scanline filler and shown through showImgGrid / showPlaneGrid / showMeshGrid,
+        // all of which are PngEncoder or Skia-SVG into `display` — no AWT rasteriser, no GPU. Box 5
+        // ends in `animate { }`, which registers an animation rather than blocking, as with the two
+        // parameter sweeps in spatial_geometry_examples.
+        "typography_worked_example",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
@@ -156,6 +162,13 @@ object DemoTranscriptExecSmokeTest {
 
     @JvmStatic
     fun main(args: Array<String>) {
+        // First line, before anything can touch an AWT class, and for the same reason every jvm-main
+        // gallery does it: this harness runs under `-XstartOnFirstThread` (added for GLFW by
+        // `requiredAgentJvmArgs` in agent_backdoor.kt:830) and opens no window, so nothing pumps the
+        // process's first-thread run loop. Non-headless AWT then hangs the moment a box asks for a
+        // glyph outline — `sun.font.CFontManager.loadFonts` dispatches there and waits. Headless AWT
+        // does not, and this harness has no use for a screen. See `Typefaces.warm`.
+        System.setProperty("java.awt.headless", "true")
         val transcriptsDir = locateTranscriptsDir()
         println("DemoTranscriptExecSmokeTest: transcripts dir = ${transcriptsDir.absolutePath}")
 

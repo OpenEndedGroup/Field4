@@ -614,7 +614,11 @@ fun polygonMesh(polygon: List<Vec2>): TriMesh {
  * polygons are triangulated properly by [triangulatePolygon], and the input's winding does not
  * matter — the result is always wound outward.
  *
- * No normals: an extrusion is all creases. `extrudeMesh(...).flatShaded()` to render.
+ * No normals, and you need do nothing about it: an extrusion is all creases, and every render bridge
+ * shades an unshaded mesh for you via `toCapturedMesh` (`mesh_field.kt:246`). Do **not** reach for
+ * `flatShaded()` to "prepare it for rendering" — it un-welds every triangle, and `Box.showMesh` /
+ * `Box.showMeshGrid` / `toHTML()` compute topology on what you hand them and print it as fact, so a
+ * flat-shaded copy makes the caption claim a closed mesh is open. See `TextLayout.toMesh`.
  */
 fun extrudeMesh(polygon: List<Vec2>, height: Number = 1.0, caps: Boolean = true): TriMesh {
     require(polygon.size >= 3) { "extrudeMesh needs >= 3 polygon points, got ${polygon.size}" }
