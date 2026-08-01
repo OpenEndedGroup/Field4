@@ -1232,6 +1232,11 @@ class OpenAiIdeCodexBridge(
                 ?: throw IllegalStateException("Checklist not available for this request.")
         }
 
+        tools.register(WorkspaceRgRequest::class.java, { ctx -> ctx.workspaceRg != null }) { ctx, req ->
+            ctx.workspaceRg?.invoke(req)
+                ?: throw IllegalStateException("WorkspaceRgRequest not available for this request.")
+        }
+
         // Optional extra tool
         tools.register(WorkspaceSymbolSearch::class.java, { ctx -> ctx.workspaceSymbolSearch != null }) { ctx, req ->
             ctx.workspaceSymbolSearch?.invoke(req)

@@ -1339,6 +1339,15 @@ fun installAi4() {
             )
         }
 
+        val workspaceRg: (WorkspaceRgRequest) -> WorkspaceRgResult = { req ->
+            runWorkspaceRg(
+                documentPath = docPath,
+                fieldRoot = File(app),
+                workspaceRoot = File(home),
+                request = req
+            )
+        }
+
         fun requestedRefOrCurrent(raw: String, defaultProperty: String = exec.property.ifBlank { "code" }): FileRef {
             val trimmed = raw.trim()
             if (trimmed.isBlank()) return FileRef(docName, box.id, defaultProperty)
@@ -2193,6 +2202,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceRg = workspaceRg,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
@@ -2259,6 +2269,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceRg = workspaceRg,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onTextDelta = { chunk ->
@@ -2307,6 +2318,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceRg = workspaceRg,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
@@ -2339,6 +2351,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceRg = workspaceRg,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
@@ -2371,6 +2384,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            workspaceRg = workspaceRg,
                             visualVerificationEnabled = visualVerificationAvailable(),
                             vectorStoreIds = vectorStoreIds,
                             onProgress = progressCallback
