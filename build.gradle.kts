@@ -1581,7 +1581,7 @@ tasks.register("dumpFieldLaunch") {
             ?: throw GradleException("runJvm has no mainClass configured")
 
         // Mirror runDesktop's backend args: the executable's default JVM args + requiredRunJvmArgs().
-        val jvmArgs = (runJvmTask.jvmArgs ?: emptyList()).map { it.toString() }.toMutableList()
+        val jvmArgs = (runJvmTask.jvmArgs ?: emptyList()).toMutableList()
         requiredRunJvmArgs().forEach { if (it !in jvmArgs) jvmArgs += it }
 
         val outDir = File(project.layout.buildDirectory.asFile.get(), "field-launch")
