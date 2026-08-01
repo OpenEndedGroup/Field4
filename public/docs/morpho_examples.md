@@ -703,9 +703,11 @@ is five statements and scores exactly `ripple_adder`: 16 gates and depth 8 at ei
 and depth 32 at thirty-two. `the recursive adder is reachable in the genome grammar` asserts it.
 
 *The recursion is being tried and is not paying.* Of 4 000 random programs on the guided problem,
-511 — 12.8% — contain a self-call in the compiled circuit. The best of those scores 0.293 and the
-best purely combinational candidate scores 0.305. An eighth of the population is recursing, for
-about one percent of the error.
+511 — 12.8% — contain a self-call in the compiled circuit. The best of those scores 0.2880 and the
+best purely combinational candidate scores 0.3017. An eighth of the population is recursing, for
+1.4% of the error. On the unguided problem only 2.8% recurse, and the best of those is *worse* than
+the best combinational one (0.3753 against 0.3017) — the two `SPLIT`s are the difference.
+(`MorphoSearchMeasurements.recursionDensity`.)
 
 *And the reason is arithmetic about the answer.* A correct adder needs both halves recursed, both
 carries chained in the right order, and the two sums `CAT`ed back — four statements worth nothing

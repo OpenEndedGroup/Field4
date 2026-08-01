@@ -208,9 +208,14 @@ is five statements, compiles, and scores exactly `ripple_adder`: 16 gates and de
 genome grammar` asserts this, so the negative result is about search and not about reach.
 
 *The recursion is being tried and is not paying.* Over 4000 random programs on the guided problem,
-**511 (12.8%) contain a self-call in the compiled phenotype**. The best of those scores 0.293; the
-best purely combinational candidate scores 0.305. Twelve percent of the population is recursing and
-it buys about one percent of the error.
+**511 (12.8%) contain a self-call in the compiled phenotype**. The best of those scores 0.2880; the
+best purely combinational candidate scores 0.3017. An eighth of the population is recursing and it
+buys 1.4% of the error.
+
+On the *unguided* problem the density drops to 2.8% and the sign flips: the best recursive candidate
+scores 0.3753 against the best combinational one's 0.3017. Handing over the two `SPLIT`s is what
+turns recursion from actively harmful to marginally useful, and marginally useful is not enough.
+(`MorphoSearchMeasurements.recursionDensity`.)
 
 *The reason is the shape of the answer.* A correct adder needs both halves recursed, both carries
 chained in the right order, and the two sums `CAT`ed back — four statements that are worth nothing

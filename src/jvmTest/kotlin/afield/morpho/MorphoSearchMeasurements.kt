@@ -188,8 +188,8 @@ class MorphoSearchMeasurements {
             if (wider.all { w -> MorphoSearch.generalization(s.genome, or.spec, listOf(w)).correct }) generalising++
         }
         println(
-            "SEARCH-GEN | or-reduce: %d of %d designs correct at 2/4/8 are also correct at %s"
-                .format(generalising, run.solutions.size, wider.joinToString("/"))
+            "SEARCH-GEN | or-reduce: %d of %d designs correct at %s are also correct at %s"
+                .format(generalising, run.solutions.size, or.spec.widths.joinToString("/"), wider.joinToString("/"))
         )
         println("SEARCH-FRONT | or-reduce (gates, depth): " +
             run.front.joinToString(", ") { "(${it.gates}, ${it.depth})" })

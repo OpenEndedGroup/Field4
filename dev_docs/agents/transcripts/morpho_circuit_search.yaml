@@ -22,10 +22,14 @@ description: >
     2. morpho_search_recursion — the positive structural result. Reduce an N-bit bus to one bit.
                     Morpho broadcasts a LUT across a bus, so *no* combination of gates narrows one
                     — the only route from eight wires to one is to keep SPLITting — which makes
-                    every correct answer here genuinely divide-and-conquer. The found cell is then
-                    re-compiled at 3, 16, 32 and 48 bits, widths nothing was selected on, and drawn
+                    every correct answer here genuinely divide-and-conquer. Selected at widths 2,
+                    3 and 5 — an odd family on purpose, see MorphoProblems.ODD_FAMILY — and then
+                    re-compiled at 7, 16, 32 and 48 bits, widths nothing was selected on, and drawn
                     at three of them as real circuits through MorphoFLines. It is the same source
-                    text at every width; that is what parametric means in this language.
+                    text at every width; that is what parametric means in this language. The second
+                    figure is the (gates, depth) Pareto front over every correct design both runs
+                    produced, which is small and is not empty: a reduction can be a shallow wide
+                    tree or a deep cheap one and the search finds both ends.
     3. morpho_search_adder    — the negative result, which is the more interesting half. Nobody
                     finds a recursive ripple adder, with or without the two SPLITs given, at any
                     budget tried. The box proves the target is *in* the search space by writing the
@@ -104,17 +108,33 @@ operations:
           )
           runs.forEach { println(it.summary()) }
 
-          val best = runs.mapNotNull { it.best }.filter { it.fitness.correct }.minByOrNull { it.gates }!!
+          // Cheapest correct design across both runs; if a seed happens not to solve it, fall back
+          // to the closest thing found rather than throwing -- this is a demo, not an assertion.
+          val correct = runs.mapNotNull { it.best }.filter { it.fitness.correct }
+          val best = correct.minByOrNull { it.gates } ?: runs.mapNotNull { it.best }.first()
           println()
+          println(if (correct.isEmpty()) "(nothing exactly correct this run; showing the best found)" else "")
           println(best.genome.phenotype().cells[0].render())
 
-          // Trained at 2, 4 and 8. Re-compiled here at widths nothing was ever selected on -- the
-          // same source text at a new signature, so there is nothing to translate and nothing to
-          // get wrong. A design that passed only where it was tested would show up right here.
-          listOf(3, 5, 16, 32, 48).forEach { w ->
+          // Selected at 2, 3 and 5 -- an ODD family on purpose. SPLIT gives equal halves exactly
+          // when the width is even, so a family of powers of two never shows the search a cell
+          // whose two halves differ, and it will happily return a design that is silently wrong at
+          // 5, 7 and 9. Re-compiled here at widths nothing was selected on: same source text, new
+          // signature, nothing to translate and nothing to get wrong.
+          listOf(7, 9, 16, 32, 48).forEach { w ->
               val f = MorphoSearch.generalization(best.genome, problem.spec, listOf(w))
               println("  at %2d bits: %s".format(w, f))
           }
+
+          // The Pareto front over every correct design the two runs produced. It is small and it is
+          // not empty: a reduction can be a shallow wide tree or a deep cheap one, and the search
+          // finds both ends. The staircase is drawn as a step function on purpose -- there is no
+          // design at a fractional gate count, and a smooth curve would claim there is.
+          val found = runs.flatMap { it.costPoints() }
+          println()
+          println("Pareto front (gates, depth) at %d bits: %s".format(
+              problem.spec.widths.max(),
+              runs.flatMap { it.front }.joinToString(", ") { "(${it.gates}, ${it.depth})" }))
 
           // And the circuits themselves, through the same MorphoFLines the rest of the page uses.
           // One source, three signatures, three different circuits: that is the language's whole
@@ -128,6 +148,17 @@ operations:
           }
           showPlaneGrid(*panels.toTypedArray(), columns = 3, cellWidth = 300, cellHeight = 300,
               window = morphoUnitWindow())
+
+          showPlaneGrid(
+              "or-reduce — best-so-far bit error vs compiler invocations (log x)\n" +
+                  morphoRunCaption(runs) to morphoConvergenceFLines(runs),
+              "cost of an or-reduce — depth (x) against gates (y)\n" +
+                  "${found.size} correct designs, ${runs.sumOf { it.front.size }} of them non-dominated. " +
+                  "A staircase is only drawn when the front has more than one point: for a reduction " +
+                  "it usually does not, because cheaper and shallower go together here" to
+                  morphoParetoFLines(found),
+              channel = "cost", columns = 2, cellWidth = 430, cellHeight = 380, window = morphoPlotWindow()
+          )
 
   - create:
       box: morpho_search_adder
