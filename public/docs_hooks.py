@@ -2314,6 +2314,18 @@ display(
 """.strip()
         return wrapped + "\n"
 
+    if language == "morpho":
+        source_literal = json.dumps(code)
+        wrapped = f"""
+// FIELD_DOCS_EXPECT_OUTPUT_AREA: true
+// FIELD_DOCS_EXPECT_SVG: true
+import afield.docs.renderMorphoDocsSnippet
+
+val __morphoSource = {source_literal}
+renderMorphoDocsSnippet(__morphoSource)
+""".strip()
+        return wrapped + "\n"
+
     if language == "forth":
         source_literal = json.dumps(code)
         expects_svg = forth_source_likely_produces_svg(code)

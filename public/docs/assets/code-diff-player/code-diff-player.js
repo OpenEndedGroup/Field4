@@ -2,6 +2,7 @@
   const HIGHLIGHT_URL = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js";
   let highlightPromise = null;
   let forthRegistered = false;
+  let morphoRegistered = false;
 
   function registerForthLanguage() {
     if (!window.hljs || forthRegistered || hljs.getLanguage("forth")) {
@@ -76,9 +77,52 @@
     forthRegistered = true;
   }
 
+  // MorphoHDL, for `data-lang=morpho` fences. Python-shaped but not Python: `@morpho` is the only
+  // decorator, SPLIT/CAT/LSLICE are language primitives rather than library calls, and truth tables
+  // are written as underscore-grouped binary (0b1001_0110) that a Python lexer breaks in half.
+  // `# main ...` is Field's directive -- invisible to morpho's own tokenizer, so worth marking here.
+  function registerMorphoLanguage() {
+    if (!window.hljs || morphoRegistered || hljs.getLanguage("morpho")) {
+      morphoRegistered = true;
+      return;
+    }
+
+    hljs.registerLanguage("morpho", function(hljs) {
+      return {
+        name: "MorphoHDL",
+        aliases: ["morpho", "morphohdl"],
+        keywords: {
+          keyword: "def return",
+          built_in: "LUT SPLIT CAT REPEAT LSLICE HSLICE",
+          literal: "ZERO ONE VOID"
+        },
+        contains: [
+          { scope: "meta", begin: "#\\s*main\\b", end: "$", relevance: 10 },
+          hljs.COMMENT("#", "$"),
+          { scope: "meta", begin: "@morpho\\b", relevance: 10 },
+          { scope: "params", begin: "\\bfallback\\b(?=\\s*=)", relevance: 0 },
+          {
+            scope: "title.function",
+            begin: "\\bdef\\s+",
+            end: "(?=\\()",
+            excludeBegin: true,
+            relevance: 0
+          },
+          {
+            scope: "number",
+            begin: "\\b(?:0b[01_]+|0x[0-9a-fA-F_]+|\\d[\\d_]*)\\b",
+            relevance: 0
+          }
+        ]
+      };
+    });
+    morphoRegistered = true;
+  }
+
   function ensureHighlight() {
     if (window.hljs) {
       registerForthLanguage();
+      registerMorphoLanguage();
       return Promise.resolve();
     }
     if (highlightPromise) return highlightPromise;
@@ -89,6 +133,7 @@
       script.referrerPolicy = "no-referrer";
       script.onload = () => {
         registerForthLanguage();
+        registerMorphoLanguage();
         resolve();
       };
       script.onerror = (err) => reject(err);

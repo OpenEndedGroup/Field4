@@ -63,6 +63,7 @@ nav:
         - RectSL Cheatsheet: rectsl_cheatsheet.md
         - RectSL Examples: rectsl_examples.md
         - Nano Examples: nano_examples.md
+        - Bridging Another Language (MorphoHDL): morpho_examples.md
       - Drawing From Data:
         - Functions Examples: functions_examples.md
         - Functions Domains: functions_domains.md
