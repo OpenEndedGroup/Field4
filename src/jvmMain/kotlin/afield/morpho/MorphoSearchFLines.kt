@@ -155,15 +155,18 @@ class MorphoCostPoint(
  * need to be.
  */
 fun morphoParetoFLines(
-    found: List<MorphoCostPoint>,
-    references: List<MorphoCostPoint> = emptyList(),
+    points: List<MorphoCostPoint>,
     gateMax: Int = -1,
     depthMax: Int = -1,
 ): List<FLine> {
-    val all = found + references
-    require(all.isNotEmpty()) { "morphoParetoFLines needs at least one point" }
-    val gMax = (if (gateMax > 0) gateMax else all.maxOf { it.gates }).coerceAtLeast(1).toDouble()
-    val dMax = (if (depthMax > 0) depthMax else all.maxOf { it.depth }).coerceAtLeast(1).toDouble()
+    require(points.isNotEmpty()) { "morphoParetoFLines needs at least one point" }
+    val found = points.filterNot { it.reference }
+    val references = points.filter { it.reference }
+    val all = points
+    // A little headroom, or the most expensive and the deepest design each sit exactly on the frame
+    // and read as clipped rather than as extremal.
+    val gMax = (if (gateMax > 0) gateMax else all.maxOf { it.gates }).coerceAtLeast(1) * 1.12
+    val dMax = (if (depthMax > 0) depthMax else all.maxOf { it.depth }).coerceAtLeast(1) * 1.12
 
     fun at(p: MorphoCostPoint): Pair<Double, Double> =
         (p.depth / dMax).coerceIn(0.0, 1.0) to -(p.gates / gMax).coerceIn(0.0, 1.0)

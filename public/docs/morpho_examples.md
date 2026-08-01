@@ -656,6 +656,32 @@ Every correct answer is genuinely divide-and-conquer. The designs found come out
 depth 3 at eight bits, a balanced tree, and the same source text is then re-compiled and checked at
 16, 32 and 48 bits, widths nothing was ever selected on.
 
+### The result nobody was looking for: a power-of-two width family is not enough
+
+Selecting on widths 2, 4 and 8 produced **400 distinct correct `or-reduce` designs**. Re-compiled at
+twelve other widths, all 400 are correct at 3, 6, 12, 16, 32 and 48 — and **399 of them are wrong at
+5, 7 and 9**. Exactly one design in four hundred is actually parametric. The dual, `and-reduce`,
+gives **zero of 400**.
+
+The mechanism is a hole in the language, not a quirk of the search. `SPLIT` halves a bus as
+`floor(w/2), w - floor(w/2)`, so the two halves are the same width exactly when the width is even;
+5, 7 and 9 are the small widths where they differ *and* both are wider than one bit. A LUT applied
+to both halves — `Or(x0, x1)`, which is what these designs do — then has operands of two different
+widths, and `materializeLut` takes the maximum and broadcasts only operands of width **1**. Unequal
+wider operands are neither broadcast nor rejected: the extra pins simply read past the end of the
+shorter bus. The circuit is silently wrong, and a search that has never been shown an odd width has
+no way to find out.
+
+Change the family to 2, 3 and 5 — one line — and **400 of 400 designs are correct at every width
+tried**, from 2 to 48. That is now `MorphoProblems.ODD_FAMILY`, the default for the reduction
+problems, and `a power of two width family selects designs that are not parametric` is the test that
+holds the claim in place.
+
+This is the strongest argument on the page for scoring a MorphoHDL design at several widths rather
+than one, and it is not the argument the width family was built for. It was built because a
+parametric design is a claim about all N and one width is one point. What it actually caught was
+undefined behaviour in the compiler, exploited by a search that had no idea it was cheating.
+
 ### The recursive adder is not found, and that is the finding
 
 Nobody finds a divide-and-conquer adder. Not random sampling, not hill climbing, not a population,

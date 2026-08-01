@@ -107,6 +107,60 @@ class MorphoSearchMeasurements {
         }
     }
 
+    /**
+     * The most useful number this file produces: **how many designs that are correct at the widths
+     * they were selected on are correct anywhere else.**
+     *
+     * A MorphoHDL design is a claim about all N, and the whole reason [MorphoSpec] carries a list of
+     * widths rather than one is that a search will otherwise satisfy the widths it is shown and no
+     * others. This measures how badly. Broken down per width, because "overfits to powers of two"
+     * and "overfits to small buses" are different diagnoses with different fixes.
+     *
+     * ```
+     * ./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements.generalisation" --rerun -i
+     * ```
+     */
+    @Test
+    fun generalisation() {
+        listOf(MorphoProblems.orReduce(), MorphoProblems.andReduce()).forEach { problem ->
+            val run = MorphoSearch.evolve(problem.spec, problem.generator, 8000, seed = 2, mu = 24, lambda = 40)
+            val designs = run.solutions
+            val widths = listOf(2, 3, 4, 5, 6, 7, 8, 9, 12, 16, 32, 48)
+            val holds = IntArray(widths.size)
+            var everywhere = 0
+            designs.forEach { d ->
+                var all = true
+                widths.forEachIndexed { i, w ->
+                    if (MorphoSearch.generalization(d.genome, problem.spec, listOf(w)).correct) holds[i]++
+                    else all = false
+                }
+                if (all) everywhere++
+            }
+            println(
+                "SEARCH-GEN | %-12s | %d distinct designs correct at %s | %d of them correct at every width tried"
+                    .format(problem.name, designs.size, problem.spec.widths.joinToString("/"), everywhere)
+            )
+            widths.forEachIndexed { i, w ->
+                println(
+                    "SEARCH-GEN |   width %2d: %4d of %4d hold (%.0f%%)%s"
+                        .format(w, holds[i], designs.size, holds[i] * 100.0 / designs.size.coerceAtLeast(1),
+                            if (w in problem.spec.widths) "   <- selected on" else "")
+                )
+            }
+            // A power-of-two-only family is the obvious suspect, so re-search on one that is not.
+            val odd = problem.spec.at(listOf(2, 3, 5))
+            val oddRun = MorphoSearch.evolve(odd, problem.generator, 8000, seed = 2, mu = 24, lambda = 40)
+            var oddEverywhere = 0
+            oddRun.solutions.forEach { d ->
+                if (widths.all { w -> MorphoSearch.generalization(d.genome, problem.spec, listOf(w)).correct }) oddEverywhere++
+            }
+            println(
+                "SEARCH-GEN | %-12s | selected on 2/3/5 instead: %d designs, %d correct at every width tried"
+                    .format(problem.name, oddRun.solutions.size, oddEverywhere)
+            )
+        }
+    }
+
     @Test
     fun measure() {
         println("SEARCH | problem | driver | budget | solved | first correct | best err | best cost | invalid | wall")

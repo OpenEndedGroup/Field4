@@ -140,6 +140,47 @@ nothing. Or-reducing half the bus is wrong only when the low half is zero and th
 about 6% of eight-bit vectors, so the partial answer is visibly better than nothing and there is a
 gradient to climb.
 
+### The result nobody was looking for: a power-of-two width family is not enough
+
+`MorphoSearchMeasurements.generalisation` takes every distinct correct design a run produces and
+re-compiles it at twelve widths. Selected on 2/4/8:
+
+| width | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 12 | 16 | 32 | 48 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `or-reduce`, of 400 | 400 | 400 | 400 | **1** | 400 | **1** | 400 | **1** | 400 | 400 | 400 | 400 |
+| `and-reduce`, of 400 | 400 | 400 | 400 | **0** | 400 | **0** | 400 | **0** | 400 | 400 | 400 | 400 |
+
+One design in four hundred is genuinely parametric, and for the dual, none. The failure is not at
+*large* widths, which is what a generalisation check normally looks for — 32 and 48 are fine. It is
+at 5, 7 and 9.
+
+`SPLIT` halves a bus as `floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the halves are equal
+exactly when the width is even. 5, 7 and 9 are the small widths where they are unequal *and* both
+wider than one bit. The designs found are all some form of `Or(x0, x1)` over the two halves followed
+by a recursion, so at those widths the LUT gets operands of two different widths — and
+`materializeLut` (`compiler.js:961-972`) computes `w = max(...)` and broadcasts only operands of
+length 1. Unequal wider operands are neither an error nor a broadcast; the pins read past the end of
+the shorter bus. Silently wrong.
+
+So the search found undefined behaviour in the compiler and exploited it, and every check that only
+looked at even widths agreed the answer was right.
+
+Selecting on 2/3/5 instead: **400 of 400 correct at every width tried**. That is one line, it is now
+`MorphoProblems.ODD_FAMILY` and the default for both reduction problems, and
+`MorphoSearchTest.a power of two width family selects designs that are not parametric` pins both
+halves of the observation.
+
+Two things follow.
+
+*For the search layer:* a width family must contain a width whose `SPLIT` is unequal on both sides.
+2/3/5 is the smallest such family. The adder problems still default to 2/4/8, which is a known wart
+— they are unsolved either way, so nothing measured depends on it, but a future adder result would
+have to be re-checked at 5.
+
+*For the bridge:* this is worth reporting upstream. A width mismatch between LUT operands is
+currently a silent miscompile rather than a diagnostic, and it is exactly the mistake a person
+writing a divide-and-conquer cell would make first.
+
 ### The recursive adder is not found, and that is the finding
 
 Nobody finds a divide-and-conquer adder. Not random sampling, not hill climbing, not a population,

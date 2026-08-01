@@ -302,6 +302,59 @@ class MorphoSearchTest {
         }
     }
 
+    /**
+     * **A power-of-two width family is not enough**, and this is the measurement that says so.
+     *
+     * Selected on 2/4/8, essentially every correct `or-reduce` design is *also* correct at 3, 6, 12,
+     * 16, 32 and 48 — and wrong at 5, 7 and 9. `SPLIT` halves a bus as `floor(w/2), w - floor(w/2)`
+     * (`primitives.js:42`), so the halves are equal exactly when the width is even; 5, 7 and 9 are
+     * the small widths where they are unequal *and* both wider than one bit. A LUT applied to both
+     * halves then has operands of two different widths, and `materializeLut` (`compiler.js:961-972`)
+     * takes the maximum and broadcasts only operands of width 1 — unequal wider operands are neither
+     * an error nor a broadcast. The design is silently wrong, and a search that never saw an odd
+     * width has no way to find out.
+     *
+     * Which is why [MorphoProblems.ODD_FAMILY] is 2/3/5 and not 2/4/8. This test is the evidence for
+     * that default, and it fails if the hole in the compiler is ever closed — in which case delete
+     * it and say so.
+     */
+    @Test
+    fun `a power of two width family selects designs that are not parametric`() {
+        val powers = MorphoProblems.orReduce(widths = listOf(2, 4, 8))
+        val run = MorphoSearch.evolve(powers.spec, powers.generator, 4000, seed = 2, mu = 24, lambda = 40)
+        assertTrue(run.solved, "or-reduce at 2/4/8 should still be easy to solve: ${run.summary()}")
+
+        val designs = run.solutions.take(80)
+        assertTrue(designs.size >= 20, "expected a population of solutions to test, got ${designs.size}")
+        fun holdingAt(w: Int) = designs.count { MorphoSearch.generalization(it.genome, powers.spec, listOf(w)).correct }
+
+        // Even widths, including ones far outside the family: the overfit is invisible.
+        listOf(6, 12, 16, 32).forEach {
+            assertEquals(designs.size, holdingAt(it), "an even width should not separate these designs (w=$it)")
+        }
+        // The odd widths with two unequal halves: almost nothing survives.
+        listOf(5, 7, 9).forEach {
+            assertTrue(
+                holdingAt(it) < designs.size / 4,
+                "width $it should reject most designs selected on 2/4/8, but ${holdingAt(it)} of ${designs.size} held"
+            )
+        }
+
+        // And the fix, which is a one-line change to the spec and nothing else.
+        val odd = MorphoProblems.orReduce()
+        assertEquals(listOf(2, 3, 5), odd.spec.widths, "the default family should be the odd one")
+        val fixed = MorphoSearch.evolve(odd.spec, odd.generator, 4000, seed = 2, mu = 24, lambda = 40)
+        assertTrue(fixed.solved, "or-reduce at 2/3/5 was not solved: ${fixed.summary()}")
+        fixed.solutions.take(40).forEach { d ->
+            listOf(5, 7, 9, 16, 32).forEach { w ->
+                assertTrue(
+                    MorphoSearch.generalization(d.genome, odd.spec, listOf(w)).correct,
+                    "a design selected on 2/3/5 failed at width $w:\n${d.genome.render()}"
+                )
+            }
+        }
+    }
+
     /** The dual, so the result is about the method and not about one lucky truth table. */
     @Test
     fun `the same search finds the dual reduction`() {

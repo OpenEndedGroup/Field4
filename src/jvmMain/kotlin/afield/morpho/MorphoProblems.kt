@@ -37,6 +37,29 @@ object MorphoProblems {
     const val BASE = "evolved_base"
 
     /**
+     * The default width family, and **not** a power-of-two one. This is a measured decision.
+     *
+     * Selected on 2/4/8, every one of 400 distinct correct `or-reduce` designs is also correct at
+     * 3, 6, 12, 16, 32 and 48 — and 399 of the 400 are wrong at 5, 7 and 9. Selected on 2/3/5
+     * instead, 400 of 400 are correct at every width tried.
+     *
+     * The mechanism is a hole in the language rather than a quirk of the search.
+     * `SPLIT` halves a bus as `floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the two halves
+     * are equal exactly when the width is even, and 5, 7 and 9 are the small widths at which they
+     * are unequal *and* both wider than one bit. A LUT applied to both halves — `Or(x0, x1)` — then
+     * has operands of different widths, and `materializeLut` (`compiler.js:961-972`) takes the
+     * maximum and broadcasts only operands of width 1. Unequal wider operands are neither an error
+     * nor a broadcast; the extra pins read off the end of the shorter bus. So the design is
+     * silently wrong rather than rejected, and a search selected on even widths never has to notice.
+     *
+     * Two bits (the base case), three (the smallest unequal split with a one-bit half) and five
+     * (the smallest unequal split with both halves wider than one bit) cover the cases that
+     * distinguish a parametric design from a coincidence. `MorphoSearchMeasurements.generalisation`
+     * is where those counts come from.
+     */
+    val ODD_FAMILY: List<Int> = listOf(2, 3, 5)
+
+    /**
      * **One bit, no recursion.** Find `sum, c_out = a + b + c_in` as straight-line logic over
      * morpho's standard cells.
      *
@@ -198,7 +221,7 @@ object MorphoProblems {
      * [recursiveAdder] is the *landscape*, not the amount of help: see [MorphoSpec.orReduce]. This
      * is the problem that answers whether the search can find divide-and-conquer at all.
      */
-    fun orReduce(widths: List<Int> = listOf(2, 4, 8), maxStatements: Int = 6): MorphoProblem {
+    fun orReduce(widths: List<Int> = ODD_FAMILY, maxStatements: Int = 6, designWidth: Int = 8): MorphoProblem {
         val spec = MorphoSpec.orReduce(widths = widths, name = ROOT)
         val sketch = MorphoCellSketch(
             name = ROOT,
@@ -207,7 +230,7 @@ object MorphoProblems {
             outputRoles = spec.outputRoles,
             palette = MorphoPalette.standard,
             fallback = "0",
-            designWidth = widths.max(),
+            designWidth = designWidth,
             minStatements = 2,
             maxStatements = maxStatements,
         )
@@ -220,7 +243,7 @@ object MorphoProblems {
     }
 
     /** [orReduce]'s dual: `y = (x == all ones)`. A second point on the same claim. */
-    fun andReduce(widths: List<Int> = listOf(2, 4, 8), maxStatements: Int = 6): MorphoProblem {
+    fun andReduce(widths: List<Int> = ODD_FAMILY, maxStatements: Int = 6, designWidth: Int = 8): MorphoProblem {
         val spec = MorphoSpec.andReduce(widths = widths, name = ROOT)
         val sketch = MorphoCellSketch(
             name = ROOT,
@@ -229,7 +252,7 @@ object MorphoProblems {
             outputRoles = spec.outputRoles,
             palette = MorphoPalette.standard,
             fallback = "0",
-            designWidth = widths.max(),
+            designWidth = designWidth,
             minStatements = 2,
             maxStatements = maxStatements,
         )
