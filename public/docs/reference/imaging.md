@@ -286,7 +286,7 @@ Three bridges:
     `FlowField.toFLines` and `Img.isoContourFLines` hand you drawable lines, so a Canny result
     goes straight into the same drawing/animation/export machinery as anything hand-drawn.
  2. **Scalar → colour.** `Img.colormap` runs a 1-channel response image through the same
-    `Colormaps` tables RectSL's `heat`/`bars`/`scatter` use, so a Harris response, a distance
+    [`Colormaps`](visualization.md#colormaps-kt-colormaps) tables RectSL's `heat`/`bars`/`scatter` use, so a Harris response, a distance
     transform and a RectSL chart are coloured by one source of truth.
  3. **Value → screen.** [`Img`](imaging.md#imaging-kt-img) is a [`afield.ToHTML`](visualization.md#valuevisualizer-kt-tohtml), so evaluating one in a box shows the picture;
     `Box.showImg` pushes a full-size version to an output channel, and `Box.showImgGrid` lays
@@ -315,7 +315,7 @@ extractor works on image data with no glue.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">FlowField</span><span class="p">.</span><span class="nf">toFLines</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">minMagnitude</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">headSize</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Draw a sparse optical-flow field as one arrow `FLine` per tracked point — shaft plus a two-stroke arrowhead, so direction is visible and not just magnitude. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">asScalarField2D</span><span class="p">(</span><span class="n">border</span><span class="p">:</span> <span class="nc">Border</span> <span class="o">=</span> <span class="nc">Border</span><span class="p">.</span><span class="nc">CLAMP</span><span class="p">)</span><span class="p">:</span> <span class="nc">ScalarField2D</span></code> | Adapt this 1-channel image to the `ScalarField2D` that `contours.kt` marches — the image becomes a bilinearly-interpolated continuous field over `[0, width-1] x [0, height-1]`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">isoContourFLines</span><span class="p">(</span><span class="n">iso</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">max</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | Extract smooth iso-contours at `iso` through Field's existing marching-squares extractor and return them as `FLine`s. Unlike `toContourFLines` (which traces the pixel boundary of a binary mask) this interpolates between samples, so the contour is sub-pixel smooth — the right tool for a distance transform, a blurred response or a height field. |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">colormap</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Colour-map a 1-channel image through one of Field's `Colormaps` ramps (`viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`), returning a 3-channel RGB image. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">colormap</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viridis&quot;</span><span class="p">,</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">Float</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Colour-map a 1-channel image through one of Field's [`Colormaps`](visualization.md#colormaps-kt-colormaps) ramps (`viridis`, `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`), returning a 3-channel RGB image. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">colormapDiverging</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;coolwarm&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Colour-map with a symmetric range around zero — the correct default for a **signed** image (a Laplacian, a difference of Gaussians, a gradient component), where the meaningful thing is which side of zero a pixel is on. Pair with a diverging map like `coolwarm`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">maskToRGBA</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="nc">Color4</span> <span class="o">=</span> <span class="nc">Color4</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">)</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Tint a binary mask a single colour over a transparent background — for overlaying a detection on the original picture with `overlay`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Img</span><span class="p">.</span><span class="nf">overlay</span><span class="p">(</span><span class="n">top</span><span class="p">:</span> <span class="nc">Img</span><span class="p">,</span> <span class="n">opacity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code> | Alpha-composite `top` (RGBA, or RGB treated as opaque) over this image, returning RGB. The standard way to show a mask/overlay on top of the source picture. |
@@ -599,14 +599,44 @@ separable convolution address contiguous memory:
   pixel `t - r` columns over. So for a fixed tap the whole interior of a row is, again, a
   straight span — only the `r` columns at each end need the general accessor.
 
-Which reduces a separable convolution to one primitive, applied once per tap: `dst += w * src`
-over a contiguous span. That is `axpy`, and it is what this file provides.
+### The one primitive that matters: `stencil`
+
+Both observations reduce a convolution — separable *or* dense — to the same shape: a destination
+span is a weighted sum of `k` source spans at fixed element offsets. That is `stencil`, and it
+keeps the running sum **in a vector register** across all taps, so `k` taps cost `k` reads and
+**one** write.
+
+The alternative — accumulate in memory, one `axpy` per tap — costs `k` reads *and* `k`
+read-modify-writes. For the sigma-2 Gaussian used in the benchmark (`radius 8`, 17 taps) that is
+17 write passes over the image where one would do, and it is why `stencil` rather than `axpy` is
+the inner loop of everything here. `axpy` survives only for the handful of border rows where each
+tap resolves to a *different*, border-dependent source row and there is no single offset to fold.
+
+### On unrolling, which is not optional
+
+`stencil` is a chain of `k` dependent FMAs into one accumulator. On Apple silicon an FMA has ~4
+cycles of latency and can issue ~4 per cycle, so a single-accumulator 17-tap chain runs at
+latency, not throughput — about 16x off peak. The main loop therefore keeps **four** independent
+accumulators (four output chunks in flight), which converts the chain into something the machine
+can pipeline, then falls back to one chunk at a time and finally to scalar for the tail. This is
+the difference between "uses the Vector API" and "is fast".
+
+### Decimation, without a gather
+
+A pass that throws half its output away should not compute it. Halving *rows* is free (just skip
+them), but halving *columns* makes the reads stride-2, which on NEON means a gather. `splitByPhase`
+avoids it: output `x` reads source pixel `2x + s`, whose parity is fixed by the parity of `s`. So
+even-offset taps only ever read even-indexed pixels and odd-offset taps only odd ones. Split the
+row into its even and odd pixels once — into one scratch buffer, laid out even-half then odd-half,
+so a single `stencil` call can address both — and every tap is unit-stride again. This is the
+polyphase decomposition, and it is what makes `Img.pyrDown` a half-resolution filter rather than a
+full-resolution one with a discard at the end.
 
 ### On FMA
 
-`axpy` uses a fused multiply-add: one rounding per tap instead of two. Results therefore differ
-from the scalar reference in the last ulp — more accurate, not less, but not bit-identical.
-The filter tests assert agreement to `1e-5f`, which is four orders of magnitude above this.
+These kernels use fused multiply-add: one rounding per tap instead of two. Results therefore
+differ from the scalar reference in the last ulp — more accurate, not less, but not bit-identical.
+`ImagingSimdTest` asserts agreement to `2e-6f`, which is four orders of magnitude above this.
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_simd.kt`
 

@@ -2,8 +2,6 @@
 
 package afield
 
-import afield.rectsl.Color4
-import afield.rectsl.Colormaps
 import afield.stdlib.ComponentLabelling
 import afield.stdlib.Corner
 import afield.stdlib.FlowField

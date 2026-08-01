@@ -60,12 +60,10 @@ println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rol
 <!-- field-box id="spectral_spectrogram" index="1" -->
 
 ```edn [field-box id="spectral_spectrogram" role="properties"]
-{"id" "spectral_spectrogram" "index" 1 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 960.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 60 "characters" 2408 "sha256" "bf478be4c991e3a36c417886801e2a8c9485fc2f11ea5e0572c162b0d7cf1805"}]}
+{"id" "spectral_spectrogram" "index" 1 "name" "spectrogram of a chirp" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram of a chirp" "_tombstone" false "frame" #afield/rect [80.0 440.0 960.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_spectrogram_code_.kt" "lines" 30 "characters" 1325 "sha256" "a0d46a0fce786cece96b8591c65ccdbe6168e32793626440c14614a456bfcf1f"}]}
 ```
 
 ```kotlin [field-property box="spectral_spectrogram" name="code" path="spectral_spectrogram_code_.kt"]
-import afield.util.PngEncoder
-
 val sampleRate = 8000.0
 val n = 24000
 val f0 = 300.0; val f1 = 3000.0
@@ -84,46 +82,18 @@ val maxMag = spec.maxMagnitude().coerceAtLeast(1e-9)
 val centroid = spec.centroidTrace()
 val nyquist = sampleRate / 2.0
 
-// Cyan -> orange colormap (dark -> cyan mids -> orange peaks), returns ARGB.
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
+// dB relative to the peak, as a [frame][bin] matrix.
+val dB = Array(spec.numFrames) { f ->
+    DoubleArray(spec.numBins) { b -> 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4)) }
 }
-
-val nf = spec.numFrames; val nb = spec.numBins
-fun db(f: Int, b: Int) = 20.0 * log10((mags[f][b] / maxMag).coerceAtLeast(1e-4))
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(nb - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 840
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (nf - 1)
-    for (yp in 0 until h) {
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (nb - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
-}
-for (f in 0 until spec.numFrames) {
-    val xp = (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1) * (w - 1)).toInt()
-    val yp = (h - 1 - (centroid[f] / nyquist).coerceIn(0.0, 1.0) * (h - 1)).toInt()
-    for (dy in -1..1) { val yy = yp + dy; if (yy in 0 until h) px[xp + yy * w] = (0xFF shl 24) or 0xFFFFFF }
+// Spectral centroid as a normalized (x, y) overlay: x = time fraction, y = fraction of Nyquist.
+val trace = centroid.indices.map { f ->
+    (f.toDouble() / (spec.numFrames - 1).coerceAtLeast(1)) to (centroid[f] / nyquist).coerceIn(0.0, 1.0)
 }
 
 println("frames=${spec.numFrames} bins=${spec.numBins} centroid ${"%.0f".format(centroid.first())} -> ${"%.0f".format(centroid.last())} Hz")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 840, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true, overlay = trace, overlayThickness = 3)
 ```
 
 ## 3. streaming spectral features
@@ -172,12 +142,10 @@ println("centroid ${"%.0f".format(cTrace[3000])} -> ${"%.0f".format(cTrace[n - 2
 <!-- field-box id="spectral_mel" index="3" -->
 
 ```edn [field-box id="spectral_mel" role="properties"]
-{"id" "spectral_mel" "index" 3 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 960.0 320.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 55 "characters" 2016 "sha256" "7052e80b866493e7dff75345ee2465d92a1e74e1fdf4c291c24b0084394b80e0"}]}
+{"id" "spectral_mel" "index" 3 "name" "mel spectrogram (crossing chirps)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "mel spectrogram (crossing chirps)" "_tombstone" false "frame" #afield/rect [80.0 820.0 960.0 320.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_mel_code_.kt" "lines" 27 "characters" 1053 "sha256" "e7d28152ef16413d6bd94d5b35b03f4fecc685de783197b2d5fc814a04c3ca5a"}]}
 ```
 
 ```kotlin [field-property box="spectral_mel" name="code" path="spectral_mel_code_.kt"]
-import afield.util.PngEncoder
-
 val sampleRate = 8000.0
 val n = 24000
 val up0 = 200.0; val up1 = 3200.0
@@ -197,40 +165,14 @@ val mel = Array(spec.numFrames) { Mel.filterBank(spec.magnitude(it), sampleRate,
 var maxMel = 1e-9
 for (row in mel) for (v in row) if (v > maxMel) maxMel = v
 
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
-}
-
-val nf = spec.numFrames
-fun db(f: Int, b: Int) = 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4))
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(nf - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numBands - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 720
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (nf - 1)
-    for (yp in 0 until h) {
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numBands - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
+// dB relative to the peak, as a [frame][band] matrix.
+val dB = Array(spec.numFrames) { f ->
+    DoubleArray(numBands) { b -> 20.0 * log10((mel[f][b] / maxMel).coerceAtLeast(1e-4)) }
 }
 
 println("frames=${spec.numFrames} bands=$numBands")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true)
 ```
 
 ## 5. resonator bank (no transform)
@@ -238,13 +180,12 @@ display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as a
 <!-- field-box id="spectral_resonator" index="4" -->
 
 ```edn [field-box id="spectral_resonator" role="properties"]
-{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 960.0 320.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 67 "characters" 2497 "sha256" "464bb48405352eec9fa2ea92937fc96c9ff73a87c44c22ba0df444656c02160c"}]}
+{"id" "spectral_resonator" "index" 4 "name" "resonator bank (no transform)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "resonator bank (no transform)" "_tombstone" false "frame" #afield/rect [80.0 1180.0 960.0 320.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spectral_resonator_code_.kt" "lines" 41 "characters" 1550 "sha256" "35f796728c7428a28503c902b97743af1abe54f61b14103a4ef8bc92160b329e"}]}
 ```
 
 ```kotlin [field-property box="spectral_resonator" name="code" path="spectral_resonator_code_.kt"]
 import afield.four.audio.resonate
 import afield.four.audio.resonatorAlphaHeuristics
-import afield.util.PngEncoder
 
 val sampleRate = 8000f
 val n = 24000
@@ -276,38 +217,13 @@ fun ampAt(s: Int, kk: Int): Float {
 var maxA = 1e-9f
 for (s in 0 until slices) for (kk in 0 until numRes) { val a = ampAt(s, kk); if (a > maxA) maxA = a }
 
-fun cyanOrange(v: Double): Int {
-    val x = v.coerceIn(0.0, 1.0)
-    val (r, g, b) = if (x < 0.5) {
-        val t = x / 0.5
-        Triple(10 + t * (60 - 10), 14 + t * (190 - 14), 20 + t * (230 - 20))
-    } else {
-        val t = (x - 0.5) / 0.5
-        Triple(60 + t * (255 - 60), 190 + t * (150 - 190), 230 + t * (50 - 230))
-    }
-    return (0xFF shl 24) or (r.toInt() shl 16) or (g.toInt() shl 8) or b.toInt()
-}
-
-fun db(s: Int, kk: Int) = 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4))
-fun sample(fx: Double, fy: Double): Double {
-    val x0 = fx.toInt(); val x1 = (x0 + 1).coerceAtMost(slices - 1)
-    val y0 = fy.toInt(); val y1 = (y0 + 1).coerceAtMost(numRes - 1)
-    val tx = fx - x0; val ty = fy - y0
-    return (db(x0, y0) * (1 - tx) + db(x1, y0) * tx) * (1 - ty) +
-        (db(x0, y1) * (1 - tx) + db(x1, y1) * tx) * ty
-}
-
-val w = 1800; val h = 720
-val px = IntArray(w * h)
-for (xp in 0 until w) {
-    val fx = xp.toDouble() / (w - 1) * (slices - 1)
-    for (yp in 0 until h) {
-        val fy = (h - 1 - yp).toDouble() / (h - 1) * (numRes - 1)
-        px[xp + yp * w] = cyanOrange((sample(fx, fy) + 80.0) / 80.0)
-    }
+// dB relative to the peak, as a [slice][resonator] matrix.
+val dB = Array(slices) { s ->
+    DoubleArray(numRes) { kk -> 20.0 * log10((ampAt(s, kk).toDouble() / maxA).coerceAtLeast(1e-4)) }
 }
 
 println("resonators=$numRes slices=$slices freq ${freqs.first().toInt()} -> ${freqs.last().toInt()} Hz")
-display("main", PngEncoder.encode(px, w, h))   // display renders PNG bytes as an image
+showHeatmap(dB, colormap = "cyanorange", width = 1800, height = 720, vmin = -80.0, vmax = 0.0,
+    transpose = true, flipY = true)
 ```
 
