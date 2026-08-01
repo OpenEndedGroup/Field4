@@ -112,6 +112,109 @@ latent inconsistency to note, not to fix blind.
   after the page stands without it. If it does not come out, it is omitted and
   said so. No synthesized stand-in.
 
-## Progress
+## Progress — final
 
-(appended as work lands)
+Status: **complete**. Recommendation: **merge**.
+
+### Files
+
+| file | what | why |
+| --- | --- | --- |
+| `src/jvmTest/kotlin/afield/stdlib/KeyframerTest.kt` | **new**, 53 tests | `keyframer.kt` had none, so none of its KDoc's honest self-warnings was enforced |
+| `src/jvmMain/kotlin/afield/stdlib/keyframer.kt` | 1-line fix + 2 KDoc lines | `updateCode` mangled a source block containing `$` |
+| `public/docs/keyframer_examples.md` | **new** public page, 4 real captures | the four areas with no public coverage |
+| `public/docs/assets/keyframer_examples/*.png` | 4 captures | all four opened and read; two were changed as a result |
+| `public/zensical.yml` | nav entry | |
+| `dev_docs/agents/transcripts/keyframer_worked_example.yaml` | **new** loadable demo, 4 boxes | the shippable artifact |
+| `src/jvmMain/kotlin/afield/examples/DemoTranscriptExecSmokeTest.kt` | registered in `EXECUTE` | an unclassified transcript fails that test on purpose |
+| `public/docs/assets/agent_transcripts/keyframer_worked_example/` | materialized starting point | else the drift guard fails the build |
+| `public/docs/agent_transcripts.md` | gallery entry | |
+| `public/docs/reference/{graphics,index,workspace}.md`, `dev_docs/kdoc_worklist.md` | regenerated | `checkCodebaseReference` was red — see caveat below |
+
+### Verification
+
+- `./gradlew jvmTest` — **986 tests, 0 failures, 0 errors** across 88 classes (not just my module).
+  `KeyframerTest` = 53, confirmed three ways (XML report, `@Test` count, published claim).
+- `./gradlew checkKDocAttachment` — ok, 702 files / 8275 KDoc blocks.
+- `./gradlew checkCodebaseReference` — green (was red; see caveat).
+- `run_field_tests.py --id examples.demo-transcript.exec` — PASS,
+  `[execute] PASS keyframer_worked_example (applied=8, output lines=20)`,
+  `DemoTranscriptExecSmokeTest ok — 35 demos verified`. That harness asserts both `run.success`
+  **and** zero error-kind output lines, which is the check that matters: a box compile error does
+  not throw, it only shows up as an error-kind output line. **The demo's box code really ran.**
+- `run_field_tests.py --id examples.agent-transcripts.materialize` — PASS (drift guard).
+- Docs: `FIELD_DOCS_RUNNER_MODE=strict … --page keyframer_examples` →
+  `regenerated=4 … failures=0`, then `OK — every referenced asset is committed`, `No issues found`.
+
+**Figures I personally opened (all four):**
+
+| figure | verdict |
+| --- | --- |
+| `capture_apply.png` | matches its caption exactly; no change needed |
+| `camera_screw.png` | **refuted its own draft prose** — printed 0.000003, prose claimed "zero to six decimal places". Prose corrected and the test bound tightened 1e-3 → 1e-5 so it pins the published number |
+| `persistence.png` | **came out clipped mid-word.** Re-shot and re-read: legible |
+| `update_code.png` | perfect, and visibly shows the `\$total` fix |
+
+### Defect found and fixed
+
+`kotlinRawStringLiteral` emitted a Kotlin **raw** string for a `SourceBackedBlock`, guarding against
+`"""` and a trailing quote but **not** `$` — which a raw string still interpolates. `updateCode()`
+on a block mentioning `$name` or `${…}` produced code that either failed to compile or silently
+interpolated something else, defeating the exact round trip the function exists for. Guard widened;
+regression test added; the `updateCode` KDoc, which stated the raw-string behaviour
+unconditionally, corrected **in the same commit**.
+
+Worth recording *how it nearly escaped*: the first version of the regression test **passed green**.
+Its sample source ended with a quote, so it tripped the pre-existing trailing-quote guard and never
+reached the defect. The test now asserts the sample takes the raw-string path before asserting
+anything about the output.
+
+### Two behaviours the KDoc never mentioned, now pinned and published
+
+- `capture()` reads `Structure.bindings` and **never** `Structure.values`, so a property written by
+  value rather than bound snapshots as `null` with nothing logged.
+- A corrupt version manifest is swallowed by a `runCatching`, so the next `saveKey` renumbers from 0
+  and **overwrites `000000.json`** — the oldest snapshot in the history.
+
+### GPU stretch goal — OMITTED, deliberately
+
+Not attempted and quietly dropped: **declined on stated grounds.** Load average was **20.59** (two
+sibling nightly agents), and `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md` records that a `native-window`
+capture "fails outright when the machine is busy (load average ≳10)"; free disk was down to 8.8 GiB
+from 11. A capture produced under those conditions can come out corrupt while still looking
+plausible, which is worse than not having one.
+
+The page therefore states the resulting gap outright: `target(ModulePointer, …)` and its
+`ComputeModulePointer` / `MeshModulePointer` siblings need a live renderer and are covered by
+neither a fence nor a test. The note also records what *reading* the source shows — all three pass
+one `@`-suffixed string to both the `liveUniformStructures` lookup and the member `bind`
+(`keyframer.kt:562`, `:566-567`, `:580`, `:584`, `:588`), so the key addresses a member named after
+the uniform block rather than an arbitrary field, unlike the plain `Structure` case. That is
+labelled in the published text as a reading of the code and **explicitly not a measurement**,
+because nothing here ran it. It is the obvious next task for a branch with a quiet machine.
+
+### Risks / caveats
+
+- **One commit contains pre-existing drift that is not mine.** `checkCodebaseReference` was already
+  red at the `7abe8736` base: `workspace.md` was missing `Marker.removePropertyRaw`, which landed in
+  `6acaa999` without a regenerate (this branch never touches `stdlib.kt`; verified). Regeneration is
+  all-or-nothing, so that correction rides along in `a8f888b6`, called out in its message. A
+  reviewer should expect the `5032 → 5033` / `77 → 78` count moves and the one new `workspace.md`
+  row, none of which come from keyframer.
+- The scoping call is a judgement: `interpolants_examples.md:168-257` already had one `interpolate`
+  fence, so the new page deliberately cross-links rather than restates it. If the human would rather
+  have had one merged page, this is the thing to change.
+- Only the plain-`Structure` target family is exercised anywhere. See above.
+
+### Demo artifact
+
+`dev_docs/agents/transcripts/keyframer_worked_example.yaml` — replay into a fresh Field with:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
+  --command 'macro write keyframer_worked_example --file dev_docs/agents/transcripts/keyframer_worked_example.yaml' \
+  --command 'macro run keyframer_worked_example'
+```
+
+or open the materialized starting point directly:
+`public/docs/assets/agent_transcripts/keyframer_worked_example/metadata.edn`.
