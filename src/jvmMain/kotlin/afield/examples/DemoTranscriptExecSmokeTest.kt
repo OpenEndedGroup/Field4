@@ -98,6 +98,11 @@ object DemoTranscriptExecSmokeTest {
         // Five independent pure-CPU automatic-differentiation boxes; plot, showSignals and
         // showPlaneGrid all end in display(), so no AWT, no GPU and nothing to launch.
         "autodiff_worked_example",
+        // Three pure-compute MorphoHDL circuit-search boxes. Every candidate is compiled by
+        // morpho's own JS compiler on GraalJS and simulated by MorphoSim; the figures go through
+        // showPlaneGrid (drawToSVG -> display), so no Window and no Renderer. The searches are
+        // budgeted in compiler invocations and take a few seconds each.
+        "morpho_circuit_search",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

@@ -368,9 +368,8 @@ object MorphoSearch {
         /**
          * Memoised: mutation and repair produce the same normalised program often enough to matter.
          *
-         * A cache hit still spends a unit of *budget*, which is the quantity the three drivers are
-         * being compared on. It only saves wall-clock. If it saved budget as well, a climber that
-         * re-proposed its own parent would be rewarded for standing still.
+         * A cache hit costs no budget — see [consider], which returns before touching [trace], and
+         * the budget rationale on it.
          */
         private val seen = HashMap<String, MorphoFitness>()
         var invalid = 0
