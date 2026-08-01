@@ -24,10 +24,12 @@ This page is the other three quarters, which had no public documentation at all:
 watch**, **why a camera move is a screw motion**, **how saving works and what survives it**, and
 **how a captured look becomes source**.
 
-Everything below runs on the CPU. `Structure` is constructible bare
+Almost everything below runs on the CPU. `Structure` is constructible bare
 (`Structure.kt:112`) and its `bind`/`bindings` are plain map operations
 (`Structure.kt:176`, `Structure.kt:136`), so a keyframe scope can be exercised — and tested —
-without a GPU anywhere in sight. The one exception is noted where it comes up.
+without a GPU anywhere in sight. The exception is
+[the GPU still](#the-same-thing-driving-a-live-gpu-uniform), which is a real Vulkan render, and the
+targets that need a renderer, which are listed at the [foot of the page](#what-is-actually-tested).
 
 ## What a scope watches
 
@@ -118,11 +120,16 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     over the lazily-resolved `target(name) { … }` (`keyframer.kt:562`), and they pass the *same*
     `@`-suffixed string to two different lookups: it selects the structure, via
     `module.current.liveUniformStructures[…]`, **and** it is the member name bound inside that
-    structure (`keyframer.kt:566-567`). So the key addresses a member whose name matches the uniform
-    block's own name, rather than an arbitrary field within the block — which is not the behaviour
-    the `@` qualifier has for a plain `Structure` target, where the two are independent. This is a
-    reading of the code, not a measurement: it is untested here and no capture on this page covers
-    it. Check it against your own module before relying on it.
+    structure (`keyframer.kt:566-567`). That map is keyed by the **uniform block's name**
+    (`Module.kt:559` for a graphics module, `ComputeModule.kt:163` for a compute one), while the
+    members inside it are the block's *fields*. So the key can only address a member whose name
+    equals the block's own name — not an arbitrary field within the block, and not the independent
+    structure-and-property pair the `@` qualifier gives a plain `Structure` target.
+
+    This is a reading of three source files, not a measurement — nothing here executes those
+    overloads. The working way to keyframe a module's uniform is the plain `Structure` overload
+    against `module.<block>`, which resolves to that same live structure
+    (`Module.kt:217`), and that **is** demonstrated, on a real GPU, in the next section.
 
 !!! warning "`capture()` sees *bound* properties, not *set* values"
 
@@ -131,6 +138,83 @@ Panel 4 is the round trip closing: re-applying the original snapshot and re-capt
     reads `Structure.bindings` only, so **a property written by value is invisible to a snapshot**
     and captures as `null`, with nothing logged. The key still lists the name — it is just empty.
     Bind the things you intend to keyframe.
+
+## The same thing, driving a live GPU uniform
+
+Everything so far ran on bare `Structure`s, which is honest but leaves the obvious question open:
+does a `Key` actually move a uniform on the GPU? This fence is a real Vulkan render — a native
+window, a `moduleHere()` graphics module, a fan of **white** triangles — where the only source of
+colour in the entire frame is a `vec4 tint` in the shader's uniform block, and the only thing that
+ever writes that uniform is a keyframe.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/gpu_tint.png" wait="0.25" timeout="20" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="keyframer-gpu-tint" source-box="assets/canonical_graphics/keyframer-look" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+import afield.four.Renderer
+import afield.four.modules.fromContext
+import afield.stdlib.KeyframeScope
+
+val renderer: Renderer = fromContext()
+
+var m = Mesh()
+var module = moduleHere()
+
+module += "mainMesh" to m
+renderer += module
+
+// Fully qualified on purpose: a uniform block makes moduleHere() generate a Kotlin class of the
+// same (capitalised) name straight into this box's preamble, and a declaration in the box beats
+// any import. The block here is `look`, so the trap would bite anything called `Look`.
+val camera = afield.four.util.Camera()
+camera.at = vec(0, 0, 7)
+camera.target = vec(0, 0, 0)
+
+module.look.p = camera.p()
+module.look.m = camera.m()
+
+// A fan of WHITE triangles. Every colour in the picture comes from the tint, and nothing else.
+val N = 48
+m.set(3 * N, 1 * N) {
+    N {
+        val a0 = it / N.toDouble() * Math.PI * 2.0
+        val a1 = (it + 0.62) / N.toDouble() * Math.PI * 2.0
+        pos.add(
+            0.0, 0.0, 0.0,
+            2.4 * kotlin.math.cos(a0), 2.4 * kotlin.math.sin(a0), 0.0,
+            2.4 * kotlin.math.cos(a1), 2.4 * kotlin.math.sin(a1), 0.0
+        )
+        3 { col.add(1, 1, 1, 1) }
+        tri.add(0 + 3 * it, 1 + 3 * it, 2 + 3 * it)
+    }
+}
+
+// ---- the keyframe part -------------------------------------------------------------------
+// `module.look` resolves to the block's live uniform Structure (Module.kt:217), so the ordinary
+// Structure target drives it. This is the overload to use for a module uniform.
+val scope = KeyframeScope()
+scope.target("tint", module.look)
+
+val cool = scope.Key(mutableMapOf("tint" to vec(0.20, 0.65, 1.00, 1.0)))
+val warm = scope.Key(mutableMapOf("tint" to vec(1.00, 0.50, 0.12, 1.0)))
+
+// A quarter of the way from cool to warm — deliberately NOT the midpoint. These two are nearly
+// complementary, so t = 0.5 blends to (0.60, 0.575, 0.56): a grey indistinguishable from an
+// untinted fan, which would make the picture prove nothing. t = 0.25 is (0.40, 0.6125, 0.78).
+scope.interpolate(cool, warm, 0.25)()
+```
+
+![A radial fan of forty-eight wedges on black, every wedge the same light blue, rendered in a native Vulkan window](assets/keyframer_examples/gpu_tint.png)
+
+The fan is blue, and that is the whole argument: the mesh colours are all `(1, 1, 1, 1)`, so a fan
+that is *any* colour other than white can only have got it from the uniform, and an unwritten
+uniform would have left it black.
+
+It is worth being exact, because "it looks blue" is not evidence. The capture contains precisely two
+colours — black background and `rgb(170, 205, 229)` across all 497,142 fan pixels. The keyframed
+value is the linear `(0.40, 0.6125, 0.78)`, and sRGB-encoding that gives `(170, 205, 229)`, to the
+byte, on all three channels. So the pixels on screen are the interpolated keyframe and nothing else:
+not the `cool` endpoint, not the `warm` one, not white.
+
+This also demonstrates the one thing a unit test cannot: `Key.invoke()` writing through
+`Structure.bind` into a uniform that a live Vulkan pipeline then reads.
 
 ## A camera move is a screw motion, not a straight line
 
@@ -269,10 +353,12 @@ straight line — once each, where they are defined.
 
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) — it resolves a renderer from
-    the box context. So the *registration* is the one part of this file that cannot be exercised
-    headlessly. The pose arithmetic above, which is all of the behaviour, can be. Note also that
-    the target accepts a `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other
-    type**, so a `Vector3f` "camera position" key will appear to apply and do nothing.
+    the box context. So the *registration* is one of the eight declarations no unit test reaches
+    (the full list is at the [foot of the page](#what-is-actually-tested)); the pose arithmetic
+    above, which is all of the behaviour, is tested. Note also that the target accepts a
+    `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
+    (`keyframer.kt:647-650` is a `when` with no `else`), so a `Vector3f` "camera position" key will
+    appear to apply and do nothing.
 
 ## Saving: every save is history
 
