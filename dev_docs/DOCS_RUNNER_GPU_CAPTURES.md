@@ -147,6 +147,16 @@ important mechanics (all verified by reading the hook + logs):
 5. **Compute draws nothing.** A compute-only box leaves the GPU window black, so a
    `native-window` screenshot fails "visual validation". That's expected — capture
    the *result* (read-back / a `display(...)` card), not the window.
+6. **A uniform block name becomes a generated class that shadows your imports.**
+   `moduleHere()` generates one Kotlin class per uniform block, capitalising the block's
+   name (`shaders.kt`, `replaceFirstChar { uppercase() }`), straight into the box's
+   preamble. So a GLSL `uniform camera { … }` makes the box declare its own `Camera`,
+   and a declaration in the box beats *any* import — including the `afield.four.util.*`
+   every box already gets, and including an explicit `import afield.four.util.Camera`.
+   Symptom: `Unresolved reference 'at' on receiver of type
+   'Docs_…__preamble__2.Camera'`. Fix: fully-qualify (`afield.four.util.Camera()`, as
+   `afield_four_graphics.md` §1b does — that verbosity is load-bearing, don't "tidy" it)
+   or rename the uniform block.
 
 ---
 
@@ -245,6 +255,37 @@ via a macro and connected to `agent_graphics_context`, so `@last` is stale →
 (the real box uid under graphics-context; still `@last` otherwise, preserving the
 non-graphics editor-video path). This is what lets a graphics-context editor video
 run at all.
+
+---
+
+## Caching gap: a macro/transcript fence can go stale silently
+
+`compute_digest` hashes `macroFile` as a **path string only** — the transcript YAML's *contents*
+are never hashed (unlike stdlib sources, which `compute_source_refs_digest` covers). So editing
+`dev_docs/agents/transcripts/*.yaml` does **not** invalidate the fences it drives, and they keep
+serving the old capture.
+
+`force=true` on the fence was compensating for this by recapturing on every build. That cure was
+worse than the disease: `force` is not part of the digest, so it fired even when nothing had
+changed, re-running a `timeout="10"` GPU capture on every docs build — which fails outright when
+the machine is busy (load average ≳10) and hard-fails the whole page with it. It has been dropped
+from `afield_four_graphics.md` §0; the fence now adopts its committed asset and the page builds in
+~4 s with no GPU work.
+
+**So: after editing a transcript YAML, recapture the pages it drives explicitly** (`--page`), since
+nothing will do it for you. The four transcripts and their pages:
+
+| transcript | page |
+| --- | --- |
+| `afield_four_traditional_triangle.yaml` | `afield_four_graphics.md` |
+| `hello_display.yaml` | `diff-player.md` |
+| `threebox.yaml` | `funFeatures.md` |
+| `docs_capture/remote_ar_kotlin_plane.yaml` | `ar_reference.md` |
+
+The real fix is to hash the resolved macro file's bytes into the digest, next to
+`source_refs_digest`, and then drop `force=true` from the three remaining fences that still carry it
+(`diff-player.md`, `field_probes.md` ×2). That is a deliberate change, not a drive-by: it would
+invalidate all ~8 macro-driven captures at once, several of them the flaky `native-window` kind.
 
 ---
 

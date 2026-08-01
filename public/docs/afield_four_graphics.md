@@ -20,7 +20,7 @@ That last part is the trick worth learning. If a vertex shader declares `layout(
 
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true force=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -221,6 +221,8 @@ void main()
 ```
 
 Because the uniform block is named `camera`, the Kotlin side writes `module.camera.p` and `module.camera.m`. The module owns this resource because the block is declared at descriptor set/binding scope, not as a per-mesh push constant.
+
+That same name is also why the Kotlin above says `afield.four.util.Camera()` in full rather than the usual bare `Camera()`. `moduleHere()` generates a Kotlin class per uniform block, capitalising the block's name, so this box's own preamble declares a `Camera` — and a declaration in the box beats any import, including the `afield.four.util.*` that every box already gets. Writing `import afield.four.util.Camera` does *not* help: the generated `Camera` still wins, `camera.at` then fails to resolve, and the example stops compiling. The fully-qualified name is load-bearing here, not leftover verbosity. Rename the uniform block and the collision goes away.
 
 ## 2. Camera As Push Constants
 

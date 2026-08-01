@@ -963,6 +963,8 @@ makes "level *n* may only touch level *n±1*" a learnable rule.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/wfc_examples/scalar-field.png" wait="2.0" timeout="180" capture="box" open-outputs="true" w="1200" name="wfc-scalar-field"}
 :::static
+import afield.graphics.FLine
+
 :::fold build the source field: a sum of bumps quantised to six levels
 fun bump(u: Double, v: Double, cx: Double, cy: Double, r: Double): Double {
     val dx = u - cx
@@ -1096,7 +1098,7 @@ display("stats", "<pre style='font:13px/1.7 monospace;padding:8px'>" +
 // point of ending up in a FloatArray rather than in pixels: iso-contours are FLines. Contour the D4
 // field -- the banded one has nothing worth contouring.
 val smooth = symField.gaussianBlur(1.2)
-val contours = ArrayList<afield.graphics.FLine>()
+val contours = ArrayList<FLine>()
 for (iso in listOf(0.15, 0.35, 0.55, 0.75)) {
     for (line in smooth.isoContourFLines(iso)) {
         line.color = vec(0.30 + iso * 0.65, 0.95 - iso * 0.45, 0.40 + iso * 0.45, 0.95)
