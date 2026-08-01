@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**5032 public symbols across 91 source files**, 3054 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**5033 public symbols across 91 source files**, 3055 of them (60%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -18,7 +18,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Function](function.md) | 12 | 418 | 302 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 4 | 227 | 215 (94%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
-| [Workspace](workspace.md) | 2 | 77 | 74 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 2 | 78 | 75 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 
 ## Every file, at a glance
 
@@ -43,7 +43,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [CeresGeometry.kt](graphics.md#ceresgeometry-kt) | Graphics | 271 | 0 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 2 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
-| [colors.kt](graphics.md#colors-kt) | Graphics | 14 | 14 | Colour constructors for the stdlib. | [Colors to FLine examples](../colors_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
+| [colors.kt](graphics.md#colors-kt) | Graphics | 14 | 14 | Colour constructors for the stdlib. | [Colors to FLine examples](../colors_examples.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [contours.kt](graphics.md#contours-kt) | Graphics | 13 | 7 | Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to contour. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
@@ -77,7 +77,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [JSONLineServer.kt](data.md#jsonlineserver-kt) | Data | 32 | 1 | A TCP listener that turns newline-delimited JSON into a value a box can read each frame. |  |
 | [jsonparsing.kt](data.md#jsonparsing-kt) | Data | 19 | 12 | Two related things: a small hand-written JSON reader, and a macro that generates a typed parser from a terse schema. |  |
 | [JSONProcess.kt](data.md#jsonprocess-kt) | Data | 14 | 0 | Runs an external command and reads newline-delimited JSON from its stdout. |  |
-| [keyframer.kt](graphics.md#keyframer-kt) | Graphics | 62 | 62 | Snapshot, interpolate and persist the live state of a running sketch. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
+| [keyframer.kt](graphics.md#keyframer-kt) | Graphics | 62 | 62 | Snapshot, interpolate and persist the live state of a running sketch. | [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Values over time: interpolants & keyframes](../interpolants_examples.md) |
 | [LazyValueVisualizer.kt](visualization.md#lazyvaluevisualizer-kt) | Visualization | 10 | 0 | The lazy half of value display: rather than inline a large structure, show one summary line plus links into the server-side browsers. |  |
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 87 | 78 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md), [Linear algebra in Field](../linear_algebra.md) |
@@ -109,7 +109,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 28 | 28 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
-| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 73 | 70 | The general-purpose helpers that every Field box already has in scope. | [How Box Code Runs](../box_code_pipeline.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md), [afield.four Graphics](../afield_four_graphics.md) |
+| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 74 | 71 | The general-purpose helpers that every Field box already has in scope. | [How Box Code Runs](../box_code_pipeline.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 2 | A minimal TUIO receiver. |  |
 | [units.kt](math.md#units-kt) | Math | 47 | 12 | Physical units for Field's spreadsheet-style numbers. |  |
