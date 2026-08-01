@@ -2276,7 +2276,17 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
 
     if (req.showEditor && box != null) {
         if (!req.preserveSelection && !switchSelectionToProperty(req.uid, req.property, syncEditor = true, applyScreenshotLayout = true)) {
-            return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet")
+            // Distinguish "this box's text has not arrived yet" -- which retrying fixes -- from
+            // "this page has no Monaco at all", which it never does: a bootstrap failure leaves a
+            // connected page with a live websocket and no editor, and the undifferentiated message
+            // sent everyone hunting timing problems that were not there.
+            val reason = if (window.asDynamic().globalEditor == null) {
+                "no Monaco editor exists on this page (window.globalEditor is unset -- " +
+                    "the editor bootstrap failed, check the browser console)"
+            } else {
+                "selection did not switch to ${req.property}"
+            }
+            return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not synced yet; $reason")
         }
         if (req.preserveSelection) {
             prepareMonacoForScreenshotLayout()

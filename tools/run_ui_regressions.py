@@ -542,8 +542,10 @@ try {
     .filter(([label, count]) => count > 1 && (label === "Go to Paired Shader Definition" || label.startsWith("Edit: ")))
     .map(([label, count]) => ({ label, count }));
   const editLabels = labels.filter((label) => label.startsWith("Edit: "));
+  // Mirrors monacoPropertyNames in BootstrapMonacoInit.kt; "msl" arrived with the Live Metal
+  // head (6a053253) and this list did not follow, so the handle count has been one short since.
   const propertyIds = [
-    "code", "vertex", "fragment", "stackSL", "vertex_fragment", "compute", "task", "mesh",
+    "code", "vertex", "fragment", "stackSL", "msl", "vertex_fragment", "compute", "task", "mesh",
     "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
     "vertex_s", "fragment_s", "compute_s", "task_s", "mesh_s", "raygen_s", "miss_s",
     "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
@@ -2569,6 +2571,174 @@ def backdoor_command_prefix() -> list[str]:
     return [sys.executable]
 
 
+# `afield.morpho` is not in Field's REPL intro, so the box's own `import` is what makes `MorphoCircuit`
+# resolve — the only place in the suite where that is true. It is also as close to the reported bug as
+# checked-in code gets: `MorphoCircuit.flines` is a top-level extension named exactly like the
+# `SentenceDiagram.flines` that went missing, reached through the same `fl` prefix, which collides with
+# flatMap/flatten/flatShaded in the backend's symbol index. A prefix with no stdlib collisions cannot
+# reproduce the failure at all — that is why `d.flin` looked fine while `d.fl` filled with junk.
+#
+# The trailing `Vector3f()` is the backend gate, not a subject: named-argument completion inside it
+# is produced by the AA backend and never by the K1 delegate, so it is how these tests prove they are
+# measuring AA. It is a syntactically complete call, so it cannot disturb the parse of the lines above.
+#
+# RUNNING THESE: the Field this harness drives does not inherit a completion-sidecar URL, and without
+# one the AA backend is simply absent. Export it, or the gate fails the test with "AA is not serving"
+# (by design — silently grading the K1 fallback is what these were written to stop):
+#     AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL=http://127.0.0.1:17969 \
+#       python3 tools/run_ui_regressions.py --port 9490 --id completion-box-own-import
+COMPLETION_OWN_IMPORT_SNIPPET = """\
+import afield.morpho.*
+val c: MorphoCircuit = TODO()
+c.fl
+c.sign
+val warm = Vector3f()
+"""
+
+# A receiver whose type genuinely does not exist anywhere. The popup must say so by offering nothing —
+# NOT by offering every stdlib extension that happens to start with "fl". Deliberately a made-up name
+# rather than a real-but-unimported type: everything in Field's REPL intro now reaches the backend, so
+# "unimported" no longer implies "unresolvable", and a fixture relying on that would quietly stop
+# testing anything the day its package joined the intro.
+COMPLETION_UNRESOLVED_SNIPPET = """\
+val c: NoSuchTypeAnywhere = TODO()
+c.fl
+val warm = Vector3f()
+"""
+
+# Shared preamble for the two completion assertions below: drive the real fieldSuggest widget and
+# read back what it actually rendered.
+COMPLETION_SUGGEST_PRELUDE = r"""
+const ed = window.globalEditor;
+if (!ed) return { ok: false, reason: "globalEditor missing" };
+const controller = ed._afieldSuggestController;
+if (!controller) return { ok: false, reason: "fieldSuggest is not installed on the editor" };
+const model = ed.getModel();
+if (!model) return { ok: false, reason: "editor has no model" };
+
+const rows = () =>
+  Array.from(document.querySelectorAll(".afield-suggest-row .afield-suggest-label"))
+    .map((node) => String(node.textContent || "").trim());
+const sections = () =>
+  Array.from(document.querySelectorAll(".afield-suggest-section"))
+    .map((node) => String(node.textContent || "").trim());
+// Rows in the Field-API groups render with their declaration keyword — the popup shows
+// `fun bindPushConstant(name: String, …)`, not `bindPushConstant` — and a named argument renders as
+// `x = `. Reduce a rendered label to the bare name so assertions can match on it.
+const nameOf = (label) =>
+  String(label)
+    .replace(/^(?:fun|val|var|object|class)\s+/, "")
+    .split("(")[0]
+    .split(":")[0]
+    .replace(/=\s*$/, "")
+    .trim();
+
+const lineContaining = (needle) => {
+  for (let i = 1; i <= model.getLineCount(); i++) {
+    if (model.getLineContent(i).includes(needle)) return i;
+  }
+  return -1;
+};
+
+// open() resolves as soon as the LOCAL items are on screen; the backend round trip (the AA sidecar,
+// or the K1 fallback when AA declines) lands later through mergeLateItems. Waiting for
+// baseItemsLoaded is the whole point — poll too early and the assertion races the thing it tests.
+const completeAt = async (line, column) => {
+  ed.focus();
+  ed.setPosition({ lineNumber: line, column });
+  await controller.open({ manual: true });
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline && !controller.baseItemsLoaded) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return { line, column, loaded: !!controller.baseItemsLoaded, labels: rows(), groups: sections() };
+};
+
+const completeAtEndOf = async (needle) => {
+  const line = lineContaining(needle);
+  if (line < 0) return { line, loaded: false, labels: [], groups: [], reason: `no line contains ${needle}` };
+  return completeAt(line, model.getLineMaxColumn(line));
+};
+
+// Prove the AA backend is the one answering before asserting anything about what it answers.
+// Named-argument completion is produced only by AA — the K1 delegate produces none, which the Stage B
+// differential measures (`arg#Vector3f-*`: K1 ✗, AA ✓). Without this gate these tests quietly grade
+// whichever backend happens to be up: K1 honours a box's imports and offers nothing for an unresolved
+// receiver, so BOTH assertions below pass on K1 no matter how broken AA is — exactly the
+// can't-fail test we added these to replace. AA also needs its ~1 min session build after a cold
+// sidecar, so this polls rather than sampling once.
+const waitForAaBackend = async (budgetMs) => {
+  const line = lineContaining("Vector3f(");
+  if (line < 0) return { served: false, reason: "fixture has no Vector3f() gate line" };
+  const column = model.getLineContent(line).indexOf("Vector3f(") + "Vector3f(".length + 1;
+  const deadline = Date.now() + budgetMs;
+  let last = null;
+  while (Date.now() < deadline) {
+    last = await completeAt(line, column);
+    if (last.labels.some((label) => nameOf(label) === "x")) return { served: true, probe: last };
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+  return { served: false, probe: last, reason: "named-argument completion never appeared: AA is not serving (sidecar down, or still building its session) — refusing to grade the K1 fallback" };
+};
+"""
+
+# The regression the human hit: `d.fl` on a type from the box's own imported package offered
+# flatMap/flatten/flatShaded and never `flines`, at every prefix length up to 4. Nothing in the corpus
+# or the probes covered a box-written import, so nothing saw it.
+COMPLETION_OWN_IMPORT_JS = COMPLETION_SUGGEST_PRELUDE + r"""
+const backend = await waitForAaBackend(90000);
+if (!backend.served) return { ok: false, reason: backend.reason, backend };
+
+const ext = await completeAtEndOf("c.fl");
+const member = await completeAtEndOf("c.sign");
+const has = (result, want) => result.labels.some((label) => nameOf(label) === want);
+
+const result = {
+  ok: false,
+  backend: { served: true },
+  extension: ext,
+  member: member,
+};
+if (!ext.loaded || !member.loaded) {
+  result.reason = "completion never settled (baseItemsLoaded stayed false) — backend down or wedged";
+  return result;
+}
+if (!has(ext, "flines")) {
+  result.reason = `extension from the box's own import absent: saw [${ext.labels.join(", ")}]`;
+  return result;
+}
+if (!has(member, "signature")) {
+  result.reason = `member of the box's own imported type absent: saw [${member.labels.join(", ")}]`;
+  return result;
+}
+result.ok = true;
+return result;
+"""
+
+# The other half, and the one that actually withheld the right answer: an unresolved receiver has to
+# yield NOTHING so KI2 falls through to K1. When the AA backend answered it with every prefix-matching
+# extension in its index (an error type is a subtype of everything, so they all "applied"), the
+# non-empty result told KI2 that AA had served the request and the fallback never ran.
+COMPLETION_UNRESOLVED_JS = COMPLETION_SUGGEST_PRELUDE + r"""
+const backend = await waitForAaBackend(90000);
+if (!backend.served) return { ok: false, reason: backend.reason, backend };
+
+const probe = await completeAtEndOf("c.fl");
+const leaked = probe.labels.filter((label) => /^flat/.test(nameOf(label)));
+const result = { ok: false, backend: { served: true }, probe, leaked };
+if (!probe.loaded) {
+  result.reason = "completion never settled (baseItemsLoaded stayed false) — backend down or wedged";
+  return result;
+}
+if (leaked.length) {
+  result.reason = `unresolved receiver offered stdlib extensions: [${leaked.join(", ")}]`;
+  return result;
+}
+result.ok = true;
+return result;
+"""
+
+
 def write_generated_file(relative: str, text: str) -> Path:
     path = GENERATED_ROOT / relative
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2578,6 +2748,10 @@ def write_generated_file(relative: str, text: str) -> Path:
 
 def prepare_generated_files() -> dict[str, Path]:
     return {
+        "completion_own_import_snippet": write_generated_file("completion-own-import.kt", COMPLETION_OWN_IMPORT_SNIPPET),
+        "completion_unresolved_snippet": write_generated_file("completion-unresolved.kt", COMPLETION_UNRESOLVED_SNIPPET),
+        "completion_own_import_js": write_generated_file("completion-own-import.js", COMPLETION_OWN_IMPORT_JS),
+        "completion_unresolved_js": write_generated_file("completion-unresolved.js", COMPLETION_UNRESOLVED_JS),
         "stack_marker_snippet": write_generated_file("stack-marker.kt", STACK_MARKER_SNIPPET),
         "editable_lines_snippet": write_generated_file("editable-lines.kt", EDITABLE_LINES_SNIPPET),
         "static_lines_snippet": write_generated_file("static-lines.kt", STATIC_LINES_SNIPPET),
@@ -2905,6 +3079,42 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["page-eval", "--body", "--file", str(files["focus_keyboard_enter_assert_js"]), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="completion-box-own-import",
+            description="The completion popup honours an import the box wrote for itself: a member and a top-level extension from that package are offered at a prefix that also matches stdlib names.",
+            commands=[
+                "new-box --name CompletionOwnImportRegression",
+                shell_join(["set", "@last", "code", "--file", str(files["completion_own_import_snippet"])]),
+                # Added while every regression in this file was failing `editor-open` with "editor
+                # not synced yet". That turned out to be a broken Monarch grammar wedging the whole
+                # Monaco bootstrap, not a --file read landing later than an inline one-liner, and no
+                # sleep would ever have fixed it. Kept as a small margin, not as a diagnosis.
+                "sleep 1.0",
+                "editor-open @last --property code",
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["completion_own_import_js"]), "--timeout", pw_timeout]),
+            ],
+            # The assertion leaves the popup open on purpose, so the capture frames the widget the
+            # human photographed rather than a bare editor.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="completion-unresolved-receiver-no-junk",
+            description="Completion on a receiver whose type cannot be resolved offers nothing, rather than every stdlib extension that happens to match the prefix.",
+            commands=[
+                "new-box --name CompletionUnresolvedRegression",
+                shell_join(["set", "@last", "code", "--file", str(files["completion_unresolved_snippet"])]),
+                # Added while every regression in this file was failing `editor-open` with "editor
+                # not synced yet". That turned out to be a broken Monarch grammar wedging the whole
+                # Monaco bootstrap, not a --file read landing later than an inline one-liner, and no
+                # sleep would ever have fixed it. Kept as a small margin, not as a diagnosis.
+                "sleep 1.0",
+                "editor-open @last --property code",
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["completion_unresolved_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
         ),
     ]
 

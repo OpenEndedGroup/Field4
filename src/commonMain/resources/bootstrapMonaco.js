@@ -42,6 +42,41 @@ const loadOptionalPersonalLanguageExtensions = () => {
         })
 }
 
+const FIELD_LANGUAGE_MODULES = [
+        "bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml",
+        "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite",
+        "bithero/nano", "bithero/kotlinjs", "bithero/morpho",
+]
+const LANGUAGE_MODULE_DEADLINE_MS = 10000
+
+// These used to be one grouped require with initMonaco() as its callback, which made every syntax
+// highlighter a single point of failure for the whole editor: a module whose factory throws (a
+// Monarch grammar that does not compile, say) never settles at all -- the loader runs neither the
+// callback nor an errorback -- so the require hung, initMonaco() never ran, and the page came up
+// with a live websocket, no Monaco, and nothing in the console. Load them one at a time instead
+// and start the editor once they have settled or the deadline passes, naming what did not arrive.
+const loadFieldLanguageModules = () => new Promise((resolve) => {
+        const missing = new Set(FIELD_LANGUAGE_MODULES)
+        let settled = false
+        const finish = () => {
+                if (settled) return
+                settled = true
+                clearTimeout(deadline)
+                resolve([...missing])
+        }
+        const deadline = setTimeout(finish, LANGUAGE_MODULE_DEADLINE_MS)
+        FIELD_LANGUAGE_MODULES.forEach((id) => {
+                const arrived = () => {
+                        missing.delete(id)
+                        if (missing.size === 0) finish()
+                }
+                window.require([id], arrived, function (err) {
+                        console.error(`language module ${id} failed to load`, err)
+                        arrived()
+                })
+        })
+})
+
 window.require(["vs/editor/editor.main"], function (e, is) {
         window.require(["vs/basic-languages/python/python"], function (e, is) {
         });
@@ -51,13 +86,20 @@ window.require(["vs/editor/editor.main"], function (e, is) {
         });
         window.require(["vs/basic-languages/markdown/markdown"], function (e, is) {
         });
-        window.require(["bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml", "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite", "bithero/nano", "bithero/kotlinjs"], function () {
+        loadFieldLanguageModules().then(function (neverLoaded) {
+                if (neverLoaded.length) {
+                        console.error(
+                                "starting Monaco without language modules that never resolved: " +
+                                `${neverLoaded.join(", ")} (their factories most likely threw)`)
+                }
                 initMonaco()
                 loadOptionalPersonalLanguageExtensions()
                 window.require(["vs/platform/quickinput/common/quickInput"], function (is) {
                         initQuickPick(is)
                 })
         })
+}, function (err) {
+        console.error("Monaco itself failed to load; the page will have no editor", err)
 });
 
 
