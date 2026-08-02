@@ -187,7 +187,7 @@ Five Platonic seeds, each a fully realized `PolyhedralObject`. All the pictures 
 CPU mesh rasteriser (`TriMesh.renderPng`) fed with `toTriMesh()`; the captions under each are read
 off the **topology**, not off the mesh.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="420" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/seeds_gallery.png" wait="2.5" capture="box" open-outputs="true" w="1240" h="820" padding="14"}
 :::static
 import afield.stdlib.polytope.*
 import java.util.Base64
@@ -213,7 +213,7 @@ fun Box.gallery(channel: String, columns: Int, cell: Int, panels: List<Pair<Stri
 }
 :::endfold
 
-gallery("seeds", columns = 5, cell = 300, panels = listOf(
+gallery("seeds", columns = 3, cell = 380, panels = listOf(
     "T  tetrahedron" to tetrahedron(),
     "C  cube" to cube(),
     "O  octahedron" to octahedron(),
@@ -222,7 +222,7 @@ gallery("seeds", columns = 5, cell = 300, panels = listOf(
 ))
 ```
 
-![Five shaded polyhedra in a row — tetrahedron, cube, octahedron, icosahedron, dodecahedron — each captioned with its vertex, edge and face counts, its face-degree histogram, and Euler characteristic 2](assets/polytope_examples/seeds_gallery.png)
+![Five shaded polyhedra — tetrahedron, cube, octahedron, icosahedron, dodecahedron — each captioned with its vertex, edge and face counts, its face-degree histogram, and Euler characteristic 2](assets/polytope_examples/seeds_gallery.png)
 
 `cube()` is the odd one out and it is worth knowing: the other four place their vertices on the unit
 sphere, while `cube()` has side length 2, so its vertices sit at radius √3. That matters later,
@@ -280,6 +280,68 @@ Each caption's face-degree histogram tells you what the operator did combinatori
   octagons) and each cut leaves a new face.
 - **`g` gyro** is the genuinely interesting one — a real topology transform, not a fake-up: every
   *directed* half-edge becomes a pentagon, so `gC` is 24 pentagons and nothing else.
+
+The `gC` panel is the one to stop at, because it looks like a bug and is not. Its caption says
+38 vertices, 60 edges and 24 pentagons, and its picture is a cube. Both are true:
+`GyroSubdivisionRealization` places the new directed-edge points *along* the existing edges and the
+new face centres *at* the existing face centroids, so every one of those 24 pentagons lies flat in
+one of the cube's six original square planes. Flat shading has nothing to shade differently. The
+combinatorics changed completely; the embedding did not move a single point off the surface.
+
+Draw the polygon boundaries instead of the shading and the 24 pentagons appear:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/gyro_boundaries.png" wait="2.5" capture="box" open-outputs="true" w="960" h="700" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+import afield.stdlib.TriMesh
+import java.util.Base64
+
+// Shading cannot separate coplanar faces, so give each polygon its own colour instead. The
+// triangle -> source-polygon map is what makes that possible on a triangle mesh at all.
+val gyro = conway("gC").polyhedron
+val g = gyro.triangulate()
+val faceOrder = gyro.topology.elements(2).mapIndexed { i, f -> f.id.value to i }.toMap()
+
+val colors = FloatArray(g.mesh.vertexCount * 3)
+for (tri in 0 until g.triangleCount) {
+    // A hue wheel over the 24 pentagons; nothing here knows or cares where they are in space.
+    val turn = faceOrder.getValue(g.sourceFace(tri).value) * 2.0 * Math.PI / faceOrder.size
+    for (k in 0..2) {
+        val vi = g.mesh.indices[tri * 3 + k]
+        colors[vi * 3] = (0.55 + 0.42 * Math.cos(turn)).toFloat()
+        colors[vi * 3 + 1] = (0.55 + 0.42 * Math.cos(turn - 2.09)).toFloat()
+        colors[vi * 3 + 2] = (0.55 + 0.42 * Math.cos(turn + 2.09)).toFloat()
+    }
+}
+val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, colors)
+
+:::fold one figure with its own caption
+val png = Base64.getEncoder().encodeToString(painted.renderPng(
+    MeshView(wireframe = false, width = 860, height = 560, distance = 2.4), caption = "", title = null,
+))
+// The claim, measured rather than asserted: 24 faces sharing only 6 distinct outward normals.
+val distinctNormals = gyro.topology.elements(2)
+    .map { gyro.faceNormal(it.id) }
+    .map { "%.3f,%.3f,%.3f".format(it.x, it.y, it.z) }
+    .distinct()
+
+display("gyro", """
+    <img src='data:image/png;base64,$png' style='width:100%;border-radius:6px;display:block'/>
+    <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
+      gC &middot; ${gyro.topology.elements(2).size} faces, all
+      ${gyro.topology.elements(2).map { gyro.topology.faceCycle(it.id).size }.distinct().joinToString("/")}-gons
+      &middot; ${distinctNormals.size} distinct face normals: ${distinctNormals.joinToString(" ") { "($it)" }}
+    </div>
+""".trimIndent())
+:::endfold
+```
+
+![A shaded cube whose six square faces are each divided into four differently coloured pentagons meeting at the face centre, twenty-four in all. The caption reports 24 faces, all 5-gons, with only 6 distinct face normals — the six axis directions of the original cube](assets/polytope_examples/gyro_boundaries.png)
+
+That is the separation the library is built around, in one picture: **the operator changed the
+topology, and a realization policy — a different, replaceable argument — decided that the new
+vertices should stay on the old surface.** Hand `gyro` a different `RealizationPolicy3` and the same
+24 pentagons can be anywhere you like.
 
 ### The named composites
 
@@ -344,8 +406,8 @@ fun row(src: String): String = try {
     val r = e.evaluate()
     val t = r.polyhedron.topology
     "| `$src` | `${e.seed.symbol}` " +
-        "| ${e.invocations.joinToString(" then ") { i -> i.operator.displayName + (i.degree?.let { "($it)" } ?: "") }} " +
-        "| `${r.history.joinToString("") { it.symbol.toString() }}` " +
+        "| ${e.invocations.joinToString(" then ") { i -> i.operator.displayName + (i.degree?.let { "($it)" } ?: "") }.ifEmpty { "— (the bare seed)" }} " +
+        "| ${r.history.joinToString("") { it.symbol.toString() }.ifEmpty { "—" }} " +
         "| ${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f |"
 } catch (ex: ConwayParseException) {
     "| `$src` | — | **${ex.message}** | — | — |"
@@ -487,10 +549,11 @@ is deployed with `ElementParameters.attribute("spike")`, and then — the part t
 scalar is painted back onto the *rendered triangles* by following `triangulate()`'s
 triangle → source-polygon map.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/parameter_field.png" wait="3.0" capture="box" open-outputs="true" w="900" h="720" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/parameter_field.png" wait="3.0" capture="box" open-outputs="true" w="900" h="760" padding="14"}
 :::static
 import afield.stdlib.polytope.*
 import afield.stdlib.TriMesh
+import java.util.Base64
 
 // One scalar per face of a dodecahedron: spike height rises from left to right.
 var source = dodecahedron()
@@ -526,13 +589,24 @@ for (tri in 0 until g.triangleCount) {
 }
 val painted = TriMesh(g.mesh.positions, g.mesh.indices, g.mesh.normals, null, colors)
 
-showMesh(painted, channel = "field",
-    view = MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0))
-println("kis deployed over ${deployed.size} faces, heightScale %.3f … %.3f".format(lo, hi))
-println("out: ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f, triangles = ${g.triangleCount}")
+:::fold one figure, with its own caption, so nothing is read off a mesh-level summary
+val png = Base64.getEncoder().encodeToString(painted.renderPng(
+    MeshView(wireframe = false, width = 820, height = 560, distance = 2.3, yawDegrees = 0.0, pitchDegrees = 6.0),
+    caption = "", title = null,
+))
+display("field", """
+    <img src='data:image/png;base64,$png' style='width:100%;border-radius:6px;display:block'/>
+    <div style='color:#93a4ba;font:12px monospace;padding-top:8px;line-height:1.6'>
+      kis deployed over ${deployed.size} faces &middot;
+      heightScale resolved ${"%.3f".format(lo)} &hellip; ${"%.3f".format(hi)}<br/>
+      output ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f
+      &middot; ${g.triangleCount} triangles over ${g.triangleFaceIds.toSet().size} source polygons
+    </div>
+""".trimIndent())
+:::endfold
 ```
 
-![A shaded spiked dodecahedron. The pyramids on the left-hand faces are short and coloured cyan, those on the right are long and coloured orange, with a smooth gradient across the middle. Below it two printed lines report kis deployed over 12 faces with heightScale from 0.210 to 0.750, and an output of 32 vertices, 90 edges, 60 faces and 60 triangles](assets/polytope_examples/parameter_field.png)
+![A shaded spiked dodecahedron. The pyramids on the left-hand faces are short and coloured cyan, those on the right are long and coloured orange, with a smooth gradient across the middle. Its caption reports kis deployed over 12 faces with heightScale resolved from 0.210 to 0.750, and an output of 32 vertices, 90 edges and 60 faces made of 60 triangles over 60 source polygons](assets/polytope_examples/parameter_field.png)
 
 Three separate facts are visible in that one picture:
 
@@ -587,39 +661,42 @@ val jittered = clean.copy(realization = Realization3(clean.realization!!.vertexC
 
 val solved = jittered.solveRealization()
 
-:::fold render the three embeddings and tabulate the diagnostics
-fun Box.trio(channel: String, panels: List<Pair<String, PolyhedralObject>>) {
-    val view = MeshView(width = 460, height = 400, wireframe = false, distance = 2.5)
-    display(channel, buildString {
-        append("<div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>")
-        for ((label, p) in panels) {
-            append("<div><div style='color:#e6ecf4;font-weight:600;font-family:monospace;font-size:13px;padding-bottom:3px'>$label</div>")
-            append("<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))}' style='width:100%;border-radius:5px;display:block'/></div>")
-        }
-        append("</div>")
-    })
+:::fold render the three embeddings and their diagnostics as one figure
+val view = MeshView(width = 400, height = 340, wireframe = false, distance = 2.5)
+fun panel(label: String, p: PolyhedralObject): String {
+    val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
+    return "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
+        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
 }
 fun row(label: String, d: RealizationDiagnostics) =
-    "| $label | %.5f | %.3e | %.3e | %.3e | %d |".format(
-        d.edgeLengthMean, d.edgeLengthRmsDeviation, d.maxFacePlanarityError,
+    ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.5f</td><td>%.3e</td>" +
+        "<td>%.3e</td><td>%.3e</td><td>%d</td></tr>").format(
+        label, d.edgeLengthMean, d.edgeLengthRmsDeviation, d.maxFacePlanarityError,
         d.facePlanarityRmsError, d.degenerateFaces.size)
 
-trio("solve", listOf(
-    "aC as built" to clean,
-    "every vertex jittered" to jittered,
-    "solveRealization()" to solved.polyhedron,
-))
-markdown("solve-numbers", """
-| embedding | edge mean | edge RMS deviation | max planarity error | planarity RMS | degenerate faces |
-|---|---|---|---|---|---|
-${row("`aC` as built", clean.geometryDiagnostics())}
-${row("jittered", solved.initialDiagnostics)}
-${row("after `solveRealization()`", solved.finalDiagnostics)}
-
-converged = **${solved.converged}** · iterations = ${solved.iterations} ·
-rmsResidual = %.3e · reason = `${solved.reason}` ·
-topology object identical: **${solved.polyhedron.topology === jittered.topology}**
-""".format(solved.rmsResidual), width = 1140)
+display("solve", """
+    <div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px'>
+      ${panel("aC as built", clean)}
+      ${panel("every vertex jittered", jittered)}
+      ${panel("solveRealization()", solved.polyhedron)}
+    </div>
+    <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;padding-top:10px;margin-top:10px'>
+      <thead style='color:#6d7787'><tr>
+        <th style='text-align:left;padding-right:14px'>embedding</th><th>edge mean</th>
+        <th>edge RMS dev</th><th>max planarity err</th><th>planarity RMS</th><th>degenerate</th>
+      </tr></thead>
+      <tbody>
+        ${row("aC as built", clean.geometryDiagnostics())}
+        ${row("jittered", solved.initialDiagnostics)}
+        ${row("after solveRealization()", solved.finalDiagnostics)}
+      </tbody>
+    </table>
+    <div style='color:#93a4ba;font:12px monospace;padding-top:8px'>
+      converged = ${solved.converged} &middot; iterations = ${solved.iterations} &middot;
+      rmsResidual = ${"%.3e".format(solved.rmsResidual)} &middot; reason = ${solved.reason} &middot;
+      topology object identical = ${solved.polyhedron.topology === jittered.topology}
+    </div>
+""".trimIndent())
 :::endfold
 ```
 
@@ -667,23 +744,51 @@ val faceLines = out.toFaceFLines { face, line ->
     line.hoverColor = vec(0.96, 0.98, 1.00, 0.95)
 }
 
-threeLines(faceLines, channel = "faces", name = "role-coloured faces", height = 520,
+threeLines(faceLines, channel = "faces", name = "role-coloured faces", height = 460,
     autoFrame = true, editable = false)
 displayOpen("faces")
-
-val roles = out.topology.elements(2)
-    .groupingBy { (result.lineage(it.id) as ElementLineage.Derived).role }.eachCount().toSortedMap()
-println("${faceLines.size} FLines, one per polygonal face")
-println("roles: " + roles.entries.joinToString { "${it.key}=${it.value}" })
-println("first line's properties: " + faceLines.first().properties
-    .filterKeys { it == POLYTOPE_FACE_ID_PROPERTY || it == POLYTOPE_FACE_RANK_PROPERTY })
 ```
 
-![An orbitable Three.js view of a partially truncated cuboctahedron drawn as filled, stroked polygons, with faces tinted cyan, purple and green according to the lineage role each one reports. Printed underneath: the FLine count, the role histogram of three original faces, eleven partially truncated faces and four vertex faces, and the polytopeFaceId and polytopeFaceRank properties carried on the first line](assets/polytope_examples/face_flines.png)
+![An orbitable Three.js view of a partially truncated cuboctahedron drawn as filled, stroked polygons, with faces tinted purple, green and teal according to the lineage role each one reports](assets/polytope_examples/face_flines.png)
 
 That view is the live `threeLines(...)` viewer, so in a real box you can orbit it, hover a face and —
 if you set `onClick` — pick one and read its provenance back. The
 [loadable demo](#a-loadable-demo) at the foot of this page does exactly that.
+
+What each of those lines is carrying, from the same transform:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_fline_properties.png" wait="2.0" capture="box" open-outputs="true" w="1020" h="480" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+
+val seed = conway("aC")
+val chosen = seed.polyhedron.topology.elements(0).filterIndexed { i, _ -> i % 3 == 0 }.map { it.id }
+val result = seed.truncate(ElementSelectors.ids(chosen), ElementParameters.constant(0.30))
+val out = result.polyhedron
+val faceLines = out.toFaceFLines()
+
+val roles = out.topology.elements(2)
+    .groupingBy { (result.lineage(it.id) as ElementLineage.Derived).role }.eachCount().toSortedMap()
+val first = faceLines.first()
+
+markdown("carried", """
+| | |
+|---|---|
+| deployments recorded | ${result.deployments.joinToString(", ") { d -> "`${d.operation.displayName}` → " + (d.selectedSources?.let { "${it.size} selected" } ?: "whole natural domain (`null`)") }} |
+| selected source vertices | ${result.deployments.last().selectedSources?.size} of ${seed.polyhedron.topology.elements(0).size} |
+| output | ${out.topology.elements(0).size}v ${out.topology.elements(1).size}e ${out.topology.elements(2).size}f |
+| `toFaceFLines()` returned | ${faceLines.size} FLines — one per polygonal face |
+| roles present | ${roles.entries.joinToString(", ") { "`${it.key}` × ${it.value}" }} |
+| properties on the first line | `${first.properties.filterKeys { it.startsWith("polytope") }}` |
+| its node count | ${first.nodes.size} nodes for a ${out.topology.faceCycle(ElementId(first.properties[POLYTOPE_FACE_ID_PROPERTY] as Int)).size}-gon — the extra one is the `Close` marker |
+""", width = 940)
+```
+
+![A table reporting two recorded deployments — ambo over its whole natural domain and truncate over four selected vertices — that four of twelve source vertices were selected, that the output is 24 vertices, 40 edges and 18 faces, that toFaceFLines returned 18 FLines, the role histogram of three original faces, eleven partially truncated faces and four vertex faces, the polytopeFaceId and polytopeFaceRank properties carried on the first line, and that line's node count against the face's polygon degree](assets/polytope_examples/face_fline_properties.png)
+
+Both deployments are recorded, not just the selective one: a uniform operator's `selectedSources` is
+`null`, which means "the operator's complete natural domain", and an explicit selection is a set. The
+distinction survives into the replay record, so a chain can be re-run exactly.
 
 ### Triangles, derived last, that still know where they came from
 
@@ -752,7 +857,10 @@ val result = seed.kis(ElementSelectors.attributeEquals("lift", 0.4), ElementPara
 viz("inspection", listOf(result, result.polyhedron.triangulate()))
 ```
 
-![Field's reflective value visualizer showing a PolytopeTransformSummary — requested and primitive operations, the output's topology summary with element counts, face-degree counts, Euler characteristic and validity, the attribute keys, and a deployment record naming the selected sources and the resolved heightScale range — alongside a TriangulatedGeometrySummary of render vertices, triangles, source polygon faces, source vertex elements and flat normals](assets/polytope_examples/value_printers.png)
+![Field's reflective value visualizer showing a PolytopeTransformSummary — a TransformDeploymentSummary naming the kis operation and a selected count of two, then the output PolyhedralObjectSummary with the lift attribute key, a Realization3Summary of ten vertices, and a PolytopeTopologySummary reporting closedManifold true, element counts 10, 20, 12, 1, Euler characteristic 2, face degree counts of eight triangles and four squares, and valid true — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
+
+The `…` links are the visualizer's ordinary lazy expansion for nested values, not a rendering
+failure — click one in a live box and it fetches the rest.
 
 `println(result.summary())` and `viz("inspection", result)` report the same underlying facts, because
 they go through the same public summary functions. Useful last expressions:
