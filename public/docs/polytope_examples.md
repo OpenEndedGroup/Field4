@@ -19,6 +19,100 @@ for every polygon. It knows nothing about coordinates, `FLine`s, triangles, norm
 Coordinates are a **separate, optional, replaceable layer** on top. Triangles are derived last of
 all, and they carry a map back to the polygon they came from.
 
+Here is what that buys you, before any of the explanation. Every colour below is read out of the
+**lineage**, not out of a coordinate:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/hero.png" wait="8.0" capture="box" open-outputs="true" w="1180" h="720" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+
+// One expression: kis of bevel of the dodecahedron. Three chained operators, 360 output faces.
+val chain = conway("kbD")
+val run = chain.polyhedron.canonicalize()
+val solid = if (run.converged) run.polyhedron else chain.polyhedron
+
+// Now colour every one of those faces by the element of the ORIGINAL DODECAHEDRON it descends
+// from. Not by position, not by normal, not by size — `sourceElements` walks each output face's
+// lineage back through kis, through truncate, through ambo, to a single seed element. The
+// symmetry you can see is therefore a picture of the incidence structure, not of the geometry.
+fun hsv(hue: Double, s: Double, v: Double): Triple<Double, Double, Double> {
+    val h = ((hue % 1.0) + 1.0) % 1.0
+    val i = Math.floor(h * 6).toInt()
+    val f = h * 6 - i
+    val p = v * (1 - s)
+    val q = v * (1 - f * s)
+    val t = v * (1 - (1 - f) * s)
+    return when (i % 6) {
+        0 -> Triple(v, t, p); 1 -> Triple(q, v, p); 2 -> Triple(p, v, t)
+        3 -> Triple(p, q, v); 4 -> Triple(t, p, v); else -> Triple(v, p, q)
+    }
+}
+
+:::fold colour each face by the seed pentagon its lineage flattens to, and draw
+// Which of the dodecahedron's twelve pentagons does an output face descend from? Element ids are
+// allocated rank by rank, so "the lowest source id" would silently pick a vertex every time — ask
+// for the rank-2 sources specifically. A face over the interior of one pentagon has exactly one; a
+// face straddling an original edge or corner has two or three, and gets a neutral grey.
+val faces = solid.topology.elements(2)
+fun seedFacesOf(id: ElementId) =
+    chain.sourceElements(id).filter { it.rank == 2 }.map { it.id.value }.sorted()
+
+val pentagons = faces.flatMap { seedFacesOf(it.id) }.distinct().sorted()
+val share = faces.groupingBy { seedFacesOf(it.id).size }.eachCount().toSortedMap()
+
+// A face over one pentagon takes that pentagon's hue. A face straddling two or three of them takes
+// the blend — so the seams of the original dodecahedron colour themselves in between, and the
+// twelve-fold pattern reads without a single line being drawn. Saturation and brightness carry a
+// second signal: how many seed vertices and edges the face also touches.
+fun hueOf(pentagon: Int) = pentagons.indexOf(pentagon).toDouble() / pentagons.size
+val faceLines = solid.toFaceFLines { face, line ->
+    val owners = seedFacesOf(face.id)
+    val sources = chain.sourceElements(face.id)
+    val corners = sources.count { it.rank == 0 }
+    val edges = sources.count { it.rank == 1 }
+    val sat = (1.00 - 0.16 * corners).coerceIn(0.38, 1.0)
+    val value = (0.78 + 0.16 * edges + 0.12 * owners.size).coerceIn(0.74, 1.0)
+    val mixed = if (owners.isEmpty()) Triple(0.70, 0.74, 0.80) else owners
+        .map { hsv(hueOf(it), sat, value) }
+        .reduce { a, b -> Triple(a.first + b.first, a.second + b.second, a.third + b.third) }
+        .let { Triple(it.first / owners.size, it.second / owners.size, it.third / owners.size) }
+    line.filled = true
+    line.stroked = false
+    line.color = vec(mixed.first, mixed.second, mixed.third, if (owners.size == 1) 0.32 else 0.21)
+    line.hoverColor = vec(0.98, 0.99, 1.00, 0.95)
+}
+
+threeLines(faceLines, channel = "hero", name = "kbD, canonical, coloured by seed provenance",
+    height = 560, autoFrame = true, editable = false)
+displayOpen("hero")
+
+val topology = solid.topology
+markdown("what you are looking at", listOf(
+    "`kbD` = kis · bevel · dodecahedron, canonicalized",
+    "${topology.elements(0).size} vertices · ${topology.elements(1).size} edges · " +
+        "${topology.elements(2).size} faces · chi = ${topology.eulerCharacteristic()}",
+    "seed pentagons found in the lineage: ${pentagons.size}",
+    "output faces by how many of those pentagons they straddle: $share",
+    "canonical: converged = ${run.converged}, reason = ${run.reason}, " +
+        "tangency radius spread ${"%.3e".format(run.initialDiagnostics.tangencyRadiusSpread)} " +
+        "→ ${"%.3e".format(run.finalDiagnostics.tangencyRadiusSpread)}",
+).joinToString("<br/>"))
+:::endfold
+```
+
+![A near-spherical solid built from 360 small translucent triangles, layered so the far side shows through the near side. The colours run right around the spectrum — magenta, purple, blue, teal, green, yellow, orange — and gather into twelve rounded patches, one for each pentagon of the original dodecahedron, with blended in-between colours along the seams where a triangle straddles two pentagons. A readout underneath reports 182 vertices, 540 edges, 360 faces, twelve seed pentagons, and that 240 faces sit over one pentagon while 120 straddle two](assets/polytope_examples/hero.png)
+
+That is three chained Conway operators on a dodecahedron — `kis · bevel · D`, 360 output faces —
+canonicalized, and drawn as translucent polygons. The picture is doing one job: **the colours are
+provenance**. Each output face asked its own lineage which of the seed's twelve pentagons it descends
+from, walking back through `kis`, through `truncate`, through `ambo`, and answered in a hue. The 240
+faces that sit over a single pentagon take its colour; the 120 that straddle two take the blend, so
+the original dodecahedron's edges draw themselves in intermediate colours.
+
+Nothing here consulted a position, a normal, a face size or a distance. The twelve-fold symmetry in
+that image is a picture of the **incidence structure**, and it survived three operators that each
+threw all the coordinates away and made new ones. The rest of this page is how that works.
+
 Everything on this page was produced by the docs build running the code shown above it, in a live
 Field. No figure is drawn by hand and no number is typed by a human — where a count, a diagnostic or
 an error message appears, it was printed by the library.
