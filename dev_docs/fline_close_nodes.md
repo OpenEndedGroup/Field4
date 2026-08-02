@@ -70,7 +70,7 @@ MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
 cleverness required. That is the fixture the tests and the demo use.
 
 **From `close()` in user code**, and from two places that route to it: `'z'` in the path mini-DSL
-(`FLine.kt:1485`) and `FLine.plusAssign(other: FLine)` (`:1206`), which copies nodes verbatim, so
+(`FLine.kt:1542`) and `FLine.plusAssign(other: FLine)` (`:1263`), which copies nodes verbatim, so
 appending anything to a closed line makes one.
 
 ## The pictures

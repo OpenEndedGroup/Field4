@@ -17,3 +17,9 @@ Anything that spaces by *distance along the curve* — `Cursor.setD`, `midPoint`
 `PathFlattener`. See [arc_length_spacing.md](arc_length_spacing.md) for how that
 works, the class of curve it got wrong until 2026-07-31, and the measured
 before/after.
+
+Filling an `FLine` goes somewhere else entirely: `FLine.tessellate`
+(`src/jvmMain/kotlin/afield/graphics/FLine.kt:1001`), which projects the line's rings onto a
+dominant-axis plane and triangulates them with `FloatEarcut`. See
+[fline_fill_orientation.md](fline_fill_orientation.md) for why that projection decides which way
+every resulting triangle faces, the three ways it got that wrong, and the rendered before/after.
