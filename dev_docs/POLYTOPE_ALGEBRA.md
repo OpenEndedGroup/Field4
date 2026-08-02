@@ -155,6 +155,21 @@ AFIELD_POLYTOPE_PROOF_DIR=$PWD/dev_docs/assets ./gradlew jvmTest \
     --tests 'afield.stdlib.polytope.PolytopeCanonicalRenderProofTest'
 ```
 
+The same result through the real Field/browser path, captured from
+`polytope_canonical_gallery.yaml` running headless on the backdoor — the on-canvas Three.js viewer
+with the lumpy `gD` realization beside its canonical form, and the registered value visualizer
+showing the before/after diagnostics and the orbit summary underneath:
+
+![the gallery box in Field](assets/polytope_canonical_gallery_field.png)
+
+```bash
+python3 tools/field_backdoor.py --scratch --with-playwright \
+    --command "macro write polytope_canonical_gallery --file dev_docs/agents/transcripts/polytope_canonical_gallery.yaml --scope document" \
+    --command "macro run polytope_canonical_gallery --scope document" \
+    --command "sleep 8" \
+    --command "screenshot-box polytope_canonical_gallery /tmp/gallery.png"
+```
+
 ### Field output
 
 - `toFaceFLines()` produces one closed, outward-wound 3D path per authoritative polygon face.
