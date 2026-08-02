@@ -116,6 +116,9 @@ object DemoTranscriptExecSmokeTest {
         // Four independent pure-CPU heatmap boxes; showHeatmap / showImage encode a PNG and end in
         // display(), so no AWT, no GPU and nothing to launch.
         "viz_showheatmap",
+        // One pure-CPU polytope box. It derives polygonal FLines and publishes their payload to the
+        // on-canvas Three.js viewer; no native Window or Renderer is opened by threeLines().
+        "polytope_conway_demo",
         // Eight pure-CPU typography boxes. The letters are filled from their own contours by the
         // family's own scanline filler and shown through showImgGrid / showPlaneGrid / showMeshGrid,
         // all of which are PngEncoder or Skia-SVG into `display` — no AWT rasteriser, no GPU. Box 5

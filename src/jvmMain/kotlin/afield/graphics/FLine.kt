@@ -1003,19 +1003,19 @@ class FLine : HasProperties {
         val rings = mutableListOf<List<Vec3>>()
         val eps = 1e-5f
 
-        fun same2D(a: Vec3, b: Vec3): Boolean {
-            return abs(a.x - b.x) <= eps && abs(a.y - b.y) <= eps
+        fun same3D(a: Vec3, b: Vec3): Boolean {
+            return abs(a.x - b.x) <= eps && abs(a.y - b.y) <= eps && abs(a.z - b.z) <= eps
         }
 
         fun sanitize(points: MutableList<Vec3>): List<Vec3> {
             if (points.isEmpty()) return emptyList()
             val out = ArrayList<Vec3>(points.size)
             points.forEach { p ->
-                if (out.isEmpty() || !same2D(out[out.lastIndex], p)) {
+                if (out.isEmpty() || !same3D(out[out.lastIndex], p)) {
                     out.add(Vec3(p))
                 }
             }
-            if (out.size >= 2 && same2D(out[0], out[out.lastIndex])) {
+            if (out.size >= 2 && same3D(out[0], out[out.lastIndex])) {
                 out.removeAt(out.lastIndex)
             }
             return out
@@ -1039,20 +1039,58 @@ class FLine : HasProperties {
 
         if (rings.isEmpty()) return
 
+        // Earcut is 2D. Filled FLines can be planar in any 3D orientation, so select the dominant
+        // Newell-normal axis of the strongest ring and project only for tessellation. Original XYZ
+        // coordinates are still passed to the mesh acceptor.
+        var projectionAxis = 2
+        var strongestNormal = 0f
+        for (ring in rings) {
+            var nx = 0f
+            var ny = 0f
+            var nz = 0f
+            for (i in ring.indices) {
+                val p = ring[i]
+                val q = ring[(i + 1) % ring.size]
+                nx += (p.y - q.y) * (p.z + q.z)
+                ny += (p.z - q.z) * (p.x + q.x)
+                nz += (p.x - q.x) * (p.y + q.y)
+            }
+            val lengthSquared = nx * nx + ny * ny + nz * nz
+            if (lengthSquared > strongestNormal) {
+                strongestNormal = lengthSquared
+                projectionAxis = when {
+                    abs(nx) >= abs(ny) && abs(nx) >= abs(nz) -> 0
+                    abs(ny) >= abs(nz) -> 1
+                    else -> 2
+                }
+            }
+        }
+
+        fun projectedX(p: Vec3): Float = when (projectionAxis) {
+            0 -> p.y
+            else -> p.x
+        }
+
+        fun projectedY(p: Vec3): Float = when (projectionAxis) {
+            0 -> p.z
+            1 -> p.z
+            else -> p.y
+        }
+
         data class BBox(val minX: Float, val minY: Float, val maxX: Float, val maxY: Float)
         data class RingInfo(val points: List<Vec3>, val area: Float, val bbox: BBox)
 
         fun bboxOf(points: List<Vec3>): BBox {
-            var minX = points[0].x
-            var minY = points[0].y
-            var maxX = points[0].x
-            var maxY = points[0].y
+            var minX = projectedX(points[0])
+            var minY = projectedY(points[0])
+            var maxX = projectedX(points[0])
+            var maxY = projectedY(points[0])
             for (i in 1 until points.size) {
                 val p = points[i]
-                minX = min(minX, p.x)
-                minY = min(minY, p.y)
-                maxX = max(maxX, p.x)
-                maxY = max(maxY, p.y)
+                minX = min(minX, projectedX(p))
+                minY = min(minY, projectedY(p))
+                maxX = max(maxX, projectedX(p))
+                maxY = max(maxY, projectedY(p))
             }
             return BBox(minX, minY, maxX, maxY)
         }
@@ -1062,25 +1100,29 @@ class FLine : HasProperties {
             for (i in points.indices) {
                 val a = points[i]
                 val b = points[(i + 1) % points.size]
-                sum += (a.x * b.y) - (b.x * a.y)
+                sum += (projectedX(a) * projectedY(b)) - (projectedX(b) * projectedY(a))
             }
             return 0.5f * sum
         }
 
         fun bboxContains(b: BBox, p: Vec3): Boolean {
-            return p.x >= b.minX && p.x <= b.maxX && p.y >= b.minY && p.y <= b.maxY
+            val x = projectedX(p)
+            val y = projectedY(p)
+            return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY
         }
 
         fun pointInPolygon(points: List<Vec3>, p: Vec3): Boolean {
             var inside = false
             var j = points.size - 1
             for (i in points.indices) {
-                val xi = points[i].x
-                val yi = points[i].y
-                val xj = points[j].x
-                val yj = points[j].y
-                val intersect = ((yi > p.y) != (yj > p.y)) &&
-                        (p.x < (xj - xi) * (p.y - yi) / ((yj - yi) + 1e-12f) + xi)
+                val xi = projectedX(points[i])
+                val yi = projectedY(points[i])
+                val xj = projectedX(points[j])
+                val yj = projectedY(points[j])
+                val px = projectedX(p)
+                val py = projectedY(p)
+                val intersect = ((yi > py) != (yj > py)) &&
+                        (px < (xj - xi) * (py - yi) / ((yj - yi) + 1e-12f) + xi)
                 if (intersect) inside = !inside
                 j = i
             }
@@ -1134,6 +1176,7 @@ class FLine : HasProperties {
 
         for (group in groups) {
             val verts = ArrayList<Float>()
+            val projected = ArrayList<Float>()
             val holes = ArrayList<Int>()
             var vertCount = 0
 
@@ -1144,6 +1187,8 @@ class FLine : HasProperties {
                     verts.add(p.x)
                     verts.add(p.y)
                     verts.add(p.z)
+                    projected.add(projectedX(p))
+                    projected.add(projectedY(p))
                 }
                 vertCount += pts.size
             }
@@ -1151,7 +1196,7 @@ class FLine : HasProperties {
             if (vertCount < 3) continue
             val holeIndices = if (holes.isEmpty()) null else holes.toIntArray()
             val da = verts.toFloatArray()
-            val c = FloatEarcut.earcut(da, holeIndices, 3)
+            val c = FloatEarcut.earcut(projected.toFloatArray(), holeIndices, 2)
             if (c.isNotEmpty()) {
                 meshAcceptor(da, c)
             }
