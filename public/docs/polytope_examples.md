@@ -3,6 +3,11 @@
 *`afield.stdlib.polytope` — an incidence topology, a Conway operator algebra over it, element
 provenance that survives every operator, and only then coordinates.*
 
+*Every declaration used below is listed, with its KDoc, in the codebase reference:
+[Uncategorised](reference/uncategorised.md). It is filed there rather than under Graphics because
+these source files carry no `@file:CompletionCategory` yet — the pages are grouped by the label the
+source itself declares, and this family has not declared one.*
+
 Most "polyhedron libraries" are mesh libraries wearing a hat. You get vertices, faces as triangles,
 maybe a normal, and every question you actually want to ask — *which* face is this, where did it
 come from, what was it before the last operator ran — has to be reconstructed from floating-point

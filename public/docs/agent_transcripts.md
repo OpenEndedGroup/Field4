@@ -243,6 +243,28 @@ dead centre of frame for the whole move, while lerping the two positions cuts th
 Walkthrough: [Capturing & replaying live state](keyframer_examples.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/keyframer_worked_example/metadata.edn)
 
+**polytope_conway_demo** — One deliberately compact box for the
+[Conway polytope algebra](polytope_examples.md). It marks two opposite cube faces with different
+height attributes, selects exactly those faces, applies `kis` only there with the height deployed per
+face, and sends the resulting polygonal faces to the on-canvas `threeLines(...)` viewer. Orbit it,
+hover a face, and click one: a provenance card reports the output face id, the transform role, the
+deployed height, the source elements it descends from, and the 3D hit position. The inspection output
+below the view exercises the registered polytope value printers.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_conway_demo/metadata.edn)
+
+**polytope_conway_gallery** — The same algebra as four small boxes, one question each.
+*Expressions* is a Conway-notation contact sheet you retype: change one list and the whole grid
+rebuilds, captions and all, read off the topology rather than the pictures. *Abstract dual* takes the
+cube's coordinates away and shows the dual's `realization` as `null` and its `toFaceFLines()` and
+`triangulate()` refusing with their real exception messages — before a realization policy is applied
+and the same object gains eight FLines. *Parameter field* writes a scalar onto each of a
+dodecahedron's faces, deploys a selective **and** non-uniform `kis`, and paints the deployed value
+onto the pickable output faces. *Realization* jitters a Conway output, relaxes it, and leaves the
+solver's own before/after diagnostics — edge-length deviation, planarity error, convergence and stop
+reason — as its final value. Every box is pure CPU.
+Walkthrough: [Polytopes: topology first, coordinates later](polytope_examples.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_conway_gallery/metadata.edn)
+
 
 ## visionOS device scenes
 
