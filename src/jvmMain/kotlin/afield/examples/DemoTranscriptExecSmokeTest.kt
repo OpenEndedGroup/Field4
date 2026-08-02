@@ -119,6 +119,9 @@ object DemoTranscriptExecSmokeTest {
         // One pure-CPU polytope box. It derives polygonal FLines and publishes their payload to the
         // on-canvas Three.js viewer; no native Window or Renderer is opened by threeLines().
         "polytope_conway_demo",
+        // A second pure-CPU polytope box on the same path: evaluate one Conway expression,
+        // canonicalize it, and draw the realized and canonical forms side by side.
+        "polytope_canonical_gallery",
         // Eight pure-CPU typography boxes. The letters are filled from their own contours by the
         // family's own scanline filler and shown through showImgGrid / showPlaneGrid / showMeshGrid,
         // all of which are PngEncoder or Skia-SVG into `display` — no AWT rasteriser, no GPU. Box 5

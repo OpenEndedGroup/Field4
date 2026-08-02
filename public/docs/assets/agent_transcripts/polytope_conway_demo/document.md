@@ -100,3 +100,4 @@ displayOpen("polytope")
 // to public data-class summaries, then use Field's normal nested data-class visualizer.
 viz("inspection", listOf(result, triangles))
 ```
+
