@@ -4,6 +4,7 @@ import afield.util.PngEncoder
 import java.io.File
 import java.nio.file.Files
 import kotlin.math.abs
+import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -117,9 +118,97 @@ class PolytopeCanonicalRenderProofTest {
         assertTrue(fraction > 0.2 && fraction < 0.6, "cube silhouette covered ${"%.3f".format(fraction)}")
     }
 
+    @Test
+    fun projectedFourPolytopesRenderAsRecognisableWireframes() {
+        val seeds = listOf(
+            "5-CELL 5V 10E" to fiveCell(),
+            "TESSERACT 16V 32E" to tesseract(),
+            "16-CELL 8V 24E" to sixteenCell(),
+            "24-CELL 24V 96E" to twentyFourCell(),
+        )
+        val turns = listOf(0.0, PI / 8, PI / 4, 3 * PI / 8)
+        val columns = turns.size
+        val width = panel * columns
+        val height = panel * seeds.size + LABEL_STRIP
+        val sheet = IntArray(width * height) { BACKGROUND }
+
+        drawText(sheet, width, 8, 6, "RANK-4 SEEDS UNDER A ROTATED PERSPECTIVE PROJECTION", INK, 2)
+        drawText(sheet, width, 8, 24, "COLUMNS ARE A ROTATION IN THE X-W PLANE AT 0 22.5 45 AND 67.5 DEGREES", INK, 1)
+
+        seeds.forEachIndexed { row, (label, polytope) ->
+            turns.forEachIndexed { column, angle ->
+                val projection = RotatedProjection4(0, 3, angle, PerspectiveProjection4(eye = 3.2, axis = 3))
+                val image = renderWireframe(polytope, projection)
+                blit(sheet, width, height, image, column * panel, LABEL_STRIP + row * panel)
+                val drawn = image.pixels.count { it != BACKGROUND }
+                assertTrue(drawn > 400, "$label at $angle drew only $drawn pixels")
+                assertTrue(drawn < image.pixels.size / 3, "$label at $angle filled the frame")
+            }
+            drawText(sheet, width, 6, LABEL_STRIP + row * panel + 6, label, ACCENT, 1)
+        }
+
+        val out = File(System.getenv("AFIELD_POLYTOPE_PROOF_DIR") ?: Files.createTempDirectory("polytope-proof").toString())
+        out.mkdirs()
+        val file = File(out, "polytope_rank4_proof.png")
+        file.writeBytes(PngEncoder.encode(sheet, width, height))
+        println("PolytopeCanonicalRenderProofTest wrote ${file.absolutePath}")
+    }
+
     // ==========================================================================================
     // A small z-buffered flat-shading rasteriser. Deliberately self-contained.
     // ==========================================================================================
+
+    /** Depth-cued edge wireframe: the honest picture of a projected 4-polytope. */
+    private fun renderWireframe(polytope: Polytope4, projection: Projection4): Image {
+        val big = panel * supersample
+        val colour = IntArray(big * big) { BACKGROUND }
+        val points = polytope.project(projection)
+        // Fit by projected *radius*, not by the largest component: the viewing rotation preserves
+        // radius, so this is the bound that actually keeps the drawing inside its panel. The 5-cell
+        // at zero rotation has a vertex almost on the 4D viewpoint and blows up without it.
+        val extent = points.maxOf { it.length().toDouble() }
+        val scale = big * 0.42 / max(extent, 1e-9)
+        val yaw = 0.55
+        val pitch = 0.30
+
+        fun screen(p: afield.stdlib.Vec3): DoubleArray {
+            val x1 = p.x * cos(yaw) + p.z * sin(yaw)
+            val z1 = -p.x * sin(yaw) + p.z * cos(yaw)
+            val y2 = p.y * cos(pitch) - z1 * sin(pitch)
+            val z2 = p.y * sin(pitch) + z1 * cos(pitch)
+            return doubleArrayOf(big / 2.0 + x1 * scale, big / 2.0 - y2 * scale, z2)
+        }
+
+        val projectedScreen = points.map(::screen)
+        val depths = projectedScreen.map { it[2] }
+        val nearest = depths.min()
+        val farthest = depths.max()
+        val index = polytope.vertices.mapIndexed { at, vertex -> vertex.id.value to at }.toMap()
+
+        for (edge in polytope.edges) {
+            val ends = polytope.topology.incidentDown(edge.id)
+            val a = projectedScreen[index.getValue(ends[0])]
+            val b = projectedScreen[index.getValue(ends[1])]
+            val depth = ((a[2] + b[2]) / 2 - nearest) / max(farthest - nearest, 1e-9)
+            val shade = 1.0 - 0.72 * depth
+            drawLine(colour, big, a, b, pack((90 * shade).toInt(), (215 * shade).toInt(), (255 * shade).toInt()))
+        }
+        return downsample(colour, IntArray(big * big) { -1 }, big)
+    }
+
+    private fun drawLine(colour: IntArray, size: Int, a: DoubleArray, b: DoubleArray, rgb: Int) {
+        val steps = max(2, (max(abs(b[0] - a[0]), abs(b[1] - a[1])) * 1.5).toInt())
+        for (step in 0..steps) {
+            val t = step.toDouble() / steps
+            val x = (a[0] + (b[0] - a[0]) * t).toInt()
+            val y = (a[1] + (b[1] - a[1]) * t).toInt()
+            for (dy in -1..1) for (dx in -1..1) {
+                val px = x + dx
+                val py = y + dy
+                if (px in 0 until size && py in 0 until size) colour[py * size + px] = rgb
+            }
+        }
+    }
 
     private class Image(val size: Int, val pixels: IntArray, val faceIds: IntArray)
 

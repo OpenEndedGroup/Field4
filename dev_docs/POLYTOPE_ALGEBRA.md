@@ -170,6 +170,33 @@ python3 tools/field_backdoor.py --scratch --with-playwright \
     --command "screenshot-box polytope_canonical_gallery /tmp/gallery.png"
 ```
 
+### Rank 4
+
+`Polytope4` is the rank-general core actually used at a rank the Conway surface operators cannot
+reach. Four seeds — the 5-cell, the tesseract, the 16-cell and the self-dual 24-cell — plus
+`Realization4`, an abstract `dual()`, and viewing projections.
+
+The face lattice is **derived, not declared**. `convexPolytope4(coordinates, facetNormals)` takes
+vertex coordinates and outward facet normals; each normal's supporting hyperplane picks out a cell,
+every pair of cells whose shared vertices are affinely two-dimensional is a polygon, each polygon's
+boundary order comes from an angular sort in its own 2-plane, and the edges are the polygons'
+consecutive pairs. So a wrong derivation shows up as a wrong published count rather than as a shape
+nobody checked, and the tests assert exactly those counts, `V - E + F - C = 0` for all four, and the
+number of polygons round an edge against the last entry of each Schläfli symbol.
+
+This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
+four polygons, never two, so `validate(checkManifold = true)` must *reject* a tesseract — and does.
+`PolyhedralObject` refuses a rank-4 topology and `Polytope4` refuses a rank-3 one.
+
+Viewing is a `Projection4` above realization, and deliberately not part of the geometry:
+`OrthographicProjection4` (honest and unreadable — it collapses the tesseract's two cubes onto each
+other, which the test asserts), `PerspectiveProjection4` (the cube-inside-a-cube view), and
+`RotatedProjection4` (a rotation in one coordinate plane, which is what turns the inner cell out).
+`toEdgeFLines` and `toCellEdgeFLines` give Field a wireframe; there is no `triangulate()` for rank 4,
+because a projected 4-polytope's polygons do not bound a surface and filling them would imply one.
+
+![rank-4 seeds under a rotated perspective projection](assets/polytope_rank4_proof.png)
+
 ### Field output
 
 - `toFaceFLines()` produces one closed, outward-wound 3D path per authoritative polygon face.
@@ -290,9 +317,19 @@ Add explicit tests and policies for boundaries, disconnected objects, and legal 
 incidence rather than quietly treating every surface as a closed 2-manifold. Then add periodic
 quotient topology, finite patches of periodic structures, and dimension-general realizations.
 
-Higher-rank support should first exercise the existing incidence core with concrete rank-4 seeds,
+~~Higher-rank support should first exercise the existing incidence core with concrete rank-4 seeds,
 sections, facets, and duals. Rendering a rank-4 object is a projection policy above realization, not
-a reason to flatten the topology into triangles.
+a reason to flatten the topology into triangles.~~ Done for seeds, facets, duals and projection —
+see "Rank 4" above. **Sections** are not done: there is no "slice this 4-polytope by a hyperplane
+and hand me the resulting polyhedron" operation, which is the one that would make the rank-4 seeds
+interactive rather than merely correct. It is also the natural bridge back to the rank-3 half of the
+library, since a section of a convex 4-polytope *is* a `PolyhedralObject` and could be
+canonicalized, triangulated and rendered like any other.
+
+The rest of this item — boundaries, disconnected objects, legal non-manifold incidence, periodic
+quotients — is untouched. The rank-4 work does establish one piece of it: `validate(checkManifold)`
+is genuinely optional and the core does not assume a closed 2-manifold, which the tesseract proves
+by being rejected by that check and accepted by the ordinary one.
 
 ### 6. Grow the demos alongside those capabilities
 
