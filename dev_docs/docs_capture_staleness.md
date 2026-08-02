@@ -115,4 +115,49 @@ timelines belong in version control history rather than this operating contract.
 
 ## Current baseline
 
-Pending the first full two-run audit on 2026-08-01.
+The first complete baseline ran on commit
+`294bf7553672b88a011a0886daf707e9164e9859` in a detached worktree with no other Field or GPU-heavy
+process launched during either pass:
+
+```sh
+uv run --project . --group docs python tools/docs_capture_audit.py \
+  --repeat 2 --port 9540
+```
+
+Run 1 completed in 3168.3 seconds and rewrote 324 assets. Run 2 completed in 2829.1 seconds and
+rewrote 319 assets. The audit classified 384 declared assets plus three documented side-effect
+assets:
+
+| verdict | count |
+| --- | ---: |
+| `identical` | 64 |
+| `jitter` | 269 |
+| `stale` | 12 |
+| `stale-size` | 2 |
+| `unknown-failed` | 2 |
+| `nondeterministic` | 5 |
+| `nondeterministic-binary` | 22 |
+| `unstable` | 11 |
+
+The gate is **not clean**. Its current findings are:
+
+- ALife video capture failed on a different asset in each pass: `lenia.mp4` exceeded the 5m05s
+  outer recording limit in run 1; `physarum.mp4` hit Playwright's 30-second screenshot deadline in
+  run 2. Neither asset was retried.
+- Five PNGs are meaningfully nondeterministic:
+  `boolean_networks_examples/segment_basins.png`, `field_probes/particles-galaxy.png`,
+  `interpolants_examples/smooth_duration.png`, `sorting_networks_examples/disorder_decay.png`, and
+  `spatial_geometry_examples/delaunay_dual.png`.
+- Eleven assets are `unstable`: `autocomplete.png`, `docpanel-breadcrumb.png`,
+  `docpanel-code-link.png`, `functions_examples/reference/evolve-variety.png`,
+  `graph_query/predicates.png`, both interactive-guide captures, `mesh_examples/decimate.png`,
+  `mobile_controllers/select.png`, `morpho_examples/search-control.png`, and
+  `typography_examples/sdf.png`.
+- Twenty-two MP4 files encode to different bytes. They remain findings until decoded-frame
+  comparison distinguishes semantic motion differences from container/codec variation.
+- Fourteen committed assets are reproducibly stale or stale-sized and should be visually reviewed
+  before adopting a regenerated version.
+
+The bounded result is therefore: 333 of 387 classified outputs are identical or differ only inside
+the explicit antialiasing tolerance. The remaining 54 results are named findings, not evidence for a
+general retry policy.
