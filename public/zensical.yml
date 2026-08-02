@@ -76,6 +76,7 @@ nav:
         - Spectral Examples: spectral_examples.md
         - Imaging & Computer Vision: imaging_examples.md
         - Meshes & 3D Geometry: mesh_examples.md
+        - Polytopes & the Conway Algebra: polytope_examples.md
         - Typography as Geometry: typography_examples.md
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
