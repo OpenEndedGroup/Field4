@@ -22,4 +22,6 @@ fun registerPolytopeVisualizers() {
     registerValuePrinter<TransformDeployment> { it.summary().h }
     registerValuePrinter<PolytopeTransformResult> { it.summary().h }
     registerValuePrinter<TriangulatedGeometry> { it.summary().h }
+    registerValuePrinter<CombinatorialOrbits> { it.summary().h }
+    registerValuePrinter<RelaxationPlan> { it.summary().h }
 }
