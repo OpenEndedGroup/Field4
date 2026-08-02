@@ -249,3 +249,53 @@ fun PolyhedralObject.triangulate(
 /** Convenience when only Field's renderable mesh is needed and provenance can be discarded. */
 fun PolyhedralObject.toTriMesh(triangulator: FaceTriangulator = EarcutFaceTriangulator): TriMesh =
     triangulate(triangulator).mesh
+
+const val POLYTOPE_CELL_ID_PROPERTY = "polytopeCellId"
+
+/**
+ * One open [FLine] per rank-1 edge of a [Polytope4], under a viewing [projection].
+ *
+ * Edges rather than filled polygons is the honest default for a 4-polytope: its polygons all live
+ * on the boundary of *cells*, several cells meet at every polygon, and a projection puts them on
+ * top of one another. A wireframe says what is there; a filled projection would imply a surface
+ * that does not exist.
+ */
+fun Polytope4.toEdgeFLines(
+    projection: Projection4,
+    configure: (edge: Element, line: FLine) -> Unit = { _, _ -> },
+): List<FLine> {
+    require(realization != null) { "FLine conversion requires a 4D realization" }
+    topology.validate().throwIfInvalid()
+    val projected = project(projection)
+    val index = topology.elements(0).mapIndexed { at, vertex -> vertex.id.value to at }.toMap()
+    return topology.elements(1).map { edge ->
+        val endpoints = topology.incidentDown(edge.id)
+        require(endpoints.size == 2) { "edge ${edge.id.value} does not have exactly two endpoints" }
+        val a = projected[index.getValue(endpoints[0])]
+        val b = projected[index.getValue(endpoints[1])]
+        FLine().moveTo(a.x, a.y, a.z).lineTo(b.x, b.y, b.z).also { line ->
+            line.properties[POLYTOPE_FACE_ID_PROPERTY] = edge.id.value
+            line.properties[POLYTOPE_FACE_RANK_PROPERTY] = edge.rank
+            configure(edge, line)
+        }
+    }
+}
+
+/**
+ * The edges of one cell of a [Polytope4], projected — the way to make a cell readable inside the
+ * projected whole. [cell] must be a rank-3 element.
+ */
+fun Polytope4.toCellEdgeFLines(
+    cell: ElementId,
+    projection: Projection4,
+    configure: (edge: Element, line: FLine) -> Unit = { _, _ -> },
+): List<FLine> {
+    require(topology.element(cell)?.rank == 3) { "element ${cell.value} is not a rank-3 cell" }
+    val cellEdges = topology.incidentDown(cell)
+        .flatMap { polygon -> topology.incidentDown(ElementId(polygon)).toList() }
+        .toSet()
+    return toEdgeFLines(projection) { edge, line ->
+        line.properties[POLYTOPE_CELL_ID_PROPERTY] = cell.value
+        configure(edge, line)
+    }.filterIndexed { at, _ -> topology.elements(1)[at].id.value in cellEdges }
+}
