@@ -1,6 +1,7 @@
 # Dev Docs Index
 
-`dev_docs/` mixes long-lived implementation notes with newer topical folders. This index calls out the cleaned-up clusters that used to live in the repository root. After a large consolidation pass, many quickstart/visual-guide/summary variants were merged into a single canonical note per feature — the entries below point at those survivors.
+`dev_docs/` contains current implementation contracts, operating procedures, and focused design
+notes. The entries below point to the canonical note for each maintained subsystem.
 
 ## Topical Folders
 
@@ -27,10 +28,10 @@
 - [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
 - [`kdoc_reference_contract.md`](./kdoc_reference_contract.md) — how a KDoc block reaches the completion panel and `public/docs/reference/`, which declaration forms the extractor can and cannot see, and what `checkKDocAttachment` enforces
 - [`stdlib_behaviour_changes.md`](./stdlib_behaviour_changes.md) — the running ledger of `afield.stdlib` fixes that change what already-written box code *computes*, with the caller sweep behind each one
-- [`docs_capture_staleness.md`](./docs_capture_staleness.md) — why an ordinary docs build cannot detect a stale capture and how to make it one (`FIELD_DOCS_RUNNER_MODE=always`), how to tell real staleness from run-to-run capture jitter, and the 54 `functions_examples` captures still stale from 2026-07-14
+- [`docs_capture_staleness.md`](./docs_capture_staleness.md) — current execution, cache-freshness, and two-run determinism contracts for generated documentation media
 - [`FABRICATE_RENDERER_ARCHITECTURE.md`](./FABRICATE_RENDERER_ARCHITECTURE.md)
 - [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
-- [`box_shared_state_races.md`](./box_shared_state_races.md) — which threads write a box's property bag (including the *readers*, via `Delegation`'s default write-back), how the three-times-sighted `Box.resyncAll` `ConcurrentModificationException` actually worked, and how to decode a Kotlin inlined stack-trace line number that lands past the end of its own file
+- [`box_shared_state_races.md`](./box_shared_state_races.md) — current concurrency ownership for box/session collections, remaining ownership gaps, and deterministic regression requirements
 
 ## Feature Notes (post-consolidation survivors)
 

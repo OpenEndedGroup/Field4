@@ -258,22 +258,14 @@ run at all.
 
 ---
 
-## Caching gap: a macro/transcript fence can go stale silently
+## Macro/transcript cache coverage
 
-`compute_digest` hashes `macroFile` as a **path string only** — the transcript YAML's *contents*
-are never hashed (unlike stdlib sources, which `compute_source_refs_digest` covers). So editing
-`dev_docs/agents/transcripts/*.yaml` does **not** invalidate the fences it drives, and they keep
-serving the old capture.
+`compute_digest` currently hashes `macroFile` as a path string. It does not hash the referenced
+YAML file's contents. An incremental build therefore cannot infer that a transcript edit invalidates
+the pages driven by that transcript.
 
-`force=true` on the fence was compensating for this by recapturing on every build. That cure was
-worse than the disease: `force` is not part of the digest, so it fired even when nothing had
-changed, re-running a `timeout="10"` GPU capture on every docs build — which fails outright when
-the machine is busy (load average ≳10) and hard-fails the whole page with it. It has been dropped
-from `afield_four_graphics.md` §0; the fence now adopts its committed asset and the page builds in
-~4 s with no GPU work.
-
-**So: after editing a transcript YAML, recapture the pages it drives explicitly** (`--page`), since
-nothing will do it for you. The four transcripts and their pages:
+After editing a transcript YAML, recapture its pages explicitly in `always` mode. The known mappings
+are:
 
 | transcript | page |
 | --- | --- |
@@ -282,10 +274,10 @@ nothing will do it for you. The four transcripts and their pages:
 | `threebox.yaml` | `funFeatures.md` |
 | `docs_capture/remote_ar_kotlin_plane.yaml` | `ar_reference.md` |
 
-The real fix is to hash the resolved macro file's bytes into the digest, next to
-`source_refs_digest`, and then drop `force=true` from the three remaining fences that still carry it
-(`diff-player.md`, `field_probes.md` ×2). That is a deliberate change, not a drive-by: it would
-invalidate all ~8 macro-driven captures at once, several of them the flaky `native-window` kind.
+The cache-key follow-up is to hash the resolved macro file's bytes next to `source_refs_digest`.
+Until that lands, a complete `always` build bypasses the gap. GPU and native-window captures follow
+the same one-attempt contract as every other capture: readiness must be expressed through renderer,
+frame, selector, or output conditions, and a timeout is a build failure.
 
 ---
 

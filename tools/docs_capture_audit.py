@@ -1034,16 +1034,23 @@ def adopt_stale(report: dict[str, Any]) -> int:
     return adopted
 
 
-FAILING_VERDICTS = ("stale", "suspect", "unknown-failed")
+FAILING_VERDICTS = (
+    "stale",
+    "suspect",
+    "unknown-failed",
+    "nondeterministic",
+    "nondeterministic-size",
+    "nondeterministic-binary",
+    "unstable",
+)
 
 
 def failing_exit_code(report: dict[str, Any]) -> int:
-    """1 if anything is stale, unconfirmed, or **could not be measured**, else 0.
+    """1 if anything is stale, unconfirmed, non-reproducible, or could not be measured.
 
-    `unknown-failed` counts. A capture that failed leaves the committed asset untouched, so the run
-    learned nothing about it — and a tool that answers "is this figure still true?" with exit 0 when
-    it could not look is worse than one that says no. `--reclassify` used to return 0
-    unconditionally, which quietly made `--reclassify --adopt` ungateable in CI.
+    `unknown-failed` counts because a failed capture leaves the committed asset untouched. Meaningful
+    disagreement between runs also counts: the audit is a determinism gate, not only a staleness
+    classifier. Small rasterizer differences inside the explicit `jitter` band remain non-failing.
     """
     counts = report["counts"]
     failing = sum(
@@ -1103,17 +1110,32 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     run_dir = Path(args.run_dir).resolve() if args.run_dir else REPO_ROOT / ".field-backdoor" / "docs-audit" / time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
+    audit_head = git("rev-parse", "HEAD").strip()
     # So --reclassify knows what this run covered, and does not call the other 268 assets clean.
     (run_dir / PAGES_MANIFEST).write_text(json.dumps(page_filters, indent=1), encoding="utf-8")
+    (run_dir / "audit.json").write_text(
+        json.dumps({"head": audit_head, "pages": page_filters}, indent=2), encoding="utf-8"
+    )
+    print(f"[audit] commit {audit_head}")
     print(f"[audit] {len(pages)} page(s), {sum(len(v) for v in expected.values())} declared capture asset(s); run dir {run_dir}")
 
     runs: list[RunResult] = []
     try:
         for index in range(1, max(1, args.repeat) + 1):
+            current_head = git("rev-parse", "HEAD").strip()
+            if current_head != audit_head:
+                raise RuntimeError(
+                    f"audit HEAD changed before run {index}: started at {audit_head}, now {current_head}"
+                )
             result = run_captures(pages=page_filters, port=args.port, run_dir=run_dir, index=index, echo=False, protected=protected)
             stash_run_outputs(result, run_dir)
             runs.append(result)
             print(f"[audit] run {index} finished in {result.seconds:.0f}s: exit {result.returncode}, rewrote {len(result.modified) + len(result.untracked)}, {len(result.failures)} failure(s)")
+            current_head = git("rev-parse", "HEAD").strip()
+            if current_head != audit_head:
+                raise RuntimeError(
+                    f"audit HEAD changed during run {index}: started at {audit_head}, now {current_head}"
+                )
             if index < max(1, args.repeat) or not args.keep:
                 restore(result, protected=protected)
     finally:

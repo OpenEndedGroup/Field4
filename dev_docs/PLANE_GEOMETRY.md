@@ -76,7 +76,7 @@ as of 2026-07-29 (`git grep -l` over the whole tree, excluding the generated ref
 | consumer | how to check it |
 | --- | --- |
 | `src/jvmMain/kotlin/afield/examples/stdlib/WfcGallery.kt` | `python3 tools/run_field_tests.py --id stdlib.wfc.gallery` |
-| `public/docs/wfc_examples.md` §7 — a real `capture="box"` fence that runs `Img.isoContourFLines` | regenerate `assets/wfc_examples/scalar-field.png` with `FIELD_DOCS_RUNNER_MODE=always`. **But see [docs_capture_staleness.md §4](docs_capture_staleness.md) first**: two of that page's eleven figures do not reproduce |
+| `public/docs/wfc_examples.md` §7 — a real `capture="box"` fence that runs `Img.isoContourFLines` | regenerate `assets/wfc_examples/scalar-field.png` with `FIELD_DOCS_RUNNER_MODE=always`, then include the page in the two-run determinism audit |
 | `public/docs/spatial_geometry_examples.md` — eight capture fences | `--page spatial_geometry_examples.md --strict`, `MODE=always` |
 | `dev_docs/agents/transcripts/spatial_geometry_examples.yaml`, `wfc_worked_example.yaml` | `run_field_tests.py --id examples.demo-transcript.exec` |
 | `public/docs/imaging_examples.md` | prose only — mentions `isoContourFLines`, does not execute it |

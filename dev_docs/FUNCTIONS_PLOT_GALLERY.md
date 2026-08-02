@@ -75,7 +75,8 @@ stage so the composition reads visually.
 
 ![composed pipeline](assets/functions_plot_gallery/functions-composed-pipeline.png)
 
-**Animated fit convergence** (`functions-fit-convergence.mp4`, best-effort — needs ffmpeg).
+**Animated fit convergence** (`functions-fit-convergence.mp4`; `ffmpeg` is a required capture
+prerequisite).
 Each frame is the fitted curve after *k* real Adam steps; Adam is deterministic in the seed
 and step count, so re-running to *k* iterations reproduces the exact trajectory — no faked
 interpolation.

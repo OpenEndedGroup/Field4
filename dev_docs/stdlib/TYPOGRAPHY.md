@@ -82,8 +82,8 @@ supported. A letter is a ring system, so `toMesh` does its own thing:
 **`toMesh` attaches no normals, on purpose**, exactly as `extrudeMesh` leaves them off. `flatShaded()`
 un-welds every triangle into its own three vertices, so a mesh that has been through it is no longer
 topologically anything — `isWatertight()` and `genus()` would be answering about the render copy.
-Measure first, shade at the render boundary. This was a real bug: the gallery's first run failed with
-"extruded 'o' is not watertight" because `toMesh` ended in `flatShaded()`.
+Measure topology first and shade only at the render boundary. `toMesh` therefore returns the welded
+mesh and leaves flat shading to render-only copies.
 
 ## The SDF bridge
 
@@ -194,131 +194,32 @@ blank fails the test instead of shipping.
   the end tangent with `clampToPath = false`). Sizing the circle to the layout is the idiom, and it is
   what the docs page does.
 
-## Two known defects, unfixed (added at closeout by the nightly orchestrator)
+## Current rendering invariants
 
-Both were found after the branch's own verification passed, so treat this section as the pre-merge
-worklist rather than as history.
+### Arc-length placement on changing curves
 
-### 1. ~~`onCurve` is not continuous under a morphing curve~~ — FIXED (2026-07-30 closeout)
+`PathFlattener.emitCubicFrame` enforces `minSubDiv = 3`, clamped against `maxSubDiv`. The floor keeps
+near-straight cubics represented by enough segments for `Cursor.d`, `Cursor.setD`,
+`FLine.sampleByDistance`, `byDashing`, and `Typeface.onCurve` to preserve arc-length spacing while a
+curve changes. `stdlib.typography.gallery` checks both fixed-curve marching and morphing-curve
+continuity.
 
-**Fixed** by a minimum-subdivision floor in `PathFlattener.emitCubicFrame`
-(`src/jvmMain/kotlin/afield/graphics/PathFlattener.kt`, `minSubDiv = 3`, clamped against `maxSubDiv`
-so the floor can never reach the bail-out that drops a segment). **`stdlib.typography.gallery` is now
-14/14**, and `motion_morph` reports `median step 2.21, worst 6.06 (2.74x median)` against its 3x
-threshold — down from 9.7x.
+### Topology is measured on welded meshes
 
-The floor depth was chosen by measurement rather than by the prototype's estimate: `minSubDiv` of
-3 / 4 / 5 gives **2.74x / 2.73x / 2.73x**, i.e. the metric has plateaued by 3, so deeper floors cost
-frames and buy nothing. Note this does *not* match the 1.6x the judge's Python port predicted — the
-port and the running system disagree, and the running system is the one that counts. The residual
-2.73x is not subdivision-limited and is not believed to be a defect: the panel deforms the curve
-sinusoidally (arc length sweeps 940..1021), so a glyph pinned at a fixed arc-length offset genuinely
-moves fastest mid-sweep. What the floor removed was the discontinuity; what remains is the motion.
+`Box.showMesh`, `Box.showMeshGrid`, and `TriMesh.toHTML()` compute topology from the mesh they receive.
+Callers that publish topology therefore pass the welded mesh. Render bridges create flat-shaded
+copies internally when needed; a flat-shaded copy is not used for `isWatertight()`, `genus()`, or
+caption generation.
 
-Collateral checked: `jvmTest` **696 tests / 60 suites / 0 failures / 0 errors / 0 skipped**, and
-`examples.demo-transcript.exec` PASS (all 31 demos). That suite failed on its *first* run here with
-`ConcurrentModificationException at Box.resyncAll:1241` on `alife_worked_example` and passed on the
-second — the known race, **not** this change, and the exact frame branch 2's `PropertyBag` fix
-targets. It is a fourth independent sighting, and an argument for merging branch 2 first.
+The transcript YAML is the source for materialized typography examples. After editing it, regenerate
+the committed mirrors with `examples.agent-transcripts.materialize` and execute the transcript smoke
+before accepting the change.
 
-The original diagnosis follows, for the record.
+`TypographyGallery.renderPng` does not publish topology. The public mesh figures pass welded meshes
+to `showMesh` / `showMeshGrid`; `typography_examples/mesh.png` therefore reports the extruded `o`,
+`l`, and `mesh` as watertight. The SDF figure can correctly report open boundary loops when marching
+cubes intersects the sampling bounds.
 
-`stdlib.typography.gallery` is **RED** on the `motion_morph` panel:
-
-    IllegalStateException: a glyph jumped 9.7x the median step — the motion is not continuous
-    at TypographyGallery.panelMotionMorph(TypographyGallery.kt:533)
-
-13 of 14 panels pass, and the sibling `motion_march` panel proves the *fixed*-curve case is exact
-(dL=7.331, mean step 7.331, worst per-step error 0.1%, 0 stalls, 0 jumps over 1246 steps). So
-arc-length placement is right; rebuilding the table under a moving curve is not. The failing check
-is correct and was deliberately kept — a kinetic-typography family whose text jumps when the path
-animates should not ship claiming otherwise.
-
-**DIAGNOSED (nightly judge, 2026-07-30) — and the defect is NOT in this branch.** The earlier
-guess in commit `80b13eb8` ("knots at fixed parameter spacing") was wrong in mechanism. The real
-cause is in `src/jvmMain/kotlin/afield/graphics/PathFlattener.kt:150-174`, which predates this
-branch and is on `main`.
-
-`emitCubicFrame` subdivides **adaptively by flatness**, recursing while
-`flatnessFor(a, c1, c2, b) > tol`; `flatnessFor` (`:177-182`) is the control points' distance from
-the chord. The `motion_morph` panel sweeps `lift = -300 * sin(phase)`, so at frames 0 and 45 the
-lift is exactly zero, all four control points are **collinear**, flatness is exactly `0.0`, the
-recursion stops immediately — and the entire cubic becomes **one linear segment**. `Cursor.setD`
-(`FLinesAndJavaShapes.kt:729`) then degenerates to plain **parameter** interpolation. Since this
-cubic is not uniformly parameterised (controls at x=260/640, not 313/627), the glyph teleports:
-
-| frame | lift | flattener leaves | x at half arc-length |
-| --- | --- | --- | --- |
-| 89 | 20.93 | 82 | 469.97 |
-| 0 | 0.00 | **1** | **455.00** |
-| 45 | 0.00 | **1** | **455.00** |
-
-A 14.98-unit jump against a median step of 0.297 — **50x median** for a mid-string glyph. The panel
-reports 9.7x only because it averages over 32 glyphs and both axes, and the error vanishes near the
-path ends.
-
-**Consequences beyond typography:** the same flattener backs `Cursor.d`/`setD`,
-`FLine.sampleByDistance` and `byDashing`, so **every arc-length spacing operation in Field**
-mis-spaces any near-straight cubic. This is the highest-value item to come out of the night, and it
-is not typography-specific.
-
-**Tightening `tol` cannot fix it** — flatness is `0.0`, which is `<=` any tolerance. The fix is a
-**minimum-subdivision floor** in `emitCubicFrame`; the judge measured `minSubDiv = 3` taking the
-ratio from 50.4x to **1.6x** (the panel's threshold is 3x), costing 8 leaves for a straight cubic.
-Roughly three lines. Expect `stdlib.typography.gallery` to go 14/14, and expect `byDashing` /
-`sampleByDistance` goldens to shift slightly — toward correct.
-
-### 2. ~~`flatShaded()` before a topology-printing sink publishes false captions~~ — FIXED (2026-07-30 closeout)
-
-`Box.showMesh`, `Box.showMeshGrid` and `TriMesh.toHTML()` each compute `topology()` on the mesh they
-are handed and print it as fact in the figcaption (`mesh_field.kt:383-393`, `:466-481`, `:582-592`).
-`flatShaded()` un-welds every triangle (`V = E = 3F`, `mesh_process.kt:89-108`), so a flat-shaded copy
-of a closed mesh captions as `χ=F · open (F boundary loop(s))`. And the call is **unnecessary**: every
-render bridge already shades an unshaded mesh via `toCapturedMesh` (`mesh_field.kt:246`), which
-`renderPng` (`:369`) and `renderPixels` (`:372`) both go through.
-
-**All of it is now fixed.** The causal KDoc (`typography_field.kt` `toMesh`, `mesh_generate.kt:617`),
-the docs-page prose that repeated the wrong rule, and every call site below. Sites 1-5 were edited by
-hand; 6-9 are materializer output and were regenerated with
-`run-jvm-main afield.examples.AgentTranscriptMaterializer --arg <repo>/public/docs/assets/agent_transcripts`.
-There are now **zero** non-comment `flatShaded()` occurrences anywhere in the worked example, including
-inside `metadata.edn`, so the loadable document is fixed and not just the page.
-
-Verified after the change: `examples.agent-transcripts.materialize` **PASS** (the drift guard, which is
-what caught the staleness in the first place) and `examples.demo-transcript.exec` **PASS** across all 31
-demos — the edited box bodies still compile and execute.
-
-The original site list, for the record:
-
-| # | site |
-| --- | --- |
-| 1 | `public/docs/typography_examples.md:178` — `showMesh(o.flatShaded())`; line 177 prints the *truth* two lines above |
-| 2 | `public/docs/typography_examples.md:205-208` — four `showMeshGrid` panels over marched SDF meshes, which are welded and closed by construction (`mesh_sdf.kt:44`) |
-| 3 | `dev_docs/agents/transcripts/typography_worked_example.yaml:305-306` — worst case in the repo: the panel *title* carries the true genus and the figcaption directly beneath it carries the false topology |
-| 4 | `dev_docs/agents/transcripts/typography_worked_example.yaml:311` |
-| 5 | `dev_docs/agents/transcripts/typography_worked_example.yaml:342-345` |
-| 6 | `public/docs/assets/agent_transcripts/typography_worked_example/typo_mesh_code_.kt:35,36,41` (published mirror of 3/4) |
-| 7 | `public/docs/assets/agent_transcripts/typography_worked_example/typo_sdf_code_.kt:22-25` (published mirror of 5) |
-| 8 | `public/docs/assets/agent_transcripts/typography_worked_example/document.md:333,334,339` and `:169-172` |
-| 9 | `public/docs/assets/agent_transcripts/typography_worked_example/metadata.edn` — same code as an inline blob, re-executed on replay |
-
-Mirrors 6-9 are materializer output, so fix 1-5 and regenerate
-(`--id examples.agent-transcripts.materialize`) rather than editing them by hand.
-
-**Scope, stated precisely:** no shipped image carries a *false* one of these captions. The gallery's
-panels come from `TypographyGallery.renderPng`, which computes no topology at all, and the public
-page's mesh figures are regenerated by the docs runner from code that hands `showMesh` /
-`showMeshGrid` the **welded** mesh — so `typography_examples/mesh.png` captions the extruded `o`,
-`l` and `mesh` as watertight, which they are. (`typography_examples/sdf.png` *does* print
-`open (N boundary loop(s))` on the smooth-union and twisted panels. That one is true: marching cubes
-over a field still negative at the bounds returns a surface the box cut open.) The false captions
-were generated at runtime, so this was latent-on-replay rather than baked into anything shipped, and
-`grep` for `boundary loop(s)` in the docs *sources* finds nothing.
-
-**Not a defect, for contrast:** `TypographyGallery.kt:371-373` does this correctly — it asserts
-`isWatertight()`/`genus()` on the *welded* mesh at `:359-362` and sends the flat-shaded copies only
-to `renderPng`, which prints no topology. `MeshGallery.kt:681-697` is also safe (hand-written `facts`
-string, not the topology-computing helper). And every existing *assertion* on a flat-shaded mesh in
-the tree asserts its falseness deliberately, as a weld/repair regression test — `MeshCoreTest.kt:295-302`,
-`:306-310`, `:391-395`, `MeshProcessTest.kt:48-58`, `MeshIoTest.kt:134-138`, `:148-150` — so no
-existing assertion is vacuous.
+The mesh regression tests intentionally assert the topology difference between welded and
+flat-shaded representations. Keep those assertions when changing the render bridge: they ensure
+render-only vertex expansion never becomes the source of topology claims.

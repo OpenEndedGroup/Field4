@@ -251,7 +251,7 @@ class ThreeRunFoldTests(unittest.TestCase):
 
 
 class ExitCodeTests(unittest.TestCase):
-    """The gate. Found by driving the tool at its edges rather than by reading it."""
+    """The freshness and determinism gate."""
 
     def test_a_capture_that_could_not_be_measured_fails_the_gate(self) -> None:
         # unknown-failed means the capture failed and the committed asset is untouched: the run
@@ -262,9 +262,13 @@ class ExitCodeTests(unittest.TestCase):
         for verdict in ("stale", "stale-size", "stale-text", "stale-binary", "suspect"):
             self.assertEqual(failing_exit_code({"counts": {verdict: 1}}), 1, verdict)
 
+    def test_run_to_run_disagreement_fails_the_gate(self) -> None:
+        for verdict in ("unstable", "nondeterministic", "nondeterministic-size",
+                        "nondeterministic-binary"):
+            self.assertEqual(failing_exit_code({"counts": {verdict: 3}}), 1, verdict)
+
     def test_clean_verdicts_pass(self) -> None:
-        for verdict in ("identical", "jitter", "unstable", "nondeterministic",
-                        "nondeterministic-size", "nondeterministic-binary", "new"):
+        for verdict in ("identical", "jitter", "new"):
             self.assertEqual(failing_exit_code({"counts": {verdict: 3}}), 0, verdict)
 
 

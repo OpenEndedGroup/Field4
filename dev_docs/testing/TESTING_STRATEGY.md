@@ -49,7 +49,7 @@ Use `./gradlew compileKotlinJvm` for ordinary Kotlin/JVM compile confidence.
 For frontend-sensitive work, remember that the UI is Kotlin/JS plus resource
 JavaScript; a compile pass does not prove browser behavior.
 
-Known local Gradle failure modes and daemon cleanup rules live in `AGENTS.md`.
+Gradle process ownership and daemon cleanup rules live in `AGENTS.md`.
 Do not replace runtime checks with Gradle-only checks when the change affects
 websocket RPC, live-code execution, Monaco, output areas, or rendering.
 
@@ -309,7 +309,8 @@ Add or update executable docs examples when:
 
 Use a one-off backdoor command when:
 - you are diagnosing a bug
-- the repro is not yet stable enough to promote
+- the scenario's preconditions and assertions have not yet been made deterministic enough for
+  permanent coverage
 - you need to inspect events/logs before deciding on permanent coverage
 
 ## Failure Triage
@@ -319,8 +320,8 @@ Use a one-off backdoor command when:
    `.field-backdoor/logs/*.managed-server.log`.
 3. For UI regression failures, inspect `latest-failure.png` and
    `build/ui-regressions/results.json`.
-4. For docs failures, rerun the smallest affected page/mode when possible, then
-   inspect the generated screenshot/video and backdoor logs.
+4. For docs failures, inspect the generated screenshot/video and backdoor logs. After identifying a
+   cause or changing an explicit precondition, use the smallest affected page/mode to verify it.
 5. If a snippet timeout wedges later `is-running` probes, restart the managed
    Field JVM or choose a fresh high port before trusting follow-on failures.
 6. If Playwright output DOM is missing, attach with `--with-playwright` before

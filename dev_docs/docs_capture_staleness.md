@@ -1,663 +1,118 @@
-# Is that published figure real? — docs-capture staleness
+# Documentation capture freshness and determinism
 
-Started 2026-07-28 from the pass that tried to use a docs build as a staleness detector for a stdlib
-change and found the obvious way does not work. Extended 2026-07-29 with the fix and the tool.
+Documentation verification has three independent requirements:
 
-**This is the canonical answer to "does that figure still match the code?".** The short version:
+1. **Execution:** every declared capture completes successfully on its first attempt.
+2. **Freshness:** every generated asset is invalidated when an input that affects it changes.
+3. **Determinism:** two runs from the same commit and capture environment produce the same meaningful
+   result.
 
-| question | answer |
-| --- | --- |
-| Did the docs build go green? | Irrelevant to freshness on its own. See §1. |
-| Did an **incremental** build re-capture the figures my stdlib edit affects? | Yes now, for source the fence names *directly*. §4 |
-| Are the committed figures on page X actually current? | Run the auditor. §5 |
-| Two captures differ — does that mean anything? | Only above the measured noise band. §2 |
-| Which published figures can any of this even see? | 304 of the 570 tracked media by fence, +106 by gallery side effect. §7 |
-| Is "the docs build is green" freshness evidence yet? | **No — weakened, not lifted.** Attribution 90.5% of fences; detection 54/54 on the one incident on record; still blind to code a fence never names. §4 |
+A green docs build proves execution for the captures it actually ran. It proves freshness only for
+inputs represented in the capture cache key, and it proves determinism only when two independent runs
+are compared.
 
-## 1. Why a normal docs build could not detect stdlib staleness
+## Build modes
 
-The capture cache digest (`public/docs_hooks.py`, `compute_digest` / `compute_cache_metadata`) is
-keyed on:
-
-- the fence's own code text (`codeDigest`),
-- its options (`optionsDigest`), page path and block index,
-- `SCRIPT_VERSION`,
-- `runnerSourceDigest` — a hash of the **fixed list** `RUNNER_DIGEST_SOURCE_FILES`,
-- `sceneInputs`, for bulk-render gallery scenes only,
-- and, since 2026-07-29, `sourceRefsDigest` (§4).
-
-`RUNNER_DIGEST_SOURCE_FILES` is eleven files: `docs_hooks.py`, `Main.kt`, `screenshot.kt`,
-`FLine.kt`, `FLineGeometry.kt`, `StandardRendererDocsHarness.kt`, `NanoVisualization.kt`,
-`someSkiko.kt`, `outputareas2.js`, `field_backdoor.py`, `run_field_tests.py`. **No stdlib file is in
-it.** Before `sourceRefsDigest`, changing `Functions.kt`, `timeseries.kt` or `linalg.kt` left every
-digest unchanged, so an incremental build was a 100% cache hit and rewrote nothing.
-
-Worse, `reuse_existing_asset_for_incremental` explicitly reused the committed asset when the *only*
-thing that moved was `runnerSourceDigest` — so merely adding a stdlib file to that list would not
-have been enough on its own. Both halves had to change.
-
-`FIELD_DOCS_RUNNER_MODE=always` has always bypassed the cache per capture (`cache_allowed = False`);
-`strict`/`fresh`/`rebuild` are also available, see `RUNNER_MODE_ALIASES`. That is the raw material
-the auditor uses.
-
-## 2. Byte inequality is not evidence — and neither is a naive pixel compare
-
-Captures are **not** byte-reproducible, and they are not pixel-reproducible either. Running the same
-121 captures twice, from the same worktree at the same commit, 113 of the 121 differed.
-
-The overwhelming majority of that is text/antialiasing jitter: **~0.005–0.01% of pixels at a maximum
-channel delta of ≤19**. Treat that band as noise. Above it, two real signals were seen:
-
-| run-to-run delta | what it is |
-| --- | --- |
-| 0% | genuinely stable capture (only 5 of 121) |
-| ≤0.02% of px, Δ≤19 | AA/glyph jitter — **never commit this** |
-| 0.25–1.5% of px, Δ~247 | a few plot captures whose curve genuinely re-renders differently run to run |
-| output height changes | 4 `capture=box` shots whose box height is unstable (918 vs 800 vs 774 px) |
-
-Independently reconfirmed 2026-07-29 by `tools/docs_capture_audit.py` on `timeseries_examples`:
-0.0066% and 0.0071% of pixels at maxΔ 13 and 18 — inside the band to three significant figures.
-
-Two later refinements to that table, both measured:
-
-- **The unstable `capture=box` height is not random — it is a first-capture effect.** A 3-run audit
-  of `interpolants_examples` + `correlations_examples`: `smooth_duration.png` came out 918 px on run
-  1 and 772 px (= `HEAD`) on runs 2 and 3; `metric_profile.png` came out 2056 px on run 1 and 2072
-  px (= `HEAD`) on runs 2 and 3. Same direction, same position in the sequence. So the wobble
-  attaches to the *first* capture of a page against a freshly started server, not to a die roll, and
-  a 2-run audit whose run 1 is the odd one out reports a size change that a third run overturns.
-- **A fourth class: timing-dependent captures.** Some figures plot a *wall-clock-driven* process
-  (`smooth_duration.png` is "fixed 140 calls" against "1.2 seconds"). The knee of the curve moves
-  with how fast the machine ticked, so drift-from-committed and run-to-run instability are the same
-  phenomenon at different scales — 2.1–2.3% against a figure captured weeks ago, 0.35% between two
-  runs a minute apart. The 3× ratio rule reads that as `stale` and it is not. Nothing distinguishes
-  this class mechanically; the tell is in the picture (same shape, one feature displaced along the
-  time axis) and in the source (does the fence measure elapsed time?).
-
-Two gotchas when measuring:
-
-- **`Image.getbbox()` defaults to `alpha_only=True` on RGBA** in modern Pillow, so it returns `None`
-  — indistinguishable from "identical" — whenever only RGB differs. It reported 118 of 121 files as
-  pixel-identical when in fact none were. Use `ImageChops.difference(...).getextrema()` and a
-  histogram, on images converted to `RGB`.
-- Compare against `git show HEAD:<path>`, not against a working file you may already have
-  overwritten.
-
-Because the 0.25–1.5% nondeterministic band *overlaps* the magnitude of a genuine re-render, a
-single run cannot tell them apart. Two runs can: compare run 1 against run 2 as well as against
-`HEAD`. That is what `--repeat 2` is for, and it is the difference between a report you can act on
-and a list of file names.
-
-## 3. Pre-existing staleness in `functions_examples`, from the 2026-07-10 → 07-14 window
-
-Running the 121 captures of `functions_examples`, `functions_domains`, `timeseries_examples`,
-`interaction_nets_examples`, `graph_connectivity_examples` and `state_estimation_examples` in
-`always` mode, twice, and correlating each file's delta band against the date it was last
-regenerated gives an almost perfectly clean split:
-
-| delta from committed asset | count | last regenerated |
-| --- | --- | --- |
-| **~49% of pixels, Δ204** | **54** | 2026-07-09 / 2026-07-10 |
-| 3–13% | 34 | 2026-07-14 … 2026-07-19, one 2026-07-28 |
-| height changed | 4 | 2026-07-19 |
-| ≤0.02% (noise) | 29 | 2026-07-19 / 07-21 / **2026-07-28** |
-
-The 54-file ~49% cluster is **stable across both runs** — it is not jitter — and every one of them
-was last captured on 2026-07-09 or 2026-07-10, then never regenerated against two weeks of
-`Functions.kt` changes.
-
-> **Corrected 2026-07-29 (2nd pass).** The 2026-07-28 pass named `bced282b` (2026-07-14, *"Fix
-> `Fn.graphBrowseHtml` layout and constant-delay domain"*) as *the* cause, on the strength of its
-> commit message, and the first 2026-07-29 pass repeated it. Reading the render path says otherwise:
-> these figures come from `env.plot()` → `Fn.plot` (`Functions.kt:3751`) → `Fn.plotHtml`
-> (`Functions.kt:3182`), and `graphBrowseHtml` has **no non-test caller in the tree**, so its layout
-> half cannot have touched them. The y-autoscale they show is `yPlotDomain`, also in `Functions.kt`,
-> unchanged since `f9161364` (2026-07-09 — the day they were captured). The cause is in
-> `Functions.kt`'s Fn/domain algebra, with at least two candidates in the window: `fd603986`
-> (2026-07-13, oscillators default to infinite domains — which moves the plot window of every periodic
-> reference figure) and `bced282b`'s constant-delay domain translation. Treat this as "a two-week band
-> of `Functions.kt` changes", not one commit. The *file* is what is established, and it is the one all
-> 54 fences name — which is why §4's detection number is 54 of 54.
-
-What that looks like, concretely, in `assets/functions_examples/reference/ramp.png`
-(`ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)`): the committed capture
-autoscales its y-axis to roughly −0.1 … 0.51 and draws a zero line; the current code autoscales
-tightly to **exactly 0.100 … 0.500**, which is the arithmetically correct range for that
-expression (0.1 at both ends, 0.5 at the centre). About half the pixels move because the curve and
-every gridline shift with the axis.
-
-**This is inherited from `main`.** Neither `ramp`/`crossfade` nor the plotting code was touched by the
-branch that found it.
-
-## 4. The digest now follows the source a fence reaches
-
-`sourceRefsDigest` (2026-07-29) hashes the contents of the source files a fence's **code text
-actually names**. The symbol → file map is read out of the committed codebase reference
-(`public/docs/reference/*.md`), which `afield.docs.StdlibReferenceGenerator` emits from
-`KotlinSourceIndex.parseTopLevelDefinitions` and the `docs.codebase-reference.generate` smoke keeps
-from drifting. So no Kotlin has to run to compute a digest, and there is no second hand-maintained
-list to rot.
-
-`reuse_existing_asset_for_incremental` now refuses to reuse when `sourceRefsDigest` moved, but still
-reuses when the cache simply predates the key — so adopting this costs one grandfathering pass, not
-one full-site re-capture.
-
-**Scope, measured.** A name declared in more than one source file is dropped rather than mapped to
-all of them (the reference lists data-class members, so `name`, `value`, `size`, `step` each appear
-in a dozen files). Over all 304 runner fences:
-
-| symbol→file rule | source files per fence (mean / max) |
-| --- | --- |
-| unambiguous names only (**the default**) | 2.7 / 10 |
-| ≤2 files per name | 5.8 / — |
-| no ambiguity limit | 10.1 / 44 |
-| transitive file-reference closure | **72 of the 75 indexed files** |
-
-That last row is the important one: the stdlib's own internal references are dense enough that any
-depth greater than 1 is just "hash the whole stdlib". Hence the default stops at direct references,
-and `FIELD_DOCS_SOURCE_REFS=stdlib` is the opt-in for hashing the whole indexed stdlib for every
-fence — which does catch an indirect change, at the cost of re-capturing everything.
-`FIELD_DOCS_SOURCE_REFS=off` restores the pre-2026-07-29 digests exactly.
-
-**What it covers.** The reference indexes `src/jvmMain/kotlin/afield/stdlib` and
-`afield/visualization`, minus the generated `stdlib/linalg`: 2315 unambiguous symbols over 75 files.
-275 of the 304 runner fences map to at least one of them. The 29 that map to none are the fences
-whose code is not Kotlin-over-stdlib at all (RectSL, StackSL, `afield.four` / `fabricate_renderer`,
-`ar_reference`, the audio scenes) — those still ride on `runnerSourceDigest` alone.
-
-**Attribution ratio, verified two independent ways** (2nd pass, 2026-07-29 — this is the single
-number that decides how much the digest change is worth):
-
-- offline, from the fence enumeration: **275 of 304 fences = 90.5%** carry a `sourceRefsDigest`;
-- from the real production cache `public/.field-docs-runner-cache.json` written by the sweep itself:
-  **281 of 304 assets = 92.4%** have a `sourceRefsDigest` key in their stored metadata. The 23 that
-  do not are 10 `fabricate_renderer`, 3 `rectsl_examples`, 2 each `ar_reference` / `graph_query` /
-  `stacksl_examples`, and one each on `survivalGuide`, `forth_examples`, `funFeatures`, `visualizers`.
-
-**And the additive claim, verified directly** rather than argued from the code. Loading `main`'s (`80b6ef50`)
-`public/docs_hooks.py` and this branch's as two modules, walking all 304 fences with each module's
-own parsers and comparing digests:
-
-- 29 of 29 unattributed fences hash **byte-identically** to `main`;
-- 0 of the 275 attributed fences hash identically to `main` (so the key is doing something);
-- with `FIELD_DOCS_SOURCE_REFS=off`, **304 of 304** fences reproduce `main` exactly.
-
-### Attribution covers *fences*. Detection covers *incidents*. Only the second is what a reviewer wants
-
-**Attribution: 275 of 304 fences, 90.5%.** Detection has to be scored against a real incident, and
-exactly one has ever been reconstructed: the 54 `functions_examples` figures that were wrong on `main`
-for two weeks (§3, regenerated in `a892e17e`).
-
-**Detection against that incident: 54 of 54, 100%.** All 54 fences name symbols declared in
-`Functions.kt`, so any change to that file moves all 54 digests and an incremental build re-captures
-all 54. Verified by perturbing the file's content hash and counting the fences whose digest moves.
-
-An earlier draft of this doc — and the worklog behind it — said the digest would have caught "4 of
-those 54, 7%". **That was wrong twice over**, and this correction is the most important number on the
-branch:
-
-1. it scored the incident against `FunctionGraphBrowser.kt` alone, but `bced282b` touched **two**
-   production files: `FunctionGraphBrowser.kt` *and* `Functions.kt` (the constant-delay domain change);
-2. even the 4 was misapplied. **0** of the 54 stale figures' fences name a `FunctionGraphBrowser.kt`
-   symbol. The 15 fences (4 of them on `functions_examples`) that do belong to *other* figures — so
-   scoring this incident against that file alone gives 0, not 4.
-
-**The cause was mis-attributed as well, by the 2026-07-28 pass and then by the first 2026-07-29 one.**
-These figures are not rendered by `Fn.graphBrowseHtml` at all. The fence calls `env.plot()`; `Fn.plot`
-(`Functions.kt:3751`) calls `Fn.plotHtml` (`Functions.kt:3182`), and the entire renderer — including
-`yPlotDomain`, the y-autoscale whose output visibly changed in `ramp.png` — is inside `Functions.kt`.
-`graphBrowseHtml` has **no non-test caller in the tree**. So `bced282b`'s CSS half cannot have moved
-these figures. The cause is in `Functions.kt`'s Fn/domain algebra, and the window holds at least two
-candidates: `fd603986` (2026-07-13, "oscillators default to infinite domains", which changes the plot
-window of every periodic reference figure) and `bced282b`'s constant-delay domain translation.
-`yPlotDomain` itself has not changed since `f9161364` — 2026-07-09, the day these figures were
-captured. "54 figures, one cause, `bced282b`" was an over-attribution that survived two passes. What
-is solid is the *file*, and the file is the one every affected fence names.
-
-**The hazard the 7% was reaching for is real; it just did not fire here.** A change confined to
-`FunctionGraphBrowser.kt` would be invisible to 102 of the 106 `functions_examples` fences, because a
-fence's pixels depend on code it never names. Measured options for closing that:
-
-| rule | files per fence (mean / max) | fences invalidated by touching `FunctionGraphBrowser.kt` | by touching `linalg.kt` |
-| --- | --- | --- | --- |
-| direct references (**the default**) | 2.7 / 16 | 15 of 304 | 2 of 304 |
-| + one hop through the named files | 43.6 / 65 | **274 of 304** | 272 of 304 |
-| `FIELD_DOCS_SOURCE_REFS=stdlib` | 75 / 75 | 275 of 304 | 275 of 304 |
-
-One hop *does* fix it — all 106 `functions_examples` fences then reach the browser — but it lands
-within two captures of hashing the whole stdlib for every fence, which is exactly what `stdlib` mode
-already does. There is no third mode worth having: the curve has two useful points and both exist. A
-per-`capture=` mode harness set would not have helped either, since the render path here is two
-ordinary Kotlin calls *inside* `Functions.kt`, not a capture harness.
-
-**Is the standing rule lifted? No — weakened.** An incremental build now re-captures figures whose
-*named* source moved, and on the only incident anyone has reconstructed that would have been all 54 of
-them. It still cannot certify a figure whose renderer lives in a file the fence never names, and it
-cannot see a capture-environment change at all. So: "the docs build is green" is still **not**
-freshness evidence; "the incremental build re-captured the figures my edit touches" now is, for direct
-references only. Proving a *published* figure still matches the code remains the auditor's job.
-
-**What over-invalidation costs, with a number** (2nd pass — "it costs build time, not correctness" is
-only reassuring once someone has priced it). The digest is file-granular, so touching one source file
-invalidates every fence that names anything in it. Per-asset capture wall time is taken from the
-sweep's own logs (`always` mode, which is what a cache miss costs, server (re)start charged to the
-capture that follows it, minimum over the four runs):
-
-| touched file | fences invalidated | pages | measured re-capture cost |
-| --- | --- | --- | --- |
-| `Functions.kt` | **173 of 304** (57%), not just the 106 on `functions_examples` | 25 | ≈ 553 s (166 of 173 timed) → ~9–10 min |
-| `StandardDrawing.kt` | 90 | — | ≈ 280 s |
-| `timeseries.kt` | 38 | 11 | ≈ 145 s |
-| `FunctionGraphBrowser.kt` | 15 | 5 | ≈ 60 s |
-| — for scale, the whole 304-asset surface | 304 | 37 | ≈ 1495 s ≈ 25 min |
-
-So the worst realistic single-file blast radius is about **a third of a full site re-capture, ~10
-minutes**, on top of whatever the Kotlin rebuild costs. That is the price of the fix, and it is
-payable. `FIELD_DOCS_SOURCE_REFS=off` is there for when it is not.
-
-**What it does NOT cover:** an *indirect* change — code a fence's pixels depend on but its text never
-names. See the detection section above for the measured shape of that gap, and for why the one
-incident on record fell on the *right* side of it by luck of which files the commit touched.
-
-## 5. The auditor: `tools/docs_capture_audit.py`
+Run docs through the repository wrapper so Markdown hooks, capture dependencies, and the Zensical
+build use one environment:
 
 ```sh
-# rigorous: two capture runs, so nondeterministic captures are separated from stale ones
-uv run --group docs python tools/docs_capture_audit.py --page functions_examples --repeat 2 --port 9540
-
-# no Field, instant: rank capture assets by the date they were last committed
-uv run --group docs python tools/docs_capture_audit.py --inventory
-
-# no Field: which files does each fence reach, and what would touching one invalidate?
-uv run --group docs python tools/docs_capture_audit.py --plan \
-    --touched src/jvmMain/kotlin/afield/stdlib/Functions.kt
+FIELD_DOCS_RUNNER_PORT=9477 \
+  uv run --project . --group docs python tools/build_zensical_docs.py
 ```
 
-It runs the real production path (`build_zensical_docs.py --skip-build --page …` with
-`FIELD_DOCS_RUNNER_MODE=always`), copies everything the run rewrote into
-`.field-backdoor/docs-audit/<timestamp>/run<N>/`, restores the working tree, and classifies each
-asset:
+`FIELD_DOCS_RUNNER_MODE` controls capture selection:
+
+| mode | contract |
+| --- | --- |
+| `never` | Build HTML and reuse existing assets. This does not verify captures. |
+| `incremental` | Capture missing assets and assets whose known inputs changed. |
+| `strict` | Invalidate captures when capture-runner code changes. |
+| `always` | Run every declared capture. Use this for complete execution evidence. |
+
+The docs runner owns its configured port for the complete invocation. It rejects a foreign or
+source-stale Field process before the first capture, starts each required server exactly once, and
+terminates its process group at the end. A capture failure fails the page and the build; there is no
+retry or continue-on-error path.
+
+The determinism auditor is the deliberate exception to fail-fast traversal: it enables
+continue-through-failure so one broken capture does not hide findings later in the corpus. Every
+such fallback is recorded as `unknown-failed`, and the audit exits non-zero.
+
+## Cache coverage
+
+The capture digest currently includes:
+
+- fence code and capture options;
+- page path and block index;
+- the docs-hook script version and fixed runner-source digest;
+- declared bulk-gallery scene inputs;
+- directly attributable source references found in fence code.
+
+This gives incremental builds useful direct-source coverage, but it is not a complete dependency
+graph. In particular, `macroFile` currently contributes its path, not the referenced YAML file's
+contents. After editing a transcript under `dev_docs/agents/transcripts/`, explicitly recapture each
+page that uses it until the macro-content digest is added. An `always` build bypasses this cache gap.
+
+## Two-run determinism audit
+
+Use the production capture path twice from one unchanged commit:
+
+```sh
+uv run --project . --group docs python tools/docs_capture_audit.py \
+  --repeat 2 --port 9540
+```
+
+The auditor stores both runs under `.field-backdoor/docs-audit/`, restores tracked capture assets,
+and compares each run with both `HEAD` and the other run. A page-scoped invocation reports only that
+page:
+
+```sh
+uv run --project . --group docs python tools/docs_capture_audit.py \
+  --page functions_examples --repeat 2 --port 9540
+```
+
+Keep the audit commit and capture environment fixed for both passes. Run it from a dedicated
+worktree, do not move that worktree's `HEAD`, and do not launch other Field/GPU-heavy processes on the
+same machine. Worktree and port ownership prevent source-tree and server attachment conflicts; they
+cannot isolate CPU, memory, GPU, native-window, or compositor resources. The auditor records its
+starting commit and aborts if `HEAD` changes.
+
+Verdicts have the following current meaning:
 
 | verdict | meaning |
 | --- | --- |
-| `identical` | byte-identical to the committed asset |
-| `jitter` | inside the §2 noise band — not evidence of anything |
-| `nondeterministic` | run 1 and run 2 disagree with each other; the capture does not reproduce itself |
-| `nondeterministic-size` | output height/width unstable run to run (the `capture=box` class) |
-| `stale` | two runs agree with each other and disagree with the committed asset |
-| `stale-size` / `stale-text` / `stale-binary` | same, for dimensions, text assets, and mp4/wav. **`stale-binary` is a byte comparison**: for a lossy container it cannot distinguish a re-encode from a re-render, so decode frames before believing it (see §6, `stacksl-diffusion-feedback.mp4`) |
-| `suspect` | outside the band on a **single** run — re-run with `--repeat 2` |
-| `unstable` | a run *did* match the committed asset, but the two runs disagree with each other — informational, not a failure |
-| `unknown-failed` | the capture FAILED, so the stale file is still in place; **not** clean |
+| `identical` | The generated bytes match the committed asset and the two runs agree. |
+| `jitter` | Pixel differences remain inside the deliberately small antialiasing tolerance. |
+| `stale*` | The runs reproduce one another but not the committed asset. |
+| `suspect` | One run differs meaningfully; a second observation is required. |
+| `unknown-failed` | The capture did not complete, so no freshness claim is possible. |
+| `nondeterministic*` | The two runs disagree meaningfully. |
+| `unstable` | At least one run matches the committed asset, but the two runs disagree meaningfully. |
+| `new` | The capture has no committed comparison asset. |
 
-A page-scoped audit reports only the pages it audited. Each run directory now carries a `pages.json`
-manifest and `--reclassify` reads it (older directories are inferred from the capture logs), because
-without it every asset on every page the run never visited came back `identical` — "no run rewrote
-it, so it must be byte-stable". Reclassifying the 36-page sweep produced **106 phantom clean
-verdicts** for `functions_examples` that way. No finding was ever at risk (an asset a run rewrote is
-always reported), but a clean verdict for a capture that never ran is exactly the false comfort this
-tool exists to remove.
+`stale*`, `suspect`, `unknown-failed`, `nondeterministic*`, and `unstable` are findings and produce a
+non-zero exit. `jitter` is the only tolerated run-to-run pixel difference. Its threshold exists for
+rasterizer antialiasing noise, not for changed geometry, labels, dimensions, text, or timing.
 
-`--repeat N` for N > 2 **folds every run** (`fold_runs`): the drift estimate is whichever run agrees
-best with the committed asset, and the instability estimate is the *worst* of all N(N−1)/2 pairs, so
-a capture that lands on one output twice and a different one the third time cannot pass as stable.
-Until 2026-07-29 the report read runs 1 and 2 and ignored the rest, which made `--repeat 3` advice
-with no effect — a full extra capture pass that could not change a verdict, on exactly the tri-modal
-height case it was recommended for. Every entry now also carries `runsVsHead`, the whole spread,
-rather than only the two numbers a verdict was taken from.
+Binary media such as MP4 can re-encode to different bytes while presenting the same frames. The
+current auditor reports that as `nondeterministic-binary`; it remains a finding until a decoded-frame
+comparison establishes semantic equivalence.
 
-Exit code is 1 when anything is `stale*`, `suspect`, **or `unknown-failed`** — a capture that failed
-left the committed asset untouched, so the run learned nothing about it, and exit 0 there is the tool
-answering "is this still true?" without having looked. `--reclassify` used to `return 0`
-unconditionally, which quietly made `--reclassify --adopt` ungateable; both paths now share
-`failing_exit_code`. (Found by an adversarial pass over the tool's own edges — empty run directory,
-page filter matching nothing, `--touched` on a file no fence names, a run directory holding an
-uncommitted asset, and a synthesised capture-failure log. The first four behaved; the fifth is what
-exposed the exit code.) `--jitter-px-pct` /
-`--jitter-max-delta` move the band; `--keep` leaves the regenerated tree in place
-(**and then it is yours to `git checkout --`**);
-`--reclassify <rundir>` re-runs the classification against a previous audit's stored captures with
-no JVM at all, which is how to retune a threshold without paying for more capture runs.
+## Interpreting results
 
-**Fixing what it finds:** `--adopt` copies **only** the `stale*` assets from the run directory into
-the working tree. Rebuilding a page with `always` and committing everything that changed would also
-commit that page's jitter captures, which is pure history noise; adopting per verdict is how one
-stale figure gets fixed without dragging fifty antialiasing diffs with it. `--reclassify <rundir>
---adopt` adopts from an audit that already finished. Then **look at each image** before committing.
+- Do not adopt a generated asset merely because it differs from `HEAD`; first determine whether the
+  difference is a reproducible code change or capture-environment drift.
+- Do not turn a nondeterministic verdict green by selecting the run that happens to match `HEAD`.
+- Fix wall-clock-driven examples by using fixed steps or fixed samples when the documentation claim
+  does not depend on elapsed time.
+- Fix dimension changes by waiting for the owning DOM/output layout condition, not by adding sleep.
+- Inspect images and decoded video frames before committing regenerated media.
 
-Three rules the classifier follows, each of which was wrong in the first draft and got fixed by
-looking at real captures:
+The first repository-wide two-run baseline is recorded below when it completes. Subsequent audits
+should append only the current commit, command, totals, and unresolved findings; detailed incident
+timelines belong in version control history rather than this operating contract.
 
-1. **Max channel delta is the discriminator, not changed-pixel count.** AA/glyph jitter is many
-   *low-magnitude* deltas; a high-Δ difference over a tiny area is one label drawing differently and
-   must not be excused for being small. `graph_query/predicates.png` (0.0202% of px at **Δ2**) is
-   plainly noise and an area-first rule called it stale.
-2. **Drift is measured against whichever run agrees best with the committed asset.** If any faithful
-   re-derivation reproduces what is published, the published figure is not stale.
-   `graph_query/pathset.png` matched `HEAD` on run 1 and then differed from *itself* by 1.63% on
-   run 2 — `unstable`, not stale.
-3. **A figure can be stale *and* a little nondeterministic.** `filter_chains.png` under a perturbed
-   `EMAFilter` moved 1.06% against `HEAD` while moving 0.24% between runs. Drift is called stale when
-   it is ≥3× the run-to-run instability.
+## Current baseline
 
-### What a `stale` verdict does and does not prove
-
-It proves that **this machine, at this commit, with this capture environment, reproducibly does not
-produce the committed asset**. It does not by itself say the *code* moved. A Chrome or font-metrics
-change in the capture browser shifts text layout by a pixel or two, reproducibly, and reads as
-`stale` — the two `graph_query` findings below look exactly like that: identical content, columns
-shifted ~3 px. So read the magnitude and *look at the image* before calling a figure wrong. The
-`--plan` output ("does any fence even reach the file I changed?") is the cheap cross-check.
-
-Cost, measured on this machine: ~85 s wall for a 2-capture page including the Field server start;
-a capture is ~5–10 s once the server is warm.
-
-### Verified by catch-then-restore
-
-`EMAFilter` in `timeseries.kt` was perturbed (`alpha` → `min(4·alpha, 1)`) in a worktree, which only
-`timeseries_examples.md`'s first fence calls:
-
-- **digest level**: with `FIELD_DOCS_SOURCE_REFS=off` (old behaviour) both fences' digests were
-  byte-identical before and after the edit — a silent cache hit. With the default they both changed.
-- **incremental build**: `Field docs runner cache miss: …/filter_chains.png (source this fence
-  reaches changed, digest 8e84120514b1 -> da4725cf4164)`, and both of that *page's* 2 assets were
-  re-captured, in 20 s. (The first draft of this line read "exactly those 2 of 304", which implied a
-  surgical precision the digest does not have: that build was scoped with `--page`. A whole-site
-  incremental build after the same edit would have re-captured **38** assets over 11 pages, because
-  38 fences name something in `timeseries.kt`. Verified at the digest level, no JVM: perturb the
-  file's hash and count the fences whose digest moves.)
-- **auditor** (`--repeat 2`, `timeseries_examples` + `graph_query` as a control page): exactly one
-  figure came back `stale` — `filter_chains.png`, "drift (1.0569% px, maxΔ238) is 4.4x the
-  run-to-run instability (0.2407% px, maxΔ60)". `distribution_events.png`, which does not call
-  `EMAFilter`, stayed inside the noise band, and no `graph_query` verdict changed.
-- **restore**: `timeseries.kt` reverted, same audit re-run — `filter_chains.png` back to `jitter`,
-  zero `stale`, exit code 0. (`distribution_events.png` remains `unstable`: one run matches `HEAD`
-  within the band, the two runs differ by 0.23% at maxΔ59. That page's plots really are jittery.)
-
-## 6. The 2026-07-29 sweep
-
-Two batches, `--repeat 2`, run serially (one batch's `git checkout` restore would clobber the other's
-not-yet-stashed outputs). Run directories, with every regenerated file, are kept under
-`.field-backdoor/docs-audit/`.
-
-### `functions_examples` — 106 declared assets, 0 capture failures
-
-| verdict | count |
-| --- | --- |
-| `stale` | 56 |
-| `stale-size` | 2 |
-| `unstable` | 1 |
-| `jitter` | 47 |
-
-**54 of the 56 are one cluster**: ~49% of pixels at maxΔ204 pre-floor, every one of them last committed
-2026-07-09 or 2026-07-10, i.e. exactly the cluster §3 predicted, reproduced independently and now
-confirmed across two runs. (One *cluster*, not one commit — see the correction in §3.) `assets/functions_examples/reference/ramp.png` was inspected directly: the
-committed figure autoscales y to ≈−0.1…0.51 and draws a zero line; the current code autoscales to
-0.100…0.500, which is the arithmetically correct range for
-`ramp(0.1, 0.9).crossfade(ramp(0.9, 0.1), center = 0.5, width = 0.25)`. **The published figure is
-wrong and the regenerated one is right** — the committed one implies the curve dips below zero, which
-it never does.
-
-The other 2 are `reference/demo.png` (7.5% pre-floor, maxΔ246) and one 2026-07-28 asset.
-The 2 `stale-size` are the `capture=box` unstable-height class from §2 (918↔774, 800↔918); two runs
-happened to agree on a height, which is not enough for a tri-modal one — use `--repeat 3` there.
-
-The 54 were **regenerated and committed** on the same day (their own commit, selected by verdict —
-pre-floor delta > 40% — never by page, so the 47 jitter captures on the same page were left alone).
-
-### The other 36 pages — 198 declared assets, 0 capture failures
-
-Run 1 rewrote 163, run 2 rewrote 165; 39 assets were byte-identical both times.
-
-| verdict | count |
-| --- | --- |
-| `stale` | 8 |
-| `stale-binary` | 2 |
-| `nondeterministic` | 3 |
-| `nondeterministic-size` | 2 |
-| `nondeterministic-binary` | 5 |
-| `unstable` | 6 |
-| `jitter` | 137 |
-| `identical` | 39 |
-
-The 8 + 2, worst first. Every number and date in this table is taken from
-`SWEEP-rest/report.json` (re-derived on the second pass of 2026-07-29 with
-`--reclassify`, which needs no JVM, and every date cross-checked against `git log -1 --` on
-the asset — the first draft of this table had three dates wrong and mis-described
-`smooth_duration.png`):
-
-| asset | page | above-floor delta vs HEAD | last committed | verdict, 2nd pass |
-| --- | --- | --- | --- | --- |
-| `wfc_examples/neighborhoods.png` | `wfc_examples` | 35.76% at maxΔ227, runs agree to 0.004% | 2026-07-28 | **regenerated** `06968677` |
-| `command-palette.png` | `survivalGuide` | 3.83% at maxΔ245, runs pixel-identical | 2026-07-19 | **regenerated** `00fe971c` |
-| `interpolants_examples/smooth_duration.png` | `interpolants_examples` | heights 918/772/772 over 3 runs; at the matching height 2.12–2.27% at maxΔ238, runs differ from each other by 0.35% | 2026-07-19 | left — timing-dependent, settled by `--repeat 3` |
-| `graph_query/lenses.png` | `graph_query` | 2.20% at maxΔ249 | 2026-07-24 | left — capture-environment drift |
-| `rectsl/rectsl-cascade-split.png` | `rectsl_examples` | 1.28% at maxΔ255, runs byte-identical | 2026-07-20 | **regenerated** `238015fb` |
-| `visualizers-display-html.png` | `visualizers` | 0.031% at maxΔ20 (229 px, then 307 px) | 2026-07-20 | left — band edge |
-| `fline_examples/callbacks_2d.png` | `fline_examples` | 0.006% at maxΔ20 (64 px, then 130 px) | 2026-07-20 | left — band edge |
-| `closest_point.png` | `fline_examples` | 0.0013% at maxΔ31 (**9 px**) | 2026-07-20 | left — 9 pixels |
-| `stacksl/stacksl-diffusion-feedback.mp4` | `stacksl_examples` | bytes only; decoded frames differ ≤maxΔ20 | 2026-07-19 | left — **verdict refuted**, see below |
-| `stacksl/stacksl-feedback-trails.mp4` | `stacksl_examples` | decoded frames diverge from frame 2, maxΔ132 by frame 96 | 2026-07-19 | left — feedback accumulation |
-
-### The per-figure verdicts, and why they differ (2nd pass, 2026-07-29)
-
-The point of a per-figure tool is that a verdict is per figure. These ten share no cause, so each was
-looked at on its own — committed asset and freshly captured asset side by side with the actual
-pixels, plus one cheap new cross-check: **did any source file this fence reaches change after the
-date the asset was committed?**
-
-That cross-check has low specificity and must not be over-read: the 2026-07-26 → 07-28 KDoc/audit
-sweeps touched nearly every stdlib file, so "a file it reaches changed since" is true for almost
-every asset older than a week and proves nothing by itself. It is useful only when it names a
-*behavioural* commit.
-
-**Regenerated (3).** Each in its own commit, with the reasoning in the message.
-
-- `wfc_examples/neighborhoods.png` — `wfc.kt` moved four times *after* the asset's own commit, the
-  last being `main`~1 `0d5bedaa` (symmetry expansion). The example pins `WfcSolver(seed = 5L)`, so it
-  is deterministic but not invariant under a change to rule expansion. Both panels are visibly
-  different fields; the figure's actual claim (473 / 0 anti-diagonal breaks) is unchanged, so this is
-  a re-render against current code, not a corrected falsehood.
-- `command-palette.png` — the palette gained a whole `PROPERTIES` group ("Switch to code / fragment /
-  vertex / stackSL / vertex_fragment" with `Opt+…` chips) that now sits under `SEARCH`, where the
-  published shot shows `DOCUMENT`. The two runs produced *pixel-identical* output, so the drive
-  capture reproduces exactly. The published screenshot documented a UI state the build no longer
-  produces.
-- `rectsl/rectsl-cascade-split.png` — `e418ec90` (2026-07-25, the `->` mutator rename) rewrote this
-  example's gallery source; the poster still is from 2026-07-20. The changed region is 2796 px of
-  rendered rectangles at maxΔ255 with no text in it, which is why *this* one cannot be font metrics.
-  Its `.mp4` is from the same old commit and is presumably equally stale; the run did not rewrite it,
-  so this pass has no audited replacement and does not guess one.
-
-**Left alone (7), with the reasoning, because a `stale` label is not a verdict.**
-
-- `graph_query/lenses.png` — the content is *identical*: same `LensSet<Mode> (2)`, same two rows,
-  same values. The `value` and `state` columns simply sit ~6 px to the left. That is text-metric
-  layout, i.e. the capture environment, and regenerating it would commit a Chrome version, not a
-  code change. Same story for `paramset.png` (`unstable`).
-- `visualizers-display-html.png` (229 px, then 307 px, all inside an 18-px-wide strip at the left
-  edge) and `fline_examples/callbacks_2d.png` (64 px, then 130 px, in a left gutter) — both clear the
-  Δ19 ceiling by one level and *neither reproduces its own magnitude* run to run. Band edge, not
-  drift.
-- `closest_point.png` — nine pixels, in one 17×41 box. Reproducible, and still nine pixels. There is
-  no figure to fix. (Deliberately *not* fixed by raising `MIN_SIGNAL_PX` until it disappears — tuning
-  a threshold to erase a finding is how a freshness tool stops being one.)
-- `interpolants_examples/smooth_duration.png` — **settled by actually running `--repeat 3`** rather
-  than deferring it. Heights: 918 (run 1), 772, 772 — so `HEAD`'s height is the majority and the
-  wobble is the first-capture effect from §2. At the matching height it reproducibly differs from
-  `HEAD` by 2.12% / 2.27% at maxΔ238 while the two matching runs differ from *each other* by 0.35% at
-  the same maxΔ238. Looked at it: same two curves, same legend, and the orange ramp's knee sits ~10 px
-  earlier. That figure plots "fixed 140 calls" against "1.2 seconds" — it is the timing-dependent
-  class from §2, where drift and instability are one phenomenon at two scales. Left alone, and now for
-  a reason rather than a hedge.
-- `interpolants_examples/keyframe_morph.png` — **a finding the sweep mislabelled, in the safe
-  direction.** It was reported `nondeterministic-size` because the sweep's two runs disagreed at
-  maxΔ60; over three runs all three come out 796 px tall against `HEAD`'s 918 and agree with each
-  other to maxΔ2, which is `stale-size`. But looking at it: identical curves, identical legend — the
-  two output panels have simply swapped order (`keys` above the plot in the committed shot, below it
-  now) and the committed one carries extra trailing whitespace. A stable *layout* difference with no
-  information content, so still not regenerated.
-- `stacksl/stacksl-diffusion-feedback.mp4` — **the `stale-binary` verdict is wrong.** `stale-binary`
-  compares *bytes* (146357 → 146410, +53). Decoding frames 1, 48 and 96 of both and comparing pixels:
-  8–13% of pixels differ at a per-channel maximum of **18–20**, over the whole frame. That is h.264
-  re-encode noise, exactly the sub-perceptual class the PNG path already discounts. A byte-level
-  verdict on a lossy container cannot distinguish this from a real change, and this doc previously
-  said as much about `nondeterministic-binary` without applying it to `stale-binary`.
-- `stacksl/stacksl-feedback-trails.mp4` — decoded, this one *is* a real pixel difference: frame 1 is
-  identical, and the two videos then diverge from frame 2 onwards (maxΔ~110 early, 53% of pixels at
-  maxΔ132 by frame 96). It is not a frame-phase shift — offset 0 is still the best match. But it is a
-  *feedback* scene whose state accumulates, no source file it depends on has changed since before the
-  asset was committed, and the last frames are the same near-black glow bands at slightly different
-  exposure. Recorded as unexplained accumulation drift rather than regenerated on the strength of a
-  diff.
-
-The 5 `nondeterministic-binary` are mp4s that simply re-encode differently run to run — expected, and
-the reason a video cannot be audited by bytes. The 3 `nondeterministic` (`segment_basins.png`,
-`particles-galaxy.png`, `disorder_decay.png`) and the 6 `unstable` are captures that do not reproduce
-themselves at all; they are not evidence of staleness and must not be regenerated on the strength of
-a diff.
-
-### What this sweep covered, and what it did not
-
-- **Covered:** all 304 assets declared by all 37 pages carrying runner fences, twice each, no
-  failures. That is the whole fence-declared capture surface.
-- The two `stale-size` and two `nondeterministic-size` results are the unstable-height `capture=box`
-  class; two runs are not enough to settle a tri-modal height, so treat those verdicts as provisional.
-- For everything else, see §7 — the first draft of this section said "the ~1350 other tracked files
-  under `public/docs/assets/`", which badly overstated the gap: 1092 of those 1662 files are not
-  figures at all.
-
-## 7. Coverage map: which published media the auditor can reach
-
-Counted 2026-07-29 (2nd pass) over `git ls-files public/docs/assets`, media = any
-`png/jpg/jpeg/webp/gif/apng/mp4/mov/wav/exr/glb/svg`:
-
-| | count |
-| --- | --- |
-| tracked files under `public/docs/assets/` | 1662 |
-| of those, **media** | **570** |
-| of those, non-media | 1092 |
-| media **declared by a runner fence** (the swept surface) | 304 |
-| media **not declared by any fence** | 266 |
-| … of the 266, referenced by at least one page | 217 |
-| … of the 266, referenced by no page at all | 49 |
-
-The 1092 non-media files are why "1350 unaudited assets" was the wrong framing. They are
-**inputs, not figures**: `mode/` (287) and `theme/` (65) are vendored CodeMirror language modes and
-colour themes; `canonical_graphics/` (256), `stacksl_gallery/` (158), `rectsl_gallery/` (118) and
-`agent_transcripts/` (180) are *workspace source trees* (`_code_.kt`, `.glsl`, `.rectsl`,
-`.stacksl`, `_metadata_.yaml`, `.edn`, `README.md`). A workspace source cannot go stale against the
-code; it is one of the things a figure is derived *from*. `canonical_graphics/` contains no media at
-all.
-
-So the real question is the 266 un-fenced media, by mechanism:
-
-| mechanism | files | can the auditor reach it? | already guarded? |
-| --- | --- | --- | --- |
-| bulk-render gallery side outputs — `rectsl/` (68), `stacksl/` (38) | 106 | **yes, and it already did** | yes, `sceneInputs` |
-| hand-made / manually captured UI stills — `funFeatures` (43), `aiFeatures` (8), `installation` (3), one-off heroes and diagrams | ~110 | no | no |
-| test/example galleries — `imaging_gallery` (11), `matrix_algebra`+`vector_algebra` (12), `value_visualizers` (6), `mesh_gallery` (4) | ~33 | not today | partly: each has a JVM test/gallery entry point |
-| platform captures — `vision_geometry` (6), `vision` (2), `imgui_vr_panel` (2), `fabricate_demo` (2), `afield_four_graphics` extra (1) | ~13 | no (device/headset) | no |
-| referenced by no page | 49 | n/a | n/a — dead-asset candidates |
-
-**The good news, and it is real.** The two bulk-render galleries are *not* a gap. One hidden fence per
-gallery (`fabricate-scene="rectsl-animations"` / `"stacksl-…"`) re-renders the whole workspace as a
-side effect, and `FABRICATE_SCENE_INPUTS` in `public/fabricate_docs_scenes.py` already folds a content
-hash of the gallery's `.rectsl`/`.stacksl` sources, metadata and harness into that fence's digest —
-the same fix `sourceRefsDigest` is, invented earlier for the same reason. The 2026-07-29 sweep
-therefore *did* re-render both galleries in `always` mode, and of all 106 `rectsl/` + `stacksl/`
-files exactly **three** came out different from what is committed (one still, two mp4s), identically
-in both runs. That is a freshness result for 103 of those 106 assets, arrived at by accident, and it
-is why the auditor reports them under "assets not predicted by fence enumeration" rather than
-missing them.
-
-The residual gap in that mechanism is the same shape as the stdlib one: the gallery digest hashes the
-*workspace sources and the harness*, not the RectSL/StackSL interpreter. A change to the language
-implementation alone would not invalidate it, and the auditor is the only thing that would notice.
-
-**What genuinely is not covered:** the ~110 hand-made stills (no mechanism produces them, so nothing
-can re-derive them — a change of UI simply makes them wrong, silently, forever), the ~33 test-gallery
-assets (reachable in principle: each has a JVM entry point such as
-`afield.examples.imaging.ImagingGallery` or `ValueVisualizerDocCaptureTest`, so extending the auditor
-here means teaching it to run a gradle test target and diff its outputs, which is a real but bounded
-piece of work), and the ~13 platform captures that need a headset or a native window.
-
-Related lint that already exists and is not a freshness check: `tools/check_doc_assets.py` verifies
-that every asset a *published* page references is committed. It answers "will this 404 on a clean
-checkout", never "is it still true".
-
-## 8. `wfc_examples` — one figure that oscillates, one that is stale (2026-07-29)
-
-Measured while checking whether a `contours.kt` change moved a downstream figure. All eleven
-`wfc_examples` screenshots regenerated with `FIELD_DOCS_RUNNER_MODE=always`, **twice**, and compared
-pixel-wise against the committed asset and against each other:
-
-| file | committed vs run 2 | run 1 vs run 2 | reading |
-| --- | --- | --- | --- |
-| `collapse-frames.png` | **0 px** | **32.1% of px, Δ226** | oscillates — run 1 was a different collapse |
-| `neighborhoods.png` | **35.7% of px, Δ204** | 59 px (noise) | reproduces run-to-run, but the committed image is **stale** |
-| the other nine | ~0.01% of px, Δ≤27 | — | noise (see §2) |
-
-So the two signals from §2 and §3 both show up on one page at once. The noise on the other nine is
-confined to `x < 20` — the channel-name gutter and its disclosure triangle — which is a useful
-fingerprint: **if every changed pixel is in the left 20 columns, nothing in the picture moved.**
-
-Neither figure is caused by any stdlib change: `collapse-frames` and `neighborhoods` are WFC solver
-output, and the branch that found this touches only `contours.kt` and `clustering.kt`. Worth fixing
-in its own commit on `main`, and `collapse-frames` needs its seed pinned before regenerating is even
-meaningful.
-
-The same run answered the question it was for, and the answer is the useful kind of negative:
-`wfc_examples.md` §7 **does** execute `Img.isoContourFLines` in a capture fence (a claim to the
-contrary was made and was wrong), but making that function close its closed loops moved
-`scalar-field.png` by **one pixel** outside the gutter — because every level set of that blurred
-field runs off the image boundary, so `isoContourClosed` returns `false` for all of them.
-
-
-## 9. Recording a *sweep*: the recorder's frame clock is not the box's (2026-07-29)
-
-Separate from staleness, and the thing that costs the most builds when adding an animated
-`diffstatic_runner` fence. Established while adding the two parameter sweeps to
-`spatial_geometry_examples.md`.
-
-A `video=` fence records until it has `duration * fps` frames and then re-times them to `fps`. It does
-**not** record for `duration` wall-clock seconds. So the real length of the recording is
-`duration * fps / captureRate`, and `captureRate` is whatever the machine manages.
-
-Three consequences, all measured:
-
-| claim | measurement |
-| --- | --- |
-| `frameNumber` is the wrong clock | the Apollonius box renders ≈4× faster than it is captured, so a ramp with period 160 *frames* ran four sweeps inside one 160-frame clip |
-| wall-clock elapsed is the right clock, but `sweepSeconds = duration` is wrong | at `sweepSeconds = 8.0` the iso box's clip contained **1.6** sweeps: 160 frames captured at ≈12.5 fps is 12.8 real seconds, not 8 |
-| the capture rate is not even constant *within* one recording | a linear there-and-back came back with limb slopes of **7.5 and 5.9 px/frame**, which a triangle ramp cannot produce |
-
-What to do:
-
-- Drive the swept parameter from `System.nanoTime()`, not `frameNumber`.
-- Calibrate `sweepSeconds` against a *recorded* clip rather than setting it to `duration`, then
-  re-record and re-measure. 9.0 and 8.6 put one sweep in an 8 s clip for those two boxes.
-- Keep the per-frame cost low. Dropping the iso box's grid from 140×84 to 100×60 moved its capture
-  rate from ≈12.5 to ≈16 fps and its picture is no worse.
-- **Use a triangle ramp on a scalar, not a closed loop in position.** Videos embed as
-  `<video controls autoplay loop muted>`, so the seam is visible on every cycle. With a triangle ramp
-  a residual phase error is a small parameter offset (measured 4.7% and 6.2% of the swept range). With
-  a circular orbit the same error is a *positional jump*: an edge-flip clip came back at 1.42
-  revolutions per clip in one run and 0.78 in the next, and at 0.78 the mover hopped 18.7% of its path
-  at the loop point — on a clip about edges snapping between configurations, indistinguishable from a
-  flip. That clip was dropped rather than shipped for exactly this reason.
-
-Measuring the achieved period does not need guesswork: extract frames with `ffmpeg -vf select`, locate
-the moving element by colour, and fit its position against the frame index.
-
-## Reproducing a raw regeneration by hand
-
-```sh
-# your own port: 9477 is shared and a reused server silently runs someone else's code
-FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9722 \
-  uv run --group docs python tools/build_zensical_docs.py --page functions_examples
-git status --short public/docs/assets     # necessary, nowhere near sufficient — see §2
-```
-
-Then compare pixel-wise against `HEAD`, twice, and discard everything inside the noise band — or
-just use the auditor, which does exactly that and restores the tree afterwards.
+Pending the first full two-run audit on 2026-08-01.
