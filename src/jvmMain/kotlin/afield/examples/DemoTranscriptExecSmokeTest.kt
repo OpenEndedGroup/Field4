@@ -124,6 +124,9 @@ object DemoTranscriptExecSmokeTest {
         // threeLines() as above; the other two rasterise with TriMesh.renderPng, which is the
         // AWT-free PngEncoder path into display(). No Window, no Renderer, no GPU either way.
         "polytope_conway_gallery",
+        // A second pure-CPU polytope box on the same path: evaluate one Conway expression,
+        // canonicalize it, and draw the realized and canonical forms side by side.
+        "polytope_canonical_gallery",
         // Eight pure-CPU typography boxes. The letters are filled from their own contours by the
         // family's own scanline filler and shown through showImgGrid / showPlaneGrid / showMeshGrid,
         // all of which are PngEncoder or Skia-SVG into `display` — no AWT rasteriser, no GPU. Box 5

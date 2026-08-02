@@ -1042,9 +1042,30 @@ class FLine : HasProperties {
         // Earcut is 2D. Filled FLines can be planar in any 3D orientation, so select the dominant
         // Newell-normal axis of the strongest ring and project only for tessellation. Original XYZ
         // coordinates are still passed to the mesh acceptor.
-        var projectionAxis = 2
-        var strongestNormal = 0f
-        for (ring in rings) {
+        //
+        // The projection has to be *orientation preserving*, and that is not a nicety.
+        // [FloatEarcut] normalises the winding of whatever ring it is handed (`FloatEarcut.kt:705`
+        // reverses the outer ring when its signed area has the wrong sign), so the facing of every
+        // triangle that comes back is decided by the projected frame alone — never by the winding
+        // the caller authored. Two properties make the frame agree with the polygon:
+        //
+        //  1. the kept pair is the right-handed cycle about the dropped axis: x -> (y, z),
+        //     y -> (z, x), z -> (x, y). (x, z) for a y-dominant face is the mirror of that, and
+        //     mirrors the facing of every wall-like face;
+        //  2. the pair is swapped when the normal points down the *negative* half of the dominant
+        //     axis, because otherwise the far side of a face comes back inside out — a polygon and
+        //     the same polygon turned over must tessellate to the same triangles turned over.
+        //
+        // Together these make tessellation commute with rigid rotation, which
+        // `TessellationOrientationOracleTest` pins. (`EarcutFaceTriangulator`,
+        // `polytope/FieldAdapters.kt:96`, reaches the same place by projecting on the mirror and
+        // then flipping every triangle back against the face normal.)
+        //
+        // The *axis* is one decision for the whole FLine, because the ring nesting below has to be
+        // measured in one frame to mean anything. The *hemisphere* is not: coplanar is not the same
+        // as co-oriented, and one FLine can hold subpaths wound against each other, so each filled
+        // group picks its own from its own outer ring, further down.
+        fun newellNormal(ring: List<Vec3>): Vec3 {
             var nx = 0f
             var ny = 0f
             var nz = 0f
@@ -1055,25 +1076,46 @@ class FLine : HasProperties {
                 ny += (p.z - q.z) * (p.x + q.x)
                 nz += (p.x - q.x) * (p.y + q.y)
             }
-            val lengthSquared = nx * nx + ny * ny + nz * nz
+            return Vec3(nx, ny, nz)
+        }
+
+        val ringNormals = rings.map { newellNormal(it) }
+        var projectionAxis = 2
+        var strongestNormal = 0f
+        // The hemisphere of the strongest ring, used only as the fallback for a group whose own
+        // outer ring is degenerate along the chosen axis.
+        var defaultFlipped = false
+        for (n in ringNormals) {
+            val lengthSquared = n.x * n.x + n.y * n.y + n.z * n.z
             if (lengthSquared > strongestNormal) {
                 strongestNormal = lengthSquared
                 projectionAxis = when {
-                    abs(nx) >= abs(ny) && abs(nx) >= abs(nz) -> 0
-                    abs(ny) >= abs(nz) -> 1
+                    abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z) -> 0
+                    abs(n.y) >= abs(n.z) -> 1
                     else -> 2
                 }
+                // A ring can only be the strongest if its normal is non-zero, so this reads the
+                // hemisphere of a component we know dominates. Rings that are entirely degenerate
+                // never get here and leave the default: project on (x, y), as before.
+                defaultFlipped = when (projectionAxis) {
+                    0 -> n.x
+                    1 -> n.y
+                    else -> n.z
+                } < 0f
             }
         }
 
+        /** The first of the right-handed pair kept about [projectionAxis]. */
         fun projectedX(p: Vec3): Float = when (projectionAxis) {
             0 -> p.y
+            1 -> p.z
             else -> p.x
         }
 
+        /** The second of the right-handed pair kept about [projectionAxis]. */
         fun projectedY(p: Vec3): Float = when (projectionAxis) {
             0 -> p.z
-            1 -> p.z
+            1 -> p.x
             else -> p.y
         }
 
@@ -1180,6 +1222,21 @@ class FLine : HasProperties {
             val holes = ArrayList<Int>()
             var vertCount = 0
 
+            // This group is its own polygon, so it faces its own way. Read the hemisphere from the
+            // group's outer ring rather than from whichever ring in the whole FLine was biggest:
+            // two disjoint subpaths wound against each other are two polygons back to back, and a
+            // single decision for both gets one of them inside out. Bounding boxes, areas and
+            // containment above all stay in the unflipped frame — a mirror does not change what is
+            // inside what, so the nesting is the same either way, and keeping one frame there keeps
+            // the groups stable.
+            val outerNormal = ringNormals[group[0]]
+            val hemisphere = when (projectionAxis) {
+                0 -> outerNormal.x
+                1 -> outerNormal.y
+                else -> outerNormal.z
+            }
+            val flipped = if (hemisphere == 0f) defaultFlipped else hemisphere < 0f
+
             for ((idx, ringIndex) in group.withIndex()) {
                 if (idx > 0) holes.add(vertCount)
                 val pts = infos[ringIndex].points
@@ -1187,8 +1244,8 @@ class FLine : HasProperties {
                     verts.add(p.x)
                     verts.add(p.y)
                     verts.add(p.z)
-                    projected.add(projectedX(p))
-                    projected.add(projectedY(p))
+                    projected.add(if (flipped) projectedY(p) else projectedX(p))
+                    projected.add(if (flipped) projectedX(p) else projectedY(p))
                 }
                 vertCount += pts.size
             }

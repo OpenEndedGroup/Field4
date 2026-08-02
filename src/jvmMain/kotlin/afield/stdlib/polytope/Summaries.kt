@@ -60,6 +60,14 @@ data class PolytopeTransformSummary(
     val deployments: List<TransformDeploymentSummary>,
 )
 
+/** What a realization run was actually asked to do: named families, weights, and normalization. */
+data class RelaxationPlanSummary(
+    val constraints: List<String>,
+    val weights: Map<String, Double>,
+    val maxIterations: Int,
+    val gauge: String,
+)
+
 /** Rendering-derived counts while retaining the polygon-to-triangle provenance distinction. */
 data class TriangulatedGeometrySummary(
     val renderVertices: Int,
@@ -141,6 +149,13 @@ fun PolytopeTransformResult.summary(): PolytopeTransformSummary = PolytopeTransf
     primitiveOperations = history.map { it.displayName },
     output = polyhedron.summary(),
     deployments = deployments.map { it.summary() },
+)
+
+fun RelaxationPlan.summary(): RelaxationPlanSummary = RelaxationPlanSummary(
+    constraints = constraints.map { it.name },
+    weights = constraints.associate { it.name to it.weight },
+    maxIterations = leastSquares.maxIterations,
+    gauge = gauge?.let { "${it.centre} / ${it.scale} -> ${it.scaleTarget}" } ?: "none",
 )
 
 fun TriangulatedGeometry.summary(): TriangulatedGeometrySummary {
