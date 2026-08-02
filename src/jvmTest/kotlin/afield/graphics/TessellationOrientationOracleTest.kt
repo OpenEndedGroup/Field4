@@ -330,6 +330,63 @@ class TessellationOrientationOracleTest {
         assertTrue(failures.isEmpty(), "disjoint holes lose their parent under rotation:$failures")
     }
 
+    /**
+     * One FLine, two disjoint filled subpaths, wound *against each other*.
+     *
+     * Coplanar is not the same as co-oriented. A single FLine can perfectly well hold one contour
+     * authored counter-clockwise and another authored clockwise — a glyph pair where one letter came
+     * from a mirrored source, two faces of the same solid flattened into one line, anything built by
+     * `plusAssign`. They are separate polygons with separate normals, so each has to be filled facing
+     * its own way. A single hemisphere decision taken from whichever ring in the whole FLine happens
+     * to be biggest gets the smaller one backwards.
+     */
+    @Test
+    fun eachDisjointSubpathFacesItsOwnWinding() {
+        val clockwise = square(200f, 0f, 60f).reversed() // normal -z, deliberately the smaller
+        val counterClockwise = square(0f, 0f, 100f)      // normal +z, the stronger ring
+        val rings = listOf(counterClockwise, clockwise)
+
+        val failures = StringBuilder()
+        orientations().forEach { xf ->
+            val line = lineOf(rings, xf)
+            val tris = triangulate(line)
+            // split the triangles back out by which subpath they came from, on the x extent
+            rings.forEachIndexed { index, ring ->
+                val world = ring.map { xf(it) }
+                val normal = newell(world)
+                val centre = Vec3(
+                    world.map { it.x }.average().toFloat(),
+                    world.map { it.y }.average().toFloat(),
+                    world.map { it.z }.average().toFloat()
+                )
+                val mine = tris.filter { t ->
+                    val other = rings[1 - index].map { xf(it) }
+                    val otherCentre = Vec3(
+                        other.map { it.x }.average().toFloat(),
+                        other.map { it.y }.average().toFloat(),
+                        other.map { it.z }.average().toFloat()
+                    )
+                    val g = Vec3((t.a.x + t.b.x + t.c.x) / 3f, (t.a.y + t.b.y + t.c.y) / 3f, (t.a.z + t.b.z + t.c.z) / 3f)
+                    val dm = length(Vec3(g.x - centre.x, g.y - centre.y, g.z - centre.z))
+                    val doo = length(Vec3(g.x - otherCentre.x, g.y - otherCentre.y, g.z - otherCentre.z))
+                    dm < doo
+                }
+                if (mine.isEmpty()) {
+                    failures.append("\n  ${xf.name}: subpath $index produced no triangles")
+                    return@forEachIndexed
+                }
+                val m = measure(mine, normal)
+                if (m.signedAlongNormal < 0f) {
+                    failures.append(
+                        "\n  ${xf.name}: subpath $index faces backwards " +
+                                "(signed ${m.signedAlongNormal}, unsigned ${m.area})"
+                    )
+                }
+            }
+        }
+        assertTrue(failures.isEmpty(), "oppositely wound subpaths do not each face their own way:$failures")
+    }
+
     /** A concave ring, whose bounding box lies about containment, in every plane. */
     @Test
     fun aConcaveRingTessellatesToItsOwnAreaInEveryPlane() {
