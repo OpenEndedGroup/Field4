@@ -119,6 +119,11 @@ object DemoTranscriptExecSmokeTest {
         // One pure-CPU polytope box. It derives polygonal FLines and publishes their payload to the
         // on-canvas Three.js viewer; no native Window or Renderer is opened by threeLines().
         "polytope_conway_demo",
+        // Four more pure-CPU polytope boxes, one question each — the demo set POLYTOPE_ALGEBRA.md
+        // asks for, and the loadable companion to public/docs/polytope_examples.md. Two end in
+        // threeLines() as above; the other two rasterise with TriMesh.renderPng, which is the
+        // AWT-free PngEncoder path into display(). No Window, no Renderer, no GPU either way.
+        "polytope_conway_gallery",
         // A second pure-CPU polytope box on the same path: evaluate one Conway expression,
         // canonicalize it, and draw the realized and canonical forms side by side.
         "polytope_canonical_gallery",

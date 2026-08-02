@@ -1692,7 +1692,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Polytopes: topology first, coordinates later](../polytope_examples.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 

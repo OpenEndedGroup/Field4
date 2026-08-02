@@ -33,6 +33,10 @@ nav:
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md
       - Workspace: reference/workspace.md
+      # Files carrying no `@file:CompletionCategory` land here. Today that is the whole of
+      # `afield.stdlib.polytope`; a one-line file annotation on those sources would move them
+      # into a real category and this page would disappear on the next regeneration.
+      - Uncategorised: reference/uncategorised.md
     - Linear Algebra: linear_algebra.md
     - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
@@ -76,6 +80,7 @@ nav:
         - Spectral Examples: spectral_examples.md
         - Imaging & Computer Vision: imaging_examples.md
         - Meshes & 3D Geometry: mesh_examples.md
+        - Polytopes & the Conway Algebra: polytope_examples.md
         - Typography as Geometry: typography_examples.md
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
