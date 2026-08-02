@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3223 of 5497 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3304 of 5708 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**310 undocumented entry points** (types, top-level functions and values) and 1811 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**315 undocumented entry points** (types, top-level functions and values) and 1936 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -21,10 +21,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Parameters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt) | Uncategorised | polytope_examples | 9 | 18 | 6% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 6 | 0 | 53% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | statistics_examples | 5 | 41 | 11% |
+| [FieldAdapters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt) | Uncategorised | polytope_examples, agent_transcripts | 4 | 11 | 40% |
 | [Conway.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt) | Uncategorised | polytope_examples | 4 | 8 | 14% |
-| [RealizationSolver.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt) | Uncategorised | polytope_examples | 3 | 20 | 8% |
-| [FieldAdapters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt) | Uncategorised | polytope_examples, agent_transcripts | 3 | 11 | 36% |
+| [RealizationSolver.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt) | Uncategorised | polytope_examples | 3 | 23 | 23% |
+| [Symmetry.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt) | Uncategorised | polytope_examples | 2 | 21 | 28% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
+| [Polytope4.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Polytope4.kt) | Uncategorised | polytope_examples | 1 | 25 | 36% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
@@ -35,6 +37,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples | 0 | 26 | 53% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
+| [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Uncategorised | polytope_examples | 0 | 23 | 45% |
 | [typography.kt](../src/jvmMain/kotlin/afield/stdlib/typography.kt) | Graphics | typography_examples | 0 | 23 | 70% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples | 0 | 19 | 71% |
@@ -44,6 +47,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [imaging.kt](../src/jvmMain/kotlin/afield/stdlib/imaging.kt) | Imaging | imaging_examples, wfc_examples, alife_examples | 0 | 10 | 85% |
 | [imaging_features.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_features.kt) | Imaging | imaging_examples, visualizers | 0 | 10 | 77% |
 | [linalg.kt](../src/jvmMain/kotlin/afield/stdlib/linalg.kt) | Math | fline_examples, kotlin_overview, linear_algebra | 0 | 9 | 89% |
+| [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Uncategorised | polytope_examples | 0 | 8 | 50% |
 | [booleannetworks.kt](../src/jvmMain/kotlin/afield/stdlib/booleannetworks.kt) | Data | boolean_networks_examples, boolean_network_music_examples | 0 | 7 | 78% |
 | [typography_field.kt](../src/jvmMain/kotlin/afield/stdlib/typography_field.kt) | Graphics | typography_examples | 0 | 7 | 77% |
 | [wfc_field.kt](../src/jvmMain/kotlin/afield/stdlib/wfc_field.kt) | Data | wfc_examples | 0 | 7 | 78% |
@@ -57,7 +61,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 12 | 9 | 25% |
-| [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Uncategorised | — | 7 | 35 | 16% |
+| [Summaries.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Summaries.kt) | Uncategorised | — | 8 | 39 | 16% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Graphics | — | 5 | 38 | 0% |
 | [smile_interpolation_regression.kt](../src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt) | Math | — | 5 | 16 | 0% |
 | [LazyValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt) | Visualization | — | 5 | 5 | 0% |
@@ -68,6 +72,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Attributes.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Attributes.kt) | Uncategorised | — | 2 | 4 | 14% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
+| [Constraints.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Constraints.kt) | Uncategorised | — | 0 | 41 | 33% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
@@ -109,8 +114,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DegenerateFaceGeometryException` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt:14` |
 | `ElementSelector` | interface | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:19` |
 | `ElementDoubleParameter` | interface | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:76` |
-| `RealizationDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:32` |
-| `RealizationSolveResult` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:41` |
+| `RealizationDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:119` |
+| `RealizationSolveResult` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:128` |
 | `InvalidElementReference` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:18` |
 | `IncorrectRankTransition` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:22` |
 | `DuplicateIncidence` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:32` |
@@ -196,9 +201,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ElementSelector.not` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:31` |
 | `PolyhedralObject.selectElements` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:109` |
 | `PolytopeTransformResult.selectElements` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:117` |
-| `PolyhedralObject.geometryDiagnostics` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:124` |
-| `ElementLineage.sourceElements` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt:59` |
-| `PolytopeTopology.transform` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt:300` |
-| `PolytopeTopology.kis` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Transforms.kt:350` |
+| `Polytope4.summary` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Polytope4.kt:75` |
+| `PolyhedralObject.geometryDiagnostics` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:207` |
+| `CombinatorialOrbits.summary` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt:50` |
+| `PolyhedralObject.combinatorialOrbits` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt:96` |
 
-…and **190 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **195 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

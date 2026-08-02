@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # Uncategorised
 
-11 source file(s), 299 public symbol(s), 57 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+16 source file(s), 510 public symbol(s), 138 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -29,6 +29,239 @@ Immutable element-keyed attributes. Attribute values follow Field's ordinary pro
 | <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">element</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">with</span><span class="p">(</span><span class="n">element</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeAttributes</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">with</span><span class="p">(</span><span class="n">element</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">,</span> <span class="n">attributes</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeAttributes</span></code> |  |
+
+## Canonical.kt { #canonical-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt`
+
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+
+### Top-level functions { #canonical-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">canonicalize</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">CanonicalizeOptions</span> <span class="o">=</span> <span class="nc">CanonicalizeOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CanonicalizeResult</span></code> | Seek the canonical, symmetry-respecting representative of this embedding. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolytopeTransformResult</span><span class="p">.</span><span class="nf">canonicalize</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">CanonicalizeOptions</span> <span class="o">=</span> <span class="nc">CanonicalizeOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeTransformResult</span></code> | The same Conway chain with a canonical embedding. Lineage, history and deployments are kept. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">canonicalConway</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">CanonicalizeOptions</span> <span class="o">=</span> <span class="nc">CanonicalizeOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">attributePolicy</span><span class="p">:</span> <span class="nc">AttributePropagationPolicy</span> <span class="o">=</span> <span class="nc">PreserveCommonAttributes</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeTransformResult</span></code> | Evaluate a Conway prefix expression and canonicalize its realization — the everyday path from notation to a solid you would recognise. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">canonicalDiagnostics</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span></code> | Measure the three canonical conditions plus a dihedral summary, without changing anything. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">faceCentroids</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> | Face centroids, in `topology.elements(2)` order. Handy when inspecting a canonical result. |
+
+### CanonicalDiagnostics { #canonical-kt-canonicaldiagnostics }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CanonicalDiagnostics</span><span class="p">(</span><span class="k">val</span> <span class="n">tangencyRadiusMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">tangencyRadiusMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">tangencyRadiusMean</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="n">&#96;(max - min) / mean&#96;</span><span class="p">:</span> <span class="n">zero</span> <span class="n">exactly</span> <span class="n">when</span> <span class="n">every</span> <span class="n">edge</span> <span class="n">touches</span> <span class="n">one</span> <span class="n">common</span> <span class="n">sphere</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">tangencyRadiusSpread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Distance</span> <span class="n">from</span> <span class="n">the</span> <span class="n">origin</span> <span class="n">to</span> <span class="n">the</span> <span class="n">centroid</span> <span class="n">of</span> <span class="n">the</span> <span class="n">edge</span> <span class="n">tangency</span> <span class="n">points</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">tangencyCentroidOffset</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxFacePlanarityError</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">facePlanarityRmsError</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dihedralAngleMin</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dihedralAngleMax</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">dihedralAngleMean</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="n">&#96;max - min&#96;</span> <span class="n">over</span> <span class="n">edges</span><span class="p">,</span> <span class="k">in</span> <span class="n">radians</span><span class="p">.</span> <span class="nc">Small</span> <span class="n">means</span> <span class="n">one</span> <span class="nc">Archimedean</span><span class="p">-</span><span class="n">looking</span> <span class="n">solid</span><span class="p">,</span> <span class="n">not</span> <span class="n">a</span> <span class="n">lump</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">dihedralAngleSpread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">degenerateFaces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+How close an embedding is to the canonical form, in the canonical form's own terms.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangencyRadiusMin</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangencyRadiusMax</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangencyRadiusMean</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangencyRadiusSpread</span><span class="p">:</span> <span class="nc">Double</span></code> | `(max - min) / mean`: zero exactly when every edge touches one common sphere. |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangencyCentroidOffset</span><span class="p">:</span> <span class="nc">Double</span></code> | Distance from the origin to the centroid of the edge tangency points. |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxFacePlanarityError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">facePlanarityRmsError</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dihedralAngleMin</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dihedralAngleMax</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dihedralAngleMean</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dihedralAngleSpread</span><span class="p">:</span> <span class="nc">Double</span></code> | `max - min` over edges, in radians. Small means one Archimedean-looking solid, not a lump. |
+| <code class="highlight"><span class="k">val</span> <span class="n">degenerateFaces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span></code> |  |
+
+### CanonicalMethod { #canonical-kt-canonicalmethod }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CanonicalMethod</span></code>
+
+Which iteration drives the embedding toward the canonical conditions.
+
+### CanonicalizeOptions { #canonical-kt-canonicalizeoptions }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CanonicalizeOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">method</span><span class="p">:</span> <span class="nc">CanonicalMethod</span> <span class="o">=</span> <span class="nc">CanonicalMethod</span><span class="p">.</span><span class="nc">RECIPROCAL&#95;THEN&#95;LOCAL</span><span class="p">,</span> <span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">600</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2000</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Local</span> <span class="n">steps</span> <span class="n">run</span> <span class="n">after</span> <span class="n">a</span> <span class="o">&#42;</span><span class="n">converged</span><span class="o">&#42;</span> <span class="n">reciprocal</span> <span class="n">phase</span><span class="p">,</span> <span class="n">purely</span> <span class="n">to</span> <span class="n">polish</span> <span class="n">planarity</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">polishIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="k">val</span> <span class="n">stability</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Convergence</span> <span class="n">test</span> <span class="n">on</span> <span class="n">the</span> <span class="n">largest</span> <span class="n">single</span><span class="p">-</span><span class="n">vertex</span> <span class="n">movement</span> <span class="k">in</span> <span class="n">one</span> <span class="n">iteration</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">movementTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">10</span><span class="p">,</span> <span class="k">val</span> <span class="n">planarize</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">tangentify</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="o">&#42;</span> <span class="nc">The</span> <span class="n">canonical</span> <span class="n">form</span> <span class="n">of</span> <span class="n">a</span> <span class="n">polyhedron</span> <span class="n">is</span> <span class="n">determined</span> <span class="k">by</span> <span class="n">its</span> <span class="o">&#42;</span><span class="n">combinatorics</span><span class="o">&#42;</span> <span class="p">—</span> <span class="n">the</span> <span class="n">supplied</span> <span class="o">&#42;</span> <span class="n">coordinates</span> <span class="n">are</span> <span class="n">only</span> <span class="n">a</span> <span class="n">starting</span> <span class="n">point</span><span class="p">.</span> <span class="nc">So</span> <span class="n">when</span> <span class="n">the</span> <span class="n">supplied</span> <span class="n">embedding</span> <span class="n">cannot</span> <span class="n">be</span> <span class="n">canonicalized</span> <span class="o">&#42;</span> <span class="p">(</span><span class="n">the</span> <span class="nc">Conway</span> <span class="n">realization</span> <span class="n">policies</span> <span class="n">happily</span> <span class="n">produce</span> <span class="n">coplanar</span> <span class="n">adjacent</span> <span class="n">faces</span><span class="p">,</span> <span class="n">which</span> <span class="n">have</span> <span class="n">no</span> <span class="o">&#42;</span> <span class="n">distinct</span> <span class="n">dual</span> <span class="n">vertices</span> <span class="n">to</span> <span class="n">reciprocate</span> <span class="n">through</span><span class="p">,</span> <span class="n">and</span> <span class="n">deep</span> <span class="n">&#96;kis&#96;</span> <span class="n">chains</span> <span class="n">produce</span> <span class="n">spikes</span> <span class="n">the</span> <span class="n">local</span> <span class="o">&#42;</span> <span class="n">relaxation</span> <span class="n">walks</span> <span class="n">off</span><span class="p">)</span><span class="p">,</span> <span class="n">restart</span> <span class="n">from</span> <span class="n">coordinates</span> <span class="n">built</span> <span class="n">from</span> <span class="n">the</span> <span class="n">topology</span> <span class="n">alone</span><span class="p">.</span> <span class="o">&#42;</span> <span class="o">&#42;</span> <span class="nc">Set</span> <span class="n">to</span> <span class="kc">null</span> <span class="n">to</span> <span class="n">make</span> <span class="n">a</span> <span class="n">failure</span> <span class="n">stay</span> <span class="n">a</span> <span class="n">failure</span><span class="p">,</span> <span class="n">which</span> <span class="n">is</span> <span class="n">what</span> <span class="n">a</span> <span class="n">test</span> <span class="n">of</span> <span class="n">the</span> <span class="n">iteration</span> <span class="n">itself</span> <span class="o">&#42;</span> <span class="n">wants</span><span class="p">.</span> <span class="p">&#91;</span><span class="nc">CanonicalizeResult</span><span class="p">.</span><span class="n">reseeded</span><span class="p">&#93;</span> <span class="n">always</span> <span class="n">says</span> <span class="n">which</span> <span class="n">embedding</span> <span class="n">the</span> <span class="n">answer</span> <span class="n">came</span> <span class="n">from</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">reseed</span><span class="p">:</span> <span class="nc">RealizationConstruction</span><span class="o">?</span> <span class="o">=</span> <span class="nc">SpectralRealization</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Above</span> <span class="kc">this</span> <span class="n">tangency</span><span class="p">-</span><span class="n">radius</span> <span class="n">spread</span> <span class="n">an</span> <span class="n">attempt</span> <span class="n">counts</span> <span class="n">as</span> <span class="n">failed</span> <span class="n">and</span> <span class="n">triggers</span> <span class="p">&#91;</span><span class="n">reseed</span><span class="p">&#93;</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">acceptableSpread</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Applied</span> <span class="n">once</span> <span class="n">at</span> <span class="n">the</span> <span class="n">end</span><span class="p">;</span> <span class="n">the</span> <span class="n">canonical</span> <span class="n">gauge</span> <span class="n">is</span> <span class="n">what</span> <span class="n">makes</span> <span class="n">the</span> <span class="n">answer</span> <span class="n">a</span> <span class="n">representative</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="o">?</span> <span class="o">=</span> <span class="nc">RigidGauge</span><span class="p">.</span><span class="nc">CANONICAL</span><span class="p">)</span></code>
+
+Configuration for `PolyhedralObject.canonicalize`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">method</span><span class="p">:</span> <span class="nc">CanonicalMethod</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polishIterations</span><span class="p">:</span> <span class="nc">Int</span></code> | Local steps run after a *converged* reciprocal phase, purely to polish planarity. |
+| <code class="highlight"><span class="k">val</span> <span class="n">stability</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">movementTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> | Convergence test on the largest single-vertex movement in one iteration. |
+| <code class="highlight"><span class="k">val</span> <span class="n">planarize</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tangentify</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reseed</span><span class="p">:</span> <span class="nc">RealizationConstruction</span><span class="o">?</span></code> | The canonical form of a polyhedron is determined by its *combinatorics* — the supplied coordinates are only a starting point. So when the supplied embedding cannot be canonicalized (the Conway realization policies happily produce coplanar adjacent faces, which have no distinct dual vertices to reciprocate through, and deep `kis` chains produce spikes the local relaxation walks off), restart from coordinates built from the topology alone. |
+| <code class="highlight"><span class="k">val</span> <span class="n">acceptableSpread</span><span class="p">:</span> <span class="nc">Double</span></code> | Above this tangency-radius spread an attempt counts as failed and triggers `reseed`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="o">?</span></code> | Applied once at the end; the canonical gauge is what makes the answer a representative. |
+
+### CanonicalizeResult { #canonical-kt-canonicalizeresult }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CanonicalizeResult</span><span class="p">(</span><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Largest</span> <span class="n">single</span><span class="p">-</span><span class="n">vertex</span> <span class="n">movement</span> <span class="k">in</span> <span class="n">the</span> <span class="k">final</span> <span class="n">iteration</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">finalMovement</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="k">val</span> <span class="n">relaxationIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">True</span> <span class="n">when</span> <span class="n">the</span> <span class="n">supplied</span> <span class="n">embedding</span> <span class="n">failed</span> <span class="n">and</span> <span class="n">the</span> <span class="n">run</span> <span class="n">restarted</span> <span class="n">from</span> <span class="n">the</span> <span class="n">topology</span> <span class="n">alone</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">reseeded</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>
+
+The outcome of a canonicalization run, including the honest before/after evidence.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalDiagnostics</span><span class="p">:</span> <span class="nc">CanonicalDiagnostics</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalMovement</span><span class="p">:</span> <span class="nc">Double</span></code> | Largest single-vertex movement in the final iteration. |
+| <code class="highlight"><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reciprocalIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">relaxationIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reseeded</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when the supplied embedding failed and the run restarted from the topology alone. |
+
+## Constraints.kt { #constraints-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/polytope/Constraints.kt`
+
+### Top-level functions { #constraints-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RealizationConstraint</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">report</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span> <span class="o">=</span> <span class="n">problem</span><span class="p">.</span><span class="n">initialCoordinates</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstraintResidualReport</span><span class="p">&gt;</span></code> | Evaluate every family at `x` and report its *unweighted* geometric error, so a reader sees the residual in the units of the thing being constrained rather than in solver units. |
+
+### RealizationProblem { #constraints-kt-realizationproblem }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">RealizationProblem</span> <span class="k">private</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">edgeEndpoints</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">faceCycles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">IntArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">internal</span> <span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>
+
+The topology-derived facts every realization constraint needs, computed once per solve.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialCoordinates</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | A defensive copy of the embedding the problem was built from. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialMeanEdgeLength</span><span class="p">:</span> <span class="nc">Double</span> <span class="k">by</span> <span class="n">lazy</span></code> | Mean edge length of the initial embedding; the natural default for an unscaled target. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialMeanVertexRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="k">by</span> <span class="n">lazy</span></code> | Mean distance from the initial vertex centroid to the initial vertices. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialMeanTangencyRadius</span><span class="p">:</span> <span class="nc">Double</span> <span class="k">by</span> <span class="n">lazy</span></code> | Mean distance from the origin to each initial edge's nearest point (the midsphere radius). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">initialCentroid</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> | The initial vertex centroid, as a fresh three-element array. |
+
+### RealizationConstraint { #constraints-kt-realizationconstraint }
+
+<code class="highlight"><span class="k">interface</span> <span class="nc">RealizationConstraint</span></code>
+
+One named residual family.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> | Stable, human-readable family name. Used by [`ConstraintResidualReport`](uncategorised.md#constraints-kt-constraintresidualreport). |
+| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> | Residual multiplier. Zero contributes zero residuals; it does not change `residualCount`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code> | How many residuals this family contributes for `problem`. Independent of the coordinates. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> | Write exactly `residualCount` weighted residuals into `into` starting at `offset`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">RealizationConstraint</span></code> | The same family at a different weight; used to report unweighted geometric error. |
+
+### EdgeLengthConstraint { #constraints-kt-edgelengthconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EdgeLengthConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Every edge the same length. `target` defaults to the initial embedding's mean edge length.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### FacePlanarityConstraint { #constraints-kt-faceplanarityconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FacePlanarityConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Every face corner on that face's own best-fit plane: one residual per face corner.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### CentroidConstraint { #constraints-kt-centroidconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CentroidConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Pin the vertex centroid. `target` defaults to the initial centroid, which holds the object still rather than moving it; pass `doubleArrayOf(0.0, 0.0, 0.0)` to also recentre it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### CommonRadiusConstraint { #constraints-kt-commonradiusconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CommonRadiusConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Every vertex the same distance from the current vertex centroid — a circumsphere.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### ProximityConstraint { #constraints-kt-proximityconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ProximityConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">3</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Stay near the embedding the problem started from. A small weight is a regulariser that picks one representative out of the solution's rigid-motion null space; a large weight is a repair.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### EdgeTangencyConstraint { #constraints-kt-edgetangencyconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EdgeTangencyConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Every edge tangent to one sphere about the origin — the *midsphere* condition of the canonical form. The residual is the distance from the origin to the edge line's nearest point, minus `radius`; `null` uses the initial embedding's mean tangency radius, so the family constrains the spread rather than the scale.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### TangencyCentroidConstraint { #constraints-kt-tangencycentroidconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TangencyCentroidConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+The centroid of every edge's tangency point at the origin: the canonical form's centring.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### ConstraintResidualReport { #constraints-kt-constraintresidualreport }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ConstraintResidualReport</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rms</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+Unweighted magnitudes of one constraint family at one embedding.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">count</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rms</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 
 ## Conway.kt { #conway-kt }
 
@@ -94,6 +327,8 @@ Parsed standard prefix expression. `operators` are stored in execution order, se
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">faceNormal</span><span class="p">(</span><span class="n">face</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Unit normal selected by the face's explicit winding. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">triangulate</span><span class="p">(</span><span class="n">triangulator</span><span class="p">:</span> <span class="nc">FaceTriangulator</span> <span class="o">=</span> <span class="nc">EarcutFaceTriangulator</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriangulatedGeometry</span></code> | Triangulate every ordered face and produce a flat-normal [`TriMesh`](graphics.md#mesh-kt-trimesh) with provenance. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">toTriMesh</span><span class="p">(</span><span class="n">triangulator</span><span class="p">:</span> <span class="nc">FaceTriangulator</span> <span class="o">=</span> <span class="nc">EarcutFaceTriangulator</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriMesh</span></code> | Convenience when only Field's renderable mesh is needed and provenance can be discarded. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Polytope4</span><span class="p">.</span><span class="nf">toEdgeFLines</span><span class="p">(</span><span class="n">projection</span><span class="p">:</span> <span class="nc">Projection4</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">Element</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="n">&#95;</span><span class="p">,</span> <span class="n">&#95;</span> <span class="o">-&gt;</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | One open `FLine` per rank-1 edge of a [`Polytope4`](uncategorised.md#polytope4-kt-polytope4), under a viewing `projection`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Polytope4</span><span class="p">.</span><span class="nf">toCellEdgeFLines</span><span class="p">(</span><span class="n">cell</span><span class="p">:</span> <span class="nc">ElementId</span><span class="p">,</span> <span class="n">projection</span><span class="p">:</span> <span class="nc">Projection4</span><span class="p">,</span> <span class="n">configure</span><span class="p">:</span> <span class="p">(</span><span class="n">edge</span><span class="p">:</span> <span class="nc">Element</span><span class="p">,</span> <span class="n">line</span><span class="p">:</span> <span class="nc">FLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span> <span class="n">&#95;</span><span class="p">,</span> <span class="n">&#95;</span> <span class="o">-&gt;</span> <span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span></code> | The edges of one cell of a [`Polytope4`](uncategorised.md#polytope4-kt-polytope4), projected — the way to make a cell readable inside the projected whole. `cell` must be a rank-3 element. |
 
 ### Top-level values { #fieldadapters-kt-values }
 
@@ -101,6 +336,7 @@ Parsed standard prefix expression. `operators` are stored in execution order, se
 | --- | --- |
 | <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">POLYTOPE&#95;FACE&#95;ID&#95;PROPERTY</span></code> |  |
 | <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">POLYTOPE&#95;FACE&#95;RANK&#95;PROPERTY</span></code> |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">POLYTOPE&#95;CELL&#95;ID&#95;PROPERTY</span></code> |  |
 
 ### DegenerateFaceGeometryException { #fieldadapters-kt-degeneratefacegeometryexception }
 
@@ -235,6 +471,114 @@ Everything a selector or parameter field may inspect without coupling topology t
 | <code class="highlight"><span class="k">fun</span> <span class="nf">attribute</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">default</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">ElementDoubleParameter</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">selected</span><span class="p">(</span><span class="n">selector</span><span class="p">:</span> <span class="nc">ElementSelector</span><span class="p">,</span> <span class="n">selected</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">otherwise</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">ElementDoubleParameter</span></code> |  |
 
+## Polytope4.kt { #polytope4-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/polytope/Polytope4.kt`
+
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+
+### Top-level functions { #polytope4-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Polytope4</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4Summary</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fiveCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | The regular 5-cell (4-simplex): 5 vertices, 10 edges, 10 triangles, 5 tetrahedral cells. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">tesseract</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | The tesseract (8-cell): 16 vertices, 32 edges, 24 squares, 8 cubic cells. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">sixteenCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | The 16-cell (4-orthoplex): 8 vertices, 24 edges, 32 triangles, 16 tetrahedral cells. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">twentyFourCell</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | The 24-cell: 24 vertices, 96 edges, 96 triangles, 24 octahedral cells. It is self-dual and has no three-dimensional analogue, which makes it the honest test that the core is rank-general and not a polyhedron library wearing a hat. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">convexPolytope4</span><span class="p">(</span><span class="n">coordinates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">facetNormals</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">9</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | Build a rank-4 incidence topology from vertex coordinates and outward facet normals. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Polytope4</span><span class="p">.</span><span class="nf">project</span><span class="p">(</span><span class="n">projection</span><span class="p">:</span> <span class="nc">Projection4</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> | Project every vertex, in `topology.elements(0)` order. |
+
+### Realization4 { #polytope4-kt-realization4 }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">Realization4</span><span class="p">(</span><span class="n">vertexCoordinates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+Immutable ownership boundary around four-dimensional vertex coordinates.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexCoordinates</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">DoubleArray</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+
+### Polytope4 { #polytope4-kt-polytope4 }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Polytope4</span><span class="p">(</span><span class="k">val</span> <span class="n">topology</span><span class="p">:</span> <span class="nc">PolytopeTopology</span><span class="p">,</span> <span class="k">val</span> <span class="n">realization</span><span class="p">:</span> <span class="nc">Realization4</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
+
+A rank-4 abstract polytope with an optional four-dimensional realization.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">topology</span><span class="p">:</span> <span class="nc">PolytopeTopology</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">realization</span><span class="p">:</span> <span class="nc">Realization4</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Element</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Element</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygons</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Element</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Element</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">dual</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Polytope4</span></code> | The abstract dual. Vertices become cells and polygons become edges. |
+
+### Polytope4Summary { #polytope4-kt-polytope4summary }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Polytope4Summary</span><span class="p">(</span><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygons</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygonDegrees</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">cellPolygonCounts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="n">&#96;V - E + F - C&#96;</span><span class="p">,</span> <span class="n">which</span> <span class="n">is</span> <span class="n">zero</span> <span class="n">for</span> <span class="n">every</span> <span class="n">convex</span> <span class="mi">4</span><span class="p">-</span><span class="n">polytope</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">eulerCharacteristic</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">realized</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
+
+Compact inspection value; the counts and the Euler relation are what matter at a prompt.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertices</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygons</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygonDegrees</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cellPolygonCounts</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">eulerCharacteristic</span><span class="p">:</span> <span class="nc">Int</span></code> | `V - E + F - C`, which is zero for every convex 4-polytope. |
+| <code class="highlight"><span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">realized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### Projection4 { #polytope4-kt-projection4 }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">Projection4</span></code>
+
+How a four-dimensional point becomes a three-dimensional one for viewing.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">project</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+
+### OrthographicProjection4 { #polytope4-kt-orthographicprojection4 }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">OrthographicProjection4</span><span class="p">(</span><span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Projection4</span></code>
+
+Drop one axis. Honest, cheap, and usually unreadable — every cell folds onto every other.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">project</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+
+### PerspectiveProjection4 { #polytope4-kt-perspectiveprojection4 }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PerspectiveProjection4</span><span class="p">(</span><span class="k">val</span> <span class="n">eye</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">axis</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Projection4</span></code>
+
+Perspective from a viewpoint on one axis — the projection that makes a tesseract look like a cube inside a cube and a 24-cell readable at all. `eye` must be outside the object on that axis; the nearer it is, the more extreme the nesting.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">project</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+
+### RotatedProjection4 { #polytope4-kt-rotatedprojection4 }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RotatedProjection4</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">angle</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">then</span><span class="p">:</span> <span class="nc">Projection4</span> <span class="o">=</span> <span class="nc">PerspectiveProjection4</span><span class="p">(</span><span class="p">)</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Projection4</span></code>
+
+Rotate in the `(a, b)` coordinate plane, then project. Rotations of 4-space are the reason a projected 4-polytope reads as one object rather than a tangle: the inner cell turns itself inside out as the angle advances.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">angle</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">then</span><span class="p">:</span> <span class="nc">Projection4</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">project</span><span class="p">(</span><span class="n">point</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+
 ## PolytopeVisualizers.kt { #polytopevisualizers-kt }
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/PolytopeVisualizers.kt`
@@ -255,8 +599,22 @@ Everything a selector or parameter field may inspect without coupling topology t
 
 | Declaration | Summary |
 | --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">relax</span><span class="p">(</span><span class="n">plan</span><span class="p">:</span> <span class="nc">RelaxationPlan</span><span class="p">)</span><span class="p">:</span> <span class="nc">RealizationSolveResult</span></code> | Improve an existing embedding under a declared set of constraints. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">solveRealization</span><span class="p">(</span><span class="n">options</span><span class="p">:</span> <span class="nc">RealizationSolverOptions</span> <span class="o">=</span> <span class="nc">RealizationSolverOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">RealizationSolveResult</span></code> | Improve a supplied embedding without changing its authoritative topology or attributes. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">geometryDiagnostics</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RealizationDiagnostics</span></code> |  |
+
+### RelaxationPlan { #realizationsolver-kt-relaxationplan }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RelaxationPlan</span><span class="p">(</span><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RealizationConstraint</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">leastSquares</span><span class="p">:</span> <span class="nc">LeastSquaresOptions</span> <span class="o">=</span> <span class="nc">LeastSquaresOptions</span><span class="p">(</span><span class="n">maxIterations</span> <span class="o">=</span> <span class="mi">96</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
+
+A declared set of realization constraints plus how to solve and how to normalize.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">RealizationConstraint</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">leastSquares</span><span class="p">:</span> <span class="nc">LeastSquaresOptions</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">RelaxationPlan</span></code> | The same plan with every family of `name` reweighted; unknown names are a no-op. |
 
 ### RealizationSolverOptions { #realizationsolver-kt-realizationsolveroptions }
 
@@ -273,6 +631,7 @@ Weights are residual multipliers; set a term to zero to disable that constraint 
 | <code class="highlight"><span class="k">val</span> <span class="n">referenceWeight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetEdgeLength</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">leastSquares</span><span class="p">:</span> <span class="nc">LeastSquaresOptions</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">toPlan</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RelaxationPlan</span></code> | The same request expressed in the composable vocabulary. |
 
 ### RealizationDiagnostics { #realizationsolver-kt-realizationdiagnostics }
 
@@ -289,7 +648,7 @@ Weights are residual multipliers; set a term to zero to disable that constraint 
 
 ### RealizationSolveResult { #realizationsolver-kt-realizationsolveresult }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RealizationSolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialDiagnostics</span><span class="p">:</span> <span class="nc">RealizationDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalDiagnostics</span><span class="p">:</span> <span class="nc">RealizationDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rmsResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RealizationSolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialDiagnostics</span><span class="p">:</span> <span class="nc">RealizationDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalDiagnostics</span><span class="p">:</span> <span class="nc">RealizationDiagnostics</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rmsResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Unweighted</span> <span class="n">per</span><span class="p">-</span><span class="n">family</span> <span class="n">error</span> <span class="n">before</span> <span class="n">the</span> <span class="n">solve</span><span class="p">,</span> <span class="k">in</span> <span class="n">the</span> <span class="n">units</span> <span class="n">of</span> <span class="n">each</span> <span class="n">constrained</span> <span class="n">quantity</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">initialConstraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstraintResidualReport</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">The</span> <span class="n">same</span> <span class="n">families</span> <span class="n">after</span> <span class="n">the</span> <span class="n">solve</span><span class="p">;</span> <span class="n">the</span> <span class="n">pair</span> <span class="n">says</span> <span class="n">which</span> <span class="n">constraint</span> <span class="n">actually</span> <span class="n">gave</span> <span class="n">way</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">finalConstraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstraintResidualReport</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
@@ -300,6 +659,73 @@ Weights are residual multipliers; set a term to zero to disable that constraint 
 | <code class="highlight"><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">rmsResidual</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialConstraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstraintResidualReport</span><span class="p">&gt;</span></code> | Unweighted per-family error before the solve, in the units of each constrained quantity. |
+| <code class="highlight"><span class="k">val</span> <span class="n">finalConstraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ConstraintResidualReport</span><span class="p">&gt;</span></code> | The same families after the solve; the pair says which constraint actually gave way. |
+
+## Realize.kt { #realize-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt`
+
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+
+### Top-level functions { #realize-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolytopeTopology</span><span class="p">.</span><span class="nf">realize</span><span class="p">(</span><span class="n">policy</span><span class="p">:</span> <span class="nc">RealizationConstruction</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolyhedralObject</span></code> | Give an abstract topology coordinates. The result carries no attributes. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">realize</span><span class="p">(</span><span class="n">policy</span><span class="p">:</span> <span class="nc">RealizationConstruction</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolyhedralObject</span></code> | Replace this object's coordinates with ones constructed from its topology alone, keeping the topology and attributes. Useful after an abstract `PolytopeTopology.dual`, whose combinatorics are exact but whose coordinates either do not exist or came from a centroid heuristic. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">normalize</span><span class="p">(</span><span class="n">gauge</span><span class="p">:</span> <span class="nc">RigidGauge</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="nc">Realization3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolyhedralObject</span></code> | Apply `gauge` to this object's coordinates. `reference` supplies the orientation to align to; when it is null the orientation is left alone, which is still deterministic because the input orientation is. |
+
+### RealizationConstruction { #realize-kt-realizationconstruction }
+
+<code class="highlight"><span class="k">fun</span> <span class="k">interface</span> <span class="nc">RealizationConstruction</span></code>
+
+Construct coordinates for an abstract topology according to a declared policy.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">construct</span><span class="p">(</span><span class="n">topology</span><span class="p">:</span> <span class="nc">PolytopeTopology</span><span class="p">)</span><span class="p">:</span> <span class="nc">Realization3</span></code> |  |
+
+### SpectralRealization { #realize-kt-spectralrealization }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpectralRealization</span><span class="p">(</span><span class="k">val</span> <span class="n">projectToSphere</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">sweeps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstruction</span></code>
+
+Spectral (Laplacian eigenvector) embedding: the classic "draw the graph with its low modes" construction.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">projectToSphere</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">sweeps</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">construct</span><span class="p">(</span><span class="n">topology</span><span class="p">:</span> <span class="nc">PolytopeTopology</span><span class="p">)</span><span class="p">:</span> <span class="nc">Realization3</span></code> |  |
+
+### GaugeCentre { #realize-kt-gaugecentre }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">GaugeCentre</span></code>
+
+Which point of the embedding is moved to the origin.
+
+Constants: `NONE`, `VERTEX_CENTROID`.
+
+### GaugeScale { #realize-kt-gaugescale }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">GaugeScale</span></code>
+
+Which measured length is driven to the gauge's scale target.
+
+Constants: `NONE`, `MEAN_EDGE_LENGTH`, `MEAN_VERTEX_RADIUS`, `MAX_VERTEX_RADIUS`, `MEAN_EDGE_TANGENCY_RADIUS`.
+
+### RigidGauge { #realize-kt-rigidgauge }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RigidGauge</span><span class="p">(</span><span class="k">val</span> <span class="n">centre</span><span class="p">:</span> <span class="nc">GaugeCentre</span> <span class="o">=</span> <span class="nc">GaugeCentre</span><span class="p">.</span><span class="nc">VERTEX&#95;CENTROID</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">GaugeScale</span> <span class="o">=</span> <span class="nc">GaugeScale</span><span class="p">.</span><span class="nc">MEAN&#95;EDGE&#95;LENGTH</span><span class="p">,</span> <span class="k">val</span> <span class="n">scaleTarget</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">alignToReference</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>
+
+The explicit normalization that makes a realization a *representative* rather than a member of a seven-dimensional family.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">centre</span><span class="p">:</span> <span class="nc">GaugeCentre</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">GaugeScale</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">scaleTarget</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">alignToReference</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 
 ## Solids.kt { #solids-kt }
 
@@ -355,6 +781,7 @@ Abstract topology plus optional ordinary three-dimensional realization and eleme
 | <code class="highlight"><span class="k">fun</span> <span class="nc">ValidationResult</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeValidationSummary</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">TransformDeployment</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TransformDeploymentSummary</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolytopeTransformResult</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">PolytopeTransformSummary</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">RelaxationPlan</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">RelaxationPlanSummary</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">TriangulatedGeometry</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">TriangulatedGeometrySummary</span></code> |  |
 
 ### PolytopeTopologySummary { #summaries-kt-polytopetopologysummary }
@@ -450,6 +877,19 @@ Provenance-aware summary of a complete transform chain and its output.
 | <code class="highlight"><span class="k">val</span> <span class="n">output</span><span class="p">:</span> <span class="nc">PolyhedralObjectSummary</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">deployments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TransformDeploymentSummary</span><span class="p">&gt;</span></code> |  |
 
+### RelaxationPlanSummary { #summaries-kt-relaxationplansummary }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RelaxationPlanSummary</span><span class="p">(</span><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+
+What a realization run was actually asked to do: named families, weights, and normalization.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">gauge</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
 ### TriangulatedGeometrySummary { #summaries-kt-triangulatedgeometrysummary }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TriangulatedGeometrySummary</span><span class="p">(</span><span class="k">val</span> <span class="n">renderVertices</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">triangles</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourcePolygonFaces</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceVertexElements</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">hasFlatNormals</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
@@ -463,6 +903,81 @@ Rendering-derived counts while retaining the polygon-to-triangle provenance dist
 | <code class="highlight"><span class="k">val</span> <span class="n">sourcePolygonFaces</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">sourceVertexElements</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">hasFlatNormals</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+## Symmetry.kt { #symmetry-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt`
+
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+
+### Top-level functions { #symmetry-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">CombinatorialOrbits</span><span class="p">.</span><span class="nf">summary</span><span class="p">(</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolytopeTopology</span><span class="p">.</span><span class="nf">combinatorialOrbits</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CombinatorialOrbits</span></code> | Refine the elements of ranks 0..2 into combinatorial classes. See [`CombinatorialOrbits`](uncategorised.md#symmetry-kt-combinatorialorbits) for exactly what the classes do and do not promise. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">combinatorialOrbits</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CombinatorialOrbits</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">symmetryOrbitConstraint</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymmetryOrbitConstraint</span></code> | The [`SymmetryOrbitConstraint`](uncategorised.md#symmetry-kt-symmetryorbitconstraint) for this object's own combinatorial classes. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">RelaxationPlan</span><span class="p">.</span><span class="nc">Companion</span><span class="p">.</span><span class="nf">symmetricCanonical</span><span class="p">(</span><span class="n">polyhedron</span><span class="p">:</span> <span class="nc">PolyhedralObject</span><span class="p">,</span> <span class="n">symmetryWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">planarityWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">tangencyWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">tangencyCentroidWeight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">4.0</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">leastSquares</span><span class="p">:</span> <span class="nc">LeastSquaresOptions</span> <span class="o">=</span> <span class="nc">LeastSquaresOptions</span><span class="p">(</span><span class="n">maxIterations</span> <span class="o">=</span> <span class="mi">128</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">RelaxationPlan</span></code> | The canonical conditions *plus* combinatorial-orbit equality, for when the answer must look symmetric and not merely satisfy the midsphere conditions. |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">symmetryDeviation</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">SymmetryDeviation</span></code> | Largest within-class relative spread of each measured quantity. |
+
+### CombinatorialOrbits { #symmetry-kt-combinatorialorbits }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CombinatorialOrbits</span><span class="p">(</span><span class="k">val</span> <span class="n">vertexClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+A partition of the elements into classes that combinatorially indistinguishable elements share.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceClasses</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ElementId</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexClassCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeClassCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceClassCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">isFullyTransitive</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when every rank has exactly one class: the hallmark of a fully transitive solid. |
+
+### CombinatorialOrbitsSummary { #symmetry-kt-combinatorialorbitssummary }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CombinatorialOrbitsSummary</span><span class="p">(</span><span class="k">val</span> <span class="n">vertexClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">fullyTransitive</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>
+
+Compact inspection value; the class *sizes* are the interesting fact at a live-coding prompt.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceClassSizes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fullyTransitive</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### SymmetryOrbitConstraint { #symmetry-kt-symmetryorbitconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SymmetryOrbitConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">vertexClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+Require combinatorially equivalent elements to be geometrically equal: same edge length within an edge class, same distance from the centroid within a vertex class, same face-plane distance from the centroid within a face class.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceClass</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### SymmetryDeviation { #symmetry-kt-symmetrydeviation }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SymmetryDeviation</span><span class="p">(</span><span class="k">val</span> <span class="n">vertexRadiusSpread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">edgeLengthSpread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceDistanceSpread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">orbits</span><span class="p">:</span> <span class="nc">CombinatorialOrbitsSummary</span><span class="p">)</span></code>
+
+How equal the geometry actually is inside each combinatorial class. Zero spread everywhere is the numeric statement of "this embedding respects the topology's symmetry".
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">vertexRadiusSpread</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">edgeLengthSpread</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceDistanceSpread</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">orbits</span><span class="p">:</span> <span class="nc">CombinatorialOrbitsSummary</span></code> |  |
 
 ## Topology.kt { #topology-kt }
 
