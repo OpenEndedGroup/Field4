@@ -32,8 +32,6 @@ KOTLIN_KEYWORDS = {
     "setparam", "value", "where", "it",
 }
 
-CLASSPATH_FILE = "/tmp/fieldcp.txt"
-
 # Fixtures where AA is expected to under-recall vs K1 because the receiver is a *dynamic* GPU-DSL type
 # that only resolves inside the live box's runtime context (the `defaultBuffer{}` / ComputeMesh receiver
 # chain). K1 gets them for free by running in-process in the box; the headless AA session has no box
@@ -119,6 +117,8 @@ def load(path: Path) -> dict[str, dict]:
 def regenerate(workspace: Path) -> None:
     """Recompile, regen classpath, and rerun both dumpers."""
     env = os.environ.copy()
+    classpath_file = workspace / "build/completion-corpus/fieldcp.txt"
+    classpath_file.parent.mkdir(parents=True, exist_ok=True)
     print("[run] compileKotlinJvm …", flush=True)
     subprocess.run(["./gradlew", "compileKotlinJvm", "--console=plain"], cwd=workspace, check=True)
     print("[run] regenerating field classpath …", flush=True)
@@ -127,16 +127,16 @@ def regenerate(workspace: Path) -> None:
         cwd=workspace, check=True, capture_output=True, text=True,
     )
     lines = [ln[len("CP\t"):] for ln in cp.stdout.splitlines() if ln.startswith("CP\t")]
-    Path(CLASSPATH_FILE).write_text("\n".join(lines) + "\n")
-    print(f"[run] classpath: {len(lines)} entries → {CLASSPATH_FILE}", flush=True)
+    classpath_file.write_text("\n".join(lines) + "\n")
+    print(f"[run] classpath: {len(lines)} entries → {classpath_file}", flush=True)
     print("[run] AA dump (sidecar spike) …", flush=True)
     subprocess.run(
         ["./gradlew", "-p", "tools/code-use-semantic-sidecar", "runSpike", "--console=plain",
-         "-PspikeArgs=--workspace {ws} --corpus tools/completion-corpus/scraped.tsv,tools/completion-corpus/name-fixtures.tsv --classpath-file {cp} --json-out build/completion-corpus/aa-candidates.json".format(ws=workspace, cp=CLASSPATH_FILE)],
+         "-PspikeArgs=--workspace {ws} --corpus tools/completion-corpus/scraped.tsv,tools/completion-corpus/name-fixtures.tsv --classpath-file {cp} --json-out build/completion-corpus/aa-candidates.json".format(ws=workspace, cp=classpath_file)],
         cwd=workspace, check=True,
     )
     print("[run] K1 dump (jvm-main probe) …", flush=True)
-    subprocess.run(["python3", "tools/run_field_tests.py", "--refresh-catalog", "--id", "kotlin.completion-diffdump.probe"],
+    subprocess.run([sys.executable, "tools/run_field_tests.py", "--refresh-catalog", "--id", "kotlin.completion-diffdump.probe"],
                    cwd=workspace, check=True, env=env)
 
 

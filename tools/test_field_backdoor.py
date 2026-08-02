@@ -54,6 +54,40 @@ class BoxReferenceTests(unittest.TestCase):
         self.assertNotIn("box-from-an-earlier-process", self.client.boxes)
 
 
+class MacroAliasTests(unittest.TestCase):
+    def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
+        macro = parse_command("macro run demo --scope project --project-name example")
+        transcript = parse_command("transcript run demo --scope project --project-name example")
+
+        self.assertEqual(macro.macro_command, transcript.macro_command)
+        self.assertEqual(macro.name, transcript.name)
+        self.assertEqual(macro.scope, transcript.scope)
+        self.assertEqual(macro.project_name, transcript.project_name)
+
+    def test_successful_macro_run_refreshes_box_index_before_returning(self) -> None:
+        client = FieldBackdoor(port=1, workspace=None, default_timeout=0.01, logger=_Logger())
+        calls: list[str] = []
+
+        async def reply(*_args, **_kwargs):
+            calls.append("reply")
+            return {"payload": {"success": True, "applied": 1}}
+
+        async def refresh(*_args, **_kwargs):
+            calls.append("snapshot")
+            client.boxes["created-by-macro"] = {"uid": "created-by-macro"}
+            return {"boxes": list(client.boxes.values())}
+
+        client.call_for_single_reply = reply  # type: ignore[method-assign]
+        client.refresh_snapshot = refresh  # type: ignore[method-assign]
+        result = asyncio.run(
+            client.macro_transcript_command(command="run", name="demo", timeout=0.01)
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(calls, ["reply", "snapshot"])
+        self.assertIn("created-by-macro", client.boxes)
+
+
 def _emitted_command(args: list[str]) -> str:
     """The `--command` string run_field_tests.py hands to field_backdoor.py for a jvm-main test."""
     cmd, _ = build_backdoor_command(

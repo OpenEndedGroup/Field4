@@ -5,13 +5,76 @@ from __future__ import annotations
 import json
 import os
 import signal
+import ssl
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
+import urllib.request
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Callable, Iterator, Sequence
+
+
+def field_instance_info(
+    port: int,
+    ssl_context: ssl.SSLContext,
+    *,
+    timeout: float = 1.5,
+) -> dict[str, object] | None:
+    """Return the identity of the Field listening on ``port``, if it can prove one.
+
+    A plain ``/health`` response only proves that *some* Field is alive. Reusing it can execute
+    another worktree's bytecode and turn a smoke test into a false green, so supported verification
+    entrypoints require the checkout-aware identity endpoint before attaching.
+    """
+    request = urllib.request.Request(f"https://localhost:{port}/api/instance-info")
+    try:
+        with urllib.request.urlopen(request, context=ssl_context, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError, urllib.error.URLError, urllib.error.HTTPError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def field_instance_problem(info: dict[str, object] | None, repo_root: Path) -> str | None:
+    """Explain why ``info`` is unsafe to reuse from ``repo_root``; ``None`` means safe.
+
+    Identity prevents cross-worktree reuse. The server start timestamp also catches the subtler
+    same-checkout case: source edited after Field booted while the old JVM keeps answering health.
+    """
+    if info is None:
+        return "the server does not expose checkout identity (it may be an older or foreign Field)"
+    actual_root = info.get("repoRoot")
+    try:
+        expected_root = str(repo_root.resolve())
+        resolved_actual = str(Path(str(actual_root)).resolve())
+    except (OSError, TypeError, ValueError):
+        return f"the server reported an invalid checkout root: {actual_root!r}"
+    if resolved_actual != expected_root:
+        return f"the server belongs to {resolved_actual}, not {expected_root}"
+
+    started_raw = info.get("startedAtEpochMs")
+    if not isinstance(started_raw, (int, float)):
+        return "the server did not report a valid start time"
+    started_ns = int(started_raw * 1_000_000)
+    watched = [repo_root / "src"]
+    watched.extend(repo_root / name for name in ("build.gradle.kts", "settings.gradle.kts", "gradle.properties"))
+    newest: Path | None = None
+    newest_mtime = started_ns
+    for path in watched:
+        candidates = path.rglob("*") if path.is_dir() else (path,)
+        for candidate in candidates:
+            try:
+                if candidate.is_file() and candidate.stat().st_mtime_ns > newest_mtime:
+                    newest = candidate
+                    newest_mtime = candidate.stat().st_mtime_ns
+            except OSError:
+                continue
+    if newest is not None:
+        return f"{newest.relative_to(repo_root)} changed after the server started"
+    return None
 
 
 def elapsed_text(seconds: float) -> str:

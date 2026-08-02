@@ -96,27 +96,16 @@ builds can corrupt shared Kotlin class output and incremental-compiler backups.
 ```
 
 - Use the same wrapper form for other Gradle tasks, replacing `compileKotlinJvm` with the task name, for example `.\gradlew runJvm`.
-- Do not preemptively run `killall -9 java` before Gradle interactions. With the Gradle 9 wrapper, try the requested Gradle task normally first and reserve Java cleanup for confirmed hangs, stale Field processes, or lock failures.
+- Never use machine-wide `killall` as Gradle cleanup; it destroys unrelated IDE, Field, and sibling-worktree processes.
 - On Unix-like systems, use `./gradlew compileKotlinJvm` unless a task-specific note says otherwise.
-- Known local failure mode: if `./gradlew compileKotlinJvm` prints exactly this startup sequence and then sits at high CPU with no further output, treat it as a Gradle daemon hang, not a slow compile:
-
-```text
-Starting a Gradle Daemon, 10 busy Daemons could not be reused, use --status for details
-
-> Configure project :
-Mac OS X, aarch64
-Mac OS X
-```
-
-  In this state, do not keep waiting, do not retry `./gradlew --status`, and do not start more Gradle tasks. Run `killall -9 java`, then report the compile as unverified. Prefer a targeted verification path such as `uv run --project . --group backdoor python tools/field_backdoor.py --json --port <custom-port> --command 'run-jvm-main ...'` when it fits the change.
-- If Gradle appears hung or reports a lock error, run `killall -9 java` before retrying Gradle.
+- A failed or stalled Gradle invocation is a failed verification. Record its first concrete error and inspect the owning daemon/lock before changing process state. `./gradlew --stop` is the checkout-aware daemon cleanup; only run another verification after a specific repair or environment change.
 - Use an isolated `GRADLE_USER_HOME` / `--project-cache-dir` only as a fallback when there is a confirmed cache-lock conflict that cannot be cleared without disrupting the user's running work. The isolated path is expected to be much slower because it loses the warm project caches.
 
 ## Field Backdoor (Preferred for Agents)
 
 - When you need to verify Field behavior by actually running code, prefer `uv run --project . --group backdoor python tools/field_backdoor.py` over driving the browser manually.
 - When you need screenshots or DOM inspection, use `--with-playwright` or `tools/run_ui_regressions.py` through `uv run --project . --group backdoor`. Do not skip this because the current shell's Python environment lacks the `playwright` package; browser automation is provided by Field's JVM Playwright dependency and controlled through the backdoor.
-- When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command (or `tools/run_field_tests.py` for `FIELD_TEST` entrypoints) over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots. Both paths apply the required JVM args (`requiredAgentJvmArgs()`: `--add-opens=java.base/java.net=ALL-UNNAMED`, `-XstartOnFirstThread`, `--add-modules jdk.incubator.vector`, `-Dorg.lwjgl.system.stackSize`) for you — a hand-rolled `java -cp … afield.AgentJvmMainLauncher …` line will silently miss one and fail confusingly (e.g. `module java.base does not "opens java.net"`).
+- When the thing you want to verify is a JVM entrypoint or smoke-style example, prefer the backdoor's `run-jvm-main` command (or `tools/run_field_tests.py` for `FIELD_TEST` entrypoints) over ad hoc `gradlew` `JavaExec`, temporary init scripts, or custom classpath launchers. Use transient scratch boxes for snippet-level checks and screenshots. Both paths apply the required JVM args (`requiredAgentJvmArgs()`: module opens, native-access/Unsafe declarations, first-thread handling, vector module, and LWJGL stack size) for you — a hand-rolled `java -cp … afield.AgentJvmMainLauncher …` line will silently miss one and fail confusingly (e.g. `module java.base does not "opens java.net"`).
 - The backdoor attaches to an existing Field at `https://localhost:9092` or starts Field itself using the Gradle wrapper command above, opens a scratch document by default, and lets you create boxes, set code/shaders, run or launch them, stop them, and capture outputs/errors as JSON.
 - For agent automation, do not rely on the default port. Pass a custom high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field instead of silently attaching to a stale dev server on `9092`.
 - Reuse the same custom port for one verification session, and pick a new custom port when you want a guaranteed fresh Field JVM. A scratch session lasts for one `field_backdoor.py` process, not for the lifetime of the port: put dependent commands in one invocation. A later process on the same port opens a different scratch document and cannot reuse earlier box uids. Use `--document <name>` when state must span invocations. This avoids burning time and tokens debugging old code loaded in some unrelated existing server.
@@ -141,7 +130,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 Recommended agent workflow:
 
 1. Pick a custom high port and start with `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` to see whether it started Field, whether `managedServer` is true, and where the logs are.
-2. If you unexpectedly connect to an existing server or suspect stale code, do not keep retrying on the same default port. Pick a new custom port and start a fresh managed Field there.
+2. If a port is owned by an unexpected, foreign, or source-stale server, stop that verification and choose a dedicated free port. The backdoor now rejects unsafe reuse instead of silently attaching.
 3. For quick execution checks, stay in scratch mode and put the dependent `new-box`, `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output` commands in one `field_backdoor.py` invocation.
 4. For larger snippets, prefer `--file -` with a heredoc or pipe. Use `--file <path>` when the code already lives in a file.
 5. Use `--with-playwright` when you know a session will need DOM inspection, screenshots, or output-area capture. This opens or reuses Field's server-owned Playwright browser immediately after the backdoor attaches to its current session, and again after any later `open ...` command.
@@ -257,11 +246,11 @@ The smoke runner defaults to dedicated port `9477` (not developer port `9092`),
 prints per-test heartbeats, applies an outer process watchdog, and kills the whole
 child process group if a completed backdoor command refuses to exit. Use another
 high `--port` only when you need a separate automation session.
-The smoke runner now **prewarms one persistent Field** on `--port` for the whole run and tears it down once at the end, so tests no longer cold-boot (and self-kill) the JVM per test. Pass `--no-prewarm` to instead reuse an already-running server on `--port`. If a healthy Field is already serving that port, the runner reuses it and leaves it alive.
+The smoke runner **prewarms one persistent Field** on `--port` for the whole run and tears it down once at the end, so tests do not cold-boot the JVM per test. It never reuses a prior run's server: a same-checkout server is recycled for a clean boot, while a foreign or unidentifiable server makes the run fail with an instruction to choose another port. `--no-prewarm` is diagnostic only and gives up that clean-run guarantee.
 
 To iterate on one or a few tests instead of the whole catalog, filter by `--id <catalog-id>` (repeatable; the `id:` from a `FIELD_TEST` block, e.g. `rectsl.language.workout`), `--tag smoke`, or `--runner jvm-main`. This is the correct way to verify a single `jvm-main` smoke — do **not** reach for a raw `java`/`gradlew JavaExec` launcher (see the JVM-args note under *Field Backdoor* above).
 
-Prewarm gotcha: it launches a full Field, whose build includes the JS bundle. A stale Kotlin daemon can throw a transient `:compileDevelopmentExecutableKotlinJs` "Internal compiler error" and fail prewarm even when `./gradlew compileKotlinJvm` succeeds — run `./gradlew --stop` and retry.
+Prewarm launches the full Field build, including the JS bundle. A `:compileDevelopmentExecutableKotlinJs` internal compiler error is a build failure, not a skippable transient; keep its log. If inspection proves the owning Kotlin/Gradle daemon stale, `./gradlew --stop` is the repair, and the next invocation is a new verification after that state change.
 
 Browser UI regression runner:
 
@@ -283,12 +272,12 @@ Current testing layers and commands are summarized in `dev_docs/testing/TESTING_
 ## Autonomous Docs/Test Loop
 
 - Agents are expected to make code changes, API changes, documentation fixes, and test-runner fixes autonomously when the docs/test pipeline exposes a real problem.
-- The default repair loop is: run `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog`, run `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean`, inspect the first concrete failing example, fix it in code or docs, and rerun until clean.
+- Run the smallest relevant gate once, inspect its first concrete failure, and make a specific repair. Re-run the affected gate after the change, then finish with one full verification pass. An unchanged retry is diagnostic comparison only and never evidence that the system is green.
 - Use `FIELD_DOCS_RUNNER_MODE=incremental` for fast local iteration against an already-clean cache.
 - Use `FIELD_DOCS_RUNNER_MODE=strict` when runner logic changes should invalidate cached captures through `public/docs_hooks.py` digest changes.
 - Use `FIELD_DOCS_RUNNER_MODE=always` when you need every screenshot/video to be regenerated regardless of cache state.
 - Use `FIELD_DOCS_RUNNER_MODE=never` when you want the docs build to skip all capture execution entirely and just use whatever screenshot/video files already exist on disk.
-- For graphics-context captures, the docs runner now takes ownership of `FIELD_DOCS_RUNNER_PORT`: if a stale Field is already serving that port, the runner asks it to shut down and starts a fresh runner-owned Field before launching the renderer transcript. Use a dedicated high port for docs runs.
+- The docs runner reuses a server only when its identity proves the same checkout and no runtime source changed after it started. A foreign, old, or stale server fails closed; use a dedicated high `FIELD_DOCS_RUNNER_PORT` rather than taking over another run's process.
 - When docs screenshots show the red Field error marker or empty/incorrect output, treat that as a real failure: capture the compiler/runtime error from the backdoor/test runner, fix the snippet or runtime, and rerun the docs page.
 - If a backdoor or smoke-suite run times out and later probes stop reaching `is-running`, restart the managed Field JVM before trusting subsequent failures; a wedged snippet can poison later manual debugging runs.
 - **A capture exercises the real code, or it does not exist.** Every screenshot/video/example in the docs pipeline is a test that drives the real Field path and embeds the real result. **Never fake, synthesize, hardcode, mock, or hand-edit a capture** to make it "look right" — no CPU stand-in for a GPU render, no hand-written string for a value the code should compute, no scripted placeholder for a live panel. If the real capture won't come out, the only acceptable moves are: (1) fix the code, (2) fix the capture system (hook/`drive` script/framing/timing), or (3) omit the capture and say why. An honest gap beats a convincing fake — a faked capture stops testing anything, rots silently, and misrepresents the product. If a completion/panel can't be captured reliably, that is a real defect in the feature or the capture system; fix one or both. (Want a one-off picture for yourself? Take a screenshot by hand — it never enters the pipeline.) See `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md` → "Principle".

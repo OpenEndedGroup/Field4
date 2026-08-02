@@ -20,7 +20,13 @@ from PIL import Image, ImageChops, ImageStat
 
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
-from verification_runtime import run_with_watchdog, terminate_process_tree, verification_lock
+from verification_runtime import (
+    field_instance_info,
+    field_instance_problem,
+    run_with_watchdog,
+    terminate_process_tree,
+    verification_lock,
+)
 
 
 TOOLS_ROOT = Path(__file__).resolve().parent
@@ -320,47 +326,29 @@ def reap_stale_field_jvms(port: int, *, grace: float = 8.0, dry_run: bool = Fals
     ``recycle_field`` only ever retires the process *listening on our port*. JVMs
     orphaned by a crashed or killed earlier run keep running without holding the
     port, and a pile of them starves the machine: runs then fail with dropped
-    backdoor websockets and 10x inflated durations rather than assertion failures,
-    which reads as a flaky suite. So sweep them first.
+    backdoor websockets and inflated durations rather than assertion failures.
+    Sweep only the current checkout before starting the gate.
 
     Narrow in two independent directions:
 
     * only JVMs whose command line carries one of [FIELD_JVM_MARKERS]. Gradle and Kotlin
       compile daemons are left alone: they are frequently the larger memory consumers, but
       they are also reusable and killing them makes every run pay a cold start. Use
-      ``./gradlew --stop`` to retire those, or set ``AFIELD_TEST_KILL_ALL_JAVA=1`` for the
-      blunt hammer.
+      ``./gradlew --stop`` only after diagnosing a Gradle-daemon problem.
     * only JVMs [_command_belongs_to] this checkout. The marker test alone matches every
       Field JVM on the machine, so parallel agents working in sibling git worktrees used to
       SIGKILL each other's tests -- the victim's run then died mid-suite, or worse finished
       against a half-dead server and reported a green. ``--no-reap`` never helped, because it
       protects everyone else from you and nobody from them.
 
-      This is not a story about the past tense. While *verifying* this very change, a
-      19-test run lost its server after 11 passes: the prewarm log ends
-      ``Process 'command ... java' finished with non-zero exit value 130 (this value may
-      indicate that the process was terminated with the SIGINT signal)`` after 45 s, and the
-      next two tests failed with ``ConnectionClosedError ... [code=1006]`` and "backdoor
-      returned no JSON result". Both passed on retry. Nothing inside a run SIGINTs its own
-      prewarm server mid-suite; a sibling checkout's unscoped preflight sweep does.
+      The regression evidence was an in-flight server exiting with SIGINT while a sibling
+      checkout started its unscoped preflight sweep. Checkout attribution prevents that
+      ownership violation; a later pass is not used to excuse the interrupted one.
 
     Best effort: never fails the run. Pass ``dry_run`` (``--reap-dry-run``) to print the
     classification and kill nothing.
     """
     if os.name == "nt":
-        return
-
-    if os.environ.get("AFIELD_TEST_KILL_ALL_JAVA", "").strip().lower() in {"1", "true", "yes", "on"}:
-        print(
-            "AFIELD_TEST_KILL_ALL_JAVA set: killing every java process on this machine "
-            "(includes Gradle/Kotlin daemons and any IDE or Field app, and every other "
-            "checkout's tests).",
-            file=sys.stderr, flush=True,
-        )
-        if dry_run:
-            print("  --reap-dry-run: not killing anything.", file=sys.stderr, flush=True)
-            return
-        subprocess.run(["killall", "-9", "java"], capture_output=True, text=True, timeout=30, check=False)
         return
 
     # Leave the port holder to recycle_field, which SIGINTs it first so it can
@@ -435,6 +423,13 @@ def ensure_persistent_field(port: int, *, boot_timeout: float = 180.0) -> subpro
     """
     ctx = make_unverified_ssl_context()
     if health_check(port, ctx):
+        instance = field_instance_info(port, ctx)
+        problem = field_instance_problem(instance, REPO_ROOT)
+        if problem is not None:
+            raise SystemExit(
+                f"Refusing to recycle Field on port {port}: {problem}. "
+                "Choose a fresh --port or stop that server explicitly."
+            )
         state = "responsive" if probe_field_responsive(port, timeout=8.0) else "wedged (failed snapshot probe)"
         print(
             f"Field already serving port {port} ({state}); recycling it for a clean boot "
@@ -1401,8 +1396,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Skip the preflight sweep of this checkout's Field JVMs orphaned by earlier "
-            "runs. Set AFIELD_TEST_KILL_ALL_JAVA=1 instead to kill every java process, "
-            "Gradle/Kotlin daemons, IDEs and other checkouts' tests included."
+            "runs. This never affects Gradle/Kotlin daemons, IDEs, or other checkouts."
         ),
     )
     parser.add_argument(

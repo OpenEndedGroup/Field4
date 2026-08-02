@@ -64,6 +64,7 @@ def _reexec_under_repo_env_if_needed() -> None:
 _reexec_under_repo_env_if_needed()
 
 import websockets  # noqa: E402  (guaranteed importable after the shim above)
+from verification_runtime import field_instance_info, field_instance_problem  # noqa: E402
 
 try:
     import yaml
@@ -376,8 +377,16 @@ class FieldBackdoor:
         initial_health = health_check(self.port, self.ssl_context)
         self.logger.log("health_check", phase="initial", port=self.port, healthy=initial_health)
         if initial_health:
+            info = field_instance_info(self.port, self.ssl_context)
+            problem = field_instance_problem(info, REPO_ROOT)
+            if problem is not None:
+                self.logger.log("server_reuse_refused", port=self.port, reason=problem, instance=info)
+                raise BackdoorError(
+                    f"Refusing to reuse Field on port {self.port}: {problem}. "
+                    "Choose a fresh --port or stop that server explicitly."
+                )
             self.reused_existing_server = True
-            self.logger.log("server_reused", port=self.port)
+            self.logger.log("server_reused", port=self.port, instance=info)
             return
 
         self.managed_log_path = self.logger.root / f"{self.session_id}.managed-server.log"
@@ -1621,6 +1630,13 @@ class FieldBackdoor:
         payload = event.get("payload")
         if not isinstance(payload, dict):
             raise BackdoorError("macro-transcript-command returned an invalid payload")
+        # Macro execution mutates the server-side document on a background dispatcher. Its reply
+        # can reach this client before the asynchronous topology/property events that update our
+        # local box index. Refresh from source of truth before the next command resolves a uid;
+        # otherwise a successful create followed immediately by `set <new-box> ...` races and
+        # reports "Unknown box uid" even though the box appears milliseconds later.
+        if command.strip().lower() in {"run", "undo"} and payload.get("success") is True:
+            await self.refresh_snapshot(timeout=timeout)
         return payload
 
     async def _run_probe(

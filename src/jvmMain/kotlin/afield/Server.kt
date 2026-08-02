@@ -92,6 +92,13 @@ import kotlin.time.Duration.Companion.seconds
 
 private val serverStartedAtEpochMs = System.currentTimeMillis()
 
+@Serializable
+private data class FieldInstanceInfo(
+    val repoRoot: String,
+    val startedAtEpochMs: Long,
+    val pid: Long,
+)
+
 private object GcPauseMonitor {
     private const val sampleCapacity = 2048
     private val lock = Any()
@@ -3082,6 +3089,19 @@ class Server {
                     routing {
                         get("/health") {
                             call.respondText("ok", ContentType.Text.Plain)
+                        }
+
+                        // `/health` only says that some Field owns the port. Agent/test clients need
+                        // this identity before reuse, or a sibling worktree's healthy JVM can execute
+                        // the wrong bytecode and report a false green.
+                        get("/api/instance-info") {
+                            call.respond(
+                                FieldInstanceInfo(
+                                    repoRoot = File(".").canonicalFile.absolutePath,
+                                    startedAtEpochMs = serverStartedAtEpochMs,
+                                    pid = ProcessHandle.current().pid(),
+                                )
+                            )
                         }
 
                         installControllerRoutes(::currentFieldPreferences)

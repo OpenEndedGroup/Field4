@@ -582,7 +582,7 @@ class KeyframerTest {
         val lerpMid = Vector3f(8f, 2f, 0f).lerp(Vector3f(0f, 2f, 8f), 0.5f)
         assertEquals(6.0f, lerpMid.length(), 1e-4f, "the straight-line midpoint is 6.0 from the subject")
         assertEquals(
-            0.2724, (1.0 - 6.0 / radius).toDouble(), 1e-4,
+            0.2724, 1.0 - 6.0 / radius, 1e-4,
             "…which is 27.24% nearer than the sclerp path stays"
         )
     }

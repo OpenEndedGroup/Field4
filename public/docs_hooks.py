@@ -24,7 +24,7 @@ import ssl
 TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
-from verification_runtime import run_with_watchdog
+from verification_runtime import field_instance_info, field_instance_problem, run_with_watchdog
 
 # Shared with tools/discover_field_tests.py; see public/fabricate_docs_scenes.py.
 # public/ is already on sys.path when the Zensical build imports this module, so
@@ -48,22 +48,17 @@ RUNNER_FENCES = {"diffstatic_runner", "diff_runner"}
 DIFF_FENCES = {"diff", "diff_runner"}
 STATIC_FENCES = {"diffstatic", "diffstatic_runner"}
 FENCE_NAMES = sorted(RUNNER_TARGETS, key=len, reverse=True)
-SCRIPT_VERSION = 17
-RUNNER_RETRIES = 3
+SCRIPT_VERSION = 18
+# One invocation is the verification contract. Repeating an unchanged capture can turn an
+# infrastructure defect into a green build and destroy the first failure's evidence.
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
-# A shared Field server (re)start can be slow to become healthy on a busy machine,
-# and — after many docs-capture start/stop cycles in one run — a cold JVM start can
-# legitimately exceed a single fixed deadline (TIME_WAIT port churn, file-descriptor
-# and JVM-startup pressure). A one-shot start that raised on the first timeout aborted
-# the whole HTML build even when every capture had already succeeded. Retry the start
-# a few times, each with its own deadline, before giving up.
+# A shared Field server gets one generous startup deadline. If it cannot become healthy inside that
+# window, fail with its log rather than concealing the lifecycle defect behind another cold boot.
 SERVER_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SERVER_START_TIMEOUT", "120"))
-SERVER_START_ATTEMPTS = max(1, int(os.environ.get("AFIELD_DOCS_SERVER_START_ATTEMPTS", "3")))
-SERVER_START_RETRY_BACKOFF_SEC = 3.0
 # Kept consistent with tools/field_backdoor.py: the first Playwright attach on a
 # machine may download browser binaries. While that marker is absent, give the
 # capture subprocess enough headroom to finish the download instead of killing it
-# at ~50s and retrying with full JVM restarts.
+# at ~50s during a legitimate first-time browser download.
 PLAYWRIGHT_READY_MARKER = Path(__file__).resolve().parent.parent / ".field-backdoor" / "playwright-ready"
 PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC = float(os.environ.get("AFIELD_PLAYWRIGHT_ATTACH_TIMEOUT", "180"))
 # Opt-in warm-session capture path: reuse ONE persistent field_session daemon
@@ -515,37 +510,33 @@ class RunnerState:
 
     def _ensure_shared_field_server(self) -> None:
         if self._http_health_ok(self.backdoor_port):
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            instance = field_instance_info(self.backdoor_port, ctx)
+            problem = field_instance_problem(instance, self.repo_root)
+            if problem is not None:
+                raise RuntimeError(
+                    f"Refusing to reuse Field docs server on port {self.backdoor_port}: {problem}. "
+                    "Choose a fresh FIELD_DOCS_RUNNER_PORT or stop that server explicitly."
+                )
             LOG.info("Field docs runner using existing Field server on port %s", self.backdoor_port)
             return
 
-        last_error: str | None = None
-        for attempt in range(1, SERVER_START_ATTEMPTS + 1):
-            outcome = self._start_shared_field_server_once(attempt=attempt)
-            if outcome is None:
-                return
-            last_error = outcome
-            # Tear down whatever partially started and let the port drain before retrying;
-            # a lingering half-up JVM or a socket in TIME_WAIT poisons the next attempt.
-            self._kill_shared_field_process()
-            if attempt < SERVER_START_ATTEMPTS:
-                LOG.warning(
-                    "Field docs runner shared Field server start attempt %s/%s failed (%s); retrying",
-                    attempt,
-                    SERVER_START_ATTEMPTS,
-                    last_error,
-                )
-                time.sleep(SERVER_START_RETRY_BACKOFF_SEC)
-
+        outcome = self._start_shared_field_server_once()
+        if outcome is None:
+            return
+        self._kill_shared_field_process()
         raise RuntimeError(
             f"Field docs runner could not start shared Field server on port {self.backdoor_port} "
-            f"after {SERVER_START_ATTEMPTS} attempt(s): {last_error}. See {self.shared_log_path}"
+            f"in one attempt: {outcome}. See {self.shared_log_path}"
         )
 
-    def _start_shared_field_server_once(self, *, attempt: int) -> str | None:
+    def _start_shared_field_server_once(self) -> str | None:
         """Start one shared Field server and wait for health.
 
         Returns None on success; otherwise a short reason string describing why the
-        attempt failed (so the caller can retry or surface it).
+        attempt failed so the caller can preserve and surface it.
         """
         gradle_wrapper = "gradlew.bat" if os.name == "nt" else "./gradlew"
         cmd = [str(self.repo_root / gradle_wrapper), "runJvm"]
@@ -569,12 +560,7 @@ class RunnerState:
         else:
             popen_kwargs["start_new_session"] = True
 
-        LOG.info(
-            "Field docs runner starting shared Field server on port %s (attempt %s/%s)",
-            self.backdoor_port,
-            attempt,
-            SERVER_START_ATTEMPTS,
-        )
+        LOG.info("Field docs runner starting shared Field server on port %s", self.backdoor_port)
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
         self._shared_field_started_at = time.time()
@@ -604,11 +590,11 @@ class RunnerState:
         return f"timed out after {SERVER_START_DEADLINE_SEC:.0f}s waiting for health"
 
     def _kill_shared_field_process(self) -> None:
-        """Best-effort teardown of the current shared Field process (for start retries).
+        """Best-effort teardown of a shared Field process whose start failed.
 
         Unlike `_stop_shared_field_server`, this does not require a graceful backdoor
         shutdown or assert the port is released -- it just makes sure the process group
-        we launched is gone so the next start attempt begins from a clean slate.
+        we launched is gone before the failure is returned.
         """
         process = self._shared_field_process
         self._shared_field_process = None
@@ -1234,74 +1220,32 @@ class RunnerState:
             is_video=True,
         ).process_command
         LOG.info("Field docs runner recording video %s for %s", page_path.name, video_path)
-        completed: subprocess.CompletedProcess[str] | None = None
-        for attempt in range(1, RUNNER_RETRIES + 1):
-            try:
-                completed = self._run_capture_child(
-                    command,
-                    options=video_options,
-                    label=f"video {video_path.name}",
-                    is_video=True,
-                    input_text=code,
-                )
-            except subprocess.TimeoutExpired as exc:
-                if attempt < RUNNER_RETRIES:
-                    LOG.warning(
-                        "Field docs runner video attempt %s/%s timed out for %s -> %s; retrying\n%s",
-                        attempt,
-                        RUNNER_RETRIES,
-                        page_path.name,
-                        video_path,
-                        format_timeout_failure_details(
-                            exc,
-                            command=command,
-                            field_log_path=self.shared_log_path,
-                        ),
-                    )
-                    self._restart_shared_field_server(
-                        reason=f"timeout while recording {page_path.name} -> {video_path}"
-                    )
-                    continue
-                self._restart_shared_field_server(
-                    reason=f"final timeout while recording {page_path.name} -> {video_path}"
-                )
-                raise RuntimeError(
-                    f"Field docs runner video timed out for {page_path.name} -> {video_path}.\n"
-                    f"Command: {shlex.join(command)}\n"
-                    f"Timed out after {exc.timeout:.1f}s"
-                ) from exc
-            deterministic = deterministic_execution_error(
-                completed, page_path=page_path, output_path=video_path, command=command
+        try:
+            completed = self._run_capture_child(
+                command,
+                options=video_options,
+                label=f"video {video_path.name}",
+                is_video=True,
+                input_text=code,
             )
-            if deterministic is not None:
-                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
-                self._restart_shared_field_server(
-                    reason=f"execution error while recording {page_path.name} -> {video_path}"
-                )
-                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
-            if completed.returncode == 0:
-                break
-            if attempt < RUNNER_RETRIES:
-                LOG.warning(
-                    "Field docs runner video attempt %s/%s failed for %s -> %s; retrying\n%s",
-                    attempt,
-                    RUNNER_RETRIES,
-                    page_path.name,
-                    video_path,
-                    format_completed_failure_details(
-                        completed,
-                        command=command,
-                        field_log_path=self.shared_log_path,
-                    ),
-                )
-                self._restart_shared_field_server(
-                    reason=f"failed video capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {video_path}"
-                )
-            else:
-                self._restart_shared_field_server(
-                    reason=f"final failed video capture attempt for {page_path.name} -> {video_path}"
-                )
-        assert completed is not None
+        except subprocess.TimeoutExpired as exc:
+            self._restart_shared_field_server(
+                reason=f"timeout while recording {page_path.name} -> {video_path}"
+            )
+            raise RuntimeError(
+                f"Field docs runner video timed out for {page_path.name} -> {video_path}.\n"
+                f"Command: {shlex.join(command)}\n"
+                f"Timed out after {exc.timeout:.1f}s"
+            ) from exc
+        deterministic = deterministic_execution_error(
+            completed, page_path=page_path, output_path=video_path, command=command
+        )
+        if deterministic is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
+            self._restart_shared_field_server(
+                reason=f"execution error while recording {page_path.name} -> {video_path}"
+            )
+            raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
         if completed.returncode != 0:
             details = format_completed_failure_details(
                 completed,
@@ -1309,6 +1253,9 @@ class RunnerState:
                 field_log_path=self.shared_log_path,
             )
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=video_path)
+            self._restart_shared_field_server(
+                reason=f"failed video capture for {page_path.name} -> {video_path}"
+            )
             raise RuntimeError(
                 f"Field docs runner video failed for {page_path.name} -> {video_path}.\n"
                 f"{details}\n\n{diagnosis}"
@@ -1426,46 +1373,24 @@ class RunnerState:
             newer_than=time.time(),
         )
         LOG.info("Field docs runner rendering audio %s -> %s (scene %r)", page_path.name, audio_path, options.audio_spec)
-        completed: subprocess.CompletedProcess[str] | None = None
-        for attempt in range(1, RUNNER_RETRIES + 1):
-            try:
-                completed = self._run_capture_child(
-                    command,
-                    options=options,
-                    label=f"audio {audio_path.name}",
-                    is_video=False,
-                    input_text=generated_code,
-                )
-            except subprocess.TimeoutExpired as exc:
-                if attempt < RUNNER_RETRIES:
-                    LOG.warning(
-                        "Field docs runner audio attempt %s/%s timed out for %s -> %s; retrying",
-                        attempt, RUNNER_RETRIES, page_path.name, audio_path,
-                    )
-                    self._restart_shared_field_server(reason=f"timeout while rendering audio {audio_path}")
-                    continue
-                self._restart_shared_field_server(reason=f"final timeout while rendering audio {audio_path}")
-                raise RuntimeError(
-                    f"Field docs runner audio timed out for {page_path.name} -> {audio_path}.\n"
-                    f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
-                ) from exc
-            if completed.returncode == 0:
-                break
-            if attempt < RUNNER_RETRIES:
-                LOG.warning(
-                    "Field docs runner audio attempt %s/%s failed for %s -> %s; retrying\n%s",
-                    attempt, RUNNER_RETRIES, page_path.name, audio_path,
-                    format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path),
-                )
-                self._restart_shared_field_server(
-                    reason=f"failed audio render attempt {attempt}/{RUNNER_RETRIES} for {audio_path}"
-                )
-            else:
-                self._restart_shared_field_server(reason=f"final failed audio render attempt for {audio_path}")
-        assert completed is not None
+        try:
+            completed = self._run_capture_child(
+                command,
+                options=options,
+                label=f"audio {audio_path.name}",
+                is_video=False,
+                input_text=generated_code,
+            )
+        except subprocess.TimeoutExpired as exc:
+            self._restart_shared_field_server(reason=f"timeout while rendering audio {audio_path}")
+            raise RuntimeError(
+                f"Field docs runner audio timed out for {page_path.name} -> {audio_path}.\n"
+                f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+            ) from exc
         if completed.returncode != 0:
             details = format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=audio_path)
+            self._restart_shared_field_server(reason=f"failed audio render for {audio_path}")
             raise RuntimeError(
                 f"Field docs runner audio failed for {page_path.name} -> {audio_path}.\n{details}\n\n{diagnosis}"
             )
@@ -1537,48 +1462,35 @@ class RunnerState:
             code=code,
         ).process_command
         LOG.info("Field docs runner driving UI %s for %s", page_path.name, primary)
-        completed: subprocess.CompletedProcess[str] | None = None
-        for attempt in range(1, RUNNER_RETRIES + 1):
-            try:
-                completed = self._run_capture_child(
-                    command,
-                    options=options,
-                    label=f"ui drive {primary.name}",
-                    is_video=True,
-                )
-            except subprocess.TimeoutExpired as exc:
-                if attempt < RUNNER_RETRIES:
-                    LOG.warning("Field docs runner ui drive attempt %s/%s timed out for %s; retrying",
-                                attempt, RUNNER_RETRIES, primary)
-                    self._restart_shared_field_server(reason=f"timeout ui drive {primary}")
-                    continue
-                self._restart_shared_field_server(reason=f"final timeout ui drive {primary}")
-                raise RuntimeError(
-                    f"Field docs runner ui drive timed out for {page_path.name} -> {primary}.\n"
-                    f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
-                ) from exc
-            deterministic = deterministic_execution_error(
-                completed, page_path=page_path, output_path=primary, command=command
+        try:
+            completed = self._run_capture_child(
+                command,
+                options=options,
+                label=f"ui drive {primary.name}",
+                is_video=True,
             )
-            if deterministic is not None:
-                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
-                self._restart_shared_field_server(reason=f"execution error ui drive {primary}")
-                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
-            if completed.returncode == 0:
-                break
-            if attempt < RUNNER_RETRIES:
-                LOG.warning("Field docs runner ui drive attempt %s/%s failed for %s; retrying\n%s",
-                            attempt, RUNNER_RETRIES, primary,
-                            format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path))
-                self._restart_shared_field_server(reason=f"failed ui drive attempt {attempt} for {primary}")
-            else:
-                self._restart_shared_field_server(reason=f"final failed ui drive attempt for {primary}")
-        assert completed is not None
+        except subprocess.TimeoutExpired as exc:
+            self._restart_shared_field_server(reason=f"timeout ui drive {primary}")
+            raise RuntimeError(
+                f"Field docs runner ui drive timed out for {page_path.name} -> {primary}.\n"
+                f"Command: {shlex.join(command)}\nTimed out after {exc.timeout:.1f}s"
+            ) from exc
+        deterministic = deterministic_execution_error(
+            completed, page_path=page_path, output_path=primary, command=command
+        )
+        if deterministic is not None:
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
+            self._restart_shared_field_server(reason=f"execution error ui drive {primary}")
+            raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
         if completed.returncode != 0:
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=primary)
+            details = format_completed_failure_details(
+                completed, command=command, field_log_path=self.shared_log_path
+            )
+            self._restart_shared_field_server(reason=f"failed ui drive for {primary}")
             raise RuntimeError(
                 f"Field docs runner ui drive failed for {page_path.name} -> {primary}.\n"
-                f"{format_completed_failure_details(completed, command=command, field_log_path=self.shared_log_path)}\n\n{diagnosis}"
+                f"{details}\n\n{diagnosis}"
             )
         execution_error = extract_backdoor_execution_error(completed.stdout)
         if execution_error is not None:
@@ -1711,8 +1623,7 @@ class RunnerState:
         capture_label = f"{page_path.name} -> {screenshot_path.name}"
         completed: subprocess.CompletedProcess[str] | None = None
         # Warm-session fast path (opt-in): reuse one persistent daemon + attached
-        # page across non-graphics captures. On any failure, fall through to the
-        # unchanged per-process retry loop below so correctness never regresses.
+        # page across non-graphics captures. Certification leaves this disabled.
         if self.session_enabled and invocation.session_eligible:
             completed = self._try_session_capture(
                 page_path=page_path,
@@ -1725,9 +1636,7 @@ class RunnerState:
             )
             if completed is not None:
                 LOG.info("Field docs runner warm-session capture ok: %s", screenshot_path)
-        for attempt in range(1, RUNNER_RETRIES + 1):
-            if completed is not None:
-                break
+        if completed is None:
             try:
                 completed = self._run_capture_child(
                     command,
@@ -1737,65 +1646,25 @@ class RunnerState:
                     input_text=code,
                 )
             except subprocess.TimeoutExpired as exc:
-                if attempt < RUNNER_RETRIES:
-                    LOG.warning(
-                        "Field docs runner attempt %s/%s timed out for %s -> %s; retrying\n%s",
-                        attempt,
-                        RUNNER_RETRIES,
-                        page_path.name,
-                        screenshot_path,
-                        format_timeout_failure_details(
-                            exc,
-                            command=command,
-                            field_log_path=self.shared_log_path,
-                        ),
-                    )
-                    self._restart_shared_field_server(
-                        reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
-                    )
-                    continue
                 self._restart_shared_field_server(
-                    reason=f"final timeout while capturing {page_path.name} -> {screenshot_path}"
+                    reason=f"timeout while capturing {page_path.name} -> {screenshot_path}"
                 )
                 raise RuntimeError(
                     f"Field docs runner timed out for {page_path.name} -> {screenshot_path}.\n"
                     f"Command: {shlex.join(command)}\n"
                     f"Timed out after {exc.timeout:.1f}s"
                 ) from exc
-            deterministic = deterministic_execution_error(
-                completed, page_path=page_path, output_path=screenshot_path, command=command
+        deterministic = deterministic_execution_error(
+            completed, page_path=page_path, output_path=screenshot_path, command=command
+        )
+        if deterministic is not None:
+            # Diagnose BEFORE restarting: the restart reopens shared_log_path in
+            # "w" mode, erasing the crashed server's log. Capture both ends first.
+            diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
+            self._restart_shared_field_server(
+                reason=f"execution error while capturing {page_path.name} -> {screenshot_path}"
             )
-            if deterministic is not None:
-                # Diagnose BEFORE restarting: the restart reopens shared_log_path in
-                # "w" mode, erasing the crashed server's log. Capture both ends first.
-                diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
-                self._restart_shared_field_server(
-                    reason=f"execution error while capturing {page_path.name} -> {screenshot_path}"
-                )
-                raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
-            if completed.returncode == 0:
-                break
-            if attempt < RUNNER_RETRIES:
-                LOG.warning(
-                    "Field docs runner attempt %s/%s failed for %s -> %s; retrying\n%s",
-                    attempt,
-                    RUNNER_RETRIES,
-                    page_path.name,
-                    screenshot_path,
-                    format_completed_failure_details(
-                        completed,
-                        command=command,
-                        field_log_path=self.shared_log_path,
-                    ),
-                )
-                self._restart_shared_field_server(
-                    reason=f"failed capture attempt {attempt}/{RUNNER_RETRIES} for {page_path.name} -> {screenshot_path}"
-                )
-            else:
-                self._restart_shared_field_server(
-                    reason=f"final failed capture attempt for {page_path.name} -> {screenshot_path}"
-                )
-        assert completed is not None
+            raise RuntimeError(f"{deterministic}\n\n{diagnosis}")
         if completed.returncode != 0:
             details = format_completed_failure_details(
                 completed,
@@ -1803,6 +1672,9 @@ class RunnerState:
                 field_log_path=self.shared_log_path,
             )
             diagnosis = self.diagnose_capture_failure(page_path=page_path, output_path=screenshot_path)
+            self._restart_shared_field_server(
+                reason=f"failed capture for {page_path.name} -> {screenshot_path}"
+            )
             raise RuntimeError(
                 f"Field docs runner failed for {page_path.name} -> {screenshot_path}.\n"
                 f"{details}\n\n{diagnosis}"
@@ -1847,23 +1719,12 @@ class RunnerState:
         self._captures_since_server_restart += 1
         self.save()
         if options.graphics_context:
-            # Restart to leave a fresh server for the NEXT graphics-context capture --
-            # this is leave-it-clean cleanup, not correctness-critical for the capture we
-            # just finished: it already succeeded and its asset is on disk. The next
-            # graphics-context capture's leading `_ensure_runner_owned_field_server`
-            # re-establishes the server if this restart leaves it down, and the final
-            # capture of a run has no successor to serve. So a slow/failed restart here
-            # must never abort the build (which would discard every capture already made).
-            try:
-                self._restart_shared_field_server(
-                    reason=f"completed graphics-context capture for {page_path.name} -> {screenshot_path}"
-                )
-            except RuntimeError as exc:
-                LOG.warning(
-                    "Field docs runner post-capture server restart failed (non-fatal; "
-                    "next graphics-context capture will re-establish the server): %s",
-                    exc,
-                )
+            # A graphics capture owns a disposable GPU context. Recycling it is part of the
+            # lifecycle contract, not optional cleanup: if teardown/startup fails, preserve that
+            # first failure instead of letting the next capture inherit ambiguous GPU state.
+            self._restart_shared_field_server(
+                reason=f"completed graphics-context capture for {page_path.name} -> {screenshot_path}"
+            )
 
 
 STATE: RunnerState | None = None
@@ -3088,20 +2949,15 @@ def deterministic_execution_error(
 ) -> RuntimeError | None:
     """A clean error to raise when a capture failed on a box compile/runtime error.
 
-    Such an error is deterministic — retrying (with a full server restart) cannot
-    fix it and only buries the diagnostic under repeated bare-"failed"/"timed out"
-    messages. When the backdoor stdout carries a real execution error, return a
-    RuntimeError the caller can raise immediately instead of retrying.
+    When backdoor stdout carries a diagnosed execution error, return the more useful
+    RuntimeError immediately. Opaque failures still fail the same invocation; they use
+    the general capture diagnostic assembled by the caller.
     """
     if completed.returncode == 0:
         return None
     # Only a *diagnosed* failure is deterministic: an error output/notify event, or a real
-    # command error message — proof the box's code is broken, where retrying cannot help. A
-    # bare per-command timeout (server too slow to `new-box` under load) or an opaque
-    # "command failed" with no diagnostic (e.g. a transient `macro run graphics_renderer_launch`
-    # hiccup after many GPU server restarts — the same launch succeeds dozens of times around
-    # it) is an infrastructure hiccup a server restart + retry can recover from, exactly like
-    # the outer subprocess-timeout path. Require a diagnostic so those fall through to retry.
+    # command error message. Bare per-command timeouts and opaque "command failed" results use
+    # the caller's general failure report because there is no execution diagnostic to elevate.
     error = extract_backdoor_execution_error(completed.stdout, require_diagnostic=True)
     if error is None:
         return None
@@ -3117,9 +2973,9 @@ def extract_backdoor_execution_error(stdout: str, *, require_diagnostic: bool = 
 
     With `require_diagnostic=True`, only *diagnosed* problems count -- a real command
     error message (`data.error`) or an error output/notify event. Bare timeouts and bare
-    "command failed" results (no diagnostic) are excluded, so callers deciding whether a
-    failure is deterministic (non-retryable) don't treat transient infrastructure hiccups
-    as broken examples. The default (False) reports every problem, including bare ones.
+    "command failed" results (no diagnostic) are excluded, so callers do not mislabel an
+    unexplained infrastructure failure as broken example code. The default (False) reports
+    every problem, including bare ones.
     """
     results = parse_backdoor_results(stdout)
     if not results:

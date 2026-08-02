@@ -269,6 +269,10 @@ agent turns an assembled scene into a loadable document.
 `print`/`_print`/`println` inside launched or executed code all reach `output`. There is
 no need to reach for the browser to see whether code ran — read `output`.
 
+`transcript` is an exact CLI alias for `macro`; both verbs use the same parser and the same
+server command. In scratch mode, write and run in one `field_backdoor.py` invocation because the
+scratch document and its document-scoped macro directory belong to that invocation.
+
 ---
 
 ## The document lifecycle (build → run → capture → save → reopen)

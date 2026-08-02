@@ -16,6 +16,8 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Situation | Command | What it proves |
 | --- | --- | --- |
 | Kotlin/JVM compile check | `./gradlew compileKotlinJvm` | Source compiles without starting the full app UI. |
+| Deterministic repository check | `./gradlew check` | JVM/JS tests, generated-source drift guards, and Python tool tests pass without running benchmark/measurement fixtures. |
+| Opt-in JVM measurements | `./gradlew jvmMeasurements -i` | Slow, non-asserting measurement fixtures regenerate publishable timing/search evidence. |
 | Backdoor can start/attach Field | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command status` | Field server, websocket, scratch setup, and logs are reachable. |
 | One runtime snippet | `uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 --command 'new-box --name Test' --command 'run @last --file path/to/snippet.kt'` | Live-code execution, stdout, display events, and runtime errors. |
 | FIELD_TEST catalog | `uv run --project . --group backdoor python tools/run_field_tests.py --refresh-catalog` | Annotated examples and smoke tests still execute. |
@@ -203,13 +205,16 @@ Modes:
 - `FIELD_DOCS_RUNNER_MODE=always`: regenerate every capture
 
 Use `FIELD_DOCS_RUNNER_PORT=<high-port>` for capture runs. The docs runner owns
-that port for the entire capture run, replacing a stale/cross-run Field before the
-first capture and shutting down the process group at the end. Port `9477` is the
+that port for the entire capture run, rejecting a foreign/source-stale Field before the
+first capture and shutting down its own process group at the end. Port `9477` is the
 safe default, but an explicit dedicated port makes ownership clearest in logs.
 
 Treat broken docs captures as real failures. If a screenshot is blank, red,
 tiny, stale, or visually wrong, inspect the backdoor events/logs and fix the
 example or capture path rather than hand-editing generated assets.
+
+Each capture and shared-server start gets one attempt. A failed invocation is evidence, not a vote:
+diagnose it and change the code, environment, or command before running again.
 
 ### 6. Graphics and Native Rendering Checks
 

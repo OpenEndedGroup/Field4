@@ -7,7 +7,7 @@ import kotlin.test.Test
  * search half of `public/docs/morpho_examples.md`.
  *
  * ```
- * ./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i
+ * ./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements" --rerun -i
  * ```
  *
  * Five seeds per driver per problem, because a single seed of a stochastic search is an anecdote
@@ -75,7 +75,7 @@ class MorphoSearchMeasurements {
      * about any driver, and because it is cheap enough to re-check on its own:
      *
      * ```
-     * ./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements.recursionDensity" --rerun -i
+     * ./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements.recursionDensity" --rerun -i
      * ```
      */
     @Test
@@ -117,7 +117,7 @@ class MorphoSearchMeasurements {
      * and "overfits to small buses" are different diagnoses with different fixes.
      *
      * ```
-     * ./gradlew jvmTest --tests "afield.morpho.MorphoSearchMeasurements.generalisation" --rerun -i
+     * ./gradlew jvmMeasurements --tests "afield.morpho.MorphoSearchMeasurements.generalisation" --rerun -i
      * ```
      */
     @Test

@@ -9,7 +9,7 @@ import kotlin.test.Test
  * It lives with the tests so the page's figures can be regenerated rather than remembered:
  *
  * ```
- * ./gradlew jvmTest --tests "afield.morpho.MorphoMeasurements" --rerun -i
+ * ./gradlew jvmMeasurements --tests "afield.morpho.MorphoMeasurements" --rerun -i
  * ```
  */
 class MorphoMeasurements {

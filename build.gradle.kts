@@ -84,6 +84,11 @@ val vectorizationJvmArgs = listOf(
     "--add-modules", "jdk.incubator.vector",
     "-XX:+EnableJVMCI",
     "-XX:-UseJVMCICompiler",
+    // Field loads LWJGL/JavaCV native libraries and LWJGL still probes sun.misc.Unsafe on JDK 25.
+    // Declare those two deliberate compatibility boundaries so every app/test launch is quiet;
+    // otherwise a green `check` prints warnings that look like project failures.
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow",
 )
 
 // Bytedeco FFmpeg for video support
@@ -1035,6 +1040,24 @@ tasks {
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs(vectorizationJvmArgs)
+}
+
+// Measurement fixtures deliberately print publishable timing/search data and make no assertions.
+// They used to be ordinary @Test classes, so `check` unexpectedly spent roughly ten minutes in
+// stochastic Morpho searches. Keep the fixtures runnable, but give them an explicit opt-in task so
+// the default correctness contract is fast and deterministic.
+val jvmTestTask = tasks.named<org.gradle.api.tasks.testing.Test>("jvmTest") {
+    exclude("**/*Measurements.class")
+}
+
+tasks.register<org.gradle.api.tasks.testing.Test>("jvmMeasurements") {
+    group = "verification"
+    description = "Runs opt-in JVM measurement fixtures excluded from the deterministic check task."
+    dependsOn("jvmTestClasses")
+    testClassesDirs = jvmTestTask.get().testClassesDirs
+    classpath = jvmTestTask.get().classpath
+    include("**/*Measurements.class")
+    shouldRunAfter(jvmTestTask)
 }
 
 tasks.named("compileKotlinJvm") {

@@ -824,6 +824,8 @@ private fun requiredAgentJvmArgs(): List<String> {
 
     return buildList {
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
+        add("--enable-native-access=ALL-UNNAMED")
+        add("--sun-misc-unsafe-memory-access=allow")
         add("-Dorg.lwjgl.system.stackSize=256")
         add("-Xlog:gc*,safepoint:file=build/gc-safepoint.log:time,uptime,level,tags")
         if (!onWindowsOrLinux) {
