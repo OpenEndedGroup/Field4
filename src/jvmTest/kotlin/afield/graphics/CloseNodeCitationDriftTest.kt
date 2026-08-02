@@ -36,8 +36,8 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 412, "byThickening"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 431, "removeInstruction"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 813, "toOrNull"),
-        Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1206, "plusAssign(other: FLine)"),
-        Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1485, "'z' -> f.close()"),
+        Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1241, "plusAssign(other: FLine)"),
+        Triple("src/jvmMain/kotlin/afield/graphics/FLine.kt", 1520, "'z' -> f.close()"),
 
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 590, "endPointOf"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLineGeometry.kt", 674, "CubicSegment3(endPointOf"),

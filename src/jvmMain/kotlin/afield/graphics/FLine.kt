@@ -1042,7 +1042,27 @@ class FLine : HasProperties {
         // Earcut is 2D. Filled FLines can be planar in any 3D orientation, so select the dominant
         // Newell-normal axis of the strongest ring and project only for tessellation. Original XYZ
         // coordinates are still passed to the mesh acceptor.
+        //
+        // The projection has to be *orientation preserving*, and that is not a nicety.
+        // [FloatEarcut] normalises the winding of whatever ring it is handed (`FloatEarcut.kt:705`
+        // reverses the outer ring when its signed area has the wrong sign), so the facing of every
+        // triangle that comes back is decided by the projected frame alone — never by the winding
+        // the caller authored. Two properties make the frame agree with the polygon:
+        //
+        //  1. the kept pair is the right-handed cycle about the dropped axis: x -> (y, z),
+        //     y -> (z, x), z -> (x, y). (x, z) for a y-dominant face is the mirror of that, and
+        //     mirrors the facing of every wall-like face;
+        //  2. the pair is swapped when the normal points down the *negative* half of the dominant
+        //     axis, because otherwise the far side of a face comes back inside out — a polygon and
+        //     the same polygon turned over must tessellate to the same triangles turned over.
+        //
+        // Together these make tessellation commute with rigid rotation, which
+        // `TessellationOrientationOracleTest` pins. (`EarcutFaceTriangulator`,
+        // `polytope/FieldAdapters.kt:96`, reaches the same place by projecting on the mirror and
+        // then flipping every triangle back against the face normal; doing it in the frame is
+        // cheaper and leaves the hole classification in the same handedness as the fill.)
         var projectionAxis = 2
+        var projectionFlipped = false
         var strongestNormal = 0f
         for (ring in rings) {
             var nx = 0f
@@ -1063,19 +1083,34 @@ class FLine : HasProperties {
                     abs(ny) >= abs(nz) -> 1
                     else -> 2
                 }
+                // A ring can only be the strongest if its normal is non-zero, so this reads the
+                // hemisphere of a component we know dominates. Rings that are entirely degenerate
+                // never get here and leave the default: project on (x, y), as before.
+                projectionFlipped = when (projectionAxis) {
+                    0 -> nx
+                    1 -> ny
+                    else -> nz
+                } < 0f
             }
         }
 
-        fun projectedX(p: Vec3): Float = when (projectionAxis) {
+        /** The first of the right-handed pair kept about [projectionAxis]. */
+        fun projectedU(p: Vec3): Float = when (projectionAxis) {
             0 -> p.y
+            1 -> p.z
             else -> p.x
         }
 
-        fun projectedY(p: Vec3): Float = when (projectionAxis) {
+        /** The second of the right-handed pair kept about [projectionAxis]. */
+        fun projectedV(p: Vec3): Float = when (projectionAxis) {
             0 -> p.z
-            1 -> p.z
+            1 -> p.x
             else -> p.y
         }
+
+        fun projectedX(p: Vec3): Float = if (projectionFlipped) projectedV(p) else projectedU(p)
+
+        fun projectedY(p: Vec3): Float = if (projectionFlipped) projectedU(p) else projectedV(p)
 
         data class BBox(val minX: Float, val minY: Float, val maxX: Float, val maxY: Float)
         data class RingInfo(val points: List<Vec3>, val area: Float, val bbox: BBox)
