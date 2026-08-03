@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3305 of 5709 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3387 of 5924 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**315 undocumented entry points** (types, top-level functions and values) and 1936 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**324 undocumented entry points** (types, top-level functions and values) and 2049 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -18,6 +18,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [Topology.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt) | Uncategorised | polytope_examples | 17 | 34 | 21% |
 | [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
+| [CeresExpression.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt) | Graphics | functions_examples | 10 | 30 | 42% |
 | [Parameters.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt) | Uncategorised | polytope_examples | 9 | 18 | 6% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 6 | 0 | 53% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | statistics_examples | 5 | 41 | 11% |
@@ -56,7 +57,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [mesh.kt](../src/jvmMain/kotlin/afield/stdlib/mesh.kt) | Graphics | mesh_examples | 0 | 5 | 89% |
 | [stdlib.kt](../src/jvmMain/kotlin/afield/stdlib/stdlib.kt) | Workspace | box_code_pipeline, keyframer_examples, kotlin_overview | 0 | 3 | 95% |
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
-| [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 45 | 226 | 0% |
+| [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Graphics | — | 44 | 302 | 9% |
 | [ArchitecturalGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt) | Graphics | — | 25 | 129 | 0% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
@@ -77,6 +78,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
+| [CeresRealization.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt) | Uncategorised | — | 0 | 7 | 65% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
@@ -114,8 +116,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `DegenerateFaceGeometryException` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/FieldAdapters.kt:14` |
 | `ElementSelector` | interface | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:19` |
 | `ElementDoubleParameter` | interface | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:76` |
-| `RealizationDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:119` |
-| `RealizationSolveResult` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:128` |
+| `RealizationDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:141` |
+| `RealizationSolveResult` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:150` |
 | `InvalidElementReference` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:18` |
 | `IncorrectRankTransition` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:22` |
 | `DuplicateIncidence` | class | `src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt:32` |
@@ -167,6 +169,16 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Voronoi3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:123` |
 | `CircularDirichlet3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:552` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
+| `sqrt` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:159` |
+| `square` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:160` |
+| `reciprocal` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:161` |
+| `exp` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:162` |
+| `ln` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:163` |
+| `sin` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:164` |
+| `cos` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:165` |
+| `tan` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:166` |
+| `pow` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:177` |
+| `atan2` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:178` |
 | `floatAgglomerative` | fun | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:238` |
 | `vec2Agglomerative` | fun | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:246` |
 | `vec3Agglomerative` | fun | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:254` |
@@ -195,15 +207,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `stepDynamicGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:863` |
 | `stepDynamicGraphWithLinearDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:877` |
 | `stepDynamicGraphWithExponentialDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:889` |
-| `conway` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Conway.kt:106` |
-| `ElementSelector.and` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:23` |
-| `ElementSelector.or` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:27` |
-| `ElementSelector.not` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:31` |
-| `PolyhedralObject.selectElements` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:109` |
-| `PolytopeTransformResult.selectElements` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Parameters.kt:117` |
-| `Polytope4.summary` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Polytope4.kt:75` |
-| `PolyhedralObject.geometryDiagnostics` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/RealizationSolver.kt:207` |
-| `CombinatorialOrbits.summary` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt:50` |
-| `PolyhedralObject.combinatorialOrbits` | fun | `src/jvmMain/kotlin/afield/stdlib/polytope/Symmetry.kt:96` |
 
-…and **195 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **204 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
