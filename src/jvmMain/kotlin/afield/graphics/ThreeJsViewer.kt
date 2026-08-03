@@ -455,7 +455,16 @@ private class BoundsTracker {
     }
 }
 
-private fun buildThreeGeometryPayload(
+/**
+ * The payload both viewer modes are built from.
+ *
+ * `internal` rather than private so `ThreeJsEditableFillParityTest` can assert the one number the two
+ * modes must agree on: `meta.triangles`. Editable mode re-triangulates client-side (the user drags
+ * points, and the fill has to follow between round-trips), so the two triangulations are written
+ * twice — here, and as `tessellateCoplanarGroups` in `threejs_viewer.html`. This count is what stops
+ * them silently diverging.
+ */
+internal fun buildThreeGeometryPayload(
     uid: String,
     lines: Collection<FLine>,
     samplesPerCubic: Int,
@@ -562,7 +571,6 @@ private fun buildThreeGeometryPayload(
         sessionId = editSession?.sessionId ?: "",
         lines = sourceLines.mapIndexed { lineIndex, line ->
             var boundaryPoints = 0
-            var openBoundaryPoints = 0
 
             ThreeEditableLine(
                 lineIndex = lineIndex,
@@ -577,12 +585,8 @@ private fun buildThreeGeometryPayload(
                 nodes = line.nodes.mapIndexed { nodeIndex, node ->
                     when (node) {
                         is FLine.MoveTo -> {
-                            if (line.filled && openBoundaryPoints >= 3) {
-                                sceneTriangles += (openBoundaryPoints - 2)
-                            }
                             scenePoints += 1
                             boundaryPoints = 1
-                            openBoundaryPoints = 1
                             sceneBounds.include(node.to)
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
@@ -595,7 +599,6 @@ private fun buildThreeGeometryPayload(
                             scenePoints += 1
                             if (boundaryPoints > 0) sceneLineSegments += 1
                             boundaryPoints += 1
-                            openBoundaryPoints = boundaryPoints
                             sceneBounds.include(node.to)
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
@@ -608,7 +611,6 @@ private fun buildThreeGeometryPayload(
                             scenePoints += 1
                             if (boundaryPoints > 0) sceneLineSegments += samples
                             boundaryPoints += samples
-                            openBoundaryPoints = boundaryPoints
                             sceneBounds.include(node.to)
                             sceneBounds.include(node.c1)
                             sceneBounds.include(node.c2)
@@ -623,11 +625,7 @@ private fun buildThreeGeometryPayload(
 
                         is FLine.Close -> {
                             if (boundaryPoints > 1) sceneLineSegments += 1
-                            if (line.filled && boundaryPoints >= 3) {
-                                sceneTriangles += (boundaryPoints - 2)
-                            }
                             boundaryPoints = 0
-                            openBoundaryPoints = 0
                             ThreeEditableNode(
                                 nodeIndex = nodeIndex,
                                 kind = "close"
@@ -639,10 +637,14 @@ private fun buildThreeGeometryPayload(
         }
     ).also {
         if (editable) {
+            // Editable mode re-triangulates client-side, with the same rule this side runs
+            // (`threejs_viewer.html`, `tessellateCoplanarGroups`), so the reported triangle count is
+            // the real one. It used to be a per-subpath fan estimate — `boundaryPoints - 2` — which
+            // both over-counted a holed face and under-counted a multi-plane one, and disagreed with
+            // the number the same line reports with `editable = false`.
             sourceLines.forEach { line ->
-                val openCount = countOpenBoundaryPoints(line, samples)
-                if (line.filled && openCount >= 3) {
-                    sceneTriangles += (openCount - 2)
+                if (line.filled) {
+                    line.tessellate(samples) { _, indices -> sceneTriangles += indices.size / 3 }
                 }
             }
         }
@@ -747,27 +749,6 @@ private fun interactiveVertices(f: FLine): List<ThreeInteractiveVertex> =
         if (node is FLine.Close) null
         else ThreeInteractiveVertex(index, floatArrayOf(node.to.x, node.to.y, node.to.z))
     }
-
-private fun countOpenBoundaryPoints(f: FLine, samplesPerCubic: Int): Int {
-    var current = 0
-    f.nodes.forEach { node ->
-        when (node) {
-            is FLine.MoveTo -> {
-                current = 1
-            }
-            is FLine.LineTo -> {
-                current += 1
-            }
-            is FLine.CubicTo -> {
-                current += samplesPerCubic
-            }
-            is FLine.Close -> {
-                current = 0
-            }
-        }
-    }
-    return current
-}
 
 private fun buildGeometryData(
     positions: FloatArray,
