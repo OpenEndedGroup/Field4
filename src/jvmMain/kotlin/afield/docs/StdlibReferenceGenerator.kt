@@ -324,13 +324,41 @@ object StdlibReferenceGenerator {
          * Only entry points count — top-level functions, types and values, never members. A member
          * name like `transform`, `origin` or `previous` is an ordinary English word that turns up in
          * unrelated example code; a top-level call `stft(` or a type `Spectrogram` does not.
+         *
+         * [GENERIC_CALL_NAMES] is excluded on top of that, because "exactly one file defines it" is
+         * not the same as "seeing it means that file".
          */
         fun evidenceTokens(): Set<Pair<String, String>> = buildSet {
-            topLevelFunctions.forEach { if (it.simpleName.length >= 3) add("call" to it.simpleName) }
+            topLevelFunctions.forEach {
+                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_CALL_NAMES) add("call" to it.simpleName)
+            }
             types.forEach { if (it.symbol.simpleName.length >= 4) add("type" to it.symbol.simpleName) }
             topLevelValues.forEach { if (it.simpleName.length >= 5) add("name" to it.simpleName) }
         }
     }
+
+    /**
+     * Call names that are never evidence of anything, however uniquely a file owns them.
+     *
+     * The evidence index counts a name only when exactly one documented file declares it — which
+     * looked like enough until `CeresExpression.kt` was published. That file declares top-level
+     * `exp`, `cos`, `tan`, `min`, `max`, `abs`, `sqrt`, `pow` and `atan2` as expression builders, and
+     * it is the only file in the corpus that declares them at top level, so it "uniquely owned" the
+     * whole `kotlin.math` vocabulary. Every docs page with arithmetic in a code fence matched two or
+     * more, and `functions_examples.md` — which has nothing whatsoever to do with the Ceres
+     * expression VM — was published as a worked example of it.
+     *
+     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain verbs
+     * that happen to be short stay in (`kis`, `dual`, `stft`): seeing one really does mean the page
+     * is about that file.
+     */
+    private val GENERIC_CALL_NAMES = setOf(
+        "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "exp", "floor", "hypot",
+        "ln", "log", "log10", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh", "sqrt",
+        "tan", "tanh",
+        // Not kotlin.math, but words an unrelated code fence uses about anything.
+        "constant", "square", "reciprocal",
+    )
 
     private data class TypeEntry(
         val symbol: Symbol,
