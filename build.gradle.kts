@@ -116,6 +116,7 @@ val abletonLinkNative = layout.projectDirectory.file("libs/${abletonLinkNativeLi
 // overwriting it.
 val ceresNativeCommitted = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
 val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/libken_ceres_jvm.dylib")
+val ceresRedistributable = layout.buildDirectory.file("ken-ceres-redistributable/libken_ceres_jvm.dylib")
 val ceresNative: RegularFile = providers.gradleProperty("ceresLibrary")
     .map { layout.projectDirectory.file(it) }
     .getOrElse(ceresNativeCommitted)
@@ -2019,6 +2020,42 @@ val buildCeresNative = tasks.register("buildCeresNative") {
             }
         }
         logger.lifecycle("ken_ceres_jvm -> ${ceresNativeBuilt.get().asFile.absolutePath}")
+    }
+}
+
+// The redistributable counterpart of `buildCeresNative`: same wrapper, but statically linked against
+// a Ceres built from pinned source, so `otool -L` shows only libc++ and libSystem. That is the
+// property the committed libs/ artifact has and the Homebrew-linked build does not — see
+// native/ken-ceres/build_redistributable.sh, which owns the version pins, the checksums, and the
+// self-containment assertion.
+//
+// Also not wired into `check`: it needs the network on its first run, and building Ceres takes
+// minutes where `buildCeresNative` takes seconds. Reach for it when you intend to *ship* an artifact;
+// reach for buildCeresNative while iterating on the wrapper.
+//
+//     ./gradlew buildCeresRedistributable
+//     ./gradlew smokeCeres -PceresLibrary=build/ken-ceres-redistributable/libken_ceres_jvm.dylib
+val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
+    group = "build"
+    description = "Builds a self-contained ken_ceres_jvm from pinned Ceres/Eigen source (needs cmake, network on first run)."
+
+    val script = layout.projectDirectory.file("native/ken-ceres/build_redistributable.sh")
+    val sourceDir = layout.projectDirectory.dir("native/ken-ceres")
+    inputs.dir(sourceDir)
+    outputs.file(ceresRedistributable)
+
+    doLast {
+        val result = providers.exec {
+            commandLine(script.asFile.absolutePath)
+            isIgnoreExitValue = true
+        }
+        val out = result.standardOutput.asText.get()
+        val err = result.standardError.asText.get()
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException("${script.asFile.name} failed with exit code $code:\n$out$err")
+        }
+        out.trim().lines().forEach { logger.lifecycle(it) }
     }
 }
 

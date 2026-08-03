@@ -56,10 +56,37 @@ is still what every task uses by default. A Homebrew-linked dylib needs
 working default for a broken one on any machine without those. Everything new is therefore opt-in
 behind `-PceresLibrary`, and `buildCeresNative` is not wired into `check`.
 
-Closing that gap means deciding how the artifact is distributed — a static v3 build with sparse
-support turned on, per-platform artifacts, or building from source at install time. That is the same
-open question the release checklist already records, and it should be answered deliberately rather
-than by whichever dylib happens to be committed.
+What *is* now settled is how to build a shippable one. `./gradlew buildCeresRedistributable` (or
+`native/ken-ceres/build_redistributable.sh` directly) produces a v3 wrapper whose `otool -L` shows
+only `libc++` and `libSystem` — the property the committed v1 artifact has and the Homebrew-linked
+build does not — by statically linking a Ceres built from pinned, checksummed source:
+
+| | |
+|---|---|
+| Ceres | 2.2.0, the version every measurement here was taken against |
+| Eigen | 3.4.0, pinned because Ceres 2.2.0's `find_package(Eigen3 3.3)` *rejects* the Eigen 5.x Homebrew now installs |
+| sparse | `EIGENSPARSE=ON`, `EIGENMETIS=OFF` — Eigen's sparse Cholesky is header-only, so `SPARSE_NORMAL_CHOLESKY` costs no shared library; METIS *ordering* would have pulled in `libmetis` |
+| logging | `MINIGLOG=ON` with `MINIGLOG_MAX_LOG_LEVEL=-3` |
+| result | 8.0 MB, `ken_ceres_jvm_abi_v3`, two system libraries |
+
+Two things that build taught us, both of which the script now encodes. Miniglog is *not* quiet:
+Ceres defaults `MINIGLOG_MAX_LOG_LEVEL` to 2, which is two `VLOG` levels straight to `std::cerr`, and
+the smoke suite emitted **11,108** lines of `Allocating values array with N bytes` before it was
+gated. A library loaded into someone else's process should not do that — the same complaint the glog
+path already fixed — so the level is `-3`, FATAL, matching what `quiet_glog_once()` asks of real glog.
+And the script *asserts* the load commands rather than trusting the flags: anything outside `/usr/lib`
+and `/System/Library` fails the build, because "I passed the static flag" and "the artifact is
+self-contained" are different claims.
+
+Verified against that artifact: all 42 checks across the five Ceres smokes, 29 solves genuinely
+reporting `SPARSE_NORMAL_CHOLESKY` rather than falling back to dense, `kkC` and `kkD` still exact, and
+zero lines of stderr noise.
+
+What remains a decision rather than a gap: whether to *commit* it. Doing so would grow `libs/` from
+2.2 MB to 8.0 MB and make every v2/v3 feature work on a fresh clone; not doing so keeps the repo
+small and leaves those features behind one build command. It is also macOS-arm64 only, and
+`CeresNativeLibrary.defaultPath` hardcodes `libs/libken_ceres_jvm.dylib` with no os/arch dispatch, so
+a second platform is a loader change as well as a build one.
 
 ### A build bug found on the way
 
@@ -307,7 +334,11 @@ orders of magnitude better than the existing iteration, and sane where it produc
 
 ## What is still open
 
-1. **Distribution.** A committed v2 artifact, or a build-from-source step. See above.
+1. **Distribution.** Half done. `buildCeresRedistributable` builds a self-contained v3 artifact with
+   sparse support from pinned source, and asserts its own self-containment — so *producing* the right
+   binary is now one reproducible command. What is undecided is whether it gets committed (2.2 MB →
+   8.0 MB in `libs/`, against every v2/v3 feature working on a fresh clone) and whether a second
+   platform is worth the loader's first os/arch dispatch. See above.
 2. **`PLANAR` should migrate to the Hesse form.** The null space above is not specific to
    realization — every caller of the original opcode, including the architectural DSL, is paying
    for two free directions per face. `PLANAR_HESSE` is left as a separate opcode only so that this
@@ -593,6 +624,7 @@ tell you to:
 | | |
 |---|---|
 | `native/ken-ceres/` | wrapper source and CMake build |
+| `native/ken-ceres/build_redistributable.sh` | the shippable build: pinned Ceres/Eigen, static, quiet, self-containment asserted |
 | `afield.stdlib.ceres.CeresGeometry` | constraint vocabulary, program encoding, options, summary |
 | `afield.stdlib.ceres.FfmCeresBackend` | the FFM binding, ABI detection, feature gating |
 | `afield.stdlib.polytope.CeresRealization` | `RelaxationPlan` → `CeresProgram`, `relaxWithCeres` |
