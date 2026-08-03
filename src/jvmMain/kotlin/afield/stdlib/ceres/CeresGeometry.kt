@@ -121,7 +121,8 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
     RadiusAboutCentroid(64, "RADIUS_ABOUT_CENTROID"),
     PlanarHesse(65, "PLANAR_HESSE"),
     PlanarFit(66, "PLANAR_FIT"),
-    GaugeRotation(67, "GAUGE_ROTATION");
+    GaugeRotation(67, "GAUGE_ROTATION"),
+    Expr(68, "EXPR");
 
     companion object {
         private val byCode = entries.associateBy { it.code }
@@ -1117,6 +1118,38 @@ class CeresProgramBuilder {
 
     fun gaugeRotationAll(weight: Double = 1.0) = add(GaugeRotation(listOf(PointId.ALL_POINTS), weight))
 
+    /**
+     * A residual you write here, in Kotlin, differentiated exactly by Ceres — no native rebuild.
+     *
+     * [build] receives one [CeresExprVec] per point in [points], in order, and returns one
+     * expression per residual. See [CeresExpr] for the vocabulary and its caveats.
+     *
+     * ```kotlin
+     * // a spring between two points, at rest length 2.5
+     * expression(a, b) { (pa, pb) -> listOf(pa.distanceTo(pb) - 2.5.c) }
+     *
+     * // a one-sided floor on the same distance, contributing nothing above it
+     * expression(a, b) { (pa, pb) -> listOf(barrierBelow(pa.distanceTo(pb), 0.1.c)) }
+     * ```
+     */
+    fun expression(
+        points: List<Int>,
+        weight: Double = 1.0,
+        build: (List<CeresExprVec>) -> List<CeresExpr>,
+    ): CeresProgramBuilder {
+        val bound = points.indices.map { block ->
+            CeresExprVec(ExprParam(block, 0), ExprParam(block, 1), ExprParam(block, 2))
+        }
+        return add(CeresExpressionResidual(points.ids(), build(bound), weight))
+    }
+
+    /** As [expression], for the common case of naming the points inline. */
+    fun expression(
+        vararg points: Int,
+        weight: Double = 1.0,
+        build: (List<CeresExprVec>) -> List<CeresExpr>,
+    ): CeresProgramBuilder = expression(points.toList(), weight, build)
+
     fun raw(vararg values: Double) = add(RawProgramFragment(values.toList()))
 
     fun build(): CeresProgram = CeresProgram(constraints.toList())
@@ -1529,7 +1562,7 @@ private fun IntArray.ids(): List<PointId> = map { it.id() }
 
 private fun List<Int>.ids(): List<PointId> = map { it.id() }
 
-private fun MutableList<Double>.op(opcode: CeresOpcode) {
+internal fun MutableList<Double>.op(opcode: CeresOpcode) {
     this += opcode.code.toDouble()
 }
 
@@ -1574,7 +1607,7 @@ private fun requirePair(a: PointId, b: PointId) {
     require(a != b) { "point pair endpoints must be distinct" }
 }
 
-private fun requirePointList(points: List<PointId>, min: Int, allowAll: Boolean) {
+internal fun requirePointList(points: List<PointId>, min: Int, allowAll: Boolean) {
     require(points.size >= min) { "need at least $min point(s)" }
     points.forEach { requirePoint(it, allowAll) }
 }
@@ -1597,7 +1630,7 @@ private fun requireAllPointSentinelIsAlone(points: List<PointId>) {
     require(points.size == 1 || PointId.ALL_POINTS !in points) { "use -1/all-points alone, not mixed" }
 }
 
-private fun requireWeight(weight: Double) {
+internal fun requireWeight(weight: Double) {
     require(weight.isFinite() && weight >= 0.0) { "weight must be finite and non-negative" }
 }
 

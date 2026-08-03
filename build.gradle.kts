@@ -2088,6 +2088,24 @@ tasks.register<JavaExec>("smokeCeresCanonical") {
     )
 }
 
+// The residual expression VM: equivalence with the hand-written opcodes, DAG sharing, validation,
+// and the Thomson problem — which no opcode in the vocabulary can express. Needs the v2 wrapper.
+tasks.register<JavaExec>("smokeCeresExpression") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionSmokeKt",
+        "Runs the Ceres residual-expression VM smoke.",
+    )
+}
+
+// What the expression VM costs against the equivalent hand-written functor. Needs the v2 wrapper.
+tasks.register<JavaExec>("ceresExpressionCost") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionCostKt",
+        "Times the residual-expression VM against the equivalent native opcode.",
+    )
+    group = "application"
+}
+
 tasks.register("smokeCeres") {
     group = "verification"
     description = "Runs all Ceres FFM smoke examples."

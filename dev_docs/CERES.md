@@ -280,15 +280,104 @@ orders of magnitude better than the existing iteration, and sane where it produc
    own floor or be reformulated so that a short edge does not free its own constraint.
 5. **Per-constraint-group loss.** `SET_LOSS` is program-level. Interactive editing plausibly wants
    Huber on user-dragged priors and plain L2 on hard geometry in the same problem.
-6. **The opcode treadmill.** Every new residual is still C++ plus Kotlin plus a native rebuild.
-   Since the functors are templated on the scalar type and Ceres autodiffs through them, the natural
-   escape is a small expression VM evaluated over `ceres::Jet` — a postfix residual program the
-   native side interprets — which would let Field define residuals from Kotlin without recompiling
-   anything. That is a real design, not a small change, but it is the thing that would make this
-   general infrastructure rather than a growing table.
+6. **Auxiliary variables from Kotlin.** The expression VM below reads point parameter blocks and
+   nothing else, so a residual defined at runtime cannot introduce its own free variables the way
+   `PLANAR_HESSE` introduces a plane. Given how much the Hesse reformulation mattered, being able
+   to declare "and N extra scalars, solved for" would be the single most valuable extension.
 7. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
    so refuses the v2 options. If a steady-state solve ever needs a different linear solver, that
    choice should move to compile time.
+
+## Residuals written in Kotlin
+
+Every constraint above is a C++ functor with a matching opcode, so a new kind of residual costs a
+native rebuild, a Kotlin change, and a redeployed dylib. The `EXPR` opcode ends that. A caller
+builds an expression, it compiles to a small register program, and the native side evaluates it —
+templated on the scalar type, so **Ceres runs it on `ceres::Jet` and gets analytic derivatives for
+a residual it has never seen**. No finite differences, no rebuild.
+
+```kotlin
+buildCeresProgram {
+    // a spring between two points, at rest length 2.5
+    expression(a, b) { (pa, pb) -> listOf(pa.distanceTo(pb) - 2.5.c) }
+
+    // a one-sided floor on the same distance, contributing nothing above it
+    expression(a, b) { (pa, pb) -> listOf(barrierBelow(pa.distanceTo(pb), 0.1.c)) }
+}
+```
+
+It is a **register machine, not a stack machine**, and that is the one design decision worth
+defending. The caller compiles an expression DAG; with named destination slots, a subexpression
+mentioned twice is computed once, for free. A stack machine would have to recompute it or juggle
+`DUP`/`SWAP`. `CeresExpr` instances are hash-consed as you build them, so the sharing is structural
+rather than something the compiler has to rediscover — three residuals over one shared distance
+compile to one `sqrt`.
+
+Instructions are four values, `[op, dst, a, b]`, and everything is validated at build time — slot
+ranges, constant indices, parameter components, unknown ops — because the evaluator runs once per
+residual per Jet per iteration and an out-of-range slot index there is an out-of-bounds write in
+someone else's process. `CompiledCeresExpression.disassemble()` prints the program; being able to
+look at it is half the point of having one.
+
+### Is it right?
+
+`smokeCeresExpression` checks it three ways.
+
+**Against the wrapper's own functors.** A residual written as an expression must agree with the
+hand-written opcode that does the same thing — checked against the wrapper, not against a number
+someone typed in:
+
+| | max coordinate difference after a full solve |
+|---|---|
+| `DISTANCE` opcode vs expression | 2.2e-11 |
+| `EDGE_TANGENCY` opcode vs expression | 9.9e-14 |
+
+**Against something no opcode can express.** The Thomson problem — minimise the Coulomb energy of
+N charges confined to a sphere — needs `1/r` repulsion, which nothing in this vocabulary can say.
+Written as residuals, `r_ij = 1/sqrt(d_ij)` gives exactly the Coulomb energy, and the known minima
+are exact numbers:
+
+| N | energy found | known minimum | error |
+|---|---|---|---|
+| 4 | 3.674233 | 3.674235 | 1.7e-06 |
+| 6 | 9.985273 | 9.985281 | 8.3e-06 |
+| 8 | 19.675264 | 19.675288 | 2.4e-05 |
+| 12 | 49.231655 | 49.165253 | local minimum |
+
+N=12 converges cleanly and stays on the sphere but finds a configuration slightly worse than the
+icosahedron. That is the Thomson problem's own local-minimum structure, not a VM error, so the check
+for it is "converged, on the sphere, and no better than the known global minimum" — landing *below*
+a known minimum would mean the energy was being computed wrong.
+
+**Against malformed input**, in both layers: Kotlin rejects an expression naming the same point
+twice (Ceres forbids a repeated parameter block), and the native validator rejects an out-of-range
+point, slot or opcode through the same error channel as any other malformed program.
+
+### What it costs
+
+Same problem, same answer, same iteration count; the only difference is interpreted register program
+against compiled C++ template:
+
+| points | `DISTANCE` opcode | expression | |
+|---|---|---|---|
+| 50 | 3.6 ms | 5.3 ms | ×1.5 |
+| 200 | 13.7 ms | 20.2 ms | ×1.5 |
+| 800 | 54.3 ms | 77.6 ms | ×1.4 |
+
+A flat 1.5×, which is low enough that the VM is a reasonable place for a residual to *live*, not
+just a place to prototype one before promoting it. Promote to a real opcode when a residual is hot
+and settled; use an expression while you are still working out what the residual should be, or when
+it is caller-specific and will never belong in the wrapper.
+
+### What it cannot do
+
+Read anything but the point parameter blocks. `PLANAR_HESSE` works because it introduces a plane as
+a *free variable* Ceres solves for, and an expression has no way to declare one — which, given how
+much that reformulation mattered above, is the extension worth doing next.
+
+Also worth knowing: `abs`, `min` and `max` are not differentiable at their kinks, and Ceres will
+hand back a subgradient. That is what you want for a one-sided barrier and not what you want in the
+middle of a smooth objective.
 
 ## Map
 
@@ -303,3 +392,6 @@ orders of magnitude better than the existing iteration, and sane where it produc
 | `afield.examples.ceres.CeresPlaneFormulationStudy` | the plane-parameterisation sweep |
 | `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |
 | `afield.examples.ceres.CeresRealizerDiagnostic` | parameter and residual counts per solid |
+| `afield.stdlib.ceres.CeresExpression` | the expression DAG, its compiler, and the register program |
+| `afield.examples.ceres.CeresExpressionSmoke` | equivalence, sharing, validation, Thomson |
+| `afield.examples.ceres.CeresExpressionCost` | the 1.5x table above |

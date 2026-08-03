@@ -84,7 +84,52 @@ namespace op
         // PlanarHesse and PlanarFit below for why PLANAR alone is not enough.
         PLANAR_HESSE = 65,     // [n, i0..., w]  plane as unit normal + scalar offset
         PLANAR_FIT = 66,       // [n, i0..., w]  best-fit plane inside the residual, no plane vars
-        GAUGE_ROTATION = 67    // [n, i0..., w]  kill the infinitesimal-rotation null space
+        GAUGE_ROTATION = 67,   // [n, i0..., w]  kill the infinitesimal-rotation null space
+
+        // A caller-supplied residual, as a little register machine evaluated in T. See ExprVm.
+        EXPR = 68
+    };
+}
+
+// ============================================================
+// Residual expression VM
+// ============================================================
+//
+// Every opcode above is a residual someone wrote in C++, which means every new kind of residual
+// costs a native rebuild and a matching Kotlin change. EXPR breaks that: the caller ships a small
+// program, this evaluates it, and because the evaluator is templated on the scalar type Ceres
+// autodiffs straight through it. No new C++ for a new residual.
+//
+// It is a register machine, not a stack machine, for one reason: the caller compiles an expression
+// DAG, and with named destination slots common subexpressions are shared by construction. A stack
+// machine would have to recompute them or juggle DUP/SWAP.
+//
+// Instructions are four doubles: [op, dst, a, b]. `a` and `b` are slot indices except where noted;
+// unary operators ignore `b`.
+namespace expr
+{
+    enum : int
+    {
+        CONST = 0,  // a = index into the constant pool
+        PARAM = 1,  // a = parameter-block index, b = component 0..2
+        ADD = 2,
+        SUB = 3,
+        MUL = 4,
+        DIV = 5,
+        NEG = 6,
+        SQRT = 7,
+        ABS = 8,
+        SIN = 9,
+        COS = 10,
+        TAN = 11,
+        EXP = 12,
+        LOG = 13,
+        POW = 14,
+        MIN = 15,
+        MAX = 16,
+        ATAN2 = 17,
+        SQUARE = 18,
+        RECIP = 19,
     };
 }
 
@@ -228,6 +273,41 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
         int n = (int)program[ip];
         int span = (n < 0) ? 2 : (1 + n + 1);
         return (ip + span <= prog_len) ? span : -1;
+    }
+    case op::EXPR:
+    {
+        // [nParams, p..., nResiduals, r..., nSlots, nConsts, c..., nInstr, (op,dst,a,b)..., w]
+        int at = ip;
+        auto take = [&](int count) -> bool
+        {
+            if (at + count > prog_len)
+                return false;
+            at += count;
+            return true;
+        };
+        auto counted_run = [&]() -> bool
+        {
+            if (at >= prog_len)
+                return false;
+            int n = (int)program[at];
+            return n >= 0 && take(1 + n);
+        };
+        if (!counted_run())      // params
+            return -1;
+        if (!counted_run())      // residual slots
+            return -1;
+        if (!take(1))            // nSlots
+            return -1;
+        if (!counted_run())      // constants
+            return -1;
+        if (at >= prog_len)
+            return -1;
+        int instructions = (int)program[at];
+        if (instructions < 0 || !take(1 + 4 * instructions))
+            return -1;
+        if (!take(1))            // weight
+            return -1;
+        return at - ip;
     }
     default:
         return -1;
@@ -393,6 +473,109 @@ struct DistanceW
         T dx = A[0] - B[0], dy = A[1] - B[1], dz = A[2] - B[2];
         T d = ceres::sqrt(dx * dx + dy * dy + dz * dz) + T(1e-20);
         r[0] = T(s) * (d - T(D));
+        return true;
+    }
+};
+
+// The evaluator for op::EXPR. One instance per residual block; `code`, `constants` and
+// `residualSlots` are fixed at build time and only the scalar type varies.
+//
+// Templated on T so the same code runs on double for evaluation and on ceres::Jet for
+// differentiation — which is the whole point: a residual defined at runtime still gets exact
+// derivatives, not finite differences.
+struct ExprVm
+{
+    std::vector<int> code;          // 4 ints per instruction: op, dst, a, b
+    std::vector<double> constants;
+    std::vector<int> residualSlots;
+    int slotCount = 0;
+    double s = 1.0;
+
+    int instructionCount() const { return (int)(code.size() / 4); }
+
+    template <typename T>
+    bool operator()(T const *const *p, T *residuals) const
+    {
+        // One scratch slot vector per evaluation. Small and short-lived; if this ever shows up in a
+        // profile the fix is a fixed-size buffer for the common case, not a redesign.
+        std::vector<T> slot(slotCount, T(0));
+
+        const int n = instructionCount();
+        for (int i = 0; i < n; ++i)
+        {
+            const int op = code[4 * i];
+            const int dst = code[4 * i + 1];
+            const int a = code[4 * i + 2];
+            const int b = code[4 * i + 3];
+            switch (op)
+            {
+            case expr::CONST:
+                slot[dst] = T(constants[a]);
+                break;
+            case expr::PARAM:
+                slot[dst] = p[a][b];
+                break;
+            case expr::ADD:
+                slot[dst] = slot[a] + slot[b];
+                break;
+            case expr::SUB:
+                slot[dst] = slot[a] - slot[b];
+                break;
+            case expr::MUL:
+                slot[dst] = slot[a] * slot[b];
+                break;
+            case expr::DIV:
+                slot[dst] = slot[a] / slot[b];
+                break;
+            case expr::NEG:
+                slot[dst] = -slot[a];
+                break;
+            case expr::SQRT:
+                slot[dst] = ceres::sqrt(slot[a]);
+                break;
+            case expr::ABS:
+                slot[dst] = ceres::abs(slot[a]);
+                break;
+            case expr::SIN:
+                slot[dst] = ceres::sin(slot[a]);
+                break;
+            case expr::COS:
+                slot[dst] = ceres::cos(slot[a]);
+                break;
+            case expr::TAN:
+                slot[dst] = ceres::tan(slot[a]);
+                break;
+            case expr::EXP:
+                slot[dst] = ceres::exp(slot[a]);
+                break;
+            case expr::LOG:
+                slot[dst] = ceres::log(slot[a]);
+                break;
+            case expr::POW:
+                slot[dst] = ceres::pow(slot[a], slot[b]);
+                break;
+            case expr::MIN:
+                slot[dst] = ceres::fmin(slot[a], slot[b]);
+                break;
+            case expr::MAX:
+                slot[dst] = ceres::fmax(slot[a], slot[b]);
+                break;
+            case expr::ATAN2:
+                slot[dst] = ceres::atan2(slot[a], slot[b]);
+                break;
+            case expr::SQUARE:
+                slot[dst] = slot[a] * slot[a];
+                break;
+            case expr::RECIP:
+                slot[dst] = T(1.0) / slot[a];
+                break;
+            default:
+                return false; // validated at build time; a bad opcode here means memory corruption
+            }
+        }
+
+        for (size_t i = 0; i < residualSlots.size(); ++i)
+            residuals[i] = T(s) * slot[residualSlots[i]];
         return true;
     }
 };
@@ -2644,6 +2827,159 @@ void SolverContext::build(int Npts, const double *points_in,
                     blocks.push_back(&pts[3 * id]);
                 }
                 cost->SetNumResiduals((int)idx.size());
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
+        case op::EXPR:
+        {
+            // [nParams, p..., nResiduals, slot..., nSlots, nConsts, c..., nInstr, (op,dst,a,b)..., w]
+            //
+            // Validated hard here rather than in the evaluator: the evaluator runs once per
+            // residual per Jet per iteration, and an out-of-range slot index there is an
+            // out-of-bounds write in someone else's process.
+            int span = operand_span(op::EXPR, program, ip, prog_len);
+            if (span < 0)
+            {
+                build_error = "malformed EXPR at offset " + std::to_string(ip - 1);
+                ip = prog_len;
+                break;
+            }
+            const int end = ip + span;
+
+            int nParams = (int)program[ip++];
+            std::vector<int> params(nParams);
+            for (int k = 0; k < nParams; ++k)
+                params[k] = (int)program[ip++];
+
+            int nResiduals = (int)program[ip++];
+            std::vector<int> residualSlots(nResiduals);
+            for (int k = 0; k < nResiduals; ++k)
+                residualSlots[k] = (int)program[ip++];
+
+            int nSlots = (int)program[ip++];
+
+            int nConsts = (int)program[ip++];
+            std::vector<double> constants(nConsts);
+            for (int k = 0; k < nConsts; ++k)
+                constants[k] = program[ip++];
+
+            int nInstr = (int)program[ip++];
+            std::vector<int> code(4 * nInstr);
+            for (int k = 0; k < 4 * nInstr; ++k)
+                code[k] = (int)program[ip++];
+
+            double w = program[ip++];
+            ip = end; // defensive: never let a miscount here desync the rest of the program
+
+            auto fail = [&](const std::string &why)
+            {
+                build_error = "EXPR: " + why;
+            };
+
+            bool ok = true;
+            if (nParams < 1 || nResiduals < 1 || nSlots < 1)
+            {
+                fail("needs at least one parameter block, one residual and one slot");
+                ok = false;
+            }
+            // Ceres forbids naming the same parameter block twice in one residual block.
+            std::vector<int> sortedParams = params;
+            std::sort(sortedParams.begin(), sortedParams.end());
+            if (ok && std::adjacent_find(sortedParams.begin(), sortedParams.end()) != sortedParams.end())
+            {
+                fail("the same point appears twice in one expression's parameter list");
+                ok = false;
+            }
+            if (ok)
+                for (int id : params)
+                    if (id < 0 || id >= Npts)
+                    {
+                        fail("point index " + std::to_string(id) + " out of range");
+                        ok = false;
+                        break;
+                    }
+            if (ok)
+                for (int slotIndex : residualSlots)
+                    if (slotIndex < 0 || slotIndex >= nSlots)
+                    {
+                        fail("residual reads slot " + std::to_string(slotIndex) + " of " + std::to_string(nSlots));
+                        ok = false;
+                        break;
+                    }
+            if (ok)
+                for (int k = 0; k < nInstr; ++k)
+                {
+                    const int o = code[4 * k], dst = code[4 * k + 1];
+                    const int a = code[4 * k + 2], b = code[4 * k + 3];
+                    if (o < expr::CONST || o > expr::RECIP)
+                    {
+                        fail("unknown expression op " + std::to_string(o) + " at instruction " + std::to_string(k));
+                        ok = false;
+                        break;
+                    }
+                    if (dst < 0 || dst >= nSlots)
+                    {
+                        fail("instruction " + std::to_string(k) + " writes slot " + std::to_string(dst));
+                        ok = false;
+                        break;
+                    }
+                    if (o == expr::CONST)
+                    {
+                        if (a < 0 || a >= nConsts)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads constant " + std::to_string(a));
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else if (o == expr::PARAM)
+                    {
+                        if (a < 0 || a >= nParams || b < 0 || b > 2)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads parameter " +
+                                 std::to_string(a) + " component " + std::to_string(b));
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        // Every remaining op reads slots. Binary ops read both; unary ops ignore b,
+                        // and the encoder writes 0 there, which is always a valid slot.
+                        if (a < 0 || a >= nSlots || b < 0 || b >= nSlots)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads slots " +
+                                 std::to_string(a) + "," + std::to_string(b) + " of " + std::to_string(nSlots));
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+
+            if (ok)
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::EXPR;
+
+                auto *vm = new ExprVm();
+                vm->code = std::move(code);
+                vm->constants = std::move(constants);
+                vm->residualSlots = residualSlots;
+                vm->slotCount = nSlots;
+                vm->s = std::sqrt(std::max(0.0, w));
+
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<ExprVm>(vm);
+                std::vector<double *> blocks;
+                for (int id : params)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                cost->SetNumResiduals(nResiduals);
                 ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
                 G.blocks.push_back(rid);
             }
