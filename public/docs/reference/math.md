@@ -4,7 +4,7 @@
 
 Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. Everything here is plain `Double`/`Float` Kotlin with no GPU and no window, so it runs in a box, a test or a headless docs capture equally well.
 
-18 source file(s), 1573 public symbol(s), 1187 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+18 source file(s), 1574 public symbol(s), 1188 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1345,9 +1345,10 @@ complete.
 
 Interpolation is linear and only covers `Float`, `Double`, `Int`, `Long` and
 `Vector2f`/`Vector3f`/`Vector4f`; any other type completes immediately at the target. Progress
-is either wall-clock (`time` seconds, measured with `System.nanoTime`) or a fixed number of
-evaluations (`steps`, default 100), and it is one-shot: once it reaches the target it stays
-there.
+is either time-based (`time` seconds), a fixed number of evaluations (`steps`, default 100), or
+frame-based by supplying `clock = frameClock(fps) { frameNumber }`. Time-based interpolation uses
+`System.nanoTime` by default; an injected clock makes offline and fixed-rate rendering independent
+of scheduler pauses. The interpolation is one-shot: once it reaches the target it stays there.
 
 `src/jvmMain/kotlin/afield/stdlib/interpolants.kt`
 
@@ -1357,7 +1358,8 @@ there.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">smoothTo</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span></code> | Wraps a target-producing lambda so that reading it *eases toward* the target instead of jumping there — the one-word way to take the snap out of a value assignment. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">frameClock</span><span class="p">(</span><span class="n">fps</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">frameNumber</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Number</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span></code> | Converts an authoritative rendered-frame counter into the seconds clock accepted by `smoothTo`. |
+| <code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">smoothTo</span><span class="p">(</span><span class="n">time</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span> <span class="n">clock</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Double</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span></code> | Wraps a target-producing lambda so that reading it *eases toward* the target instead of jumping there — the one-word way to take the snap out of a value assignment. |
 
 ### NeedsStartingValue { #interpolants-kt-needsstartingvalue }
 

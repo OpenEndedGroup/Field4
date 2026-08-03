@@ -112,14 +112,13 @@ data class Sample(val elapsed: Double, val byStep: Float, val byTime: Float)
 val byStep = smoothTo<Float>(steps = 140) { 1.0f }
 (byStep as NeedsStartingValue<Float>).startAt(0.0f)
 
-val byTime = smoothTo<Float>(time = 1.2, steps = null) { 1.0f }
+var elapsed = 0.0
+val byTime = smoothTo<Float>(time = 1.2, steps = null, clock = { elapsed }) { 1.0f }
 (byTime as NeedsStartingValue<Float>).startAt(0.0f)
 
-val started = System.nanoTime()
 val samples = List(220) { i ->
-    val elapsed = (System.nanoTime() - started) / 1_000_000_000.0
     val sample = Sample(elapsed, byStep(), byTime())
-    Thread.sleep(if (i < 150) 2L else 18L)
+    elapsed += if (i < 150) 0.002 else 0.018
     sample
 }
 
@@ -162,7 +161,10 @@ markdown("legend", """
 ![Step-based versus time-based smoothing under an uneven sampling cadence](assets/interpolants_examples/smooth_duration.png)
 
 The orange trace arrives as soon as 140 calls have happened; the green trace
-arrives at the requested wall-clock duration regardless of cadence. Use the
+arrives at the requested timeline duration regardless of cadence. The example injects a synthetic
+clock so its uneven cadence is exact and the documentation render is reproducible. For a film or
+offline render, use `clock = frameClock(24.0) { renderer.frameCounter }`: repeated reads in one frame
+see the same time, and each rendered frame advances exactly 1/24 second. Use the
 step form when the world is discrete and counted, the time form when it is
 musical, animated, or otherwise measured in seconds.
 
