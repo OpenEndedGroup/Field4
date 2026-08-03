@@ -133,6 +133,12 @@ object DemoTranscriptExecSmokeTest {
         // ends in `animate { }`, which registers an animation rather than blocking, as with the two
         // parameter sweeps in spatial_geometry_examples.
         "typography_worked_example",
+        // Two pure-CPU Ceres boxes: a canonical realization whose per-face planes are free variables in
+        // the residual expression VM, and a sphere fit whose unknowns are not points at all. Both are
+        // FFM calls into the native wrapper plus threeLines(), so no Window and no Renderer. Both
+        // detect a wrapper older than ABI v3 — which is exactly what the *committed* dylib is, so that
+        // is the branch CI takes — and draw the unsolved seed with an explanation rather than failing.
+        "ceres_free_variables",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
