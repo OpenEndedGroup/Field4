@@ -980,6 +980,7 @@ import afield.stdlib.polytope.*
 import java.util.Base64
 
 // kis applied twice to the cube: 38 vertices, 108 edges, 72 faces. The standing counter-example.
+// relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
 val seed = conway("kkC").polyhedron
 val iterated = seed.canonicalize()
 val solved = seed.relaxWithCeres(RelaxationPlan.canonicalConditions(), CeresRelaxationOptions(maxIterations = 500))

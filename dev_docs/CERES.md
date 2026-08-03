@@ -71,6 +71,14 @@ The trade is that a fresh clone has no solver until someone builds one:
 `CeresNativeLibrary.defaultPath` looks for that task's output, so nothing else has to be passed once
 it exists. Ask for a solve without it and the refusal names the command.
 
+One cost worth stating plainly, because it lands on someone who is not working on the solver: the
+public docs build now has a prerequisite. `public/docs/polytope_examples.md` captures
+`kkc_canonical.png` by calling `relaxWithCeres`, so on a fresh clone that one figure cannot be
+regenerated. The default incremental build already skips it and keeps the committed asset, and
+`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md` records that skipping it is sanctioned rather than a
+workaround — including the flag to pass if you are force-recapturing that page for some other
+reason.
+
 ### How the shippable one is built
 
 `buildCeresRedistributable` (or `native/ken-ceres/build_redistributable.sh` directly) produces a v3
