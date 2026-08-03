@@ -334,8 +334,10 @@ its 54 edges had collapsed to length `1e-7`.
 endpoints. As those endpoints converge, that line's direction becomes arbitrary — so a collapsed
 edge can put its tangency point anywhere on the sphere and satisfies its constraint for free.
 Collapsing edges *removes* constraints, and the canonical objective therefore has a family of exact
-zero-cost solutions in which part of the solid has folded up. **`relax` uses the identical formula
-and shares this defect**; it is saved only by converging too slowly to reach the trap.
+zero-cost solutions in which part of the solid has folded up. **`relax` uses the identical formula and
+falls in too** — measured, not assumed: on `kkT` it returns a tangency spread of `1.2e-04` bought with
+an edge at `0.0007` of the mean edge length. That is the trap, found by a first-order solver, and the
+flattering spread was measuring a folded solid.
 
 The fix needed no new native code — `MIN_DISTANCE` was already there. A one-sided
 `max(0, floor - length)` barrier at 1% of the initial mean edge length contributes exactly nothing
@@ -369,8 +371,17 @@ orders of magnitude better than the existing iteration, and sane where it produc
 3. **`kkT`, `kkO`, `kkI` reach 1e-4, not machine precision.** They now find a sane solid, so what is
    left is the tail rather than the failure. Worth trying: continuation on the barrier (solve with
    the floor, then release it), or a Mobius normalisation between solves.
-4. **The collapse defect applies to `relax` too.** `EdgeTangencyConstraint` should either carry its
-   own floor or be reformulated so that a short edge does not free its own constraint.
+4. ~~**The collapse defect applies to `relax` too.**~~ Half done. The floor is now a constraint
+   family, [`MinEdgeLengthConstraint`], carried by `RelaxationPlan.canonicalConditions()` rather than
+   by `CeresRelaxationOptions`, so both realizers minimise the identical function. Measured on the
+   `kk` family: exactly inert on `kC`, `kD`, `tI` and `kkO` (bit-identical coordinates), and it opens
+   `kkT`'s collapsed edge by an order of magnitude, from `0.0007` to `0.0079` of the mean. It is a
+   least-squares penalty rather than a hard constraint, so it does not reach the floor itself. What is
+   left: it does *nothing* for `kkC`, `kkD` and `kkI`, which also end with a collapsed edge under
+   `relax` but are stuck for a stronger reason than the trap — no floor rescues a first-order solver
+   there, which is what `relaxWithCeres` is for. Reformulating `EdgeTangencyConstraint` to measure to
+   the *segment* rather than the line is the untried alternative, and it would change the objective on
+   healthy input rather than only guarding it.
 5. **Per-constraint-group loss.** `SET_LOSS` is program-level. Interactive editing plausibly wants
    Huber on user-dragged priors and plain L2 on hard geometry in the same problem.
 6. ~~**Auxiliary variables from Kotlin.**~~ Done — see "Free variables, and the manifolds they live

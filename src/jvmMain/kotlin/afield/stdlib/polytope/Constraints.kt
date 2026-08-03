@@ -377,8 +377,9 @@ data class ProximityConstraint(
  * as an edge collapses that line's direction becomes arbitrary, so a collapsed edge can place its
  * tangency point anywhere on the sphere and satisfies this constraint for free. Collapsing an edge
  * therefore *removes* a constraint, and the canonical objective has exact zero-cost minima in which
- * part of the solid has folded up. [CeresRelaxationOptions.minEdgeLengthFraction] is the guard;
- * [PolyhedralObject.relax] has none and is saved only by converging too slowly to arrive.
+ * part of the solid has folded up. [MinEdgeLengthConstraint] is the guard, and
+ * [RelaxationPlan.canonicalConditions] includes one by default — for both realizers, since the defect
+ * is in the objective rather than in either solver.
  */
 data class EdgeTangencyConstraint(
     override val weight: Double = 1.0,
@@ -404,6 +405,56 @@ data class EdgeTangencyConstraint(
             edgeTangentPoint(x, problem.edgeA(edge), problem.edgeB(edge), point)
             val length = sqrt(point[0] * point[0] + point[1] * point[1] + point[2] * point[2])
             into[offset + edge] = weight * (length - goal)
+        }
+    }
+
+    override fun withWeight(weight: Double) = copy(weight = weight)
+}
+
+/**
+ * A floor under edge length: one one-sided residual per edge, `max(0, floor - length)`.
+ *
+ * This exists for one reason, and it is not shape control — it closes a hole in
+ * [EdgeTangencyConstraint]. That family measures the distance from the origin to the *line* through an
+ * edge, so as an edge shrinks its direction becomes arbitrary and it satisfies its own constraint for
+ * nothing; collapsing edges then *removes* constraints and the canonical objective grows exact
+ * zero-cost minima with part of the solid folded up. `kkC` is the case where that stops being
+ * theoretical: without a floor, `canonicalize()` walks away from its own starting embedding and hands
+ * back a sliver.
+ *
+ * One-sided is the whole point. At or above the floor every residual is exactly `0.0` — not small,
+ * zero — so this is inert on a healthy solid and cannot pull a shape it was not asked to pull. What it
+ * cannot be is *differentiable* at the floor: `max` has a kink there, and a finite-difference Jacobian
+ * sees a one-sided slope. That is the right trade for a barrier and the wrong one anywhere else.
+ *
+ * [fraction] is of the initial mean edge length rather than absolute, so the floor means the same thing
+ * whatever scale the caller's polyhedron arrived at.
+ */
+data class MinEdgeLengthConstraint(
+    override val weight: Double = 1.0,
+    /** Floor as a fraction of the initial mean edge length. */
+    val fraction: Double = 0.01,
+) : RealizationConstraint {
+    override val name get() = "min-edge-length"
+
+    init {
+        require(weight.isFinite() && weight >= 0.0) { "min-edge-length weight must be finite and non-negative" }
+        require(fraction.isFinite() && fraction >= 0.0) { "min-edge-length fraction must be finite and non-negative" }
+        require(fraction < 1.0) { "a floor at $fraction of the mean edge length would bind on a healthy solid" }
+    }
+
+    override fun residualCount(problem: RealizationProblem) = problem.edgeCount
+
+    override fun residuals(problem: RealizationProblem, x: DoubleArray, into: DoubleArray, offset: Int) {
+        val floor = fraction * problem.initialMeanEdgeLength
+        for (edge in 0 until problem.edgeCount) {
+            val a = problem.edgeA(edge)
+            val b = problem.edgeB(edge)
+            val dx = x[3 * b] - x[3 * a]
+            val dy = x[3 * b + 1] - x[3 * a + 1]
+            val dz = x[3 * b + 2] - x[3 * a + 2]
+            val length = sqrt(dx * dx + dy * dy + dz * dz)
+            into[offset + edge] = weight * max(0.0, floor - length)
         }
     }
 

@@ -111,18 +111,29 @@ data class RelaxationPlan(
          * and the tangency centroid at the origin. Solving this is an honest alternative to
          * [PolyhedralObject.canonicalize]'s iteration for small objects, and it is how the canonical
          * conditions get *measured* — see [PolyhedralObject.canonicalDiagnostics].
+         *
+         * There is a fourth family, and it is not one of the conditions: a [MinEdgeLengthConstraint]
+         * floor that closes the zero-cost minimum [EdgeTangencyConstraint] documents. It lives here
+         * rather than in either solver's options so that both realizers minimise the identical
+         * function — the defect is in the objective, not in a solver.
+         *
+         * @param minEdgeLengthFraction floor under edge length as a fraction of the initial mean.
+         *   Zero omits the family, which reproduces the pre-floor objective; on `kkT` that objective
+         *   has a minimum with an edge at `0.0007` of the mean and a flattering tangency spread.
          */
         fun canonicalConditions(
             planarityWeight: Double = 2.0,
             tangencyWeight: Double = 1.0,
             tangencyCentroidWeight: Double = 4.0,
             radius: Double = 1.0,
+            minEdgeLengthFraction: Double = 0.01,
             leastSquares: LeastSquaresOptions = LeastSquaresOptions(maxIterations = 128),
         ): RelaxationPlan = RelaxationPlan(
-            listOf(
+            listOfNotNull(
                 FacePlanarityConstraint(planarityWeight),
                 EdgeTangencyConstraint(tangencyWeight, radius),
                 TangencyCentroidConstraint(tangencyCentroidWeight),
+                minEdgeLengthFraction.takeIf { it > 0.0 }?.let { MinEdgeLengthConstraint(fraction = it) },
             ),
             leastSquares,
             RigidGauge(centre = GaugeCentre.EDGE_TANGENCY_CENTROID, scale = GaugeScale.MEAN_EDGE_TANGENCY_RADIUS),

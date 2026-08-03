@@ -315,9 +315,11 @@ in *this* library's objective, not in the solver:
 - the objective needs a floor on edge length. `EdgeTangencyConstraint` measures the distance from
   the origin to the *line* through an edge, and as an edge collapses that line's direction becomes
   arbitrary, so a collapsed edge satisfies its own constraint for free. The canonical objective
-  therefore has exact zero-cost solutions in which part of the solid has folded up, and `relax` is
-  saved from them only by converging too slowly to arrive. `kkT` reaches cost `5.7e-17` with 12 of
-  its 54 edges at length `1e-7`.
+  therefore has exact zero-cost solutions in which part of the solid has folded up. Ceres finds them —
+  `kkT` reaches cost `5.7e-17` with 12 of its 54 edges at length `1e-7` — and so, it turns out, does
+  `relax`: on `kkT` it returns spread `1.2e-04` with an edge at `0.0007` of the mean. The floor is now
+  `MinEdgeLengthConstraint`, in the plan rather than in either solver's options, so both minimise the
+  same function.
 
 `relaxWithCeres` needs the ABI v2 native wrapper, so `canonicalize()` remains the default path. See
 `dev_docs/CERES.md`. What is still open is the tail: `kkT`, `kkO` and `kkI` find a sane solid but

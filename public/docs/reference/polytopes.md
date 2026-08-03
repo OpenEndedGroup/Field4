@@ -4,7 +4,7 @@
 
 Polyhedra as topology first and coordinates second. An abstract incidence complex you can build and validate; the Conway operator algebra — `dual`, `ambo`, `kis`, `truncate`, `gyro` and the composites written over them — that rewrites it, with per-element provenance and lineage carried through every step; and three realization verbs that hand the result coordinates: `realize` for a first embedding, `relax` for one that satisfies constraints you declare, and `canonicalize` for the classical edge-tangent form you would recognise as a solid. Everything is immutable and CPU-only, so a Conway expression evaluates in a box, a test or a headless docs capture equally well; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a `TriMesh`. 4-polytopes, their Schlegel and slice projections, and an OFF importer live here too. Files are listed alphabetically below; a reader new to the package wants `Topology.kt`, then `Transforms.kt`, then `Conway.kt`, then `Canonical.kt`, then `FieldAdapters.kt` — and [Polytopes: topology first, coordinates later](../polytope_examples.md) for the same ground with pictures.
 
-17 source file(s), 533 public symbol(s), 387 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+17 source file(s), 539 public symbol(s), 389 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -196,6 +196,8 @@ equivalent; in practice that means a custom [`RealizationConstraint`](polytopes.
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/CeresRealization.kt`
 
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
+
 ### Top-level functions { #ceresrealization-kt-functions }
 
 | Declaration | Summary |
@@ -298,6 +300,8 @@ relies on. A custom family has no Ceres equivalent, so a plan containing one can
 `PolyhedralObject.relaxWithCeres`; `CeresRealization.unsupported` names it.
 
 `src/jvmMain/kotlin/afield/stdlib/polytope/Constraints.kt`
+
+**Used in:** [Polytopes: topology first, coordinates later](../polytope_examples.md)
 
 ### Top-level functions { #constraints-kt-functions }
 
@@ -415,6 +419,20 @@ Every edge tangent to one sphere about the origin — the *midsphere* condition 
 | --- | --- |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | An absolute midsphere radius, or null for the initial mean — which constrains the *spread* of the tangency radii and leaves their common value alone. |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### MinEdgeLengthConstraint { #constraints-kt-minedgelengthconstraint }
+
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MinEdgeLengthConstraint</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Floor</span> <span class="n">as</span> <span class="n">a</span> <span class="n">fraction</span> <span class="n">of</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">mean</span> <span class="n">edge</span> <span class="n">length</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.01</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RealizationConstraint</span></code>
+
+A floor under edge length: one one-sided residual per edge, `max(0, floor - length)`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span></code> | Floor as a fraction of the initial mean edge length. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residualCount</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">)</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">residuals</span><span class="p">(</span><span class="n">problem</span><span class="p">:</span> <span class="nc">RealizationProblem</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">into</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">withWeight</span><span class="p">(</span><span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |

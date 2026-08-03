@@ -107,6 +107,7 @@ object CeresRealization {
                 is ProximityConstraint,
                 is EdgeTangencyConstraint,
                 is TangencyCentroidConstraint,
+                is MinEdgeLengthConstraint,
                 -> null
 
                 else -> constraint.name
@@ -186,6 +187,13 @@ object CeresRealization {
                     }
 
                     is TangencyCentroidConstraint -> tangencyCentroid(edges, weight = w)
+
+                    // The same one-sided floor the Kotlin family writes, as the native opcode. A
+                    // fraction of the initial mean edge length, so it means the same at any scale.
+                    is MinEdgeLengthConstraint -> {
+                        val floor = constraint.fraction * problem.initialMeanEdgeLength
+                        if (floor > 0.0) edges.forEach { (a, b) -> minDistance(a, b, floor, weight = w) }
+                    }
 
                     else -> error("unreachable: unsupported() should have rejected ${constraint.name}")
                 }
@@ -292,12 +300,14 @@ data class CeresRelaxationOptions(
      * scale. `max(0, floor - length)` contributes exactly nothing while every edge is longer than
      * the floor — turning it on is bit-for-bit inert on `kkC`, `kkD`, `kC` and `tI` — and it rescues
      * `kkO` and `kkI` from tangency spread 3e-1 to 2e-4. Larger values start to bias rather than
-     * merely guard, so the default is small.
+     * merely guard, so keep it small.
      *
-     * [relax] has no equivalent and shares the underlying defect; it is only saved from it by
-     * converging too slowly to reach the trap.
+     * **Defaults to zero because the plan now carries the floor**, as
+     * [MinEdgeLengthConstraint] — so both realizers minimise the identical function rather than only
+     * this one being guarded. Set this as well only to add a *second*, different floor; two one-sided
+     * barriers compose to one at the larger of the two, which is legal but rarely what anyone wants.
      */
-    val minEdgeLengthFraction: Double = 0.01,
+    val minEdgeLengthFraction: Double = 0.0,
 )
 
 /**

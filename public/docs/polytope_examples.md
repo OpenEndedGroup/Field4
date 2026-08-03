@@ -1037,7 +1037,12 @@ direction becomes arbitrary and it satisfies its own constraint for nothing. Col
 constraints, and a formulation that lets them collapse has a spurious zero-cost minimum sitting next
 to the answer.
 
-`relax` shares the identical formula, and is saved from it only by being too slow to arrive. So the
+`relax` minimises the identical formula and falls into the same trap, just on a different solid: on
+`kkT` it reports a tangency spread of `1.2e-04` for a solid with an edge at seven ten-thousandths of
+the mean edge length. `RelaxationPlan.canonicalConditions()` therefore carries a one-sided floor under
+edge length by default — `MinEdgeLengthConstraint`, exactly zero above itself and so bit-identical on a
+healthy solid — which opens that edge by an order of magnitude and makes the reported spread *worse*,
+because the flattering number was measuring a fold. So the
 fix was not a stronger solver: it was three changes to how the problem is *posed* — each face's plane
 carried as a free unit normal plus an offset rather than an origin and a normal (which has an exact
 two-dimensional null space per face, 144 of `kkC`'s 474 parameters), a one-sided floor under edge

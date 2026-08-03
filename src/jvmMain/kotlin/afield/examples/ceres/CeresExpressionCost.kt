@@ -97,7 +97,6 @@ fun main() {
             problem,
             planes,
             gaugeRotationWeight = 1.0,
-            minEdgeLengthFraction = 0.01,
         )
 
         val (opcodeNanos, opcodeIters) = timeSolve(cloud, program(PlaneFormulation.HESSE), reps = 10)

@@ -76,7 +76,7 @@ if (backend == null) {
         solvers.solve(
             SolveRequest(
                 PointCloud(problem.initialCoordinates),
-                CeresRealization.program(plan, problem, planes, 1.0, 0.01),
+                CeresRealization.program(plan, problem, planes, 1.0),
                 options = options,
             ),
         )

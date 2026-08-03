@@ -297,7 +297,6 @@ fun main() {
             afield.stdlib.polytope.RealizationProblem.of(seed),
             PlaneFormulation.HESSE_EXPRESSION,
             gaugeRotationWeight = 1.0,
-            minEdgeLengthFraction = 0.01,
         )
         expect(
             "$name: declares one plane per face (${program.variables.size} for $faces faces)",

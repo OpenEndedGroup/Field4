@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 204 "characters" 8559 "sha256" "b7ca21e7c4e5203eca68739197aa1501c16e487a1454d0302a7eae02ffaf1ff9"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 204 "characters" 8553 "sha256" "07025268f1915ddcccb9444531210580c3e8aec3b9d311d64a572f7fb29e3d08"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
@@ -93,7 +93,7 @@ if (backend == null) {
         solvers.solve(
             SolveRequest(
                 PointCloud(problem.initialCoordinates),
-                CeresRealization.program(plan, problem, planes, 1.0, 0.01),
+                CeresRealization.program(plan, problem, planes, 1.0),
                 options = options,
             ),
         )
