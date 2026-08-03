@@ -13,6 +13,11 @@ import afield.stdlib.ceres.SolveRequest
 import afield.stdlib.ceres.Vec3
 import afield.stdlib.ceres.buildCeresProgram
 import afield.stdlib.ceres.c
+import afield.stdlib.polytope.CeresRealization
+import afield.stdlib.polytope.PlaneFormulation
+import afield.stdlib.polytope.RealizationProblem
+import afield.stdlib.polytope.RelaxationPlan
+import afield.stdlib.polytope.conway
 
 /**
  * What the expression VM costs against the equivalent hand-written functor.
@@ -71,6 +76,39 @@ fun main() {
             "n=%-4d  DISTANCE opcode %7.2f ms (%d iter)   expression %7.2f ms (%d iter)   x%.1f".format(
                 n, nativeNanos / 1e6, nativeIters, exprNanos / 1e6, exprIters,
                 exprNanos.toDouble() / nativeNanos,
+            ),
+        )
+    }
+
+    // The same measurement for a residual whose unknowns are not all points: PLANAR_HESSE, which is a
+    // plane per face as a free unit normal on a sphere manifold plus a scalar offset, against
+    // planarHesseExpression() saying the same thing in Kotlin. Same objective, same seed, same answer
+    // to 1e-15 (see smokeCeresExpressionVariables), so the only difference is template against VM —
+    // now with parameter blocks of two different sizes and a manifold in the mix.
+    println()
+    for (name in listOf("kC", "tI", "kkC", "kkD")) {
+        val seed = conway(name).polyhedron
+        val problem = RealizationProblem.of(seed)
+        val plan = RelaxationPlan.canonicalConditions()
+        val cloud = PointCloud(problem.initialCoordinates)
+
+        fun program(planes: PlaneFormulation) = CeresRealization.program(
+            plan,
+            problem,
+            planes,
+            gaugeRotationWeight = 1.0,
+            minEdgeLengthFraction = 0.01,
+        )
+
+        val (opcodeNanos, opcodeIters) = timeSolve(cloud, program(PlaneFormulation.HESSE), reps = 10)
+        val (exprNanos, exprIters) =
+            timeSolve(cloud, program(PlaneFormulation.HESSE_EXPRESSION), reps = 10)
+        println(
+            ("%-4s F=%-4d PLANAR_HESSE opcode %7.2f ms (%d iter)   expression %7.2f ms (%d iter)   " +
+                "x%.1f").format(
+                name, seed.topology.elements(2).size,
+                opcodeNanos / 1e6, opcodeIters, exprNanos / 1e6, exprIters,
+                exprNanos.toDouble() / opcodeNanos,
             ),
         )
     }
