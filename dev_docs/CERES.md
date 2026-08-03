@@ -220,11 +220,20 @@ Best-of-7 after warmup, one thread, `SPARSE_NORMAL_CHOLESKY`:
 | `aC` cuboctahedron | 12 / 24 / 14 | canonical | 0.55 ms | 1.13 ms | ×0.5 |
 | `tC` truncated cube | 24 / 36 / 14 | canonical | 5.2 ms | 2.1 ms | ×2.4 |
 | `tI` truncated icosahedron | 60 / 90 / 32 | canonical | 11.9 ms | 4.3 ms | ×2.8 |
-| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 1507 ms | 6.1 ms | **×248** |
+| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 540–1500 ms | 6.1 ms | **×90–250** |
 
-The `kkC` row is not just a speed difference — the Kotlin solver never converges there, so it is
-248x faster *and* four orders of magnitude more accurate. Below a couple of dozen vertices the
-Kotlin solver still wins: per-call FFM marshalling and rebuilding the
+The `kkC` row is not just a speed difference — the Kotlin solver never converges there, so Ceres is
+two orders of magnitude faster *and* four orders of magnitude more accurate.
+
+That row is also the one honest caveat in this table. The Ceres side is stable to within 3% across
+runs (6.0–6.2 ms, always 12 iterations); the Kotlin side varies between 540 ms and 1500 ms for the
+same best-of-7 measurement, which is why the ratio is quoted as a range rather than the single
+number an earlier draft of this document claimed. The instability is presumably allocation: `relax`
+builds a dense `114 x 114` normal matrix and a full finite-difference Jacobian on each of its 200
+iterations. Do not read fine distinctions into the smaller multipliers above either — anything
+between ×0.5 and ×3 here is within the noise of the Kotlin baseline.
+
+Below a couple of dozen vertices the Kotlin solver still wins: per-call FFM marshalling and rebuilding the
 `ceres::Problem` cost more than the whole dense solve. The crossover is driven by *residual count*
 rather than vertex count — `kkC` has only 38 vertices but 108 edges and 72 faces, and the Kotlin
 path pays `2 · 3V` residual evaluations per iteration for its finite-difference Jacobian plus an
@@ -304,7 +313,7 @@ scalar. Three effective parameters per face, no null direction, no stabilisers n
 
 | `kkC` canonical | params | iterations | termination | tangency RMS | |
 |---|---|---|---|---|---|
-| Kotlin `relax` | — | 200 | max iterations | 6.4e-04 | 1507 ms |
+| Kotlin `relax` | — | 200 | max iterations | 6.4e-04 | 540–1500 ms |
 | Ceres `origin_normal` | 474 | 201 | no convergence | 6.8e-03 | 58 ms |
 | Ceres **`hesse`** | 330 | **12** | **convergence** | **3.2e-08** | **6 ms** |
 
