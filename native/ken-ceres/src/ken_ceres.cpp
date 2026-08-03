@@ -3050,9 +3050,17 @@ void SolverContext::build(int Npts, const double *points_in,
             };
 
             bool ok = true;
-            if (nParams < 1 || nResiduals < 1 || nSlots < 1)
+            if (nParams < 0 || nResiduals < 1 || nSlots < 1)
             {
-                fail("needs at least one parameter block, one residual and one slot");
+                fail("needs a non-negative point count, one residual and one slot");
+                ok = false;
+            }
+            // Points OR free variables — a fit ("what sphere passes through this fixed data") has no
+            // point unknowns at all, and forcing it to name a point it never reads would give Ceres a
+            // Jacobian column of zeros. Zero of both is a residual that cannot depend on anything.
+            if (ok && nParams + nVars < 1)
+            {
+                fail("names neither a point nor a free variable, so nothing can change its value");
                 ok = false;
             }
             // Ceres forbids naming the same parameter block twice in one residual block.

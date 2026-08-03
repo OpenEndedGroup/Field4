@@ -2107,6 +2107,15 @@ tasks.register<JavaExec>("ceresRealizerCacheCost") {
     group = "application"
 }
 
+// Free variables and manifolds in the expression VM: PLANAR_HESSE re-derived as a Kotlin expression
+// over the whole kk family, plus closed-form fits whose unknowns are not points at all. Needs v3.
+tasks.register<JavaExec>("smokeCeresExpressionVariables") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionVariablesSmokeKt",
+        "Runs the Ceres expression free-variable smoke: PLANAR_HESSE in Kotlin, manifolds, fits.",
+    )
+}
+
 // What the expression VM costs against the equivalent hand-written functor. Needs the v2 wrapper.
 tasks.register<JavaExec>("ceresExpressionCost") {
     configureCeresSmokeTask(

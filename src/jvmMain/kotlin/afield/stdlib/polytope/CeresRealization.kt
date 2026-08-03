@@ -13,6 +13,7 @@ import afield.stdlib.ceres.RobustLoss
 import afield.stdlib.ceres.SolveOptions
 import afield.stdlib.ceres.SolveRequest
 import afield.stdlib.ceres.buildCeresProgram
+import afield.stdlib.ceres.planarHesseExpression
 import afield.stdlib.ceres.Vec3 as CeresVec3
 
 /**
@@ -110,6 +111,10 @@ object CeresRealization {
                             PlaneFormulation.ORIGIN_NORMAL -> planar(*cycle.toIntArray(), weight = w)
                             PlaneFormulation.HESSE -> planarHesse(cycle, weight = w)
                             PlaneFormulation.NEWELL_FIT -> planarFit(cycle, weight = w)
+                            // The opcode seeds each plane from the pose the problem is compiled with;
+                            // an expression has no access to that, so it is handed the same pose.
+                            PlaneFormulation.HESSE_EXPRESSION ->
+                                planarHesseExpression(cycle, problem.initialCoordinates, weight = w)
                         }
                     }
 
@@ -175,6 +180,18 @@ enum class PlaneFormulation {
      * under which the two realizers minimise the identical function.
      */
     NEWELL_FIT,
+
+    /**
+     * [HESSE], but written in Kotlin as an expression over free variables rather than reached through
+     * the C++ opcode — see [afield.stdlib.ceres.planarHesseExpression].
+     *
+     * The same objective on the same parameterisation, compiled to an interpreted register program
+     * instead of a template. Here so that the two can be run against each other on the whole `kk`
+     * family: if the expression layer's free variables and its `SphereManifold` are right, this
+     * reaches the same solid, and if it disagrees the disagreement is a bug in the VM rather than a
+     * difference of opinion about the objective.
+     */
+    HESSE_EXPRESSION,
 }
 
 /** Solver knobs for [relaxWithCeres] that have no counterpart in [LeastSquaresOptions]. */
@@ -281,6 +298,13 @@ fun PolyhedralObject.relaxWithCeres(
     require(CeresFeature.AbiV2 in backend.supportedFeatures) {
         "the Ceres realizer needs the ABI v2 native wrapper; build it with ./gradlew buildCeresNative " +
             "and point -Dafield.ceres.library at build/ken-ceres/libken_ceres_jvm.dylib"
+    }
+    require(
+        options.planes != PlaneFormulation.HESSE_EXPRESSION ||
+            CeresFeature.AbiV3 in backend.supportedFeatures,
+    ) {
+        "PlaneFormulation.HESSE_EXPRESSION writes the plane as free variables in the expression VM, " +
+            "which needs the ABI v3 wrapper; this one reports ${backend.supportedFeatures}"
     }
 
     val problem = RealizationProblem.of(this)

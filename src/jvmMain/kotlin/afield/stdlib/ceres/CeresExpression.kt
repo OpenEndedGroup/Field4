@@ -423,8 +423,15 @@ data class CeresExpressionResidual(
     val variables: List<CeresVariableRef> = emptyList(),
 ) : GeometryConstraint {
     init {
-        require(points.isNotEmpty()) { "an expression residual needs at least one point" }
-        requirePointList(points, 1, allowAll = false)
+        // No points is legal as long as there are free variables. A fit — "what sphere passes through
+        // this fixed data" — has no point unknowns at all: the data are constants in the expression
+        // and every unknown is a free variable. Requiring a point would have forced such a residual to
+        // name one it does not read, which is the zero-Jacobian-column defect this layer refuses
+        // elsewhere.
+        require(points.isNotEmpty() || variables.isNotEmpty()) {
+            "an expression residual needs at least one point or one free variable"
+        }
+        requirePointList(points, 0, allowAll = false)
         require(points.distinct().size == points.size) {
             "Ceres forbids one residual block naming the same point twice; points were $points"
         }
@@ -511,6 +518,150 @@ data class CompiledCeresExpression(
             appendLine()
         }
         residualSlots.forEachIndexed { at, slot -> appendLine("r$at  = s$slot") }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// A residual family built out of free variables: the Hesse plane
+// ---------------------------------------------------------------------------------------------
+
+/** A plane as `{ x : x . normal == offset }`, with `normal` a unit vector. */
+data class CeresHessePlane(val normal: Vec3, val offset: Double)
+
+/**
+ * The total-least-squares plane through [points], in Hesse normal form: the centroid, and the
+ * smallest eigenvector of the scatter matrix about it.
+ *
+ * This is the closed form of the fit, and it is also exactly the seed the `PLANAR_HESSE` opcode
+ * computes in C++ from the pose the problem was compiled with. An expression has to be handed the
+ * pose and seed its own plane here — which is not a shortcoming: the caller picks the seed
+ * deliberately and can print it, where the opcode's is invisible.
+ *
+ * The normal's sign is canonicalised (largest-magnitude component positive) so that the same points
+ * always give the same seed. `n` and `-n` with `d` and `-d` are the same plane and negate every
+ * residual that reads them, which leaves the objective and the step identical — but a seed that
+ * flips run to run makes results harder to compare than they need to be.
+ */
+fun hessePlaneOf(points: List<Vec3>): CeresHessePlane {
+    require(points.size >= 3) { "a plane fit needs at least three points" }
+    val cx = points.sumOf { it.x } / points.size
+    val cy = points.sumOf { it.y } / points.size
+    val cz = points.sumOf { it.z } / points.size
+
+    val scatter = DoubleArray(9)
+    points.forEach { p ->
+        val v = doubleArrayOf(p.x - cx, p.y - cy, p.z - cz)
+        for (i in 0..2) for (j in 0..2) scatter[3 * i + j] += v[i] * v[j]
+    }
+
+    val (values, vectors) = symmetricEigen3(scatter)
+    var smallest = 0
+    for (i in 1..2) if (values[i] < values[smallest]) smallest = i
+    var nx = vectors[smallest]
+    var ny = vectors[3 + smallest]
+    var nz = vectors[6 + smallest]
+    val length = kotlin.math.sqrt(nx * nx + ny * ny + nz * nz)
+    if (length < 1e-12) {
+        // A perfectly degenerate scatter matrix — every point coincident. Any normal will do, and
+        // saying so beats dividing by zero.
+        return CeresHessePlane(Vec3(1.0, 0.0, 0.0), cx)
+    }
+    nx /= length
+    ny /= length
+    nz /= length
+    val dominant = listOf(nx, ny, nz).withIndex().maxBy { kotlin.math.abs(it.value) }
+    if (dominant.value < 0.0) {
+        nx = -nx
+        ny = -ny
+        nz = -nz
+    }
+    return CeresHessePlane(Vec3(nx, ny, nz), nx * cx + ny * cy + nz * cz)
+}
+
+/**
+ * Eigenvalues and eigenvectors of a symmetric 3x3 matrix, by cyclic Jacobi rotations.
+ *
+ * Returns the eigenvalues and a row-major matrix whose *columns* are the corresponding unit
+ * eigenvectors. Jacobi rather than anything cleverer because 3x3 is small, the iteration is
+ * unconditionally stable on a symmetric matrix, and it agrees with `Eigen::SelfAdjointEigenSolver` to
+ * machine precision — which matters, since the C++ side of this comparison uses exactly that.
+ */
+internal fun symmetricEigen3(matrix: DoubleArray): Pair<DoubleArray, DoubleArray> {
+    require(matrix.size == 9) { "expected a row-major 3x3 matrix" }
+    val a = matrix.copyOf()
+    val v = doubleArrayOf(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+
+    repeat(64) {
+        // Largest off-diagonal magnitude; stop when it is negligible against the diagonal.
+        val offDiagonal = kotlin.math.abs(a[1]) + kotlin.math.abs(a[2]) + kotlin.math.abs(a[5])
+        val scale = kotlin.math.abs(a[0]) + kotlin.math.abs(a[4]) + kotlin.math.abs(a[8])
+        if (offDiagonal <= 1e-18 * kotlin.math.max(scale, 1e-300)) return values3(a) to v
+
+        for ((p, q) in listOf(0 to 1, 0 to 2, 1 to 2)) {
+            val apq = a[3 * p + q]
+            if (kotlin.math.abs(apq) < 1e-300) continue
+            val tau = (a[3 * q + q] - a[3 * p + p]) / (2.0 * apq)
+            val t = (if (tau >= 0.0) 1.0 else -1.0) / (kotlin.math.abs(tau) + kotlin.math.sqrt(1.0 + tau * tau))
+            val c = 1.0 / kotlin.math.sqrt(1.0 + t * t)
+            val s = t * c
+
+            // A <- J^T A J and V <- V J, written out rather than looped: three-by-three, and the
+            // explicit form is the one that is obviously the similarity transform it claims to be.
+            val j = DoubleArray(9)
+            j[0] = 1.0; j[4] = 1.0; j[8] = 1.0
+            j[3 * p + p] = c
+            j[3 * p + q] = s
+            j[3 * q + p] = -s
+            j[3 * q + q] = c
+            val jt = DoubleArray(9) { idx -> j[3 * (idx % 3) + idx / 3] }
+            val next = multiply3(multiply3(jt, a), j)
+            next.copyInto(a)
+            multiply3(v, j).copyInto(v)
+        }
+    }
+    return values3(a) to v
+}
+
+private fun values3(a: DoubleArray) = doubleArrayOf(a[0], a[4], a[8])
+
+private fun multiply3(a: DoubleArray, b: DoubleArray) = DoubleArray(9) { idx ->
+    val row = idx / 3
+    val column = idx % 3
+    a[3 * row] * b[column] + a[3 * row + 1] * b[3 + column] + a[3 * row + 2] * b[6 + column]
+}
+
+/**
+ * `PLANAR_HESSE`, written as an expression: this face's corners against a free unit normal and a free
+ * scalar offset.
+ *
+ * The opcode and this compile to different things — a C++ template against an interpreted register
+ * program — but they are the *same* objective on the same parameterisation, and the recorded evidence
+ * for that parameterisation is what makes free variables worth having at all: on `kkC` the plane as a
+ * free variable converges in 12 iterations to tangency `3e-08`, where the same objective with the
+ * plane eliminated inside the residual (`PLANAR_FIT`) does not converge.
+ *
+ * [pose] is the flat xyz array the problem will be compiled with — the seed the opcode reads for
+ * itself and an expression has to be given.
+ */
+fun CeresProgramBuilder.planarHesseExpression(
+    points: List<Int>,
+    pose: DoubleArray,
+    weight: Double = 1.0,
+    name: String = "plane",
+): CeresProgramBuilder {
+    require(points.size >= 3) { "a planar face needs at least three points" }
+    require(points.distinct().size == points.size) {
+        "a Hesse-plane expression names each corner once; face $points repeats one"
+    }
+    points.forEach {
+        require(3 * it + 2 < pose.size) { "point $it is outside the pose of ${pose.size / 3} points" }
+    }
+    val seed = hessePlaneOf(points.map { Vec3(pose[3 * it], pose[3 * it + 1], pose[3 * it + 2]) })
+    val normal = unitVariable("$name.n", seed.normal)
+    val offset = variable("$name.d", seed.offset)
+    return expression(points, listOf(normal, offset), weight) { corners, (n, d) ->
+        val direction = n.vec()
+        corners.map { (it dot direction) - d.scalar }
     }
 }
 
