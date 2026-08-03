@@ -4,11 +4,11 @@ package afield.stdlib.polytope
 
 import afield.graphics.FLine
 import afield.graphics.FloatEarcut
+import afield.graphics.PlanarTessellation
 import afield.stdlib.TriMesh
 import afield.stdlib.TriMeshBuilder
 import afield.stdlib.Vec3
 import kotlin.math.sqrt
-import kotlin.math.abs
 
 /**
  * The bridge from a polytope to the things Field can actually draw: [FLine]s and a [TriMesh].
@@ -138,22 +138,60 @@ object FanFaceTriangulator : FaceTriangulator {
 }
 
 /**
- * Field's existing Earcut tessellator, adapted to an arbitrarily oriented 3D polygon.
+ * A [FaceTriangulator] that can subtract hole rings from the face it fills.
  *
- * The ordered face is projected by dropping its Newell normal's dominant axis, triangulated in
- * 2D, then every returned triangle is checked and, if necessary, flipped back to the face's 3D
- * winding. This handles simple concave faces. Face holes need a richer boundary model than the
- * milestone's single face cycle, although [FloatEarcut] itself already supports hole indices.
+ * Holes are not reachable from [PolyhedralObject.triangulate], because a `faceCycle` is a single
+ * cycle and the topology has no notion of a hole in a face. This is the surface for callers that do
+ * know their boundary rings — face-with-hole geometry assembled outside the polytope topology — and
+ * it is what makes the hole support in [EarcutFaceTriangulator] usable and testable rather than
+ * merely present.
  */
-object EarcutFaceTriangulator : FaceTriangulator {
-    override fun triangulate(faceVertices: IntArray, realization: Realization3): IntArray {
-        require(faceVertices.size >= 3) { "Earcut triangulation needs at least three face vertices" }
+interface HoleAwareFaceTriangulator : FaceTriangulator {
+    /**
+     * [outer] and each ring of [holes] are ordered cycles of [Realization3] indices. Rings may be
+     * wound either way. A hole ring that is not coplanar with [outer] is not treated as a hole — see
+     * [afield.graphics.PlanarTessellation].
+     */
+    fun triangulate(outer: IntArray, holes: List<IntArray>, realization: Realization3): IntArray
+
+    override fun triangulate(faceVertices: IntArray, realization: Realization3): IntArray =
+        triangulate(faceVertices, emptyList(), realization)
+}
+
+/**
+ * Field's Earcut tessellator over an arbitrarily oriented 3D polygon, with holes.
+ *
+ * This is a thin adapter over [afield.graphics.PlanarTessellation], which is also what
+ * `FLine.tessellate` runs on. It used to be a second, independent implementation of the same idea,
+ * and the two did not agree: this one projected onto the *mirror* of the right-handed pair for a
+ * y-dominant face and then flipped each returned triangle back against the face's 3D normal. That
+ * arrived at the right answer, but only for a face with no holes — [FloatEarcut] decides which ring
+ * is the outer one from the *sign of its projected area*, so a mirrored frame inverts the
+ * hole-versus-outer decision itself, and no amount of flipping triangles afterwards repairs it.
+ * "No hole support" was therefore a consequence of the convention, not a missing feature. Fixing the
+ * frame is what removes it. See `dev_docs/fline_fill_orientation.md`.
+ */
+object EarcutFaceTriangulator : HoleAwareFaceTriangulator {
+    override fun triangulate(outer: IntArray, holes: List<IntArray>, realization: Realization3): IntArray {
+        require(outer.size >= 3) { "Earcut triangulation needs at least three face vertices" }
+        holes.forEachIndexed { at, hole ->
+            require(hole.size >= 3) { "hole ring $at needs at least three vertices, had ${hole.size}" }
+        }
+        val cycles = ArrayList<IntArray>(1 + holes.size)
+        cycles.add(outer)
+        cycles.addAll(holes)
+        val rings = cycles.map { cycle ->
+            cycle.map { Vec3(realization.x(it), realization.y(it), realization.z(it)) }
+        }
+
+        // Kept in double precision, and only as a precondition: a zero-area face is a caller error
+        // worth a message, not something to tessellate to nothing quietly.
         var nx = 0.0
         var ny = 0.0
         var nz = 0.0
-        for (i in faceVertices.indices) {
-            val p = faceVertices[i]
-            val q = faceVertices[(i + 1) % faceVertices.size]
+        for (i in outer.indices) {
+            val p = outer[i]
+            val q = outer[(i + 1) % outer.size]
             nx += (realization.y(p) - realization.y(q)) * (realization.z(p) + realization.z(q))
             ny += (realization.z(p) - realization.z(q)) * (realization.x(p) + realization.x(q))
             nz += (realization.x(p) - realization.x(q)) * (realization.y(p) + realization.y(q))
@@ -162,52 +200,14 @@ object EarcutFaceTriangulator : FaceTriangulator {
         require(normalLengthSquared.isFinite() && normalLengthSquared > 1e-20) {
             "cannot triangulate a face with zero projected area"
         }
-        val dropAxis = when {
-            abs(nx) >= abs(ny) && abs(nx) >= abs(nz) -> 0
-            abs(ny) >= abs(nz) -> 1
-            else -> 2
+
+        val triangles = PlanarTessellation.tessellate(rings).flatMap { it.triangles }
+        require(triangles.size % 3 == 0 && triangles.isNotEmpty()) {
+            "Earcut did not produce complete triangles for a ${outer.size}-vertex face"
         }
-        val projected = FloatArray(faceVertices.size * 2)
-        faceVertices.forEachIndexed { local, vertex ->
-            when (dropAxis) {
-                0 -> {
-                    projected[2 * local] = realization.y(vertex)
-                    projected[2 * local + 1] = realization.z(vertex)
-                }
-                1 -> {
-                    projected[2 * local] = realization.x(vertex)
-                    projected[2 * local + 1] = realization.z(vertex)
-                }
-                else -> {
-                    projected[2 * local] = realization.x(vertex)
-                    projected[2 * local + 1] = realization.y(vertex)
-                }
-            }
-        }
-        val localTriangles = FloatEarcut.earcut(projected, dim = 2)
-        require(localTriangles.size % 3 == 0 && localTriangles.isNotEmpty()) {
-            "Earcut did not produce complete triangles for a ${faceVertices.size}-vertex face"
-        }
-        return IntArray(localTriangles.size).also { output ->
-            for (i in localTriangles.indices step 3) {
-                val a = faceVertices[localTriangles[i]]
-                var b = faceVertices[localTriangles[i + 1]]
-                var c = faceVertices[localTriangles[i + 2]]
-                val abx = realization.x(b) - realization.x(a)
-                val aby = realization.y(b) - realization.y(a)
-                val abz = realization.z(b) - realization.z(a)
-                val acx = realization.x(c) - realization.x(a)
-                val acy = realization.y(c) - realization.y(a)
-                val acz = realization.z(c) - realization.z(a)
-                val winding =
-                    (aby * acz - abz * acy) * nx +
-                        (abz * acx - abx * acz) * ny +
-                        (abx * acy - aby * acx) * nz
-                if (winding < 0.0) b = c.also { c = b }
-                output[i] = a
-                output[i + 1] = b
-                output[i + 2] = c
-            }
+        return IntArray(triangles.size) { at ->
+            val vertex = triangles[at]
+            cycles[vertex.ring][vertex.vertex]
         }
     }
 }
