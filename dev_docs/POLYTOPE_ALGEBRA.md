@@ -187,7 +187,13 @@ number of polygons round an edge against the last entry of each Schläfli symbol
 
 This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
 four polygons, never two, so `validate(checkManifold = true)` must *reject* a tesseract — and does.
-`PolyhedralObject` refuses a rank-4 topology and `Polytope4` refuses a rank-3 one.
+`Polytope4` refuses a rank-3 topology in its own constructor. `PolyhedralObject`, by contrast, is
+deliberately rank-agnostic — its `init` checks only that a realization has one coordinate per vertex
+and that no attribute names a foreign element, so a rank-4 topology wraps up in one quite happily.
+The rank-3 assumption belongs to the operators that actually need it: `SurfaceContext` requires rank
+3 for the Conway surface transforms, and the `FieldAdapters` entry points — `triangulate`, FLine
+conversion, face normals — require a realization. `Polytope4Test` asserts the rejection at those two
+points rather than at construction.
 
 Viewing is a `Projection4` above realization, and deliberately not part of the geometry:
 `OrthographicProjection4` (honest and unreadable — it collapses the tesseract's two cubes onto each

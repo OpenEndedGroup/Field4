@@ -1155,7 +1155,11 @@ nobody checked.
 
 This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
 four polygons, never two, so `validate(checkManifold = true)` must **reject** a tesseract — and does.
-`PolyhedralObject` refuses a rank-4 topology and `Polytope4` refuses a rank-3 one.
+`Polytope4` refuses a rank-3 topology outright, in its constructor. `PolyhedralObject` is the
+permissive one: it checks a realization's length and its attribute keys, not the rank, so a rank-4
+topology wraps up in one without complaint. The rank-3 assumption is enforced by the operators that
+depend on it — the Conway surface transforms require rank 3, and `triangulate`, FLine conversion and
+face normals each require a realization — which is where a mismatched topology is really caught.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/rank4.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="760" padding="14"}
 :::static
