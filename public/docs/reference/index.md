@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**5886 public symbols across 114 source files**, 3385 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**5875 public symbols across 114 source files**, 3799 of them (64%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -12,14 +12,15 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1574 | 1188 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 17 | 675 | 246 (36%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 26 | 1617 | 771 (47%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 22 | 962 | 704 (73%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Polytopes](polytopes.md) | 17 | 533 | 387 (72%) | Polyhedra as topology first and coordinates second. |
+| [Solvers](solvers.md) | 4 | 641 | 245 (38%) | Nonlinear least squares, aimed at geometry. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 12 | 418 | 302 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 7 | 258 | 229 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
 | [Workspace](workspace.md) | 2 | 78 | 75 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Uncategorised](uncategorised.md) | 17 | 530 | 151 (28%) |  |
 
 ## Every file, at a glance
 
@@ -34,8 +35,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 69 | 40 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
 | [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 57 | 34 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
-| [ArchitecturalGeometry.kt](graphics.md#architecturalgeometry-kt) | Graphics | 184 | 0 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
-| [Attributes.kt](uncategorised.md#attributes-kt) | Uncategorised | 7 | 1 |  |  |
+| [ArchitecturalGeometry.kt](solvers.md#architecturalgeometry-kt) | Solvers | 184 | 92 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
+| [Attributes.kt](polytopes.md#attributes-kt) | Polytopes | 7 | 7 | Untyped per-element data, carried alongside the topology and propagated through transforms. |  |
 | [autodiff.kt](math.md#autodiff-kt) | Math | 90 | 87 | Reverse-mode automatic differentiation over `Double` scalars — exact gradients for ordinary Kotlin arithmetic, in one pass, whatever the expression's size. | [Spatial artificial life](../alife_examples.md), [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [autodiff_fn.kt](function.md#autodiff-fn-kt) | Function | 16 | 16 | Differentiating the `Fn` graph itself — the bridge that makes `autodiff.kt` a *Field* capability rather than a generic AD library. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_formula.kt](function.md#autodiff-formula-kt) | Function | 39 | 39 | One declaration of each `Fn` op's pointwise semantics, walked by two evaluators — so `Fn.eval` and the reverse-mode gradient cannot compute different functions. |  |
@@ -43,22 +44,22 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [autodiff_geometry.kt](math.md#autodiff-geometry-kt) | Math | 78 | 72 | Differentiable geometry: tracked vectors, planar inverse kinematics on an `FLine` chain, and a differentiable circle packing — the "things that produce pixels" end of the AD layer. | [Differentiating Functions](../autodiff_examples.md) |
 | [autodiff_optimize.kt](math.md#autodiff-optimize-kt) | Math | 44 | 42 | Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — `sgd`, `adam` and `lbfgs`, behind one `minimize` front door. | [Differentiating Functions](../autodiff_examples.md) |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
-| [Canonical.kt](uncategorised.md#canonical-kt) | Uncategorised | 42 | 19 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [CeresExpression.kt](graphics.md#ceresexpression-kt) | Graphics | 77 | 32 |  | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [CeresGeometry.kt](graphics.md#ceresgeometry-kt) | Graphics | 351 | 35 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
-| [CeresRealization.kt](uncategorised.md#ceresrealization-kt) | Uncategorised | 20 | 13 |  |  |
+| [Canonical.kt](polytopes.md#canonical-kt) | Polytopes | 42 | 40 | Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the solid you were picturing. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [CeresExpression.kt](solvers.md#ceresexpression-kt) | Solvers | 55 | 30 | Residuals written in Kotlin, compiled to a little register machine, and differentiated exactly by Ceres. |  |
+| [CeresGeometry.kt](solvers.md#ceresgeometry-kt) | Solvers | 359 | 95 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
+| [CeresRealization.kt](polytopes.md#ceresrealization-kt) | Polytopes | 20 | 15 | Optional bridge: run a `RelaxationPlan` on the native Ceres solver instead of the built-in one. |  |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 2 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [Colormaps.kt](visualization.md#colormaps-kt) | Visualization | 21 | 4 |  |  |
 | [colors.kt](graphics.md#colors-kt) | Graphics | 14 | 14 | Colour constructors for the stdlib. | [Colors to FLine examples](../colors_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
-| [Constraints.kt](uncategorised.md#constraints-kt) | Uncategorised | 62 | 21 |  |  |
+| [Constraints.kt](polytopes.md#constraints-kt) | Polytopes | 62 | 31 | The constraint vocabulary a realization run is written in. |  |
 | [contours.kt](graphics.md#contours-kt) | Graphics | 13 | 7 | Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to contour. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
-| [Conway.kt](uncategorised.md#conway-kt) | Uncategorised | 14 | 2 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Conway.kt](polytopes.md#conway-kt) | Polytopes | 14 | 9 | Conway prefix notation: the one-line string that names a polyhedron by how it is built. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [correlations.kt](math.md#correlations-kt) | Math | 18 | 18 | Measures of statistical dependence between two equal-length `DoubleArray`s, batch and rolling. | [Values over time: interpolants & keyframes](../interpolants_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [dirichlet.kt](math.md#dirichlet-kt) | Math | 11 | 0 | 2D multiplicatively weighted Voronoi (Apollonius) diagrams. |  |
 | [dynamic_graph_field.kt](data.md#dynamic-graph-field-kt) | Data | 11 | 11 | The two honest ways to *look at* `dynamic_graph_systems.kt` — the point cloud and the weighted edges joining it, so a time-varying graph can be watched rather than described. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [essentiaAnalysis.kt](audio.md#essentiaanalysis-kt) | Audio | 126 | 0 | Readers for two on-disk audio-analysis products, so a box can query them by time. |  |
-| [FieldAdapters.kt](uncategorised.md#fieldadapters-kt) | Uncategorised | 25 | 10 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
+| [FieldAdapters.kt](polytopes.md#fieldadapters-kt) | Polytopes | 25 | 17 | The bridge from a polytope to the things Field can actually draw: `FLine`s and a `TriMesh`. | [Polytopes: topology first, coordinates later](../polytope_examples.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [FileManager.kt](data.md#filemanager-kt) | Data | 28 | 28 | Path resolution for the running Field session: turns a short spec into a real `File` or `Path`. |  |
 | [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
@@ -83,7 +84,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [imaging_simd.kt](imaging.md#imaging-simd-kt) | Imaging | 0 | 0 | The SIMD span kernels the imaging filters are built out of. |  |
 | [ImagingVisualizer.kt](visualization.md#imagingvisualizer-kt) | Visualization | 4 | 4 |  |  |
 | [interactionnets.kt](visualization.md#interactionnets-kt) | Visualization | 196 | 196 | Interaction nets as a live-codeable medium: a graph whose nodes rewrite each other wherever two of them touch principal port to principal port, with a DSL for building nets, a rule language for the rewrites, a scheduler that decides which collision fires next, and a force-directed layout so you can watch it happen. | [Interaction Nets examples](../interaction_nets_examples.md) |
-| [InteractiveSolving.kt](graphics.md#interactivesolving-kt) | Graphics | 43 | 0 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
+| [InteractiveSolving.kt](solvers.md#interactivesolving-kt) | Solvers | 43 | 28 | The mutable, reuse-oriented half of the Ceres solver API, for solving the same program over and over at interactive rates. |  |
 | [interpolants.kt](math.md#interpolants-kt) | Math | 4 | 4 | `smoothTo` wraps a target-producing lambda so that reading it eases toward the target instead of jumping to it. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
 | [JSONLineServer.kt](data.md#jsonlineserver-kt) | Data | 32 | 1 | A TCP listener that turns newline-delimited JSON into a value a box can read each frame. |  |
 | [jsonparsing.kt](data.md#jsonparsing-kt) | Data | 19 | 12 | Two related things: a small hand-written JSON reader, and a macro that generates a typed parser from a terse schema. |  |
@@ -103,24 +104,24 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [mesh_topology.kt](graphics.md#mesh-topology-kt) | Graphics | 33 | 33 | What a `TriMesh` *is*, as opposed to where it is: adjacency, boundaries, components, manifoldness, orientation, and the Euler characteristic those add up to — plus the repairs (`TriMesh.weld`, `TriMesh.fixWinding`, `TriMesh.removeDegenerateTriangles`) that turn a mesh which fails those checks into one that passes. | [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Spatial artificial life](../alife_examples.md) |
 | [modelling.kt](graphics.md#modelling-kt) | Graphics | 67 | 0 | A self-tuning controller for pushing the *distribution* of a scalar signal towards a target shape. |  |
 | [numpy.kt](data.md#numpy-kt) | Data | 37 | 32 | Reader for NumPy's `.npy` and `.npz` on-disk formats. |  |
-| [Off.kt](uncategorised.md#off-kt) | Uncategorised | 1 | 1 |  |  |
+| [Off.kt](polytopes.md#off-kt) | Polytopes | 1 | 1 | The one-way bridge to OFF, the plain-text polygon interchange format that Geomview and most polyhedron tooling read. |  |
 | [osc.kt](audio.md#osc-kt) | Audio | 27 | 9 | OSC in and out, wrapped around JavaOSC (`com.illposed.osc`) and driven from Field's main runloop. |  |
-| [Parameters.kt](uncategorised.md#parameters-kt) | Uncategorised | 29 | 2 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Parameters.kt](polytopes.md#parameters-kt) | Polytopes | 29 | 22 | Naming a subset of elements, and attaching a number to each one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [pf.kt](math.md#pf-kt) | Math | 38 | 29 | An unscented Kalman filter, and a particle filter whose particles each carry one. | [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [plotly.kt](visualization.md#plotly-kt) | Visualization | 12 | 12 | Plotly helpers — the short way to get a chart out of a box, wrapping `space.kscience.plotly`. | [Values over time: interpolants & keyframes](../interpolants_examples.md) |
-| [Polytope4.kt](uncategorised.md#polytope4-kt) | Uncategorised | 41 | 15 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [PolytopeVisualizers.kt](uncategorised.md#polytopevisualizers-kt) | Uncategorised | 1 | 1 |  |  |
+| [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 6 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
-| [RealizationSolver.kt](uncategorised.md#realizationsolver-kt) | Uncategorised | 34 | 8 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [Realize.kt](uncategorised.md#realize-kt) | Uncategorised | 16 | 8 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [saved.kt](data.md#saved-kt) | Data | 7 | 7 | Per-box persistence for Kotlin values, on top of kotlinx.serialization. |  |
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [shaders.kt](graphics.md#shaders-kt) | Graphics | 163 | 163 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [How Box Code Runs](../box_code_pipeline.md), [afield.four Graphics](../afield_four_graphics.md), [Field Probes — instrumenting shaders](../field_probes.md) |
 | [smile_interpolation_regression.kt](math.md#smile-interpolation-regression-kt) | Math | 21 | 0 | Two 1D fitters that wrap the Smile library: `smileCubicSpline` (cubic spline interpolation through the data) and `smileGaussianProcess` (Gaussian-process regression with a Gaussian kernel, configured by `SmileGpOptions`). |  |
 | [smile_neighbors.kt](data.md#smile-neighbors-kt) | Data | 26 | 26 | Nearest-neighbour indexes over `Vec2` / `Vec3` point lists, wrapping Smile's `KDTree` and `LSH`. | [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
-| [Solids.kt](uncategorised.md#solids-kt) | Uncategorised | 13 | 7 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Solids.kt](polytopes.md#solids-kt) | Polytopes | 13 | 13 | The rank-3 value everything in this package passes around, and the five Platonic seeds to start from. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
@@ -128,11 +129,11 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 28 | 28 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md) |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 74 | 71 | The general-purpose helpers that every Field box already has in scope. | [How Box Code Runs](../box_code_pipeline.md), [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Kotlin Syntax Overview (for Python + JavaScript folks)](../kotlin_overview.md) |
-| [Summaries.kt](uncategorised.md#summaries-kt) | Uncategorised | 56 | 9 |  |  |
-| [Symmetry.kt](uncategorised.md#symmetry-kt) | Uncategorised | 32 | 9 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 56 | 41 | Small, plain data classes that reduce the library's big values to something worth reading. |  |
+| [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md) |
-| [Topology.kt](uncategorised.md#topology-kt) | Uncategorised | 66 | 14 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [Transforms.kt](uncategorised.md#transforms-kt) | Uncategorised | 71 | 11 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Topology.kt](polytopes.md#topology-kt) | Polytopes | 67 | 43 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [Transforms.kt](polytopes.md#transforms-kt) | Polytopes | 71 | 52 | The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics, each paired with a policy for giving the result coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 2 | A minimal TUIO receiver. |  |
 | [typography.kt](graphics.md#typography-kt) | Graphics | 103 | 73 | Text as geometry: a string becomes contours, and from there everything Field already does to geometry applies to letters. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [typography_field.kt](graphics.md#typography-field-kt) | Graphics | 31 | 24 | The bridges out of a `TextLayout` and into the four families Field already has. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
