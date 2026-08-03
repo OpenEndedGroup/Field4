@@ -58,6 +58,17 @@ enum class CeresFeature {
     DotProduct,
     VectorDotProduct,
     NativeGeometry,
+
+    /**
+     * The `ken_ceres_jvm_abi_v2` wrapper: solver options and a solver summary
+     * ([CeresSolveSummary]), a selectable robust loss ([RobustLoss]), and the midsphere/global
+     * constraint family ([EdgeTangency], [TangencyCentroid], [Centroid], [RadiusAboutCentroid]).
+     *
+     * A backend loading the older committed dylib does not report this, so a program using any of
+     * the above fails at compile time with a clear message rather than silently solving a smaller
+     * problem.
+     */
+    AbiV2,
 }
 
 enum class CeresOpcode(val code: Int, val metricName: String) {
@@ -100,7 +111,14 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
     PointInHalfspace(49, "POINT_IN_HALFSPACE"),
     LineDirection(50, "LINE_DIRECTION"),
     PlaneNormalDirection(51, "PLANE_NORMAL_DIRECTION"),
-    LineTowardPoint(52, "LINE_TOWARD_POINT");
+    LineTowardPoint(52, "LINE_TOWARD_POINT"),
+
+    // ABI v2: solver-directed pseudo-ops and constraints that couple every point.
+    SetLoss(60, "SET_LOSS"),
+    EdgeTangency(61, "EDGE_TANGENCY"),
+    TangencyCentroid(62, "TANGENCY_CENTROID"),
+    Centroid(63, "CENTROID"),
+    RadiusAboutCentroid(64, "RADIUS_ABOUT_CENTROID");
 
     companion object {
         private val byCode = entries.associateBy { it.code }
@@ -725,6 +743,153 @@ data class LineTowardPoint(
     }
 }
 
+// ==================================================================================================
+// ABI v2: midsphere and whole-cloud constraints.
+//
+// The four below are what a *polyhedron realization* needs and the existing architectural vocabulary
+// could not say. Three of them couple every listed point in one residual block, which is a genuine
+// departure: the rest of this vocabulary is local. That is the honest shape of the constraint —
+// "the mean of these points is here" is not decomposable — and Ceres handles it as one dynamic
+// cost function rather than the caller faking it with a pile of pairwise terms.
+// ==================================================================================================
+
+/**
+ * Distance from the origin to the infinite line through [a] and [b], driven to [radius]: every
+ * edge tangent to one sphere about the origin. Local — two points per residual.
+ */
+data class EdgeTangency(
+    val a: PointId,
+    val b: PointId,
+    val radius: Double,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePair(a, b)
+        require(radius.isFinite() && radius > 0.0) { "tangency radius must be finite and positive" }
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.EdgeTangency)
+        out.points(a, b)
+        out += radius
+        out += weight
+    }
+}
+
+/**
+ * The mean, over [edges], of each edge's nearest point to the origin, driven to the origin — three
+ * residuals over every endpoint at once.
+ *
+ * Deliberately about the tangency points and not the vertex centroid: the canonical form centres on
+ * the former, and mixing the two is the classic way to make the pair of conditions fight.
+ */
+data class TangencyCentroid(
+    val edges: List<Pair<PointId, PointId>>,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        require(edges.isNotEmpty()) { "tangency centroid needs at least one edge" }
+        edges.forEach { (a, b) -> requirePair(a, b) }
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.TangencyCentroid)
+        out += edges.size.toDouble()
+        edges.forEach { (a, b) ->
+            out += a.value.toDouble()
+            out += b.value.toDouble()
+        }
+        out += weight
+    }
+}
+
+/**
+ * The mean of [points] driven to [target]; three residuals. Pass [PointId.ALL_POINTS] alone for the
+ * whole cloud.
+ */
+data class Centroid(
+    val points: List<PointId>,
+    val target: Vec3 = Vec3(0.0, 0.0, 0.0),
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePointList(points, 1, allowAll = true)
+        requirePosition(target, "centroid target")
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.Centroid)
+        if (points.size == 1 && points[0] == PointId.ALL_POINTS) out += -1.0 else out.countedPoints(points)
+        out.vector(target)
+        out += weight
+    }
+}
+
+/**
+ * Every point in [points] the same distance [radius] from the running mean of that same set — a
+ * circumsphere whose centre is not a free variable. One residual per point, all in one block.
+ *
+ * Right for the Platonic and Archimedean families and exactly wrong for a deliberately irregular
+ * object, which is why it is a constraint you opt into. Pass [PointId.ALL_POINTS] alone for the
+ * whole cloud.
+ */
+data class RadiusAboutCentroid(
+    val points: List<PointId>,
+    val radius: Double,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePointList(points, 1, allowAll = true)
+        require(radius.isFinite() && radius > 0.0) { "radius must be finite and positive" }
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.RadiusAboutCentroid)
+        if (points.size == 1 && points[0] == PointId.ALL_POINTS) out += -1.0 else out.countedPoints(points)
+        out += radius
+        out += weight
+    }
+}
+
+/**
+ * A literal opcode stream, spliced into the program as-is.
+ *
+ * The escape hatch for an opcode the native wrapper understands but this Kotlin layer does not model
+ * yet — the two sides ship separately, and without this a new native opcode is unusable until the
+ * Kotlin catches up. It is also how the malformed-program path gets tested.
+ *
+ * Nothing validates the contents. Get the operand count wrong and the rest of the program is
+ * garbage; on a [CeresFeature.AbiV2] backend that is at least reported rather than silently
+ * truncated, which is why this asks for v2.
+ */
+data class RawProgramFragment(
+    val values: List<Double>,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        require(values.isNotEmpty()) { "a raw fragment needs at least an opcode" }
+        require(values.all { it.isFinite() }) { "raw fragment values must be finite" }
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out += values
+    }
+}
+
 class CeresProgramBuilder {
     private val constraints = mutableListOf<GeometryConstraint>()
 
@@ -839,14 +1004,79 @@ class CeresProgramBuilder {
     fun noNegativeZAll(weight: Double = 1.0) =
         add(NoNegativeZ(listOf(PointId.ALL_POINTS), weight))
 
+    fun edgeTangency(a: Int, b: Int, radius: Double, weight: Double = 1.0) =
+        add(EdgeTangency(a.id(), b.id(), radius, weight))
+
+    fun tangencyCentroid(edges: List<Pair<Int, Int>>, weight: Double = 1.0) =
+        add(TangencyCentroid(edges.map { (a, b) -> a.id() to b.id() }, weight))
+
+    fun centroid(points: List<Int>, target: Vec3 = Vec3(0.0, 0.0, 0.0), weight: Double = 1.0) =
+        add(Centroid(points.ids(), target, weight))
+
+    fun centroidAll(target: Vec3 = Vec3(0.0, 0.0, 0.0), weight: Double = 1.0) =
+        add(Centroid(listOf(PointId.ALL_POINTS), target, weight))
+
+    fun radiusAboutCentroid(points: List<Int>, radius: Double, weight: Double = 1.0) =
+        add(RadiusAboutCentroid(points.ids(), radius, weight))
+
+    fun radiusAboutCentroidAll(radius: Double, weight: Double = 1.0) =
+        add(RadiusAboutCentroid(listOf(PointId.ALL_POINTS), radius, weight))
+
+    fun raw(vararg values: Double) = add(RawProgramFragment(values.toList()))
+
     fun build(): CeresProgram = CeresProgram(constraints.toList())
+
+    fun build(loss: RobustLoss): CeresProgram = CeresProgram(constraints.toList(), loss)
 }
 
-data class CeresProgram(val constraints: List<GeometryConstraint>) {
-    val requiredFeatures: Set<CeresFeature> = constraints.mapTo(linkedSetOf()) { it.requiredFeature }
+/**
+ * The loss the native solver wraps every residual in.
+ *
+ * The wrapper used to hardcode `Huber(1e-3)`. That is a good default for interactive constraint
+ * editing — one badly-placed point should not drag the whole model — and the wrong one for a
+ * least-squares problem whose residuals are *meant* to reach zero together, because a robust loss
+ * caps the influence of the largest residual and so quietly changes the objective you wrote down.
+ * [HUBER] therefore remains the default for compatibility, and [NONE] is what a realization solve
+ * wants.
+ */
+data class RobustLoss(val kind: Kind = Kind.HUBER, val scale: Double = 1e-3) {
+    enum class Kind(val code: Int) {
+        NONE(0),
+        HUBER(1),
+        SOFT_L_ONE(2),
+        CAUCHY(3),
+    }
+
+    init {
+        require(scale.isFinite() && scale > 0.0) { "loss scale must be finite and positive" }
+    }
+
+    companion object {
+        /** Plain least squares: no loss at all. */
+        val NONE = RobustLoss(Kind.NONE)
+
+        /** The wrapper's historic default. */
+        val DEFAULT = RobustLoss(Kind.HUBER, 1e-3)
+    }
+}
+
+data class CeresProgram(
+    val constraints: List<GeometryConstraint>,
+    val loss: RobustLoss = RobustLoss.DEFAULT,
+) {
+    val requiredFeatures: Set<CeresFeature> = buildSet {
+        constraints.mapTo(this) { it.requiredFeature }
+        // Only a non-default loss needs the newer wrapper; the old one bakes in Huber(1e-3).
+        if (loss != RobustLoss.DEFAULT) add(CeresFeature.AbiV2)
+    }
 
     fun encodeLegacyBytecode(): DoubleArray {
         val out = mutableListOf<Double>()
+        if (loss != RobustLoss.DEFAULT) {
+            out.op(CeresOpcode.SetLoss)
+            out += loss.kind.code.toDouble()
+            out += loss.scale
+        }
         constraints.forEach { it.encodeLegacy(out) }
         return out.toDoubleArray()
     }
@@ -927,15 +1157,149 @@ data class DynamicPriorWeights(val values: DoubleArray) {
     }
 }
 
+/**
+ * Which linear solver Ceres uses inside each trust-region step.
+ *
+ * This is the single biggest lever on a large problem and it used to be hardcoded to [DENSE_QR].
+ * Point-cloud constraint problems are structurally sparse — a per-edge or per-face residual touches
+ * two or a handful of the `3N` parameters — so [SPARSE_NORMAL_CHOLESKY] is usually the right answer
+ * above a hundred or so points, while [DENSE_QR] stays the most numerically forgiving for small
+ * ones.
+ *
+ * The sparse options need a Ceres built with a sparse backend. The committed `libs/` artifact is
+ * not; one built by `./gradlew buildCeresNative` against a system Ceres is. Ceres falls back to a
+ * dense solver and says so in [CeresSolveSummary.linearSolverUsed] rather than failing, so check
+ * that field if a sparse choice does not speed things up.
+ */
+enum class CeresLinearSolver(val code: Int) {
+    DENSE_QR(0),
+    DENSE_NORMAL_CHOLESKY(1),
+    SPARSE_NORMAL_CHOLESKY(2),
+    CGNR(3),
+    DENSE_SCHUR(4),
+    ITERATIVE_SCHUR(5),
+}
+
+/** Why the minimizer stopped. Mirrors `ceres::TerminationType`. */
+enum class CeresTermination {
+    CONVERGENCE,
+    NO_CONVERGENCE,
+    FAILURE,
+    USER_SUCCESS,
+    USER_FAILURE,
+    UNKNOWN,
+    ;
+
+    companion object {
+        fun ofCode(code: Int): CeresTermination = entries.getOrElse(code) { UNKNOWN }
+    }
+}
+
+/**
+ * What the minimizer actually did. Null on a backend that predates [CeresFeature.AbiV2], or when
+ * [SolveOptions.summary] is false.
+ */
+data class CeresSolveSummary(
+    val initialCost: Double,
+    val finalCost: Double,
+    val successfulSteps: Int,
+    val unsuccessfulSteps: Int,
+    val iterations: Int,
+    val termination: CeresTermination,
+    val seconds: Double,
+    val residualCount: Int,
+    val effectiveParameterCount: Int,
+    val parameterBlockCount: Int,
+    val residualBlockCount: Int,
+    /**
+     * What Ceres used — not necessarily what you asked for, if the build lacks that backend. Null
+     * when Ceres picked something this ABI has no name for.
+     */
+    val linearSolverUsed: CeresLinearSolver?,
+) {
+    val converged: Boolean get() = termination == CeresTermination.CONVERGENCE
+
+    override fun toString(): String = buildString {
+        append(termination.name.lowercase())
+        append(" in ").append(iterations).append(" iter")
+        append(" (").append(successfulSteps).append(" ok, ").append(unsuccessfulSteps).append(" rejected)")
+        append(", cost ").append("%.4g".format(initialCost)).append(" -> ").append("%.4g".format(finalCost))
+        append(", ").append("%.1f".format(seconds * 1000)).append(" ms")
+        linearSolverUsed?.let { append(", ").append(it.name) }
+    }
+
+    companion object {
+        internal const val SLOTS = 12
+
+        internal fun decode(slots: DoubleArray): CeresSolveSummary {
+            fun at(i: Int) = if (i < slots.size) slots[i] else 0.0
+            val solverCode = at(11).toInt()
+            return CeresSolveSummary(
+                initialCost = at(0),
+                finalCost = at(1),
+                successfulSteps = at(2).toInt(),
+                unsuccessfulSteps = at(3).toInt(),
+                iterations = at(4).toInt(),
+                termination = CeresTermination.ofCode(at(5).toInt()),
+                seconds = at(6),
+                residualCount = at(7).toInt(),
+                effectiveParameterCount = at(8).toInt(),
+                parameterBlockCount = at(9).toInt(),
+                residualBlockCount = at(10).toInt(),
+                linearSolverUsed = CeresLinearSolver.entries.firstOrNull { it.code == solverCode },
+            )
+        }
+    }
+}
+
 data class SolveOptions(
     val maxIterations: Int = 8,
     val metrics: Boolean = false,
     val metricGroupCapacity: Int = 64,
+    /** Requires [CeresFeature.AbiV2]; ignored by an older backend. */
+    val linearSolver: CeresLinearSolver = CeresLinearSolver.DENSE_QR,
+    /** Requires [CeresFeature.AbiV2]. Ceres parallelises residual and Jacobian evaluation. */
+    val threads: Int = 1,
+    val functionTolerance: Double = 1e-6,
+    val gradientTolerance: Double = 1e-10,
+    val parameterTolerance: Double = 1e-8,
+    /** Let the trust region accept a worse step occasionally; helps on narrow valleys. */
+    val nonmonotonicSteps: Boolean = false,
+    /** Fill [SolveResult.summary]. Requires [CeresFeature.AbiV2]. */
+    val summary: Boolean = false,
+    /** Ceres' own per-iteration table, on stdout. Debugging only. */
+    val progressToStdout: Boolean = false,
 ) {
     init {
         require(maxIterations >= 1) { "maxIterations must be >= 1" }
         require(metricGroupCapacity >= 0) { "metricGroupCapacity must be >= 0" }
+        require(threads >= 1) { "threads must be >= 1" }
+        require(functionTolerance > 0.0 && functionTolerance.isFinite()) { "functionTolerance must be positive" }
+        require(gradientTolerance > 0.0 && gradientTolerance.isFinite()) { "gradientTolerance must be positive" }
+        require(parameterTolerance > 0.0 && parameterTolerance.isFinite()) { "parameterTolerance must be positive" }
     }
+
+    /** True when this request needs anything the v1 wrapper cannot do. */
+    internal val needsAbiV2: Boolean
+        get() = linearSolver != CeresLinearSolver.DENSE_QR ||
+            threads != 1 ||
+            summary ||
+            progressToStdout ||
+            functionTolerance != 1e-6 ||
+            gradientTolerance != 1e-10 ||
+            parameterTolerance != 1e-8 ||
+            nonmonotonicSteps
+
+    internal fun encode(): DoubleArray = doubleArrayOf(
+        maxIterations.toDouble(),
+        linearSolver.code.toDouble(),
+        threads.toDouble(),
+        functionTolerance,
+        gradientTolerance,
+        parameterTolerance,
+        if (nonmonotonicSteps) 1.0 else 0.0,
+        if (progressToStdout) 1.0 else 0.0,
+    )
 }
 
 data class SolveRequest(
@@ -971,6 +1335,7 @@ data class SolveResult(
     val ok: Boolean,
     val points: PointCloud,
     val metrics: SolveMetrics? = null,
+    val summary: CeresSolveSummary? = null,
 )
 
 interface CompiledCeresSolver : AutoCloseable {
@@ -1030,6 +1395,10 @@ class CachedCeresSolvers(
 
 fun buildCeresProgram(block: CeresProgramBuilder.() -> Unit): CeresProgram =
     CeresProgramBuilder().apply(block).build()
+
+/** As [buildCeresProgram], choosing the loss the native solver wraps every residual in. */
+fun buildCeresProgram(loss: RobustLoss, block: CeresProgramBuilder.() -> Unit): CeresProgram =
+    CeresProgramBuilder().apply(block).build(loss)
 
 fun metricMap(groupCosts: DoubleArray): SolveMetrics =
     SolveMetrics(
@@ -1139,6 +1508,11 @@ private fun requireWeight(weight: Double) {
 
 private fun requireCosine(value: Double, label: String) {
     require(value.isFinite() && value in -1.0..1.0) { "$label must be a finite cosine in [-1, 1]" }
+}
+
+/** A position, where the origin is a perfectly good value — unlike [requireVector]'s directions. */
+private fun requirePosition(point: Vec3, label: String) {
+    require(point.x.isFinite() && point.y.isFinite() && point.z.isFinite()) { "$label must be finite" }
 }
 
 private fun requireVector(vector: Vec3, label: String) {
