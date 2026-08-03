@@ -1,7 +1,34 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
 import kotlin.math.sqrt
+
+/**
+ * The rank-3 value everything in this package passes around, and the five Platonic seeds to start
+ * from.
+ *
+ * [PolyhedralObject] is the aggregate — a [PolytopeTopology], optional coordinates, optional
+ * per-element attributes — and [Realization3] is the coordinate half, kept as a separate immutable
+ * value so that a Conway operator can replace it wholesale without the topology noticing. The seeds
+ * are [tetrahedron], [cube], [octahedron], [icosahedron] and [dodecahedron]; each returns a fully
+ * realized, outward-wound, manifold-validated object, and each is the starting point of a Conway
+ * expression such as `conway("tI")`.
+ *
+ * ## Scale is not uniform across the seeds
+ *
+ * [tetrahedron], [octahedron], [icosahedron] and [dodecahedron] all put their vertices on the unit
+ * sphere. [cube] does not: it is the ±1 cube, so its side is 2 and its circumradius `sqrt(3)`. If you
+ * are comparing seeds, or mixing them in one scene, normalise or apply a gauge first rather than
+ * assuming a common radius.
+ *
+ * ## Face winding is derived, not trusted
+ *
+ * Seed faces are declared as unoriented index cycles and then reversed where needed so that every
+ * normal points away from the vertex centroid. Which means the literal lists below need only be
+ * correct as *cycles* — a reader checking them does not also have to check their handedness.
+ */
 
 /**
  * Immutable ownership boundary around Field's mutable [Vec3]. Coordinates are indexed in exactly
@@ -10,9 +37,17 @@ import kotlin.math.sqrt
 class Realization3(vertexCoordinates: List<Vec3>) {
     private val coordinates = vertexCoordinates.map(::Vec3)
 
+    /** How many vertices are realized; equal to the topology's rank-0 element count. */
     val size: Int get() = coordinates.size
+
+    /** Every coordinate as a fresh [Vec3] list, rebuilt on each read — a snapshot, not a view, and not free. */
     val vertexCoordinates: List<Vec3> get() = coordinates.map(::Vec3)
 
+    /**
+     * One vertex position, by index into `topology.elements(0)` — **not** by [ElementId]. A copy:
+     * `Vec3` is mutable and Field's graphics code mutates it freely, so writing into the returned
+     * vector changes nothing here. That is the whole reason this class exists.
+     */
     operator fun get(index: Int): Vec3 = Vec3(coordinates[index])
 
     internal fun x(index: Int): Float = coordinates[index].x
@@ -20,10 +55,26 @@ class Realization3(vertexCoordinates: List<Vec3>) {
     internal fun z(index: Int): Float = coordinates[index].z
 }
 
-/** Abstract topology plus optional ordinary three-dimensional realization and element attributes. */
+/**
+ * Abstract topology plus optional ordinary three-dimensional realization and element attributes.
+ *
+ * The two optional halves are what make it worth having: a topology-only object is legal and useful
+ * (dualize it, then choose a realization policy), and attributes ride along through a whole Conway
+ * chain under a propagation policy. The constructor checks only the two things it can: that a
+ * realization has one coordinate per topology vertex, and that no attribute names an element outside
+ * this topology.
+ *
+ * Note what it does *not* check — the rank. A rank-4 topology will construct one of these quite
+ * happily. The rank-3 assumption belongs to the operators that actually need it: the Conway surface
+ * transforms require rank 3, and the triangulator requires a realization, so that is where a
+ * mismatched topology is caught rather than here.
+ */
 data class PolyhedralObject(
+    /** The authoritative value; ordinarily rank 3, though nothing in this class insists on it. */
     val topology: PolytopeTopology,
+    /** Coordinates, or null for a purely combinatorial object. Must have one entry per rank-0 element. */
     val realization: Realization3? = null,
+    /** Per-element properties, keyed by [ElementId]; every key must be an element of [topology]. */
     val attributes: PolytopeAttributes = PolytopeAttributes.EMPTY,
 ) {
     init {
@@ -113,7 +164,12 @@ fun tetrahedron(): PolyhedralObject {
     )
 }
 
-/** A cube of side length 2, centred at the origin. */
+/**
+ * A cube of side length 2, centred at the origin — the eight sign combinations of `(±1, ±1, ±1)`.
+ *
+ * The one seed in this file whose vertices are *not* on the unit sphere: its circumradius is
+ * `sqrt(3)`, about 1.73.
+ */
 fun cube(): PolyhedralObject = realizedPolyhedron(
     listOf(
         Vec3(-1f, -1f, -1f),
@@ -157,7 +213,14 @@ fun octahedron(): PolyhedralObject = realizedPolyhedron(
     ),
 )
 
-/** A regular icosahedron centred at the origin, with vertices on the unit sphere. */
+/**
+ * A regular icosahedron centred at the origin, with vertices on the unit sphere.
+ *
+ * The twelve cyclic `(0, ±1, ±phi)` points, normalised. Unlike the other seeds its faces are not
+ * written down but *found*, by testing all 220 vertex triples for a supporting plane; the search
+ * insists on finding exactly 20 triangles and throws if it does not, so a change to the coordinates
+ * cannot quietly produce a not-quite-icosahedron.
+ */
 fun icosahedron(): PolyhedralObject {
     val phi = ((1.0 + sqrt(5.0)) / 2.0).toFloat()
     val raw = buildList {
@@ -169,7 +232,14 @@ fun icosahedron(): PolyhedralObject {
     return realizedPolyhedron(coordinates, convexHullTriangleFaces(coordinates))
 }
 
-/** A regular dodecahedron, constructed as the realized dual of the regular icosahedron. */
+/**
+ * A regular dodecahedron, constructed as the realized dual of the regular icosahedron.
+ *
+ * No pentagon is written down anywhere. The twenty vertices are [icosahedron]'s face centroids, then
+ * pushed back out onto the unit sphere — a centroid is inside it — and the twelve pentagonal cycles
+ * come from walking the ordered edge ring around each icosahedron vertex. So this seed costs an
+ * icosahedron plus a dualization, and it is a live check on the dual operator rather than a table.
+ */
 fun dodecahedron(): PolyhedralObject {
     val dual = icosahedron().dual().polyhedron
     val realization = dual.realization ?: error("realized icosahedron dual lost its coordinates")

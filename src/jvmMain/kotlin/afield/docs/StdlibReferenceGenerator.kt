@@ -145,7 +145,10 @@ object StdlibReferenceGenerator {
             "and CPU-only, so a Conway expression evaluates in a box, a test or a headless docs " +
             "capture equally well; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a " +
             "`TriMesh`. 4-polytopes, their Schlegel and slice projections, and an OFF importer " +
-            "live here too.",
+            "live here too. Files are listed alphabetically below; a reader new to the package " +
+            "wants `Topology.kt`, then `Transforms.kt`, then `Conway.kt`, then `Canonical.kt`, " +
+            "then `FieldAdapters.kt` — and [Polytopes: topology first, coordinates later]" +
+            "(../polytope_examples.md) for the same ground with pictures.",
         "Solvers" to "Nonlinear least squares, aimed at geometry. A constraint vocabulary — " +
             "planarity, colinearity, fixed distances, perpendicularity, dihedral angles, panel " +
             "areas, positions held hard or held softly — assembled into a program, compiled once " +
@@ -154,7 +157,9 @@ object StdlibReferenceGenerator {
             "same program every frame while a user drags. Residuals you cannot express in the " +
             "vocabulary can be written in Kotlin and differentiated exactly by Ceres through the " +
             "expression VM. These entry points need the native Ceres library present, and nothing " +
-            "here draws — a solve returns points, and drawing them is your business.",
+            "here draws — a solve returns points, and drawing them is your business. Start from " +
+            "`CeresGeometry.kt`, which is the vocabulary everything else is written in; " +
+            "`ArchitecturalGeometry.kt` is the layer you will actually call.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
             "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
