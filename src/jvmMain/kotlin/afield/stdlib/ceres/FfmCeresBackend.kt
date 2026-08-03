@@ -23,12 +23,16 @@ class FfmCeresBackend(
     private val solveHandle: MethodHandle
     private val abiVersionHandle: MethodHandle
 
-    override val supportedFeatures: Set<CeresFeature> = setOf(
-        CeresFeature.LegacyWasmBytecode,
-        CeresFeature.DotProduct,
-        CeresFeature.VectorDotProduct,
-        CeresFeature.NativeGeometry,
-    )
+    /** Null on a v1 wrapper. Present means solver options and a solver summary are available. */
+    private val solve2Handle: MethodHandle?
+
+    /** Null on a v1 wrapper. Present means build errors are reportable instead of silent. */
+    private val lastErrorHandle: MethodHandle?
+
+    /** The `ken_ceres_jvm_abi_v*` string the loaded library reports. */
+    val abiVersion: String
+
+    override val supportedFeatures: Set<CeresFeature>
 
     init {
         require(reusableMetricCapacity >= 0) { "reusable metric capacity must be non-negative" }
@@ -69,10 +73,47 @@ class FfmCeresBackend(
             ),
         )
 
-        val version = (abiVersionHandle.invokeWithArguments() as MemorySegment)
+        abiVersion = (abiVersionHandle.invokeWithArguments() as MemorySegment)
             .reinterpret(64)
             .getString(0)
-        require(version == "ken_ceres_jvm_abi_v1") { "unsupported Ceres JVM ABI: $version" }
+        require(abiVersion in SUPPORTED_ABIS) {
+            "unsupported Ceres JVM ABI: $abiVersion (this build understands ${SUPPORTED_ABIS.joinToString()})"
+        }
+
+        // v2 is detected by symbol, not by trusting the version string: a half-built library that
+        // reports v2 but is missing an entry point should fail here, not at the first solve.
+        val v2 = abiVersion == ABI_V2
+        solve2Handle = if (!v2) null else downcall(
+            "ken_ceres_solver_solve2",
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS,   // handle
+                ValueLayout.ADDRESS,   // points_in
+                ValueLayout.JAVA_INT,  // num_points
+                ValueLayout.ADDRESS,   // options
+                ValueLayout.JAVA_INT,  // options_len
+                ValueLayout.ADDRESS,   // prior_w_xyz
+                ValueLayout.ADDRESS,   // points_out
+                ValueLayout.ADDRESS,   // total_cost_out
+                ValueLayout.ADDRESS,   // group_costs_out
+                ValueLayout.JAVA_INT,  // group_costs_cap
+                ValueLayout.ADDRESS,   // out_group_count
+                ValueLayout.ADDRESS,   // summary_out
+                ValueLayout.JAVA_INT,  // summary_cap
+            ),
+        )
+        lastErrorHandle = if (!v2) null else downcall(
+            "ken_ceres_solver_last_error",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS),
+        )
+
+        supportedFeatures = buildSet {
+            add(CeresFeature.LegacyWasmBytecode)
+            add(CeresFeature.DotProduct)
+            add(CeresFeature.VectorDotProduct)
+            add(CeresFeature.NativeGeometry)
+            if (v2) add(CeresFeature.AbiV2)
+        }
     }
 
     override fun compile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver =
@@ -125,6 +166,20 @@ class FfmCeresBackend(
                 ) as MemorySegment
             }
             check(handle != MemorySegment.NULL) { "native Ceres solver creation failed" }
+
+            // A v1 wrapper stops at the first opcode it does not recognise and reports nothing, so
+            // the problem it built silently omits every constraint after that point. v2 records
+            // where it stopped; refuse the solver rather than hand back one that answers a
+            // different question.
+            lastErrorHandle?.let { errorHandle ->
+                val message = (errorHandle.invokeWithArguments(handle) as MemorySegment)
+                    .reinterpret(512)
+                    .getString(0)
+                if (message.isNotEmpty()) {
+                    destroyHandle.invokeWithArguments(handle)
+                    throw IllegalArgumentException("Ceres program was not fully built: $message")
+                }
+            }
         }
 
         override fun solve(
@@ -153,18 +208,47 @@ class FfmCeresBackend(
                 }
                 val groupCount = if (options.metrics) arena.allocate(ValueLayout.JAVA_INT) else MemorySegment.NULL
 
-                val ok = solveHandle.invokeWithArguments(
-                    handle,
-                    pointsIn,
-                    pointCount,
-                    options.maxIterations,
-                    priors,
-                    pointsOut,
-                    totalCost,
-                    groups,
-                    options.metricGroupCapacity,
-                    groupCount,
-                ) as Int
+                require(!(options.needsAbiV2 && solve2Handle == null)) {
+                    "these SolveOptions need $ABI_V2 but the loaded library reports $abiVersion"
+                }
+                val wantSummary = options.summary && solve2Handle != null
+                val summaryOut = if (wantSummary) {
+                    arena.allocate(ValueLayout.JAVA_DOUBLE, CeresSolveSummary.SLOTS.toLong())
+                } else {
+                    MemorySegment.NULL
+                }
+
+                val ok = if (solve2Handle == null) {
+                    solveHandle.invokeWithArguments(
+                        handle,
+                        pointsIn,
+                        pointCount,
+                        options.maxIterations,
+                        priors,
+                        pointsOut,
+                        totalCost,
+                        groups,
+                        options.metricGroupCapacity,
+                        groupCount,
+                    ) as Int
+                } else {
+                    val encoded = options.encode()
+                    solve2Handle.invokeWithArguments(
+                        handle,
+                        pointsIn,
+                        pointCount,
+                        arena.allocateFrom(ValueLayout.JAVA_DOUBLE, *encoded),
+                        encoded.size,
+                        priors,
+                        pointsOut,
+                        totalCost,
+                        groups,
+                        options.metricGroupCapacity,
+                        groupCount,
+                        summaryOut,
+                        if (wantSummary) CeresSolveSummary.SLOTS else 0,
+                    ) as Int
+                }
 
                 val solved = DoubleArray(pointValues.size) { i ->
                     pointsOut.getAtIndex(ValueLayout.JAVA_DOUBLE, i.toLong())
@@ -191,10 +275,19 @@ class FfmCeresBackend(
                     null
                 }
 
+                val summary = if (!wantSummary) null else {
+                    CeresSolveSummary.decode(
+                        DoubleArray(CeresSolveSummary.SLOTS) { i ->
+                            summaryOut.getAtIndex(ValueLayout.JAVA_DOUBLE, i.toLong())
+                        },
+                    )
+                }
+
                 return SolveResult(
                     ok = ok != 0,
                     points = PointCloud(solved),
                     metrics = metrics,
+                    summary = summary,
                 )
             }
         }
@@ -207,6 +300,13 @@ class FfmCeresBackend(
         ): Boolean {
             check(!closed) { "compiled Ceres solver is closed" }
             require(points.pointCount == pointCount) { "point count changed from $pointCount to ${points.pointCount}" }
+            // The allocation-free path deliberately stays on the v1 entry point: its whole purpose
+            // is a steady per-frame solve with no arena churn, and the options that need v2 (a
+            // different linear solver, threads, a summary) are setup-time choices, not per-frame
+            // ones. Ask for them here and you get a clear refusal rather than silence.
+            require(!options.needsAbiV2) {
+                "solveInPlace runs the fixed-configuration solve; use solve() for these SolveOptions"
+            }
             require(!options.metrics || options.metricGroupCapacity <= reusableMetricCapacity) {
                 "requested ${options.metricGroupCapacity} metric groups, but reusable capacity is $reusableMetricCapacity"
             }
@@ -295,6 +395,10 @@ class FfmCeresBackend(
         }
     }
 }
+
+private const val ABI_V1 = "ken_ceres_jvm_abi_v1"
+private const val ABI_V2 = "ken_ceres_jvm_abi_v2"
+private val SUPPORTED_ABIS = setOf(ABI_V1, ABI_V2)
 
 object CeresNativeLibrary {
     val defaultPath: Path

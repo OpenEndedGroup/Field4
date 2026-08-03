@@ -82,6 +82,28 @@ data class RelaxationPlan(
     }
 }
 
+/**
+ * Root-mean-square of the plan's *weighted* residuals at [x] — the quantity the minimiser is
+ * actually driving down, and the one [RealizationSolveResult.rmsResidual] reports.
+ *
+ * Shared so that every backend reports the same number computed the same way, rather than whatever
+ * its own minimiser happened to call the cost.
+ */
+internal fun RelaxationPlan.weightedResidualRms(problem: RealizationProblem, x: DoubleArray): Double {
+    val active = constraints.filter { it.weight > 0.0 }
+    var sum = 0.0
+    var count = 0
+    active.forEach { constraint ->
+        val n = constraint.residualCount(problem)
+        if (n == 0) return@forEach
+        val buffer = DoubleArray(n)
+        constraint.residuals(problem, x, buffer, 0)
+        buffer.forEach { sum += it * it }
+        count += n
+    }
+    return if (count == 0) 0.0 else sqrt(sum / count)
+}
+
 /** Weights are residual multipliers; set a term to zero to disable that constraint family. */
 data class RealizationSolverOptions(
     val edgeLengthWeight: Double = 1.0,

@@ -109,7 +109,16 @@ fun abletonLinkNativeLibraryName(): String {
 }
 
 val abletonLinkNative = layout.projectDirectory.file("libs/${abletonLinkNativeLibraryName()}")
-val ceresNative = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
+
+// The Ceres wrapper the JVM loads. `libs/` holds a committed, self-contained build; `buildCeresNative`
+// produces a fresh one from native/ken-ceres. -PceresLibrary=<path> points every run/test/smoke task
+// at a different one, which is how you A/B a wrapper change against the committed artifact without
+// overwriting it.
+val ceresNativeCommitted = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
+val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/libken_ceres_jvm.dylib")
+val ceresNative: RegularFile = providers.gradleProperty("ceresLibrary")
+    .map { layout.projectDirectory.file(it) }
+    .getOrElse(ceresNativeCommitted)
 val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .map(String::toBoolean)
     .orElse(true)
@@ -509,6 +518,21 @@ java {
         vendor = JvmVendorSpec.GRAAL_VM
     }
     }
+
+// The launcher every JavaExec/exec task in this file should use.
+//
+// The toolchain above pins the vendor, but that only governs compilation. A `launcherFor {}` spec
+// that names *only* the language version matches any vendor 25, so Gradle is free to hand a run
+// task some other Adoptium 25 it downloaded for an unrelated project. That is not a cosmetic
+// difference: `vectorizationJvmArgs` passes -XX:+EnableJVMCI, which is built in on GraalVM but
+// experimental on HotSpot, and a HotSpot JVM refuses to start at all —
+//   "Error: VM option 'EnableJVMCI' is experimental and must be enabled via
+//    -XX:+UnlockExperimentalVMOptions"
+// — so the task dies before main(). Pin the vendor at the launcher too.
+fun JavaToolchainService.fieldLauncher(): Provider<JavaLauncher> = launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    vendor.set(JvmVendorSpec.GRAAL_VM)
+}
 
 group = "afield"
 version = "1.1-SNAPSHOT"
@@ -1067,9 +1091,7 @@ tasks.named("compileKotlinJvm") {
 tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
     group = "application"
     description = "Analyzes a WAV file with TrackingResonatorBank and writes three additive-resynthesis WAV variants."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.audio.TrackingResonatorResynthesisExampleKt")
     jvmArgs(vectorizationJvmArgs)
@@ -1078,9 +1100,7 @@ tasks.register<JavaExec>("runTrackingResonatorResynthesisExample") {
 tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
     group = "verification"
     description = "Exercises the documentation-panel code-link backend (KDoc linkification + source-card resolution) against the real Kotlin source index."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.DocsPanelCodeLinksSmokeTest")
     jvmArgs(vectorizationJvmArgs)
@@ -1089,9 +1109,7 @@ tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
 tasks.register<JavaExec>("generateCodebaseReference") {
     group = "documentation"
     description = "Regenerates the committed codebase reference (public/docs/reference/) from the KDoc in afield.stdlib and afield.visualization. Pass -Pout=<dir> to write elsewhere; with no output dir the generator drift-checks the committed pages instead."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.StdlibReferenceGenerator")
     val out = (project.findProperty("out") as String?) ?: "public/docs/reference"
@@ -1101,9 +1119,7 @@ tasks.register<JavaExec>("generateCodebaseReference") {
 tasks.register<JavaExec>("checkCodebaseReference") {
     group = "verification"
     description = "Fails if public/docs/reference/ is not what the current KDoc produces. Same drift guard as the docs.codebase-reference.generate FIELD_TEST, without needing a Field server."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.StdlibReferenceGenerator")
 }
@@ -1122,9 +1138,7 @@ tasks.register<JavaExec>("checkCodebaseReference") {
 tasks.register<JavaExec>("checkKDocAttachment") {
     group = "verification"
     description = "Fails if a KDoc block in src/ does not attach to the declaration it sits above — the silent failure that publishes one symbol's prose under another's name. Pass --args=--verbose to list the known-benign sites too."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.KDocAttachmentGuard")
 }
@@ -1154,9 +1168,7 @@ tasks.named("check") {
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
     group = "verification"
     description = "Verifies FileWatchManager.parseSidecarPath splits underscore-bearing box ids/properties without spawning phantom boxes."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.SidecarPathParseSmokeTest")
 }
@@ -1164,9 +1176,7 @@ tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {
 tasks.register<JavaExec>("runPersonalLayerSmokeTest") {
     group = "verification"
     description = "Verifies src/personal is off -cp yet still resolves for the K2 REPL through afield.PersonalLayer."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     // Deliberately the plain runtime classpath, with the personal jar reaching the test only via
     // -Dafield.personal.classpath out of requiredRunJvmArgs() — the same way the real launch does
     // it. Adding it to `classpath` here would make the test pass for the wrong reason. The rest of
@@ -1183,9 +1193,7 @@ tasks.register<JavaExec>("runPersonalLayerSmokeTest") {
 tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
     group = "application"
     description = "Worked example of the generated bulk SIMD vector kernels and their SimdVerlet helpers (velocity read-out, spring-to-target force)."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.SimdVerletBulkKernelsExample")
     jvmArgs(vectorizationJvmArgs)
@@ -1194,9 +1202,7 @@ tasks.register<JavaExec>("runSimdVerletBulkKernelsExample") {
 tasks.register<JavaExec>("runImGuiVrPanelDemo") {
     group = "application"
     description = "ImGui-as-a-VR-panel demo: Dear ImGui -> RTT -> stereo quad, packed side-by-side, blitted to the desktop window; mouse/controller ray hit-testing. Pass --args=\"capture <out.png>\" for a verification capture."
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.examples.four.ImGuiVrPanelDemo")
     // -XX:+EnableJVMCI (from vectorizationJvmArgs, inside requiredRunJvmArgs) is experimental on the
@@ -1946,9 +1952,7 @@ tasks.register("runDesktop") {
 }
 
 fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String) {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "verification"
     description = taskDescription
     classpath = sourceSets["jvmMain"].runtimeClasspath
@@ -1960,6 +1964,49 @@ fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String
         if (!ceresNative.asFile.exists()) {
             throw GradleException("Ceres native library not found at ${ceresNative.asFile.absolutePath}")
         }
+    }
+}
+
+// Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
+// one. That build is configured with Eigen/SuiteSparse/Accelerate sparse backends, so the wrapper
+// can ask for SPARSE_NORMAL_CHOLESKY; the committed libs/ artifact is statically linked against a
+// Ceres built with every sparse backend off and can only do DENSE_QR.
+//
+// This is deliberately not wired into `check` or into the smoke tasks: it needs a system Ceres
+// (`brew install ceres-solver`) that a fresh clone will not have. Run it by hand, then point the
+// runtime at the result:
+//
+//     ./gradlew buildCeresNative
+//     ./gradlew smokeCeres -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
+val buildCeresNative = tasks.register("buildCeresNative") {
+    group = "build"
+    description = "Builds native/ken-ceres into build/ken-ceres (needs cmake and a system Ceres)."
+
+    val sourceDir = layout.projectDirectory.dir("native/ken-ceres")
+    val buildDir = layout.buildDirectory.dir("ken-ceres")
+    inputs.dir(sourceDir)
+    outputs.file(ceresNativeBuilt)
+
+    doLast {
+        val out = buildDir.get().asFile
+        out.mkdirs()
+        listOf(
+            listOf("cmake", "-S", sourceDir.asFile.absolutePath, "-B", out.absolutePath, "-DCMAKE_BUILD_TYPE=Release"),
+            listOf("cmake", "--build", out.absolutePath, "--parallel"),
+        ).forEach { command ->
+            val result = providers.exec {
+                commandLine(command)
+                isIgnoreExitValue = true
+            }
+            val code = result.result.get().exitValue
+            if (code != 0) {
+                throw GradleException(
+                    "${command.joinToString(" ")} failed with exit code $code:\n" +
+                        result.standardOutput.asText.get() + result.standardError.asText.get(),
+                )
+            }
+        }
+        logger.lifecycle("ken_ceres_jvm -> ${ceresNativeBuilt.get().asFile.absolutePath}")
     }
 }
 
@@ -1984,6 +2031,25 @@ val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteract
     )
 }
 
+// Needs the v2 wrapper, so it is not in `smokeCeres` — the committed libs/ artifact is v1.
+//     ./gradlew buildCeresNative
+//     ./gradlew smokeCeresAbiV2 -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
+tasks.register<JavaExec>("smokeCeresAbiV2") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresAbiV2SmokeKt",
+        "Runs the Ceres ABI v2 smoke: midsphere constraints, solver options, summary, error channel.",
+    )
+}
+
+// Same plan, both realizers, on a ladder of Conway solids. Needs the v2 wrapper (see above).
+tasks.register<JavaExec>("ceresPolytopeComparison") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresPolytopeRealizerComparisonKt",
+        "Compares the Kotlin and Ceres polyhedron realizers on the same relaxation plans.",
+    )
+    group = "application"
+}
+
 tasks.register("smokeCeres") {
     group = "verification"
     description = "Runs all Ceres FFM smoke examples."
@@ -1991,9 +2057,7 @@ tasks.register("smokeCeres") {
 }
 
 tasks.register<JavaExec>("runfilestore") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
     description = "Runs AI4 filestore CLI"
 
@@ -2004,9 +2068,7 @@ tasks.register<JavaExec>("runfilestore") {
 }
 
 tasks.register<JavaExec>("polishCompletionDocs") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
     description = "Runs AI4 completion-doc cache/source polishing CLI"
 
@@ -2017,9 +2079,7 @@ tasks.register<JavaExec>("polishCompletionDocs") {
 }
 
 tasks.register<JavaExec>("polishCompletionDocsDryRun") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
     description = "Runs AI4 completion-doc cache/source polishing CLI without writing files"
 
@@ -2031,9 +2091,7 @@ tasks.register<JavaExec>("polishCompletionDocsDryRun") {
 }
 
 tasks.register<JavaExec>("improveAiToolUse") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
     description = "Runs AI4 tool-use log review and prompt/tool-description improvement CLI"
 
@@ -2044,9 +2102,7 @@ tasks.register<JavaExec>("improveAiToolUse") {
 }
 
 tasks.register<JavaExec>("improveAiToolUseDryRun") {
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-    })
+    javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
     description = "Runs AI4 tool-use improvement CLI without writing source files"
 
@@ -2062,9 +2118,7 @@ tasks.register<JavaExec>("improveAiToolUseDryRun") {
 		group = "application"
 		description = "Generates a self-signed PKCS12 keystore for local HTTPS (config/field4-local.p12)."
 
-		val javaLauncher = javaToolchains.launcherFor {
-			languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
-		}
+		val javaLauncher = javaToolchains.fieldLauncher()
 
     val keystoreFile = layout.projectDirectory.file("config/field4-local.p12").asFile
     outputs.file(keystoreFile)
