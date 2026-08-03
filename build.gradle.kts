@@ -2097,6 +2097,16 @@ tasks.register<JavaExec>("smokeCeresExpression") {
     )
 }
 
+// Where the time in relaxWithCeres goes: program mapping vs native compile vs solve. Needs the v2
+// wrapper. This is the measurement behind relaxWithCeres' KDoc note about repeated solves.
+tasks.register<JavaExec>("ceresRealizerCacheCost") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresRealizerCacheCostKt",
+        "Measures how much of a relaxWithCeres call a cached native program could remove.",
+    )
+    group = "application"
+}
+
 // What the expression VM costs against the equivalent hand-written functor. Needs the v2 wrapper.
 tasks.register<JavaExec>("ceresExpressionCost") {
     configureCeresSmokeTask(

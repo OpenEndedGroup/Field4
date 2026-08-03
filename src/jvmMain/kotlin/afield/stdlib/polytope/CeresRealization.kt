@@ -245,6 +245,33 @@ fun ceresRealizationAvailable(): Boolean = runCatching {
  *
  * Same plan in, same [RealizationSolveResult] out, same [RigidGauge] applied afterwards — so a
  * caller can swap one for the other, or run both and compare the reported per-family errors.
+ *
+ * ## Every call compiles its own native program, and that is not the cost that matters
+ *
+ * The [CachedCeresSolvers] below is created and closed inside this call, so nothing is amortised
+ * across calls. That reads like an obvious waste. `./gradlew ceresRealizerCacheCost` — the measurement
+ * behind this paragraph, on this plan and these solids — says it is not the cost worth chasing:
+ *
+ * - Compiling the program is **4–9% of a call** on `C`, `kC`, `tI` and `kkC`, and **0.1–0.3%** on
+ *   `kkkC` and `kkkkC`. The share *falls* as the problem grows, because the solve grows far faster
+ *   than the compile does: on `kkkkC` a 2.4 ms compile sits in front of a 1.7 s solve.
+ * - Keeping one cache open across 20 solves of a bit-identical program speeds the Ceres side up by
+ *   about 1.1–2x on the small solids and by nothing measurable on the large ones. A prototype that
+ *   let the caller pass a cache in gave 1.1–1.8x over 20 whole calls, biggest on a cube.
+ * - In the case a cache is usually wanted for — an animated chain relaxing a *moving* solid — it
+ *   cannot help at all. [CeresRealization.program] resolves the plan's unset targets from the current
+ *   embedding and bakes them into the program, so every frame hashes differently: 20 frames of a
+ *   wobbling solid produce 20 distinct programs and therefore 20 misses, at every size measured.
+ *
+ * So that prototype was measured and dropped rather than shipped. It would have been public API
+ * paying off only when a bit-identical program is re-solved, and [CachedCeresSolvers] is an
+ * access-ordered `LinkedHashMap` of native handles with no locking, so the shared default it wants
+ * would be a data race between boxes. If you are in that narrow case — a sweep over
+ * [CeresRelaxationOptions] on one fixed seed, say, since the solver options are not part of the cache
+ * key — build the program once with [CeresRealization.program] and drive your own
+ * [CachedCeresSolvers]; that also skips the per-call program mapping and hash. To make a *moving*
+ * solid cacheable at all, state the plan's targets explicitly so the program stops depending on the
+ * embedding.
  */
 fun PolyhedralObject.relaxWithCeres(
     plan: RelaxationPlan,
@@ -271,6 +298,8 @@ fun PolyhedralObject.relaxWithCeres(
         options.gaugeRotationWeight,
         options.minEdgeLengthFraction,
     )
+    // One-shot: compiled here, closed before returning. See the note on this function for why keying
+    // this cache open across calls was measured and rejected.
     val result = CachedCeresSolvers(backend).use { solvers ->
         solvers.solve(
             SolveRequest(

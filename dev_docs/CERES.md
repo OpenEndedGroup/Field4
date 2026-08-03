@@ -200,6 +200,46 @@ Isolating the sparse linear solver alone — same problem, same iteration count,
 This is the part the committed dylib cannot do at all, and it is the strongest single argument for
 fixing the build.
 
+### Should the compiled program be cached across calls?
+
+`relaxWithCeres` builds a `CachedCeresSolvers`, uses it once and closes it, so the native program is
+compiled on every call and `CachedCeresSolvers`' keying-by-program-hash never gets to do its job.
+That looks like a plain oversight. `./gradlew ceresRealizerCacheCost -PceresLibrary=…` measures it,
+and the answer is no, twice over.
+
+Where a call actually goes (best of 20, canonical plan, `SPARSE_NORMAL_CHOLESKY`; one run — the
+small-solid rows move by a few tenths of a millisecond between runs, so read the share, not the digits):
+
+| solid | V / F | call | program | hash | compile | solve | report + gauge | compile share |
+|---|---|---|---|---|---|---|---|---|
+| `C` | 8 / 6 | 1.45 ms | 0.03 | 0.03 | 0.10 | 0.15 | 0.32 | 7% |
+| `kC` | 14 / 24 | 1.78 ms | 0.05 | 0.02 | 0.12 | 0.56 | 0.49 | 7% |
+| `tI` | 60 / 32 | 4.99 ms | 0.04 | 0.03 | 0.22 | 2.49 | 0.89 | 4% |
+| `kkC` | 38 / 72 | 6.49 ms | 0.03 | 0.03 | 0.29 | 2.95 | 0.99 | 5% |
+| `kkkC` | 110 / 216 | 282 ms | 0.07 | 0.09 | 0.79 | 256 | 2.6 | 0.3% |
+| `kkkkC` | 326 / 648 | 1805 ms | 0.08 | 0.24 | 2.27 | 1714 | 7.9 | 0.1% |
+
+The compile share *falls* with size, because the solve grows far faster than the compile: on `kkkkC`
+a 2.3 ms compile stands in front of a 1.7 s solve. Solving one bit-identical program 20 times through
+a shared cache instead of a fresh one per solve is 1.1–2x on the small solids and inside the noise on
+the large ones; a prototype that let the caller pass a cache into `relaxWithCeres` gave 1.1–1.8x over
+20 whole calls, best on a cube.
+
+The second reason is the one that settles it. `CeresRealization.program` resolves a plan's unset
+targets — mean edge length, centroid, tangency radius, the minimum-edge-length floor — from the
+*current* embedding and bakes them into the program, so the same topology with moved vertices is a
+different program and a guaranteed miss. Twenty frames of a wobbling solid produce twenty distinct
+programs at every size measured. An animation loop, which is the case a cache is wanted for, would
+get nothing but the cost of retaining twenty native solvers.
+
+So the prototype was dropped: public API that only pays for re-solving a bit-identical program, whose
+natural "just share one globally" default would be a data race — `CachedCeresSolvers` is an
+access-ordered `LinkedHashMap` of native handles with no locking. A caller who really is in that case
+(a sweep over `CeresRelaxationOptions` on one seed, say — the solver options are not part of the key)
+should build the program once with `CeresRealization.program` and drive their own cache, which also
+skips the per-call mapping and hash. To make a moving solid cacheable, state the plan's targets
+explicitly so the program stops depending on the embedding.
+
 ### Does it crack `kkC`?
 
 Yes — but only after finding out why it did not.
@@ -392,6 +432,7 @@ middle of a smooth objective.
 | `afield.examples.ceres.CeresPlaneFormulationStudy` | the plane-parameterisation sweep |
 | `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |
 | `afield.examples.ceres.CeresRealizerDiagnostic` | parameter and residual counts per solid |
+| `afield.examples.ceres.CeresRealizerCacheCost` | where a `relaxWithCeres` call goes, and why the program cache stays per-call |
 | `afield.stdlib.ceres.CeresExpression` | the expression DAG, its compiler, and the register program |
 | `afield.examples.ceres.CeresExpressionSmoke` | equivalence, sharing, validation, Thomson |
 | `afield.examples.ceres.CeresExpressionCost` | the 1.5x table above |
