@@ -260,6 +260,19 @@ data class CeresVariableDecl(
     val name: String,
     val initial: List<Double>,
     val manifold: CeresManifold = CeresManifold.NONE,
+    /**
+     * Per-component box constraints, `component to (lower .. upper)`. A component may appear once.
+     *
+     * These are Ceres' own `SetParameterLowerBound` / `SetParameterUpperBound`, and they are the right
+     * tool for "this radius is positive" — a one-sided barrier residual can only *penalise* an
+     * excursion after the minimiser has already taken it, and it changes the objective you wrote down
+     * while doing so.
+     *
+     * Only on [CeresManifold.NONE]. A bound is a statement about an ambient coordinate, and a
+     * manifold's `Plus` is free to step straight through one, so the pair does not mean what it
+     * looks like it means. Rejected rather than silently allowed.
+     */
+    val bounds: Map<Int, ClosedFloatingPointRange<Double>> = emptyMap(),
 ) {
     val dimension: Int get() = initial.size
 
@@ -290,6 +303,34 @@ data class CeresVariableDecl(
                 }
             }
         }
+        if (bounds.isNotEmpty()) {
+            require(manifold == CeresManifold.NONE) {
+                "free variable '$name' is on a ${manifold.name.lowercase()} manifold, which steps in the " +
+                    "tangent space and so can walk straight through a bound on an ambient coordinate"
+            }
+            bounds.forEach { (component, range) ->
+                require(component in 0 until dimension) {
+                    "free variable '$name' has $dimension component(s); bound given for $component"
+                }
+                require(range.start.isFinite() || range.endInclusive.isFinite()) {
+                    "the bound on '$name'[$component] constrains nothing; leave it out instead"
+                }
+                require(range.start <= range.endInclusive) {
+                    "the bound on '$name'[$component] is empty: ${range.start} .. ${range.endInclusive}"
+                }
+                require(initial[component] in range) {
+                    "free variable '$name'[$component] starts at ${initial[component]}, outside its " +
+                        "bound ${range.start} .. ${range.endInclusive}; Ceres requires a feasible start"
+                }
+            }
+        }
+    }
+
+    /** The bound on [component], widened to the doubles the ABI carries. */
+    internal fun boundOf(component: Int): Pair<Double, Double>? = bounds[component]?.let {
+        val lower = if (it.start.isFinite()) it.start else -Double.MAX_VALUE
+        val upper = if (it.endInclusive.isFinite()) it.endInclusive else Double.MAX_VALUE
+        lower to upper
     }
 
     companion object {
@@ -299,8 +340,20 @@ data class CeresVariableDecl(
          */
         const val MAX_DIMENSION: Int = 64
 
-        fun scalar(name: String, initial: Double): CeresVariableDecl =
-            CeresVariableDecl(name, listOf(initial))
+        /**
+         * A free scalar, optionally box-constrained. `atLeast = 0.0` is the usual reason to reach for
+         * this: a radius, a scale or a duration that has no meaning below zero.
+         */
+        fun scalar(
+            name: String,
+            initial: Double,
+            atLeast: Double = Double.NEGATIVE_INFINITY,
+            atMost: Double = Double.POSITIVE_INFINITY,
+        ): CeresVariableDecl = CeresVariableDecl(
+            name,
+            listOf(initial),
+            bounds = if (atLeast.isFinite() || atMost.isFinite()) mapOf(0 to atLeast..atMost) else emptyMap(),
+        )
 
         fun vector(name: String, initial: Vec3): CeresVariableDecl =
             CeresVariableDecl(name, listOf(initial.x, initial.y, initial.z))
@@ -495,6 +548,16 @@ data class CompiledCeresExpression(
             append("var v%-2d = %s[%d]".format(at, variable.name, variable.dimension))
             if (variable.manifold != CeresManifold.NONE) {
                 append(" on ").append(variable.manifold.name.lowercase())
+            }
+            variable.bounds.keys.sorted().forEach { component ->
+                val (lower, upper) = requireNotNull(variable.boundOf(component))
+                append(
+                    "  [%d] in %s..%s".format(
+                        component,
+                        if (lower <= -Double.MAX_VALUE) "-inf" else "%.6g".format(lower),
+                        if (upper >= Double.MAX_VALUE) "+inf" else "%.6g".format(upper),
+                    ),
+                )
             }
             appendLine(
                 variable.initial.joinToString(", ", prefix = "  seed [", postfix = "]") { "%.6g".format(it) },

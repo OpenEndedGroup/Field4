@@ -73,7 +73,9 @@ namespace op {
     // A caller-supplied residual as a little register program, and the free variables it may read.
     // See the ExprVm and VariableBlock notes in ken_ceres.cpp.
     EXPR = 68,                  // [nP, p..., nV, v..., nR, r..., nSlots, nC, c..., nI, (op,dst,a,b)..., w]
-    VARIABLE = 69               // [dim, manifold, init0..init_{dim-1}]  0=none 1=sphere 2=quaternion
+    // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
+    //   manifold: 0=none 1=sphere 2=quaternion. Bounds only on manifold 0.
+    VARIABLE = 69
   };
 }
 

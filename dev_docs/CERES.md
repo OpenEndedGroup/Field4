@@ -324,16 +324,17 @@ orders of magnitude better than the existing iteration, and sane where it produc
    on" below. What is left of it: `PLANAR_HESSE` itself could now be *deleted* and replaced by the
    Kotlin expression, which reaches the same answer to `1e-15` at ×1.4 the cost. That is a real
    choice rather than an obvious one, and it is the same question item 2 asks.
-7. **A free variable cannot be held constant, or bounded.** Ceres has
-   `SetParameterBlockConstant` and `SetParameterLowerBound`; neither is exposed. A radius that must
-   stay positive currently needs a barrier residual, which is a worse tool for the job. The same
-   applies to the point blocks — there is still no way to say "this point is data, not an unknown"
-   except a very stiff `LockPosition`, which is why the fits above put their data in the expression
-   as constants instead.
+7. **Nothing can be held constant.** Bounds are exposed now; `SetParameterBlockConstant` is not.
+   There is still no way to say "this point is data, not an unknown" except a very stiff
+   `LockPosition`, which is why the fits above put their data in the expression as constants instead.
+   That works, but it bakes the data into the program hash, so changing a data point recompiles the
+   problem rather than re-solving it.
 8. **Only three manifolds.** `NONE`, `SPHERE`, `QUATERNION`. `SubsetManifold` (hold some components
-   of a block fixed) and `LineManifold` are the obvious next two, and `SubsetManifold` would give a
-   cheaper answer to half of item 7.
-9. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
+   of a block fixed) and `LineManifold` are the obvious next two, and `SubsetManifold` would answer
+   half of item 7 without a new ABI concept.
+9. **Bounds and manifolds do not compose**, and cannot: see above. If a bounded *direction* is ever
+   needed, the answer is a different parameterisation, not a way around the refusal.
+10. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
    so refuses the v2 options. If a steady-state solve ever needs a different linear solver, that
    choice should move to compile time.
 
@@ -465,6 +466,30 @@ cannot affect the answer — the defect this layer refuses everywhere else.
 `PLANAR_HESSE` needs) and `QUATERNION` (`w` first; `CeresExprVariable.rotate()` writes out the
 quaternion sandwich, so a free frame needs no trigonometry in the residual). Ceres' own enum values
 are not stable across versions and were never an interchange format.
+
+### Bounds
+
+A variable can carry per-component box constraints, which become Ceres'
+`SetParameterLowerBound` / `SetParameterUpperBound`:
+
+```kotlin
+val radius = variable(CeresVariableDecl.scalar("radius", 1.0, atLeast = 0.0))
+```
+
+This is the right tool for "this radius is positive", and a one-sided barrier residual is not: a
+barrier can only *penalise* an excursion the minimiser has already taken, and it changes the
+objective you wrote down while doing so.
+
+Two restrictions, both refused rather than allowed to misbehave. **Bounds only on
+`CeresManifold.NONE`** — a bound is a statement about an ambient coordinate and a manifold's `Plus`
+steps in the tangent space, so it can walk straight through one. And **the seed has to be feasible**,
+because an infeasible start is a `CHECK` failure inside the minimiser, which would take the process
+down rather than return an error.
+
+The check that bounds are actually *applied*, rather than approximated by something tuned: fit a
+sphere to points that lie on a plane. A plane is a sphere of infinite radius, so the unconstrained
+geometric fit has no finite optimum and the answer is decided entirely by the bound. With
+`radius <= 5` the solve converges with the radius at `5.000000000`.
 
 The solved values come back in `SolveResult.variables`, keyed by the names the declarations gave
 them. Names never cross the ABI: the native side is handed dimensions and initial values, this side

@@ -1335,6 +1335,14 @@ data class CeresProgram(
             out += declaration.dimension.toDouble()
             out += declaration.manifold.code.toDouble()
             declaration.initial.forEach { out += it }
+            val bounded = declaration.bounds.keys.sorted()
+            out += bounded.size.toDouble()
+            bounded.forEach { component ->
+                val (lower, upper) = requireNotNull(declaration.boundOf(component))
+                out += component.toDouble()
+                out += lower
+                out += upper
+            }
         }
         constraints.forEach { it.encodeLegacy(out) }
         return out.toDoubleArray()

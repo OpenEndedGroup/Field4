@@ -505,7 +505,51 @@ fun main() {
     println()
 
     // -------------------------------------------------------------------------------------------
-    // 5. Malformed input, refused in both layers.
+    // 5. Bounds, against a problem whose unconstrained optimum is on the wrong side of one.
+    //
+    //    Fit a sphere to points that lie on a *plane*. The unconstrained geometric fit runs away to an
+    //    infinite radius — a plane is a sphere of infinite radius — so the answer is decided entirely
+    //    by the bound. With `radius <= 5` the optimum sits exactly on it, and that is a claim about
+    //    Ceres' own SetParameterUpperBound rather than about a penalty term someone tuned.
+    // -------------------------------------------------------------------------------------------
+
+    val coplanar = listOf(
+        Vec3(-1.0, -1.0, 0.0), Vec3(1.0, -1.0, 0.0), Vec3(1.0, 1.0, 0.0), Vec3(-1.0, 1.0, 0.0),
+        Vec3(0.0, 0.0, 0.0), Vec3(0.5, -0.5, 0.0),
+    )
+    val ceiling = 5.0
+    val bounded = buildCeresProgram(RobustLoss.NONE) {
+        val centre = variable(CeresVariableDecl("centre", listOf(0.0, 0.0, -1.0)))
+        val radius = variable(CeresVariableDecl.scalar("radius", 1.0, atLeast = 0.0, atMost = ceiling))
+        expression(emptyList(), listOf(centre, radius)) { _, (c, r) ->
+            coplanar.map { p -> (CeresExprVec.of(p) - c.vec()).length() - r.scalar }
+        }
+    }
+    val boundedFit = solve(NO_POINTS, bounded, iterations = 2000)
+    val boundedRadius = boundedFit.variables.scalar("radius")
+    println("sphere fitted to coplanar points, radius bounded to [0, $ceiling]")
+    println(
+        "    radius %.9f (ceiling %.1f)   centre %s   ${boundedFit.summary}".format(
+            boundedRadius, ceiling, boundedFit.variables.first("centre"),
+        ),
+    )
+    expect(
+        "the bounded radius respects its ceiling (got $boundedRadius)",
+        boundedRadius <= ceiling + 1e-9,
+    )
+    // The unconstrained problem has no finite optimum, so the bound has to be active. If it were not
+    // being applied at all, this radius would be off at 1e3 or wherever the iteration limit left it.
+    expect(
+        "the bound is the thing deciding the answer (radius $boundedRadius should sit on $ceiling)",
+        abs(boundedRadius - ceiling) < 1e-3,
+    )
+    println("    disassembly:")
+    (bounded.constraints.single() as CeresExpressionResidual).compile().disassemble()
+        .lines().take(2).forEach { println("      $it") }
+    println()
+
+    // -------------------------------------------------------------------------------------------
+    // 6. Malformed input, refused in both layers.
     // -------------------------------------------------------------------------------------------
 
     fun rejects(what: String, block: () -> Unit) {
@@ -551,6 +595,25 @@ fun main() {
             expression(listOf(0)) { (p) -> listOf(p.x - 1.0.c) }
         }
     }
+    rejects("a bound on a manifold") {
+        CeresVariableDecl("bad", listOf(1.0, 0.0, 0.0), CeresManifold.SPHERE, mapOf(0 to 0.0..1.0))
+    }
+    rejects("a bound on a component that does not exist") {
+        CeresVariableDecl("bad", listOf(1.0), bounds = mapOf(2 to 0.0..1.0))
+    }
+    rejects("an empty bound") {
+        CeresVariableDecl("bad", listOf(1.0), bounds = mapOf(0 to 2.0..1.0))
+    }
+    rejects("an infeasible start") {
+        CeresVariableDecl.scalar("bad", -1.0, atLeast = 0.0)
+    }
+    rejects("a bound that constrains nothing") {
+        CeresVariableDecl(
+            "bad",
+            listOf(1.0),
+            bounds = mapOf(0 to Double.NEGATIVE_INFINITY..Double.POSITIVE_INFINITY),
+        )
+    }
     rejects("a variable from another program") {
         val alien = buildCeresProgram {
             val v = variable("v", 1.0)
@@ -574,32 +637,48 @@ fun main() {
         println("ok native rejects $what: ${outcome.exceptionOrNull()?.message?.take(94)}")
     }
 
+    // A well-formed `VARIABLE` operand run, so that each case below exercises the validator it names
+    // rather than the span check: [dim, manifold, init..., nBounds=0].
+    fun variableOp(dimension: Int, manifoldCode: Int, vararg initial: Double): List<Double> {
+        require(initial.size == dimension) { "give one initial value per component" }
+        return listOf(69.0, dimension.toDouble(), manifoldCode.toDouble()) + initial.toList() + listOf(0.0)
+    }
+
+    // A scalar with no manifold, seeded at 1 — the well-formed declaration the EXPR cases below refer to.
+    val oneScalar = variableOp(1, 0, 1.0)
+
     // VARIABLE dim=3 sphere seeded at the origin.
-    rejectsNatively("a curved manifold seeded at the origin", listOf(69.0, 3.0, 1.0, 0.0, 0.0, 0.0))
+    rejectsNatively("a curved manifold seeded at the origin", variableOp(3, 1, 0.0, 0.0, 0.0))
     // VARIABLE dim=1 on a sphere.
-    rejectsNatively("a one-component sphere", listOf(69.0, 1.0, 1.0, 2.0))
+    rejectsNatively("a one-component sphere", variableOp(1, 1, 2.0))
     // VARIABLE dim=2 with manifold code 7.
-    rejectsNatively("an unknown manifold code", listOf(69.0, 2.0, 7.0, 1.0, 0.0))
-    // VARIABLE dim=1 none init=1, then EXPR referencing variable 4, which does not exist.
+    rejectsNatively("an unknown manifold code", variableOp(2, 7, 1.0, 0.0))
+    // Then EXPR referencing variable 4, which does not exist.
     rejectsNatively(
         "an out-of-range variable reference",
-        listOf(69.0, 1.0, 0.0, 1.0) +
-            listOf(68.0, 1.0, 0.0, 1.0, 4.0, 1.0, 0.0, 1.0, 0.0, 1.0, 20.0, 0.0, 0.0, 0.0, 1.0),
+        oneScalar + listOf(68.0, 1.0, 0.0, 1.0, 4.0, 1.0, 0.0, 1.0, 0.0, 1.0, 20.0, 0.0, 0.0, 0.0, 1.0),
     )
-    // VARIABLE dim=1, then EXPR reading component 2 of it.
+    // EXPR reading component 2 of a one-component variable.
     rejectsNatively(
         "reading past a variable's dimension",
-        listOf(69.0, 1.0, 0.0, 1.0) +
-            listOf(68.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 20.0, 0.0, 0.0, 2.0, 1.0),
+        oneScalar + listOf(68.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 20.0, 0.0, 0.0, 2.0, 1.0),
     )
-    // VARIABLE dim=1, then EXPR naming it and never reading it (a zero Jacobian column).
+    // EXPR naming the variable and never reading it (a zero Jacobian column).
     rejectsNatively(
         "a variable named but never read",
-        listOf(69.0, 1.0, 0.0, 1.0) +
-            listOf(68.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 5.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0),
+        oneScalar + listOf(68.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 1.0, 5.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0),
     )
     // A dimension past the cap.
     rejectsNatively("a variable larger than the cap", listOf(69.0, 4096.0, 0.0) + List(4096) { 1.0 })
+    // VARIABLE dim=3 on a sphere manifold, with one bound.
+    rejectsNatively(
+        "a bound on a manifold",
+        listOf(69.0, 3.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0),
+    )
+    // VARIABLE dim=1, bounded to [2, 3], starting at 1.
+    rejectsNatively("an infeasible start", listOf(69.0, 1.0, 0.0, 1.0, 1.0, 0.0, 2.0, 3.0))
+    // VARIABLE dim=1, bound on component 4.
+    rejectsNatively("a bound past the dimension", listOf(69.0, 1.0, 0.0, 1.0, 1.0, 4.0, 0.0, 2.0))
     println()
 
     if (failures.isNotEmpty()) {

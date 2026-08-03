@@ -91,9 +91,10 @@ namespace op
         // A caller-supplied residual, as a little register machine evaluated in T. See ExprVm.
         EXPR = 68,
 
-        // A free variable: dim scalars with an initial value and a manifold, declared once at the
-        // head of the program and referenced by index from EXPR. See VariableBlock.
-        VARIABLE = 69 // [dim, manifold, init0..init_{dim-1}]
+        // A free variable: dim scalars with an initial value, a manifold, and optional per-component
+        // box bounds, declared once at the head of the program and referenced by index from EXPR.
+        // See VariableBlock.
+        VARIABLE = 69 // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
     };
 }
 
@@ -349,13 +350,19 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
     }
     case op::VARIABLE:
     {
-        // [dim, manifold, init0..init_{dim-1}]
+        // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
         if (ip >= prog_len)
             return -1;
         int dim = (int)program[ip];
         if (dim < 1 || dim > KEN_CERES_MAX_VARIABLE_DIM)
             return -1;
-        int span = 2 + dim;
+        int at = ip + 2 + dim;
+        if (at >= prog_len)
+            return -1;
+        int bounds = (int)program[at];
+        if (bounds < 0 || bounds > dim)
+            return -1;
+        int span = (at + 1 + 3 * bounds) - ip;
         return (ip + span <= prog_len) ? span : -1;
     }
     default:
@@ -1549,6 +1556,8 @@ void SolverContext::build(int Npts, const double *points_in,
             int dim = (int)program[ip];
             int kind = (int)program[ip + 1];
             const double *init = program + ip + 2;
+            const int boundCount = (int)program[ip + 2 + dim];
+            const double *boundSpec = program + ip + 3 + dim; // (component, lower, upper) triples
             ip += span;
 
             // Validated here rather than at first use: a bad manifold/dimension pairing is a
@@ -1598,11 +1607,63 @@ void SolverContext::build(int Npts, const double *points_in,
                 break;
             }
 
+            // Bounds are ambient-coordinate statements; a manifold steps in the tangent space and can
+            // walk straight through one, so the pair is refused rather than quietly misbehaving.
+            if (boundCount > 0 && kind != manifold::NONE)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " has bounds and a manifold, which do not compose";
+                ip = prog_len;
+                break;
+            }
+            bool boundsOk = true;
+            for (int b = 0; b < boundCount && boundsOk; ++b)
+            {
+                const int component = (int)boundSpec[3 * b];
+                const double lower = boundSpec[3 * b + 1];
+                const double upper = boundSpec[3 * b + 2];
+                if (component < 0 || component >= dim)
+                {
+                    build_error = "VARIABLE " + std::to_string(index) + " bounds component " +
+                                  std::to_string(component) + " of " + std::to_string(dim);
+                    boundsOk = false;
+                }
+                else if (!(lower <= upper) || std::isnan(lower) || std::isnan(upper))
+                {
+                    build_error = "VARIABLE " + std::to_string(index) + " component " +
+                                  std::to_string(component) + " has an empty or NaN bound";
+                    boundsOk = false;
+                }
+                else if (init[component] < lower || init[component] > upper)
+                {
+                    // Ceres requires a feasible start; an infeasible one is a CHECK failure inside the
+                    // minimiser, which would take the whole process down.
+                    build_error = "VARIABLE " + std::to_string(index) + " component " +
+                                  std::to_string(component) + " starts outside its own bound";
+                    boundsOk = false;
+                }
+            }
+            if (!boundsOk)
+            {
+                ip = prog_len;
+                break;
+            }
+
             vars.push_back(VariableBlock{});
             VariableBlock &v = vars.back();
             v.manifold = kind;
             v.values.assign(init, init + dim);
             problem->AddParameterBlock(v.values.data(), dim, make_manifold(kind, dim));
+            for (int b = 0; b < boundCount; ++b)
+            {
+                const int component = (int)boundSpec[3 * b];
+                const double lower = boundSpec[3 * b + 1];
+                const double upper = boundSpec[3 * b + 2];
+                if (lower > -std::numeric_limits<double>::max())
+                    problem->SetParameterLowerBound(v.values.data(), component, lower);
+                if (upper < std::numeric_limits<double>::max())
+                    problem->SetParameterUpperBound(v.values.data(), component, upper);
+            }
         }
         break;
         case op::PLANAR:
