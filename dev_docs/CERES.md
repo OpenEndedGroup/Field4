@@ -56,7 +56,7 @@ is still what every task uses by default. A Homebrew-linked dylib needs
 working default for a broken one on any machine without those. Everything new is therefore opt-in
 behind `-PceresLibrary`, and `buildCeresNative` is not wired into `check`.
 
-Closing that gap means deciding how the artifact is distributed — a static v2 build with sparse
+Closing that gap means deciding how the artifact is distributed — a static v3 build with sparse
 support turned on, per-platform artifacts, or building from source at install time. That is the same
 open question the release checklist already records, and it should be answered deliberately rather
 than by whichever dylib happens to be committed.
@@ -320,11 +320,20 @@ orders of magnitude better than the existing iteration, and sane where it produc
    own floor or be reformulated so that a short edge does not free its own constraint.
 5. **Per-constraint-group loss.** `SET_LOSS` is program-level. Interactive editing plausibly wants
    Huber on user-dragged priors and plain L2 on hard geometry in the same problem.
-6. **Auxiliary variables from Kotlin.** The expression VM below reads point parameter blocks and
-   nothing else, so a residual defined at runtime cannot introduce its own free variables the way
-   `PLANAR_HESSE` introduces a plane. Given how much the Hesse reformulation mattered, being able
-   to declare "and N extra scalars, solved for" would be the single most valuable extension.
-7. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
+6. ~~**Auxiliary variables from Kotlin.**~~ Done — see "Free variables, and the manifolds they live
+   on" below. What is left of it: `PLANAR_HESSE` itself could now be *deleted* and replaced by the
+   Kotlin expression, which reaches the same answer to `1e-15` at ×1.4 the cost. That is a real
+   choice rather than an obvious one, and it is the same question item 2 asks.
+7. **A free variable cannot be held constant, or bounded.** Ceres has
+   `SetParameterBlockConstant` and `SetParameterLowerBound`; neither is exposed. A radius that must
+   stay positive currently needs a barrier residual, which is a worse tool for the job. The same
+   applies to the point blocks — there is still no way to say "this point is data, not an unknown"
+   except a very stiff `LockPosition`, which is why the fits above put their data in the expression
+   as constants instead.
+8. **Only three manifolds.** `NONE`, `SPHERE`, `QUATERNION`. `SubsetManifold` (hold some components
+   of a block fixed) and `LineManifold` are the obvious next two, and `SubsetManifold` would give a
+   cheaper answer to half of item 7.
+9. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
    so refuses the v2 options. If a steady-state solve ever needs a different linear solver, that
    choice should move to compile time.
 
@@ -411,13 +420,147 @@ it is caller-specific and will never belong in the wrapper.
 
 ### What it cannot do
 
-Read anything but the point parameter blocks. `PLANAR_HESSE` works because it introduces a plane as
-a *free variable* Ceres solves for, and an expression has no way to declare one — which, given how
-much that reformulation mattered above, is the extension worth doing next.
+Worth knowing: `abs`, `min` and `max` are not differentiable at their kinks, and Ceres will hand back
+a subgradient. That is what you want for a one-sided barrier and not what you want in the middle of a
+smooth objective.
 
-Also worth knowing: `abs`, `min` and `max` are not differentiable at their kinks, and Ceres will
-hand back a subgradient. That is what you want for a one-sided barrier and not what you want in the
-middle of a smooth objective.
+Everything else it could not do is the next section. This paragraph used to say the VM could read
+nothing but the point parameter blocks, and that declaring a free variable was "the extension worth
+doing next"; it is done, so the paragraph is gone rather than merely qualified.
+
+## Free variables, and the manifolds they live on
+
+An expression can declare unknowns of its own — quantities Ceres solves for that are not points.
+That is the mechanism `PLANAR_HESSE` hardcodes in C++, made available to a residual written at
+runtime, and the evidence for why it is worth having is entirely above: the plane as a free variable
+converges on `kkC` in 12 iterations to tangency `3e-08`, while `PLANAR_FIT` — the same objective with
+the plane eliminated inside the residual — does not converge at all. **Well-conditioned auxiliary
+unknowns are not overhead to be minimised away; they are frequently what makes a problem tractable.**
+
+```kotlin
+buildCeresProgram(RobustLoss.NONE) {
+    // fit a sphere: the centre and the radius are unknowns, and neither is a point
+    val centre = variable("centre", Vec3(0.0, 0.0, 0.0))
+    val radius = variable("radius", 1.0)
+    expression(emptyList(), listOf(centre, radius)) { _, (c, r) ->
+        data.map { p -> (CeresExprVec.of(p) - c.vec()).length() - r.scalar }
+    }
+}
+```
+
+Three decisions are worth defending.
+
+**Variables are declared at *program* scope, not owned by a residual.** `variable(...)` returns a
+`CeresVariableRef` that any number of expressions may name, because "each face has its own plane" and
+"these fifty observations all see the same camera" are both things a caller wants, and the second is
+not expressible if a variable belongs to one residual block. This is what makes a bundle-style
+problem writable at all.
+
+**A residual may name no points.** A fit has no point unknowns: the data are constants in the
+expression and every unknown is a free variable. Requiring a point would have forced such a residual
+to name one it never reads, which is a Jacobian column of exact zeros for a parameter that provably
+cannot affect the answer — the defect this layer refuses everywhere else.
+
+**Manifolds are the ABI's own codes.** `NONE`, `SPHERE` (`ceres::SphereManifold<DYNAMIC>` — the one
+`PLANAR_HESSE` needs) and `QUATERNION` (`w` first; `CeresExprVariable.rotate()` writes out the
+quaternion sandwich, so a free frame needs no trigonometry in the residual). Ceres' own enum values
+are not stable across versions and were never an interchange format.
+
+The solved values come back in `SolveResult.variables`, keyed by the names the declarations gave
+them. Names never cross the ABI: the native side is handed dimensions and initial values, this side
+knows the declaration order, and the two independently computed layouts are cross-checked when the
+solver is compiled — because a disagreement would attribute every solved value to the wrong name.
+The values are warm-started across solves, exactly as `PLANAR`'s planes always have been.
+
+### ABI v3, and why the version moves
+
+`EXPR`'s operand stream now carries a variable-reference run whether or not it is empty. A v2 wrapper
+reading a v3 stream would take that count as the residual count and desync from there — the
+silent-misparse failure mode the v2 work was built to end. So *every* `CeresExpressionResidual`
+requires `CeresFeature.AbiV3` and refuses at compile time with a clear message, rather than the
+feature being sniffed. Everything `3f5950a20` established is unchanged: detection is per symbol
+rather than per version string, the committed v1 dylib is still the default, and `buildCeresNative`
+is still not in `check`.
+
+### Is it right?
+
+`smokeCeresExpressionVariables` proves two separate things.
+
+**`PLANAR_HESSE`, re-derived as a Kotlin expression.** `PlaneFormulation.HESSE_EXPRESSION` runs the
+realizer with each face's plane written as `corner . n - d` over a free unit normal and a free scalar
+offset (`planarHesseExpression`), against the C++ opcode on the same plan and the same seed — the
+seed reproduced in Kotlin by `hessePlaneOf`, centroid plus the smallest eigenvector of the scatter
+matrix, by Jacobi, agreeing with `Eigen::SelfAdjointEigenSolver`:
+
+| solid | iterations, opcode / expression | max coordinate difference |
+|---|---|---|
+| `kC` | 7 / 7 | 5.3e-15 |
+| `kD` | 15 / 15 | 1.3e-14 |
+| `tI` | 6 / 6 | 1.1e-15 |
+| `kkC` | **12 / 12** | **1.6e-15** |
+| `kkD` | 10 / 10 | 1.2e-15 |
+
+Identical iteration counts and machine-precision agreement, including the recorded `kkC` result. An
+interpreted register program with hash-consed free variables reaches the same solid as the compiled
+template.
+
+`kkT`, `kkO` and `kkI` — the three that reach `1e-4` rather than machine precision — reach the same
+cost and the same canonical diagnostics and land *somewhere else*, and not even at a congruent solid
+(a pose-independent fingerprint of sorted radii and edge lengths differs by 5e-2 / 8e-3 / 7e-3).
+**That is a fact about the objective, not about the VM.** At final cost `~2e-07` its minimum is not
+isolated, so where in the valley a run stops is decided by rounding in the seventh digit, and a
+template and an interpreter round differently. The evidence that it is not a VM defect is the table
+above: whenever the problem is well-conditioned enough to converge in a dozen iterations the two
+agree to `1e-15`. The expression's answer is very slightly *better* on all three.
+
+**Three fits with closed-form answers and no point unknowns at all.**
+
+| | check | error |
+|---|---|---|
+| circumsphere of a tetrahedron, free centre + free radius | closed-form circumcentre | centre 1.6e-16, radius exact |
+| total-least-squares plane, free unit normal on a `SphereManifold` + free offset | smallest eigenvector of the scatter matrix | normal 3.6e-09, offset 1.7e-09 |
+| a free rigid frame, `QuaternionManifold` + free translation, 7 observations sharing one frame | the generating transform | rotation 3.7e-15, translation 1.9e-14 |
+
+The middle row carries the manifold's own claim: `|n| - 1 = -1.1e-16` with no residual anywhere
+asking the normal to stay unit. Without the manifold the minimum would sit at length zero with cost
+zero. The last row is only expressible because variables are program-scoped.
+
+Sixteen malformed inputs are refused — nine in Kotlin, seven in the native validator reached through
+`RawProgramFragment` — all through the same error channel as any other malformed program.
+
+### What a free variable costs
+
+Same problem, same seed, same answer to `1e-15`, identical iteration counts; the only difference is a
+compiled C++ template against the interpreted register program, now with parameter blocks of two
+different sizes and a manifold in the mix rather than a uniform run of 3-vectors:
+
+| solid | faces | `PLANAR_HESSE` opcode | expression | |
+|---|---|---|---|---|
+| `kC` | 24 | 0.53 ms (6 iter) | 1.04 ms (6 iter) | ×2.0 |
+| `tI` | 32 | 2.03 ms (4 iter) | 3.12 ms (4 iter) | ×1.5 |
+| `kkC` | 72 | 2.42 ms (7 iter) | 3.35 ms (7 iter) | ×1.4 |
+| `kkD` | 180 | 9.25 ms (8 iter) | 11.61 ms (8 iter) | ×1.3 |
+
+The ratio *improves* with size, for the same reason the `DISTANCE` row does: the interpreter overhead
+is per residual evaluation and the linear solve is not. So free variables cost the same flat ~1.5×
+the rest of the VM does, against a choice of parameterisation that on `kkC` is the difference between
+12 converging iterations and 201 non-converging ones.
+
+### Try it
+
+`public/docs/assets/agent_transcripts/ceres_free_variables/` is a loadable Field document — the
+first anywhere in the workspace in which a person can run a Ceres solve and look at the result. Two
+boxes: a canonical realization drawn together with the free variables themselves (one stem per face,
+from the point of its plane nearest the origin, along the normal Ceres found — both endpoints derived
+from `n` and `d` alone, so that half of the picture cannot be drawn without reading the variables
+back), and the sphere fit above. Its source is
+`dev_docs/agents/transcripts/ceres_free_variables.yaml`. Build the wrapper first, or the boxes will
+tell you to:
+
+```bash
+./gradlew buildCeresNative
+./gradlew smokeCeresExpressionVariables -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
+```
 
 ## Map
 
@@ -433,6 +576,8 @@ middle of a smooth objective.
 | `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |
 | `afield.examples.ceres.CeresRealizerDiagnostic` | parameter and residual counts per solid |
 | `afield.examples.ceres.CeresRealizerCacheCost` | where a `relaxWithCeres` call goes, and why the program cache stays per-call |
-| `afield.stdlib.ceres.CeresExpression` | the expression DAG, its compiler, and the register program |
+| `afield.stdlib.ceres.CeresExpression` | the expression DAG, its compiler, the register program, free variables and manifolds |
 | `afield.examples.ceres.CeresExpressionSmoke` | equivalence, sharing, validation, Thomson |
-| `afield.examples.ceres.CeresExpressionCost` | the 1.5x table above |
+| `afield.examples.ceres.CeresExpressionCost` | the two cost tables above |
+| `afield.examples.ceres.CeresExpressionVariablesSmoke` | `PLANAR_HESSE` re-derived in Kotlin, the manifold fits, malformed input |
+| `dev_docs/agents/transcripts/ceres_free_variables.yaml` | the loadable demo document's source |
