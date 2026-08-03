@@ -1,4 +1,4 @@
-@file:afield.CompletionCategory("Graphics")
+@file:afield.CompletionCategory("Solvers")
 
 package afield.stdlib.ceres
 
@@ -22,8 +22,33 @@ import kotlin.math.max
  * Constructors validate aggressively: coordinates and weights must be finite, weights non-negative,
  * point indices distinct where the opcode requires it, and the `-1`/[PointId.ALL_POINTS] sentinel
  * may only be used alone and only where a constraint allows it.
+ *
+ * ## Two conventions worth knowing before you tune a weight
+ *
+ * **Weights are square-rooted.** Every native functor stores `s = sqrt(weight)` and multiplies its
+ * residual by `s`, so Ceres minimises `weight * residual^2`. A residual weight of `k` in the usual
+ * "residual = k * (quantity - target)" sense is a weight of `k^2` here. Weights are also only
+ * comparable between constraints whose residuals share units — a length, a dimensionless cosine and
+ * an area are three different scales.
+ *
+ * **Compiling captures a pose.** [CeresSolverBackend.compile] takes seed points, and several
+ * constraints bake that pose in permanently: [LockPosition] pins to the seed coordinates,
+ * [GaugeRotation] measures rotation relative to them, and [Planar] seeds each face's plane
+ * variables from them. Points passed to a later `solve` move the answer, not those targets. The one
+ * exception is [WeakPosition], whose target is refreshed from the input cloud on every solve — which
+ * is what makes it a "stay near where you are" regulariser rather than a "return to the seed" one.
  */
 
+/**
+ * An index into a [PointCloud], counting points rather than doubles: point `k` occupies
+ * `values[3k .. 3k+2]`.
+ *
+ * `-1` — [ALL_POINTS] — is a sentinel meaning "the whole cloud", accepted only by the constraints
+ * that say so and only on its own. Nothing here or at compile time checks an index against the cloud
+ * it will be used with: the native builder silently skips a residual naming a point it cannot
+ * resolve, so an index past the end of the cloud costs you the constraint rather than an error.
+ * [CeresExpressionResidual] is the exception and validates.
+ */
 @JvmInline
 value class PointId(val value: Int) {
     init {
@@ -31,18 +56,42 @@ value class PointId(val value: Int) {
     }
 
     companion object {
+        /**
+         * "Every point in the cloud", resolved at compile time against whatever cloud the solver is built for.
+         *
+         * Accepted by [WeakPosition], [NoNegativeZ], [Centroid], [RadiusAboutCentroid] and [GaugeRotation]. It only
+         * means anything on its own: the first two reject a list that mixes it with real indices, while the last three
+         * accept one and then quietly drop the sentinel, constraining just the points you named. The builder's `…All`
+         * methods are the way to reach it without that ambiguity.
+         */
         val ALL_POINTS = PointId(-1)
     }
 }
 
+/**
+ * A bare xyz triple, used for both positions and directions.
+ *
+ * Which one it is decides what is legal: a position may be the origin ([Centroid]'s default target
+ * is), a direction may not — [LineDirection] and [PlaneNormalDirection] reject a vector shorter than
+ * `1e-10` and normalise the rest, so their magnitude never reaches the solver.
+ */
 data class Vec3(val x: Double, val y: Double, val z: Double)
 
+/** Unused by this vocabulary; the constraints that take an axis take an [AxisSet]. */
 enum class Axis {
     X,
     Y,
     Z,
 }
 
+/**
+ * Which coordinates a lock, prior or same-coordinate constraint acts on.
+ *
+ * `XYZ` is the odd one out: only [WeakPosition] accepts it. [SameCoordinate] and [LockPosition]
+ * reject it in their constructors, because the bytecode has single-axis and axis-pair opcodes and no
+ * all-three one — say `XY` plus `Z` if you want all three, or reach for [WeakPosition]. `XY`, `XZ`
+ * and `YZ` are in turn rejected by [WeakPosition].
+ */
 enum class AxisSet {
     X,
     Y,
@@ -53,6 +102,22 @@ enum class AxisSet {
     XYZ,
 }
 
+/**
+ * The wire vocabulary: one entry per residual family the native wrapper knows how to build.
+ *
+ * [code] is an ABI number shared with the C++ side and cannot be renumbered without rebuilding the
+ * dylib; the gaps and the bands (20s locks, 30s priors, 40s native geometry, 60s the solver-directed
+ * and global families) are deliberate room to grow. [metricName] is the label [SolveMetrics.top] prints.
+ *
+ * The codes double as indices into the per-group cost array, so [SolveOptions.metricGroupCapacity]
+ * has to exceed the highest code you care about — the default 64 silently reports nothing for
+ * [RadiusAboutCentroid] and everything after it.
+ *
+ * A constraint class does not always encode to the opcode of the same name: [DotAtOrigin] degrades to
+ * [PerpendicularAtOrigin] when it is asking for a plain right angle, and [VectorDot] and [LineAngle]
+ * fold into [DotAtOrigin] when their two segments share an endpoint. Metrics follow the opcode
+ * actually emitted, not the class you wrote.
+ */
 enum class CeresOpcode(val code: Int, val metricName: String) {
     Planar(0, "PLANAR"),
     OnLine(1, "ON_LINE"),
@@ -116,11 +181,48 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
     }
 }
 
+/**
+ * One geometric condition, as a thing that can validate itself, name the backend feature it needs,
+ * and serialise itself into the opcode stream.
+ *
+ * Every implementation is a `data class` that checks its arguments in an `init` block, so a
+ * malformed constraint throws where it is written rather than at solve time. None of them is a hard
+ * constraint: each contributes weighted least-squares residuals that the minimiser trades off against
+ * every other, and a heavy weight ([LockPosition] defaults to `1e6`) is the nearest thing to "must".
+ *
+ * `weight` is square-rooted by the native functor, so the solver sees `weight * residual^2` — see the
+ * conventions note on this file.
+ */
 sealed interface GeometryConstraint {
     val weight: Double
+
+    /**
+     * Append this constraint's opcodes and operands to the program being built.
+     *
+     * An implementation may emit a *different* opcode than its own name when a cheaper or
+     * better-conditioned one says the same thing — the rewrites are documented on the classes that do
+     * it. Nothing here validates against the cloud the program will be solved against; the operand
+     * layout is the contract, and getting it wrong (only reachable via [RawProgramFragment]) desyncs
+     * everything after it.
+     */
     fun encodeLegacy(out: MutableList<Double>)
 }
 
+/**
+ * All of [points] on one common plane, which the solver introduces as free variables: an origin `O`
+ * and a unit normal `n` on a sphere manifold, seeded from a PCA fit of the seed cloud. One residual
+ * per point, `(P - O) . n`, in length units.
+ *
+ * Prefer [PlanarHesse] for anything new. This form has an exact two-dimensional null space per face —
+ * the residual sees `O` only through `O . n`, so sliding `O` within its own plane changes nothing —
+ * held only by a `1e-6` stabiliser, and on a solid with more faces than vertices those null directions
+ * outnumber the real parameters and Levenberg-Marquardt spends its budget crawling along them. It is
+ * kept as its own opcode so that switching does not silently move existing architectural results.
+ *
+ * Two consequences of the auxiliary variables: Ceres' reported cost includes the two stabiliser
+ * residuals per face that you never wrote, and the plane is seeded at compile time, so a solver reused
+ * against a very different cloud starts each plane from the wrong place.
+ */
 data class Planar(
     val points: List<PointId>,
     override val weight: Double = 1.0,
@@ -137,6 +239,16 @@ data class Planar(
     }
 }
 
+/**
+ * Every point in [points] on the infinite line through [lineA] and [lineB] — three residuals each,
+ * `cross(unit(B - A), P - A)`, so the magnitude is the perpendicular distance from the line and does
+ * not grow with the line's length.
+ *
+ * The line is defined by two of the cloud's own points, so it moves too: this is "these are colinear",
+ * not "these lie on a fixed line". The endpoints must be distinct and must not appear in [points] —
+ * a point that is its own reference contributes a residual that is identically zero, and Ceres will
+ * not accept the same parameter block twice in one block anyway.
+ */
 data class Colinear(
     val lineA: PointId,
     val lineB: PointId,
@@ -164,6 +276,13 @@ data class Colinear(
     }
 }
 
+/**
+ * A fixed separation: one residual, `|a - b| - distance`, in length units. The workhorse of the
+ * vocabulary and the one whose weight everything else is usually scaled against.
+ *
+ * [distance] may be zero, which welds the two points together; the native side adds `1e-20` under the
+ * root so the derivative survives coincident points.
+ */
 data class DistanceEquals(
     val a: PointId,
     val b: PointId,
@@ -185,6 +304,16 @@ data class DistanceEquals(
     }
 }
 
+/**
+ * A one-sided floor: `max(0, minimum - |a - b|)`. Contributes *exactly* nothing while the points are
+ * far enough apart, which is what makes it safe to sprinkle over a problem you have already tuned.
+ *
+ * The kink at the floor is not differentiable and Ceres will use a subgradient there — fine for a
+ * barrier, which is all this is for. Its main use is guarding an objective that gets *cheaper* as
+ * geometry degenerates: the canonical-form solve has exact zero-cost minima in which edges have
+ * collapsed to nothing, and a floor at a small fraction of the mean edge length removes them without
+ * touching the healthy cases.
+ */
 data class DistanceAtLeast(
     val a: PointId,
     val b: PointId,
@@ -206,6 +335,10 @@ data class DistanceAtLeast(
     }
 }
 
+/**
+ * A one-sided ceiling: `max(0, |a - b| - maximum)`, zero while the points are close enough. The mirror
+ * of [DistanceAtLeast], with the same non-differentiable kink at the limit.
+ */
 data class DistanceAtMost(
     val a: PointId,
     val b: PointId,
@@ -227,6 +360,15 @@ data class DistanceAtMost(
     }
 }
 
+/**
+ * Two segments the same length, without saying what that length is: one residual,
+ * `|a - b| - |c - d|`. The building block of "all these edges are equal" without committing to a scale.
+ *
+ * Keep the two pairs disjoint. This constraint checks only that each pair has distinct endpoints, so
+ * `EqualDistance(0, 1, 0, 2)` is accepted here and reaches Ceres as a single residual block naming
+ * point `0` twice, which Ceres does not permit. [VectorDot] and [LineAngle] rewrite that case;
+ * [EqualEdgeVector] rejects it outright; this one does neither.
+ */
 data class EqualDistance(
     val a: PointId,
     val b: PointId,
@@ -250,6 +392,15 @@ data class EqualDistance(
     }
 }
 
+/**
+ * Points that agree on one or two coordinates — a shared height, a vertical alignment, a row.
+ *
+ * A star, not a chain: every point after the first is tied to `points[0]`, giving `points.size - 1`
+ * residual blocks of one or two residuals each, in length units. Every residual therefore names
+ * `points[0]`, which is where the whole group's gradient lands.
+ *
+ * [AxisSet.XYZ] is rejected — use [WeakPosition] or a pair of locks.
+ */
 data class SameCoordinate(
     val points: List<PointId>,
     val axes: AxisSet,
@@ -278,6 +429,14 @@ data class SameCoordinate(
     }
 }
 
+/**
+ * A right angle at [origin] between the rays to [a] and to [b]: one residual, the dot product of the
+ * two *normalised* directions, so it is a dimensionless cosine and its weight is not on the same scale
+ * as a distance constraint's.
+ *
+ * Because the directions are normalised, the constraint says nothing about the two lengths, and it is
+ * satisfied equally by 90 degrees and 270 — there is no orientation here, only perpendicularity.
+ */
 data class Perpendicular(
     val origin: PointId,
     val a: PointId,
@@ -301,6 +460,18 @@ data class Perpendicular(
     }
 }
 
+/**
+ * Hold points at the coordinates they had **when the solver was compiled** — not the ones you pass to
+ * `solve`. One residual per locked axis per point, in length units, at a default weight of `1e6`.
+ *
+ * That target is captured once, from the seed cloud handed to [CeresSolverBackend.compile], and never
+ * refreshed. It is what makes this a genuine anchor rather than a smoothing term, and it is also the
+ * trap: reuse a cached solver against a cloud that has moved and the locks pull back towards the old
+ * pose. For "wherever this point is now, keep it there", use [WeakPosition] with a large weight.
+ *
+ * Still a residual, not a hard constraint — a heavy enough conflicting constraint will move a locked
+ * point. [AxisSet.XYZ] is rejected; the bytecode has axis and axis-pair locks only.
+ */
 data class LockPosition(
     val points: List<PointId>,
     val axes: AxisSet,
@@ -329,6 +500,21 @@ data class LockPosition(
     }
 }
 
+/**
+ * A prior pulling each point towards **the position it had on entry to this solve**, refreshed every
+ * call. The regulariser that makes an underdetermined problem have one answer instead of a family of
+ * them, and at the default `1e-6` it is cheap enough to leave on everywhere.
+ *
+ * The live target is the whole point: dragging a vertex and re-solving leaves every other point held
+ * where it was, so the model deforms locally instead of snapping to some remembered pose — the exact
+ * opposite of [LockPosition]. The same machinery carries the interactive story: pass
+ * [DynamicPriorWeights] to a solve and it *replaces* these weights per point per axis, so one
+ * dragged point can be pinned hard while the rest stay loose without recompiling the program.
+ *
+ * Only `X`, `Y`, `Z` and `XYZ` are accepted, and only `XYZ` may use [PointId.ALL_POINTS]. The weights
+ * live in one array per point, so a second prior on the same point overwrites the first's weight, and
+ * mixing a single-axis prior with an `XYZ` one on the same point leaves that axis penalised twice.
+ */
 data class WeakPosition(
     val points: List<PointId>,
     val axes: AxisSet = AxisSet.XYZ,
@@ -358,6 +544,14 @@ data class WeakPosition(
     }
 }
 
+/**
+ * Keep points out of negative `z`: a hinge, `max(0, -z)`, costing nothing at or above the ground plane.
+ *
+ * The plane is `z = 0` exactly and is not configurable — this is the architectural "nothing below the
+ * ground" rule, not a general half-space test. [PointInHalfspace] takes an arbitrary plane; a
+ * [CeresProgramBuilder.expression] with [barrierBelow] takes an arbitrary axis. Pass
+ * [PointId.ALL_POINTS] alone for the whole cloud.
+ */
 data class NoNegativeZ(
     val points: List<PointId>,
     override val weight: Double = 1.0,
@@ -375,6 +569,19 @@ data class NoNegativeZ(
     }
 }
 
+/**
+ * A prescribed angle at [origin]: one residual, `dir(a) . dir(b) - target`, i.e. [Perpendicular]
+ * generalised to any cosine.
+ *
+ * With [normalized] true (the default) [target] is the cosine of the angle and the residual is
+ * dimensionless; with it false the residual is a raw dot product in length squared, which also
+ * constrains the two lengths and needs a correspondingly different weight.
+ *
+ * Two arguments-dependent behaviours: a normalised zero target is exactly [Perpendicular], so it
+ * re-encodes as `PERP` — cheaper to solve, but its cost is reported under `PERP`. And a cosine
+ * cannot distinguish `+angle` from
+ * `-angle`; nothing here fixes a handedness.
+ */
 data class DotAtOrigin(
     val origin: PointId,
     val a: PointId,
@@ -409,6 +616,15 @@ data class DotAtOrigin(
     }
 }
 
+/**
+ * An angle between two segments that need not touch: one residual, `dir(a0 -> a1) . dir(b0 -> b1) -
+ * target`. The four-point form of [DotAtOrigin], and the same normalised/raw distinction applies.
+ *
+ * When the two segments *do* share an endpoint this re-encodes as [DotAtOrigin] about that shared
+ * point, negating the target where the shared point is the far end of one segment so the sign still
+ * means what you wrote. Not an optimisation: Ceres refuses a residual block that names the same
+ * parameter block twice, so the four-block form is not available in that case.
+ */
 data class VectorDot(
     val a0: PointId,
     val a1: PointId,
@@ -445,6 +661,15 @@ data class VectorDot(
     }
 }
 
+/**
+ * [point] at a signed distance [offset] from the plane through [planeA], [planeB] and [planeC] — one
+ * residual in length units, zero by default meaning "on the plane".
+ *
+ * The normal is `unit(cross(B - A, C - A))`, so the sign of a non-zero [offset] follows the winding of
+ * the three plane points; swap two of them and the point moves to the other side. The plane is made of
+ * cloud points and so is itself free to move, and it is only ever a plane through three points: a
+ * fourth coplanar point needs [Planar] (or [PlanarHesse]), not three of these.
+ */
 data class PointOnPlane(
     val point: PointId,
     val planeA: PointId,
@@ -467,6 +692,14 @@ data class PointOnPlane(
     }
 }
 
+/**
+ * Two segments parallel: three residuals, the cross product of the two unit directions, so the
+ * magnitude is the sine of the angle between them and does not depend on either length.
+ *
+ * Antiparallel counts as parallel — a cross product cannot tell the two apart. Use [EqualEdgeVector]
+ * when you mean "same direction and same length", or [LineDirection] to pin a direction outright. All
+ * four points must be distinct, so a shared endpoint needs [VectorDot] instead.
+ */
 data class LineParallel(
     val a0: PointId,
     val a1: PointId,
@@ -486,6 +719,16 @@ data class LineParallel(
     }
 }
 
+/**
+ * A prescribed angle between two segments: one residual, the dot product of the two unit directions
+ * minus [targetCos]. Always normalised, so the residual is dimensionless — this is [VectorDot]'s
+ * normalised case with a name that says what it is for.
+ *
+ * [targetCos] is a cosine, checked to lie in `[-1, 1]`, and a cosine has no sign of rotation: `+60` and
+ * `-60` degrees are the same constraint. As with [VectorDot], two segments sharing an endpoint
+ * re-encode through [DotAtOrigin], target negated where required, because Ceres will not take a
+ * repeated parameter block.
+ */
 data class LineAngle(
     val a0: PointId,
     val a1: PointId,
@@ -517,6 +760,18 @@ data class LineAngle(
     }
 }
 
+/**
+ * The fold angle across an edge: one residual, the dot product of the unit normals of triangles
+ * `(edgeA, edgeB, sideA)` and `(edgeA, edgeB, sideB)`, minus [targetCos].
+ *
+ * The sign convention is worth getting right, because both extremes look plausible. That dot product is
+ * the cosine of the dihedral angle measured between the two half-planes hinged on the edge, so
+ * `targetCos = -1` is flat (180 degrees, the two faces coplanar and pointing away from each other) and
+ * `+1` is folded shut. A flat panel joint is `-1`, not `+1`.
+ *
+ * Dimensionless, and unsigned in the same way every cosine here is: it cannot distinguish a valley fold
+ * from a mountain fold. All four points must be distinct.
+ */
 data class DihedralAngle(
     val edgeA: PointId,
     val edgeB: PointId,
@@ -539,6 +794,13 @@ data class DihedralAngle(
     }
 }
 
+/**
+ * One segment a translate of another: three residuals, `(b - a) - (d - c)`, in length units.
+ *
+ * Strictly stronger than [EqualDistance] plus [LineParallel] — it fixes length, direction *and* sense
+ * in one block, which is what a repeated module or a mirrored bay usually means. All four points must be
+ * distinct.
+ */
 data class EqualEdgeVector(
     val a: PointId,
     val b: PointId,
@@ -558,6 +820,16 @@ data class EqualEdgeVector(
     }
 }
 
+/**
+ * [point] and [mirror] reflections of each other in the plane through [planeA], [planeB], [planeC].
+ *
+ * Four residuals stating the two halves of a reflection: the midpoint lies on the plane (one, in length
+ * units) and the segment between them is parallel to the plane normal (three, the cross product of the
+ * unit normal with the segment, so in length units too).
+ *
+ * Symmetric — it does not decide which side either point is on, so a pair that has both collapsed onto
+ * the plane satisfies it. All five points must be distinct.
+ */
 data class MirrorAcrossPlane(
     val point: PointId,
     val mirror: PointId,
@@ -578,6 +850,18 @@ data class MirrorAcrossPlane(
     }
 }
 
+/**
+ * A quadrilateral panel of a prescribed area: one residual, the summed areas of triangles `abc` and
+ * `acd` minus [targetArea].
+ *
+ * The split is along the `a`-`c` diagonal, and it is the corner *order* that decides what "the panel" is
+ * — pass them around the perimeter, or you will be constraining a bow tie. Because the panel is
+ * triangulated rather than fitted, a non-planar quad still has a well-defined area here, just one that
+ * depends on which diagonal was chosen; pair this with [Planar] if you want it flat.
+ *
+ * The residual is an area, so its weight lives on a different scale from every length constraint in this
+ * file by a factor of length squared. [targetArea] may be zero, which collapses the panel.
+ */
 data class PanelArea(
     val a: PointId,
     val b: PointId,
@@ -600,6 +884,15 @@ data class PanelArea(
     }
 }
 
+/**
+ * Keep [point] on one side of a plane: a hinge, `max(0, minSignedDistance - signed distance)`, costing
+ * nothing once the point is far enough over. A clearance or a keep-out zone, and free while respected.
+ *
+ * Which side is "in" follows the winding of [planeA], [planeB], [planeC] through
+ * `unit(cross(B - A, C - A))`; a positive [minSignedDistance] demands that much clearance on the normal
+ * side. Non-differentiable at the boundary, like the other barriers here. All four points must be
+ * distinct.
+ */
 data class PointInHalfspace(
     val point: PointId,
     val planeA: PointId,
@@ -622,6 +915,15 @@ data class PointInHalfspace(
     }
 }
 
+/**
+ * A segment aligned with a world direction — vertical columns, level beams. Three residuals, the cross
+ * product of the segment's unit direction with the normalised [direction], so a sine and dimensionless.
+ *
+ * One of the few constraints that reaches outside the cloud, which makes it the way to pin an
+ * orientation the geometry cannot express about itself. [direction] is normalised, so its length is
+ * irrelevant, and a vector shorter than `1e-10` is rejected. Antiparallel satisfies it: a cross product
+ * has no sense of direction. Says nothing about length or position.
+ */
 data class LineDirection(
     val a: PointId,
     val b: PointId,
@@ -642,6 +944,15 @@ data class LineDirection(
     }
 }
 
+/**
+ * A face turned to face a given way: one residual, the dot product of `unit(cross(b - a, c - a))` with
+ * the normalised [normal], minus [targetCos].
+ *
+ * Unlike [LineDirection] this one *is* signed — the default `targetCos = 1.0` means "same way", `-1.0`
+ * means "flipped", and the sign is decided by the winding of `a`, `b`, `c`. Intermediate values give a
+ * fixed tilt, unsigned about the axis. Dimensionless. [normal] is normalised and must be longer than
+ * `1e-10`; the three points must be distinct.
+ */
 data class PlaneNormalDirection(
     val a: PointId,
     val b: PointId,
@@ -666,6 +977,14 @@ data class PlaneNormalDirection(
     }
 }
 
+/**
+ * [target] on the infinite line through [a] and [b] — three residuals, the same `cross(unit(b - a),
+ * target - a)` the native side uses for [Colinear], reported under its own metric group.
+ *
+ * The name oversells it: there is no ray and no ordering. "Toward" means the line points at [target], and
+ * a target behind [a], or beyond [b], satisfies it exactly as well as one between them. All three points
+ * must be distinct.
+ */
 data class LineTowardPoint(
     val a: PointId,
     val b: PointId,
@@ -697,6 +1016,17 @@ data class LineTowardPoint(
 /**
  * Distance from the origin to the infinite line through [a] and [b], driven to [radius]: every
  * edge tangent to one sphere about the origin. Local — two points per residual.
+ *
+ * The sphere is centred on the origin, not on a free variable, so this only says what you mean in a frame
+ * where the solid is already centred — that is [TangencyCentroid]'s job, and the two are meant to be used
+ * together.
+ *
+ * It has one genuinely dangerous failure mode. The measurement is to the *line*, whose direction becomes
+ * arbitrary as the two endpoints converge, so a collapsed edge can place its tangency point anywhere on
+ * the sphere and satisfies its own constraint for free. Collapsing edges therefore *removes* cost, and a
+ * midsphere objective built from these has a family of exact zero-cost minima in which part of the solid
+ * has folded up — reached, in practice, on the `kk` Conway family. A [DistanceAtLeast] floor at a small
+ * fraction of the mean edge length removes them and is bit-identical on healthy input.
  */
 data class EdgeTangency(
     val a: PointId,
@@ -724,6 +1054,11 @@ data class EdgeTangency(
  *
  * Deliberately about the tangency points and not the vertex centroid: the canonical form centres on
  * the former, and mixing the two is the classic way to make the pair of conditions fight.
+ *
+ * One residual block over every distinct endpoint — the endpoint list is deduplicated, since Ceres will
+ * not accept a parameter block twice in one block — so the Jacobian row is dense in the points and this
+ * is the constraint that stops the problem being sparse. That is the honest shape of a mean, and it is
+ * three residuals however many edges you pass.
  */
 data class TangencyCentroid(
     val edges: List<Pair<PointId, PointId>>,
@@ -749,6 +1084,10 @@ data class TangencyCentroid(
 /**
  * The mean of [points] driven to [target]; three residuals. Pass [PointId.ALL_POINTS] alone for the
  * whole cloud.
+ *
+ * The mean is over *distinct* points: the list is sorted and deduplicated on the way in, so naming a point
+ * twice does not weight it twice. Fixes translation and nothing else — three residuals cannot, and are not
+ * trying to, hold a shape.
  */
 data class Centroid(
     val points: List<PointId>,
@@ -776,6 +1115,9 @@ data class Centroid(
  * Right for the Platonic and Archimedean families and exactly wrong for a deliberately irregular
  * object, which is why it is a constraint you opt into. Pass [PointId.ALL_POINTS] alone for the
  * whole cloud.
+ *
+ * The list is sorted and deduplicated first, so the residual count is the number of *distinct* points and
+ * their order is by ascending index — worth knowing only if you are reading raw residuals.
  */
 data class RadiusAboutCentroid(
     val points: List<PointId>,
@@ -901,10 +1243,23 @@ data class GaugeRotation(
     }
 }
 
+/**
+ * A fluent front end for the constraint classes, taking plain `Int` point indices instead of [PointId]s.
+ *
+ * Every method is a thin wrapper that constructs the corresponding constraint, so the argument checks and
+ * the surprises documented there apply unchanged — this saves the ceremony, not the reading. Reach for
+ * [buildCeresProgram] rather than instantiating it.
+ *
+ * Because the indices are ordinary `Int`s the `-1` whole-cloud sentinel would be easy to pass by accident;
+ * it is instead reached deliberately through the `…All` methods ([weakAll], [centroidAll],
+ * [radiusAboutCentroidAll], [noNegativeZAll], [gaugeRotationAll]). [build] snapshots the constraints, so a
+ * builder may be extended and built again, and the resulting [CeresProgram]s are independent.
+ */
 class CeresProgramBuilder {
     private val constraints = mutableListOf<GeometryConstraint>()
     private val variables = mutableListOf<CeresVariableDecl>()
 
+    /** Append an already-constructed constraint — the escape hatch for one this class has no method for. */
     fun add(constraint: GeometryConstraint): CeresProgramBuilder = apply {
         constraints += constraint
     }
@@ -1149,10 +1504,19 @@ class CeresProgramBuilder {
         CeresExprVec(ExprParam(block, 0), ExprParam(block, 1), ExprParam(block, 2))
     }
 
+    /**
+     * Splice literal opcodes into the program. See [RawProgramFragment] — unvalidated, and a miscounted
+     * operand list corrupts everything after it.
+     */
     fun raw(vararg values: Double) = add(RawProgramFragment(values.toList()))
 
+    /** Snapshot the constraints so far, with the wrapper's historic `Huber(1e-3)` loss. */
     fun build(): CeresProgram = CeresProgram(constraints.toList(), variables = variables.toList())
 
+    /**
+     * Snapshot the constraints so far under an explicit loss. [RobustLoss.NONE] is what a problem whose
+     * residuals are meant to reach zero together wants.
+     */
     fun build(loss: RobustLoss): CeresProgram =
         CeresProgram(constraints.toList(), loss, variables.toList())
 }
@@ -1168,6 +1532,14 @@ class CeresProgramBuilder {
  * wants.
  */
 data class RobustLoss(val kind: Kind = Kind.HUBER, val scale: Double = 1e-3) {
+    /**
+     * Which of Ceres' loss functions to wrap residuals in, in increasing order of how hard they discount a large
+     * residual: `NONE` (plain least squares), `HUBER`, `SOFT_L_ONE`, `CAUCHY`.
+     *
+     * [scale] is where each stops behaving quadratically, so it is in the *units of the residual* — and this
+     * vocabulary's residuals are variously lengths, cosines and areas. A scale chosen for one family is meaningless
+     * for another, which is the strongest argument for `NONE` on a mixed program.
+     */
     enum class Kind(val code: Int) {
         NONE(0),
         HUBER(1),
@@ -1188,6 +1560,15 @@ data class RobustLoss(val kind: Kind = Kind.HUBER, val scale: Double = 1e-3) {
     }
 }
 
+/**
+ * A whole solve, described independently of any point data: an ordered list of constraints plus the loss
+ * they are wrapped in.
+ *
+ * Deliberately not tied to a cloud. The same program compiles against any cloud of the right size, which is
+ * what lets [CachedCeresSolvers] key a compiled solver on point count plus program hash and what lets a drag
+ * loop re-solve without rebuilding anything. Constraint order is preserved and is the order the native side
+ * builds residual blocks in; it does not otherwise affect the answer.
+ */
 data class CeresProgram(
     val constraints: List<GeometryConstraint>,
     val loss: RobustLoss = RobustLoss.DEFAULT,
@@ -1221,6 +1602,13 @@ data class CeresProgram(
         }
     }
 
+    /**
+     * Flatten the whole program to the `DoubleArray` the native wrapper parses — opcodes, operands and
+     * weights in one stream, with a leading `SET_LOSS` when the loss is not the default.
+     *
+     * Not cached: each call re-encodes, and [CeresExpressionResidual] re-compiles its expression DAG. Solve
+     * through [SolveRequest] or [CachedCeresSolvers] and it happens once.
+     */
     fun encodeLegacyBytecode(): DoubleArray {
         val out = mutableListOf<Double>()
         if (loss != RobustLoss.DEFAULT) {
@@ -1248,23 +1636,41 @@ data class CeresProgram(
         return out.toDoubleArray()
     }
 
+    /**
+     * The cache key: an FNV-1a hash of the encoded bytecode, so two programs that encode identically are the
+     * same compiled solver.
+     *
+     * 32 bits, and used as an identity by [CachedCeresSolvers] — a collision would silently reuse the wrong
+     * compiled problem. Encodes the program each time it is called.
+     */
     fun legacyHash(): UInt = fnv1a64BitDoubles(encodeLegacyBytecode())
 }
 
+/**
+ * The geometry: a flat `[x, y, z, x, y, z, …]` array, immutable in intent, validated finite on construction.
+ *
+ * The array is *not* copied on the way in, so this is only immutable if you stop writing to whatever you
+ * passed; [copyValues] and [withPoint] hand back copies, and `data class` equality compares the array
+ * *reference* rather than its contents. For a drag loop that would rather mutate in place than allocate a
+ * cloud per frame, see [MutablePointCloud].
+ */
 data class PointCloud(val values: DoubleArray) {
     init {
         require(values.size % 3 == 0) { "point cloud must be a flat xyz array" }
         require(values.all { it.isFinite() }) { "point coordinates must be finite" }
     }
 
+    /** Points, not doubles: `values.size / 3`. */
     val pointCount: Int = values.size / 3
 
+    /** Bounds-checked; throws rather than returning a garbage triple. Takes a point index, not an offset. */
     operator fun get(index: Int): Vec3 {
         require(index in 0 until pointCount) { "point index out of range" }
         val i = index * 3
         return Vec3(values[i], values[i + 1], values[i + 2])
     }
 
+    /** A copy with one point moved. Copies the whole array — fine for an edit, wasteful in a per-frame loop. */
     fun withPoint(index: Int, value: Vec3): PointCloud {
         require(index in 0 until pointCount) { "point index out of range" }
         val next = values.copyOf()
@@ -1275,9 +1681,11 @@ data class PointCloud(val values: DoubleArray) {
         return PointCloud(next)
     }
 
+    /** A defensive copy of the backing array — the safe way to hand these coordinates to anything else. */
     fun copyValues(): DoubleArray = values.copyOf()
 
     companion object {
+        /** Build from triples rather than a flat array; the readable way to write a seed cloud by hand. */
         fun of(vararg points: Vec3): PointCloud {
             val values = DoubleArray(points.size * 3)
             points.forEachIndexed { index, point ->
@@ -1290,6 +1698,19 @@ data class PointCloud(val values: DoubleArray) {
     }
 }
 
+/**
+ * Per-point, per-axis override of the [WeakPosition] prior weights, supplied at solve time rather than baked
+ * into the program.
+ *
+ * This is what makes interactive editing work without recompiling: the native side reads these weights
+ * through a pointer on every solve, so "pin the point under the cursor hard, keep everything else loose"
+ * is a change of numbers, not a change of problem. Flat xyz like a [PointCloud], must match the cloud's point
+ * count, and every entry must be finite and non-negative — zero means that axis is unconstrained by its prior.
+ *
+ * Only points that a [WeakPosition] already named have a prior residual to weight; a weight here does not
+ * create one. See [DynamicPriorWeights.dragging] for the usual shape, and [MutablePriorWeights] for the
+ * allocation-free version.
+ */
 data class DynamicPriorWeights(val values: DoubleArray) {
     init {
         require(values.size % 3 == 0) { "prior weights must be a flat xyz array" }
@@ -1301,12 +1722,18 @@ data class DynamicPriorWeights(val values: DoubleArray) {
     fun copyValues(): DoubleArray = values.copyOf()
 
     companion object {
+        /** One weight everywhere — the baseline a drag is a departure from. */
         fun uniform(pointCount: Int, weight: Double): DynamicPriorWeights {
             require(pointCount >= 0) { "point count must be non-negative" }
             requireWeight(weight)
             return DynamicPriorWeights(DoubleArray(pointCount * 3) { weight })
         }
 
+        /**
+         * The interaction shape: everything at [baseline], the dragged point at [dragged], nine orders of
+         * magnitude apart by default. The dragged point effectively goes where you put it and the rest of the
+         * model follows through the geometry.
+         */
         fun dragging(
             pointCount: Int,
             draggedPoint: Int,
@@ -1333,8 +1760,8 @@ data class DynamicPriorWeights(val values: DoubleArray) {
  * above a hundred or so points, while [DENSE_QR] stays the most numerically forgiving for small
  * ones.
  *
- * The sparse options need a Ceres built with a sparse backend. The committed `libs/` artifact is
- * not; one built by `./gradlew buildCeresNative` against a system Ceres is. Ceres falls back to a
+ * The sparse options need a Ceres built with a sparse backend, which both
+ * `./gradlew buildCeresNative` and `./gradlew buildCeresRedistributable` give you. Ceres falls back to a
  * dense solver and says so in [CeresSolveSummary.linearSolverUsed] rather than failing, so check
  * that field if a sparse choice does not speed things up.
  */
@@ -1371,7 +1798,12 @@ data class CeresSolveSummary(
     val iterations: Int,
     val termination: CeresTermination,
     val seconds: Double,
+    /** Includes residuals the caller never wrote — [Planar]'s two stabilisers per face, for instance. */
     val residualCount: Int,
+    /**
+     * Parameters after manifolds are taken into account, so a plane normal on a sphere counts 2, not 3. Compare it
+     * with `3 * pointCount` to see how much of the problem is auxiliary variables rather than geometry.
+     */
     val effectiveParameterCount: Int,
     val parameterBlockCount: Int,
     val residualBlockCount: Int,
@@ -1381,6 +1813,10 @@ data class CeresSolveSummary(
      */
     val linearSolverUsed: CeresLinearSolver?,
 ) {
+    /**
+     * Ceres hit one of its tolerances, rather than running out of iterations. Strictly stronger than
+     * [SolveResult.ok], which only says the answer is usable.
+     */
     val converged: Boolean get() = termination == CeresTermination.CONVERGENCE
 
     override fun toString(): String = buildString {
@@ -1416,9 +1852,25 @@ data class CeresSolveSummary(
     }
 }
 
+/**
+ * What to ask of the minimiser for one solve. Per-call, not baked into the compiled solver, so a drag can be
+ * cheap and the settle on release expensive.
+ *
+ * The defaults are tuned for interaction, not for convergence: eight iterations, dense QR, one thread, no
+ * metrics and no summary. A batch solve that is supposed to *finish* wants far more iterations, probably
+ * [CeresLinearSolver.SPARSE_NORMAL_CHOLESKY], and `summary = true` so that it can tell whether it did.
+ *
+ * Most of the interesting fields need the wrapper's configurable solve entry point rather than its
+ * fixed-configuration one; [needsConfigurableSolve] is how that is decided, and asking for one of them on the
+ * allocation-free path is a clear refusal rather than a silent downgrade. The three tolerances are Ceres' own
+ * defaults — changing any of them, even to the same value by a different route, trips that requirement.
+ */
 data class SolveOptions(
+    /** Trust-region iterations, not a time budget. The default of 8 is an interactive number. */
     val maxIterations: Int = 8,
+    /** Fill [SolveResult.metrics] with per-opcode costs. Costs an extra problem evaluation per group. */
     val metrics: Boolean = false,
+    /** Length of the per-opcode cost array; opcodes numbered at or above it are not reported at all. */
     val metricGroupCapacity: Int = 64,
     /**
      * Ceres falls back to a dense solve, silently, when the loaded wrapper was built without the
@@ -1472,6 +1924,14 @@ data class SolveOptions(
     )
 }
 
+/**
+ * One solve, bundled: geometry, program, optional prior weights and options. The unit [CachedCeresSolvers.solve]
+ * takes.
+ *
+ * The bytecode and its hash are computed lazily and then held, so building a request per frame around an
+ * unchanged program still only encodes once per request — but a *new* request each frame re-encodes. Hold the
+ * compiled solver instead if that shows up.
+ */
 data class SolveRequest(
     val points: PointCloud,
     val program: CeresProgram,
@@ -1488,11 +1948,27 @@ data class SolveRequest(
     val legacyHash: UInt by lazy { fnv1a64BitDoubles(legacyBytecode) }
 }
 
+/**
+ * Where the remaining cost is, broken down by opcode — the "which constraint family is fighting" readout.
+ *
+ * Keyed by opcode, and that is the catch: each residual group writes into the slot for its opcode, so with many
+ * constraints of the same kind the reported figure is the *last group's* cost, not the sum. Treat it as a hint
+ * about which family to look at rather than an accounting of total cost. Costs are post-loss, a group whose
+ * evaluation failed reports NaN, and opcodes numbered at or above [SolveOptions.metricGroupCapacity] are absent
+ * entirely.
+ *
+ * [byOpcode] holds the entries that map to a known [CeresOpcode]; [rawByOpcode] is everything, indexed by code,
+ * which is how an opcode this Kotlin build does not know about still shows up.
+ */
 data class SolveMetrics(
     val totalCost: Double?,
     val byOpcode: Map<CeresOpcode, Double>,
     val rawByOpcode: Map<Int, Double>,
 ) {
+    /**
+     * The [limit] costliest groups, largest first, as `metricName to cost`. Zero and NaN entries are dropped, so
+     * the result can be shorter than [limit], and empty when no group has any cost left to report.
+     */
     fun top(limit: Int = 5): List<Pair<String, Double>> =
         rawByOpcode.entries
             .filter { it.value != 0.0 && !it.value.isNaN() }
@@ -1582,6 +2058,14 @@ data class CeresVariableValues(
     }
 }
 
+/**
+ * The answer: always a full cloud, plus whatever diagnostics were asked for.
+ *
+ * [ok] is Ceres' "solution is usable", which is a much weaker claim than converged — a solve that ran out of
+ * iterations is `ok` and still wrong. [points] carries the best positions found either way, so a caller that
+ * ignores [ok] gets a plausible answer rather than nothing. For whether it actually converged, ask for a
+ * [summary] and read [CeresSolveSummary.converged].
+ */
 data class SolveResult(
     val ok: Boolean,
     val points: PointCloud,
@@ -1591,10 +2075,30 @@ data class SolveResult(
     val variables: CeresVariableValues = CeresVariableValues.EMPTY,
 )
 
+/**
+ * A [CeresProgram] built into a native `ceres::Problem`, ready to be solved repeatedly against changing point
+ * data.
+ *
+ * Compiling is the expensive half and solving is the cheap one; the whole shape of this API is about doing the
+ * first once. The cost of that is a solver locked to one point count and to the seed pose baked in by
+ * [LockPosition], [GaugeRotation] and [Planar].
+ *
+ * Holds native memory, so it must be closed — the default no-op [close] is for in-Kotlin implementations only,
+ * and the FFM one really does free. Solving after closing throws.
+ */
 interface CompiledCeresSolver : AutoCloseable {
+    /** The point count this solver was compiled for; a cloud of any other size is refused. */
     val pointCount: Int
+
+    /** [CeresProgram.legacyHash] of the program built into it — the identity a cache keys on. */
     val programHash: UInt
 
+    /**
+     * Solve for new positions, returning a fresh cloud and leaving the input untouched.
+     *
+     * [dynamicPriorWeights] overrides the [WeakPosition] weights for this call only; [options] chooses effort and
+     * diagnostics.
+     */
     fun solve(
         points: PointCloud,
         dynamicPriorWeights: DynamicPriorWeights? = null,
@@ -1604,10 +2108,33 @@ interface CompiledCeresSolver : AutoCloseable {
     override fun close() = Unit
 }
 
+/**
+ * Something that can turn a program plus a seed cloud into a [CompiledCeresSolver] — the seam the native library
+ * sits behind.
+ *
+ * One implementation matters in practice (`FfmCeresBackend`, over the `ken_ceres` C ABI); the interface exists so
+ * that feature gating, caching and the tests are written against a capability set rather than against a dylib.
+ */
 interface CeresSolverBackend {
+    /**
+     * Build the problem. [seedPoints] is not just a starting guess — it is the pose [LockPosition] locks to,
+     * [GaugeRotation] measures against, and [Planar] fits its plane variables from.
+     */
     fun compile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver
 }
 
+/**
+ * An LRU of compiled solvers keyed by point count plus program hash, so re-solving an unchanged program compiles
+ * once.
+ *
+ * The thing to know is what the key leaves out: the seed cloud. A cache hit returns a solver compiled from
+ * whatever cloud arrived *first*, so with [LockPosition], [GaugeRotation] or [Planar] in the program — all of
+ * which capture that pose — the same program against a moved cloud silently reuses the old targets. Evict, or
+ * hold your own solver, when that matters.
+ *
+ * Not thread-safe: the backing map is access-ordered, so even reads mutate it. Eviction closes the solver it drops
+ * and so does [close], which is what releases the native problems.
+ */
 class CachedCeresSolvers(
     private val backend: CeresSolverBackend,
     private val maxEntries: Int = 32,
@@ -1620,11 +2147,18 @@ class CachedCeresSolvers(
         }
     }
 
+    /** Compile if necessary, then solve. The one call a caller who does not want to manage solvers needs. */
     fun solve(request: SolveRequest): SolveResult {
         val solver = getOrCompile(request.points, request.program)
         return solver.solve(request.points, request.dynamicPriorWeights, request.options)
     }
 
+    /**
+     * The cached solver for this program and point count, compiling one on a miss.
+     *
+     * Throws if the backend cannot run the program. [seedPoints] is used only
+     * on a miss — on a hit it is ignored entirely, including the pose it carries.
+     */
     fun getOrCompile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver {
         val pointCount = seedPoints.pointCount
         require(pointCount >= 0) { "point count must be non-negative" }
@@ -1640,6 +2174,20 @@ class CachedCeresSolvers(
     private data class Key(val pointCount: Int, val hash: UInt)
 }
 
+/**
+ * The way in. Describe a solve in a [CeresProgramBuilder] block and get an immutable [CeresProgram] back.
+ *
+ * ```kotlin
+ * val program = buildCeresProgram {
+ *     distance(0, 1, 1.0)
+ *     planarHesse(listOf(0, 1, 2, 3))
+ *     weakAll()
+ * }
+ * ```
+ *
+ * The loss defaults to the wrapper's historic `Huber(1e-3)`, which caps the influence of the largest residual —
+ * see the overload taking a [RobustLoss] if your residuals are meant to reach zero together.
+ */
 fun buildCeresProgram(block: CeresProgramBuilder.() -> Unit): CeresProgram =
     CeresProgramBuilder().apply(block).build()
 
@@ -1647,6 +2195,12 @@ fun buildCeresProgram(block: CeresProgramBuilder.() -> Unit): CeresProgram =
 fun buildCeresProgram(loss: RobustLoss, block: CeresProgramBuilder.() -> Unit): CeresProgram =
     CeresProgramBuilder().apply(block).build(loss)
 
+/**
+ * Wrap a raw per-opcode cost array — the shape the native side fills — as a [SolveMetrics].
+ *
+ * The array is indexed *by opcode code*, not packed, so index 2 is [CeresOpcode.Distance] whether or not the
+ * program contained one. [SolveMetrics.totalCost] is left null: this sees only the breakdown.
+ */
 fun metricMap(groupCosts: DoubleArray): SolveMetrics =
     SolveMetrics(
         totalCost = null,
@@ -1659,6 +2213,15 @@ fun metricMap(groupCosts: DoubleArray): SolveMetrics =
         rawByOpcode = groupCosts.withIndex().associate { (index, cost) -> index to cost },
     )
 
+/**
+ * FNV-1a over the raw bytes of a `DoubleArray`, folding the length in at the end. The program identity behind
+ * [CeresProgram.legacyHash] and the solver cache.
+ *
+ * Native byte order, so the value is not portable between machines — fine for an in-process cache key, not
+ * something to persist. Bitwise, so `0.0` and `-0.0` hash differently and a NaN payload is significant. 32 bits,
+ * which is small enough that a collision is a real if unlikely event, and a collision here means reusing the wrong
+ * compiled problem.
+ */
 fun fnv1a64BitDoubles(values: DoubleArray): UInt {
     val bytes = ByteBuffer
         .allocate(values.size * Double.SIZE_BYTES)

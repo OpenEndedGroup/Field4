@@ -1,4 +1,4 @@
-@file:afield.CompletionCategory("Graphics")
+@file:afield.CompletionCategory("Solvers")
 
 package afield.stdlib.ceres
 
@@ -74,6 +74,17 @@ import kotlin.math.PI
  *
  * The solved values come back in [SolveResult.variables], in declaration order.
  */
+
+/**
+ * One node of a residual expression: a constant, a single coordinate of one of the residual's points, or an
+ * operation over other nodes. Immutable, and hash-consed as you build, so an identical subexpression written twice
+ * is one node and is evaluated once.
+ *
+ * The mixed-arithmetic operators are declared here and only here, so the expression has to be on the left:
+ * `expr * 2.0` compiles, `2.0 * expr` does not. Write `2.0.c * expr` — see [Double.c] — or reorder. There is
+ * deliberately no comparison, no boolean and no conditional: a residual is an arithmetic expression, and the
+ * one-sided behaviour a barrier needs comes from [max] and [barrierBelow] instead.
+ */
 sealed interface CeresExpr {
     operator fun plus(other: CeresExpr): CeresExpr = binary(ExprOp.ADD, this, other)
     operator fun minus(other: CeresExpr): CeresExpr = binary(ExprOp.SUB, this, other)
@@ -147,21 +158,41 @@ internal data class ExprNode(val op: ExprOp, val a: CeresExpr, val b: CeresExpr?
 private fun binary(op: ExprOp, a: CeresExpr, b: CeresExpr): CeresExpr = ExprNode(op, a, b)
 private fun unary(op: ExprOp, a: CeresExpr): CeresExpr = ExprNode(op, a, null)
 
-/** A literal. `2.5.c` reads better than `constant(2.5)` inside an expression. */
+/**
+ * A literal. `2.5.c` reads better than `constant(2.5)` inside an expression.
+ *
+ * Constants are pooled by value when the expression is compiled, so repeating one is free. Must be finite: a NaN
+ * or an infinity here would only surface as a failed solve with no indication of where.
+ */
 fun constant(value: Double): CeresExpr = ExprConst(value)
 
-/** A literal, as a property. */
+/** A literal, as a property. Also the fix for `2.0 * expr`, which does not compile — write `2.0.c * expr`. */
 val Double.c: CeresExpr get() = ExprConst(this)
 
 /** A literal, as a property. */
 val Int.c: CeresExpr get() = ExprConst(toDouble())
 
+/**
+ * Square root. No guard: the native evaluator will happily take the root of a negative and produce a NaN, which
+ * fails the solve without saying where. Prefer [CeresExprVec.length], which keeps a small epsilon under the root
+ * precisely so the derivative at zero stays finite.
+ */
 fun sqrt(x: CeresExpr): CeresExpr = unary(ExprOp.SQRT, x)
+
+/** `x * x` as one instruction, and one node — cheaper and clearer than multiplying an expression by itself. */
 fun square(x: CeresExpr): CeresExpr = unary(ExprOp.SQUARE, x)
+
+/** `1 / x` as one instruction. Nothing checks for zero; see [sqrt] for what a NaN costs you. */
 fun reciprocal(x: CeresExpr): CeresExpr = unary(ExprOp.RECIP, x)
+
 fun exp(x: CeresExpr): CeresExpr = unary(ExprOp.EXP, x)
+
+/** Natural log. Undefined at and below zero, and unguarded. */
 fun ln(x: CeresExpr): CeresExpr = unary(ExprOp.LOG, x)
+
+/** Sine, in radians — as everything angular here is. [CERES_PI] is on hand for the literal. */
 fun sin(x: CeresExpr): CeresExpr = unary(ExprOp.SIN, x)
+
 fun cos(x: CeresExpr): CeresExpr = unary(ExprOp.COS, x)
 fun tan(x: CeresExpr): CeresExpr = unary(ExprOp.TAN, x)
 
@@ -174,16 +205,38 @@ fun min(a: CeresExpr, b: CeresExpr): CeresExpr = binary(ExprOp.MIN, a, b)
 /** Not differentiable where the arguments cross. The building block of a one-sided barrier. */
 fun max(a: CeresExpr, b: CeresExpr): CeresExpr = binary(ExprOp.MAX, a, b)
 
+/**
+ * `base` to the power `exponent`, both expressions — so the exponent may itself be solved for. For a fixed integer
+ * power prefer [square] or a product; this is the general and slowest case.
+ */
 fun pow(base: CeresExpr, exponent: CeresExpr): CeresExpr = binary(ExprOp.POW, base, exponent)
+
+/** Two-argument arctangent, in radians, `y` first. The only way to get a signed angle out of this vocabulary. */
 fun atan2(y: CeresExpr, x: CeresExpr): CeresExpr = binary(ExprOp.ATAN2, y, x)
 
-/** `max(0, floor - x)`: zero while `x >= floor`, and a penalty below it. */
+/**
+ * `max(0, floor - x)`: zero while `x >= floor`, and a penalty below it.
+ *
+ * Contributing *exactly* nothing while satisfied is the useful part — a barrier can be added to a tuned objective
+ * without changing its answer where it was already healthy. The kink at the floor is non-differentiable and Ceres
+ * takes a subgradient, which is what you want here.
+ */
 fun barrierBelow(x: CeresExpr, floor: CeresExpr): CeresExpr = max(0.0.c, floor - x)
 
-/** `max(0, x - ceiling)`: zero while `x <= ceiling`, and a penalty above it. */
+/** `max(0, x - ceiling)`: zero while `x <= ceiling`, and a penalty above it. The mirror of [barrierBelow]. */
 fun barrierAbove(x: CeresExpr, ceiling: CeresExpr): CeresExpr = max(0.0.c, x - ceiling)
 
-/** One of the expression's points, as three scalar expressions. */
+/**
+ * One of the expression's points, as three scalar expressions — the vector algebra you actually want to write a
+ * residual in.
+ *
+ * Nothing here is a new kind of node: every operator expands to scalar arithmetic on the three components as you
+ * write it, so `(a - b).lengthSquared()` is an expression tree, not a call the VM knows about. Sharing still saves
+ * the work — a difference used twice compiles once.
+ *
+ * The scalar operators are not quite symmetric: `vec * 2.0` works because [times] has a `Double` overload, `vec /
+ * 2.0` does not, because [div] only takes a [CeresExpr]. Write `vec / 2.0.c`.
+ */
 data class CeresExprVec(val x: CeresExpr, val y: CeresExpr, val z: CeresExpr) {
     operator fun plus(o: CeresExprVec) = CeresExprVec(x + o.x, y + o.y, z + o.z)
     operator fun minus(o: CeresExprVec) = CeresExprVec(x - o.x, y - o.y, z - o.z)
@@ -192,8 +245,13 @@ data class CeresExprVec(val x: CeresExpr, val y: CeresExpr, val z: CeresExpr) {
     operator fun div(k: CeresExpr) = CeresExprVec(x / k, y / k, z / k)
     operator fun unaryMinus() = CeresExprVec(-x, -y, -z)
 
+    /** Dot product — five instructions, and the basis of every angle and projection residual here. */
     infix fun dot(o: CeresExprVec): CeresExpr = x * o.x + y * o.y + z * o.z
 
+    /**
+     * Cross product. Three residuals whose magnitude is an area (or, between unit vectors, a sine), so it makes a
+     * good scale-free "these are parallel" test without any square root.
+     */
     infix fun cross(o: CeresExprVec) = CeresExprVec(
         y * o.z - z * o.y,
         z * o.x - x * o.z,
@@ -209,16 +267,25 @@ data class CeresExprVec(val x: CeresExpr, val y: CeresExpr, val z: CeresExpr) {
      */
     fun length(epsilon: Double = 1e-20): CeresExpr = sqrt(lengthSquared() + epsilon.c)
 
+    /** Distance between two points, epsilon-guarded like [length]. The most-reached-for residual in the vocabulary. */
     fun distanceTo(o: CeresExprVec, epsilon: Double = 1e-20): CeresExpr = (this - o).length(epsilon)
 
     companion object {
+        /** The world origin as constants — for a residual measured from a fixed point rather than between two points. */
         val ORIGIN = CeresExprVec(0.0.c, 0.0.c, 0.0.c)
 
+        /**
+         * A fixed position, frozen into the expression as three constants.
+         *
+         * The vector is read when the expression is built, so a later change to it has no effect and the point is not
+         * something the solver can move. That is the only way to reach outside the residual's own parameter blocks: an
+         * expression cannot read a point it was not bound to, and cannot declare a free variable of its own.
+         */
         fun of(v: Vec3) = CeresExprVec(v.x.c, v.y.c, v.z.c)
     }
 }
 
-/** Handy when an expression wants a literal angle. */
+/** Handy when an expression wants a literal angle; every trigonometric op here is in radians. */
 const val CERES_PI: Double = PI
 
 // ---------------------------------------------------------------------------------------------
@@ -463,6 +530,10 @@ class CeresExprVariable internal constructor(
  *
  * Build one with [CeresProgramBuilder.expression] rather than directly — that hands you the point
  * expressions already bound.
+ *
+ * One residual block over all of [points], so its Jacobian row is dense in them: prefer several small expressions
+ * to one that names half the cloud. A repeated point is rejected here rather than at the native side, because Ceres
+ * forbids a residual block naming the same parameter block twice.
  */
 data class CeresExpressionResidual(
     val points: List<PointId>,
@@ -516,17 +587,30 @@ data class CeresExpressionResidual(
         out += weight
     }
 
-    /** The compiled program, exposed so a caller can see what their expression became. */
+    /**
+     * The compiled program, exposed so a caller can see what their expression became.
+     *
+     * Compiles afresh on every call and is called again by [encodeLegacy], so this is for inspection — pair it with
+     * [CompiledCeresExpression.disassemble]. Throws if an expression reads a point index beyond the ones bound.
+     */
     fun compile(): CompiledCeresExpression =
         CeresExpressionCompiler(points.size, variables.map { it.declaration }).compile(expressions)
 }
 
-/** The register-machine program an expression compiles to. */
+/**
+ * The register-machine program an expression compiles to: straight-line code, no branches, no stack.
+ *
+ * Every instruction writes a slot it alone owns and reads only slots already written, so evaluation is a single
+ * forward pass and shared subexpressions cost nothing extra. That is the whole argument for a register machine over
+ * a stack machine here — sharing is structural rather than something the interpreter has to juggle.
+ */
 data class CompiledCeresExpression(
     /** Four ints per instruction: `op, dst, a, b`. */
     val code: List<Int>,
     val constants: List<Double>,
+    /** Which slot each residual reads, in the order the expressions were given. */
     val residualSlots: List<Int>,
+    /** Slots the evaluator must allocate — one per instruction, since each writes a fresh one. */
     val slotCount: Int,
     /** The free variables this residual reads, in local (parameter-block) order. */
     val variables: List<CeresVariableDecl> = emptyList(),
