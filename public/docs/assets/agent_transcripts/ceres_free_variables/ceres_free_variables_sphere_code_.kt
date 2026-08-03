@@ -1,7 +1,6 @@
 import afield.graphics.FLine
 import afield.stdlib.ceres.CachedCeresSolvers
 import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
@@ -24,8 +23,13 @@ val data = listOf(
 )
 // ----------------------------------------------------------------------------------
 
-val localWrapper = Path.of("build/ken-ceres/libken_ceres_jvm.dylib")
-val backend = if (Files.exists(localWrapper)) FfmCeresBackend(localWrapper) else FfmCeresBackend()
+// Nothing is committed, so look where each build task puts its artifact. Constructing the
+// backend is what refuses a missing or too-old library, so that is the check.
+val backend = listOf(
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+).filter { Files.exists(it) }
+    .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
 
 fun dots(): List<FLine> = data.map { p ->
     val s = 0.06f
@@ -44,18 +48,18 @@ fun dots(): List<FLine> = data.map { p ->
         }
 }
 
-if (CeresFeature.AbiV3 !in backend.supportedFeatures) {
-    println("wrapper ${backend.abiVersion} cannot run free variables; drawing the data only")
+if (backend == null) {
+    println("no Ceres wrapper built; drawing the data only")
     markdown(
         "fit",
         """
-        ### This box needs the ABI v3 Ceres wrapper
+        ### This box needs the native Ceres wrapper
 
-        The loaded wrapper reports `${backend.abiVersion}`, and a free centre and radius are a
-        v3 feature. Build one from the repository root and re-run:
+        A free centre and radius are solved by Ceres, and no binary is committed. Build one
+        from the repository root and re-run:
 
         ```
-        ./gradlew buildCeresNative
+        ./gradlew buildCeresRedistributable
         ```
         """.trimIndent(),
     )

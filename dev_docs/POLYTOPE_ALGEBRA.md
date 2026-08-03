@@ -111,9 +111,10 @@ canonical form exists and is unique up to Möbius transformations of the sphere;
 centroid at the origin picks one representative, and the gauge removes the remaining rigid and scale
 freedom. That covers every Conway operator over a Platonic seed. Nothing is guaranteed for
 non-convex, self-intersecting, higher-genus or non-3-connected input; the run returns `converged`
-plus the diagnostics and expects the caller to look. `kkC` is the worked counter-example: neither
-iteration finds its canonical form, and the library reports the failure rather than returning a
-smoothed lie.
+plus the diagnostics and expects the caller to look. `kkC` is the worked counter-example for the two
+iterations here: neither finds its canonical form, and the library reports the failure rather than
+returning a smoothed lie. `relaxWithCeres` does reach it, and that took a change of *objective* rather
+than a better solver — see the roadmap section below.
 
 Because the canonical form is determined by the *combinatorics*, a starting embedding the iteration
 cannot use is not by itself a reason to fail. When an attempt diverges or plateaus above
@@ -233,8 +234,9 @@ counts for each phase, whether the run had to re-seed, and the combinatorial orb
 face reports its degree, its symmetry orbit, and its face-plane distance from the centre — which is
 constant within an orbit exactly when the embedding is canonical.
 
-Try `"gD"`, `"ktC"`, `"bD"`, `"sD"`, `"dkD"`, `"tI"`, `"eC"`. `"kkC"` is the honest failure: the
-diagnostics stay large and the run reports `max iterations`.
+Try `"gD"`, `"ktC"`, `"bD"`, `"sD"`, `"dkD"`, `"tI"`, `"eC"`. `"kkC"` is the honest failure for this
+box, which canonicalizes: the diagnostics stay large and the run reports `max iterations`. Send the
+same expression through `relaxWithCeres` and it comes out exact.
 
 ### `polytope_conway_demo.yaml`
 

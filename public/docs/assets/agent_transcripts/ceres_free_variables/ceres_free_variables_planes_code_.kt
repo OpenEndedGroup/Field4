@@ -1,7 +1,6 @@
 import afield.graphics.FLine
 import afield.stdlib.Vec3
 import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
@@ -21,12 +20,13 @@ import java.nio.file.Path
 val expression = "tI"
 // ----------------------------------------------------------------------------------
 
-// Free variables in the expression VM need the ABI v3 wrapper. The committed
-// libs/libken_ceres_jvm.dylib is deliberately still the old self-contained v1 build — a
-// Homebrew-linked default would be broken on any machine without Homebrew — so prefer a
-// locally built one if ./gradlew buildCeresNative has been run. See dev_docs/CERES.md.
-val localWrapper = Path.of("build/ken-ceres/libken_ceres_jvm.dylib")
-val backend = if (Files.exists(localWrapper)) FfmCeresBackend(localWrapper) else FfmCeresBackend()
+// Nothing is committed, so look where each build task puts its artifact. Constructing the
+// backend is what refuses a missing or too-old library, so that is the check.
+val backend = listOf(
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+).filter { Files.exists(it) }
+    .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
 
 val seed = conway(expression).polyhedron
 val problem = RealizationProblem.of(seed)
@@ -40,24 +40,23 @@ fun faintSeed() = seed.toFaceFLines { _, line ->
     line.color = vec(0.55, 0.60, 0.68, 0.13)
 }
 
-if (CeresFeature.AbiV3 !in backend.supportedFeatures) {
-    println("wrapper ${backend.abiVersion} cannot run free variables; drawing the unsolved seed")
+if (backend == null) {
+    println("no Ceres wrapper built; drawing the unsolved seed")
     markdown(
         "ceres",
         """
-        ### This box needs the ABI v3 Ceres wrapper
+        ### This box needs the native Ceres wrapper
 
-        The loaded wrapper reports `${backend.abiVersion}`. Free variables in the residual
-        expression VM arrived in v3, so there is nothing here to solve yet. Build one from the
-        repository root and re-run this box:
+        The solver is an optional extra and no binary is committed, so there is nothing here
+        to solve yet. Build one from the repository root and re-run this box:
 
         ```
-        ./gradlew buildCeresNative
+        ./gradlew buildCeresRedistributable
         ```
 
-        The committed `libs/libken_ceres_jvm.dylib` stays the v1 build on purpose: it is
-        self-contained, where one linked against Homebrew's Ceres needs `/opt/homebrew` at
-        runtime. `dev_docs/CERES.md` has the whole story.
+        That produces a self-contained library — `otool -L` shows only `libc++` and
+        `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
+        story.
         """.trimIndent(),
     )
     displayOpen("ceres")

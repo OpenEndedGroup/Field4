@@ -11,14 +11,13 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="ceres_free_variables_planes" index="0" -->
 
 ```edn [field-box id="ceres_free_variables_planes" role="properties"]
-{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 205 "characters" 8849 "sha256" "89e02220af6c91a8c8b8d9de769bcde14bf092f5507d30fd1d356a913b848734"}]}
+{"id" "ceres_free_variables_planes" "index" 0 "name" "Ceres — a plane per face, solved as a free variable" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — a plane per face, solved as a free variable" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_planes_code_.kt" "lines" 204 "characters" 8559 "sha256" "b7ca21e7c4e5203eca68739197aa1501c16e487a1454d0302a7eae02ffaf1ff9"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_planes" name="code" path="ceres_free_variables_planes_code_.kt"]
 import afield.graphics.FLine
 import afield.stdlib.Vec3
 import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
@@ -38,12 +37,13 @@ import java.nio.file.Path
 val expression = "tI"
 // ----------------------------------------------------------------------------------
 
-// Free variables in the expression VM need the ABI v3 wrapper. The committed
-// libs/libken_ceres_jvm.dylib is deliberately still the old self-contained v1 build — a
-// Homebrew-linked default would be broken on any machine without Homebrew — so prefer a
-// locally built one if ./gradlew buildCeresNative has been run. See dev_docs/CERES.md.
-val localWrapper = Path.of("build/ken-ceres/libken_ceres_jvm.dylib")
-val backend = if (Files.exists(localWrapper)) FfmCeresBackend(localWrapper) else FfmCeresBackend()
+// Nothing is committed, so look where each build task puts its artifact. Constructing the
+// backend is what refuses a missing or too-old library, so that is the check.
+val backend = listOf(
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+).filter { Files.exists(it) }
+    .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
 
 val seed = conway(expression).polyhedron
 val problem = RealizationProblem.of(seed)
@@ -57,24 +57,23 @@ fun faintSeed() = seed.toFaceFLines { _, line ->
     line.color = vec(0.55, 0.60, 0.68, 0.13)
 }
 
-if (CeresFeature.AbiV3 !in backend.supportedFeatures) {
-    println("wrapper ${backend.abiVersion} cannot run free variables; drawing the unsolved seed")
+if (backend == null) {
+    println("no Ceres wrapper built; drawing the unsolved seed")
     markdown(
         "ceres",
         """
-        ### This box needs the ABI v3 Ceres wrapper
+        ### This box needs the native Ceres wrapper
 
-        The loaded wrapper reports `${backend.abiVersion}`. Free variables in the residual
-        expression VM arrived in v3, so there is nothing here to solve yet. Build one from the
-        repository root and re-run this box:
+        The solver is an optional extra and no binary is committed, so there is nothing here
+        to solve yet. Build one from the repository root and re-run this box:
 
         ```
-        ./gradlew buildCeresNative
+        ./gradlew buildCeresRedistributable
         ```
 
-        The committed `libs/libken_ceres_jvm.dylib` stays the v1 build on purpose: it is
-        self-contained, where one linked against Homebrew's Ceres needs `/opt/homebrew` at
-        runtime. `dev_docs/CERES.md` has the whole story.
+        That produces a self-contained library — `otool -L` shows only `libc++` and
+        `libSystem` — from pinned Ceres and Eigen source. `dev_docs/CERES.md` has the whole
+        story.
         """.trimIndent(),
     )
     displayOpen("ceres")
@@ -227,14 +226,13 @@ if (CeresFeature.AbiV3 !in backend.supportedFeatures) {
 <!-- field-box id="ceres_free_variables_sphere" index="1" -->
 
 ```edn [field-box id="ceres_free_variables_sphere" role="properties"]
-{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 224 "characters" 9062 "sha256" "19ff2a97a44fc399884fae5c96642221360d98c5b9713fdc900c9cb5aa35c28e"}]}
+{"id" "ceres_free_variables_sphere" "index" 1 "name" "Ceres — unknowns that are not points" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Ceres — unknowns that are not points" "_tombstone" false "frame" #afield/rect [580.0 80.0 460.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ceres_free_variables_sphere_code_.kt" "lines" 228 "characters" 9198 "sha256" "f0417639d68c48cc791557bf2361361109029a6a171ee8a2a5445cfa15d928a3"}]}
 ```
 
 ````kotlin [field-property box="ceres_free_variables_sphere" name="code" path="ceres_free_variables_sphere_code_.kt"]
 import afield.graphics.FLine
 import afield.stdlib.ceres.CachedCeresSolvers
 import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
@@ -257,8 +255,13 @@ val data = listOf(
 )
 // ----------------------------------------------------------------------------------
 
-val localWrapper = Path.of("build/ken-ceres/libken_ceres_jvm.dylib")
-val backend = if (Files.exists(localWrapper)) FfmCeresBackend(localWrapper) else FfmCeresBackend()
+// Nothing is committed, so look where each build task puts its artifact. Constructing the
+// backend is what refuses a missing or too-old library, so that is the check.
+val backend = listOf(
+    Path.of("build/ken-ceres-redistributable/libken_ceres_jvm.dylib"),
+    Path.of("build/ken-ceres/libken_ceres_jvm.dylib"),
+).filter { Files.exists(it) }
+    .firstNotNullOfOrNull { runCatching { FfmCeresBackend(it) }.getOrNull() }
 
 fun dots(): List<FLine> = data.map { p ->
     val s = 0.06f
@@ -277,18 +280,18 @@ fun dots(): List<FLine> = data.map { p ->
         }
 }
 
-if (CeresFeature.AbiV3 !in backend.supportedFeatures) {
-    println("wrapper ${backend.abiVersion} cannot run free variables; drawing the data only")
+if (backend == null) {
+    println("no Ceres wrapper built; drawing the data only")
     markdown(
         "fit",
         """
-        ### This box needs the ABI v3 Ceres wrapper
+        ### This box needs the native Ceres wrapper
 
-        The loaded wrapper reports `${backend.abiVersion}`, and a free centre and radius are a
-        v3 feature. Build one from the repository root and re-run:
+        A free centre and radius are solved by Ceres, and no binary is committed. Build one
+        from the repository root and re-run:
 
         ```
-        ./gradlew buildCeresNative
+        ./gradlew buildCeresRedistributable
         ```
         """.trimIndent(),
     )
