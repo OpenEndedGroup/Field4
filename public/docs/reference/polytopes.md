@@ -64,7 +64,7 @@ val solid = canonicalConway("bkD").polyhedron        // notation straight to geo
 val result = cube().ambo().polyhedron.canonicalize() // or repair an embedding you already have
 ```
 
-## Two iterations, and why there are two
+### Two iterations, and why there are two
 
 `CanonicalMethod.RECIPROCAL` alternates polar reciprocation between primal and dual and reaches the
 fixed point in tens of steps, but requires every face plane to stay away from the origin.
@@ -73,7 +73,7 @@ planarity — and is slow but robust. The default runs the first and polishes wi
 attempt fails, `CanonicalizeOptions.reseed` restarts from coordinates built from the topology alone;
 `CanonicalizeResult.reseeded` always says whether that happened.
 
-## Read the diagnostics
+### Read the diagnostics
 
 Nothing here claims success. `CanonicalizeResult.converged` only means the iteration stopped
 moving; [`CanonicalDiagnostics`](polytopes.md#canonical-kt-canonicaldiagnostics) is the evidence, reported before and after, and a run that ends with
@@ -164,7 +164,7 @@ The outcome of a canonicalization run, including the honest before/after evidenc
 
 Optional bridge: run a [`RelaxationPlan`](polytopes.md#realizationsolver-kt-relaxationplan) on the native Ceres solver instead of the built-in one.
 
-## It needs the native library
+### It needs the native library
 
 Everything in this file requires the ABI v2 `ken-ceres` wrapper to be built and loaded — there is no
 pure-Kotlin path here. Build it with `./gradlew buildCeresNative` and run with
@@ -173,7 +173,7 @@ pure-Kotlin path here. Build it with `./gradlew buildCeresNative` and run with
 throws a description of what is missing rather than falling back to `PolyhedralObject.relax`, because
 a silent fallback would make every comparison between the two a lie.
 
-## What it buys
+### What it buys
 
 The same objective, solved properly. `PolyhedralObject.relax` takes a central finite-difference
 Jacobian and forms a dense `3V x 3V` normal matrix every iteration; Ceres differentiates each
@@ -262,7 +262,7 @@ of them, so a realization run is *data*: it prints, it diffs, it reweights with
 cycles and the initial coordinates once per solve, and hands a constraint nothing but flat
 `DoubleArray` coordinates and integer indices — no [`ElementId`](polytopes.md#topology-kt-elementid) bookkeeping, no FLines, no renderer.
 
-## Units, and what a weight of 1 means
+### Units, and what a weight of 1 means
 
 Every residual in this file is a **length in the units of the coordinates**, and every one is
 written as `weight * (measured - goal)`. So the families are directly comparable to each other, and
@@ -282,14 +282,14 @@ either centring family. The default blends in `RelaxationPlan.regularize` and
 `RelaxationPlan.canonicalConditions` give the three-residual centring families a much larger weight
 for exactly this reason; read a weight as calibration against a residual count, not as a priority.
 
-## Reporting
+### Reporting
 
 `RealizationConstraint.residualCount` may not depend on the coordinates, which is what makes a run's
 residual vector sliceable per family after the fact. `report` goes one step further and re-evaluates
 each family at weight 1, so a [`RealizationSolveResult`](polytopes.md#realizationsolver-kt-realizationsolveresult) can state each family's error in the units of
 the thing constrained rather than in solver units.
 
-## Writing your own
+### Writing your own
 
 Implement the interface: it is four small members and nothing in this file is privileged. Two rules
 that are not obvious — write exactly `RealizationConstraint.residualCount` entries starting at the
@@ -456,7 +456,7 @@ callers need. `parseConwayExpression` exposes the parse on its own, for a UI tha
 bad character's offset before running anything, and `canonicalConway` is the same evaluation
 followed by a canonical embedding.
 
-## The notation this accepts
+### The notation this accepts
 
 A final seed letter — `T C O I D` for the five Platonic solids — preceded by any number of the
 operator letters in [`ConwayOperator`](polytopes.md#transforms-kt-conwayoperator). Whitespace is ignored anywhere. Two operators additionally
@@ -465,7 +465,7 @@ faces, `t3C` truncates only the degree-3 vertices. That is a Field extension of 
 on [`ElementSelectors`](polytopes.md#parameters-kt-elementselectors); digits after any other operator are a parse error rather than a silent
 ignore, and so is a digit with no operator to attach to.
 
-## What it will not do
+### What it will not do
 
 There is no grouping, no repetition count and no seed beyond the five Platonics — no `(ka)3T`, no
 prisms, no antiprisms. Coordinates come from each operator's default realization policy, so a long
@@ -537,7 +537,7 @@ gives a flat-normal [`TriMesh`](graphics.md#mesh-kt-trimesh) with the provenance
 vertex back to the element it came from; `PolyhedralObject.toTriMesh` is the same thing when that
 provenance can be thrown away. `Polytope4.toEdgeFLines` projects a 4-polytope to a wireframe.
 
-## Attributes become FLine properties
+### Attributes become FLine properties
 
 Every face line receives its face's attributes copied straight into `line.properties`, plus
 `POLYTOPE_FACE_ID_PROPERTY` and `POLYTOPE_FACE_RANK_PROPERTY`. So an attribute named `color` set
@@ -545,7 +545,7 @@ on a face during a Conway chain arrives as Field's own `color` property with no 
 which is the point of [`PolytopeAttributes`](polytopes.md#attributes-kt-polytopeattributes) being typed as `Any`, and also means a badly-named
 attribute can quietly overwrite a drawing property.
 
-## What these will not do
+### What these will not do
 
 Every entry point requires a realization and validates the topology first, so an abstract polytope
 throws rather than drawing nothing. Faces with holes are out of reach: the topology stores one
@@ -662,7 +662,7 @@ applied *there, by that much*. [`ElementSelector`](polytopes.md#parameters-kt-el
 what they resolved in a [`TransformDeployment`](polytopes.md#transforms-kt-transformdeployment) — so a non-uniform operation stays inspectable and
 replayable after the fact rather than being a number you typed once.
 
-## How a selector is evaluated, and against which rank
+### How a selector is evaluated, and against which rank
 
 Both interfaces are single-method predicates over an [`ElementSelectionContext`](polytopes.md#parameters-kt-elementselectioncontext): the object, one
 element, and that element's lineage when there is one. They are called once per candidate element,
@@ -680,7 +680,7 @@ kis-es nothing, legally and silently.
 val result = solid.kis(ElementSelectors.faceDegree(5), ElementParameters.attribute("spike"))
 ```
 
-## Lineage is not always there
+### Lineage is not always there
 
 `ElementSelectors.provenanceRole` is the one selector that needs transform history.
 `PolyhedralObject.selectElements` builds a context without lineage, so on a bare object every
@@ -778,7 +778,7 @@ proper ranks rather than three, an edge bounds three or more polygons rather tha
 `triangulate()`, because a projected 4-polytope's polygons do not bound a surface and filling them
 would claim they did.
 
-## The face lattice is derived, not declared
+### The face lattice is derived, not declared
 
 `convexPolytope4` is the one call the seeds are built from. You give it vertex coordinates and
 outward facet normals; it works out cells, polygons, boundary orders and edges itself. So a wrong
@@ -786,13 +786,13 @@ derivation shows up as a wrong published count — 24 cells, 96 edges — rather
 checked. The trade is in the name: the criteria it uses are true of convex polytopes and only of
 convex polytopes.
 
-## Coordinates, and why they are not `Vec3`
+### Coordinates, and why they are not `Vec3`
 
 Field's graphics vocabulary has no `Vec4` and should not grow one for this, so [`Realization4`](polytopes.md#polytope4-kt-realization4)
 stores plain `DoubleArray`s and every public read hands back a copy. That also means rank 4 is the
 double-precision half of this package while `Realization3` is single-precision.
 
-## Projection is a camera, not geometry
+### Projection is a camera, not geometry
 
 ```diffstatic {data-lang=kotlin}
 val t = tesseract()
@@ -949,7 +949,7 @@ val result = cube().relax(RelaxationPlan.regularize())
 result.finalConstraints.forEach { println("${it.name}  rms ${it.rms}  max ${it.max}") }
 ```
 
-## What is minimised, and what that does not promise
+### What is minimised, and what that does not promise
 
 `afield.stdlib.leastSquares` runs Levenberg-Marquardt on half the squared norm of every active
 family's residuals concatenated. A weight is a plain multiplier on its family's residuals, so it
@@ -964,7 +964,7 @@ wanted. Where the objective itself has a degenerate minimum — the canonical co
 a collapsed edge satisfies [`EdgeTangencyConstraint`](polytopes.md#constraints-kt-edgetangencyconstraint) for free — a converged run can be nonsense, and
 only the diagnostics will say so.
 
-## Cost, and when to use something else
+### Cost, and when to use something else
 
 The Jacobian is central finite differences, so an iteration costs `2 * 3 * vertexCount` residual
 evaluations and builds a dense `3V x 3V` normal matrix. That is the right tool for exact control
@@ -1146,14 +1146,14 @@ are `tetrahedron`, `cube`, `octahedron`, `icosahedron` and `dodecahedron`; each 
 realized, outward-wound, manifold-validated object, and each is the starting point of a Conway
 expression such as `conway("tI")`.
 
-## Scale is not uniform across the seeds
+### Scale is not uniform across the seeds
 
 `tetrahedron`, `octahedron`, `icosahedron` and `dodecahedron` all put their vertices on the unit
 sphere. `cube` does not: it is the ±1 cube, so its side is 2 and its circumradius `sqrt(3)`. If you
 are comparing seeds, or mixing them in one scene, normalise or apply a gauge first rather than
 assuming a common radius.
 
-## Face winding is derived, not trusted
+### Face winding is derived, not trusted
 
 Seed faces are declared as unoriented index cycles and then reversed where needed so that every
 normal points away from the vertex centroid. Which means the literal lists below need only be
@@ -1208,7 +1208,7 @@ visualizer. So a bare `polyhedron` or `result` as a box's last expression is inf
 same facts are available programmatically — `println(result.summary())` reports exactly what the
 inspector shows, because it is the same call.
 
-## What to trust in them
+### What to trust in them
 
 They are lossy by design and a few of the losses matter:
 
@@ -1378,7 +1378,7 @@ within a face class — so a realization run can be *asked* to look symmetric, a
 `symmetryDeviation` is the readout in the other direction: how equal the geometry actually is inside
 each class, as a relative spread.
 
-## The caveat that runs through all of it
+### The caveat that runs through all of it
 
 Colour refinement is not a complete isomorphism invariant, so a class is a *union* of true
 automorphism orbits and may be strictly coarser than them. Constraining a class is therefore at
@@ -1482,7 +1482,7 @@ traversal: four edges in a ring are equally consistent with two different quadri
 `PolytopeTopology.dual` does that for its own output — but that is a construction step, not a
 property of the poset.
 
-## Ranks, and the element that is the whole thing
+### Ranks, and the element that is the whole thing
 
 Ranks are zero-based: 0 vertices, 1 edges, 2 polygons, 3 cells. A topology's
 `PolytopeTopology.rank` is its *top* rank, and by convention the element or elements there stand
@@ -1492,7 +1492,7 @@ rank-3 element meaning "the solid", and its proper ranks are `0 until rank`. Thi
 polyhedral surface and 0 for a convex 4-polytope, which are the numbers a reader is checking
 against.
 
-## Validation reports; it does not throw
+### Validation reports; it does not throw
 
 [`PolytopeTopologyBuilder`](polytopes.md#topology-kt-polytopetopologybuilder) records what it is told and checks almost nothing. Structural
 complaints are [`ValidationIssue`](polytopes.md#topology-kt-validationissue) *values* returned by `PolytopeTopology.validate`, so a tool or a
@@ -1508,7 +1508,7 @@ b.setFaceCycle(f, v)
 b.build().validate().issues.forEach { println(it.message) }   // three edges never recorded
 ```
 
-## What is deliberately absent
+### What is deliberately absent
 
 One cycle per face, so no holes and no annuli. No orientation of the complex as a whole, and no
 assumption that it is a closed manifold: `validate(checkManifold = true)` is an opt-in stricter
@@ -1775,7 +1775,7 @@ source elements it came from and the role it plays (`face-center`, `edge-midpoin
 coordinates from the source's; an [`AttributePropagationPolicy`](polytopes.md#transforms-kt-attributepropagationpolicy) does the same for attributes. Swap
 the policy and you get a different solid over identical combinatorics.
 
-## Five primitives, eight composites
+### Five primitives, eight composites
 
 `d` dual, `a` ambo, `k` kis, `t` truncate and `g` gyro are implemented. `j n z o e s m b` are
 defined as primitive *words* — `j = da`, `b = ta`, `s = dgd`, `o = jj`, `m = kj` — and run one
@@ -1783,14 +1783,14 @@ primitive at a time, so they cost as many topology rebuilds as their expansion i
 `PolytopeTransformResult.history` is the expanded trace; `notationHistory` keeps the composite you
 actually asked for.
 
-## Beyond standard notation
+### Beyond standard notation
 
 `k`, `t` and `g` also take an [`ElementSelector`](polytopes.md#parameters-kt-elementselector) and an [`ElementDoubleParameter`](polytopes.md#parameters-kt-elementdoubleparameter), so one step can
 kis only the pentagons, or truncate every vertex by a fraction that varies with its height. Conway
 notation cannot say either thing; [`TransformDeployment`](polytopes.md#transforms-kt-transformdeployment) records what was selected and which
 scalars were resolved, so such a step is still exactly replayable.
 
-## What this will not do
+### What this will not do
 
 - **Rank 3 and closed manifolds only.** Every step validates its input *and* its output with
   manifold checking on, so a non-manifold complex or an inconsistently oriented vertex fan throws

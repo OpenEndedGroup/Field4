@@ -526,7 +526,7 @@ It sits in its own file for the same reason `alife_field.kt` and `wfc_field.kt` 
 `dynamic_graph_systems.kt` names nothing from Field's visualizer or from the imaging family, and a
 reader of it sees points, edges and clocks and nothing about pixels.
 
-# Which of the two to use, because they are not interchangeable
+### Which of the two to use, because they are not interchangeable
 
 | you want | call | why |
 | --- | --- | --- |

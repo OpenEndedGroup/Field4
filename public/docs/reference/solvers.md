@@ -345,7 +345,7 @@ val program = buildCeresProgram {
 }
 ```
 
-## What it costs
+### What it costs
 
 A hand-written functor is faster: the VM interprets, allocates a slot vector per evaluation, and
 Ceres cannot specialise the parameter-block sizes the way [ceres::AutoDiffCostFunction] does with
@@ -353,7 +353,7 @@ a fixed arity. Reach for a real opcode when a residual is hot and settled; reach
 you are still finding out what the residual should be, or when it is caller-specific and will
 never belong in the wrapper.
 
-## What to watch
+### What to watch
 
 - `abs`, `min` and `max` are not differentiable at their kinks. Ceres will hand you a subgradient
   there, which is usually what you want for a one-sided barrier and is not what you want in the
@@ -363,7 +363,7 @@ never belong in the wrapper.
 - Ceres forbids one residual block naming the same point twice, so `expression` rejects a
   repeated point rather than letting the native side discover it.
 
-## Sharing
+### Sharing
 
 The expression is a DAG, not a tree: [`CeresExpr`](solvers.md#ceresexpression-kt-ceresexpr) instances are hash-consed as you build them, so
 writing `d / d` evaluates `d` once. That is why the machine is register-based — with named
@@ -481,7 +481,7 @@ Constructors validate aggressively: coordinates and weights must be finite, weig
 point indices distinct where the opcode requires it, and the `-1`/`PointId.ALL_POINTS` sentinel
 may only be used alone and only where a constraint allows it.
 
-## Two conventions worth knowing before you tune a weight
+### Two conventions worth knowing before you tune a weight
 
 **Weights are square-rooted.** Every native functor stores `s = sqrt(weight)` and multiplies its
 residual by `s`, so Ceres minimises `weight * residual^2`. A residual weight of `k` in the usual

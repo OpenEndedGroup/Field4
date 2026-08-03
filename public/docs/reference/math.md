@@ -628,7 +628,7 @@ its loss (`FunctionFit.kt`), `leastSquares` central-differences its Jacobian. Th
 an `fdStep`. Reverse mode costs one forward pass plus one backward sweep for *all* `n`
 derivatives, and the answer is exact to the last few ulps.
 
-## The shape of it
+### The shape of it
 
 [`AD`](math.md#autodiff-kt-ad) is a scalar that remembers how it was made. Arithmetic on [`AD`](math.md#autodiff-kt-ad) values appends to an [`ADTape`](math.md#autodiff-kt-adtape)
 — a flat array of (value, up-to-two parents, up-to-two local partials) — so
@@ -648,7 +648,7 @@ val (v, d) = valueAndDerivative(0.4) { x -> exp(-x * x) * sin(6.0 * x) }
 (`minimize`, `adam`, `sgd`, `lbfgs`) without a wrapper. `gradAt`, `valueAndGrad`, `jacobian` and
 `hessian` are the immediate forms.
 
-## Forward mode
+### Forward mode
 
 [`Dual2`](math.md#autodiff-forward-kt-dual2) is a second-order forward-mode number (value, first derivative, second derivative along a
 direction). It is the right tool when there is one input and many outputs — the reverse of
@@ -656,7 +656,7 @@ reverse mode — and it is what makes `hessian` *exact* rather than a finite dif
 gradient: `vᵀHv` falls out of a single [`Dual2`](math.md#autodiff-forward-kt-dual2) pass, and polarisation recovers the off-diagonal
 entries. See `directionalDerivative` and `secondDerivative`.
 
-## The kink convention
+### The kink convention
 
 `abs`, `min`, `max` and `relu` are not differentiable at their kink, so a convention has to be
 chosen. This library **splits the derivative evenly at an exact tie**: `min(a, b)` with `a == b`
@@ -666,7 +666,7 @@ analytic gradient and the finite-difference oracle *agree there too*, and `abs(x
 comes out with derivative 0 at zero, which is the minimum-norm subgradient. (PyTorch instead
 defines `relu'(0) = 0`; the choice here is the internally consistent one.)
 
-## What is not covered
+### What is not covered
 
 - **Mutation.** [`AD`](math.md#autodiff-kt-ad) is immutable; there is no in-place `+=` on a tracked value beyond rebinding
   a `var`, which is fine and does the right thing.
@@ -818,7 +818,7 @@ val t = taylor2(0.6) { x -> exp(-x * x) * sin(6.0 * x) }
 t.value; t.first; t.second      // f, f', f'' at 0.6, all exact
 ```
 
-## When to reach for this rather than the tape
+### When to reach for this rather than the tape
 
 Reverse mode (`grad`) wins when there are many inputs and one output — a loss over a parameter
 vector. Forward mode wins in the opposite shape (one input, many outputs: a parametric curve and
@@ -830,7 +830,7 @@ The op vocabulary deliberately mirrors `autodiff.kt` name for name — `sin`, `e
 `pow` and friends are overloaded on both [`AD`](math.md#autodiff-kt-ad) and [`Dual2`](math.md#autodiff-forward-kt-dual2), so the *same* expression body can be
 written once against a shape and evaluated either way (see [`ADFunction2`](math.md#autodiff-forward-kt-adfunction2)).
 
-## Conventions and gaps
+### Conventions and gaps
 
 - The kink convention matches `autodiff.kt`: `max` / `min` split evenly at an exact tie, so
   `relu''` is 0 everywhere and `relu'(0)` is 0.5.
@@ -940,7 +940,7 @@ and from Field's own [`Vec2`](math.md#linalg-kt-vec2) / `Vec3` (which are the ge
 `autodiff.kt`. They exist because writing `(joint - target).length()` reads better in a loss than
 unrolling the components by hand, not because vectors need special derivative rules.
 
-## Inverse kinematics
+### Inverse kinematics
 
 `solveIk` is the demonstration that earns the layer: a planar chain of fixed-length links whose
 joint angles are found by minimising `|endEffector - target|²` with exact gradients. Forward
@@ -962,7 +962,7 @@ still reaches to under a thousandth of a unit, but a target 5 units from the anc
 units short. `IkSolution.reachError` always reports the truth; nothing here pretends to have
 converged when it has traded away accuracy.
 
-## Packing
+### Packing
 
 `packCircles` minimises pairwise overlap and wall penetration under a gentle pull toward the
 centre. Every term is a `relu(...)²` hinge, which is exactly where the even-split kink convention
@@ -1130,7 +1130,7 @@ run.x          // ~[1, 1]
 run.losses     // the trajectory, ready to plot
 ```
 
-## Which one
+### Which one
 
 - `lbfgs` is the right default for a smooth deterministic objective with a handful to a few
   hundred parameters: it builds a curvature model from the last `m` steps and takes

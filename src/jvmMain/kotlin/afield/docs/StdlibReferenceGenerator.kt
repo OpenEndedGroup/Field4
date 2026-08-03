@@ -950,7 +950,10 @@ object StdlibReferenceGenerator {
     ): String = buildString {
         appendLine("## ${doc.fileName} { #${fileAnchor(doc)} }")
         appendLine()
-        doc.overview?.let { appendLine(fencesToDiffstatic(linkify(it, typeAnchors))); appendLine() }
+        // demoteHeadings before fencesToDiffstatic: the latter rewrites an opening fence to
+        // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
+        // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
+        doc.overview?.let { appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors)))); appendLine() }
         appendLine("`${doc.relativePath}`")
         appendLine()
         evidenceLinks(doc, evidence)?.let {
@@ -1433,6 +1436,47 @@ object StdlibReferenceGenerator {
      * A fence with no language is treated as Kotlin, which is what those blocks have always been in
      * practice. Closing fences are left alone, and an already-`diffstatic` fence is passed through.
      */
+    /**
+     * Re-levels the headings in a file overview so its shallowest one becomes `###` — a child of the
+     * `## SomeFile.kt` section the prose is printed inside — with deeper headings keeping their
+     * relative depth.
+     *
+     * A file overview is written as free-standing prose and its author reasonably starts at `#` or
+     * `##`. Printed verbatim, a `#` competed with the page's own title and a `##` became a *sibling*
+     * of the file heading: `reference/polytopes.md` rendered 45 `h2`s of which only 17 were files, and
+     * the page's table of contents read as a flat list alternating "Canonical.kt" with "Two
+     * iterations, and why there are two". Normalising to `###` puts them at the same level as the
+     * `### TypeName` sections that follow in the same file, which is where they belong, and means an
+     * overview reads the same whichever convention its author used.
+     *
+     * Lines inside a fenced block are left alone — `#` is a comment in several of the languages the
+     * overviews quote. Levels are clamped at `######`, markdown's deepest.
+     */
+    private fun demoteHeadings(text: String): String {
+        if ('#' !in text) return text
+        val lines = text.split("\n")
+        var fenced = false
+        val headingLevels = mutableListOf<Int>()
+        lines.forEach { line ->
+            if (FENCE_OPENER.matchEntire(line) != null) { fenced = !fenced; return@forEach }
+            if (fenced) return@forEach
+            HEADING.matchEntire(line)?.let { headingLevels += it.groupValues[1].length }
+        }
+        val shallowest = headingLevels.minOrNull() ?: return text
+        val shift = 3 - shallowest
+        if (shift == 0) return text
+        fenced = false
+        return lines.joinToString("\n") { line ->
+            if (FENCE_OPENER.matchEntire(line) != null) { fenced = !fenced; return@joinToString line }
+            if (fenced) return@joinToString line
+            val match = HEADING.matchEntire(line) ?: return@joinToString line
+            val level = (match.groupValues[1].length + shift).coerceIn(1, 6)
+            "${"#".repeat(level)} ${match.groupValues[2]}"
+        }
+    }
+
+    private val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
+
     private fun fencesToDiffstatic(text: String): String {
         if (!text.contains("```")) return text
         var open = false

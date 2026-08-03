@@ -133,7 +133,7 @@ grown by the tube radius.
 `smoothIsoContours` and `generateSmoothIsoContours` fit cubic splines through the polylines,
 treating a contour that ends on the sampling bounds as open and the rest as closed loops.
 
-# The sign convention, and why it is asymmetric
+### The sign convention, and why it is asymmetric
 
 A grid corner is *inside* iff its sample is **strictly below** `iso`; a sample exactly *at* `iso`
 counts as outside. That asymmetry is deliberate and it matters: with a symmetric test (`below`
@@ -146,7 +146,7 @@ points where the circle passes through a grid corner. See `ISO_CROSSING_EPSILON`
 half of the same fix, and `marchingCubes` in `mesh_sdf.kt` for the 3D marcher, which uses the
 same convention for the same reason.
 
-# What the change to the marcher does and does not touch
+### What the change to the marcher does and does not touch
 
 Three things changed here at once, and they have very different reach. Measured old-against-new
 over 392 (field, resolution, iso) combinations across eight fields:
@@ -160,7 +160,7 @@ over 392 (field, resolution, iso) combinations across eight fields:
 So only the third one reaches ordinary, non-degenerate input, and it reaches it rarely: 4 of the
 392 cases, all of them the one saddle cell of `f = x*y`.
 
-# The saddle cell
+### The saddle cell
 
 The four-crossing cell is resolved by the *asymptotic decider*: the sign of the cell's bilinear
 saddle value decides which diagonal pair of corners the centre of the cell belongs to. It is a pure
@@ -634,7 +634,7 @@ The reason the vertices are floats-in-an-array rather than `List<Vec3>` is that 
 every accessor here (`position`, `normal`, `uv`, `color`) returns a **fresh** vector you own, and
 the `…Into` variants let a hot loop reuse one.
 
-# The family
+### The family
 
 | file | what it adds |
 |---|---|
@@ -647,7 +647,7 @@ the `…Into` variants let a hot loop reuse one.
 | `mesh_io.kt` | OBJ and STL, read and write |
 | `mesh_field.kt` | the bridges: `TriMesh.toFLines`, `VoronoiCell3.toTriMesh`, `Box.showMesh` |
 
-# Conventions
+### Conventions
 
 - **Winding is counter-clockwise seen from outside**, so `faceNormal` points out of a closed
   solid and `signedVolume` of one is positive. Everything in the family agrees on this, and
@@ -834,7 +834,7 @@ Where a [`TriMesh`](graphics.md#mesh-kt-trimesh) comes from: the primitives (`bo
 generators that build one out of something you already have (`extrudeMesh`, `revolveMesh`,
 `tubeMesh`, `heightfieldMesh`, `polygonMesh`).
 
-# Two conventions worth knowing before you use any of them
+### Two conventions worth knowing before you use any of them
 
 **Everything here is welded and watertight where it can be.** A generator returns the minimal
 vertex set, so `MeshTopology.eulerCharacteristic` of a box, a sphere, a cone or a capped cylinder
@@ -858,7 +858,7 @@ boxMesh().withVertexNormals()   // one averaged normal per shared vertex: rounde
 The preview / render bridges in `mesh_field.kt` call `TriMesh.shadedNormals` for you when a mesh
 arrives without normals, so a bare `boxMesh()` still looks like a box.
 
-# Orientation
+### Orientation
 
 `+y` is up, matching the preview camera. Radial generators sweep `x = r cos u, z = -r sin u`, which
 is the handedness that makes counter-clockwise-from-outside windings come out right. `planeMesh`
@@ -1127,7 +1127,7 @@ val mesh = marchingCubes(drilled, boundsOf(vec(-1.6, -1.6, -1.6), vec(1.6, 1.6, 
 println("${mesh.triangleCount} tris, watertight ${mesh.isWatertight()}")
 ```
 
-# What `marchingCubes` here actually does
+### What `marchingCubes` here actually does
 
 It is a **topologically consistent** marching cubes, not the 1987 lookup table:
 
@@ -1152,7 +1152,7 @@ than the grid wants more resolution; and the loop triangulation reproduces the *
 faithfully but is not guaranteed to reproduce the trilinear interpolant's exact topology in the
 rarest configurations.
 
-# A note on mutation
+### A note on mutation
 
 `Vec3` is mutable and the march reuses one sample vector for speed. A [`ScalarField3D`](graphics.md#mesh-sdf-kt-scalarfield3d) must
 therefore **read** the vector it is handed and not write to it. Every combinator below copies
@@ -1941,7 +1941,7 @@ value you can extrude, march, sample or animate. This file and its bridge compan
 `Font.createGlyphVector(...).getOutline()` hands back real quadratic/cubic glyph outlines, and it
 works headless.
 
-# The three values
+### The three values
 
  - [`Typeface`](graphics.md#typography-kt-typeface) — a font at a size, from a logical/system name (`typeface`) or a `.ttf`/`.otf` on
    disk (`typefaceFromFile`). Carries the vertical metrics (ascent, descent, leading) a layout
@@ -1956,7 +1956,7 @@ works headless.
    they are what makes kinetic typography a two-line box body, and `TextLayout.onCurve` is
    nothing but a routine that sets them from an `FLine`'s arc length.
 
-# Text space
+### Text space
 
 Glyph and layout coordinates are **x right, y down**, origin at the first baseline, units = the
 typeface's size in points. That is AWT's own glyph frame and it is also the frame Field's 2D
@@ -1964,7 +1964,7 @@ outputs use (`Rect`'s y grows downwards), so text handed straight to `Box.lines`
 `Box.showText` reads the right way up with no transform. The 3D bridges in `typography_field.kt`
 flip y at their own boundary, because a mesh wants y up.
 
-# The winding convention
+### The winding convention
 
 A glyph's counter — the hole in `o`, `e`, `a`, `B` — is only a hole if something says so, and
 "whatever the font shipped" is not good enough: `isoContourFLines` in `contours.kt` leaves winding
@@ -1981,7 +1981,7 @@ Both representations obey it, so `contours.filter { it.isHole }` and the subpath
 the sign comes from the area formula, so the assertion compares two independent computations
 rather than restating one of them.
 
-# AWT and the main run loop
+### AWT and the main run loop
 
 `imaging_field.kt:417` explains why `montage` captions with a bitmap table instead of
 `Graphics2D.drawString`: on macOS, touching the AWT font manager pulls in AppKit, which competes
@@ -2296,7 +2296,7 @@ Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi
 The weighted contourer is renderer-oriented: it prefers stable, wound
 boundary loops over exact symbolic patch topology.
 
-# What the unweighted clipper guarantees, and what it does not
+### What the unweighted clipper guarantees, and what it does not
 
 Which face each corner belongs to is decided **combinatorially** — a corner records the planes that
 produced it, and a face's polygon is exactly the corners recording that plane — rather than by a
