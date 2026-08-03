@@ -47,6 +47,32 @@ import kotlin.math.PI
  * The expression is a DAG, not a tree: [CeresExpr] instances are hash-consed as you build them, so
  * writing `d / d` evaluates `d` once. That is why the machine is register-based — with named
  * destination slots, sharing is free.
+ *
+ * ## Free variables
+ *
+ * An expression can also read *unknowns of its own* — quantities Ceres solves for that are not
+ * points. [CeresProgramBuilder.variable] declares one, with an initial value and an optional
+ * [CeresManifold], and hands back a [CeresVariableRef] that any number of expressions can name:
+ *
+ * ```kotlin
+ * // fit a sphere: the centre and the radius are unknowns, not points
+ * val centre = variable("centre", Vec3(0.0, 0.0, 0.0))
+ * val radius = variable("radius", 1.0)
+ * points.forEach { i ->
+ *     expression(listOf(i), listOf(centre, radius)) { (p), (c, r) ->
+ *         listOf(p.distanceTo(c.vec()) - r.scalar)
+ *     }
+ * }
+ * ```
+ *
+ * This is the mechanism `PLANAR_HESSE` hardcodes in C++ — a plane as a unit normal on a
+ * `SphereManifold` plus a scalar offset — made available to a residual written at runtime. It is
+ * worth the machinery: on `kkC` the plane-as-a-free-variable formulation converges in 12 iterations
+ * to tangency `3e-08` where the same objective with the plane eliminated inside the residual does
+ * not converge at all. Well-conditioned auxiliary unknowns are not overhead; they are frequently
+ * what makes a problem tractable.
+ *
+ * The solved values come back in [SolveResult.variables], in declaration order.
  */
 sealed interface CeresExpr {
     operator fun plus(other: CeresExpr): CeresExpr = binary(ExprOp.ADD, this, other)
@@ -82,6 +108,9 @@ internal enum class ExprOp(val code: Int, val arity: Int) {
     ATAN2(17, 2),
     SQUARE(18, 1),
     RECIP(19, 1),
+
+    /** A component of one of the residual's free variables. See [CeresVariableRef]. */
+    VAR(20, 0),
 }
 
 internal data class ExprConst(val value: Double) : CeresExpr {
@@ -95,6 +124,21 @@ internal data class ExprParam(val block: Int, val component: Int) : CeresExpr {
     init {
         require(block >= 0) { "parameter block index must be non-negative" }
         require(component in 0..2) { "component must be 0, 1 or 2" }
+    }
+}
+
+/**
+ * Component [component] of the residual's [block]-th free variable.
+ *
+ * [block] is the position in the list of variables handed to
+ * [CeresProgramBuilder.expression] — *not* the program-wide declaration index. A residual block only
+ * receives the parameter blocks it names, so the VM addresses them locally; [CeresVariableRef] holds
+ * the program-wide index and the encoder writes that.
+ */
+internal data class ExprVar(val block: Int, val component: Int) : CeresExpr {
+    init {
+        require(block >= 0) { "variable index must be non-negative" }
+        require(component >= 0) { "variable component must be non-negative" }
     }
 }
 
@@ -177,6 +221,190 @@ data class CeresExprVec(val x: CeresExpr, val y: CeresExpr, val z: CeresExpr) {
 /** Handy when an expression wants a literal angle. */
 const val CERES_PI: Double = PI
 
+// ---------------------------------------------------------------------------------------------
+// Free variables
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The space a free variable lives in — which is to say, how Ceres is allowed to step it.
+ *
+ * A manifold is not decoration. `PLANAR_HESSE`'s whole advantage over `PLANAR` is that its plane
+ * normal is on a [SPHERE]: three raw components, two effective parameters, and no freedom to change
+ * length. Left as a plain 3-vector with a "keep it unit" residual, the same variable would carry a
+ * scale direction that the objective barely constrains, and a trust-region minimiser will find it.
+ */
+enum class CeresManifold(val code: Int) {
+    /** Euclidean: every component free, tangent space the same size as the block. */
+    NONE(0),
+
+    /** Unit norm (`ceres::SphereManifold`). Needs at least two components. */
+    SPHERE(1),
+
+    /**
+     * A rotation as a unit quaternion, **`w` first** (`ceres::QuaternionManifold`). Exactly four
+     * components, three effective parameters.
+     */
+    QUATERNION(2),
+}
+
+/**
+ * An unknown Ceres solves for that is not a point: [dimension] scalars with an initial value and a
+ * [manifold].
+ *
+ * Declare one with [CeresProgramBuilder.variable]. The [name] never crosses the ABI — the native
+ * side is handed dimensions and initial values, and this side reconstructs names when it reads the
+ * solved values back — so it costs nothing and is worth choosing well; it is what
+ * [CompiledCeresExpression.disassemble] and [SolveResult.variables] label things with.
+ */
+data class CeresVariableDecl(
+    val name: String,
+    val initial: List<Double>,
+    val manifold: CeresManifold = CeresManifold.NONE,
+) {
+    val dimension: Int get() = initial.size
+
+    init {
+        require(name.isNotBlank()) { "a free variable needs a name" }
+        require(initial.isNotEmpty()) { "free variable '$name' needs at least one component" }
+        require(initial.size <= MAX_DIMENSION) {
+            "free variable '$name' has ${initial.size} components; the limit is $MAX_DIMENSION"
+        }
+        require(initial.all { it.isFinite() }) { "free variable '$name' has a non-finite initial value" }
+        when (manifold) {
+            CeresManifold.NONE -> Unit
+            CeresManifold.SPHERE -> {
+                require(initial.size >= 2) {
+                    "free variable '$name' is on a sphere manifold, which needs at least two components"
+                }
+                require(initial.sumOf { it * it } > 1e-20) {
+                    "free variable '$name' is on a sphere manifold and cannot start at the origin"
+                }
+            }
+
+            CeresManifold.QUATERNION -> {
+                require(initial.size == 4) {
+                    "free variable '$name' is a quaternion, which needs exactly four components (w first)"
+                }
+                require(initial.sumOf { it * it } > 1e-20) {
+                    "free variable '$name' is a quaternion and cannot start at zero"
+                }
+            }
+        }
+    }
+
+    companion object {
+        /**
+         * A bound on a single block's size. Nothing here needs a hundred-component unknown, and the
+         * native side allocates from this number, so it is checked rather than trusted.
+         */
+        const val MAX_DIMENSION: Int = 64
+
+        fun scalar(name: String, initial: Double): CeresVariableDecl =
+            CeresVariableDecl(name, listOf(initial))
+
+        fun vector(name: String, initial: Vec3): CeresVariableDecl =
+            CeresVariableDecl(name, listOf(initial.x, initial.y, initial.z))
+
+        fun vector(name: String, vararg initial: Double): CeresVariableDecl =
+            CeresVariableDecl(name, initial.toList())
+
+        /** A direction on the unit sphere. The seed is normalised for you; it only has to be non-zero. */
+        fun unitVector(name: String, initial: Vec3): CeresVariableDecl {
+            val length = kotlin.math.sqrt(initial.x * initial.x + initial.y * initial.y + initial.z * initial.z)
+            require(length > 1e-10) { "unit-vector variable '$name' needs a non-zero seed direction" }
+            return CeresVariableDecl(
+                name,
+                listOf(initial.x / length, initial.y / length, initial.z / length),
+                CeresManifold.SPHERE,
+            )
+        }
+
+        /** A rotation, `w` first. Normalised for you. */
+        fun quaternion(name: String, w: Double, x: Double, y: Double, z: Double): CeresVariableDecl {
+            val length = kotlin.math.sqrt(w * w + x * x + y * y + z * z)
+            require(length > 1e-10) { "quaternion variable '$name' needs a non-zero seed" }
+            return CeresVariableDecl(
+                name,
+                listOf(w / length, x / length, y / length, z / length),
+                CeresManifold.QUATERNION,
+            )
+        }
+
+        /** The identity rotation. */
+        fun rotation(name: String): CeresVariableDecl = quaternion(name, 1.0, 0.0, 0.0, 0.0)
+    }
+}
+
+/**
+ * A declared variable, as the program refers to it.
+ *
+ * Variables are declared at *program* scope rather than per residual, so several residual blocks can
+ * share one — which is the difference between "each face gets its own plane" and "these fifty
+ * observations all see the same camera". [index] is the program-wide declaration order, which is also
+ * the order [SolveResult.variables] reports the solved values in.
+ */
+data class CeresVariableRef(val index: Int, val declaration: CeresVariableDecl) {
+    init {
+        require(index >= 0) { "variable index must be non-negative" }
+    }
+
+    val name: String get() = declaration.name
+    val dimension: Int get() = declaration.dimension
+}
+
+/**
+ * One of an expression's free variables, bound to its position in that residual's variable list.
+ *
+ * Distinct from [CeresVariableRef] on purpose: that one knows where the variable sits in the
+ * *program*, this one knows where it sits in *this residual's* parameter blocks, and only the second
+ * is what the VM addresses.
+ */
+class CeresExprVariable internal constructor(
+    internal val block: Int,
+    val declaration: CeresVariableDecl,
+) {
+    val name: String get() = declaration.name
+    val dimension: Int get() = declaration.dimension
+
+    /** Component [component] of this variable. */
+    operator fun get(component: Int): CeresExpr {
+        require(component in 0 until dimension) {
+            "variable '$name' has $dimension component(s); asked for $component"
+        }
+        return ExprVar(block, component)
+    }
+
+    /** The variable itself, when it is a single scalar. */
+    val scalar: CeresExpr
+        get() {
+            require(dimension == 1) { "variable '$name' has $dimension components, not one" }
+            return get(0)
+        }
+
+    /** The first three components, as a vector. */
+    fun vec(): CeresExprVec {
+        require(dimension >= 3) { "variable '$name' has $dimension components; vec() needs three" }
+        return CeresExprVec(get(0), get(1), get(2))
+    }
+
+    /**
+     * A four-component variable read as a rotation, applied to [v] — the quaternion sandwich written
+     * out, so no trigonometry and no normalisation appear in the residual.
+     *
+     * Pair it with [CeresManifold.QUATERNION] and Ceres keeps the block on the unit sphere itself;
+     * with [CeresManifold.NONE] the rotation is only a rotation while the quaternion happens to be
+     * unit, which is a thing to remember rather than a thing to rely on.
+     */
+    fun rotate(v: CeresExprVec): CeresExprVec {
+        require(dimension == 4) { "variable '$name' has $dimension components; rotate() needs four" }
+        val w = get(0)
+        val u = CeresExprVec(get(1), get(2), get(3))
+        // v + 2 * u x (u x v + w * v), the standard expansion of q v q*.
+        val t = (u cross v) + v * w
+        return v + (u cross t) * 2.0
+    }
+}
+
 /**
  * A residual block whose value is computed by [expressions], one residual each, over [points].
  *
@@ -187,6 +415,12 @@ data class CeresExpressionResidual(
     val points: List<PointId>,
     val expressions: List<CeresExpr>,
     override val weight: Double = 1.0,
+    /**
+     * The free variables these expressions read, in the order the expressions' [CeresExprVariable]
+     * handles were bound. Declared at program scope, so a variable named here may also be named by
+     * other residuals.
+     */
+    val variables: List<CeresVariableRef> = emptyList(),
 ) : GeometryConstraint {
     init {
         require(points.isNotEmpty()) { "an expression residual needs at least one point" }
@@ -194,17 +428,33 @@ data class CeresExpressionResidual(
         require(points.distinct().size == points.size) {
             "Ceres forbids one residual block naming the same point twice; points were $points"
         }
+        require(variables.map { it.index }.distinct().size == variables.size) {
+            "Ceres forbids one residual block naming the same parameter block twice; variables were " +
+                variables.map { it.name }
+        }
         require(expressions.isNotEmpty()) { "an expression residual needs at least one residual" }
         requireWeight(weight)
+        // Compiling here is what validates slots, components and variable dimensions, and it is
+        // cheap. An expression that cannot compile should fail where it was written.
+        compile()
     }
 
-    override val requiredFeature = CeresFeature.AbiV2
+    /**
+     * [CeresFeature.AbiV3], not v2. The `EXPR` operand stream now carries a variable-reference
+     * section whether or not it is empty, and a v2 wrapper reading it would take the count as a
+     * weight and everything after as opcodes — which is the silent-misparse failure mode the v2 work
+     * removed. Gated in Kotlin so a caller gets a clear refusal rather than a plausible answer to a
+     * different question.
+     */
+    override val requiredFeature = CeresFeature.AbiV3
 
     override fun encodeLegacy(out: MutableList<Double>) {
         val compiled = compile()
         out.op(CeresOpcode.Expr)
         out += points.size.toDouble()
         points.forEach { out += it.value.toDouble() }
+        out += variables.size.toDouble()
+        variables.forEach { out += it.index.toDouble() }
         out += compiled.residualSlots.size.toDouble()
         compiled.residualSlots.forEach { out += it.toDouble() }
         out += compiled.slotCount.toDouble()
@@ -216,7 +466,8 @@ data class CeresExpressionResidual(
     }
 
     /** The compiled program, exposed so a caller can see what their expression became. */
-    fun compile(): CompiledCeresExpression = CeresExpressionCompiler(points.size).compile(expressions)
+    fun compile(): CompiledCeresExpression =
+        CeresExpressionCompiler(points.size, variables.map { it.declaration }).compile(expressions)
 }
 
 /** The register-machine program an expression compiles to. */
@@ -226,11 +477,22 @@ data class CompiledCeresExpression(
     val constants: List<Double>,
     val residualSlots: List<Int>,
     val slotCount: Int,
+    /** The free variables this residual reads, in local (parameter-block) order. */
+    val variables: List<CeresVariableDecl> = emptyList(),
 ) {
     val instructionCount: Int get() = code.size / 4
 
     /** A readable disassembly. The point of an expression VM is that you can look at the program. */
     fun disassemble(): String = buildString {
+        variables.forEachIndexed { at, variable ->
+            append("var v%-2d = %s[%d]".format(at, variable.name, variable.dimension))
+            if (variable.manifold != CeresManifold.NONE) {
+                append(" on ").append(variable.manifold.name.lowercase())
+            }
+            appendLine(
+                variable.initial.joinToString(", ", prefix = "  seed [", postfix = "]") { "%.6g".format(it) },
+            )
+        }
         for (i in 0 until instructionCount) {
             val op = ExprOp.entries.first { it.code == code[4 * i] }
             val dst = code[4 * i + 1]
@@ -240,6 +502,7 @@ data class CompiledCeresExpression(
             when (op) {
                 ExprOp.CONST -> append("${constants[a]}")
                 ExprOp.PARAM -> append("p$a.${"xyz"[b]}")
+                ExprOp.VAR -> append("v$a[$b]")
                 else -> when (op.arity) {
                     1 -> append("${op.name.lowercase()}(s$a)")
                     else -> append("${op.name.lowercase()}(s$a, s$b)")
@@ -258,16 +521,34 @@ data class CompiledCeresExpression(
  * through the DAG — is computed once and read from its slot thereafter. Constants are pooled the
  * same way.
  */
-private class CeresExpressionCompiler(private val paramCount: Int) {
+private class CeresExpressionCompiler(
+    private val paramCount: Int,
+    private val variables: List<CeresVariableDecl>,
+) {
     private val code = mutableListOf<Int>()
     private val constants = mutableListOf<Double>()
     private val constantSlots = mutableMapOf<Double, Int>()
     private val slots = mutableMapOf<CeresExpr, Int>()
+    private val variablesRead = mutableSetOf<Int>()
     private var nextSlot = 0
 
     fun compile(expressions: List<CeresExpr>): CompiledCeresExpression {
         val residualSlots = expressions.map { emit(it) }
-        return CompiledCeresExpression(code.toList(), constants.toList(), residualSlots, nextSlot)
+        // A variable named by a residual but never read gives Ceres a Jacobian column of exact zeros
+        // — a rank deficiency the minimiser has to regularise its way around, for a parameter that
+        // provably cannot affect the answer. Almost always a typo in the expression.
+        variables.indices.forEach { block ->
+            require(block in variablesRead) {
+                "variable '${variables[block].name}' is named by this expression but never read by it"
+            }
+        }
+        return CompiledCeresExpression(
+            code.toList(),
+            constants.toList(),
+            residualSlots,
+            nextSlot,
+            variables,
+        )
     }
 
     private fun emit(expr: CeresExpr): Int = slots.getOrPut(expr) {
@@ -285,6 +566,19 @@ private class CeresExpressionCompiler(private val paramCount: Int) {
                     "expression reads point ${expr.block} but only $paramCount were bound"
                 }
                 instruction(ExprOp.PARAM, expr.block, expr.component)
+            }
+
+            is ExprVar -> {
+                require(expr.block < variables.size) {
+                    "expression reads free variable ${expr.block} but only ${variables.size} were named"
+                }
+                val declaration = variables[expr.block]
+                require(expr.component < declaration.dimension) {
+                    "expression reads component ${expr.component} of '${declaration.name}', " +
+                        "which has ${declaration.dimension}"
+                }
+                variablesRead += expr.block
+                instruction(ExprOp.VAR, expr.block, expr.component)
             }
 
             is ExprNode -> {

@@ -61,8 +61,8 @@ private fun maxDeviation(a: PointCloud, b: PointCloud): Double =
 
 fun main() {
     val backend = FfmCeresBackend()
-    check(CeresFeature.AbiV2 in backend.supportedFeatures) {
-        "needs the v2 wrapper: ./gradlew buildCeresNative, then -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
+    check(CeresFeature.AbiV3 in backend.supportedFeatures) {
+        "needs the v3 wrapper: ./gradlew buildCeresNative, then -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
     }
 
     // ---------------------------------------------------------------------------------------

@@ -69,6 +69,17 @@ enum class CeresFeature {
      * problem.
      */
     AbiV2,
+
+    /**
+     * The `ken_ceres_jvm_abi_v3` wrapper: free variables in the residual expression VM
+     * ([CeresVariableDecl], [CeresProgramBuilder.variable]), the manifolds they can live on, and
+     * `ken_ceres_solver_variables` to read their solved values back.
+     *
+     * Every [CeresExpressionResidual] needs this, not only one that declares a variable: `EXPR`'s
+     * operand stream carries a variable-reference count unconditionally, and a v2 wrapper would read
+     * that count as a weight.
+     */
+    AbiV3,
 }
 
 enum class CeresOpcode(val code: Int, val metricName: String) {
@@ -122,7 +133,10 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
     PlanarHesse(65, "PLANAR_HESSE"),
     PlanarFit(66, "PLANAR_FIT"),
     GaugeRotation(67, "GAUGE_ROTATION"),
-    Expr(68, "EXPR");
+    Expr(68, "EXPR"),
+
+    // ABI v3: a free variable, declared once at the head of the program and referenced by index.
+    Variable(69, "VARIABLE");
 
     companion object {
         private val byCode = entries.associateBy { it.code }
@@ -982,10 +996,47 @@ data class GaugeRotation(
 
 class CeresProgramBuilder {
     private val constraints = mutableListOf<GeometryConstraint>()
+    private val variables = mutableListOf<CeresVariableDecl>()
 
     fun add(constraint: GeometryConstraint): CeresProgramBuilder = apply {
         constraints += constraint
     }
+
+    /**
+     * Declare a free variable: an unknown Ceres solves for that is not a point.
+     *
+     * Program-scoped, so the returned [CeresVariableRef] can be named by as many [expression]s as you
+     * like and they will all see the same block. That is the difference between "every face has its
+     * own plane" and "these fifty observations all see one camera".
+     *
+     * ```kotlin
+     * val normal = variable(CeresVariableDecl.unitVector("n", seed))   // on a sphere manifold
+     * val offset = variable(CeresVariableDecl.scalar("d", seed dot n))
+     * expression(face, listOf(normal, offset)) { corners, (n, d) ->
+     *     corners.map { (it dot n.vec()) - d.scalar }               // PLANAR_HESSE, in Kotlin
+     * }
+     * ```
+     */
+    fun variable(declaration: CeresVariableDecl): CeresVariableRef {
+        variables += declaration
+        return CeresVariableRef(variables.size - 1, declaration)
+    }
+
+    /** A free scalar. */
+    fun variable(name: String, initial: Double): CeresVariableRef =
+        variable(CeresVariableDecl.scalar(name, initial))
+
+    /** A free position or offset — three components, no manifold. */
+    fun variable(name: String, initial: Vec3): CeresVariableRef =
+        variable(CeresVariableDecl.vector(name, initial))
+
+    /** A free direction, held on the unit sphere. */
+    fun unitVariable(name: String, initial: Vec3): CeresVariableRef =
+        variable(CeresVariableDecl.unitVector(name, initial))
+
+    /** A free rotation, held on the quaternion manifold. Starts at the identity. */
+    fun rotationVariable(name: String): CeresVariableRef =
+        variable(CeresVariableDecl.rotation(name))
 
     fun planar(vararg points: Int, weight: Double = 1.0) = add(Planar(points.ids(), weight))
 
@@ -1136,12 +1187,9 @@ class CeresProgramBuilder {
         points: List<Int>,
         weight: Double = 1.0,
         build: (List<CeresExprVec>) -> List<CeresExpr>,
-    ): CeresProgramBuilder {
-        val bound = points.indices.map { block ->
-            CeresExprVec(ExprParam(block, 0), ExprParam(block, 1), ExprParam(block, 2))
-        }
-        return add(CeresExpressionResidual(points.ids(), build(bound), weight))
-    }
+    ): CeresProgramBuilder = add(
+        CeresExpressionResidual(points.ids(), build(boundPoints(points.size)), weight),
+    )
 
     /** As [expression], for the common case of naming the points inline. */
     fun expression(
@@ -1150,11 +1198,56 @@ class CeresProgramBuilder {
         build: (List<CeresExprVec>) -> List<CeresExpr>,
     ): CeresProgramBuilder = expression(points.toList(), weight, build)
 
+    /**
+     * A residual over [points] *and* [variables] — unknowns Ceres solves for that are not points.
+     *
+     * [build] receives one [CeresExprVec] per point and one [CeresExprVariable] per variable, both in
+     * the order given, and returns one expression per residual. Declare the variables first with
+     * [variable]; several expressions may name the same one.
+     *
+     * ```kotlin
+     * // fit a sphere to every point: free centre, free radius
+     * val centre = variable("centre", Vec3(0.0, 0.0, 0.0))
+     * val radius = variable("radius", 1.0)
+     * indices.forEach { i ->
+     *     expression(listOf(i), listOf(centre, radius)) { (p), (c, r) ->
+     *         listOf(p.distanceTo(c.vec()) - r.scalar)
+     *     }
+     * }
+     * ```
+     */
+    fun expression(
+        points: List<Int>,
+        variables: List<CeresVariableRef>,
+        weight: Double = 1.0,
+        build: (List<CeresExprVec>, List<CeresExprVariable>) -> List<CeresExpr>,
+    ): CeresProgramBuilder {
+        variables.forEachIndexed { at, ref ->
+            require(ref.index < this.variables.size && this.variables[ref.index] == ref.declaration) {
+                "variable '${ref.name}' (position $at) was not declared by this program builder"
+            }
+        }
+        val boundVariables = variables.mapIndexed { block, ref -> CeresExprVariable(block, ref.declaration) }
+        return add(
+            CeresExpressionResidual(
+                points.ids(),
+                build(boundPoints(points.size), boundVariables),
+                weight,
+                variables,
+            ),
+        )
+    }
+
+    private fun boundPoints(count: Int): List<CeresExprVec> = (0 until count).map { block ->
+        CeresExprVec(ExprParam(block, 0), ExprParam(block, 1), ExprParam(block, 2))
+    }
+
     fun raw(vararg values: Double) = add(RawProgramFragment(values.toList()))
 
-    fun build(): CeresProgram = CeresProgram(constraints.toList())
+    fun build(): CeresProgram = CeresProgram(constraints.toList(), variables = variables.toList())
 
-    fun build(loss: RobustLoss): CeresProgram = CeresProgram(constraints.toList(), loss)
+    fun build(loss: RobustLoss): CeresProgram =
+        CeresProgram(constraints.toList(), loss, variables.toList())
 }
 
 /**
@@ -1191,11 +1284,41 @@ data class RobustLoss(val kind: Kind = Kind.HUBER, val scale: Double = 1e-3) {
 data class CeresProgram(
     val constraints: List<GeometryConstraint>,
     val loss: RobustLoss = RobustLoss.DEFAULT,
+    /**
+     * Free variables, in declaration order — the order the native side registers them and the order
+     * [SolveResult.variables] reports their solved values in.
+     */
+    val variables: List<CeresVariableDecl> = emptyList(),
 ) {
     val requiredFeatures: Set<CeresFeature> = buildSet {
         constraints.mapTo(this) { it.requiredFeature }
         // Only a non-default loss needs the newer wrapper; the old one bakes in Huber(1e-3).
         if (loss != RobustLoss.DEFAULT) add(CeresFeature.AbiV2)
+        if (variables.isNotEmpty()) add(CeresFeature.AbiV3)
+    }
+
+    /** Every free-variable component, summed — the size of the array a solve reports back. */
+    val variableComponentCount: Int = variables.sumOf { it.dimension }
+
+    init {
+        // An expression can only reference a variable by index, so every index a constraint names has
+        // to exist. `CeresProgramBuilder` cannot get this wrong; a hand-assembled program can.
+        constraints.filterIsInstance<CeresExpressionResidual>().forEach { residual ->
+            residual.variables.forEach { ref ->
+                require(ref.index < variables.size && variables[ref.index] == ref.declaration) {
+                    "expression names variable '${ref.name}' at index ${ref.index}, which this " +
+                        "program does not declare"
+                }
+            }
+        }
+        val referenced = constraints.filterIsInstance<CeresExpressionResidual>()
+            .flatMapTo(mutableSetOf()) { residual -> residual.variables.map { it.index } }
+        variables.indices.forEach { index ->
+            require(index in referenced) {
+                "free variable '${variables[index].name}' is declared but no expression reads it; " +
+                    "Ceres would be handed a parameter block nothing can move"
+            }
+        }
     }
 
     fun encodeLegacyBytecode(): DoubleArray {
@@ -1204,6 +1327,14 @@ data class CeresProgram(
             out.op(CeresOpcode.SetLoss)
             out += loss.kind.code.toDouble()
             out += loss.scale
+        }
+        // Declarations come first, and in order: an EXPR references them by index, and both sides
+        // count them in the order they appear.
+        variables.forEach { declaration ->
+            out.op(CeresOpcode.Variable)
+            out += declaration.dimension.toDouble()
+            out += declaration.manifold.code.toDouble()
+            declaration.initial.forEach { out += it }
         }
         constraints.forEach { it.encodeLegacy(out) }
         return out.toDoubleArray()
@@ -1459,11 +1590,97 @@ data class SolveMetrics(
             .map { CeresOpcode.metricNameFor(it.key) to it.value }
 }
 
+/**
+ * What a free variable was solved to.
+ *
+ * The values live in the compiled solver, not in the [PointCloud], so they have to be read back
+ * separately — see [CeresVariableValues].
+ */
+data class CeresVariableValue(
+    val name: String,
+    val manifold: CeresManifold,
+    val values: DoubleArray,
+) {
+    val scalar: Double get() = values.single()
+
+    /** The first three components, when the variable is a direction or a position. */
+    fun vec3(): Vec3 {
+        require(values.size >= 3) { "variable '$name' has ${values.size} component(s), not three" }
+        return Vec3(values[0], values[1], values[2])
+    }
+
+    override fun toString(): String =
+        "$name${if (manifold == CeresManifold.NONE) "" else "/${manifold.name.lowercase()}"}" +
+            values.joinToString(", ", prefix = " [", postfix = "]") { "%.9g".format(it) }
+
+    override fun equals(other: Any?): Boolean =
+        other is CeresVariableValue && name == other.name && manifold == other.manifold &&
+            values.contentEquals(other.values)
+
+    override fun hashCode(): Int = (name.hashCode() * 31 + manifold.hashCode()) * 31 + values.contentHashCode()
+}
+
+/**
+ * The solved values of a program's free variables.
+ *
+ * [blocks] is empty when the flat array the native side reported cannot be cut up according to the
+ * program's own declarations — which happens only if a [RawProgramFragment] smuggled in a declaration
+ * this layer cannot see. [flat] is always exactly what the solver holds, so nothing is hidden.
+ */
+data class CeresVariableValues(
+    val flat: DoubleArray,
+    val blocks: List<CeresVariableValue>,
+) {
+    val size: Int get() = blocks.size
+
+    operator fun get(index: Int): CeresVariableValue = blocks[index]
+
+    /** Every block with this name, in declaration order — names need not be unique. */
+    fun all(name: String): List<CeresVariableValue> = blocks.filter { it.name == name }
+
+    /** The first block with this name. */
+    fun first(name: String): CeresVariableValue =
+        blocks.firstOrNull { it.name == name }
+            ?: error("no free variable named '$name'; this program declares ${blocks.map { it.name }}")
+
+    fun scalar(name: String): Double = first(name).scalar
+
+    fun vec3(name: String): Vec3 = first(name).vec3()
+
+    override fun equals(other: Any?): Boolean =
+        other is CeresVariableValues && flat.contentEquals(other.flat) && blocks == other.blocks
+
+    override fun hashCode(): Int = flat.contentHashCode() * 31 + blocks.hashCode()
+
+    companion object {
+        val EMPTY = CeresVariableValues(DoubleArray(0), emptyList())
+
+        /** Cut a flat native readback into the blocks [program] declared. */
+        internal fun of(program: CeresProgram, flat: DoubleArray): CeresVariableValues {
+            if (flat.size != program.variableComponentCount) {
+                return CeresVariableValues(flat, emptyList())
+            }
+            var at = 0
+            val blocks = program.variables.map { declaration ->
+                val values = flat.copyOfRange(at, at + declaration.dimension)
+                at += declaration.dimension
+                CeresVariableValue(declaration.name, declaration.manifold, values)
+            }
+            return CeresVariableValues(flat, blocks)
+        }
+    }
+}
+
 data class SolveResult(
     val ok: Boolean,
     val points: PointCloud,
     val metrics: SolveMetrics? = null,
     val summary: CeresSolveSummary? = null,
+    /**
+     * The solved free variables, in declaration order. Empty when the program declared none, or on a
+     * backend older than [CeresFeature.AbiV3].
+     */
+    val variables: CeresVariableValues = CeresVariableValues.EMPTY,
 )
 
 interface CompiledCeresSolver : AutoCloseable {

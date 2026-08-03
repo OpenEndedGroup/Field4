@@ -173,7 +173,9 @@ class GeometryModel internal constructor(
         return GeometryModel(
             pointNames = pointNames,
             initialValues = lockedInitialValues,
-            program = CeresProgram(program.constraints + locks),
+            // copy(), not a fresh CeresProgram: the loss and any free-variable declarations belong to
+            // the program being locked, and rebuilding it from its constraints alone drops them.
+            program = program.copy(constraints = program.constraints + locks),
             traces = traces,
             bindings = bindings,
         )

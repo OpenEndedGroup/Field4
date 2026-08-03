@@ -29,6 +29,9 @@ class FfmCeresBackend(
     /** Null on a v1 wrapper. Present means build errors are reportable instead of silent. */
     private val lastErrorHandle: MethodHandle?
 
+    /** Null before v3. Present means an expression's free variables can be read back after a solve. */
+    private val variablesHandle: MethodHandle?
+
     /** The `ken_ceres_jvm_abi_v*` string the loaded library reports. */
     val abiVersion: String
 
@@ -82,7 +85,8 @@ class FfmCeresBackend(
 
         // v2 is detected by symbol, not by trusting the version string: a half-built library that
         // reports v2 but is missing an entry point should fail here, not at the first solve.
-        val v2 = abiVersion == ABI_V2
+        val v3 = abiVersion == ABI_V3
+        val v2 = abiVersion == ABI_V2 || v3
         solve2Handle = if (!v2) null else downcall(
             "ken_ceres_solver_solve2",
             FunctionDescriptor.of(
@@ -106,6 +110,15 @@ class FfmCeresBackend(
             "ken_ceres_solver_last_error",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS),
         )
+        variablesHandle = if (!v3) null else downcall(
+            "ken_ceres_solver_variables",
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS,   // handle
+                ValueLayout.ADDRESS,   // out
+                ValueLayout.JAVA_INT,  // cap
+            ),
+        )
 
         supportedFeatures = buildSet {
             add(CeresFeature.LegacyWasmBytecode)
@@ -113,6 +126,7 @@ class FfmCeresBackend(
             add(CeresFeature.VectorDotProduct)
             add(CeresFeature.NativeGeometry)
             if (v2) add(CeresFeature.AbiV2)
+            if (v3) add(CeresFeature.AbiV3)
         }
     }
 
@@ -128,7 +142,7 @@ class FfmCeresBackend(
 
     private inner class FfmCompiledCeresSolver(
         seedPoints: PointCloud,
-        program: CeresProgram,
+        private val program: CeresProgram,
     ) : ReusableCompiledCeresSolver {
         override val pointCount: Int = seedPoints.pointCount
         override val supportedFeatures: Set<CeresFeature> = this@FfmCeresBackend.supportedFeatures
@@ -178,6 +192,23 @@ class FfmCeresBackend(
                 if (message.isNotEmpty()) {
                     destroyHandle.invokeWithArguments(handle)
                     throw IllegalArgumentException("Ceres program was not fully built: $message")
+                }
+            }
+
+            // Two independent computations of the free-variable layout — this side walks the
+            // declarations, the native side counts the parameter blocks it actually registered — and
+            // they have to agree, or every solved value read back would be attributed to the wrong
+            // name. Skipped when a RawProgramFragment is present, since that can legitimately declare
+            // a variable this layer cannot see.
+            if (variablesHandle != null && program.constraints.none { it is RawProgramFragment }) {
+                val nativeCount = variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
+                if (nativeCount != program.variableComponentCount) {
+                    destroyHandle.invokeWithArguments(handle)
+                    throw IllegalStateException(
+                        "free-variable layout disagrees: this program declares " +
+                            "${program.variableComponentCount} component(s), the compiled problem holds " +
+                            "$nativeCount",
+                    )
                 }
             }
         }
@@ -288,6 +319,7 @@ class FfmCeresBackend(
                     points = PointCloud(solved),
                     metrics = metrics,
                     summary = summary,
+                    variables = readVariables(arena),
                 )
             }
         }
@@ -367,6 +399,25 @@ class FfmCeresBackend(
             return ok != 0
         }
 
+        /**
+         * The solved free variables. They live in the compiled problem rather than in the point
+         * array, so they are a separate read — which also means they are warm-started across solves,
+         * exactly as `PLANAR`'s planes have always been.
+         */
+        private fun readVariables(arena: Arena): CeresVariableValues {
+            val count = when {
+                variablesHandle == null -> 0
+                else -> variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
+            }
+            if (count <= 0) return CeresVariableValues.EMPTY
+            val out = arena.allocate(ValueLayout.JAVA_DOUBLE, count.toLong())
+            val written = variablesHandle!!.invokeWithArguments(handle, out, count) as Int
+            val flat = DoubleArray(minOf(count, written)) { i ->
+                out.getAtIndex(ValueLayout.JAVA_DOUBLE, i.toLong())
+            }
+            return CeresVariableValues.of(program, flat)
+        }
+
         override fun close() {
             if (!closed) {
                 destroyHandle.invokeWithArguments(handle)
@@ -398,7 +449,8 @@ class FfmCeresBackend(
 
 private const val ABI_V1 = "ken_ceres_jvm_abi_v1"
 private const val ABI_V2 = "ken_ceres_jvm_abi_v2"
-private val SUPPORTED_ABIS = setOf(ABI_V1, ABI_V2)
+private const val ABI_V3 = "ken_ceres_jvm_abi_v3"
+private val SUPPORTED_ABIS = setOf(ABI_V1, ABI_V2, ABI_V3)
 
 object CeresNativeLibrary {
     val defaultPath: Path

@@ -8,8 +8,10 @@
 #endif
 #include <ceres/loss_function.h>
 #include <ceres/sphere_manifold.h>
+#include <ceres/manifold.h>
 #include <Eigen/Dense>
 #include <cstdint>
+#include <deque>
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -87,7 +89,11 @@ namespace op
         GAUGE_ROTATION = 67,   // [n, i0..., w]  kill the infinitesimal-rotation null space
 
         // A caller-supplied residual, as a little register machine evaluated in T. See ExprVm.
-        EXPR = 68
+        EXPR = 68,
+
+        // A free variable: dim scalars with an initial value and a manifold, declared once at the
+        // head of the program and referenced by index from EXPR. See VariableBlock.
+        VARIABLE = 69 // [dim, manifold, init0..init_{dim-1}]
     };
 }
 
@@ -103,6 +109,14 @@ namespace op
 // It is a register machine, not a stack machine, for one reason: the caller compiles an expression
 // DAG, and with named destination slots common subexpressions are shared by construction. A stack
 // machine would have to recompute them or juggle DUP/SWAP.
+//
+// It reads two kinds of unknown. PARAM reads a *point*, which is what the caller was solving for
+// anyway. VAR reads a *free variable* — an unknown Ceres solves for that is not a point, declared by
+// op::VARIABLE and optionally living on a manifold. That is not a convenience: PLANAR_HESSE beats
+// PLANAR on the kis-family solids precisely because it introduces a plane as a free variable with its
+// normal on a SphereManifold, and PLANAR_FIT, which is the same objective with the plane eliminated
+// inside the residual, does not converge on kkC at all. Without VAR the general mechanism cannot
+// state the reformulation that has mattered most here.
 //
 // Instructions are four doubles: [op, dst, a, b]. `a` and `b` are slot indices except where noted;
 // unary operators ignore `b`.
@@ -130,8 +144,25 @@ namespace expr
         ATAN2 = 17,
         SQUARE = 18,
         RECIP = 19,
+        VAR = 20,   // a = free-variable index (local to this residual), b = component
     };
 }
+
+// The manifold a free variable lives on. Codes are this ABI's own, never ceres' internal ones.
+namespace manifold
+{
+    enum : int
+    {
+        NONE = 0,       // Euclidean
+        SPHERE = 1,     // unit norm, dim >= 2
+        QUATERNION = 2, // a rotation, w first, dim == 4
+    };
+}
+
+// A bound on one free variable's size. Nothing in this vocabulary needs a hundred-component unknown,
+// and the build pass allocates from this number, so it is checked rather than trusted. Must match
+// CeresVariableDecl.MAX_DIMENSION on the Kotlin side.
+#define KEN_CERES_MAX_VARIABLE_DIM 64
 
 // ============================================================
 // Operand layout
@@ -276,7 +307,12 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
     }
     case op::EXPR:
     {
-        // [nParams, p..., nResiduals, r..., nSlots, nConsts, c..., nInstr, (op,dst,a,b)..., w]
+        // [nParams, p..., nVars, v..., nResiduals, r..., nSlots, nConsts, c..., nInstr,
+        //  (op,dst,a,b)..., w]
+        //
+        // The variable-reference run is present whether or not it is empty, which is why an EXPR
+        // stream is ABI v3 and a v2 wrapper is not allowed to try: it would read that count as the
+        // residual count and desync from there.
         int at = ip;
         auto take = [&](int count) -> bool
         {
@@ -294,6 +330,8 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
         };
         if (!counted_run())      // params
             return -1;
+        if (!counted_run())      // free-variable references
+            return -1;
         if (!counted_run())      // residual slots
             return -1;
         if (!take(1))            // nSlots
@@ -308,6 +346,17 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
         if (!take(1))            // weight
             return -1;
         return at - ip;
+    }
+    case op::VARIABLE:
+    {
+        // [dim, manifold, init0..init_{dim-1}]
+        if (ip >= prog_len)
+            return -1;
+        int dim = (int)program[ip];
+        if (dim < 1 || dim > KEN_CERES_MAX_VARIABLE_DIM)
+            return -1;
+        int span = 2 + dim;
+        return (ip + span <= prog_len) ? span : -1;
     }
     default:
         return -1;
@@ -489,6 +538,9 @@ struct ExprVm
     std::vector<double> constants;
     std::vector<int> residualSlots;
     int slotCount = 0;
+    // The point blocks come first in `p`, then the free-variable blocks, so VAR reads
+    // p[paramCount + a]. Fixed at build time; the evaluator does no arithmetic on it beyond the add.
+    int paramCount = 0;
     double s = 1.0;
 
     int instructionCount() const { return (int)(code.size() / 4); }
@@ -514,6 +566,9 @@ struct ExprVm
                 break;
             case expr::PARAM:
                 slot[dst] = p[a][b];
+                break;
+            case expr::VAR:
+                slot[dst] = p[paramCount + a][b];
                 break;
             case expr::ADD:
                 slot[dst] = slot[a] + slot[b];
@@ -1361,6 +1416,32 @@ struct PlaneVar
     double d = 0.0; // PLANAR_HESSE offset: the plane is { x : x . n == d }
 };
 
+// A free variable: one parameter block Ceres owns, that is not a point.
+//
+// Held in a std::deque rather than a std::vector because the build pass hands &values[0] to Ceres as
+// it goes and there is no pre-count pass for these — a deque never moves an element it already
+// holds, so no reserve() is needed and nobody has to remember one.
+struct VariableBlock
+{
+    std::vector<double> values;
+    int manifold = manifold::NONE;
+};
+
+// The ABI's manifold codes are deliberately its own; ceres' enum values are not stable across
+// versions and were never meant to be an interchange format.
+static ceres::Manifold *make_manifold(int kind, int dim)
+{
+    switch (kind)
+    {
+    case manifold::SPHERE:
+        return new ceres::SphereManifold<ceres::DYNAMIC>(dim);
+    case manifold::QUATERNION:
+        return new ceres::QuaternionManifold();
+    default:
+        return nullptr; // Euclidean: Ceres' own default, no manifold object needed
+    }
+}
+
 struct GroupCost
 {
     int opcode = -1;
@@ -1380,8 +1461,9 @@ struct SolverContext
     std::vector<double> prior_wx, prior_wy, prior_wz; // N
     std::vector<uint8_t> prior_mask;                  // N bitmask X=1,Y=2,Z=4
 
-    std::vector<PlaneVar> planes;  // for PLANAR constraints
-    std::vector<GroupCost> groups; // for per-group metrics
+    std::vector<PlaneVar> planes;      // for PLANAR constraints
+    std::deque<VariableBlock> vars;    // for op::VARIABLE, in declaration order
+    std::vector<GroupCost> groups;     // for per-group metrics
 
     robust::Choice loss;      // set by SET_LOSS; Huber(1e-3) if the program does not say
     std::string build_error;  // empty when the whole program parsed
@@ -1416,6 +1498,7 @@ void SolverContext::build(int Npts, const double *points_in,
     prior_wz.assign(Npts, 1e-6);
     prior_mask.assign(Npts, 0);
     planes.clear();
+    vars.clear();
 
     for (int i = 0; i < 3 * Npts; ++i)
     {
@@ -1447,6 +1530,79 @@ void SolverContext::build(int Npts, const double *points_in,
             loss.scale = program[ip++];
             if (!(loss.scale > 0.0))
                 loss.scale = 1e-3;
+        }
+        break;
+        case op::VARIABLE:
+        {
+            // Declared here, in the counting pass, for the same reason SET_LOSS is: an EXPR anywhere
+            // in the program references a variable by index, and the indices have to exist before the
+            // build pass reaches the first reference. Program-scoped, not positional — which is also
+            // what lets several residual blocks share one variable, the difference between "each face
+            // has its own plane" and "these fifty observations see one camera".
+            int span = operand_span(op::VARIABLE, program, ip, prog_len);
+            if (span < 0)
+            {
+                build_error = "malformed VARIABLE at offset " + std::to_string(ip - 1);
+                ip = prog_len;
+                break;
+            }
+            int dim = (int)program[ip];
+            int kind = (int)program[ip + 1];
+            const double *init = program + ip + 2;
+            ip += span;
+
+            // Validated here rather than at first use: a bad manifold/dimension pairing is a
+            // std::abort inside Ceres, and a non-finite seed is a solve that fails with no
+            // explanation of why.
+            bool finite = true;
+            double norm2 = 0.0;
+            for (int k = 0; k < dim; ++k)
+            {
+                if (!std::isfinite(init[k]))
+                    finite = false;
+                norm2 += init[k] * init[k];
+            }
+            const int index = (int)vars.size();
+            if (!finite)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " has a non-finite initial value";
+                ip = prog_len;
+                break;
+            }
+            if (kind != manifold::NONE && kind != manifold::SPHERE && kind != manifold::QUATERNION)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " names unknown manifold " +
+                              std::to_string(kind);
+                ip = prog_len;
+                break;
+            }
+            if (kind == manifold::SPHERE && dim < 2)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " is on a sphere manifold but has only one component";
+                ip = prog_len;
+                break;
+            }
+            if (kind == manifold::QUATERNION && dim != 4)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " is a quaternion but has " +
+                              std::to_string(dim) + " components";
+                ip = prog_len;
+                break;
+            }
+            if ((kind == manifold::SPHERE || kind == manifold::QUATERNION) && norm2 <= 1e-20)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " is on a curved manifold and cannot start at the origin";
+                ip = prog_len;
+                break;
+            }
+
+            vars.push_back(VariableBlock{});
+            VariableBlock &v = vars.back();
+            v.manifold = kind;
+            v.values.assign(init, init + dim);
+            problem->AddParameterBlock(v.values.data(), dim, make_manifold(kind, dim));
         }
         break;
         case op::PLANAR:
@@ -2437,6 +2593,15 @@ void SolverContext::build(int Npts, const double *points_in,
             ip += 2;
             break;
 
+        case op::VARIABLE:
+        {
+            // Also already consumed — the parameter block exists before this pass starts. Step over
+            // it via the one span table rather than a second copy of the layout.
+            int span = operand_span(op::VARIABLE, program, ip, prog_len);
+            ip = (span < 0) ? prog_len : ip + span;
+        }
+        break;
+
         case op::PLANAR_HESSE:
         {
             if (ip >= prog_len)
@@ -2854,6 +3019,11 @@ void SolverContext::build(int Npts, const double *points_in,
             for (int k = 0; k < nParams; ++k)
                 params[k] = (int)program[ip++];
 
+            int nVars = (int)program[ip++];
+            std::vector<int> varRefs(nVars);
+            for (int k = 0; k < nVars; ++k)
+                varRefs[k] = (int)program[ip++];
+
             int nResiduals = (int)program[ip++];
             std::vector<int> residualSlots(nResiduals);
             for (int k = 0; k < nResiduals; ++k)
@@ -2901,6 +3071,29 @@ void SolverContext::build(int Npts, const double *points_in,
                         ok = false;
                         break;
                     }
+            if (ok && nVars < 0)
+            {
+                fail("negative free-variable count");
+                ok = false;
+            }
+            // Same rule as for points, for the same reason: one residual block, one appearance per
+            // parameter block.
+            std::vector<int> sortedVars = varRefs;
+            std::sort(sortedVars.begin(), sortedVars.end());
+            if (ok && std::adjacent_find(sortedVars.begin(), sortedVars.end()) != sortedVars.end())
+            {
+                fail("the same free variable appears twice in one expression");
+                ok = false;
+            }
+            if (ok)
+                for (int v : varRefs)
+                    if (v < 0 || v >= (int)vars.size())
+                    {
+                        fail("free variable " + std::to_string(v) + " of " + std::to_string(vars.size()) +
+                             " declared");
+                        ok = false;
+                        break;
+                    }
             if (ok)
                 for (int slotIndex : residualSlots)
                     if (slotIndex < 0 || slotIndex >= nSlots)
@@ -2909,12 +3102,32 @@ void SolverContext::build(int Npts, const double *points_in,
                         ok = false;
                         break;
                     }
+            // A variable this residual names but never reads gives Ceres a Jacobian column of exact
+            // zeros for a parameter that provably cannot affect the answer. Caught here so that a
+            // hand-assembled program gets the same refusal the Kotlin compiler already gives.
+            std::vector<char> varRead(nVars > 0 ? nVars : 0, 0);
+            if (ok)
+                for (int k = 0; k < nInstr; ++k)
+                    if (code[4 * k] == expr::VAR)
+                    {
+                        int v = code[4 * k + 2];
+                        if (v >= 0 && v < nVars)
+                            varRead[v] = 1;
+                    }
+            if (ok)
+                for (int v = 0; v < nVars; ++v)
+                    if (!varRead[v])
+                    {
+                        fail("free variable " + std::to_string(v) + " is named but never read");
+                        ok = false;
+                        break;
+                    }
             if (ok)
                 for (int k = 0; k < nInstr; ++k)
                 {
                     const int o = code[4 * k], dst = code[4 * k + 1];
                     const int a = code[4 * k + 2], b = code[4 * k + 3];
-                    if (o < expr::CONST || o > expr::RECIP)
+                    if (o < expr::CONST || o > expr::VAR)
                     {
                         fail("unknown expression op " + std::to_string(o) + " at instruction " + std::to_string(k));
                         ok = false;
@@ -2945,6 +3158,20 @@ void SolverContext::build(int Npts, const double *points_in,
                             break;
                         }
                     }
+                    else if (o == expr::VAR)
+                    {
+                        // The component is checked against *that variable's* declared dimension, not
+                        // against a constant: a scalar offset and a quaternion are both legal blocks.
+                        const int dim = (a >= 0 && a < nVars) ? (int)vars[varRefs[a]].values.size() : 0;
+                        if (a < 0 || a >= nVars || b < 0 || b >= dim)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads free variable " +
+                                 std::to_string(a) + " component " + std::to_string(b) + " of " +
+                                 std::to_string(dim));
+                            ok = false;
+                            break;
+                        }
+                    }
                     else
                     {
                         // Every remaining op reads slots. Binary ops read both; unary ops ignore b,
@@ -2970,6 +3197,7 @@ void SolverContext::build(int Npts, const double *points_in,
                 vm->constants = std::move(constants);
                 vm->residualSlots = residualSlots;
                 vm->slotCount = nSlots;
+                vm->paramCount = nParams;
                 vm->s = std::sqrt(std::max(0.0, w));
 
                 auto *cost = new ceres::DynamicAutoDiffCostFunction<ExprVm>(vm);
@@ -2978,6 +3206,14 @@ void SolverContext::build(int Npts, const double *points_in,
                 {
                     cost->AddParameterBlock(3);
                     blocks.push_back(&pts[3 * id]);
+                }
+                // Free-variable blocks after the point blocks, in the order the caller named them,
+                // which is the order expr::VAR indexes. Their sizes vary; the points' never do.
+                for (int v : varRefs)
+                {
+                    VariableBlock &vb = vars[v];
+                    cost->AddParameterBlock((int)vb.values.size());
+                    blocks.push_back(vb.values.data());
                 }
                 cost->SetNumResiduals(nResiduals);
                 ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
@@ -3359,10 +3595,19 @@ extern "C"
 
     const char *ken_ceres_jvm_abi_version()
     {
-        // v2 adds ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
+        // v2 added ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
         // and the SET_LOSS / EDGE_TANGENCY / TANGENCY_CENTROID / CENTROID / RADIUS_ABOUT_CENTROID
-        // opcodes. Every v1 entry point still behaves exactly as it did.
-        return "ken_ceres_jvm_abi_v2";
+        // opcodes.
+        //
+        // v3 adds op::VARIABLE and expr::VAR — free variables an EXPR residual can read, on a
+        // manifold if it wants one — plus ken_ceres_solver_variables to read their solved values back.
+        // It also *changes* EXPR's operand layout: the variable-reference run is present whether or
+        // not it is empty, so a v2 caller's EXPR stream is not a v3 stream and vice versa. That is why
+        // the version moves rather than the feature being sniffed; a wrapper silently misparsing an
+        // operand stream is the failure mode v2 was built to end.
+        //
+        // Every v1 and v2 entry point still behaves exactly as it did.
+        return "ken_ceres_jvm_abi_v3";
     }
 
     // Empty when the whole program parsed. Non-empty means residuals are MISSING from the problem
@@ -3371,6 +3616,30 @@ extern "C"
     {
         auto *ctx = static_cast<SolverContext *>(handle);
         return (ctx && !ctx->build_error.empty()) ? ctx->build_error.c_str() : "";
+    }
+
+    // The free variables, flattened in declaration order. Returns the total component count whatever
+    // `cap` is, so a caller can size a buffer with (nullptr, 0) and then fill it.
+    int ken_ceres_solver_variables(void *handle, double *out, int cap)
+    {
+        auto *ctx = static_cast<SolverContext *>(handle);
+        if (!ctx)
+            return 0;
+        int total = 0;
+        for (const VariableBlock &v : ctx->vars)
+            total += (int)v.values.size();
+        if (out && cap > 0)
+        {
+            int at = 0;
+            for (const VariableBlock &v : ctx->vars)
+                for (double value : v.values)
+                {
+                    if (at >= cap)
+                        return total;
+                    out[at++] = value;
+                }
+        }
+        return total;
     }
 
     void *ken_ceres_solver_create(const double *points_in, int num_points,

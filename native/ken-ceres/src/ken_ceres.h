@@ -64,7 +64,16 @@ namespace op {
     EDGE_TANGENCY = 61,         // [a, b, radius, w]
     TANGENCY_CENTROID = 62,     // [nEdges, a0,b0, ..., w]
     CENTROID = 63,              // [n, i0..., tx,ty,tz, w]   (n<0 means "all points")
-    RADIUS_ABOUT_CENTROID = 64  // [n, i0..., radius, w]     (n<0 means "all points")
+    RADIUS_ABOUT_CENTROID = 64, // [n, i0..., radius, w]     (n<0 means "all points")
+
+    PLANAR_HESSE = 65,          // [n, i0..., w]  plane as unit normal + scalar offset
+    PLANAR_FIT = 66,            // [n, i0..., w]  best-fit plane inside the residual
+    GAUGE_ROTATION = 67,        // [n, i0..., w]  (n<0 means "all points")
+
+    // A caller-supplied residual as a little register program, and the free variables it may read.
+    // See the ExprVm and VariableBlock notes in ken_ceres.cpp.
+    EXPR = 68,                  // [nP, p..., nV, v..., nR, r..., nSlots, nC, c..., nI, (op,dst,a,b)..., w]
+    VARIABLE = 69               // [dim, manifold, init0..init_{dim-1}]  0=none 1=sphere 2=quaternion
   };
 }
 
@@ -96,6 +105,17 @@ void ken_ceres_solver_destroy(void* handle);
 // "" when the program parsed completely; otherwise a description of where parsing stopped. A
 // non-empty error means residual blocks are missing and a solve answers a different question.
 const char* ken_ceres_solver_last_error(void* handle);
+
+// The current values of the free variables the program declared with op::VARIABLE, concatenated in
+// declaration order.
+//
+// Returns the total number of components the problem holds — always, whatever `cap` is — and writes
+// the first min(cap, total) of them to `out`. Pass out = nullptr, cap = 0 to size a buffer.
+//
+// A solve reports its answer in points_out; a free variable is not a point, so its solved value has
+// to be read from here or the mechanism is write-only. The values are also warm-started across
+// solves, exactly as the PLANAR opcode's planes always have been.
+int ken_ceres_solver_variables(void* handle, double* out, int cap);
 
 int ken_ceres_solver_solve(void* handle,
                            const double* points_in, int num_points,
