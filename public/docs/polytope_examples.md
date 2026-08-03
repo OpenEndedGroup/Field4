@@ -4,9 +4,9 @@
 provenance that survives every operator, and only then coordinates.*
 
 *Every declaration used below is listed, with its KDoc, in the codebase reference:
-[Uncategorised](reference/uncategorised.md). It is filed there rather than under Graphics because
-these source files carry no `@file:CompletionCategory` yet — the pages are grouped by the label the
-source itself declares, and this family has not declared one.*
+[Polytopes](reference/polytopes.md) — the topology, the operator algebra, the three realization
+verbs and the `FLine` adapters, file by file. The nonlinear solver that `relax` and the Ceres
+realization path lean on has its own page, [Solvers](reference/solvers.md).*
 
 Most "polyhedron libraries" are mesh libraries wearing a hat. You get vertices, faces as triangles,
 maybe a normal, and every question you actually want to ask — *which* face is this, where did it
@@ -1348,6 +1348,12 @@ drops the caveats is worse than no page:
 
 ## See also
 
+- [Polytopes reference](reference/polytopes.md) — every public declaration in
+  `afield.stdlib.polytope`, with the KDoc that lives beside it: the operator algebra and its
+  composition rules, the realization verbs and their diagnostics, the attribute and selector algebra,
+  and the `FLine`/`TriMesh` adapters. This page is the tour; that one is the index.
+- [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and
+  `CeresRealization`, plus the expression VM for residuals the vocabulary cannot say.
 - [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the CPU rasteriser
   every gallery on this page is rendered by.
 - [FLine Examples](fline_examples.md) — `threeLines(...)`, `onClick`, `hoverColor` and the rest of

@@ -135,6 +135,26 @@ object StdlibReferenceGenerator {
         "Graphics" to "Everything that ends up as an `FLine`, a colour or a shader: drawing " +
             "helpers, contouring, geometry, colour spaces, keyframing and the small shading " +
             "languages' host side.",
+        "Polytopes" to "Polyhedra as topology first and coordinates second. An abstract incidence " +
+            "complex you can build and validate; the Conway operator algebra — `dual`, `ambo`, " +
+            "`kis`, `truncate`, `gyro` and the composites written over them — that rewrites it, " +
+            "with per-element provenance and lineage carried through every step; and three " +
+            "realization verbs that hand the result coordinates: `realize` for a first embedding, " +
+            "`relax` for one that satisfies constraints you declare, and `canonicalize` for the " +
+            "classical edge-tangent form you would recognise as a solid. Everything is immutable " +
+            "and CPU-only, so a Conway expression evaluates in a box, a test or a headless docs " +
+            "capture equally well; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a " +
+            "`TriMesh`. 4-polytopes, their Schlegel and slice projections, and an OFF importer " +
+            "live here too.",
+        "Solvers" to "Nonlinear least squares, aimed at geometry. A constraint vocabulary — " +
+            "planarity, colinearity, fixed distances, perpendicularity, dihedral angles, panel " +
+            "areas, positions held hard or held softly — assembled into a program, compiled once " +
+            "and solved by Ceres across a foreign-function bridge; the architectural layer above " +
+            "it for gridshells and panel families; and the reuse-oriented half that re-solves the " +
+            "same program every frame while a user drags. Residuals you cannot express in the " +
+            "vocabulary can be written in Kotlin and differentiated exactly by Ceres through the " +
+            "expression VM. These entry points need the native Ceres library present, and nothing " +
+            "here draws — a solve returns points, and drawing them is your business.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
             "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +

@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
@@ -6,6 +8,39 @@ import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.max
 import kotlin.math.sqrt
+
+/**
+ * Canonicalization: the step that turns combinatorially-correct-but-lumpy Conway output into the
+ * solid you were picturing.
+ *
+ * A polyhedron's **canonical form** is the embedding in which every edge is tangent to one common
+ * sphere, the centroid of those tangency points is the origin, and every face is planar. For a convex
+ * polyhedron it exists, and — up to Möbius transformations of the sphere, which the origin-centring
+ * fixes — it is unique. It is also determined by the *combinatorics alone*, which is the fact that
+ * makes this file useful: the coordinates you hand in are only a starting guess, so
+ * `canonicalConway("gD")` and a hand-built pentagonal hexecontahedron converge to the same solid.
+ *
+ * ```kotlin
+ * val solid = canonicalConway("bkD").polyhedron        // notation straight to geometry
+ * val result = cube().ambo().polyhedron.canonicalize() // or repair an embedding you already have
+ * ```
+ *
+ * ## Two iterations, and why there are two
+ *
+ * [CanonicalMethod.RECIPROCAL] alternates polar reciprocation between primal and dual and reaches the
+ * fixed point in tens of steps, but requires every face plane to stay away from the origin.
+ * [CanonicalMethod.LOCAL_RELAXATION] takes small bounded local steps — tangency, recentring,
+ * planarity — and is slow but robust. The default runs the first and polishes with the second. When an
+ * attempt fails, [CanonicalizeOptions.reseed] restarts from coordinates built from the topology alone;
+ * [CanonicalizeResult.reseeded] always says whether that happened.
+ *
+ * ## Read the diagnostics
+ *
+ * Nothing here claims success. [CanonicalizeResult.converged] only means the iteration stopped
+ * moving; [CanonicalDiagnostics] is the evidence, reported before and after, and a run that ends with
+ * a large `tangencyRadiusSpread` has failed and says so. The floor on all of it is about `1e-7`
+ * relative, because [Realization3] stores single-precision coordinates.
+ */
 
 /**
  * How close an embedding is to the canonical form, in the canonical form's own terms.
@@ -20,24 +55,70 @@ import kotlin.math.sqrt
  * as relative errors after a canonical run.
  */
 data class CanonicalDiagnostics(
+    /**
+     * Smallest distance from the origin to any edge's nearest point. Zero when there are no edges.
+     */
     val tangencyRadiusMin: Double,
+    /**
+     * Largest such distance. Compare with [tangencyRadiusMin] through [tangencyRadiusSpread] rather than
+     * directly, since both scale with the object.
+     */
     val tangencyRadiusMax: Double,
+    /**
+     * Mean tangency radius — the midsphere's radius, once the spread is small enough for the word to mean
+     * anything. `canonicalize` normalises this to 1.
+     */
     val tangencyRadiusMean: Double,
     /** `(max - min) / mean`: zero exactly when every edge touches one common sphere. */
     val tangencyRadiusSpread: Double,
     /** Distance from the origin to the centroid of the edge tangency points. */
     val tangencyCentroidOffset: Double,
+    /**
+     * The worst single corner-to-plane distance, over every corner of every face, against that face's own
+     * best-fit plane. A length, so read it against [tangencyRadiusMean].
+     */
     val maxFacePlanarityError: Double,
+    /**
+     * Root-mean-square of the same corner-to-plane distances. Says whether the worst corner is an outlier
+     * or the whole object is bent.
+     */
     val facePlanarityRmsError: Double,
+    /**
+     * Smallest interior dihedral angle, in radians, measured between adjacent faces' unit normals.
+     *
+     * Only edges with exactly two incident faces are measured; the rest are skipped silently, so on a
+     * non-manifold complex this summarises a subset. Zero when nothing qualified.
+     */
     val dihedralAngleMin: Double,
+    /**
+     * Largest interior dihedral angle, in radians.
+     */
     val dihedralAngleMax: Double,
+    /**
+     * Mean interior dihedral angle, in radians, over the measured edges.
+     */
     val dihedralAngleMean: Double,
     /** `max - min` over edges, in radians. Small means one Archimedean-looking solid, not a lump. */
     val dihedralAngleSpread: Double,
+    /**
+     * Faces whose best-fit plane has no usable normal — collapsed, or all corners colinear.
+     *
+     * These are reported rather than excluded: their corners still contribute to the planarity figures and
+     * their meaningless normal still enters the dihedral angles of their edges. A non-empty list means the
+     * other numbers on this record are not to be trusted.
+     */
     val degenerateFaces: List<ElementId>,
 )
 
-/** Which iteration drives the embedding toward the canonical conditions. */
+/**
+ * Which iteration drives the embedding toward the canonical conditions.
+ *
+ * `RECIPROCAL` reciprocates primal against dual — tens of steps, exact fixed point, and it needs every
+ * face plane to stay clear of the origin, which is true of a convex solid and can fail spectacularly
+ * for one that is not. `LOCAL_RELAXATION` nudges tangency radii, recentres and planarizes — hundreds to
+ * thousands of small bounded steps, slow but graceful where reciprocation blows up.
+ * `RECIPROCAL_THEN_LOCAL` does the first to get close and the second to polish, and is the default.
+ */
 enum class CanonicalMethod {
     /**
      * Dual reciprocation. Each step replaces the dual's vertices by the poles of the primal's face
@@ -72,15 +153,37 @@ enum class CanonicalMethod {
  * tolerance far below that measures float rounding, not the algorithm.
  */
 data class CanonicalizeOptions(
+    /**
+     * Which iteration to run. Changing this is the first thing to try on an input that will not converge.
+     */
     val method: CanonicalMethod = CanonicalMethod.RECIPROCAL_THEN_LOCAL,
+    /**
+     * Cap on the reciprocal phase. Generous: convergence is usually two orders of magnitude faster, and a
+     * run that needs all 600 has almost certainly diverged and been rolled back.
+     */
     val reciprocalIterations: Int = 600,
+    /**
+     * Cap on the local relaxation phase when it is doing the real work rather than polishing.
+     */
     val maxIterations: Int = 2000,
     /** Local steps run after a *converged* reciprocal phase, purely to polish planarity. */
     val polishIterations: Int = 64,
+    /**
+     * Fraction of each local correction applied per relaxation step, in (0, 1]. See this class's own note:
+     * larger is faster and oscillates on high-degree Conway outputs.
+     */
     val stability: Double = 0.1,
     /** Convergence test on the largest single-vertex movement in one iteration. */
     val movementTolerance: Double = 1e-10,
+    /**
+     * Include the step that pulls each face's corners onto that face's best-fit plane. Turning both this
+     * and [tangentify] off is rejected, since it would leave nothing to iterate.
+     */
     val planarize: Boolean = true,
+    /**
+     * Include the step that drives every edge's tangency radius toward one, and the recentring that goes
+     * with it.
+     */
     val tangentify: Boolean = true,
     /**
      * The canonical form of a polyhedron is determined by its *combinatorics* — the supplied
@@ -117,15 +220,38 @@ data class CanonicalizeOptions(
  * exist at all.
  */
 data class CanonicalizeResult(
+    /**
+     * The answer: same topology, same attributes, new coordinates, gauged if a gauge was asked for.
+     */
     val polyhedron: PolyhedralObject,
     val initialDiagnostics: CanonicalDiagnostics,
     val finalDiagnostics: CanonicalDiagnostics,
+    /**
+     * [reciprocalIterations] plus [relaxationIterations] — total steps actually taken, across both phases
+     * and for whichever attempt was kept.
+     */
     val iterations: Int,
+    /**
+     * The iteration stopped moving. **Not** a claim that the result is canonical — read
+     * [finalDiagnostics] for that.
+     */
     val converged: Boolean,
     /** Largest single-vertex movement in the final iteration. */
     val finalMovement: Double,
+    /**
+     * Why the iteration stopped, in words, for a log or an error message. Not a stable enumeration; do not
+     * branch on it.
+     */
     val reason: String,
+    /**
+     * Steps spent reciprocating. Zero for [CanonicalMethod.LOCAL_RELAXATION], and zero when the topology
+     * offered no dual structure to reciprocate through.
+     */
     val reciprocalIterations: Int = 0,
+    /**
+     * Steps spent in local relaxation — including the short polish pass after a converged reciprocal
+     * phase.
+     */
     val relaxationIterations: Int = 0,
     /** True when the supplied embedding failed and the run restarted from the topology alone. */
     val reseeded: Boolean = false,

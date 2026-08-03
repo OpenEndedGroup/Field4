@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.graphics.FLine
@@ -8,17 +10,67 @@ import afield.stdlib.Vec3
 import kotlin.math.sqrt
 import kotlin.math.abs
 
+/**
+ * The bridge from a polytope to the things Field can actually draw: [FLine]s and a [TriMesh].
+ *
+ * Three adapters, and the choice between them is about what you want to *do* with the result rather
+ * than how it looks. [PolyhedralObject.toFaceFLines] gives one closed line per face, which is what
+ * you want if faces are going to be styled, picked or filled independently. [PolyhedralObject.triangulate]
+ * gives a flat-normal [TriMesh] with the provenance arrays needed to get from a triangle or a render
+ * vertex back to the element it came from; [PolyhedralObject.toTriMesh] is the same thing when that
+ * provenance can be thrown away. [Polytope4.toEdgeFLines] projects a 4-polytope to a wireframe.
+ *
+ * ## Attributes become FLine properties
+ *
+ * Every face line receives its face's attributes copied straight into `line.properties`, plus
+ * [POLYTOPE_FACE_ID_PROPERTY] and [POLYTOPE_FACE_RANK_PROPERTY]. So an attribute named `color` set
+ * on a face during a Conway chain arrives as Field's own `color` property with no translation step —
+ * which is the point of [PolytopeAttributes] being typed as `Any`, and also means a badly-named
+ * attribute can quietly overwrite a drawing property.
+ *
+ * ## What these will not do
+ *
+ * Every entry point requires a realization and validates the topology first, so an abstract polytope
+ * throws rather than drawing nothing. Faces with holes are out of reach: the topology stores one
+ * boundary cycle per face, and while [FloatEarcut] itself understands hole indices there is nowhere
+ * to put them. A face with zero area throws [DegenerateFaceGeometryException] rather than emitting a
+ * triangle with a garbage normal.
+ */
+
+/**
+ * The [FLine] property every adapter here stamps with the source element's raw id.
+ *
+ * Read it back to go from a picked line to the element it came from. `toEdgeFLines` uses the same key
+ * for an *edge*, not only a face, so pair it with [POLYTOPE_FACE_RANK_PROPERTY] before assuming a rank.
+ */
 const val POLYTOPE_FACE_ID_PROPERTY = "polytopeFaceId"
+/**
+ * The rank of the element a line came from: 2 for a face, 1 for a projected 4-polytope edge.
+ */
 const val POLYTOPE_FACE_RANK_PROPERTY = "polytopeFaceRank"
 
+/**
+ * A face whose 3D realization has no usable normal — zero area, or coordinates that went non-finite.
+ *
+ * Thrown by [PolyhedralObject.faceNormal] and therefore by triangulation. It almost always means an
+ * upstream realization collapsed rather than that the topology is wrong, so check
+ * `geometryDiagnostics` before suspecting the combinatorics.
+ */
 class DegenerateFaceGeometryException(val face: ElementId) : IllegalArgumentException(
     "face ${face.value} has zero area in its 3D realization"
 )
 
 /**
- * One closed, outward-wound [FLine] per polygonal face. Separate lines are the primary adapter so
- * callers can style, select, or fill faces independently. Field's normal `filled` and `stroked`
- * properties can be set in [configure].
+ * One closed, outward-wound [FLine] per polygonal face.
+ *
+ * Separate lines rather than one multi-contour line, so that callers can style, select or fill faces
+ * independently; Field's ordinary `filled` and `stroked` properties are set in [configure]. Each
+ * line's properties already carry the face's own attributes plus [POLYTOPE_FACE_ID_PROPERTY] and
+ * [POLYTOPE_FACE_RANK_PROPERTY] by the time [configure] runs, so [configure] can read them and can
+ * also overwrite them.
+ *
+ * Requires a realization and validates the topology first (without the manifold check), so a broken
+ * complex throws rather than drawing a subset.
  */
 fun PolyhedralObject.toFaceFLines(
     configure: (face: Element, line: FLine) -> Unit = { _, _ -> },
@@ -180,13 +232,23 @@ class TriangulatedGeometry internal constructor(
     private val storedTriangleAttributes = triangleAttributes.map { it.toMap() }
     private val storedVertexAttributes = vertexAttributes.map { it.toMap() }
 
+    /**
+     * Triangles in [mesh]; the length of [triangleFaceIds] and of [triangleAttributes].
+     */
     val triangleCount: Int get() = mesh.triangleCount
     val triangleFaceIds: IntArray get() = storedTriangleFaceIds.copyOf()
     val vertexElementIds: IntArray get() = storedVertexElementIds.copyOf()
     val triangleAttributes: List<Map<String, Any?>> get() = storedTriangleAttributes.map { it.toMap() }
     val vertexAttributes: List<Map<String, Any?>> get() = storedVertexAttributes.map { it.toMap() }
 
+    /**
+     * The polygonal face a triangle was cut from. The inverse of triangulation, one triangle at a time.
+     */
     fun sourceFace(triangle: Int): ElementId = ElementId(storedTriangleFaceIds[triangle])
+    /**
+     * The topology vertex a render vertex duplicates. Several render vertices share one of these whenever
+     * a polyhedron is creased at that corner.
+     */
     fun sourceVertex(renderVertex: Int): ElementId = ElementId(storedVertexElementIds[renderVertex])
 }
 
@@ -250,6 +312,9 @@ fun PolyhedralObject.triangulate(
 fun PolyhedralObject.toTriMesh(triangulator: FaceTriangulator = EarcutFaceTriangulator): TriMesh =
     triangulate(triangulator).mesh
 
+/**
+ * The [FLine] property `Polytope4.toCellEdgeFLines` stamps with the cell it was asked about.
+ */
 const val POLYTOPE_CELL_ID_PROPERTY = "polytopeCellId"
 
 /**
@@ -282,8 +347,13 @@ fun Polytope4.toEdgeFLines(
 }
 
 /**
- * The edges of one cell of a [Polytope4], projected — the way to make a cell readable inside the
+ * The edges of one cell of a [Polytope4], projected — the way to make one cell readable inside the
  * projected whole. [cell] must be a rank-3 element.
+ *
+ * This projects the *whole* polytope and then keeps the cell's edges, so it costs a full projection
+ * per call and [configure] is invoked for every edge in the object, including the ones that are then
+ * discarded. Filter inside [configure] on [POLYTOPE_FACE_ID_PROPERTY] if that matters, or call
+ * [Polytope4.toEdgeFLines] once and partition the result yourself when highlighting several cells.
  */
 fun Polytope4.toCellEdgeFLines(
     cell: ElementId,

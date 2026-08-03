@@ -27,16 +27,14 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Polytopes: reference/polytopes.md
+      - Solvers: reference/solvers.md
       - Imaging: reference/imaging.md
       - ALife: reference/alife.md
       - Function: reference/function.md
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md
       - Workspace: reference/workspace.md
-      # Files carrying no `@file:CompletionCategory` land here. Today that is the whole of
-      # `afield.stdlib.polytope`; a one-line file annotation on those sources would move them
-      # into a real category and this page would disappear on the next regeneration.
-      - Uncategorised: reference/uncategorised.md
     - Linear Algebra: linear_algebra.md
     - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
