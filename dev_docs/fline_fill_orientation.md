@@ -3,8 +3,15 @@
 *2026-08-02.*
 
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
-`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1001`). It flattens the line into
-rings, works out which rings are holes, and hands the result to `FloatEarcut`.
+`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014`). It flattens the line into
+rings and hands them to `PlanarTessellation`
+(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:163`), which groups them into planes,
+works out which rings are holes in which, and hands each group to `FloatEarcut`.
+
+*Updated 2026-08-03: the second half of this document — "The limit that remains" and "A convention
+note" — described what the 2026-08-02 branch left undone. Both are now done, and those two sections
+say what happened instead. The history above them is unchanged, because it is still what went
+wrong.*
 
 `e4b309379` ("feat(polytope): add composable Conway geometry core") changed that function for every
 filled FLine in Field, not just polytope faces: it added a **dominant-Newell-axis projection**, so
@@ -77,7 +84,8 @@ Worth recording, because it is the obvious suspicion and it is false.
 
 The mirror flips the sign of `area2D`, and `area2D` is what the code uses to pick between candidate
 parent rings. It does **not** corrupt anything, because `tessellate` only ever consumes the signed
-area through `abs()` (`FLine.kt:1185`), and point-in-polygon containment is mirror invariant. So
+area through `abs()` (`PlanarTessellation.kt:381`), and point-in-polygon containment is mirror
+invariant. So
 triangle counts, total areas and nesting parity were already invariant under rigid rotation before
 this branch, and still are. Measured, not reasoned: `TessellationOrientationOracleTest`'s area,
 nesting and disjoint-hole tests were green on the unfixed code in all eight orientations, and only
@@ -129,43 +137,146 @@ the commands that regenerate either half, are in
 
 ## Coverage
 
-Before this branch, **no** test exercised `FLine.tessellate` with holes at all, and only
+Before the 2026-08-02 branch, **no** test exercised `FLine.tessellate` with holes at all, and only
 `PolytopeRealizationAndTessellationTest.kt:61` exercised it off the XY plane — by triangle count
-alone. That is the gap that let this land.
+alone. That is the gap that let the facing defect land.
 
-The invariant is now pinned by `src/jvmTest/kotlin/afield/graphics/`:
+The invariants are now pinned by `src/jvmTest/kotlin/afield/graphics/`:
 
 * `TessellationOrientationOracleTest` — one polygon (with holes, nested holes, disjoint holes,
   concave, oppositely wound subpaths) tessellated in XY and in the *same polygon rigidly rotated*
   into XZ, YZ and two oblique planes, in both hemispheres of every principal axis. Same triangle
   count, same area, same nesting parity, every triangle wound with its own polygon's normal.
 * `TessellationRingRobustnessTest` — the sanitiser, plus collinear, all-identical, zero-normal,
-  self-intersecting, self-touching and project-to-coincident rings.
-* `TessellationFacingRenderTest` — the rendered assertion described above.
+  self-intersecting, self-touching and project-to-coincident rings; and the multi-plane cases at the
+  `FLine` level.
+* `PlanarTessellationClusteringTest` — the four clustering decisions, one test each, described below.
+* `TessellationFacingRenderTest` — the rendered assertions, both pairs.
+* `src/jvmTest/kotlin/afield/stdlib/polytope/EarcutFaceTriangulatorHolesTest` — holes through the
+  polytope adapter, in every orientation.
 
-## The limit that remains
+## The limit that used to remain
 
-**One FLine, one projection axis.** A single FLine holding filled subpaths in two *different* planes
-gets one axis, chosen by the strongest ring, and the other subpath projects onto a line and does not
-fill. `TessellationRingRobustnessTest.oneFLineSpanningTwoPlanesFillsOnlyTheDominantOne`
-characterises it rather than asserting an ideal, so a future move to per-group projection has
-something to move.
+*Was: "one FLine, one projection axis." Fixed 2026-08-03.*
 
-This is not a regression: before `e4b309379` the axis was permanently `(x, y)` and the non-XY
-subpath vanished just the same. What changed is only *which* of the two survives. It is also not the
-common case — `PolyhedralObject.toFaceFLines` (`polytope/FieldAdapters.kt:23`) deliberately emits
-**one FLine per face**, precisely so that faces can be styled and filled independently.
+A single FLine holding filled subpaths in two different planes used to get one axis, chosen by the
+strongest ring, and every other subpath projected onto a line and did not fill.
+`TessellationRingRobustnessTest.oneFLineSpanningTwoPlanesFillsOnlyTheDominantOne` characterised that
+rather than asserting an ideal, "so a future move to per-group projection has something to move". It
+is now `oneFLineSpanningTwoPlanesNowFillsBoth`.
 
-The reason it was not fixed here: hole classification would then have to be scoped to a plane as
-well as to a projection, and "which rings are coplanar" is a clustering decision with a tolerance in
-it — a different, larger design question than the handedness of a fixed frame.
+What made this more than a change of projection is the sentence the old version of this section ended
+on: hole classification has to be scoped to a plane as well as to a projection, because "ring A is a
+hole in ring B" is measured on projected coordinates. It only *means* something when A and B are
+flattened in the same frame, and it is only *true* when they lie in the same surface. So the rings
+are clustered into planes first (`PlanarTessellation.kt:195`), and everything downstream — frame,
+nesting, hole parity, hemisphere — is scoped to a cluster.
 
-## A convention note
+### The clustering rule
 
-`EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:96`) solves the same problem the other way
-round: it projects on the **mirror** pair for the y-dominant case (`:126`) and then flips each
-returned triangle back against the 3D face normal (`:154`). Both land in the same place, and both are
-correct, but they are not the same convention. Worth knowing if the two are ever merged: the
-after-the-fact flip is only safe because `EarcutFaceTriangulator` has no hole support (`:93`) — a
-hole ring's classification depends on the projected frame's handedness, so a hole-carrying version
-would have to fix the frame, as `FLine.tessellate` now does.
+A ring joins a plane when **both** hold:
+
+* **parallel** — the sine of the angle between the ring's unit Newell normal and the plane's is at
+  most `Coplanarity.sineOfAngle`, default `1e-3`, about 0.06 degrees. Unsigned, so **antiparallel
+  counts as parallel**: a hole is normally wound against the ring it is a hole in, so if this test
+  were signed, every hole in Field would stop being a hole at once.
+* **in the plane** — *every* point of the ring lies within `Coplanarity.offsetFraction` of the plane,
+  measured as a fraction (default `1e-3`) of the diagonal of the bounding box of every ring in the
+  input.
+
+The tolerance is therefore **relative, never an absolute epsilon**. That is the point: a glyph
+authored in screen pixels and the same glyph in unit-cube coordinates are the same shape, and an
+absolute epsilon would say they are not, silently changing its mind somewhere between the two.
+
+Three more decisions, each of which someone will eventually want to know the reason for:
+
+**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:216`), not the
+nearest. Planes are grown greedily and a plane is represented by the ring that *seeded* it, never by
+a running average of its members. Nearest-plane needs a global pass over every candidate; "first"
+is the only tie-break that stays stable as rings are appended; and seed-not-average is what stops a
+chain of pairwise-near-coplanar rings from transitively collapsing into one plane. It does mean the
+answer depends on ring order to the extent that earlier rings seed. That is the price of not doing a
+global fit, and it is stable and predictable.
+
+**A degenerate ring has no plane.** A ring whose Newell normal is zero — collinear, all-identical, a
+bowtie — cannot vote on a plane and is not allowed to seed one. Those rings are placed *after* every
+ring that has a normal (`PlanarTessellation.kt:238`), by the distance test alone; one that matches
+nothing gets a plane to itself, where it fills nothing. This reproduces the single-axis code's
+behaviour exactly: its `projectionAxis` kept its `(x, y)` default when no ring had a normal, and an
+all-degenerate FLine still comes out the same way.
+
+**A "hole" ring whose plane disagrees with its outer ring is not a hole.** It lands in a different
+cluster, is never classified against that outer ring, and fills as the separate surface it is. This
+is the decision worth defending, and the counterfactual makes the case better than the argument
+does. Take a 100x100 square in XY and a parallelogram tilted 45 degrees whose shadow on `(x, y)` is a
+40x40 square inside it. Under one shared frame the parallelogram was subtracted — and because its
+boundary leaves the square's plane, the triangles bridging out to it climbed out too, so a figure
+whose flat interpretation has area 8400 came back measuring **12276**. The old shared frame did not
+merely misclassify the ring; it emitted a surface lying in no plane at all.
+(`TessellationRingRobustnessTest.aRingInADifferentPlaneIsNotAHoleEvenWhenItProjectsInsideOne`.)
+
+The old behaviour stays *measurable* rather than merely described: `Coplanarity.SINGLE_PLANE` puts
+every ring in one plane whatever its geometry says, which is exactly what the single-axis code did.
+Every "before" claim in this document is asserted against it, including the rendered one.
+
+## The convention note, resolved
+
+*Was: two implementations, two conventions, and hole support impossible in one of them. Unified
+2026-08-03.*
+
+`EarcutFaceTriangulator` used to solve the same problem the other way round: it projected on the
+**mirror** pair for the y-dominant case and then flipped each returned triangle back against the 3D
+face normal. Both landed in the same place and both were correct, and the old version of this section
+noted that the after-the-fact flip "is only safe because `EarcutFaceTriangulator` has no hole
+support".
+
+That is worth restating more strongly, because it is the reason the two were merged. "No hole
+support" was not a missing feature that someone had not got round to. `FloatEarcut` decides which of
+the rings it is handed is the *outer* one from the sign of its projected area (`FloatEarcut.kt:705`),
+so a mirrored frame inverts the hole-versus-outer decision **before any triangle exists to flip**.
+The convention and the absence of holes were the same fact. Fixing the frame is what removes both.
+
+So there is now one implementation — `PlanarTessellation` — and two thin adapters over it:
+
+| | |
+|---|---|
+| `FLine.tessellate` (`FLine.kt:1014`) | flattens and sanitises, then packs each returned polygon's own vertices |
+| `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:122`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
+
+`EarcutFaceTriangulator` therefore *gained* hole support, through a new
+`HoleAwareFaceTriangulator` (`polytope/FieldAdapters.kt:97`) that adds
+`triangulate(outer, holes, realization)` without disturbing the existing `fun interface
+FaceTriangulator`. Holes are still not reachable from `PolyhedralObject.triangulate`, because a
+`faceCycle` is a single cycle and the topology has no notion of a hole in a face; the capability is
+for callers that know their own boundary rings, and `EarcutFaceTriangulatorHolesTest` is what makes
+it a capability rather than a claim.
+
+**This is not the "do not unify the independent flatteners" case**, and the resemblance is close
+enough to be worth saying out loud. That standing note is about curve *flattening* — `PathFlattener`
+and friends, turning a cubic into line segments, where the implementations differ in tolerance model
+and in what they are allowed to allocate. Nothing here touches that: `FLine.tessellate` still calls
+`uniform_linearize`, `EarcutFaceTriangulator` still reads a realized face cycle, and neither
+flattener moved. What was unified is the triangulation of an already-flat ring set, where one of the
+two copies could not be fixed in place.
+
+## And a dead loop in `FloatEarcut`
+
+Found by the first two-hole test that had ever been written against it, and unrelated to any
+projection.
+
+`findHoleBridge` (`FloatEarcut.kt:586`) implements David Eberly's bridge search: cast a ray left from
+the hole's leftmost point, take the intersected edge, and then — this is the second half — walk the
+outer ring looking for vertices inside the triangle formed by hole point, intersection and endpoint,
+choosing the one at the minimum angle. Upstream that walk is a `do … while (p !== stop)` starting at
+`p = m` with `stop = m`. Field's port had it as `while (p !== stop) { … }`, so with `p` and `stop`
+both `m` **the body never executed once**. The refinement pass was dead code.
+
+The symptom needed two holes in a diagonal arrangement to show: a 100x100 square with a 20x20 hole
+low-left and a 30x30 hole high-right came back as 13 triangles instead of 14, with overlapping
+bridges, measuring 9000 instead of 8700. One hole was always fine, which is why nothing noticed —
+`FLine.tessellate` had no hole test at all before 2026-08-02, and typography extrusion
+(`typography_field.kt:342`) is the only other caller. A letter with two counters (`B`, `%`, `8`) was
+in the blast radius.
+
+Fixed at `FloatEarcut.kt:629` by restoring the `do … while`. All 1283 `jvmTest` cases stay green, and
+the cube render is byte-identical before and after, so nothing single-holed changed.

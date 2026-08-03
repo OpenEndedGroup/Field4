@@ -4,6 +4,7 @@ import afield.stdlib.Vec3
 import afield.util.PngEncoder
 import java.io.File
 import java.nio.file.Files
+import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -94,6 +95,37 @@ class TessellationFacingRenderTest {
 
     // ------------------------------------------------------------------------------------ render
 
+    /**
+     * The same three camera-facing faces of that cube, in **one** FLine: six subpaths, three outer
+     * rings in three mutually perpendicular planes with a hole in each.
+     *
+     * This is the case the 2026-08-02 branch could not draw. One FLine got one projection axis,
+     * chosen from the strongest ring; here the three outer rings are congruent unit squares, so the
+     * first of them won and the other two projected onto a line and vanished. Per-plane grouping
+     * gives each of the three its own frame — and, because a ring is only a hole in a ring it is
+     * coplanar with, each hole stays with the face it belongs to instead of being classified against
+     * whichever face happened to win the axis.
+     *
+     * There is no separate triangle-facing convention to get right here: the three faces have
+     * normals `+x`, `+y` and `+z`, so this scene exercises three different dominant axes at once.
+     */
+    private fun threeFacesInOneLine(): FLine {
+        val h = 0.5f
+        val f = FLine()
+        listOf(
+            Triple(Vec3(h, -h, h), Vec3(0f, 0f, -1f), Vec3(0f, 1f, 0f)),   // +x
+            Triple(Vec3(-h, h, h), Vec3(1f, 0f, 0f), Vec3(0f, 0f, -1f)),   // +y
+            Triple(Vec3(-h, -h, h), Vec3(1f, 0f, 0f), Vec3(0f, 1f, 0f))    // +z
+        ).forEach { (o, u, v) ->
+            face(o, u, v).forEach { ring ->
+                f.moveTo(ring[0])
+                ring.drop(1).forEach { f.lineTo(it) }
+                f.close()
+            }
+        }
+        return f
+    }
+
     private class Tri(val a: Vec3, val b: Vec3, val c: Vec3, val faceIndex: Int)
 
     private fun triangles(): List<Tri> {
@@ -106,6 +138,34 @@ class TessellationFacingRenderTest {
                     out.add(Tri(v(index[i]), v(index[i + 1]), v(index[i + 2]), faceIndex))
                     i += 3
                 }
+            }
+        }
+        return out
+    }
+
+    /**
+     * Triangles of [threeFacesInOneLine], tagged by which plane they landed in rather than by which
+     * subpath they came from — because with one FLine there is no per-subpath callback to read the
+     * tag off, and "which plane did this triangle end up in?" is the question anyway.
+     */
+    private fun multiPlaneTriangles(coplanarity: Coplanarity): List<Tri> {
+        val h = 0.5f
+        val out = ArrayList<Tri>()
+        threeFacesInOneLine().tessellate(4, coplanarity) { verts, index ->
+            var i = 0
+            while (i + 2 < index.size) {
+                fun v(k: Int) = Vec3(verts[3 * k], verts[3 * k + 1], verts[3 * k + 2])
+                val a = v(index[i])
+                val b = v(index[i + 1])
+                val c = v(index[i + 2])
+                val plane = when {
+                    abs(a.x - h) < 1e-4f && abs(b.x - h) < 1e-4f && abs(c.x - h) < 1e-4f -> 0
+                    abs(a.y - h) < 1e-4f && abs(b.y - h) < 1e-4f && abs(c.y - h) < 1e-4f -> 2
+                    abs(a.z - h) < 1e-4f && abs(b.z - h) < 1e-4f && abs(c.z - h) < 1e-4f -> 4
+                    else -> -1
+                }
+                if (plane >= 0) out.add(Tri(a, b, c, plane))
+                i += 3
             }
         }
         return out
@@ -234,13 +294,7 @@ class TessellationFacingRenderTest {
     @Test
     fun theCubeRendersAsThreeLitFacesWithHoles() {
         val (pixels, cover) = render(triangles())
-
-        val out = System.getenv("AFIELD_TESSELLATION_RENDER_OUT")
-            ?: System.getProperty("afield.tessellation.render.out")
-        val dir = if (out != null) File(out).also { it.mkdirs() }
-        else Files.createTempDirectory("tessellate-facing").toFile()
-        val png = File(dir, "cube_faces.png")
-        png.writeBytes(PngEncoder.encode(pixels, width, height))
+        val png = write(pixels, "cube_faces.png")
 
         // eye is at (+x, +y, +z), so faces 0 (+x), 2 (+y) and 4 (+z) face the camera
         val visible = listOf(0, 2, 4)
@@ -261,5 +315,84 @@ class TessellationFacingRenderTest {
             "the holes and the surround should leave plenty of background, only $background px. $message"
         )
         println(message)
+    }
+
+    // -------------------------------------------------------------------------------- multi-plane
+
+    /**
+     * The pixel proof for per-plane grouping: **one** FLine, three faces, three planes, three holes.
+     *
+     * The counterfactual is in the same test rather than in a git checkout, because
+     * [Coplanarity.SINGLE_PLANE] reproduces the one-axis-per-FLine behaviour exactly — every ring in
+     * one plane whatever its geometry says. So both halves of the before/after pair come out of one
+     * run, and the "before" cannot rot away from the code the way a reverted-file recipe can.
+     *
+     * Before: one face. The three outer rings are congruent unit squares, the first of them wins the
+     * single axis, and the other two project onto a line. After: all three, each with its hole, each
+     * wound outward and therefore surviving back-face culling.
+     */
+    @Test
+    fun oneFLineSpanningThreePlanesRendersAsThreeLitFacesWithHoles() {
+        val tris = multiPlaneTriangles(Coplanarity.DEFAULT)
+        val (pixels, cover) = render(tris)
+        val png = write(pixels, "multi_plane_fline.png")
+        val message = "wrote $png; coverage by plane = ${cover.toList()}"
+
+        val normals = expectedNormals()
+        val wrong = tris.filter { dot(triNormal(it), normals[it.faceIndex]) < 0.99f }
+        assertTrue(
+            wrong.isEmpty(),
+            "${wrong.size} triangles are wound against their own plane: " +
+                    "${wrong.map { it.faceIndex }.distinct().sorted()}. $message"
+        )
+        listOf(0, 2, 4).forEach {
+            assertTrue(
+                cover[it] > 4000,
+                "plane $it should be a large lit quad but covers ${cover[it]}px. $message"
+            )
+        }
+        val background = pixels.count { it == 0xFF101418.toInt() }
+        assertTrue(
+            background > width * height / 3,
+            "the holes and the surround should leave plenty of background, only $background px. $message"
+        )
+
+        // The strongest form of the claim: with three of the cube's six faces culled anyway, one
+        // FLine spanning three planes must rasterise to *exactly* the same frame as six independent
+        // FLines, one per face. Not "similar coverage" — the same pixels.
+        val (reference, referenceCover) = render(triangles())
+        assertTrue(
+            pixels.contentEquals(reference),
+            "one multi-plane FLine should render pixel-for-pixel like six single-plane ones. " +
+                    "$message, six-FLine coverage = ${referenceCover.toList()}"
+        )
+        println(message)
+    }
+
+    /**
+     * The same scene forced into one plane — the behaviour before per-plane grouping — for the
+     * "before" half of the committed image pair. At least one of the three faces has to be missing;
+     * which of the two losers survives as a sliver is a projected-boundary coin flip and is not
+     * asserted.
+     */
+    @Test
+    fun forcedIntoOnePlaneTheSameFLineLosesFaces() {
+        val (pixels, cover) = render(multiPlaneTriangles(Coplanarity.SINGLE_PLANE))
+        val png = write(pixels, "multi_plane_fline_single_plane.png")
+        val message = "wrote $png; coverage by plane = ${cover.toList()}"
+        assertTrue(
+            listOf(0, 2, 4).count { cover[it] == 0 } >= 2,
+            "one projection axis should have lost two of the three faces. $message"
+        )
+        println(message)
+    }
+
+    /** Renders go to a temp directory unless `AFIELD_TESSELLATION_RENDER_OUT` says otherwise. */
+    private fun write(pixels: IntArray, name: String): File {
+        val out = System.getenv("AFIELD_TESSELLATION_RENDER_OUT")
+            ?: System.getProperty("afield.tessellation.render.out")
+        val dir = if (out != null) File(out).also { it.mkdirs() }
+        else Files.createTempDirectory("tessellate-facing").toFile()
+        return File(dir, name).also { it.writeBytes(PngEncoder.encode(pixels, width, height)) }
     }
 }
