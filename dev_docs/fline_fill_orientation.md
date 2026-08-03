@@ -259,6 +259,43 @@ and in what they are allowed to allocate. Nothing here touches that: `FLine.tess
 flattener moved. What was unified is the triangulation of an already-flat ring set, where one of the
 two copies could not be fixed in place.
 
+## And the client-side half
+
+*Was: a naive JS fan. Fixed 2026-08-03, in the same pass.*
+
+`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:850`, inside
+`appendFilledMesh` — is only half the story for the three.js viewer, because `editable = true`
+**re-triangulates client-side**. It has to: the user drags points, and the fill has to follow between
+server round-trips.
+
+It did that with a naive fan over each subpath's boundary. No holes, no projection, no concavity. So
+the same filled FLine came back with different holes *and* different facing depending on a flag that
+is supposed to be about editing — a hole ring drawn as a solid quad on top of its own face, a face in
+a non-dominant plane drawn solid where the server dropped it, a concave ring filled outside itself.
+
+`tessellateCoplanarGroups` in `threejs_viewer.html` is now the same rule, transliterated: Newell
+normals, greedy clustering on the same two dimensionless tolerances, the right-handed projected pair,
+per-group hemisphere, nesting inside a plane, and `THREE.ShapeUtils.triangulateShape` — upstream
+earcut, so the winding normalisation the frame compensates for is the same property. One fill mesh per
+*polygon* rather than per subpath, so a hole ring contributes to its outer ring's mesh and gets none of
+its own.
+
+Being written twice is a real cost. The reason to pay it, rather than shipping the server's
+triangulation in the payload, is that a dragged point must not wait for a round-trip to re-fill. The
+seam is guarded two ways: `ThreeJsEditableFillParityTest` asserts that both modes report the same
+`meta.triangles` for the same line — which is what goes wrong first when one side is changed and the
+other is not — and there is a real browser before/after pair in
+[`agents/artifacts/tessellate_facing/multi_plane_fill_demo/`](agents/artifacts/tessellate_facing/multi_plane_fill_demo/README.md).
+
+That count found a second thing on the way: `meta.triangles` for editable mode was itself a fan
+estimate, `boundaryPoints - 2` per subpath, so the viewer's own HUD said `12 tri` for a line that the
+same viewer with `editable = false` called `24`. It runs `FLine.tessellate` now.
+
+Left alone deliberately: the selection and hit-test overlay still fans each subpath
+(`buildFaceGeometry`). That is a *picking* proxy rather than a rendering of the fill, and a hole ring
+is a legitimate thing to want to click on, so per-subpath is the right shape there. It is imprecise
+for a concave ring — a separate question about hit testing, not about fills.
+
 ## And a dead loop in `FloatEarcut`
 
 Found by the first two-hole test that had ever been written against it, and unrelated to any
