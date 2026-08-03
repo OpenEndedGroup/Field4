@@ -181,6 +181,37 @@ class PolytopeCanonicalRealizationTest {
         assertEquals(listOf(12, 20, 60), hexecontahedron.vertexClasses.map { it.size }.sorted())
     }
 
+    /**
+     * The refinement stops when the class count stops growing. This asserts the two halves of that
+     * claim separately: the round count is bounded by the rounds the shape actually needs — a
+     * handful — and not by the `elements + 2` worst-case budget, and stopping there costs nothing,
+     * because spending the whole budget lands on the same partition.
+     */
+    @Test
+    fun combinatorialOrbitRefinementStopsAsSoonAsTheClassCountIsStable() {
+        // gD is the largest of the seeds here: 92 vertices, 150 edges, 60 faces.
+        for (expression in listOf("C", "tC", "eC", "gD", "bC")) {
+            val topology = conway(expression).polyhedron.topology
+            val elements = (0..2).sumOf { topology.elements(it).size }
+            val budget = elements + 2
+
+            val early = topology.refineCombinatorialOrbits()
+            val full = topology.refineCombinatorialOrbits(stopWhenStable = false)
+            val report = "$expression: $elements elements, stopped after ${early.rounds} of $budget rounds"
+
+            // Bounded by the rounds needed, not by the budget: colour refinement on these shapes
+            // reaches its fixed point almost immediately, and the seed colouring does much of it.
+            // Measured: 1 round for C, 2 for tC and bC, 3 for eC, 4 for gD.
+            assertTrue(early.rounds in 1..8, report)
+            assertTrue(early.rounds < budget, report)
+            assertEquals(budget, full.rounds, "the unbounded run should spend the whole budget")
+
+            // ...and the early stop is not an approximation: same classes, same order.
+            assertEquals(full.orbits, early.orbits, report)
+            assertEquals(early.orbits, topology.combinatorialOrbits(), report)
+        }
+    }
+
     @Test
     fun canonicalFormRespectsTheCombinatorialOrbits() {
         for (expression in listOf("C", "tC", "gD", "eC", "bC")) {

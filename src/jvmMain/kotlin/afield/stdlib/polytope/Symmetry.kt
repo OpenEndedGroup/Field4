@@ -104,11 +104,22 @@ fun CombinatorialOrbits.summary() = CombinatorialOrbitsSummary(
  *
  * Ranks above 2 take no part: on a rank-3 object the whole-body element is not classified, and its
  * incidence contributes the same unknown colour to every face, which is harmless because it is
- * uniform. The refinement runs a fixed `elements + 2` rounds rather than stopping the moment the
- * partition is stable, so on a large topology this is not cheap — but the answer depends only on the
- * topology, so cache it rather than calling it per frame.
+ * uniform. The refinement stops the round the partition stops getting finer, which on the shapes this
+ * vocabulary makes is a handful of rounds and not the `elements + 2` worst case — but the answer
+ * depends only on the topology, so cache it rather than calling it per frame.
  */
-fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
+fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits = refineCombinatorialOrbits().orbits
+
+/**
+ * [combinatorialOrbits] together with the number of refinement rounds it actually ran, so a test can
+ * assert the early stop really fires. Pass `stopWhenStable = false` to spend the whole `elements + 2`
+ * budget, which is only useful for showing that stopping early costs nothing.
+ */
+internal data class CombinatorialOrbitsRefinement(val orbits: CombinatorialOrbits, val rounds: Int)
+
+internal fun PolytopeTopology.refineCombinatorialOrbits(
+    stopWhenStable: Boolean = true,
+): CombinatorialOrbitsRefinement {
     val ranks = 0..minOf(2, rank)
     val elements = ranks.flatMap { elements(it) }
     // Seed on rank and local degree: two elements of different rank or valence can never be
@@ -119,7 +130,11 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
     }
 
     var classes = colour.values.distinct().size
-    repeat(elements.size + 2) {
+    var rounds = 0
+    // Each round's colour string carries the previous round's colour as its prefix, so the partition
+    // can only get finer. A round that does not add a class has therefore reached the fixed point and
+    // every later round would just renumber it: stop.
+    for (round in 1..elements.size + 2) {
         val next = elements.associate { element ->
             val below = incidentDown(element.id).map { colour[ElementId(it)] ?: "?" }.sorted()
             val above = incidentUp(element.id).map { colour[ElementId(it)] ?: "?" }.sorted()
@@ -130,7 +145,8 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
         val renumbered = next.mapValues { (_, value) -> canonical.getValue(value) }
         val count = renumbered.values.distinct().size
         colour = renumbered
-        if (count == classes) return@repeat
+        rounds = round
+        if (count == classes && stopWhenStable) break
         classes = count
     }
 
@@ -140,7 +156,7 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
         .map { group -> group.map { it.id }.sortedBy { it.value } }
         .sortedBy { it.first().value }
 
-    return CombinatorialOrbits(classesOf(0), classesOf(1), classesOf(2))
+    return CombinatorialOrbitsRefinement(CombinatorialOrbits(classesOf(0), classesOf(1), classesOf(2)), rounds)
 }
 
 /**
