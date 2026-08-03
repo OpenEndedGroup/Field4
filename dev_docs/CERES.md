@@ -173,7 +173,7 @@ iterations, linear solver, threads, three tolerances, non-monotonic steps, progr
 flat summary array, surfaced as `CeresSolveSummary`:
 
 ```
-convergence in 14 iter (12 ok, 2 rejected), cost 1.004 -> 3.177e-07, 4.7 ms, SPARSE_NORMAL_CHOLESKY
+convergence in 6 iter (6 ok, 0 rejected), cost 1.004 -> 1.573e-29, 6.0 ms, SPARSE_NORMAL_CHOLESKY
 ```
 
 That summary immediately earned its keep by catching a bug in its own consumer:
@@ -210,7 +210,7 @@ same `RealizationSolveResult`, and applies the same `RigidGauge`, so the two are
 comparable. `CeresRealization.unsupported(plan)` names any constraint family that cannot cross over
 (currently only the symmetry-orbit one).
 
-`./gradlew ceresPolytopeComparison -PceresLibrary=…` runs both on a ladder of Conway solids.
+`./gradlew ceresPolytopeComparison` runs both on a ladder of Conway solids.
 
 ### Do they agree?
 
@@ -220,29 +220,38 @@ the mapping, including the weight-squaring, is right.
 
 ### Where is the crossover?
 
-Best-of-7 after warmup, one thread, `SPARSE_NORMAL_CHOLESKY`:
+Best-of-7 after warmup, one thread, `SPARSE_NORMAL_CHOLESKY`, on the v3 redistributable wrapper:
 
 | solid | V / E / F | plan | Kotlin | Ceres | |
 |---|---|---|---|---|---|
-| `C` cube | 8 / 12 / 6 | canonical | 3.3 ms | 1.3 ms | ×2.6 |
-| `aC` cuboctahedron | 12 / 24 / 14 | canonical | 0.55 ms | 1.13 ms | ×0.5 |
-| `tC` truncated cube | 24 / 36 / 14 | canonical | 5.2 ms | 2.1 ms | ×2.4 |
-| `tI` truncated icosahedron | 60 / 90 / 32 | canonical | 11.9 ms | 4.3 ms | ×2.8 |
-| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 540–1500 ms | 6.1 ms | **×90–250** |
+| `C` cube | 8 / 12 / 6 | canonical | 3.8 ms | 1.5 ms | ×2.5 |
+| `aC` cuboctahedron | 12 / 24 / 14 | canonical | 0.63 ms | 1.3 ms | ×0.5 |
+| `kC` kis cube | 14 / 36 / 24 | canonical | 2.4 ms | 1.9 ms | ×1.3 |
+| `tC` truncated cube | 24 / 36 / 14 | canonical | 3.0 ms | 2.2 ms | ×1.4 |
+| `tI` truncated icosahedron | 60 / 90 / 32 | canonical | 13.3 ms | 8.0 ms | ×1.7 |
+| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 580–1700 ms | 6.0–6.7 ms | **×90–280** |
+
+Several of these differ from an earlier draft's, and the reason is not the wrapper: the canonical
+plan now carries `MinEdgeLengthConstraint` itself, so both realizers minimise a function with one
+more family in it — 108 more residuals on `kkC` — than the numbers first published here. Where that
+costs iterations it costs time, and it is the Ceres column that moved most: `tI` went from 4.3 ms to
+8.0 ms. Every timing in this document taken against the canonical plan moved when that landed; the
+ones below have been re-measured with it.
 
 The `kkC` row is not just a speed difference — the Kotlin solver never converges there, so Ceres is
 two orders of magnitude faster *and* four orders of magnitude more accurate.
 
-That row is also the one honest caveat in this table. The Ceres side is stable to within 3% across
-runs (6.0–6.2 ms, always 12 iterations); the Kotlin side varies between 540 ms and 1500 ms for the
-same best-of-7 measurement, which is why the ratio is quoted as a range rather than the single
-number an earlier draft of this document claimed. The instability is presumably allocation: `relax`
-builds a dense `114 x 114` normal matrix and a full finite-difference Jacobian on each of its 200
-iterations. Do not read fine distinctions into the smaller multipliers above either — anything
-between ×0.5 and ×3 here is within the noise of the Kotlin baseline.
+That row is also the one honest caveat in this table. The Ceres side is stable to within about 10%
+across runs (6.0–6.7 ms, always 12 iterations); the Kotlin side varies between 580 ms and 1700 ms for
+the same best-of-7 measurement, which is why the ratio is quoted as a range rather than the single
+number an earlier draft claimed. The instability is presumably allocation: `relax` builds a dense
+`114 x 114` normal matrix and a full finite-difference Jacobian on each of its 200 iterations. Do not
+read fine distinctions into the smaller multipliers above either — anything between ×0.5 and ×3 here
+is within the noise of the Kotlin baseline.
 
-Below a couple of dozen vertices the Kotlin solver still wins: per-call FFM marshalling and rebuilding the
-`ceres::Problem` cost more than the whole dense solve. The crossover is driven by *residual count*
+On the small solids the two are within a factor of three of each other, and `aC` — the one row where
+Kotlin is clearly ahead — is the case that converges in a single iteration, where per-call FFM
+marshalling and rebuilding the `ceres::Problem` cost more than the whole dense solve. The crossover is driven by *residual count*
 rather than vertex count — `kkC` has only 38 vertices but 108 edges and 72 faces, and the Kotlin
 path pays `2 · 3V` residual evaluations per iteration for its finite-difference Jacobian plus an
 `O(m · (3V)²)` dense normal-matrix build.
@@ -250,11 +259,19 @@ path pays `2 · 3V` residual evaluations per iteration for its finite-difference
 Isolating the sparse linear solver alone — same problem, same iteration count, same answer, only
 `linear_solver_type` changed:
 
-| solid | DENSE_QR | SPARSE_NORMAL_CHOLESKY |
-|---|---|---|
-| `kC` | 243 ms | 68 ms |
-| `tI` | 110 ms | 4.7 ms |
-| `kkC` | 3937 ms | 64 ms |
+| solid | iterations | DENSE_QR | SPARSE_NORMAL_CHOLESKY | |
+|---|---|---|---|---|
+| `kC` | 7 | 5.6 ms | 2.8 ms | ×2.0 |
+| `tI` | 6 | 31.8 ms | 9.4 ms | ×3.4 |
+| `kkC` | 12 | 85.9 ms | 7.3 ms | ×11.8 |
+
+An earlier draft had this at ×3.6 to ×61, on numbers in the hundreds and thousands of milliseconds.
+Most of those cells are an order of magnitude smaller now, for a reason that has nothing to do with
+the linear solver: they were measured while `PLANAR` was still the default parameterisation, where
+`kkC` spent 201 iterations failing to converge. Against 12 converging iterations of `PLANAR_HESSE`
+there is simply far less linear algebra to do, and the sparse advantage is ×2 to ×12 rather than ×61
+— still the argument that decides the build, and no longer one that needs a bad parameterisation to
+look impressive.
 
 This is the part the old committed v1 dylib could not do at all — it had every sparse backend off —
 and it was the strongest single argument for fixing the build.
@@ -321,9 +338,9 @@ scalar. Three effective parameters per face, no null direction, no stabilisers n
 
 | `kkC` canonical | params | iterations | termination | tangency RMS | |
 |---|---|---|---|---|---|
-| Kotlin `relax` | — | 200 | max iterations | 6.4e-04 | 540–1500 ms |
-| Ceres `origin_normal` | 474 | 201 | no convergence | 6.8e-03 | 58 ms |
-| Ceres **`hesse`** | 330 | **12** | **convergence** | **3.2e-08** | **6 ms** |
+| Kotlin `relax` | — | 200 | max iterations | 6.4e-04 | 580–1700 ms |
+| Ceres `origin_normal` | 474 | 201 | no convergence | 1.2e-03 | 86 ms |
+| Ceres **`hesse`** | 330 | **12** | **convergence** | **3.2e-08** | **6.1 ms** |
 
 Two things are worth noticing in the full sweep (`./gradlew ceresPlaneFormulationStudy`). The
 rotation gauge — three residuals holding `sum(ref_i x p_i)` at zero — rescues `kC` under the *old*
@@ -394,7 +411,7 @@ orders of magnitude better than the existing iteration, and sane where it produc
    Huber on user-dragged priors and plain L2 on hard geometry in the same problem.
 6. ~~**Auxiliary variables from Kotlin.**~~ Done — see "Free variables, and the manifolds they live
    on" below. What is left of it: `PLANAR_HESSE` itself could now be *deleted* and replaced by the
-   Kotlin expression, which reaches the same answer to `1e-15` at ×1.4 the cost. That is a real
+   Kotlin expression, which reaches the same answer to `1e-15` at ×1.1–2.1 the cost. That is a real
    choice rather than an obvious one, and it is the same question item 2 asks.
 7. **Nothing can be held constant.** Bounds are exposed now; `SetParameterBlockConstant` is not.
    There is still no way to say "this point is data, not an unknown" except a very stiff
@@ -603,13 +620,17 @@ interpreted register program with hash-consed free variables reaches the same so
 template.
 
 `kkT`, `kkO` and `kkI` — the three that reach `1e-4` rather than machine precision — reach the same
-cost and the same canonical diagnostics and land *somewhere else*, and not even at a congruent solid
-(a pose-independent fingerprint of sorted radii and edge lengths differs by 5e-2 / 8e-3 / 7e-3).
+cost and the same canonical diagnostics and land *somewhere else*: coordinates differ by more than a
+unit, and on two of the three not even at a congruent solid (a pose-independent fingerprint of sorted
+radii and edge lengths differs by 5e-2 on `kkT` and 7e-3 on `kkI`; `kkO` does land congruent, to
+3e-06, by luck of which point in the valley each run stops at).
 **That is a fact about the objective, not about the VM.** At final cost `~2e-07` its minimum is not
 isolated, so where in the valley a run stops is decided by rounding in the seventh digit, and a
-template and an interpreter round differently. The evidence that it is not a VM defect is the table
-above: whenever the problem is well-conditioned enough to converge in a dozen iterations the two
-agree to `1e-15`. The expression's answer is very slightly *better* on all three.
+template and an interpreter round differently — on `kkO` they even terminate differently, the opcode
+converging in 77 iterations where the expression runs the full 501 to the same cost and the same
+spread. The evidence that it is not a VM defect is the table above: whenever the problem is
+well-conditioned enough to converge in a dozen iterations the two agree to `1e-15`. The expression
+reaches a slightly lower final cost on all three, and a slightly better tangency spread on two.
 
 **Three fits with closed-form answers and no point unknowns at all.**
 
@@ -635,15 +656,18 @@ different sizes and a manifold in the mix rather than a uniform run of 3-vectors
 
 | solid | faces | `PLANAR_HESSE` opcode | expression | |
 |---|---|---|---|---|
-| `kC` | 24 | 0.53 ms (6 iter) | 1.04 ms (6 iter) | ×2.0 |
-| `tI` | 32 | 2.03 ms (4 iter) | 3.12 ms (4 iter) | ×1.5 |
-| `kkC` | 72 | 2.42 ms (7 iter) | 3.35 ms (7 iter) | ×1.4 |
-| `kkD` | 180 | 9.25 ms (8 iter) | 11.61 ms (8 iter) | ×1.3 |
+| `kC` | 24 | 0.52 ms (6 iter) | 1.08 ms (6 iter) | ×2.1 |
+| `tI` | 32 | 4.31 ms (4 iter) | 4.83 ms (4 iter) | ×1.1 |
+| `kkC` | 72 | 2.89 ms (7 iter) | 3.66 ms (7 iter) | ×1.3 |
+| `kkD` | 180 | 23.03 ms (8 iter) | 25.24 ms (8 iter) | ×1.1 |
 
-The ratio *improves* with size, for the same reason the `DISTANCE` row does: the interpreter overhead
-is per residual evaluation and the linear solve is not. So free variables cost the same flat ~1.5×
-the rest of the VM does, against a choice of parameterisation that on `kkC` is the difference between
-12 converging iterations and 201 non-converging ones.
+The ratio falls with size, for the same reason the `DISTANCE` row does: the interpreter overhead is
+per residual evaluation and the linear solve is not. It is not monotone across the middle — `tI`'s 32
+faces sit at ×1.1 and `kkC`'s 72 at ×1.3, because the two differ in iteration count and in how much
+of the solve is linear algebra — but the shape is clear: ×2.1 on the smallest problem here, ×1.1 on
+the largest. So free variables cost roughly what the rest of the VM does, against a choice of
+parameterisation that on `kkC` is the difference between 12 converging iterations and 201
+non-converging ones.
 
 ### Try it
 
