@@ -4,11 +4,14 @@ import afield.logger.lprintln
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.Clip
 import com.microsoft.playwright.options.ScreenshotType
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
@@ -17,13 +20,16 @@ import java.awt.image.Raster
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
+import java.util.UUID
 import javax.imageio.ImageIO
 
 private const val SCREENSHOT_PREP_TIMEOUT_MS = 12_000
 private const val SCREENSHOT_POLL_INTERVAL_MS = 60
 private const val SCREENSHOT_OUTPUT_GRACE_MS = 2_500
 private const val PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS = 15_000.0
+private const val PLAYWRIGHT_VIDEO_FRAME_TIMEOUT_MS = 120_000.0
 
 data class UniformEdgeTrimResult(
     val trimmed: Boolean,
@@ -1133,7 +1139,18 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
         )
     }
 
-    val clip = prepResponse.clip
+    val clip = if (request.frameSynchronous && request.editorOnly) {
+        // A content-trimmed Monaco clip changes height as output view-zones arrive. Measuring it
+        // after the warm-up run therefore makes the movie geometry depend on websocket/compiler
+        // timing even when every simulated frame is identical. Frame-synchronous editor movies
+        // use the fixed screenshot-layout container instead; changing output can change pixels,
+        // but it cannot change the raster dimensions or crop between runs.
+        withContext(playwrightDispatcher) {
+            stableEditorVideoClip(page, request.padding)
+        } ?: prepResponse.clip
+    } else {
+        prepResponse.clip
+    }
     if (request.editorOnly && clip == null) {
         return failedAgentVideo(
             info = info, kind = kind, path = request.path, uid = request.uid,
@@ -1145,13 +1162,32 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
     outputPath.parent?.let { Files.createDirectories(it) }
 
     return runCatching {
-        val result = recordScreencastToMp4(
-            page = page,
-            outputPath = outputPath,
-            clip = clip,
-            durationSec = request.durationSec,
-            fps = request.fps
-        )
+        val result = if (request.frameSynchronous) {
+            recordFrameSynchronousToMp4(
+                info = info,
+                page = page,
+                outputPath = outputPath,
+                clip = clip,
+                durationSec = request.durationSec,
+                fps = request.fps,
+                prepare = videoCapturePreparation(
+                    info = info,
+                    page = page,
+                    uid = request.uid,
+                    property = request.property,
+                    restartTarget = request.restartTarget
+                )
+            )
+        } else {
+            require(!request.restartTarget) { "restartTarget requires frameSynchronous capture" }
+            recordScreencastToMp4(
+                page = page,
+                outputPath = outputPath,
+                clip = clip,
+                durationSec = request.durationSec,
+                fps = request.fps
+            )
+        }
         AgentVideoResponse(
             ok = true,
             kind = kind,
@@ -1214,13 +1250,32 @@ suspend fun captureBoxVideo(info: SessionInformation, request: AgentBoxVideo): A
     outputPath.parent?.let { Files.createDirectories(it) }
 
     return runCatching {
-        val result = recordScreencastToMp4(
-            page = page,
-            outputPath = outputPath,
-            clip = clip,
-            durationSec = request.durationSec,
-            fps = request.fps
-        )
+        val result = if (request.frameSynchronous) {
+            recordFrameSynchronousToMp4(
+                info = info,
+                page = page,
+                outputPath = outputPath,
+                clip = clip,
+                durationSec = request.durationSec,
+                fps = request.fps,
+                prepare = videoCapturePreparation(
+                    info = info,
+                    page = page,
+                    uid = request.uid,
+                    property = request.property,
+                    restartTarget = request.restartTarget
+                )
+            )
+        } else {
+            require(!request.restartTarget) { "restartTarget requires frameSynchronous capture" }
+            recordScreencastToMp4(
+                page = page,
+                outputPath = outputPath,
+                clip = clip,
+                durationSec = request.durationSec,
+                fps = request.fps
+            )
+        }
         AgentVideoResponse(
             ok = true,
             kind = "box",
@@ -1245,6 +1300,152 @@ suspend fun captureBoxVideo(info: SessionInformation, request: AgentBoxVideo): A
 }
 
 private data class ScreencastResult(val frameCount: Int)
+
+private fun stableEditorVideoClip(page: Page, padding: Double): Rect? {
+    val raw = page.evaluate(
+        """
+        padding => {
+          const element = document.querySelector('.monaco-editor-container');
+          if (!element) return null;
+          const rect = element.getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return null;
+          const pad = Math.max(0, Number(padding) || 0);
+          const viewportLeft = window.scrollX;
+          const viewportTop = window.scrollY;
+          const viewportRight = viewportLeft + window.innerWidth;
+          const viewportBottom = viewportTop + window.innerHeight;
+          const left = Math.max(viewportLeft, rect.left + window.scrollX - pad);
+          const top = Math.max(viewportTop, rect.top + window.scrollY - pad);
+          const right = Math.min(viewportRight, rect.right + window.scrollX + pad);
+          const bottom = Math.min(viewportBottom, rect.bottom + window.scrollY + pad);
+          if (right <= left || bottom <= top) return null;
+          return { x: left, y: top, w: right - left, h: bottom - top };
+        }
+        """.trimIndent(),
+        padding
+    )
+    val map = raw as? Map<*, *> ?: return null
+    return Rect(
+        x = (map["x"] as? Number)?.toDouble() ?: return null,
+        y = (map["y"] as? Number)?.toDouble() ?: return null,
+        w = (map["w"] as? Number)?.toDouble() ?: return null,
+        h = (map["h"] as? Number)?.toDouble() ?: return null,
+    )
+}
+
+private data class FrameCaptureGate(
+    val ready: () -> Boolean,
+    val resetAtFirstBoundary: suspend () -> Unit = {},
+)
+
+internal fun videoFrameCount(durationSec: Double, fps: Int): Int =
+    maxOf(1, kotlin.math.ceil(durationSec * fps.coerceAtLeast(1)).toInt())
+
+private suspend fun clearVideoPresentation(
+    info: SessionInformation,
+    page: Page,
+    uid: String?,
+) {
+    withContext(playwrightDispatcher) {
+        // A launch can enter its first frame after sending println/marker output but before the
+        // browser has handled that websocket message. Clear only after all pre-boundary output
+        // has crossed the browser paint ACK, or it can arrive just after the clear and move the
+        // first visible output to a host-load-dependent movie frame.
+        withTimeout(30_000) {
+            while (!info.outputsDelivered()) delay(1)
+        }
+        page.evaluate(
+            """uid => {
+                const clear = window.clearEditorOutputsForBox;
+                if (uid && typeof clear === 'function') clear(uid);
+                const clearDisplays = window.clearOutputAreasForBox;
+                if (uid && typeof clearDisplays === 'function') clearDisplays(uid);
+                const refreshMarkers = window.refreshMarkerDecorations;
+                if (typeof refreshMarkers === 'function') refreshMarkers();
+            }""".trimIndent(),
+            uid
+        )
+        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+    }
+}
+
+/**
+ * Return a callback that starts (or simply admits) frame-synchronous capture.
+ *
+ * Docs captures prepare their clip against the already-running box, then restart the
+ * same property only after the runloop capture hook is installed. The readiness
+ * predicate keeps compilation/setup frames out of the movie and opens on the first
+ * active frame of the relaunched value.
+ */
+private fun videoCapturePreparation(
+    info: SessionInformation,
+    page: Page,
+    uid: String?,
+    property: String,
+    restartTarget: Boolean,
+): suspend () -> FrameCaptureGate = {
+    if (!restartTarget) {
+        val ready: () -> Boolean = { true }
+        FrameCaptureGate(
+            ready = ready,
+            resetAtFirstBoundary = {
+                // Multi-box captures may deliberately keep an ambient driver alive. They still
+                // need a clean presentation at movie frame zero; otherwise a warm-up card or
+                // marker history becomes the first frame and varies with setup duration.
+                uid?.let(info.boxes::get)?.let { target ->
+                    target.markers.clear()
+                }
+                clearVideoPresentation(info, page, uid)
+            }
+        )
+    } else {
+        require(uid != null) { "restartTarget requires a box uid" }
+        val target = info.boxes[uid]
+            ?: throw IllegalArgumentException("No box '$uid' in ${info.documentName}")
+        val code = target.getPropertyRaw(property) as? String
+            ?: throw IllegalArgumentException("Box '$uid' has no string property '$property'")
+        require(code.isNotBlank()) { "Box '$uid' property '$property' is empty" }
+
+        target.ke.stop(target)
+        // The preparation run exists only to compile, size the editor/output surface and establish
+        // the clip. A real restart must not inherit its marker histories or rendered editor output:
+        // __m(...) markers deliberately outlive an ordinary relaunch, which otherwise makes a docs
+        // movie begin with a machine-speed-dependent amount of pre-capture state.
+        target.markers.clear()
+        clearVideoPresentation(info, page, uid)
+        val stoppedGeneration = target.runGeneration["default"] ?: -1
+        target.ke.launchAll(
+            target,
+            Execute(
+                uid = uid,
+                type = property,
+                line = 0,
+                code = code,
+                singleLine = false,
+                property = property,
+                strand = "default"
+            ),
+            code = code,
+            strand = "default",
+            reply = {}
+        )
+
+        val ready: () -> Boolean = {
+            val state = target.currentRunningStates["default"]
+            state != null && state.watermark > stoppedGeneration && state.mode != "launching"
+        }
+        FrameCaptureGate(
+            ready = ready,
+            resetAtFirstBoundary = {
+                // Stop/relaunch becomes observable to the browser asynchronously. Reset once more
+                // at the exact first active runloop boundary: the old launch can no longer publish,
+                // and the new launch has not yet accumulated a machine-speed-dependent history.
+                target.markers.clear()
+                clearVideoPresentation(info, page, uid)
+            }
+        )
+    }
+}
 
 /**
  * Encode an ordered list of JPEG frames to an H.264/MP4 file via ffmpeg.
@@ -1367,7 +1568,7 @@ private fun recordScreencastToMp4(
 ): ScreencastResult {
     val frames = mutableListOf<ByteArray>()
     val safeFps = fps.coerceAtLeast(1)
-    val targetFrames = maxOf(1, kotlin.math.ceil(durationSec * safeFps).toInt())
+    val targetFrames = videoFrameCount(durationSec, safeFps)
     val frameIntervalNs = (1_000_000_000.0 / safeFps.toDouble()).toLong().coerceAtLeast(1L)
 
     repeat(targetFrames) { index ->
@@ -1387,6 +1588,120 @@ private fun recordScreencastToMp4(
 
     lprintln("info,video", "Captured ${frames.size} sampled frames in ${durationSec}s")
     encodeJpegFramesToMp4(frames, outputPath, fps)
+    return ScreencastResult(frameCount = frames.size)
+}
+
+/**
+ * Capture exactly one JPEG after each completed Field runloop frame.
+ *
+ * The runloop is deliberately blocked while Playwright waits for the browser to
+ * paint and takes the screenshot. Capture speed therefore changes build time only:
+ * the simulation cannot advance a second frame before the current one has entered
+ * the ordered JPEG stream. [prepare] runs after the hook is live; docs use it to
+ * relaunch the target and return a predicate that admits the first active frame.
+ */
+private suspend fun recordFrameSynchronousToMp4(
+    info: SessionInformation,
+    page: Page,
+    outputPath: Path,
+    clip: Rect?,
+    durationSec: Double,
+    fps: Int,
+    prepare: suspend () -> FrameCaptureGate,
+): ScreencastResult {
+    val frames = mutableListOf<ByteArray>()
+    val safeFps = fps.coerceAtLeast(1)
+    val targetFrames = videoFrameCount(durationSec, safeFps)
+    val installed = CompletableDeferred<Unit>()
+    val completed = CompletableDeferred<Unit>()
+    val gate = AtomicReference(FrameCaptureGate(ready = { false }))
+    var resetAtFirstBoundary = false
+    val hookName = "docs-video-${UUID.randomUUID()}"
+    val readyDeadline = AtomicReference(Long.MAX_VALUE)
+    val clockToken = AnimationClock.beginFrameIndexed(safeFps)
+
+    val screenshotOptions = Page.ScreenshotOptions()
+        .setType(ScreenshotType.JPEG)
+        .setQuality(90)
+        .setTimeout(PLAYWRIGHT_VIDEO_FRAME_TIMEOUT_MS)
+    if (clip != null) {
+        screenshotOptions.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
+    }
+    withContext(playwrightDispatcher) {
+        page.evaluate(
+            """() => {
+                let style = document.getElementById('field-frame-sync-stability');
+                if (!style) {
+                    style = document.createElement('style');
+                    style.id = 'field-frame-sync-stability';
+                    style.textContent =
+                        '*, *::before, *::after { animation: none !important; transition: none !important; }' +
+                        '.field-webgl-background { display: none !important; }' +
+                        '.monaco-editor .cursor { visibility: hidden !important; }' +
+                        '.monaco-editor textarea { caret-color: transparent !important; }';
+                    document.head.appendChild(style);
+                }
+            }""".trimIndent()
+        )
+    }
+
+    Runloop.runLoop.postRun[hookName] = sequence {
+        installed.complete(Unit)
+        while (frames.size < targetFrames && !completed.isCompleted) {
+            val currentGate = gate.get()
+            if (currentGate.ready()) {
+                try {
+                    if (!resetAtFirstBoundary) {
+                        runBlocking { currentGate.resetAtFirstBoundary() }
+                        resetAtFirstBoundary = true
+                        yield(Unit)
+                        continue
+                    }
+                    val frame = runBlocking(playwrightDispatcher) {
+                        // `send(set-output)` is asynchronous. Without this barrier, frame N can
+                        // contain output N in one run and output N-1 in another even though the
+                        // simulation itself is identical. The browser ACK is scheduled only after
+                        // its output handler has mutated the DOM; two RAFs below then guarantee a
+                        // paint of that acknowledged state.
+                        withTimeout(10_000) {
+                            while (!info.outputsDelivered()) delay(1)
+                        }
+                        // Let websocket output and layout reach a painted browser frame while
+                        // Field itself remains parked at this exact runloop boundary.
+                        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+                        page.screenshot(screenshotOptions)
+                    }
+                    frames += frame
+                    AnimationClock.advance(clockToken)
+                } catch (t: Throwable) {
+                    completed.completeExceptionally(t)
+                    break
+                }
+            } else if (System.nanoTime() > readyDeadline.get()) {
+                completed.completeExceptionally(
+                    IllegalStateException("Timed out waiting for relaunched video target to reach its first active frame")
+                )
+                break
+            }
+            yield(Unit)
+        }
+        if (!completed.isCompleted) completed.complete(Unit)
+    }
+
+    try {
+        installed.await()
+        gate.set(prepare())
+        readyDeadline.set(System.nanoTime() + TimeUnit.SECONDS.toNanos(60))
+        completed.await()
+    } finally {
+        Runloop.runLoop.postRun.remove(hookName)
+        AnimationClock.endFrameIndexed(clockToken)
+    }
+
+    lprintln("info,video", "Captured ${frames.size} frame-synchronous frames")
+    withContext(Dispatchers.IO) {
+        encodeJpegFramesToMp4(frames, outputPath, safeFps)
+    }
     return ScreencastResult(frameCount = frames.size)
 }
 

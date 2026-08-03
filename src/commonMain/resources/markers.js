@@ -1,5 +1,37 @@
 let markerDecorationsLayer = null
 
+function rebuildMarkerDecorations(editor) {
+        if (!markerDecorationsLayer || !editor) return;
+        const model = editor.getModel();
+        if (!model) return;
+        const text = model.getValue();
+        const markerRegex = /__m\("[A-Za-z0-9+\/-]*"\)/g;
+        const newDecs = [];
+        let match;
+
+        while ((match = markerRegex.exec(text)) !== null) {
+                const startPos = model.getPositionAt(match.index);
+                const endPos = model.getPositionAt(match.index + match[0].length);
+                newDecs.push({
+                        range: new monaco.Range(
+                            startPos.lineNumber,
+                            startPos.column,
+                            endPos.lineNumber,
+                            endPos.column
+                        ),
+                        options: {
+                                inlineClassName: "coverMarker",
+                                inlineClassNameAffectsLetterSpacing: true,
+                                stickiness: 1
+                        },
+                        _isMarker: true
+                });
+        }
+
+        markerDecorationsLayer.clear();
+        markerDecorationsLayer.append(newDecs);
+}
+
 // 2) helper to check if a position is inside that decoration:
 function getForbiddenRangeAtPosition(editor, pos) {
         const model = editor.getModel();
@@ -153,46 +185,15 @@ function initMarkerSupport(globalEditor) {
                 }
         })
 
-        // epoch64() uses the standard Base64 alphabet, then appends a hyphen and suffix.
-        const markerRegex = /__m\("[A-Za-z0-9+\/-]*"\)/g;
-
         editor.onDidChangeModelContent(() => {
-                const model = editor.getModel();
-                const text  = model.getValue();
-                const newDecs = [];
-                let match;
-
-                // 3) Find each match and compute its Range
-                while ((match = markerRegex.exec(text)) !== null) {
-                        const startOffset = match.index;
-                        const endOffset   = startOffset + match[0].length;
-
-                        const startPos = model.getPositionAt(startOffset);
-                        const endPos   = model.getPositionAt(endOffset);
-
-                        const r = new monaco.Range(
-                            startPos.lineNumber,
-                            startPos.column,
-                            endPos.lineNumber,
-                            endPos.column
-                        );
-
-                        // 4) Build your decoration object
-                        newDecs.push({
-                                range: r,
-                                options: {
-                                        inlineClassName: "coverMarker",
-                                        inlineClassNameAffectsLetterSpacing: true,
-                                        stickiness: 1
-                                },
-                                _isMarker: true
-                        });
-                }
-
-                // 5) Reset the layer to exactly these decorations
-                markerDecorationsLayer.clear();        // remove any old markers
-                markerDecorationsLayer.append(newDecs); // add the new ones
+                rebuildMarkerDecorations(editor);
         });
+
+        // Docs capture can clear and relaunch a box without changing its Monaco model. Expose an
+        // explicit rescan so that presentation does not depend on whether setValue happened to
+        // emit a content-change event during this particular run.
+        window.refreshMarkerDecorations = () => rebuildMarkerDecorations(editor);
+        rebuildMarkerDecorations(editor);
 
 
 }

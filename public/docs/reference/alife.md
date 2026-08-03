@@ -278,29 +278,11 @@ wrong in two opposite directions:
    20 fps is five minutes of a clip in which nothing happens.
  - Conway's glider moves one cell per **four** generations. Forty steps per frame is a strobe.
 
-So `Box.animateEvolution` takes the *whole* evolution — `totalSteps` — and the wall-clock `seconds` it
-should occupy, and derives the steps-per-frame from them. The clip is then a statement about the system
-("these 6000 steps, in 7 seconds") rather than about the machine that recorded it.
-
-**Two clocks, deliberately.** A fixed steps-per-frame alone makes the clip's *content* depend on how
-fast the host is; a pure wall-clock schedule alone degrades catastrophically, because a pass that falls
-behind is then asked to do a bigger batch, which makes it fall further behind. So the loop uses both: it
-advances at most `CATCH_UP` times the largest batch its own schedule ever asks of one frame (smoothness,
-and a bound on how far one pass can lag), and never runs *ahead* of the wall clock (so a fast host does not
-finish in two seconds).
-A slow host therefore lags at a bounded rate and keeps catching up after the schedule ends, which is why
-a recording should ask for a second or two more than `seconds` — the tail is both a hold on the settled
-result and the slack that absorbs the lag.
-
-**The schedule is anchored to the wall clock and to `totalSteps`, never to a frame index, and that is a
-robustness property rather than an implementation detail.** The docs runner's live capture rate is *not*
-stable — measured over the ten clips on `alife_examples.md`, asking for 20 fps produced an effective
-**14.6 to 18.7 fps** (6 % to 27 % of the mp4's frames are duplicates of their predecessor; ffmpeg pads the
-recording to exactly `duration × fps` regardless, so the frame *count* of an mp4 tells you nothing about
-the rate it was captured at). A sibling branch measured the same instability between and within runs. An
-eased schedule keyed to "frame *i* of an expected *N*" would therefore stop short of its regime on a slow
-capture, or overshoot and sit still on a fast one. This one cannot: a capture that comes in slow changes
-how *smooth* a clip is and never where it ends up. `CATCH_UP` is the other half of that guarantee.
+So `Box.animateEvolution` takes the *whole* evolution — `totalSteps` — and the `seconds` it should occupy,
+and derives the steps per displayed frame. Live playback uses monotonic time. Frame-synchronous recording
+installs an `AnimationClock` whose time is exactly `frameIndex / fps`, so the same seed produces the same
+ordered simulation states even when browser painting or encoding is slow. Capture performance changes how
+long the build takes, never which states enter the movie.
 
 **A linear step schedule is not a neutral choice, and for some of these systems it is the wrong one.**
 Reaction–diffusion and Lenia are *log-time* processes: the visible change from step 60 to step 600 is

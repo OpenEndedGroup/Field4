@@ -381,34 +381,17 @@ animation idiom: a state, a `step`, a `panels` renderer, and a **schedule** — 
 divided into `framesTarget` displayed frames. A `Frames` that is merely built never runs, so a box that
 ends in a call to it must be **launched**, not run; the docs fences say `execution="launch"`.
 
-Two things in it are not obvious, and both were paid for.
+The timing contract is explicit. Live playback uses monotonic time. During docs video capture, the recorder
+relaunches the target after installing a runloop hook and supplies a virtual clock whose elapsed time is
+exactly `capturedFrame / fps`. After each completed Field frame it waits for the browser to paint, captures
+one JPEG, and only then permits the next Field frame. Slow painting therefore lengthens the build without
+changing the ordered simulation states in the mp4. `duration × fps` is the exact captured-frame count, and
+`fps` is both the virtual-clock rate and the encoded playback rate.
 
-**Two clocks, because either alone fails.** A fixed steps-per-frame makes the clip's content depend on how
-fast the host is. A pure wall-clock schedule diverges, because a pass that has fallen behind is then asked
-for a bigger batch, which makes it fall further behind. So the loop advances at most the largest batch its
-own schedule ever asks of one frame *and* never runs ahead of the clock. A slow host therefore lags at a
-bounded rate and keeps catching up after the schedule ends — which is why a recording should ask for a
-second or two more than `seconds`, and why every call site burns the step counter into the frame. "Did this
-clip reach the regime?" is then answered by looking at the last frame of the mp4 rather than by trusting
-the schedule.
-
-**The docs runner's capture rate is not the rate you asked for, and that is why the schedule is anchored to
-the wall clock.** Measured over the ten clips on the public page: `fps=20` produced an effective **14.6 to
-18.7 fps**, i.e. 6 % to 27 % of every mp4's frames are duplicates of their predecessor. Note that the frame
-*count* cannot tell you this — ffmpeg's `fps=` filter pads the recording to exactly `duration × fps`, so
-every clip reports a tidy 160 frames whatever really happened. A sibling branch measured the same
-instability between and within runs while trying to record a parameter sweep that had to close a loop, and
-recorded it in `dev_docs/docs_capture_staleness.md`.
-
-A time evolution degrades gracefully under this **only if** its schedule is keyed to elapsed time and steps
-taken, never to "frame *i* of an expected *N*". `animateEvolution` compares `done` against
-`progress(elapsed / seconds) · totalSteps`; the frame index appears nowhere in it. So a slow capture makes a
-clip coarser and never makes it end somewhere else. `CATCH_UP` is the other half: without headroom on
-`perPass`, a loop running at 17 passes a second against a schedule written for 20 can never recover inside
-the schedule, because it is allowed exactly one frame's batch per pass while the clock asks for one frame's
-batch. The evidence that this works is the burned-in step counter — all ten clips' final frames read their
-final scheduled state (`step 6000 of 6000`, `gen 400`, `particles 2392 of 2392`, `100% drawn`) at an
-effective 14.6–18.7 fps.
+`animateEvolution` compares `done` against `progress(elapsed / seconds) · totalSteps`; under capture that
+elapsed value comes from the frame index, while an interactive box retains normal real-time pacing. Every
+call site also burns the step counter into the frame, so the final-state claim remains visible rather than
+implicit.
 
 **`ramp`, because a linear schedule is not neutral.** Reaction–diffusion and Lenia are log-time processes:
 step 60 → 600 and step 600 → 6000 are about equally large *visible* changes. Measured on the recorded
@@ -419,8 +402,8 @@ last. `ramp` is the ratio between the last displayed frame's batch and the first
 every ramp — so no ramp can make a clip skip its seed or stop short, and `ramp = 1.0` is exactly the linear
 schedule. At `ramp = 40` Gray–Scott's quarters read 11.0 / 42.8 / 44.4 / 1.8 % and half the change has
 arrived at **47.8 %** of the clip; Lenia at `ramp = 25` reads 11.1 / 76.4 / 11.4 / 1.1 %. `perPass` is found
-by scanning the schedule's own per-frame increments for the largest, which keeps the two-clock guarantee for
-any monotone schedule.
+by scanning the schedule's own per-frame increments for the largest, bounding catch-up work during ordinary
+interactive playback.
 
 What a ramp **cannot** do is make a *burst* uniform. Gray–Scott's change is the fronts filling the domain,
 roughly steps 400 to 1500: 18 % of a linear clip and 30 % of a `ramp = 40` one. A schedule decides how much

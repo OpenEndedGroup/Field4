@@ -88,6 +88,22 @@ class MacroAliasTests(unittest.TestCase):
         self.assertIn("created-by-macro", client.boxes)
 
 
+class VideoCaptureParserTests(unittest.TestCase):
+    def test_record_box_frame_synchronous_options_round_trip(self) -> None:
+        parsed = parse_command(
+            "record-box example /tmp/example.mp4 --property animate --duration 9 "
+            "--fps 20 --frame-synchronous --restart-target"
+        )
+
+        self.assertEqual(parsed.uid, "example")
+        self.assertEqual(parsed.path, "/tmp/example.mp4")
+        self.assertEqual(parsed.property, "animate")
+        self.assertEqual(parsed.duration, 9.0)
+        self.assertEqual(parsed.fps, 20)
+        self.assertTrue(parsed.frame_synchronous)
+        self.assertTrue(parsed.restart_target)
+
+
 def _emitted_command(args: list[str]) -> str:
     """The `--command` string run_field_tests.py hands to field_backdoor.py for a jvm-main test."""
     cmd, _ = build_backdoor_command(

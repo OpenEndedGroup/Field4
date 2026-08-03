@@ -124,6 +124,13 @@ The parser defines the options for these capture families:
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
   meaningful quoting; `--body` needs an explicit JavaScript `return`.
 
+`record-window`, `record-editor`, and `record-box` accept `--frame-synchronous`.
+In that mode the recorder captures one painted browser image per completed Field
+runloop frame and advances its virtual clock by exactly `1 / fps` afterward.
+`--restart-target` relaunches the selected box only after that capture hook is
+active, so a seeded animation begins at frame zero. Docs video fences supply both
+flags automatically. Omit them for real-time recordings of live UI interaction.
+
 Browser screenshots hide notifications and, when Monaco is hidden, clear box
 selection by default so ordinary docs captures are clean. Use
 `--include-notifications` when the toast/notification stack is the evidence, and

@@ -18,8 +18,8 @@ val window = Rect(-3.4, -3.4, 8.0, 8.0)
 val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
 val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
 val heavy = 1                 // the site whose weight is swept; the other four stay at 1.0
-val sweepSeconds = 9.0
-val started = System.nanoTime()
+val sweepSeconds = 8.0
+val started = AnimationClock.nowSeconds()
 
 // The line that turns elapsed time into the swept parameter — the one you would change. A
 // triangle ramp rather than a saw, so it runs out to 2.7 and back to 1.0 with no jump.
@@ -29,7 +29,7 @@ fun weightAt(elapsed: Double): Double {
 }
 
 animate {
-    val w = weightAt((System.nanoTime() - started) / 1e9)
+    val w = weightAt(AnimationClock.nowSeconds() - started)
     val diagram = CircularDirichlet.build(
         positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
     )

@@ -585,14 +585,11 @@ paced the way it is.
     profile was still 15.5 / 73.8 / 10.7 / 0.0 — the endpoints understated a badly-paced clip. Trust the
     per-quarter table.
 
-    And the ramp asks the last frames for about 170 reaction–diffusion steps each, which is more than a
-    twentieth of a second's worth, so the tail could fall behind the wall clock. It does not, and the reason
-    is that the schedule is anchored to elapsed *time* and steps taken rather than to a frame index: the
-    docs runner's real capture rate on this page ranged from 14.6 to 18.7 frames a second against the 20 it
-    was asked for, and a clip keyed to "frame *i* of an expected *N*" would have stopped short of its regime.
-    This one reads `step 6000 of 6000` with a beat of settled labyrinth after it. That is what the burned-in
-    step clock is for — the last frame says whether the schedule finished, and that is checkable by looking
-    rather than by trusting.
+    And the ramp asks the last frames for about 170 reaction–diffusion steps each, which is more work than
+    the first frames. During docs capture that cost can make the build slower, but cannot stretch or truncate
+    the movie: the recorder advances `AnimationClock` by exactly `1 / fps` only after the preceding Field
+    frame has been painted and stored. This clip therefore reaches `step 6000 of 6000` reproducibly, with a
+    beat of settled labyrinth after it. The burned-in step clock keeps that endpoint visible and checkable.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/alife_examples/gray-scott.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" embed=true name="alife-gray-scott-video" alt="a Gray-Scott maze pattern forming: six square seed patches buckle into four-lobed crosses, fill with labyrinth, grow into each other and anneal"}
 :::static

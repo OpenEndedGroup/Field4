@@ -277,13 +277,10 @@ val window = Rect(-3.4, -3.4, 8.0, 8.0)
 val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
 val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
 val heavy = 1              // the site whose weight is swept; the other four stay at 1.0
-// Elapsed seconds, NOT `frameNumber`: this box renders far faster than the docs recorder samples it,
-// so a frame-indexed ramp completes several sweeps per clip. Wall clock is the thing the recorder
-// also measures, so matching this to the fence's `duration` gives one sweep per clip.
-// 9.0 rather than the clip's 8: measured, this box's sweep came out at 142 of the clip's 160 frames,
-// so the period is scaled by 160/142 to put exactly one there-and-back in the recording.
-val sweepSeconds = 9.0
-val started = System.nanoTime()
+// The recorder makes AnimationClock exactly frameIndex / fps, so matching this to the fence's
+// duration produces one complete, repeatable there-and-back sweep.
+val sweepSeconds = 8.0
+val started = AnimationClock.nowSeconds()
 :::endfold
 
 // The line that turns elapsed time into the swept parameter — the one line worth reading, and the one
@@ -295,7 +292,7 @@ fun weightAt(elapsed: Double): Double {
 }
 
 animate {
-    val w = weightAt((System.nanoTime() - started) / 1e9)
+    val w = weightAt(AnimationClock.nowSeconds() - started)
     val diagram = CircularDirichlet.build(
         positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
     )
@@ -742,9 +739,9 @@ val saddleDot = pointCloudFLine(
     listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
 )
 val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
-// 8.6, not 8: measured, one sweep of this box came out at 149 of the clip's 160 frames.
-val sweepSeconds = 8.6
-val started = System.nanoTime()
+// Match the eight-second fence: offline capture advances this clock by exactly 1 / fps per frame.
+val sweepSeconds = 8.0
+val started = AnimationClock.nowSeconds()
 :::endfold
 
 // The saddle level, measured rather than assumed: the field's own value at the col between the peaks.
@@ -759,9 +756,8 @@ fun isoAt(elapsed: Double): Double {
 }
 
 animate {
-    val iso = isoAt((System.nanoTime() - started) / 1e9)
-    // 100 x 60, not 140 x 84: the recorder samples this box at its own rate, and a per-frame cost that
-    // drops the render rate below the capture rate stretches the sweep across more than one clip.
+    val iso = isoAt(AnimationClock.nowSeconds() - started)
+    // This resolution controls geometry cost and detail; capture speed cannot stretch the sweep.
     val contours = generateIsoContours(field, x0, x1, y0, y1, 100, 60, iso).filter { it.size >= 2 }
     val lines = contours.mapIndexed { i, c ->
         polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, boundaryEpsilon = 0.05)).also {

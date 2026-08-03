@@ -16,14 +16,13 @@ This tool re-derives captures from the real code (`FIELD_DOCS_RUNNER_MODE=always
 
 Why the comparison is not `cmp`
 -------------------------------
-Captures are neither byte- nor pixel-reproducible. Measured (see `dev_docs/docs_capture_staleness.md`):
-only 5 of 121 captures are byte-stable run to run; the rest carry text/antialiasing jitter of
-~0.005–0.01% of pixels at a maximum channel delta of ≤19. Genuine re-renders sit at 0.25–1.5% of
-pixels at Δ~247. A few plot captures are *legitimately* nondeterministic in that upper band, and four
-`capture=box` shots have an unstable output height. So:
+Raster captures can carry small text/antialiasing differences even when the meaningful image is
+unchanged. Videos can carry different MP4 container bytes while decoding to the same ordered frames.
+So:
 
 * compare per pixel with a threshold, never by bytes;
 * handle differing image dimensions as its own signal;
+* compare video timebases and decoded RGB frame hashes, never MP4 container bytes;
 * with `--repeat 2`, also compare run 1 against run 2, which separates "this capture is
   nondeterministic" from "this capture no longer matches the code". That distinction is the whole
   point — without it the nondeterministic plots read as stale and the report is noise.
@@ -37,6 +36,9 @@ Usage
 -----
     # audit one page, rigorously (two capture runs)
     uv run --group docs python tools/docs_capture_audit.py --page functions_examples --repeat 2
+
+    # audit only video fences, with decoded-frame comparison
+    uv run --group docs python tools/docs_capture_audit.py --media video --repeat 2
 
     # what is oldest, and therefore most suspect? (no JVM, instant)
     uv run --group docs python tools/docs_capture_audit.py --inventory
@@ -53,6 +55,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import io
 import json
 import os
@@ -60,6 +63,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -86,6 +90,11 @@ DEFAULT_IGNORE_DELTA = 2
 # Below this many above-floor pixels there is no figure to speak of, whatever their magnitude — a
 # handful of stray antialiased pixels is not a changed figure.
 MIN_SIGNAL_PX = 8
+# Frame-synchronous captures can still differ at the codec/raster boundary (subpixel text,
+# WebGL edge coverage, and YUV rounding). SSIM catches image structure rather than container or
+# pixel identity. The visualizer canary measured benign reruns at 0.9991 or better per frame;
+# 0.995 leaves a useful margin while still rejecting the pre-fix timing/editor-state races.
+DEFAULT_VIDEO_MIN_SSIM = 0.995
 # The lower edge of the band where the same doc saw genuine re-renders. Only used to label a
 # delta in the report ("grey zone" between the noise floor and a confident re-render).
 DRIFT_PX_PCT = 0.25
@@ -93,7 +102,8 @@ DRIFT_PX_PCT = 0.25
 PIXEL_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
 # First-frame-only for Pillow; flagged in the note so nobody reads a clean animation as proof.
 ANIMATION_SUFFIXES = {".apng", ".gif"}
-OPAQUE_BINARY_SUFFIXES = {".mp4", ".mov", ".wav", ".exr", ".glb"}
+VIDEO_SUFFIXES = {".mp4", ".mov"}
+OPAQUE_BINARY_SUFFIXES = {".wav", ".exr", ".glb"}
 
 FAILURE_RE = re.compile(
     r"capture FAILED(?:, falling back to committed asset on disk| with NO asset on disk[^:]*): "
@@ -108,7 +118,7 @@ FAILURE_RE = re.compile(
 class Delta:
     """How far apart two versions of one asset are."""
 
-    kind: str  # identical | pixel | size | binary | text | missing
+    kind: str  # identical | pixel | size | video | binary | text | missing
     changed_px_pct: float = 0.0  # percent of pixels differing by MORE than the ignore-delta floor
     changed_px: int = 0
     all_changed_px_pct: float = 0.0  # including the sub-perceptual floor, for diagnosis only
@@ -118,11 +128,16 @@ class Delta:
     old_bytes: int = 0
     new_bytes: int = 0
     text_lines_changed: int = 0
+    changed_frames: int = 0
+    old_frames: int = 0
+    new_frames: int = 0
+    min_ssim: float = 0.0
+    mean_ssim: float = 0.0
     note: str = ""
 
     def summary(self) -> str:
         if self.kind == "identical":
-            return "identical"
+            return self.note or "identical"
         if self.kind == "size":
             return f"size {self.old_size} -> {self.new_size}"
         if self.kind == "pixel":
@@ -134,6 +149,11 @@ class Delta:
             return f"{self.text_lines_changed} line(s) changed"
         if self.kind == "binary":
             return f"bytes {self.old_bytes} -> {self.new_bytes}"
+        if self.kind == "video":
+            if self.old_frames != self.new_frames:
+                return f"decoded frames {self.old_frames} -> {self.new_frames}"
+            similarity = f", min SSIM {self.min_ssim:.6f}" if self.min_ssim else ""
+            return f"{self.changed_frames}/{self.old_frames} decoded frames differ{similarity}"
         return self.kind
 
     def within(self, *, px_pct: float, max_delta: int) -> bool:
@@ -165,7 +185,175 @@ class Delta:
             return self.changed_px_pct * max(1, self.max_delta)
         if self.kind == "text":
             return float(self.text_lines_changed) or 1.0
+        if self.kind == "video":
+            return self.changed_frames / max(1, max(self.old_frames, self.new_frames))
         return float("inf")
+
+
+@dataclass(frozen=True)
+class DecodedVideo:
+    """Cadence metadata and exact RGB frame hashes emitted by ffmpeg's framemd5 muxer."""
+
+    metadata: tuple[str, ...]
+    frames: tuple[str, ...]
+
+
+_VIDEO_DECODE_CACHE: dict[str, DecodedVideo | None] = {}
+
+
+@dataclass(frozen=True)
+class VideoSimilarity:
+    minimum: float
+    mean: float
+
+
+def video_similarity(old: bytes, new: bytes) -> VideoSimilarity | None:
+    """Return per-frame SSIM for equal-cadence videos, or None when ffmpeg cannot compare them."""
+
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+    try:
+        with tempfile.TemporaryDirectory(prefix="field-docs-video-") as directory:
+            old_path = Path(directory) / "old.mp4"
+            new_path = Path(directory) / "new.mp4"
+            old_path.write_bytes(old)
+            new_path.write_bytes(new)
+            result = subprocess.run(
+                [
+                    ffmpeg,
+                    "-v", "error",
+                    "-i", str(old_path),
+                    "-i", str(new_path),
+                    "-lavfi", "ssim=stats_file=-",
+                    "-f", "null",
+                    "-",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=120,
+                check=False,
+                text=True,
+            )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    scores = [float(value) for value in re.findall(r"\bAll:([0-9.]+)", result.stdout)]
+    if not scores:
+        return None
+    return VideoSimilarity(minimum=min(scores), mean=sum(scores) / len(scores))
+
+
+def decoded_video(data: bytes) -> DecodedVideo | None:
+    """Decode a movie once per content hash; return None when ffmpeg cannot inspect it."""
+
+    digest = hashlib.sha256(data).hexdigest()
+    if digest in _VIDEO_DECODE_CACHE:
+        return _VIDEO_DECODE_CACHE[digest]
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        _VIDEO_DECODE_CACHE[digest] = None
+        return None
+    try:
+        result = subprocess.run(
+            [
+                ffmpeg,
+                "-v", "error",
+                "-i", "pipe:0",
+                "-map", "0:v:0",
+                "-an",
+                "-vf", "format=rgb24",
+                "-f", "framemd5",
+                "pipe:1",
+            ],
+            input=data,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=120,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        _VIDEO_DECODE_CACHE[digest] = None
+        return None
+    if result.returncode != 0:
+        _VIDEO_DECODE_CACHE[digest] = None
+        return None
+    lines = result.stdout.decode("utf-8", errors="replace").splitlines()
+    metadata = tuple(
+        line.strip()
+        for line in lines
+        if line.startswith(("#tb", "#dimensions", "#sar"))
+    )
+    frames = tuple(
+        ",".join(part.strip() for part in line.split(","))
+        for line in lines
+        if line.strip() and not line.startswith("#")
+    )
+    decoded = DecodedVideo(metadata=metadata, frames=frames)
+    _VIDEO_DECODE_CACHE[digest] = decoded
+    return decoded
+
+
+def compare_videos(old: bytes, new: bytes) -> Delta:
+    old_video, new_video = decoded_video(old), decoded_video(new)
+    if old_video is None or new_video is None:
+        return Delta(
+            "binary",
+            old_bytes=len(old),
+            new_bytes=len(new),
+            note="ffmpeg could not decode this video",
+        )
+    if old_video == new_video:
+        return Delta(
+            "identical",
+            old_bytes=len(old),
+            new_bytes=len(new),
+            old_frames=len(old_video.frames),
+            new_frames=len(new_video.frames),
+            note=(
+                "decoded frames and timing identical"
+                if old == new
+                else "decoded frames and timing identical; container bytes differ"
+            ),
+        )
+
+    from itertools import zip_longest
+
+    changed = sum(
+        old_frame != new_frame
+        for old_frame, new_frame in zip_longest(old_video.frames, new_video.frames)
+    )
+    metadata_note = ""
+    if old_video.metadata != new_video.metadata:
+        metadata_note = "video cadence or dimensions differ"
+    similarity = None if metadata_note else video_similarity(old, new)
+    if similarity is not None and similarity.minimum >= DEFAULT_VIDEO_MIN_SSIM:
+        return Delta(
+            "identical",
+            old_bytes=len(old),
+            new_bytes=len(new),
+            changed_frames=changed,
+            old_frames=len(old_video.frames),
+            new_frames=len(new_video.frames),
+            min_ssim=similarity.minimum,
+            mean_ssim=similarity.mean,
+            note=(
+                f"decoded timing identical; perceptually identical frames "
+                f"(min SSIM {similarity.minimum:.6f}, mean {similarity.mean:.6f})"
+            ),
+        )
+    return Delta(
+        "video",
+        old_bytes=len(old),
+        new_bytes=len(new),
+        changed_frames=changed,
+        old_frames=len(old_video.frames),
+        new_frames=len(new_video.frames),
+        min_ssim=similarity.minimum if similarity is not None else 0.0,
+        mean_ssim=similarity.mean if similarity is not None else 0.0,
+        note=metadata_note,
+    )
 
 
 def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str, ignore_delta: int = DEFAULT_IGNORE_DELTA) -> Delta:
@@ -174,6 +362,8 @@ def compare_bytes(old: bytes | None, new: bytes | None, *, suffix: str, ignore_d
     if old == new:
         return Delta("identical", old_bytes=len(old), new_bytes=len(new))
     lowered = suffix.lower()
+    if lowered in VIDEO_SUFFIXES:
+        return compare_videos(old, new)
     if lowered in PIXEL_SUFFIXES or lowered in ANIMATION_SUFFIXES:
         delta = compare_images(old, new, ignore_delta=ignore_delta)
         if lowered in ANIMATION_SUFFIXES and delta.kind in {"pixel", "identical"}:
@@ -277,7 +467,7 @@ def classify(
     if drift.kind == "identical":
         if unstable:
             return "unstable", f"matches the committed asset, but does not reproduce itself ({self_delta.summary()})"
-        return "identical", "byte-identical to the committed asset"
+        return "identical", drift.note or "byte-identical to the committed asset"
     if drift.within(px_pct=px_pct, max_delta=max_delta):
         if unstable:
             return "unstable", (
@@ -296,6 +486,12 @@ def classify(
         if self_delta.kind != "identical":
             return "nondeterministic-binary", "re-encodes differently run to run"
         return "stale-binary", "two runs agree with each other and disagree with the committed asset"
+    if drift.kind == "video":
+        if self_delta is None:
+            return "suspect", f"decoded video differs on a single run ({drift.summary()})"
+        if self_delta.kind != "identical":
+            return "nondeterministic", f"decoded video unstable run to run ({self_delta.summary()})"
+        return "stale", f"decoded video reproducibly differs from the committed asset ({drift.summary()})"
     if drift.kind == "text":
         if self_delta is not None and self_delta.kind != "identical":
             return "nondeterministic", f"text output unstable run to run ({self_delta.summary()})"
@@ -432,12 +628,16 @@ def iter_fences(pages: Sequence[Path]) -> Iterator[Fence]:
             )
 
 
-def expected_assets_by_page(pages: Sequence[Path]) -> dict[str, list[str]]:
+def expected_assets_by_page(
+    pages: Sequence[Path], *, suffixes: set[str] | None = None
+) -> dict[str, list[str]]:
     """page (docs-relative) -> the repo-relative asset paths its fences declare."""
     expected: dict[str, list[str]] = {}
     for fence in iter_fences(pages):
         page_key = str(fence.page.relative_to(DOCS_DIR))
         for output in fence.outputs:
+            if suffixes is not None and output.suffix.lower() not in suffixes:
+                continue
             try:
                 expected.setdefault(page_key, []).append(str(output.resolve().relative_to(REPO_ROOT)))
             except ValueError:
@@ -542,7 +742,16 @@ def build_command(pages: Sequence[str]) -> list[str]:
     return command
 
 
-def run_captures(*, pages: Sequence[str], port: int, run_dir: Path, index: int, echo: bool, protected: Iterable[str] = ()) -> RunResult:
+def run_captures(
+    *,
+    pages: Sequence[str],
+    port: int,
+    run_dir: Path,
+    index: int,
+    echo: bool,
+    protected: Iterable[str] = (),
+    media: str = "all",
+) -> RunResult:
     log_path = run_dir / f"run{index}.log"
     command = build_command(pages)
     env = dict(os.environ)
@@ -552,6 +761,7 @@ def run_captures(*, pages: Sequence[str], port: int, run_dir: Path, index: int, 
             "FIELD_DOCS_RUNNER_PORT": str(port),
             # One broken capture must not abort a sweep; a failure is reported as `unknown-failed`.
             "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR": "1",
+            "FIELD_DOCS_RUNNER_MEDIA": media,
             "FIELD_DOCS_LOG_LEVEL": "INFO",
         }
     )
@@ -910,11 +1120,13 @@ def asset_last_commit_dates() -> dict[str, str]:
     return dates
 
 
-def run_inventory(filters: Sequence[str]) -> int:
+def run_inventory(filters: Sequence[str], *, suffixes: set[str] | None = None) -> int:
     dates = asset_last_commit_dates()
     expected = {}
     for fence in iter_fences(select_pages(filters)):
         for output in fence.outputs:
+            if suffixes is not None and output.suffix.lower() not in suffixes:
+                continue
             try:
                 relative = str(output.resolve().relative_to(REPO_ROOT))
             except ValueError:
@@ -989,6 +1201,7 @@ def run_plan(filters: Sequence[str], *, touched: Sequence[str], mode: str) -> in
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--page", action="append", default=[], metavar="PATTERN", help="Scope to matching docs pages (same matcher as build_zensical_docs.py --page); repeatable.")
+    parser.add_argument("--media", default="all", choices=("all", "video"), help="Capture and report all declared media, or only video fences (default all).")
     parser.add_argument("--repeat", type=int, default=1, help="Capture runs. 2 separates nondeterministic captures from genuinely stale ones (recommended).")
     parser.add_argument("--port", type=int, default=9540, help="Field server port for the capture runs (default 9540).")
     parser.add_argument("--run-dir", default="", help="Where to keep regenerated assets and logs (default: a timestamped dir under .field-backdoor/docs-audit).")
@@ -1062,12 +1275,13 @@ def failing_exit_code(report: dict[str, Any]) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
+    media_suffixes = VIDEO_SUFFIXES if args.media == "video" else None
     if args.list_pages:
         for page in pages_with_fences(args.page):
             print(page.relative_to(DOCS_DIR))
         return 0
     if args.inventory:
-        return run_inventory(args.page)
+        return run_inventory(args.page, suffixes=media_suffixes)
     if args.plan:
         return run_plan(args.page, touched=args.touched, mode=args.mode)
     if args.reclassify:
@@ -1082,7 +1296,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         # only covered 36 of the 37 pages. A clean verdict for a capture that never ran is the exact
         # false comfort this whole tool exists to remove.
         audited = audited_pages(run_dir, args.page)
-        expected = expected_assets_by_page(audited)
+        expected = expected_assets_by_page(audited, suffixes=media_suffixes)
         print(f"[reclassify] {len(runs)} stored run(s) over {len(audited)} page(s), "
               f"{sum(len(v) for v in expected.values())} declared asset(s)")
         report = build_report(runs=runs, expected=expected, px_pct=args.jitter_px_pct, max_delta=args.jitter_max_delta, ignore_delta=args.ignore_delta)
@@ -1102,11 +1316,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 2
 
     pages = pages_with_fences(args.page)
+    if media_suffixes is not None:
+        pages = [
+            page for page in pages
+            if expected_assets_by_page([page], suffixes=media_suffixes)
+        ]
     if not pages:
         print("no docs pages with runner fences matched the filter", file=sys.stderr)
         return 2
     page_filters = [str(page.relative_to(DOCS_DIR)) for page in pages]
-    expected = expected_assets_by_page(pages)
+    expected = expected_assets_by_page(pages, suffixes=media_suffixes)
 
     run_dir = Path(args.run_dir).resolve() if args.run_dir else REPO_ROOT / ".field-backdoor" / "docs-audit" / time.strftime("%Y%m%d-%H%M%S")
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -1114,7 +1333,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # So --reclassify knows what this run covered, and does not call the other 268 assets clean.
     (run_dir / PAGES_MANIFEST).write_text(json.dumps(page_filters, indent=1), encoding="utf-8")
     (run_dir / "audit.json").write_text(
-        json.dumps({"head": audit_head, "pages": page_filters}, indent=2), encoding="utf-8"
+        json.dumps({"head": audit_head, "pages": page_filters, "media": args.media}, indent=2), encoding="utf-8"
     )
     print(f"[audit] commit {audit_head}")
     print(f"[audit] {len(pages)} page(s), {sum(len(v) for v in expected.values())} declared capture asset(s); run dir {run_dir}")
@@ -1127,7 +1346,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise RuntimeError(
                     f"audit HEAD changed before run {index}: started at {audit_head}, now {current_head}"
                 )
-            result = run_captures(pages=page_filters, port=args.port, run_dir=run_dir, index=index, echo=False, protected=protected)
+            result = run_captures(
+                pages=page_filters,
+                port=args.port,
+                run_dir=run_dir,
+                index=index,
+                echo=False,
+                protected=protected,
+                media=args.media,
+            )
             stash_run_outputs(result, run_dir)
             runs.append(result)
             print(f"[audit] run {index} finished in {result.seconds:.0f}s: exit {result.returncode}, rewrote {len(result.modified) + len(result.untracked)}, {len(result.failures)} failure(s)")

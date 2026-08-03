@@ -20,9 +20,10 @@ import afield.stdlib.linalg.Vector4f
  *
  * Interpolation is linear and only covers `Float`, `Double`, `Int`, `Long` and
  * `Vector2f`/`Vector3f`/`Vector4f`; any other type completes immediately at the target. Progress
- * is either wall-clock (`time` seconds, measured with `System.nanoTime`) or a fixed number of
- * evaluations (`steps`, default 100), and it is one-shot: once it reaches the target it stays
- * there.
+ * is either time-based (`time` seconds), a fixed number of evaluations (`steps`, default 100), or
+ * frame-based by supplying `clock = frameClock(fps) { frameNumber }`. Time-based interpolation uses
+ * `System.nanoTime` by default; an injected clock makes offline and fixed-rate rendering independent
+ * of scheduler pauses. The interpolation is one-shot: once it reaches the target it stays there.
  */
 
 /**
@@ -46,6 +47,7 @@ interface NeedsStartingValue<T> {
 private class SmoothInterpolant<T>(
     private val durationSeconds: Double?,
     private val steps: Int?,
+    private val clock: (() -> Double)?,
     private val target: () -> T
 ) : NeedsStartingValue<T>, HasUniform<T>, ProgressingUniform {
 
@@ -75,10 +77,7 @@ private class SmoothInterpolant<T>(
             return targetValue
         }
 
-        val nowSeconds = System.nanoTime() / 1_000_000_000.0
-        if (startedAt == null) startedAt = nowSeconds
-
-        val alpha = progress(nowSeconds)
+        val alpha = progress()
         val value = interpolate(resolvedStart, targetValue, alpha)
 
         if (alpha >= 1.0) completed = true
@@ -160,9 +159,11 @@ private class SmoothInterpolant<T>(
         }
     }
 
-    private fun progress(nowSeconds: Double): Double {
+    private fun progress(): Double {
         durationSeconds?.let { duration ->
             if (duration <= 0.0) return 1.0
+            val nowSeconds = clock?.invoke() ?: System.nanoTime() / 1_000_000_000.0
+            if (startedAt == null) startedAt = nowSeconds
             val elapsed = nowSeconds - (startedAt ?: nowSeconds)
             return (elapsed / duration).coerceIn(0.0, 1.0)
         }
@@ -175,23 +176,52 @@ private class SmoothInterpolant<T>(
 }
 
 /**
+ * Converts an authoritative rendered-frame counter into the seconds clock accepted by [smoothTo].
+ *
+ * The returned clock advances by exactly `1 / fps` when [frameNumber] advances by one. Repeated
+ * reads in the same frame return the same time, which is the important difference from `steps`:
+ * uniforms may be evaluated more than once while producing a single rendered frame.
+ *
+ * For a deterministic 24 fps render:
+ *
+ * ```kotlin
+ * val eased = smoothTo<Float>(
+ *     time = 1.0,
+ *     steps = null,
+ *     clock = frameClock(24.0) { renderer.frameCounter },
+ * ) { 1.0f }
+ * ```
+ */
+fun frameClock(fps: Double, frameNumber: () -> Number): () -> Double {
+    require(fps.isFinite() && fps > 0.0) { "fps must be finite and positive" }
+    return { frameNumber().toDouble() / fps }
+}
+
+/**
  * Wraps a target-producing lambda so that reading it *eases toward* the target instead of jumping
  * there — the one-word way to take the snap out of a value assignment.
  *
  * `m.color = smoothTo { rgb(1, 0, 0) }` eases to red across the next hundred evaluations instead of
  * arriving on the next frame. Counted exactly: the first evaluation reports the starting value unmoved
  * (`0/100`) and the hundred-and-first is the first to report the target, so `steps` is the number of
- * *increments*, not of readings. Give [time] in **seconds** for a wall-clock ease (measured with `System.nanoTime`, so
- * it is frame-rate independent), or leave it null and let [steps] count evaluations. [time] wins if
- * both are given.
+ * *increments*, not of readings. Give [time] in **seconds** for a timed ease, or leave it null and
+ * let [steps] count evaluations. Timed easing uses `System.nanoTime` by default. Supply [clock] to
+ * use a deterministic timeline instead; `frameClock(24.0) { renderer.frameCounter }` advances by
+ * rendered frames and is suitable for a constant-24-fps film render. [time] wins if both it and
+ * [steps] are given.
  *
  * One-shot and linear: it arrives and stays, with no easing curve and no overshoot, and re-aims only
  * if whoever bound it calls [NeedsStartingValue.startAt] again. Interpolation covers `Float`,
  * `Double`, `Int`, `Long` and `Vector2f`/`Vector3f`/`Vector4f`; any other type is delivered
  * immediately at the target rather than animated.
  */
-fun <T> smoothTo(time: Double? = null, steps: Int? = 100, a: () -> T): () -> T {
-    return SmoothInterpolant(time, steps, a)
+fun <T> smoothTo(
+    time: Double? = null,
+    steps: Int? = 100,
+    clock: (() -> Double)? = null,
+    a: () -> T
+): () -> T {
+    return SmoothInterpolant(time, steps, clock, a)
 }
 
 // usage

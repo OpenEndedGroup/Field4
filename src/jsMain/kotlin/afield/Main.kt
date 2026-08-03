@@ -4768,6 +4768,16 @@ suspend fun main() {
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
     window.asDynamic().fieldBackdoorPrepareWindowScreenshot = { raw: dynamic -> prepareWindowScreenshotJson(raw) }
+    window.asDynamic().clearEditorOutputsForBox = { uid: String ->
+        clearEditorOutputsForBox(uid)
+        Unit
+    }
+    window.asDynamic().clearOutputAreasForBox = { uid: String ->
+        findBoxElementByUid(uid)?.let { box ->
+            handleOutputAreaControl(box, OutputControl(uid = uid, action = "clear-all"))
+        }
+        Unit
+    }
 
     window.unsafeCast<dynamic>().showCheatsheet = ::showCheatsheet
 
@@ -5428,8 +5438,8 @@ suspend fun main() {
                 handleOutputAreaRequest(found, set)
             }
         }
-        // Acknowledge receipt so the backend can release a back pressure slot.
-        send(Message("output-ack"))
+        // Release back pressure only after disclosure content has crossed a browser paint boundary.
+        acknowledgeOutputRendered("output-area")
         Handled.yes
     }
 
@@ -5438,6 +5448,7 @@ suspend fun main() {
         val u = control.uid
         val found = defaultCreate(u)
         handleOutputAreaControl(found, control)
+        acknowledgeOutputRendered("output-control")
         Handled.yes
     }
 

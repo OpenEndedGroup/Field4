@@ -3,6 +3,7 @@
 package afield.stdlib
 
 import afield.Box
+import afield.AnimationClock
 import afield.Frames
 import afield.graphics.FLine
 import afield.loop
@@ -28,29 +29,11 @@ import kotlin.math.roundToInt
  *    20 fps is five minutes of a clip in which nothing happens.
  *  - Conway's glider moves one cell per **four** generations. Forty steps per frame is a strobe.
  *
- * So [Box.animateEvolution] takes the *whole* evolution — `totalSteps` — and the wall-clock `seconds` it
- * should occupy, and derives the steps-per-frame from them. The clip is then a statement about the system
- * ("these 6000 steps, in 7 seconds") rather than about the machine that recorded it.
- *
- * **Two clocks, deliberately.** A fixed steps-per-frame alone makes the clip's *content* depend on how
- * fast the host is; a pure wall-clock schedule alone degrades catastrophically, because a pass that falls
- * behind is then asked to do a bigger batch, which makes it fall further behind. So the loop uses both: it
- * advances at most [CATCH_UP] times the largest batch its own schedule ever asks of one frame (smoothness,
- * and a bound on how far one pass can lag), and never runs *ahead* of the wall clock (so a fast host does not
- * finish in two seconds).
- * A slow host therefore lags at a bounded rate and keeps catching up after the schedule ends, which is why
- * a recording should ask for a second or two more than `seconds` — the tail is both a hold on the settled
- * result and the slack that absorbs the lag.
- *
- * **The schedule is anchored to the wall clock and to `totalSteps`, never to a frame index, and that is a
- * robustness property rather than an implementation detail.** The docs runner's live capture rate is *not*
- * stable — measured over the ten clips on `alife_examples.md`, asking for 20 fps produced an effective
- * **14.6 to 18.7 fps** (6 % to 27 % of the mp4's frames are duplicates of their predecessor; ffmpeg pads the
- * recording to exactly `duration × fps` regardless, so the frame *count* of an mp4 tells you nothing about
- * the rate it was captured at). A sibling branch measured the same instability between and within runs. An
- * eased schedule keyed to "frame *i* of an expected *N*" would therefore stop short of its regime on a slow
- * capture, or overshoot and sit still on a fast one. This one cannot: a capture that comes in slow changes
- * how *smooth* a clip is and never where it ends up. [CATCH_UP] is the other half of that guarantee.
+ * So [Box.animateEvolution] takes the *whole* evolution — `totalSteps` — and the `seconds` it should occupy,
+ * and derives the steps per displayed frame. Live playback uses monotonic time. Frame-synchronous recording
+ * installs an [AnimationClock] whose time is exactly `frameIndex / fps`, so the same seed produces the same
+ * ordered simulation states even when browser painting or encoding is slow. Capture performance changes how
+ * long the build takes, never which states enter the movie.
  *
  * **A linear step schedule is not a neutral choice, and for some of these systems it is the wrong one.**
  * Reaction–diffusion and Lenia are *log-time* processes: the visible change from step 60 to step 600 is
@@ -75,19 +58,8 @@ import kotlin.math.roundToInt
 /**
  * How much more than one displayed frame's worth of steps a single pass may take when it is **behind**.
  *
- * This exists because the frame rate a recording actually gets is not the frame rate it asked for. Without
- * headroom, `perPass` is exactly the schedule's own per-frame batch, so a loop that manages 17 passes a
- * second against a schedule written for 20 falls 15 % behind and can *never* recover inside the schedule —
- * it advances by one frame's batch while the clock asks for one frame's batch. It then relies entirely on
- * the recording's tail to finish, and on a slower host it does not finish at all. With headroom a behind
- * pass takes a bigger bite and catches up.
- *
- * It cannot make a healthy recording jumpier, and that is the point: when the loop is *level* with its
- * schedule the advance is limited by the clock (`allowedByClock - done`), not by this bound, so raising it
- * changes nothing about a clip that is keeping up. It only ever shortens a lag.
- *
- * 2.0 tolerates a capture running at half the rate it asked for; the measured range on this machine was
- * 0.73× to 0.94×.
+ * This bounds catch-up work during ordinary interactive playback. Frame-synchronous capture advances its
+ * clock only after a frame is stored, so capture itself never falls behind this schedule.
  */
 private const val CATCH_UP = 2.0
 
@@ -124,7 +96,8 @@ private const val CATCH_UP = 2.0
  * @param start the initial state; [step] is never applied to it before the first frame is drawn, so frame
  *   one is always the seed
  * @param totalSteps how many [step] applications the whole clip covers
- * @param seconds the wall-clock time those steps should take
+ * @param seconds the playback time those steps should take; during frame-synchronous capture this is
+ *   derived from the recorder's frame index and fps, not wall time
  * @param columns passed to [montage]
  * @param cellSide passed to [montage] — note it only ever scales a panel **down**, so integer-upscale a
  *   small lattice with [Img.upscaleNearest] before returning it rather than expecting this to enlarge it
@@ -183,13 +156,11 @@ fun <S> Box.animateEvolution(
     var state = start
     var done = 0
     var drewFinal = false
-    val startedAt = System.nanoTime()
+    val startedAt = AnimationClock.nowSeconds()
 
     return loop {
-        val elapsed = (System.nanoTime() - startedAt) / 1e9
-        // The wall-clock ceiling: how far the schedule says we are allowed to have got by now. Without
-        // it a fast host runs the whole evolution in the first second; without `perPass` a slow host
-        // answers one late pass with an ever-bigger batch and diverges.
+        val elapsed = AnimationClock.nowSeconds() - startedAt
+        // In a docs recording elapsed time is frameIndex / fps. In a live box it is monotonic wall time.
         val allowedByClock = (progress(min(1.0, elapsed / seconds)) * totalSteps).toInt()
         val advance = min(perPass, max(0, allowedByClock - done))
         repeat(advance) {

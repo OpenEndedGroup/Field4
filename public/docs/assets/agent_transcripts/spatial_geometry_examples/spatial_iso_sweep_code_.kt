@@ -16,12 +16,12 @@ val saddleDot = pointCloudFLine(
     listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
 )
 val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
-val sweepSeconds = 8.6
+val sweepSeconds = 8.0
 
 // The saddle level, measured rather than assumed: the field's own value at the col.
 val saddle = field(0.0, 0.0)
 println("saddle level %.3f — below it one contour, above it two".format(saddle))
-val started = System.nanoTime()
+val started = AnimationClock.nowSeconds()
 
 // The line that turns elapsed time into the swept parameter, straddling the saddle.
 fun isoAt(elapsed: Double): Double {
@@ -30,7 +30,7 @@ fun isoAt(elapsed: Double): Double {
 }
 
 animate {
-    val iso = isoAt((System.nanoTime() - started) / 1e9)
+    val iso = isoAt(AnimationClock.nowSeconds() - started)
     val contours = generateIsoContours(field, x0, x1, y0, y1, 100, 60, iso).filter { it.size >= 2 }
     val lines = contours.mapIndexed { i, c ->
         polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, boundaryEpsilon = 0.05)).also {

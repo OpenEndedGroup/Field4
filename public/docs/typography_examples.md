@@ -276,15 +276,15 @@ val window = run {
     probe.eachGlyph { i -> rotation = -0.5; scale = vec(1.3, 1.3); offset = vec(0.0, -34.0) }
     a.union(probe.bounds)
 }
-val started = System.nanoTime()
+val started = AnimationClock.nowSeconds()
 :::endfold
 
-// The line you would change: elapsed seconds and a glyph index in, a travelling wave out. Elapsed
-// seconds rather than a frame counter, because this box renders faster than the recorder samples it.
+// The line you would change: elapsed seconds and a glyph index in, a travelling wave out. During
+// offline capture AnimationClock derives elapsed time exactly from frame index / fps.
 fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
 animate {
-    val elapsed = (System.nanoTime() - started) / 1e9
+    val elapsed = AnimationClock.nowSeconds() - started
     layout.eachGlyph { i ->
         val w = waveAt(elapsed, i)
         rotation = 0.42 * kotlin.math.sin(w)

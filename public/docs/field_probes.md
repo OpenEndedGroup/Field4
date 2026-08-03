@@ -136,7 +136,7 @@ Nothing on that screen tells you what the particle *speeds* look like. The probe
 does. `.display("probe")` renders a live **histogram + summary card** on the
 compute box, updating every frame as the simulation runs:
 
-```diffstatic_runner {data-lang=kotlin video="assets/field_probes/fieldprobe-card.mp4" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel=probe embed=true hidden=true force=true timeout="180" duration="6" fps="30" name="field-probes-card" alt="live fieldProbe histogram and summary card" macro-file="../../dev_docs/agents/transcripts/threebox.yaml" capture-box="tb_compute"}
+```diffstatic_runner {data-lang=kotlin video="assets/field_probes/fieldprobe-card.mp4" capture="box" open-outputs=true wait-output=true wait-output-kind=display wait-output-channel=probe embed=true hidden=true force=true timeout="180" duration="6" fps="30" restart-target=false name="field-probes-card" alt="live fieldProbe histogram and summary card" macro-file="../../dev_docs/agents/transcripts/threebox.yaml" capture-box="tb_compute"}
 // The "probe" display channel on the compute box, recorded live while the
 // galaxy above animates. Same transcript: threebox.yaml.
 ```
