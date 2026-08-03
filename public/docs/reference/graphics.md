@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-26 source file(s), 1655 public symbol(s), 773 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+26 source file(s), 1617 public symbol(s), 771 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -489,7 +489,6 @@ A residual block whose value is computed by `expressions`, one residual each, ov
 | <code class="highlight"><span class="k">val</span> <span class="n">expressions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CeresExpr</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CeresVariableRef</span><span class="p">&gt;</span></code> | The free variables these expressions read, in the order the expressions' [`CeresExprVariable`](graphics.md#ceresexpression-kt-ceresexprvariable) handles were bound. Declared at program scope, so a variable named here may also be named by other residuals. |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> | `CeresFeature.AbiV3`, not v2. The `EXPR` operand stream now carries a variable-reference section whether or not it is empty, and a v2 wrapper reading it would take the count as a weight and everything after as opcodes — which is the silent-misparse failure mode the v2 work removed. Gated in Kotlin so a caller gets a clear refusal rather than a plausible answer to a different question. |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresExpression</span></code> | The compiled program, exposed so a caller can see what their expression became. |
 
@@ -524,8 +523,8 @@ backend. Geometry is a flat xyz [`PointCloud`](graphics.md#ceresgeometry-kt-poin
 the rest — most conveniently assembled with `buildCeresProgram` / [`CeresProgramBuilder`](graphics.md#ceresgeometry-kt-ceresprogrambuilder).
 
 Every constraint serialises itself into one flat `DoubleArray` of opcodes ([`CeresOpcode`](graphics.md#ceresgeometry-kt-ceresopcode)) via
-`encodeLegacyBytecode`, and declares the [`CeresFeature`](graphics.md#ceresgeometry-kt-ceresfeature) a backend must support to run it; the
-actual solving happens behind [`CeresSolverBackend`](graphics.md#ceresgeometry-kt-ceressolverbackend) / [`CompiledCeresSolver`](graphics.md#ceresgeometry-kt-compiledceressolver) (see
+`encodeLegacyBytecode`; the actual solving happens behind [`CeresSolverBackend`](graphics.md#ceresgeometry-kt-ceressolverbackend) /
+[`CompiledCeresSolver`](graphics.md#ceresgeometry-kt-compiledceressolver) (see
 `FfmCeresBackend.kt` for the native one). [`CachedCeresSolvers`](graphics.md#ceresgeometry-kt-cachedceressolvers) keys compiled solvers by point
 count plus program hash so an unchanged program is compiled once.
 
@@ -564,17 +563,9 @@ Constants: `X`, `Y`, `Z`.
 
 Constants: `X`, `Y`, `Z`, `XY`, `XZ`, `YZ`, `XYZ`.
 
-### CeresFeature { #ceresgeometry-kt-ceresfeature }
-
-<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">CeresFeature</span></code>
-
-Constants: `LegacyWasmBytecode`, `DotProduct`, `VectorDotProduct`, `NativeGeometry`, `a`, `and`, `so`, `the`, `not`.
-
 ### CeresOpcode { #ceresgeometry-kt-ceresopcode }
 
 <code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">CeresOpcode</span><span class="p">(</span><span class="k">val</span> <span class="n">code</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricName</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
-
-The `ken_ceres_jvm_abi_v3` wrapper: free variables in the residual expression VM ([`CeresVariableDecl`](graphics.md#ceresexpression-kt-ceresvariabledecl), `CeresProgramBuilder.variable`), the manifolds they can live on, and `ken_ceres_solver_variables` to read their solved values back.
 
 Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, `SameXZ`, `SameYZ`, `PerpendicularAtOrigin`, `LockX`, `LockY`, `LockZ`, `LockXY`, `LockXZ`, `LockYZ`, `Prior3`, `PriorX`, `PriorY`, `PriorZ`, `MinDistance`, `EqualDistance`, `MaxDistance`, `NoNegativeZ`, `DotAtOrigin`, `VectorDot`, `PointOnPlane`, `LineParallel`, `LineAngle`, `DihedralAngle`, `EqualEdgeVector`, `MirrorAcrossPlane`, `PanelArea`, `PointInHalfspace`, `LineDirection`, `PlaneNormalDirection`, `LineTowardPoint`, `SetLoss`, `EdgeTangency`, `TangencyCentroid`, `Centroid`, `RadiusAboutCentroid`, `PlanarHesse`, `PlanarFit`, `GaugeRotation`, `Expr`, `Variable`.
 
@@ -585,7 +576,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">requiredFeature</span><span class="p">:</span> <span class="nc">CeresFeature</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Planar { #ceresgeometry-kt-planar }
@@ -596,7 +586,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Colinear { #ceresgeometry-kt-colinear }
@@ -609,7 +598,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">lineB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceEquals { #ceresgeometry-kt-distanceequals }
@@ -622,7 +610,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">distance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceAtLeast { #ceresgeometry-kt-distanceatleast }
@@ -635,7 +622,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DistanceAtMost { #ceresgeometry-kt-distanceatmost }
@@ -648,7 +634,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">maximum</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### EqualDistance { #ceresgeometry-kt-equaldistance }
@@ -662,7 +647,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### SameCoordinate { #ceresgeometry-kt-samecoordinate }
@@ -674,7 +658,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Perpendicular { #ceresgeometry-kt-perpendicular }
@@ -687,7 +670,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LockPosition { #ceresgeometry-kt-lockposition }
@@ -699,7 +681,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### WeakPosition { #ceresgeometry-kt-weakposition }
@@ -711,7 +692,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">AxisSet</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### NoNegativeZ { #ceresgeometry-kt-nonegativez }
@@ -722,7 +702,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DotAtOrigin { #ceresgeometry-kt-dotatorigin }
@@ -737,7 +716,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### VectorDot { #ceresgeometry-kt-vectordot }
@@ -753,7 +731,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">normalized</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PointOnPlane { #ceresgeometry-kt-pointonplane }
@@ -768,7 +745,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">offset</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineParallel { #ceresgeometry-kt-lineparallel }
@@ -782,7 +758,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b0</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineAngle { #ceresgeometry-kt-lineangle }
@@ -797,7 +772,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b1</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### DihedralAngle { #ceresgeometry-kt-dihedralangle }
@@ -812,7 +786,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">sideB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### EqualEdgeVector { #ceresgeometry-kt-equaledgevector }
@@ -826,7 +799,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### MirrorAcrossPlane { #ceresgeometry-kt-mirroracrossplane }
@@ -841,7 +813,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">planeB</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PanelArea { #ceresgeometry-kt-panelarea }
@@ -856,7 +827,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetArea</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PointInHalfspace { #ceresgeometry-kt-pointinhalfspace }
@@ -871,7 +841,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">planeC</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">minSignedDistance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineDirection { #ceresgeometry-kt-linedirection }
@@ -884,7 +853,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PlaneNormalDirection { #ceresgeometry-kt-planenormaldirection }
@@ -899,7 +867,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">targetCos</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### LineTowardPoint { #ceresgeometry-kt-linetowardpoint }
@@ -912,7 +879,6 @@ Constants: `Planar`, `OnLine`, `Distance`, `SameX`, `SameY`, `SameZ`, `SameXY`, 
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### EdgeTangency { #ceresgeometry-kt-edgetangency }
@@ -927,7 +893,6 @@ Distance from the origin to the infinite line through `a` and `b`, driven to `ra
 | <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">PointId</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### TangencyCentroid { #ceresgeometry-kt-tangencycentroid }
@@ -940,7 +905,6 @@ The mean, over `edges`, of each edge's nearest point to the origin, driven to th
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">edges</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">,</span> <span class="nc">PointId</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### Centroid { #ceresgeometry-kt-centroid }
@@ -954,7 +918,6 @@ The mean of `points` driven to `target`; three residuals. Pass `PointId.ALL_POIN
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### RadiusAboutCentroid { #ceresgeometry-kt-radiusaboutcentroid }
@@ -968,7 +931,6 @@ Every point in `points` the same distance `radius` from the running mean of that
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### RawProgramFragment { #ceresgeometry-kt-rawprogramfragment }
@@ -981,7 +943,6 @@ A literal opcode stream, spliced into the program as-is.
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PlanarHesse { #ceresgeometry-kt-planarhesse }
@@ -994,7 +955,6 @@ Face planarity with the plane in Hesse normal form: `{ x : x . n == d }`, `n` on
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### PlanarFit { #ceresgeometry-kt-planarfit }
@@ -1007,7 +967,6 @@ Face planarity against the face's own Newell best-fit plane, computed inside the
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### GaugeRotation { #ceresgeometry-kt-gaugerotation }
@@ -1020,7 +979,6 @@ Remove the infinitesimal-rotation null space: three residuals holding `sum(refer
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PointId</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">requiredFeature</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">encodeLegacy</span><span class="p">(</span><span class="k">out</span><span class="p">:</span> <span class="nc">MutableList</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
 
 ### CeresProgramBuilder { #ceresgeometry-kt-ceresprogrambuilder }
@@ -1097,7 +1055,6 @@ The loss the native solver wraps every residual in.
 | <code class="highlight"><span class="k">val</span> <span class="n">constraints</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GeometryConstraint</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">loss</span><span class="p">:</span> <span class="nc">RobustLoss</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CeresVariableDecl</span><span class="p">&gt;</span></code> | Free variables, in declaration order — the order the native side registers them and the order `SolveResult.variables` reports their solved values in. |
-| <code class="highlight"><span class="k">val</span> <span class="n">requiredFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">variableComponentCount</span><span class="p">:</span> <span class="nc">Int</span></code> | Every free-variable component, summed — the size of the array a solve reports back. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">encodeLegacyBytecode</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">legacyHash</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
@@ -1142,7 +1099,7 @@ Constants: `CONVERGENCE`, `NO_CONVERGENCE`, `FAILURE`, `USER_SUCCESS`, `USER_FAI
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CeresSolveSummary</span><span class="p">(</span><span class="k">val</span> <span class="n">initialCost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">finalCost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">successfulSteps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">unsuccessfulSteps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">termination</span><span class="p">:</span> <span class="nc">CeresTermination</span><span class="p">,</span> <span class="k">val</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">effectiveParameterCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameterBlockCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualBlockCount</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="o">&#42;</span> <span class="nc">What</span> <span class="nc">Ceres</span> <span class="n">used</span> <span class="p">—</span> <span class="n">not</span> <span class="n">necessarily</span> <span class="n">what</span> <span class="n">you</span> <span class="n">asked</span> <span class="n">for</span><span class="p">,</span> <span class="n">if</span> <span class="n">the</span> <span class="n">build</span> <span class="n">lacks</span> <span class="n">that</span> <span class="n">backend</span><span class="p">.</span> <span class="nc">Null</span> <span class="o">&#42;</span> <span class="n">when</span> <span class="nc">Ceres</span> <span class="n">picked</span> <span class="n">something</span> <span class="kc">this</span> <span class="nc">ABI</span> <span class="n">has</span> <span class="n">no</span> <span class="n">name</span> <span class="n">for</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">linearSolverUsed</span><span class="p">:</span> <span class="nc">CeresLinearSolver</span><span class="o">?</span><span class="p">)</span></code>
 
-What the minimizer actually did. Null on a backend that predates `CeresFeature.AbiV2`, or when `SolveOptions.summary` is false.
+What the minimizer actually did. Null when `SolveOptions.summary` is false.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1163,20 +1120,20 @@ What the minimizer actually did. Null on a backend that predates `CeresFeature.A
 
 ### SolveOptions { #ceresgeometry-kt-solveoptions }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricGroupCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Requires</span> <span class="p">&#91;</span><span class="nc">CeresFeature</span><span class="p">.</span><span class="nc">AbiV2</span><span class="p">&#93;</span><span class="p">;</span> <span class="n">ignored</span> <span class="k">by</span> <span class="n">an</span> <span class="n">older</span> <span class="n">backend</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">linearSolver</span><span class="p">:</span> <span class="nc">CeresLinearSolver</span> <span class="o">=</span> <span class="nc">CeresLinearSolver</span><span class="p">.</span><span class="nc">DENSE&#95;QR</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Requires</span> <span class="p">&#91;</span><span class="nc">CeresFeature</span><span class="p">.</span><span class="nc">AbiV2</span><span class="p">&#93;</span><span class="p">.</span> <span class="nc">Ceres</span> <span class="n">parallelises</span> <span class="n">residual</span> <span class="n">and</span> <span class="nc">Jacobian</span> <span class="n">evaluation</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">functionTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">gradientTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">10</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameterTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">8</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Let</span> <span class="n">the</span> <span class="n">trust</span> <span class="n">region</span> <span class="n">accept</span> <span class="n">a</span> <span class="n">worse</span> <span class="n">step</span> <span class="n">occasionally</span><span class="p">;</span> <span class="n">helps</span> <span class="n">on</span> <span class="n">narrow</span> <span class="n">valleys</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">nonmonotonicSteps</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Fill</span> <span class="p">&#91;</span><span class="nc">SolveResult</span><span class="p">.</span><span class="n">summary</span><span class="p">&#93;</span><span class="p">.</span> <span class="nc">Requires</span> <span class="p">&#91;</span><span class="nc">CeresFeature</span><span class="p">.</span><span class="nc">AbiV2</span><span class="p">&#93;</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Ceres</span><span class="p">'</span> <span class="n">own</span> <span class="n">per</span><span class="p">-</span><span class="n">iteration</span> <span class="n">table</span><span class="p">,</span> <span class="n">on</span> <span class="n">stdout</span><span class="p">.</span> <span class="nc">Debugging</span> <span class="n">only</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">progressToStdout</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">metricGroupCapacity</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">64</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="o">&#42;</span> <span class="nc">Ceres</span> <span class="n">falls</span> <span class="n">back</span> <span class="n">to</span> <span class="n">a</span> <span class="n">dense</span> <span class="n">solve</span><span class="p">,</span> <span class="n">silently</span><span class="p">,</span> <span class="n">when</span> <span class="n">the</span> <span class="n">loaded</span> <span class="n">wrapper</span> <span class="n">was</span> <span class="n">built</span> <span class="n">without</span> <span class="n">the</span> <span class="o">&#42;</span> <span class="n">sparse</span> <span class="n">backend</span> <span class="n">an</span> <span class="n">option</span> <span class="n">asks</span> <span class="n">for</span> <span class="p">—</span> <span class="p">&#91;</span><span class="nc">CeresSolveSummary</span><span class="p">.</span><span class="n">linearSolverUsed</span><span class="p">&#93;</span> <span class="n">is</span> <span class="n">what</span> <span class="n">tells</span> <span class="n">you</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">linearSolver</span><span class="p">:</span> <span class="nc">CeresLinearSolver</span> <span class="o">=</span> <span class="nc">CeresLinearSolver</span><span class="p">.</span><span class="nc">DENSE&#95;QR</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Ceres</span> <span class="n">parallelises</span> <span class="n">residual</span> <span class="n">and</span> <span class="nc">Jacobian</span> <span class="n">evaluation</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">functionTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="k">val</span> <span class="n">gradientTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">10</span><span class="p">,</span> <span class="k">val</span> <span class="n">parameterTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">8</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Let</span> <span class="n">the</span> <span class="n">trust</span> <span class="n">region</span> <span class="n">accept</span> <span class="n">a</span> <span class="n">worse</span> <span class="n">step</span> <span class="n">occasionally</span><span class="p">;</span> <span class="n">helps</span> <span class="n">on</span> <span class="n">narrow</span> <span class="n">valleys</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">nonmonotonicSteps</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Fill</span> <span class="p">&#91;</span><span class="nc">SolveResult</span><span class="p">.</span><span class="n">summary</span><span class="p">&#93;</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">Ceres</span><span class="p">'</span> <span class="n">own</span> <span class="n">per</span><span class="p">-</span><span class="n">iteration</span> <span class="n">table</span><span class="p">,</span> <span class="n">on</span> <span class="n">stdout</span><span class="p">.</span> <span class="nc">Debugging</span> <span class="n">only</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">progressToStdout</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">maxIterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">metricGroupCapacity</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">linearSolver</span><span class="p">:</span> <span class="nc">CeresLinearSolver</span></code> | Requires `CeresFeature.AbiV2`; ignored by an older backend. |
-| <code class="highlight"><span class="k">val</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span></code> | Requires `CeresFeature.AbiV2`. Ceres parallelises residual and Jacobian evaluation. |
+| <code class="highlight"><span class="k">val</span> <span class="n">linearSolver</span><span class="p">:</span> <span class="nc">CeresLinearSolver</span></code> | Ceres falls back to a dense solve, silently, when the loaded wrapper was built without the sparse backend an option asks for — `CeresSolveSummary.linearSolverUsed` is what tells you. |
+| <code class="highlight"><span class="k">val</span> <span class="n">threads</span><span class="p">:</span> <span class="nc">Int</span></code> | Ceres parallelises residual and Jacobian evaluation. |
 | <code class="highlight"><span class="k">val</span> <span class="n">functionTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">gradientTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">parameterTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">nonmonotonicSteps</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Let the trust region accept a worse step occasionally; helps on narrow valleys. |
-| <code class="highlight"><span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Fill `SolveResult.summary`. Requires `CeresFeature.AbiV2`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Fill `SolveResult.summary`. |
 | <code class="highlight"><span class="k">val</span> <span class="n">progressToStdout</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Ceres' own per-iteration table, on stdout. Debugging only. |
 
 ### SolveRequest { #ceresgeometry-kt-solverequest }
@@ -1241,7 +1198,7 @@ The solved values of a program's free variables.
 
 ### SolveResult { #ceresgeometry-kt-solveresult }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">SolveMetrics</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">CeresSolveSummary</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="o">&#42;</span> <span class="nc">The</span> <span class="n">solved</span> <span class="n">free</span> <span class="n">variables</span><span class="p">,</span> <span class="k">in</span> <span class="n">declaration</span> <span class="n">order</span><span class="p">.</span> <span class="nc">Empty</span> <span class="n">when</span> <span class="n">the</span> <span class="n">program</span> <span class="n">declared</span> <span class="n">none</span><span class="p">,</span> <span class="n">or</span> <span class="n">on</span> <span class="n">a</span> <span class="o">&#42;</span> <span class="n">backend</span> <span class="n">older</span> <span class="n">than</span> <span class="p">&#91;</span><span class="nc">CeresFeature</span><span class="p">.</span><span class="nc">AbiV3</span><span class="p">&#93;</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">CeresVariableValues</span> <span class="o">=</span> <span class="nc">CeresVariableValues</span><span class="p">.</span><span class="nc">EMPTY</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">ok</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">SolveMetrics</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">CeresSolveSummary</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="p">/</span><span class="o">&#42;</span><span class="o">&#42;</span> <span class="nc">The</span> <span class="n">solved</span> <span class="n">free</span> <span class="n">variables</span><span class="p">,</span> <span class="k">in</span> <span class="n">declaration</span> <span class="n">order</span><span class="p">.</span> <span class="nc">Empty</span> <span class="n">when</span> <span class="n">the</span> <span class="n">program</span> <span class="n">declared</span> <span class="n">none</span><span class="p">.</span> <span class="o">&#42;</span><span class="p">/</span> <span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">CeresVariableValues</span> <span class="o">=</span> <span class="nc">CeresVariableValues</span><span class="p">.</span><span class="nc">EMPTY</span><span class="p">)</span></code>
 
 | Declaration | Summary |
 | --- | --- |
@@ -1249,7 +1206,7 @@ The solved values of a program's free variables.
 | <code class="highlight"><span class="k">val</span> <span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">SolveMetrics</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">CeresSolveSummary</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">CeresVariableValues</span></code> | The solved free variables, in declaration order. Empty when the program declared none, or on a backend older than `CeresFeature.AbiV3`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">variables</span><span class="p">:</span> <span class="nc">CeresVariableValues</span></code> | The solved free variables, in declaration order. Empty when the program declared none. |
 
 ### CompiledCeresSolver { #ceresgeometry-kt-compiledceressolver }
 
@@ -1259,7 +1216,6 @@ The solved values of a program's free variables.
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">pointCount</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">programHash</span><span class="p">:</span> <span class="nc">UInt</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">supportedFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">dynamicPriorWeights</span><span class="p">:</span> <span class="nc">DynamicPriorWeights</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nc">SolveOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">SolveResult</span></code> |  |
 | <code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code> |  |
 
@@ -1269,7 +1225,6 @@ The solved values of a program's free variables.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">supportedFeatures</span><span class="p">:</span> <span class="nc">Set</span><span class="p">&lt;</span><span class="nc">CeresFeature</span><span class="p">&gt;</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">compile</span><span class="p">(</span><span class="n">seedPoints</span><span class="p">:</span> <span class="nc">PointCloud</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">CeresProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompiledCeresSolver</span></code> |  |
 
 ### CachedCeresSolvers { #ceresgeometry-kt-cachedceressolvers }

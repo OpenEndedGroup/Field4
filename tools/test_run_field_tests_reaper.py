@@ -46,7 +46,7 @@ REAL_RUNJVM_COMMAND = (
     "-PfieldAotCache=true to generate and use it. "
     "-Dafield.aot.state=not-attempted "
     "-Dafield.aot.summary=not attempted "
-    "-Dafield.ceres.library={root}/libs/libken_ceres_jvm.dylib "
+    "-Dafield.ceres.library={root}/build/ken-ceres-redistributable/libken_ceres_jvm.dylib "
     "-Dorg.lwjgl.system.stackSize=256 -XstartOnFirstThread "
     "--add-opens=java.base/java.net=ALL-UNNAMED "
     "--enable-native-access=ALL-UNNAMED -Xdock:name=Field4 "

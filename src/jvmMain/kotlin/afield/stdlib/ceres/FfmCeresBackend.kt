@@ -23,19 +23,17 @@ class FfmCeresBackend(
     private val solveHandle: MethodHandle
     private val abiVersionHandle: MethodHandle
 
-    /** Null on a v1 wrapper. Present means solver options and a solver summary are available. */
-    private val solve2Handle: MethodHandle?
+    /** The options-and-summary solve. `solveHandle` is the fixed-configuration one `solveInPlace` uses. */
+    private val solve2Handle: MethodHandle
 
-    /** Null on a v1 wrapper. Present means build errors are reportable instead of silent. */
-    private val lastErrorHandle: MethodHandle?
+    /** Why a program failed to build, instead of a silent refusal. */
+    private val lastErrorHandle: MethodHandle
 
-    /** Null before v3. Present means an expression's free variables can be read back after a solve. */
-    private val variablesHandle: MethodHandle?
+    /** Reads an expression's free variables back after a solve. */
+    private val variablesHandle: MethodHandle
 
     /** The `ken_ceres_jvm_abi_v*` string the loaded library reports. */
     val abiVersion: String
-
-    override val supportedFeatures: Set<CeresFeature>
 
     init {
         require(reusableMetricCapacity >= 0) { "reusable metric capacity must be non-negative" }
@@ -79,15 +77,14 @@ class FfmCeresBackend(
         abiVersion = (abiVersionHandle.invokeWithArguments() as MemorySegment)
             .reinterpret(64)
             .getString(0)
-        require(abiVersion in SUPPORTED_ABIS) {
-            "unsupported Ceres JVM ABI: $abiVersion (this build understands ${SUPPORTED_ABIS.joinToString()})"
+        require(abiVersion == ABI_V3) {
+            "this Ceres wrapper is $abiVersion; Field needs $ABI_V3. " +
+            "Build one with ./gradlew buildCeresRedistributable"
         }
 
-        // v2 is detected by symbol, not by trusting the version string: a half-built library that
-        // reports v2 but is missing an entry point should fail here, not at the first solve.
-        val v3 = abiVersion == ABI_V3
-        val v2 = abiVersion == ABI_V2 || v3
-        solve2Handle = if (!v2) null else downcall(
+        // Every entry point is looked up eagerly rather than on first use: a library that reports
+        // the right version but is missing a symbol should fail here, not mid-solve.
+        solve2Handle = downcall(
             "ken_ceres_solver_solve2",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_INT,
@@ -106,11 +103,11 @@ class FfmCeresBackend(
                 ValueLayout.JAVA_INT,  // summary_cap
             ),
         )
-        lastErrorHandle = if (!v2) null else downcall(
+        lastErrorHandle = downcall(
             "ken_ceres_solver_last_error",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS),
         )
-        variablesHandle = if (!v3) null else downcall(
+        variablesHandle = downcall(
             "ken_ceres_solver_variables",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_INT,
@@ -119,15 +116,6 @@ class FfmCeresBackend(
                 ValueLayout.JAVA_INT,  // cap
             ),
         )
-
-        supportedFeatures = buildSet {
-            add(CeresFeature.LegacyWasmBytecode)
-            add(CeresFeature.DotProduct)
-            add(CeresFeature.VectorDotProduct)
-            add(CeresFeature.NativeGeometry)
-            if (v2) add(CeresFeature.AbiV2)
-            if (v3) add(CeresFeature.AbiV3)
-        }
     }
 
     override fun compile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver =
@@ -145,7 +133,6 @@ class FfmCeresBackend(
         private val program: CeresProgram,
     ) : ReusableCompiledCeresSolver {
         override val pointCount: Int = seedPoints.pointCount
-        override val supportedFeatures: Set<CeresFeature> = this@FfmCeresBackend.supportedFeatures
         override val programHash: UInt = program.legacyHash()
         override val reusableMetricCapacity: Int = this@FfmCeresBackend.reusableMetricCapacity
 
@@ -163,10 +150,6 @@ class FfmCeresBackend(
 
         init {
             require(pointCount >= 0) { "point count must be non-negative" }
-            require(supportedFeatures.containsAll(program.requiredFeatures)) {
-                "FFM backend lacks required features: ${program.requiredFeatures - supportedFeatures}"
-            }
-
             val bytecode = program.encodeLegacyBytecode()
             Arena.ofConfined().use { arena ->
                 val seedPointSegment = arena.allocateFrom(ValueLayout.JAVA_DOUBLE, *seedPoints.copyValues())
@@ -185,7 +168,7 @@ class FfmCeresBackend(
             // the problem it built silently omits every constraint after that point. v2 records
             // where it stopped; refuse the solver rather than hand back one that answers a
             // different question.
-            lastErrorHandle?.let { errorHandle ->
+            lastErrorHandle.let { errorHandle ->
                 val message = (errorHandle.invokeWithArguments(handle) as MemorySegment)
                     .reinterpret(512)
                     .getString(0)
@@ -200,7 +183,7 @@ class FfmCeresBackend(
             // they have to agree, or every solved value read back would be attributed to the wrong
             // name. Skipped when a RawProgramFragment is present, since that can legitimately declare
             // a variable this layer cannot see.
-            if (variablesHandle != null && program.constraints.none { it is RawProgramFragment }) {
+            if (program.constraints.none { it is RawProgramFragment }) {
                 val nativeCount = variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
                 if (nativeCount != program.variableComponentCount) {
                     destroyHandle.invokeWithArguments(handle)
@@ -239,47 +222,29 @@ class FfmCeresBackend(
                 }
                 val groupCount = if (options.metrics) arena.allocate(ValueLayout.JAVA_INT) else MemorySegment.NULL
 
-                require(!(options.needsAbiV2 && solve2Handle == null)) {
-                    "these SolveOptions need $ABI_V2 but the loaded library reports $abiVersion"
-                }
-                val wantSummary = options.summary && solve2Handle != null
+                val wantSummary = options.summary
                 val summaryOut = if (wantSummary) {
                     arena.allocate(ValueLayout.JAVA_DOUBLE, CeresSolveSummary.SLOTS.toLong())
                 } else {
                     MemorySegment.NULL
                 }
 
-                val ok = if (solve2Handle == null) {
-                    solveHandle.invokeWithArguments(
-                        handle,
-                        pointsIn,
-                        pointCount,
-                        options.maxIterations,
-                        priors,
-                        pointsOut,
-                        totalCost,
-                        groups,
-                        options.metricGroupCapacity,
-                        groupCount,
-                    ) as Int
-                } else {
-                    val encoded = options.encode()
-                    solve2Handle.invokeWithArguments(
-                        handle,
-                        pointsIn,
-                        pointCount,
-                        arena.allocateFrom(ValueLayout.JAVA_DOUBLE, *encoded),
-                        encoded.size,
-                        priors,
-                        pointsOut,
-                        totalCost,
-                        groups,
-                        options.metricGroupCapacity,
-                        groupCount,
-                        summaryOut,
-                        if (wantSummary) CeresSolveSummary.SLOTS else 0,
-                    ) as Int
-                }
+                val encoded = options.encode()
+                val ok = solve2Handle.invokeWithArguments(
+                    handle,
+                    pointsIn,
+                    pointCount,
+                    arena.allocateFrom(ValueLayout.JAVA_DOUBLE, *encoded),
+                    encoded.size,
+                    priors,
+                    pointsOut,
+                    totalCost,
+                    groups,
+                    options.metricGroupCapacity,
+                    groupCount,
+                    summaryOut,
+                    if (wantSummary) CeresSolveSummary.SLOTS else 0,
+                ) as Int
 
                 val solved = DoubleArray(pointValues.size) { i ->
                     pointsOut.getAtIndex(ValueLayout.JAVA_DOUBLE, i.toLong())
@@ -332,11 +297,11 @@ class FfmCeresBackend(
         ): Boolean {
             check(!closed) { "compiled Ceres solver is closed" }
             require(points.pointCount == pointCount) { "point count changed from $pointCount to ${points.pointCount}" }
-            // The allocation-free path deliberately stays on the v1 entry point: its whole purpose
-            // is a steady per-frame solve with no arena churn, and the options that need v2 (a
-            // different linear solver, threads, a summary) are setup-time choices, not per-frame
-            // ones. Ask for them here and you get a clear refusal rather than silence.
-            require(!options.needsAbiV2) {
+            // The allocation-free path deliberately stays on the fixed-configuration entry point:
+            // its whole purpose is a steady per-frame solve with no arena churn, and the options
+            // that need the configurable one (a different linear solver, threads, a summary) are
+            // setup-time choices, not per-frame ones. Ask for them here and you get a clear refusal.
+            require(!options.needsConfigurableSolve) {
                 "solveInPlace runs the fixed-configuration solve; use solve() for these SolveOptions"
             }
             require(!options.metrics || options.metricGroupCapacity <= reusableMetricCapacity) {
@@ -405,13 +370,10 @@ class FfmCeresBackend(
          * exactly as `PLANAR`'s planes have always been.
          */
         private fun readVariables(arena: Arena): CeresVariableValues {
-            val count = when {
-                variablesHandle == null -> 0
-                else -> variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
-            }
+            val count = variablesHandle.invokeWithArguments(handle, MemorySegment.NULL, 0) as Int
             if (count <= 0) return CeresVariableValues.EMPTY
             val out = arena.allocate(ValueLayout.JAVA_DOUBLE, count.toLong())
-            val written = variablesHandle!!.invokeWithArguments(handle, out, count) as Int
+            val written = variablesHandle.invokeWithArguments(handle, out, count) as Int
             val flat = DoubleArray(minOf(count, written)) { i ->
                 out.getAtIndex(ValueLayout.JAVA_DOUBLE, i.toLong())
             }
@@ -447,11 +409,20 @@ class FfmCeresBackend(
     }
 }
 
-private const val ABI_V1 = "ken_ceres_jvm_abi_v1"
-private const val ABI_V2 = "ken_ceres_jvm_abi_v2"
 private const val ABI_V3 = "ken_ceres_jvm_abi_v3"
-private val SUPPORTED_ABIS = setOf(ABI_V1, ABI_V2, ABI_V3)
 
+/**
+ * Where to find the native wrapper.
+ *
+ * Nothing is committed: the solver is an optional extra, and a self-contained build is 8 MB that most
+ * of Field never touches. So the default is wherever `buildCeresRedistributable` puts its output, and
+ * a fresh clone has no library until someone runs that once. `afield.ceres.library` or
+ * `AFIELD_CERES_LIBRARY` override it — that is also how you point at the faster, Homebrew-linked
+ * `buildCeresNative` build while iterating on the wrapper.
+ *
+ * macOS only, and hardcoded so: there is no os/arch dispatch here yet because there has never been a
+ * second platform's artifact to dispatch to.
+ */
 object CeresNativeLibrary {
     val defaultPath: Path
         get() = System.getProperty("afield.ceres.library")
@@ -460,5 +431,8 @@ object CeresNativeLibrary {
             ?: System.getenv("AFIELD_CERES_LIBRARY")
                 ?.takeIf { it.isNotBlank() }
                 ?.let(Path::of)
-            ?: Path.of("libs", "libken_ceres_jvm.dylib")
+            ?: Path.of("build", "ken-ceres-redistributable", "libken_ceres_jvm.dylib")
+
+    /** What to tell someone whose [defaultPath] is not there. */
+    const val HOW_TO_BUILD: String = "./gradlew buildCeresRedistributable"
 }

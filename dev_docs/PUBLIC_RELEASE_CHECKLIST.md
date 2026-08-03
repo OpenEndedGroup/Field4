@@ -17,16 +17,12 @@ open until a named release candidate records evidence for them.
 - Add source/package license identifiers where appropriate.
 - Confirm redistribution terms for bundled jars, native libraries, and browser
   assets.
-- Decide how to distribute `libs/libken_ceres_jvm.dylib`; it is tracked and
-  referenced by the Gradle run configuration and Ceres smoke tasks, but the
-  checked-in binary is Mach-O arm64 and therefore not a cross-platform artifact.
-  *Building* a shippable one is solved — `./gradlew buildCeresRedistributable`
-  produces a self-contained ABI v3 dylib (8.0 MB, `libc++`/`libSystem` only, with
-  sparse Cholesky) from pinned Ceres 2.2.0 / Eigen 3.4.0 source and asserts its own
-  load commands. What is left is the decision: commit it (the checked-in artifact is
-  still ABI v1, so no v2/v3 feature works on a fresh clone), and whether a second
-  platform is worth giving `CeresNativeLibrary.defaultPath` its first os/arch
-  dispatch. See `dev_docs/CERES.md`, "What is deliberately not done".
+- The Ceres solver ships as source, not as a binary: `libs/libken_ceres_jvm.dylib` is
+  gone and `./gradlew buildCeresRedistributable` builds a self-contained ABI v3 dylib
+  (8.0 MB, `libc++`/`libSystem` only, sparse Cholesky) from pinned Ceres 2.2.0 /
+  Eigen 3.4.0 source, asserting its own load commands. It is an optional extra, so a
+  release needs to *say* that solver features require that one build step, and that it
+  is macOS-arm64 only. See `dev_docs/CERES.md`.
 - Document which native libraries are optional and which are required to run the
   default app.
 - Decide whether generated/offline documentation archives belong in releases,

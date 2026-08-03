@@ -14,8 +14,8 @@ import kotlin.math.max
  * the rest — most conveniently assembled with [buildCeresProgram] / [CeresProgramBuilder].
  *
  * Every constraint serialises itself into one flat `DoubleArray` of opcodes ([CeresOpcode]) via
- * `encodeLegacyBytecode`, and declares the [CeresFeature] a backend must support to run it; the
- * actual solving happens behind [CeresSolverBackend] / [CompiledCeresSolver] (see
+ * `encodeLegacyBytecode`; the actual solving happens behind [CeresSolverBackend] /
+ * [CompiledCeresSolver] (see
  * `FfmCeresBackend.kt` for the native one). [CachedCeresSolvers] keys compiled solvers by point
  * count plus program hash so an unchanged program is compiled once.
  *
@@ -51,35 +51,6 @@ enum class AxisSet {
     XZ,
     YZ,
     XYZ,
-}
-
-enum class CeresFeature {
-    LegacyWasmBytecode,
-    DotProduct,
-    VectorDotProduct,
-    NativeGeometry,
-
-    /**
-     * The `ken_ceres_jvm_abi_v2` wrapper: solver options and a solver summary
-     * ([CeresSolveSummary]), a selectable robust loss ([RobustLoss]), and the midsphere/global
-     * constraint family ([EdgeTangency], [TangencyCentroid], [Centroid], [RadiusAboutCentroid]).
-     *
-     * A backend loading the older committed dylib does not report this, so a program using any of
-     * the above fails at compile time with a clear message rather than silently solving a smaller
-     * problem.
-     */
-    AbiV2,
-
-    /**
-     * The `ken_ceres_jvm_abi_v3` wrapper: free variables in the residual expression VM
-     * ([CeresVariableDecl], [CeresProgramBuilder.variable]), the manifolds they can live on, and
-     * `ken_ceres_solver_variables` to read their solved values back.
-     *
-     * Every [CeresExpressionResidual] needs this, not only one that declares a variable: `EXPR`'s
-     * operand stream carries a variable-reference count unconditionally, and a v2 wrapper would read
-     * that count as a weight.
-     */
-    AbiV3,
 }
 
 enum class CeresOpcode(val code: Int, val metricName: String) {
@@ -147,7 +118,6 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
 
 sealed interface GeometryConstraint {
     val weight: Double
-    val requiredFeature: CeresFeature
     fun encodeLegacy(out: MutableList<Double>)
 }
 
@@ -159,8 +129,6 @@ data class Planar(
         requirePointList(points, 3, allowAll = false)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.Planar)
@@ -186,8 +154,6 @@ data class Colinear(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.OnLine)
         out += (points.size + 2).toDouble()
@@ -210,8 +176,6 @@ data class DistanceEquals(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.Distance)
         out += distance
@@ -233,8 +197,6 @@ data class DistanceAtLeast(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.MinDistance)
         out += minimum
@@ -255,8 +217,6 @@ data class DistanceAtMost(
         require(maximum >= 0.0) { "maximum distance must be >= 0" }
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.MaxDistance)
@@ -280,8 +240,6 @@ data class EqualDistance(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.EqualDistance)
         out += a.value.toDouble()
@@ -302,8 +260,6 @@ data class SameCoordinate(
         requirePointList(points, 2, allowAll = false)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(
@@ -336,8 +292,6 @@ data class Perpendicular(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PerpendicularAtOrigin)
         out += origin.value.toDouble()
@@ -357,8 +311,6 @@ data class LockPosition(
         requirePointList(points, 1, allowAll = false)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(
@@ -391,8 +343,6 @@ data class WeakPosition(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(
             when (axes) {
@@ -418,8 +368,6 @@ data class NoNegativeZ(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.LegacyWasmBytecode
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.NoNegativeZ)
         out.countedPoints(points)
@@ -444,11 +392,10 @@ data class DotAtOrigin(
         requireWeight(weight)
     }
 
-    override val requiredFeature =
-        if (normalized && target == 0.0) CeresFeature.LegacyWasmBytecode else CeresFeature.DotProduct
-
     override fun encodeLegacy(out: MutableList<Double>) {
-        if (requiredFeature == CeresFeature.LegacyWasmBytecode) {
+        // A normalized dot with a zero target *is* perpendicularity, and the older, narrower
+        // opcode says it in fewer operands.
+        if (normalized && target == 0.0) {
             Perpendicular(origin, a, b, weight).encodeLegacy(out)
             return
         }
@@ -477,8 +424,6 @@ data class VectorDot(
         require(target.isFinite()) { "dot target must be finite" }
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.VectorDotProduct
 
     override fun encodeLegacy(out: MutableList<Double>) {
         when {
@@ -514,8 +459,6 @@ data class PointOnPlane(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.NativeGeometry
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PointOnPlane)
         out.points(point, planeA, planeB, planeC)
@@ -535,8 +478,6 @@ data class LineParallel(
         requireDistinct(a0, a1, b0, b1)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.LineParallel)
@@ -559,8 +500,6 @@ data class LineAngle(
         requireCosine(targetCos, "line angle target")
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         when {
@@ -592,8 +531,6 @@ data class DihedralAngle(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.NativeGeometry
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.DihedralAngle)
         out.points(edgeA, edgeB, sideA, sideB)
@@ -613,8 +550,6 @@ data class EqualEdgeVector(
         requireDistinct(a, b, c, d)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.EqualEdgeVector)
@@ -636,8 +571,6 @@ data class MirrorAcrossPlane(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.NativeGeometry
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.MirrorAcrossPlane)
         out.points(point, mirror, planeA, planeB, planeC)
@@ -658,8 +591,6 @@ data class PanelArea(
         require(targetArea.isFinite() && targetArea >= 0.0) { "target area must be finite and non-negative" }
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PanelArea)
@@ -683,8 +614,6 @@ data class PointInHalfspace(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.NativeGeometry
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PointInHalfspace)
         out.points(point, planeA, planeB, planeC)
@@ -704,8 +633,6 @@ data class LineDirection(
         requireVector(direction, "line direction")
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.LineDirection)
@@ -730,8 +657,6 @@ data class PlaneNormalDirection(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.NativeGeometry
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PlaneNormalDirection)
         out.points(a, b, c)
@@ -751,8 +676,6 @@ data class LineTowardPoint(
         requireDistinct(a, b, target)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.NativeGeometry
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.LineTowardPoint)
@@ -787,8 +710,6 @@ data class EdgeTangency(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.AbiV2
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.EdgeTangency)
         out.points(a, b)
@@ -813,8 +734,6 @@ data class TangencyCentroid(
         edges.forEach { (a, b) -> requirePair(a, b) }
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.AbiV2
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.TangencyCentroid)
@@ -841,8 +760,6 @@ data class Centroid(
         requirePosition(target, "centroid target")
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.AbiV2
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.Centroid)
@@ -871,8 +788,6 @@ data class RadiusAboutCentroid(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.AbiV2
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.RadiusAboutCentroid)
         if (points.size == 1 && points[0] == PointId.ALL_POINTS) out += -1.0 else out.countedPoints(points)
@@ -889,8 +804,8 @@ data class RadiusAboutCentroid(
  * Kotlin catches up. It is also how the malformed-program path gets tested.
  *
  * Nothing validates the contents. Get the operand count wrong and the rest of the program is
- * garbage; on a [CeresFeature.AbiV2] backend that is at least reported rather than silently
- * truncated, which is why this asks for v2.
+ * garbage — but the wrapper reports that rather than silently truncating the stream, which is how
+ * the native validator's own refusals get exercised from Kotlin.
  */
 data class RawProgramFragment(
     val values: List<Double>,
@@ -900,8 +815,6 @@ data class RawProgramFragment(
         require(values.isNotEmpty()) { "a raw fragment needs at least an opcode" }
         require(values.all { it.isFinite() }) { "raw fragment values must be finite" }
     }
-
-    override val requiredFeature = CeresFeature.AbiV2
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out += values
@@ -927,8 +840,6 @@ data class PlanarHesse(
         requirePointList(points, 3, allowAll = false)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.AbiV2
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PlanarHesse)
@@ -958,8 +869,6 @@ data class PlanarFit(
         requireWeight(weight)
     }
 
-    override val requiredFeature = CeresFeature.AbiV2
-
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.PlanarFit)
         out.countedPoints(points)
@@ -984,8 +893,6 @@ data class GaugeRotation(
         requirePointList(points, 1, allowAll = true)
         requireWeight(weight)
     }
-
-    override val requiredFeature = CeresFeature.AbiV2
 
     override fun encodeLegacy(out: MutableList<Double>) {
         out.op(CeresOpcode.GaugeRotation)
@@ -1290,13 +1197,6 @@ data class CeresProgram(
      */
     val variables: List<CeresVariableDecl> = emptyList(),
 ) {
-    val requiredFeatures: Set<CeresFeature> = buildSet {
-        constraints.mapTo(this) { it.requiredFeature }
-        // Only a non-default loss needs the newer wrapper; the old one bakes in Huber(1e-3).
-        if (loss != RobustLoss.DEFAULT) add(CeresFeature.AbiV2)
-        if (variables.isNotEmpty()) add(CeresFeature.AbiV3)
-    }
-
     /** Every free-variable component, summed — the size of the array a solve reports back. */
     val variableComponentCount: Int = variables.sumOf { it.dimension }
 
@@ -1462,10 +1362,7 @@ enum class CeresTermination {
     }
 }
 
-/**
- * What the minimizer actually did. Null on a backend that predates [CeresFeature.AbiV2], or when
- * [SolveOptions.summary] is false.
- */
+/** What the minimizer actually did. Null when [SolveOptions.summary] is false. */
 data class CeresSolveSummary(
     val initialCost: Double,
     val finalCost: Double,
@@ -1523,16 +1420,19 @@ data class SolveOptions(
     val maxIterations: Int = 8,
     val metrics: Boolean = false,
     val metricGroupCapacity: Int = 64,
-    /** Requires [CeresFeature.AbiV2]; ignored by an older backend. */
+    /**
+     * Ceres falls back to a dense solve, silently, when the loaded wrapper was built without the
+     * sparse backend an option asks for — [CeresSolveSummary.linearSolverUsed] is what tells you.
+     */
     val linearSolver: CeresLinearSolver = CeresLinearSolver.DENSE_QR,
-    /** Requires [CeresFeature.AbiV2]. Ceres parallelises residual and Jacobian evaluation. */
+    /** Ceres parallelises residual and Jacobian evaluation. */
     val threads: Int = 1,
     val functionTolerance: Double = 1e-6,
     val gradientTolerance: Double = 1e-10,
     val parameterTolerance: Double = 1e-8,
     /** Let the trust region accept a worse step occasionally; helps on narrow valleys. */
     val nonmonotonicSteps: Boolean = false,
-    /** Fill [SolveResult.summary]. Requires [CeresFeature.AbiV2]. */
+    /** Fill [SolveResult.summary]. */
     val summary: Boolean = false,
     /** Ceres' own per-iteration table, on stdout. Debugging only. */
     val progressToStdout: Boolean = false,
@@ -1546,8 +1446,11 @@ data class SolveOptions(
         require(parameterTolerance > 0.0 && parameterTolerance.isFinite()) { "parameterTolerance must be positive" }
     }
 
-    /** True when this request needs anything the v1 wrapper cannot do. */
-    internal val needsAbiV2: Boolean
+    /**
+     * True when this request needs the configurable solve entry point rather than the
+     * fixed-configuration one — which is what [ReusableCompiledCeresSolver.solveInPlace] refuses.
+     */
+    internal val needsConfigurableSolve: Boolean
         get() = linearSolver != CeresLinearSolver.DENSE_QR ||
             threads != 1 ||
             summary ||
@@ -1684,17 +1587,13 @@ data class SolveResult(
     val points: PointCloud,
     val metrics: SolveMetrics? = null,
     val summary: CeresSolveSummary? = null,
-    /**
-     * The solved free variables, in declaration order. Empty when the program declared none, or on a
-     * backend older than [CeresFeature.AbiV3].
-     */
+    /** The solved free variables, in declaration order. Empty when the program declared none. */
     val variables: CeresVariableValues = CeresVariableValues.EMPTY,
 )
 
 interface CompiledCeresSolver : AutoCloseable {
     val pointCount: Int
     val programHash: UInt
-    val supportedFeatures: Set<CeresFeature>
 
     fun solve(
         points: PointCloud,
@@ -1706,8 +1605,6 @@ interface CompiledCeresSolver : AutoCloseable {
 }
 
 interface CeresSolverBackend {
-    val supportedFeatures: Set<CeresFeature>
-
     fun compile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver
 }
 
@@ -1731,9 +1628,6 @@ class CachedCeresSolvers(
     fun getOrCompile(seedPoints: PointCloud, program: CeresProgram): CompiledCeresSolver {
         val pointCount = seedPoints.pointCount
         require(pointCount >= 0) { "point count must be non-negative" }
-        require(backend.supportedFeatures.containsAll(program.requiredFeatures)) {
-            "backend lacks required features: ${program.requiredFeatures - backend.supportedFeatures}"
-        }
         val key = Key(pointCount, program.legacyHash())
         return cache.getOrPut(key) { backend.compile(seedPoints, program) }
     }

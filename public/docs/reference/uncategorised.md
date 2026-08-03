@@ -120,7 +120,7 @@ The outcome of a canonicalization run, including the honest before/after evidenc
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">ceresRealizationAvailable</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when this JVM has a native wrapper new enough to run `relaxWithCeres`. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">ceresRealizationAvailable</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code> | True when this JVM can load the native wrapper at all, and so can run `relaxWithCeres`. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">PolyhedralObject</span><span class="p">.</span><span class="nf">relaxWithCeres</span><span class="p">(</span><span class="n">plan</span><span class="p">:</span> <span class="nc">RelaxationPlan</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">CeresRelaxationOptions</span> <span class="o">=</span> <span class="nc">CeresRelaxationOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">CeresSolverBackend</span> <span class="o">=</span> <span class="nc">FfmCeresBackend</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">CeresRelaxationResult</span></code> | `relax`, with Ceres doing the minimisation. |
 
 ### CeresRealization { #ceresrealization-kt-ceresrealization }

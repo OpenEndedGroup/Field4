@@ -42,24 +42,41 @@ the whole "Ceres is native and a little hairy" objection, and it is mostly gone.
 
 ```bash
 ./gradlew buildCeresNative
-./gradlew smokeCeresAbiV2 -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
+./gradlew smokeCeres -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
 ```
 
-`-PceresLibrary=<path>` redirects every run/test/smoke task at a different wrapper, so a change can
-be A/B'd against the committed artifact without overwriting it.
+`-PceresLibrary=<path>` redirects every run/test/smoke task at a different wrapper, so two wrappers
+can be A/B'd against each other without either being the default.
 
-### What is deliberately *not* done
+### Nothing is committed, and there is only one ABI
 
-`libs/libken_ceres_jvm.dylib` is still the old, self-contained, statically-linked v1 build, and it
-is still what every task uses by default. A Homebrew-linked dylib needs
-`/opt/homebrew/opt/{ceres-solver,glog,gflags}` present at runtime, so committing one would trade a
-working default for a broken one on any machine without those. Everything new is therefore opt-in
-behind `-PceresLibrary`, and `buildCeresNative` is not wired into `check`.
+There used to be a committed `libs/libken_ceres_jvm.dylib` — a self-contained, statically-linked
+**v1** build from June — and, because it was the default, a whole negotiation layer existed so that
+a program needing anything newer would refuse cleanly instead of silently solving a smaller problem:
+a `CeresFeature` enum, a `requiredFeature` on all 32 constraint types, a `requiredFeatures` set per
+program, and two gates that compared the two.
 
-What *is* now settled is how to build a shippable one. `./gradlew buildCeresRedistributable` (or
-`native/ken-ceres/build_redistributable.sh` directly) produces a v3 wrapper whose `otool -L` shows
-only `libc++` and `libSystem` — the property the committed v1 artifact has and the Homebrew-linked
-build does not — by statically linking a Ceres built from pinned, checksummed source:
+That is all gone. The solver is an optional extra rather than a vital part of Field, v1 had no real
+users, and with one supported ABI there is nothing to negotiate — every feature is present or the
+library does not load. `FfmCeresBackend` now requires `ken_ceres_jvm_abi_v3` and says what to run if
+it does not get it; roughly 130 lines of gating went with it, and every smoke that had been held out
+of `smokeCeres` because the committed artifact was too old is now in it.
+
+The trade is that a fresh clone has no solver until someone builds one:
+
+```bash
+./gradlew buildCeresRedistributable
+```
+
+`CeresNativeLibrary.defaultPath` looks for that task's output, so nothing else has to be passed once
+it exists. Ask for a solve without it and the refusal names the command.
+
+### How the shippable one is built
+
+`buildCeresRedistributable` (or `native/ken-ceres/build_redistributable.sh` directly) produces a v3
+wrapper whose `otool -L` shows only `libc++` and `libSystem` — the property the old committed v1
+artifact had and the Homebrew-linked build does not — by statically linking a Ceres built from pinned,
+checksummed source:
 
 | | |
 |---|---|
@@ -78,15 +95,13 @@ And the script *asserts* the load commands rather than trusting the flags: anyth
 and `/System/Library` fails the build, because "I passed the static flag" and "the artifact is
 self-contained" are different claims.
 
-Verified against that artifact: all 42 checks across the five Ceres smokes, 29 solves genuinely
+Verified against that artifact: all 42 checks that `./gradlew smokeCeres` now runs, 29 solves genuinely
 reporting `SPARSE_NORMAL_CHOLESKY` rather than falling back to dense, `kkC` and `kkD` still exact, and
 zero lines of stderr noise.
 
-What remains a decision rather than a gap: whether to *commit* it. Doing so would grow `libs/` from
-2.2 MB to 8.0 MB and make every v2/v3 feature work on a fresh clone; not doing so keeps the repo
-small and leaves those features behind one build command. It is also macOS-arm64 only, and
-`CeresNativeLibrary.defaultPath` hardcodes `libs/libken_ceres_jvm.dylib` with no os/arch dispatch, so
-a second platform is a loader change as well as a build one.
+It is macOS-arm64 only. `CeresNativeLibrary.defaultPath` names one filename with no os/arch dispatch,
+which is honest rather than lazy — there has never been a second platform's artifact to dispatch to —
+but a second platform is therefore a loader change as well as a build one.
 
 ### A build bug found on the way
 
@@ -224,8 +239,8 @@ Isolating the sparse linear solver alone — same problem, same iteration count,
 | `tI` | 110 ms | 4.7 ms |
 | `kkC` | 3937 ms | 64 ms |
 
-This is the part the committed dylib cannot do at all, and it is the strongest single argument for
-fixing the build.
+This is the part the old committed v1 dylib could not do at all — it had every sparse backend off —
+and it was the strongest single argument for fixing the build.
 
 ### Should the compiled program be cached across calls?
 
@@ -334,11 +349,9 @@ orders of magnitude better than the existing iteration, and sane where it produc
 
 ## What is still open
 
-1. **Distribution.** Half done. `buildCeresRedistributable` builds a self-contained v3 artifact with
-   sparse support from pinned source, and asserts its own self-containment — so *producing* the right
-   binary is now one reproducible command. What is undecided is whether it gets committed (2.2 MB →
-   8.0 MB in `libs/`, against every v2/v3 feature working on a fresh clone) and whether a second
-   platform is worth the loader's first os/arch dispatch. See above.
+1. **A second platform.** Settled for macOS arm64: nothing is committed, v3 is the only ABI, and
+   `buildCeresRedistributable` produces the artifact. Linux or an Intel Mac would need the loader's
+   first os/arch dispatch and a build host, and neither has been asked for. See above.
 2. **`PLANAR` should migrate to the Hesse form.** The null space above is not specific to
    realization — every caller of the original opcode, including the architectural DSL, is paying
    for two free directions per face. `PLANAR_HESSE` is left as a separate opcode only so that this
@@ -533,10 +546,11 @@ The values are warm-started across solves, exactly as `PLANAR`'s planes always h
 `EXPR`'s operand stream now carries a variable-reference run whether or not it is empty. A v2 wrapper
 reading a v3 stream would take that count as the residual count and desync from there — the
 silent-misparse failure mode the v2 work was built to end. So *every* `CeresExpressionResidual`
-requires `CeresFeature.AbiV3` and refuses at compile time with a clear message, rather than the
-feature being sniffed. Everything `3f5950a20` established is unchanged: detection is per symbol
-rather than per version string, the committed v1 dylib is still the default, and `buildCeresNative`
-is still not in `check`.
+would have needed the v3 wrapper regardless of whether it declared a variable. That is now moot:
+v3 is the only ABI the loader accepts, so there is no v2 wrapper for a v3 stream to be misread by.
+What survives from `3f5950a20` is the habit that made this safe — every entry point is looked up by
+symbol at load time rather than trusted from the version string, so a library that reports v3 but is
+missing `ken_ceres_solver_variables` fails when it loads, not mid-solve.
 
 ### Is it right?
 
@@ -628,7 +642,7 @@ tell you to:
 | `afield.stdlib.ceres.CeresGeometry` | constraint vocabulary, program encoding, options, summary |
 | `afield.stdlib.ceres.FfmCeresBackend` | the FFM binding, ABI detection, feature gating |
 | `afield.stdlib.polytope.CeresRealization` | `RelaxationPlan` → `CeresProgram`, `relaxWithCeres` |
-| `afield.examples.ceres.CeresAbiV2Smoke` | v2 features against a closed-form answer |
+| `afield.examples.ceres.CeresSolverOptionsSmoke` | options, summary, loss and midsphere constraints against a closed-form answer |
 | `afield.examples.ceres.CeresPolytopeRealizerComparison` | the timing table above |
 | `afield.examples.ceres.CeresPlaneFormulationStudy` | the plane-parameterisation sweep |
 | `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |

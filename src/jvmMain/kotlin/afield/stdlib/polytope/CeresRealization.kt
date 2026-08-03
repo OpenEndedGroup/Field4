@@ -2,7 +2,6 @@ package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
 import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.CeresProgram
 import afield.stdlib.ceres.CeresSolveSummary
@@ -34,8 +33,8 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  *
  * ## Availability
  *
- * Needs the ABI v2 native wrapper (`./gradlew buildCeresNative`, then run with
- * `-Dafield.ceres.library=build/ken-ceres/libken_ceres_jvm.dylib`). [ceresRealizationAvailable]
+ * Needs the native wrapper, which is not committed — build it once with
+ * `./gradlew buildCeresRedistributable`. [ceresRealizationAvailable]
  * answers whether this JVM has one; [relaxWithCeres] throws a description of what is missing rather
  * than falling back silently, because a silent fallback would make a performance comparison lie.
  *
@@ -252,10 +251,13 @@ data class CeresRelaxationResult(
     val summary: CeresSolveSummary,
 )
 
-/** True when this JVM has a native wrapper new enough to run [relaxWithCeres]. */
-fun ceresRealizationAvailable(): Boolean = runCatching {
-    CeresFeature.AbiV2 in FfmCeresBackend().supportedFeatures
-}.getOrDefault(false)
+/**
+ * True when this JVM can load the native wrapper at all, and so can run [relaxWithCeres].
+ *
+ * False on a fresh clone: nothing is committed, so the library has to be built once with
+ * `./gradlew buildCeresRedistributable`.
+ */
+fun ceresRealizationAvailable(): Boolean = runCatching { FfmCeresBackend() }.isSuccess
 
 /**
  * [relax], with Ceres doing the minimisation.
@@ -295,18 +297,6 @@ fun PolyhedralObject.relaxWithCeres(
     options: CeresRelaxationOptions = CeresRelaxationOptions(),
     backend: CeresSolverBackend = FfmCeresBackend(),
 ): CeresRelaxationResult {
-    require(CeresFeature.AbiV2 in backend.supportedFeatures) {
-        "the Ceres realizer needs the ABI v2 native wrapper; build it with ./gradlew buildCeresNative " +
-            "and point -Dafield.ceres.library at build/ken-ceres/libken_ceres_jvm.dylib"
-    }
-    require(
-        options.planes != PlaneFormulation.HESSE_EXPRESSION ||
-            CeresFeature.AbiV3 in backend.supportedFeatures,
-    ) {
-        "PlaneFormulation.HESSE_EXPRESSION writes the plane as free variables in the expression VM, " +
-            "which needs the ABI v3 wrapper; this one reports ${backend.supportedFeatures}"
-    }
-
     val problem = RealizationProblem.of(this)
     val active = plan.constraints.filter { it.weight > 0.0 }
     require(active.isNotEmpty()) { "every constraint in the plan has zero weight" }

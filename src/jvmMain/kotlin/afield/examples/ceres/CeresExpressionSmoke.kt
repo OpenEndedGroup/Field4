@@ -3,7 +3,6 @@ package afield.examples.ceres
 import afield.stdlib.ceres.CachedCeresSolvers
 import afield.stdlib.ceres.CeresExpr
 import afield.stdlib.ceres.CeresExprVec
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.CeresProgram
 import afield.stdlib.ceres.FfmCeresBackend
@@ -61,9 +60,6 @@ private fun maxDeviation(a: PointCloud, b: PointCloud): Double =
 
 fun main() {
     val backend = FfmCeresBackend()
-    check(CeresFeature.AbiV3 in backend.supportedFeatures) {
-        "needs the v3 wrapper: ./gradlew buildCeresNative, then -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
-    }
 
     // ---------------------------------------------------------------------------------------
     // 1. Equivalence with the hand-written opcodes.

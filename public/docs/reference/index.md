@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**5924 public symbols across 114 source files**, 3387 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**5886 public symbols across 114 source files**, 3385 of them (57%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1574 | 1188 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 17 | 675 | 246 (36%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 26 | 1655 | 773 (46%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 26 | 1617 | 771 (47%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 7 | 328 | 205 (62%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization) — plus the measurement layer every one of them makes its claims through, because "it produced pixels" is not evidence. |
 | [Function](function.md) | 12 | 418 | 302 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
@@ -44,8 +44,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [autodiff_optimize.kt](math.md#autodiff-optimize-kt) | Math | 44 | 42 | Gradient-descent optimizers that consume the exact gradients from `autodiff.kt` — `sgd`, `adam` and `lbfgs`, behind one `minimize` front door. | [Differentiating Functions](../autodiff_examples.md) |
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [Canonical.kt](uncategorised.md#canonical-kt) | Uncategorised | 42 | 19 |  | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [CeresExpression.kt](graphics.md#ceresexpression-kt) | Graphics | 78 | 33 |  | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [CeresGeometry.kt](graphics.md#ceresgeometry-kt) | Graphics | 388 | 36 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
+| [CeresExpression.kt](graphics.md#ceresexpression-kt) | Graphics | 77 | 32 |  | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
+| [CeresGeometry.kt](graphics.md#ceresgeometry-kt) | Graphics | 351 | 35 | The constraint vocabulary for Field's Ceres point solver, and the encoding that ships it to a backend. |  |
 | [CeresRealization.kt](uncategorised.md#ceresrealization-kt) | Uncategorised | 20 | 13 |  |  |
 | [clustering.kt](data.md#clustering-kt) | Data | 81 | 2 | Clustering for lists of `Float`, `Vec2`, `Vec3` and `Vec4`. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [Colormaps.kt](visualization.md#colormaps-kt) | Visualization | 21 | 4 |  |  |

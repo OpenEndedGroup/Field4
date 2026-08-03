@@ -499,15 +499,6 @@ data class CeresExpressionResidual(
         compile()
     }
 
-    /**
-     * [CeresFeature.AbiV3], not v2. The `EXPR` operand stream now carries a variable-reference
-     * section whether or not it is empty, and a v2 wrapper reading it would take the count as a
-     * weight and everything after as opcodes — which is the silent-misparse failure mode the v2 work
-     * removed. Gated in Kotlin so a caller gets a clear refusal rather than a plausible answer to a
-     * different question.
-     */
-    override val requiredFeature = CeresFeature.AbiV3
-
     override fun encodeLegacy(out: MutableList<Double>) {
         val compiled = compile()
         out.op(CeresOpcode.Expr)

@@ -3,7 +3,6 @@ package afield.examples.ceres
 import afield.stdlib.ceres.CachedCeresSolvers
 import afield.stdlib.ceres.CeresExprVec
 import afield.stdlib.ceres.CeresExpressionResidual
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.CeresManifold
 import afield.stdlib.ceres.CeresProgram
@@ -176,11 +175,7 @@ fun main() {
     }
 
     val backend = FfmCeresBackend()
-    check(CeresFeature.AbiV3 in backend.supportedFeatures) {
-        "needs the v3 wrapper: ./gradlew buildCeresNative, then " +
-            "-PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
-    }
-    println("wrapper ${backend.abiVersion}, features ${backend.supportedFeatures.sortedBy { it.name }}\n")
+    println("wrapper ${backend.abiVersion}\n")
 
     // -------------------------------------------------------------------------------------------
     // 0. What the program looks like. Half the point of having a VM is that you can read it.
