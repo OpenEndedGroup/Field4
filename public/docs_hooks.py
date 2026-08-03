@@ -4,6 +4,7 @@ import atexit
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 import shlex
@@ -52,6 +53,11 @@ SCRIPT_VERSION = 18
 # One invocation is the verification contract. Repeating an unchanged capture can turn an
 # infrastructure defect into a green build and destroy the first failure's evidence.
 RUNNER_SUBPROCESS_GRACE_SEC = 5.0
+# Frame-synchronous video is intentionally allowed to run slower than playback. Budget aggregate
+# wall time from frame count, not media seconds: sustained GPU/CI load may make one exact browser
+# screenshot take substantially longer than 1/fps without making the capture unhealthy.
+VIDEO_CAPTURE_SETUP_HEADROOM_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_SETUP_HEADROOM", "150"))
+VIDEO_CAPTURE_PER_FRAME_BUDGET_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_PER_FRAME_BUDGET", "2"))
 # A shared Field server gets one generous startup deadline. If it cannot become healthy inside that
 # window, fail with its log rather than concealing the lifecycle defect behind another cold boot.
 SERVER_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SERVER_START_TIMEOUT", "120"))
@@ -97,6 +103,7 @@ SESSION_ATTEMPT_TIMEOUT_SEC = float(os.environ.get("FIELD_DOCS_RUNNER_SESSION_AT
 # compatible-capture prefix and then falls back safely. See docs-capture-perf-lever.
 SESSION_MAX_FAILURES = int(os.environ.get("FIELD_DOCS_RUNNER_SESSION_MAX_FAILURES", "1"))
 RUNNER_MODE_ENV = "FIELD_DOCS_RUNNER_MODE"
+RUNNER_MEDIA_ENV = "FIELD_DOCS_RUNNER_MEDIA"
 RUNNER_CONTINUE_ON_ERROR_ENV = "FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR"
 RUNNER_PORT_ENV = "FIELD_DOCS_RUNNER_PORT"
 RUNNER_WORKSPACE_ENV = "FIELD_DOCS_RUNNER_WORKSPACE"
@@ -186,6 +193,7 @@ class RunnerOptions:
     with_editor: bool
     graphics_context: bool
     force: bool
+    restart_target: bool  # restart the captured launch at frame zero; disable for ambient/multi-box drivers
     video: str | None  # path to .mp4 output; when set, records video instead of screenshot
     duration: float  # video duration in seconds (default 5.0)
     fps: int  # video frame rate (default 30)
@@ -213,6 +221,11 @@ class RunnerState:
         self.cache_path = config_path.parent / ".field-docs-runner-cache.json"
         self.shared_log_path = config_path.parent / ".field-docs-runner-field.log"
         self.runner_mode = resolve_runner_mode(os.environ.get(RUNNER_MODE_ENV))
+        self.runner_media = os.environ.get(RUNNER_MEDIA_ENV, "all").strip().lower()
+        if self.runner_media not in {"all", "video"}:
+            raise RuntimeError(
+                f"Unsupported {RUNNER_MEDIA_ENV}={self.runner_media!r}; expected 'all' or 'video'"
+            )
         self.backdoor_port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
         self.continue_on_error = resolve_continue_on_error(
             os.environ.get(RUNNER_CONTINUE_ON_ERROR_ENV),
@@ -1830,7 +1843,7 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                 # One drive run produces the video and/or the still together.
                 ui_screenshot_path = resolve_output_path(page_path, options.screenshot) if options.screenshot else None
                 ui_video_path = resolve_output_path(page_path, options.video) if options.video else None
-                if state.runner_mode == "never":
+                if state.runner_mode == "never" or (state.runner_media == "video" and not options.video):
                     screenshot_succeeded = bool(ui_screenshot_path and ui_screenshot_path.exists())
                     video_succeeded = bool(ui_video_path and ui_video_path.exists())
                     for ok, path in ((screenshot_succeeded, ui_screenshot_path), (video_succeeded, ui_video_path)):
@@ -1856,14 +1869,15 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=site_dir, use_directory_urls=use_dir_urls, output_path=ui_video_path)
             elif options.screenshot:
                 screenshot_path = resolve_output_path(page_path, options.screenshot)
-                if state.runner_mode == "never":
+                if state.runner_mode == "never" or state.runner_media == "video":
                     screenshot_succeeded = screenshot_path.exists()
                     if screenshot_succeeded:
                         state.assets_reused += 1
                     else:
                         state.missing_assets += 1
                     LOG.info(
-                        "Field docs runner mode=never: %s screenshot asset %s",
+                        "Field docs runner %s: %s screenshot asset %s",
+                        "mode=never" if state.runner_mode == "never" else "media=video",
                         "using existing" if screenshot_succeeded else "skipping missing",
                         screenshot_path,
                     )
@@ -1902,14 +1916,15 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
             if options.audio and options.capture != "ui":
                 audio_path = resolve_output_path(page_path, options.audio)
-                if state.runner_mode == "never":
+                if state.runner_mode == "never" or state.runner_media == "video":
                     audio_succeeded = audio_path.exists()
                     if audio_succeeded:
                         state.assets_reused += 1
                     else:
                         state.missing_assets += 1
                     LOG.info(
-                        "Field docs runner mode=never: %s audio asset %s",
+                        "Field docs runner %s: %s audio asset %s",
+                        "mode=never" if state.runner_mode == "never" else "media=video",
                         "using existing" if audio_succeeded else "skipping missing",
                         audio_path,
                     )
@@ -2071,6 +2086,10 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
             default=False,
         ),
         force=parse_bool(first_attr(attrs, "force"), default=False),
+        restart_target=parse_bool(
+            first_attr(attrs, "restart-target", "restart_target", "restartTarget"),
+            default=True,
+        ),
         video=video,
         duration=parse_float(first_attr(attrs, "duration"), default=5.0),
         fps=int(parse_float(first_attr(attrs, "fps"), default=30.0)),
@@ -3407,11 +3426,17 @@ def code_with_macro_digest(*, code: str, options: RunnerOptions, repo_root: Path
 
 
 def runner_subprocess_timeout(*, options: RunnerOptions, is_video: bool) -> float:
-    base = max(options.timeout, options.duration + 30.0) if is_video else options.timeout
+    base = video_capture_timeout(options) if is_video else options.timeout
     budget = base + RUNNER_SUBPROCESS_GRACE_SEC
     if not PLAYWRIGHT_READY_MARKER.exists():
         budget = max(budget, PLAYWRIGHT_FIRST_RUN_HEADROOM_SEC + RUNNER_SUBPROCESS_GRACE_SEC)
     return budget
+
+
+def video_capture_timeout(options: RunnerOptions) -> float:
+    expected_frames = max(1, math.ceil(options.duration * max(options.fps, 1)))
+    frame_budget = VIDEO_CAPTURE_SETUP_HEADROOM_SEC + expected_frames * VIDEO_CAPTURE_PER_FRAME_BUDGET_SEC
+    return max(options.timeout, frame_budget)
 
 
 @dataclass
@@ -3493,6 +3518,7 @@ def build_backdoor_command(
 ) -> BackdoorInvocation:
     port = int(os.environ.get(RUNNER_PORT_ENV, str(DEFAULT_RUNNER_PORT)))
     capture_mode = effective_capture_mode(options)
+    capture_timeout = video_capture_timeout(options) if is_video else options.timeout
     command = [
         sys.executable,
         str((repo_root / "tools" / "field_backdoor.py").resolve()),
@@ -3501,7 +3527,7 @@ def build_backdoor_command(
         "--port",
         str(port),
         "--timeout",
-        str(options.timeout),
+        str(capture_timeout),
     ]
     if options.document:
         command.extend(["--document", options.document])
@@ -3790,11 +3816,15 @@ def build_backdoor_command(
                 "record-box",
                 target_uid,
                 str(screenshot_path),
+                "--property", options.property_name,
                 "--padding", str(options.padding),
                 "--duration", str(options.duration),
                 "--fps", str(options.fps),
-                "--timeout", str(options.timeout),
+                "--frame-synchronous",
+                "--timeout", str(capture_timeout),
             ]
+            if options.restart_target:
+                parts.append("--restart-target")
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid
@@ -3806,8 +3836,11 @@ def build_backdoor_command(
                 "--padding", str(options.padding),
                 "--duration", str(options.duration),
                 "--fps", str(options.fps),
-                "--timeout", str(options.timeout),
+                "--frame-synchronous",
+                "--timeout", str(capture_timeout),
             ]
+            if options.restart_target:
+                parts.append("--restart-target")
             if options.open_outputs:
                 parts.append("--open-outputs")
             backdoor_commands.append(shlex.join(parts))
@@ -3819,8 +3852,11 @@ def build_backdoor_command(
                 "--property", options.property_name,
                 "--duration", str(options.duration),
                 "--fps", str(options.fps),
-                "--timeout", str(options.timeout),
+                "--frame-synchronous",
+                "--timeout", str(capture_timeout),
             ]
+            if options.restart_target:
+                parts.append("--restart-target")
             if options.open_outputs:
                 parts.append("--open-outputs")
             if options.with_editor:

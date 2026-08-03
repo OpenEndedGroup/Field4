@@ -210,8 +210,8 @@ cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py
   --command 'new-box --name AnimBox' \
   --command 'launch @last --file -' \
   --command 'sleep 1' \
-  --command 'record-window /tmp/anim-window.mp4 --uid @last --open-outputs --duration 5 --fps 30' \
-  --command 'record-box @last /tmp/anim-box.mp4 --duration 3 --fps 30' \
+  --command 'record-window /tmp/anim-window.mp4 --uid @last --open-outputs --duration 5 --fps 30 --frame-synchronous --restart-target' \
+  --command 'record-box @last /tmp/anim-box.mp4 --duration 3 --fps 30 --frame-synchronous --restart-target' \
   --command 'stop @last'
 var t = 0.0
 loop {
@@ -227,6 +227,12 @@ Use:
 - `record-editor <box> <path.mp4> --duration 5 --padding 10` for editor-only video clips.
 - `record-box <box> <path.mp4> --duration 3 --padding 16` for a clipped video of just that box and its outputs.
 - All record commands accept `--duration <seconds>` (default 5) and `--fps <rate>` (default 30).
+- Add `--frame-synchronous` to capture exactly `duration × fps` consecutive Field frames. The recorder
+  waits for each browser paint and screenshot before Field advances again, so capture speed cannot change
+  the movie's state sequence.
+- Add `--restart-target` with frame-synchronous capture to relaunch the selected box after the recorder is
+  installed. This starts seeded animations at frame zero; docs video fences use both flags automatically.
+- Without `--frame-synchronous`, recording remains real-time for ad-hoc clips of ambient or interactive UI.
 - The output is an H.264/MP4 file with `faststart` for web-ready playback.
 
 Detailed reference:

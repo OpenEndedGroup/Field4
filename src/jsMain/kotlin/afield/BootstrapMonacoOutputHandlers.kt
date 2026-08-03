@@ -16,12 +16,28 @@ fun acknowledgeOutputRendered(source: String = "monaco") {
     if (shouldLogOutputAck(seq)) {
         console.info("[output-ack] schedule seq=$seq source=$source")
     }
-    window.setTimeout({
+    var sent = false
+    var fallback = 0
+    val sendAck = sendAck@{
+        if (sent) return@sendAck
+        sent = true
+        window.clearTimeout(fallback)
         if (shouldLogOutputAck(seq)) {
             console.info("[output-ack] send seq=$seq source=$source")
         }
         send(Message("output-ack"))
-    }, 0)
+    }
+
+    // The server uses this ACK as a capture/back-pressure barrier. A zero-delay timer only means
+    // that the handler returned; Monaco view-zones and SVG output may not have crossed a layout and
+    // paint boundary yet. Two RAFs make "rendered" true for an active page. Keep a bounded timer so
+    // a background/hidden tab (where RAF may be throttled indefinitely) cannot hold server output.
+    fallback = window.setTimeout({ sendAck() }, 250)
+    window.requestAnimationFrame {
+        window.requestAnimationFrame {
+            sendAck()
+        }
+    }
 }
 
 private fun splitDefinedIn(candidate: String): Pair<String, String?> {

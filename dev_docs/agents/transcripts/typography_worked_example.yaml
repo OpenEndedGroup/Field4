@@ -243,13 +243,13 @@ operations:
               a.union(probe.bounds)
           }
 
-          val started = System.nanoTime()
+          val started = AnimationClock.nowSeconds()
 
           // The line you would change: elapsed seconds in, a travelling wave out.
           fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
           animate {
-              val elapsed = (System.nanoTime() - started) / 1e9
+              val elapsed = AnimationClock.nowSeconds() - started
               layout.eachGlyph { i ->
                   val w = waveAt(elapsed, i)
                   rotation = 0.42 * kotlin.math.sin(w)

@@ -556,6 +556,10 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
         )
     }
 
+    fun isDrained(): Boolean = snapshot().let {
+        it.pending == 0 && it.buffered == 0 && it.skipped == 0
+    }
+
     /**
      * Drain the rolling buffer, acquiring a pending slot for each recoverable message.
      * Returns messages that were successfully acquired; messages that still cannot
@@ -588,6 +592,10 @@ class OutputBackPressure(val maxPending: Int = 8, val bufferSize: Int = 4) {
 
 /** Per-WebSocketSession back pressure state for output messages. */
 val sessionOutputPressure = ConcurrentHashMap<WebSocketSession, OutputBackPressure>()
+
+/** True once every client attached to this document has handled all output sent so far. */
+internal fun SessionInformation.outputsDelivered(): Boolean =
+    sessions.all { session -> sessionOutputPressure[session]?.isDrained() != false }
 
 private fun defaultWorkspacePath(): String =
     File(System.getProperty("user.home"), "Documents/AFieldWorkspace").absolutePath
@@ -1408,7 +1416,7 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
     }
 
     val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
-    if (currentPage != null) {
+    if (currentPage != null && currentPage.url() == targetUrl) {
         return PlaywrightPageHandle(
             page = currentPage,
             createdBrowser = createdBrowser,
@@ -1417,6 +1425,11 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
         )
     }
 
+    // A docs capture normally targets a new ephemeral scratch document. Reusing one Chromium
+    // context by navigation carried WebGL/compositor state from every earlier capture into the
+    // next one; after a long video corpus that could wedge Page.screenshot even though the Field
+    // session itself was healthy. Keep the browser process warm, but isolate each target URL in a
+    // fresh context/page. Same-session calls still take the fast path above.
     closeGlobalPlaywrightPageState()
     val context = browser.newContext(
         Browser.NewContextOptions()

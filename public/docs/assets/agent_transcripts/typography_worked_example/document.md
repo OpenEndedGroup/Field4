@@ -86,7 +86,7 @@ letter about itself. These handles are the API rather than an afterthought: this
 is one layout, computed once, and a function of elapsed seconds written into it.
 
 ```edn [field-box id="typo_kinetic" role="properties"]
-{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 36 "characters" 1569 "sha256" "0817bc9217a902ce124f43c2e50890e1a2df9c530f4a82384f898ce78120658d"}]}
+{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 36 "characters" 1581 "sha256" "5f93e06fd943c126f9faa2b8a5d56da08444ccd4b53798283cddaeb0df1222b9"}]}
 ```
 
 ```kotlin [field-property box="typo_kinetic" name="code" path="typo_kinetic_code_.kt"]
@@ -107,13 +107,13 @@ val window = run {
     a.union(probe.bounds)
 }
 
-val started = System.nanoTime()
+val started = AnimationClock.nowSeconds()
 
 // The line you would change: elapsed seconds in, a travelling wave out.
 fun waveAt(elapsed: Double, i: Int): Double = 1.7 * elapsed + i * 0.7
 
 animate {
-    val elapsed = (System.nanoTime() - started) / 1e9
+    val elapsed = AnimationClock.nowSeconds() - started
     layout.eachGlyph { i ->
         val w = waveAt(elapsed, i)
         rotation = 0.42 * kotlin.math.sin(w)

@@ -1115,6 +1115,8 @@ class FieldBackdoor:
         pan_into_view: bool,
         duration: float,
         fps: int,
+        frame_synchronous: bool,
+        restart_target: bool,
         timeout: float,
     ) -> dict[str, Any]:
         resolved_uid = self.require_box_reference(uid)[0] if uid is not None else None
@@ -1135,6 +1137,8 @@ class FieldBackdoor:
             panIntoView=pan_into_view,
             duration=duration,
             fps=fps,
+            frameSynchronous=frame_synchronous,
+            restartTarget=restart_target,
             timeout=timeout,
         )
         event = await self.call_for_single_reply(
@@ -1150,6 +1154,8 @@ class FieldBackdoor:
                 "padding": padding,
                 "durationSec": duration,
                 "fps": fps,
+                "frameSynchronous": frame_synchronous,
+                "restartTarget": restart_target,
             },
             timeout=timeout,
         )
@@ -1164,10 +1170,13 @@ class FieldBackdoor:
         *,
         uid: str,
         path: str,
+        property_name: str,
         padding: float,
         pan_into_view: bool,
         duration: float,
         fps: int,
+        frame_synchronous: bool,
+        restart_target: bool,
         timeout: float,
     ) -> dict[str, Any]:
         resolved_uid, _ = self.require_box_reference(uid)
@@ -1176,10 +1185,13 @@ class FieldBackdoor:
             "record_box_start",
             path=normalized_path,
             uid=resolved_uid,
+            property=property_name,
             padding=padding,
             panIntoView=pan_into_view,
             duration=duration,
             fps=fps,
+            frameSynchronous=frame_synchronous,
+            restartTarget=restart_target,
             timeout=timeout,
         )
         event = await self.call_for_single_reply(
@@ -1187,11 +1199,14 @@ class FieldBackdoor:
             {
                 "uid": resolved_uid,
                 "path": normalized_path,
+                "property": property_name,
                 "padding": padding,
                 "panIntoView": pan_into_view,
                 "openOutputs": True,
                 "durationSec": duration,
                 "fps": fps,
+                "frameSynchronous": frame_synchronous,
+                "restartTarget": restart_target,
             },
             timeout=timeout,
         )
@@ -2403,6 +2418,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_window.add_argument("--no-pan", action="store_true")
     record_window.add_argument("--duration", type=float, default=5.0)
     record_window.add_argument("--fps", type=int, default=30)
+    record_window.add_argument("--frame-synchronous", action="store_true")
+    record_window.add_argument("--restart-target", action="store_true")
     record_window.add_argument("--timeout", type=float)
 
     record_editor = subparsers.add_parser("record-editor", add_help=False)
@@ -2414,15 +2431,20 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_editor.add_argument("--no-pan", action="store_true")
     record_editor.add_argument("--duration", type=float, default=5.0)
     record_editor.add_argument("--fps", type=int, default=30)
+    record_editor.add_argument("--frame-synchronous", action="store_true")
+    record_editor.add_argument("--restart-target", action="store_true")
     record_editor.add_argument("--timeout", type=float)
 
     record_box = subparsers.add_parser("record-box", add_help=False)
     record_box.add_argument("uid")
     record_box.add_argument("path")
+    record_box.add_argument("--property", default="code")
     record_box.add_argument("--padding", type=float, default=12.0)
     record_box.add_argument("--no-pan", action="store_true")
     record_box.add_argument("--duration", type=float, default=5.0)
     record_box.add_argument("--fps", type=int, default=30)
+    record_box.add_argument("--frame-synchronous", action="store_true")
+    record_box.add_argument("--restart-target", action="store_true")
     record_box.add_argument("--timeout", type=float)
 
     input_key = subparsers.add_parser("input-key", add_help=False)
@@ -2808,6 +2830,8 @@ async def dispatch_command(
             pan_into_view=not args.no_pan,
             duration=args.duration,
             fps=args.fps,
+            frame_synchronous=args.frame_synchronous,
+            restart_target=args.restart_target,
             timeout=effective_timeout,
         )
         ok = bool(data.get("ok"))
@@ -2835,6 +2859,8 @@ async def dispatch_command(
             pan_into_view=not args.no_pan,
             duration=args.duration,
             fps=args.fps,
+            frame_synchronous=args.frame_synchronous,
+            restart_target=args.restart_target,
             timeout=effective_timeout,
         )
         ok = bool(data.get("ok"))
@@ -2854,10 +2880,13 @@ async def dispatch_command(
         data = await client.record_box(
             uid=args.uid,
             path=args.path,
+            property_name=args.property,
             padding=args.padding,
             pan_into_view=not args.no_pan,
             duration=args.duration,
             fps=args.fps,
+            frame_synchronous=args.frame_synchronous,
+            restart_target=args.restart_target,
             timeout=effective_timeout,
         )
         ok = bool(data.get("ok"))

@@ -3,6 +3,7 @@
 package afield.four.util
 
 import afield.Box
+import afield.AnimationClock
 import afield.displayClear
 import afield.displayClose
 import afield.four.Renderer
@@ -536,6 +537,8 @@ class ShaderFieldProbe(
     private var previousDisplayedSnapshot: FieldProbeSnapshot? = null
     private var lastDisplayDispatchNanos: Long = 0L
     private var lastSnapshotReadNanos: Long = 0L
+    private var hasDisplayDispatch: Boolean = false
+    private var hasSnapshotRead: Boolean = false
     private val pendingDisplayWork = AtomicReference<DisplayWork?>(null)
     private val displayWorkerScheduled = AtomicBoolean(false)
     @Volatile
@@ -592,6 +595,8 @@ class ShaderFieldProbe(
         previousDisplayedSnapshot = null
         lastDisplayDispatchNanos = 0L
         lastSnapshotReadNanos = 0L
+        hasDisplayDispatch = false
+        hasSnapshotRead = false
         pendingDisplayWork.set(null)
         displayGeneration += 1L
 
@@ -616,6 +621,8 @@ class ShaderFieldProbe(
         previousDisplayedSnapshot = null
         lastDisplayDispatchNanos = 0L
         lastSnapshotReadNanos = 0L
+        hasDisplayDispatch = false
+        hasSnapshotRead = false
         pendingDisplayWork.set(null)
         displayGeneration += 1L
     }
@@ -628,15 +635,18 @@ class ShaderFieldProbe(
         if (continuousSnapshotReads || snapshotCallback != null || displayChannel == null) return true
         if (maxDisplayHz <= 0.0) return true
         val minIntervalNanos = (1_000_000_000.0 / maxDisplayHz).toLong()
-        return now - lastSnapshotReadNanos >= minIntervalNanos
+        return !hasSnapshotRead || now < lastSnapshotReadNanos || now - lastSnapshotReadNanos >= minIntervalNanos
     }
 
     private fun dispatchSnapshot(snapshot: FieldProbeSnapshot) {
         displayChannel?.takeIf { snapshot.sampleCount > 0 }?.let { channel ->
-            val now = System.nanoTime()
+            val now = (AnimationClock.nowSeconds() * 1_000_000_000.0).toLong()
             val minIntervalNanos = if (maxDisplayHz > 0.0) (1_000_000_000.0 / maxDisplayHz).toLong() else 0L
-            if (minIntervalNanos == 0L || now - lastDisplayDispatchNanos >= minIntervalNanos) {
+            if (minIntervalNanos == 0L || !hasDisplayDispatch || now < lastDisplayDispatchNanos ||
+                now - lastDisplayDispatchNanos >= minIntervalNanos
+            ) {
                 lastDisplayDispatchNanos = now
+                hasDisplayDispatch = true
                 enqueueDisplay(DisplayWork(channel, snapshot, displayGeneration))
             }
         }
@@ -849,10 +859,11 @@ class ShaderFieldProbe(
 
         if (imageIndex in pendingPerImage.indices && pendingPerImage[imageIndex]) {
             try {
-                val now = System.nanoTime()
+                val now = (AnimationClock.nowSeconds() * 1_000_000_000.0).toLong()
                 if (shouldReadSnapshot(now)) {
                     val snapshot = readSnapshot(renderer, imageIndex)
                     lastSnapshotReadNanos = now
+                    hasSnapshotRead = true
                     latestSnapshot = snapshot
                     dispatchSnapshot(snapshot)
                 }
@@ -876,9 +887,10 @@ class ShaderFieldProbe(
         ensureRenderer(renderer)
         if (!enabled || imageIndex !in computeReadbacks.indices) return
 
-        val now = System.nanoTime()
+        val now = (AnimationClock.nowSeconds() * 1_000_000_000.0).toLong()
         if (!shouldReadSnapshot(now)) return
         lastSnapshotReadNanos = now
+        hasSnapshotRead = true
 
         renderer.afterCurrentComputeFrameSubmitted { fence ->
             fieldProbeReadbackExecutor.submit {

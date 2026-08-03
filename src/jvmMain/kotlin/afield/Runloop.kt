@@ -9,6 +9,7 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.LockSupport
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.math.ceil
@@ -24,6 +25,55 @@ fun inMain(block: suspend CoroutineScope.() -> Unit) = GlobalScope.launch(
     start = if (isMain.load()) CoroutineStart.DEFAULT else CoroutineStart.DEFAULT,
     block = block
 )
+
+/**
+ * Time source for frame-based programs that also need a duration.
+ *
+ * Ordinarily this is monotonic wall time. A frame-synchronous video capture installs
+ * a token that advances by exactly `1 / fps` only after a Field frame has been painted
+ * and copied into the movie. Code using [nowSeconds] therefore becomes frame-indexed
+ * during offline capture without changing its live, interactive pacing.
+ */
+object AnimationClock {
+    class FrameToken internal constructor(internal val state: FrameState)
+
+    internal class FrameState(
+        val startSeconds: Double,
+        val fps: Int,
+        val frame: AtomicLong = AtomicLong(0)
+    )
+
+    private val fixed = AtomicReference<FrameState?>(null)
+
+    fun nowSeconds(): Double {
+        val state = fixed.get()
+        return if (state == null) {
+            System.nanoTime() / 1_000_000_000.0
+        } else {
+            state.startSeconds + state.frame.get().toDouble() / state.fps.toDouble()
+        }
+    }
+
+    fun isFrameIndexed(): Boolean = fixed.get() != null
+
+    internal fun beginFrameIndexed(fps: Int): FrameToken {
+        val state = FrameState(
+            startSeconds = 0.0,
+            fps = fps.coerceAtLeast(1)
+        )
+        check(fixed.compareAndSet(null, state)) { "A frame-synchronous capture is already active" }
+        return FrameToken(state)
+    }
+
+    internal fun advance(token: FrameToken) {
+        check(fixed.get() === token.state) { "Frame clock token is no longer active" }
+        token.state.frame.incrementAndGet()
+    }
+
+    internal fun endFrameIndexed(token: FrameToken) {
+        fixed.compareAndSet(token.state, null)
+    }
+}
 
 class Runloop {
 
@@ -384,11 +434,31 @@ class RateLimiter(
 ) {
     private val intervalMillis = (1000.0 / rate).toLong()
     private var lastExecution = 0L             // timestamp of last execution
+    private var hasExecuted = false
     private var pending: (() -> Unit)? = null  // the most recent block waiting
     private var job: Job? = null               // scheduled coroutine
     private val lock = Any()
 
     fun submit(block: () -> Unit) {
+        if (AnimationClock.isFrameIndexed()) {
+            // Offline capture must not race a zero-delay coroutine against the screenshot at this
+            // runloop boundary. Rate-limit against virtual movie time and publish synchronously;
+            // intermediate submissions are still dropped exactly as a rate limiter promises.
+            val now = (AnimationClock.nowSeconds() * 1000.0).toLong()
+            var ready: (() -> Unit)? = null
+            synchronized(lock) {
+                if (!hasExecuted || now < lastExecution || now >= lastExecution + intervalMillis) {
+                    lastExecution = now
+                    hasExecuted = true
+                    pending = null
+                    ready = block
+                } else {
+                    pending = block
+                }
+            }
+            ready?.invoke()
+            return
+        }
         val now = System.currentTimeMillis()
         synchronized(lock) {
             // compute next allowed execution time
@@ -428,6 +498,7 @@ class RateLimiter(
                     }
                 } ?: run {
                     lastExecution = System.currentTimeMillis()
+                    hasExecuted = true
                     job = null
                     blockToRun = block
                 }

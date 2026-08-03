@@ -1028,18 +1028,23 @@ data class AgentWindowVideo(
     val editorOnly: Boolean = false,
     val padding: Double = 12.0,
     val durationSec: Double = 5.0,
-    val fps: Int = 30
+    val fps: Int = 30,
+    val frameSynchronous: Boolean = false,
+    val restartTarget: Boolean = false
 )
 
 @Serializable
 data class AgentBoxVideo(
     val uid: String,
     val path: String,
+    val property: String = "code",
     val padding: Double = 12.0,
     val panIntoView: Boolean = true,
     val openOutputs: Boolean = true,
     val durationSec: Double = 5.0,
-    val fps: Int = 30
+    val fps: Int = 30,
+    val frameSynchronous: Boolean = false,
+    val restartTarget: Boolean = false
 )
 
 @Serializable

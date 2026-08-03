@@ -204,7 +204,7 @@ arcs and a line. `enclosed` goes 0 -> 2 between weight 2.02 and 2.45.
 by an EXACT equality of weights, so it really is discontinuous.
 
 ```edn [field-box id="spatial_apollonius_sweep" role="properties"]
-{"id" "spatial_apollonius_sweep" "index" 2 "name" "Sweep the weight, and watch the bisector bow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the weight, and watch the bisector bow" "_tombstone" false "frame" #afield/rect [1020.0 500.0 620.0 700.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_sweep_code_.kt" "lines" 50 "characters" 2723 "sha256" "536b7491263de233d0c14c1e57647f0eaa233947377af8b3136642a13415f333"}]}
+{"id" "spatial_apollonius_sweep" "index" 2 "name" "Sweep the weight, and watch the bisector bow" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the weight, and watch the bisector bow" "_tombstone" false "frame" #afield/rect [1020.0 500.0 620.0 700.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_apollonius_sweep_code_.kt" "lines" 50 "characters" 2735 "sha256" "a69c7237114ac3c1eb5e5d639bf871d165837b949b9599a28410cf7b9446fda5"}]}
 ```
 
 ```kotlin [field-property box="spatial_apollonius_sweep" name="code" path="spatial_apollonius_sweep_code_.kt"]
@@ -228,8 +228,8 @@ val window = Rect(-3.4, -3.4, 8.0, 8.0)
 val palette = okhslSet(5, saturation = 0.8, lightness = 0.66)
 val cloud = pointCloudFLine(positions, color = vec(1.0, 1.0, 1.0, 0.95), pointSize = 1.6)
 val heavy = 1                 // the site whose weight is swept; the other four stay at 1.0
-val sweepSeconds = 9.0
-val started = System.nanoTime()
+val sweepSeconds = 8.0
+val started = AnimationClock.nowSeconds()
 
 // The line that turns elapsed time into the swept parameter — the one you would change. A
 // triangle ramp rather than a saw, so it runs out to 2.7 and back to 1.0 with no jump.
@@ -239,7 +239,7 @@ fun weightAt(elapsed: Double): Double {
 }
 
 animate {
-    val w = weightAt((System.nanoTime() - started) / 1e9)
+    val w = weightAt(AnimationClock.nowSeconds() - started)
     val diagram = CircularDirichlet.build(
         positions.mapIndexed { i, p -> vec(p.x, p.y, if (i == heavy) w else 1.0) }
     )
@@ -366,7 +366,7 @@ and the changeover is a frame where the marcher's four corner values decide the 
 Contours are coloured by index, so the merge reads as a colour vanishing.
 
 ```edn [field-box id="spatial_iso_sweep" role="properties"]
-{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 620.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2402 "sha256" "14fb47372b57a2b76b60bbe3bcfa09b0a9b3077138544590425abda12c3e192e"}]}
+{"id" "spatial_iso_sweep" "index" 4 "name" "Sweep the iso level through the saddle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Sweep the iso level through the saddle" "_tombstone" false "frame" #afield/rect [1020.0 1240.0 620.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "spatial_iso_sweep_code_.kt" "lines" 50 "characters" 2414 "sha256" "037be9d61d45c762dc689182d009878682ebce59c5b393b4a543fbcf82befb3a"}]}
 ```
 
 ```kotlin [field-property box="spatial_iso_sweep" name="code" path="spatial_iso_sweep_code_.kt"]
@@ -388,12 +388,12 @@ val saddleDot = pointCloudFLine(
     listOf(vec(0.0, 0.0)), color = vec(1.0, 0.72, 0.32, 0.98), pointSize = 1.9,
 )
 val byIndex = listOf(vec(0.42, 0.80, 1.0, 0.95), vec(1.0, 0.45, 0.62, 0.95))
-val sweepSeconds = 8.6
+val sweepSeconds = 8.0
 
 // The saddle level, measured rather than assumed: the field's own value at the col.
 val saddle = field(0.0, 0.0)
 println("saddle level %.3f — below it one contour, above it two".format(saddle))
-val started = System.nanoTime()
+val started = AnimationClock.nowSeconds()
 
 // The line that turns elapsed time into the swept parameter, straddling the saddle.
 fun isoAt(elapsed: Double): Double {
@@ -402,7 +402,7 @@ fun isoAt(elapsed: Double): Double {
 }
 
 animate {
-    val iso = isoAt((System.nanoTime() - started) / 1e9)
+    val iso = isoAt(AnimationClock.nowSeconds() - started)
     val contours = generateIsoContours(field, x0, x1, y0, y1, 100, 60, iso).filter { it.size >= 2 }
     val lines = contours.mapIndexed { i, c ->
         polylineFrom(c, 0, closed = isoContourClosed(c, x0, x1, y0, y1, boundaryEpsilon = 0.05)).also {

@@ -9,14 +9,18 @@ Run with:  uv run --group docs python -m unittest tools.test_docs_capture_audit
 """
 
 import unittest
+from unittest.mock import patch
 
 from tools.docs_capture_audit import (
     DEFAULT_IGNORE_DELTA,
     DEFAULT_JITTER_DELTA,
     DEFAULT_JITTER_PX_PCT,
     MIN_SIGNAL_PX,
+    DecodedVideo,
     Delta,
+    VideoSimilarity,
     classify,
+    compare_bytes,
     compare_images,
     failing_exit_code,
     fold_runs,
@@ -119,6 +123,55 @@ class OtherSignalTests(unittest.TestCase):
     def test_video_agreeing_with_itself_and_not_with_head_is_stale(self) -> None:
         binary = Delta("binary", old_bytes=1000, new_bytes=1200)
         self.assertEqual(verdict(binary, other=binary, self_delta=Delta("identical")), "stale-binary")
+
+    def test_mp4_container_bytes_do_not_matter_when_decoded_frames_match(self) -> None:
+        decoded = DecodedVideo(
+            metadata=("#tb 0: 1/20", "#dimensions 0: 640x480"),
+            frames=("0,0,0,1,921600,aaa", "0,1,1,1,921600,bbb"),
+        )
+        with patch("tools.docs_capture_audit.decoded_video", side_effect=[decoded, decoded]):
+            delta = compare_bytes(b"first mp4", b"second mp4", suffix=".mp4")
+        self.assertEqual(delta.kind, "identical")
+        self.assertIn("container bytes differ", delta.summary())
+        self.assertEqual(verdict(delta, other=delta, self_delta=delta), "identical")
+
+    def test_changed_decoded_frame_is_a_semantic_video_finding(self) -> None:
+        first = DecodedVideo(
+            metadata=("#tb 0: 1/20", "#dimensions 0: 640x480"),
+            frames=("0,0,0,1,921600,aaa", "0,1,1,1,921600,bbb"),
+        )
+        second = DecodedVideo(
+            metadata=first.metadata,
+            frames=("0,0,0,1,921600,aaa", "0,1,1,1,921600,ccc"),
+        )
+        with (
+            patch("tools.docs_capture_audit.decoded_video", side_effect=[first, second]),
+            patch(
+                "tools.docs_capture_audit.video_similarity",
+                return_value=VideoSimilarity(minimum=0.8, mean=0.9),
+            ),
+        ):
+            delta = compare_bytes(b"first mp4", b"second mp4", suffix=".mp4")
+        self.assertEqual(delta.kind, "video")
+        self.assertEqual(delta.changed_frames, 1)
+        self.assertEqual(verdict(delta, other=delta, self_delta=Delta("identical")), "stale")
+
+    def test_codec_and_raster_noise_is_perceptually_identical(self) -> None:
+        first = DecodedVideo(
+            metadata=("#tb 0: 1/20", "#dimensions 0: 640x480"),
+            frames=("0,0,0,1,921600,aaa",),
+        )
+        second = DecodedVideo(metadata=first.metadata, frames=("0,0,0,1,921600,bbb",))
+        with (
+            patch("tools.docs_capture_audit.decoded_video", side_effect=[first, second]),
+            patch(
+                "tools.docs_capture_audit.video_similarity",
+                return_value=VideoSimilarity(minimum=0.9991, mean=0.9996),
+            ),
+        ):
+            delta = compare_bytes(b"first mp4", b"second mp4", suffix=".mp4")
+        self.assertEqual(delta.kind, "identical")
+        self.assertIn("perceptually identical", delta.summary())
 
     def test_uncommitted_asset_is_new_not_stale(self) -> None:
         self.assertEqual(verdict(Delta("missing")), "new")
