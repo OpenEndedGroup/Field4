@@ -550,8 +550,9 @@ The middle row carries the manifold's own claim: `|n| - 1 = -1.1e-16` with no re
 asking the normal to stay unit. Without the manifold the minimum would sit at length zero with cost
 zero. The last row is only expressible because variables are program-scoped.
 
-Sixteen malformed inputs are refused — nine in Kotlin, seven in the native validator reached through
-`RawProgramFragment` — all through the same error channel as any other malformed program.
+Twenty-four malformed inputs are refused — fourteen in Kotlin, ten in the native validator reached
+through `RawProgramFragment` — all through the same error channel as any other malformed program. The
+smoke prints one line per case, so the count is read off its output rather than maintained by hand.
 
 ### What a free variable costs
 
