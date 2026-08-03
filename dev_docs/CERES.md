@@ -174,13 +174,15 @@ Best-of-7 after warmup, one thread, `SPARSE_NORMAL_CHOLESKY`:
 
 | solid | V / E / F | plan | Kotlin | Ceres | |
 |---|---|---|---|---|---|
-| `C` cube | 8 / 12 / 6 | canonical | 3.3 ms | 1.7 ms | ×2.0 |
+| `C` cube | 8 / 12 / 6 | canonical | 3.3 ms | 1.3 ms | ×2.6 |
 | `aC` cuboctahedron | 12 / 24 / 14 | canonical | 0.55 ms | 1.13 ms | ×0.5 |
-| `tC` truncated cube | 24 / 36 / 14 | canonical | 2.9 ms | 2.0 ms | ×1.5 |
-| `tI` truncated icosahedron | 60 / 90 / 32 | canonical | 13.1 ms | 7.5 ms | ×1.8 |
-| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 1654 ms | 60 ms | **×27** |
+| `tC` truncated cube | 24 / 36 / 14 | canonical | 5.2 ms | 2.1 ms | ×2.4 |
+| `tI` truncated icosahedron | 60 / 90 / 32 | canonical | 11.9 ms | 4.3 ms | ×2.8 |
+| `kkC` kis kis cube | 38 / 108 / 72 | canonical | 1507 ms | 6.1 ms | **×248** |
 
-Below a few dozen vertices the Kotlin solver wins: per-call FFM marshalling and rebuilding the
+The `kkC` row is not just a speed difference — the Kotlin solver never converges there, so it is
+248x faster *and* four orders of magnitude more accurate. Below a couple of dozen vertices the
+Kotlin solver still wins: per-call FFM marshalling and rebuilding the
 `ceres::Problem` cost more than the whole dense solve. The crossover is driven by *residual count*
 rather than vertex count — `kkC` has only 38 vertices but 108 edges and 72 faces, and the Kotlin
 path pays `2 · 3V` residual evaluations per iteration for its finite-difference Jacobian plus an
@@ -200,46 +202,91 @@ fixing the build.
 
 ### Does it crack `kkC`?
 
-No — and the honest version is more interesting than a yes. `kkC` is the standing counter-example in
-`dev_docs/POLYTOPE_ALGEBRA.md`: a 3-connected planar graph has a canonical form and neither
-implemented iteration finds this one. Ceres reaches a *worse* tangency error than the Kotlin solver
-within 200 iterations (6.8e-3 against 6.4e-4) while taking 27× less time to do it, and rejects 53 of
-its 201 trust-region steps. It is grinding, not converging.
+Yes — but only after finding out why it did not.
 
-`kC` shows the same shape more sharply: Ceres runs all 200 iterations where Kotlin converges in 5,
-even though the geometry it reaches is good (tangency RMS 8.9e-7). Loosening or tightening all three
-tolerances across two orders of magnitude changed **nothing** — identical iteration counts and
-identical final cost — so this is not a stopping-criterion artifact. There is a genuinely slow
-direction in the problem as posed.
+`kkC` is the standing counter-example in `dev_docs/POLYTOPE_ALGEBRA.md`: a 3-connected planar graph
+has a canonical form and neither implemented iteration finds this one. The first Ceres realizer did
+not either; it just failed faster. Chasing that turned up two real defects, one in the wrapper and
+one in the objective.
 
-The most likely cause is that the canonical conditions leave the rigid-motion and scale null spaces
-completely free: the realizer removes them *after* the solve, with `RigidGauge`, so the minimiser
-spends its steps wandering along a continuum of equally-good answers. The Ceres formulation has more
-of this freedom than the Kotlin one, not less, because `PLANAR` adds six free plane parameters per
-face held only by `1e-6` stabilisers.
+**The plane parameterisation had a null space.** `PLANAR`'s residual is `(P - O) . n`, which depends
+on the plane origin `O` only through `O . n` — so the two components of `O` lying *in* the plane are
+an exact null direction, two per face, restrained by nothing but a `1e-6` prior. Counting parameters
+made it obvious: of `kkC`'s 474 effective parameters only 114 are points, and 144 of the remaining
+360 are exactly null. The kis-family solids have more faces than vertices, so for them the null
+space outnumbers the real problem and Levenberg-Marquardt spends its entire budget crawling along
+it.
 
-That suggests the next experiment, and it is a modelling change rather than a solver one: **pose the
-gauge as constraints inside the problem** instead of normalising afterwards. That is what
-`dev_docs/POLYTOPE_ALGEBRA.md` means by "a proper second-order solve on the tangency conditions",
-and Ceres has the right tool for it — a `SubsetManifold` or a small set of hard gauge residuals.
-Nothing in the current binding blocks it.
+`PLANAR_HESSE` writes the plane as `{ x : x . n == d }` — normal on a sphere manifold, offset a
+scalar. Three effective parameters per face, no null direction, no stabilisers needed:
+
+| `kkC` canonical | params | iterations | termination | tangency RMS | |
+|---|---|---|---|---|---|
+| Kotlin `relax` | — | 200 | max iterations | 6.4e-04 | 1507 ms |
+| Ceres `origin_normal` | 474 | 201 | no convergence | 6.8e-03 | 58 ms |
+| Ceres **`hesse`** | 330 | **12** | **convergence** | **3.2e-08** | **6 ms** |
+
+Two things are worth noticing in the full sweep (`./gradlew ceresPlaneFormulationStudy`). The
+rotation gauge — three residuals holding `sum(ref_i x p_i)` at zero — rescues `kC` under the *old*
+parameterisation (201 iterations to 12) but is a small improvement once the planes are fixed; it is
+on by default because it never hurts and it makes the answer reproducible rather than
+path-dependent. And `PLANAR_FIT`, which computes the Newell best-fit plane inside the residual and
+so carries no plane variables at all, *fails on `kkC`* — which is the same objective `relax` has,
+and `relax` fails too. The well-conditioned auxiliary variables are not a cost to be minimised away;
+they are what makes the problem tractable.
+
+**The objective has a spurious zero-cost minimum.** With the planes fixed, `kkT` started converging
+— to cost `5.7e-17` and a completely wrong answer. Measuring the geometry directly showed why: 12 of
+its 54 edges had collapsed to length `1e-7`.
+
+`EdgeTangencyConstraint` measures the distance from the origin to the *line* through an edge's two
+endpoints. As those endpoints converge, that line's direction becomes arbitrary — so a collapsed
+edge can put its tangency point anywhere on the sphere and satisfies its constraint for free.
+Collapsing edges *removes* constraints, and the canonical objective therefore has a family of exact
+zero-cost solutions in which part of the solid has folded up. **`relax` uses the identical formula
+and shares this defect**; it is saved only by converging too slowly to reach the trap.
+
+The fix needed no new native code — `MIN_DISTANCE` was already there. A one-sided
+`max(0, floor - length)` barrier at 1% of the initial mean edge length contributes exactly nothing
+while the solid is healthy (`kkC`, `kkD`, `kC`, `tI` are bit-identical with it on) and rescues the
+rest:
+
+| tangency-radius spread | `canonicalize()` | Ceres, no barrier | Ceres, barrier |
+|---|---|---|---|
+| `kkO` | 7.2e-01 | 4.96e-01 | **2.5e-04** |
+| `kkI` | 1.1e+00 | 2.91e-01 | **1.0e-04** |
+| `kkT` | 3.1e-01 | 6.90e-03 | **5.3e-04** |
+
+`./gradlew smokeCeresCanonical` now checks the whole `kk` family against
+`PolyhedralObject.canonicalDiagnostics()` — the library's own independent measurement of the three
+defining conditions — plus no degenerate faces, no collapsed edges, finite bounded coordinates, and
+"strictly better than `canonicalize()`". All eight solids pass. `kC`, `kD`, `tI`, `kkC` and `kkD`
+reach spread `1e-8`; `kkT`, `kkO` and `kkI` reach `1e-4`, which is not exact but is three to four
+orders of magnitude better than the existing iteration, and sane where it produced a lump. On every
+`kk` case `canonicalize()` ends up *worse than the seed it started from*.
 
 ## What is still open
 
 1. **Distribution.** A committed v2 artifact, or a build-from-source step. See above.
-2. **Gauge fixing inside the problem**, per the previous section. The most promising lead.
-3. **Plane stabilisers are hardcoded** at `1e-6` with a `// marc: not 100% sure about this` next to
-   them. They pollute the reported cost and add free parameters; they should be a program-level
-   setting like the loss now is.
-4. **Per-constraint-group loss.** `SET_LOSS` is program-level. Interactive editing plausibly wants
+2. **`PLANAR` should migrate to the Hesse form.** The null space above is not specific to
+   realization — every caller of the original opcode, including the architectural DSL, is paying
+   for two free directions per face. `PLANAR_HESSE` is left as a separate opcode only so that this
+   change does not silently move existing results; the architectural smokes should be diffed
+   against it and then switched.
+3. **`kkT`, `kkO`, `kkI` reach 1e-4, not machine precision.** They now find a sane solid, so what is
+   left is the tail rather than the failure. Worth trying: continuation on the barrier (solve with
+   the floor, then release it), or a Mobius normalisation between solves.
+4. **The collapse defect applies to `relax` too.** `EdgeTangencyConstraint` should either carry its
+   own floor or be reformulated so that a short edge does not free its own constraint.
+5. **Per-constraint-group loss.** `SET_LOSS` is program-level. Interactive editing plausibly wants
    Huber on user-dragged priors and plain L2 on hard geometry in the same problem.
-5. **The opcode treadmill.** Every new residual is still C++ plus Kotlin plus a native rebuild.
+6. **The opcode treadmill.** Every new residual is still C++ plus Kotlin plus a native rebuild.
    Since the functors are templated on the scalar type and Ceres autodiffs through them, the natural
    escape is a small expression VM evaluated over `ceres::Jet` — a postfix residual program the
    native side interprets — which would let Field define residuals from Kotlin without recompiling
    anything. That is a real design, not a small change, but it is the thing that would make this
    general infrastructure rather than a growing table.
-6. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
+7. **`solveInPlace` stays on v1** by design (its purpose is an allocation-free per-frame solve) and
    so refuses the v2 options. If a steady-state solve ever needs a different linear solver, that
    choice should move to compile time.
 
@@ -252,4 +299,7 @@ Nothing in the current binding blocks it.
 | `afield.stdlib.ceres.FfmCeresBackend` | the FFM binding, ABI detection, feature gating |
 | `afield.stdlib.polytope.CeresRealization` | `RelaxationPlan` → `CeresProgram`, `relaxWithCeres` |
 | `afield.examples.ceres.CeresAbiV2Smoke` | v2 features against a closed-form answer |
-| `afield.examples.ceres.CeresPolytopeRealizerComparison` | the table above |
+| `afield.examples.ceres.CeresPolytopeRealizerComparison` | the timing table above |
+| `afield.examples.ceres.CeresPlaneFormulationStudy` | the plane-parameterisation sweep |
+| `afield.examples.ceres.CeresCanonicalVerification` | the canonical-conditions check on the kk family |
+| `afield.examples.ceres.CeresRealizerDiagnostic` | parameter and residual counts per solid |

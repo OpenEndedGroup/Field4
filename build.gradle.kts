@@ -2062,6 +2062,32 @@ tasks.register<JavaExec>("ceresPolytopeComparison") {
     group = "application"
 }
 
+// Prints the shape of the Ceres problem behind each canonical realization. Needs the v2 wrapper.
+tasks.register<JavaExec>("ceresRealizerDiagnostic") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresRealizerDiagnosticKt",
+        "Reports parameter/residual counts for the Ceres polyhedron realizer.",
+    )
+    group = "application"
+}
+
+// Plane parameterisation and rotation gauge, measured. Needs the v2 wrapper.
+tasks.register<JavaExec>("ceresPlaneFormulationStudy") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresPlaneFormulationStudyKt",
+        "Measures PLANAR vs PLANAR_HESSE vs PLANAR_FIT, with and without a rotation gauge.",
+    )
+    group = "application"
+}
+
+// Checks the Ceres realizer reaches a real canonical form, not just a small residual.
+tasks.register<JavaExec>("smokeCeresCanonical") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresCanonicalVerificationKt",
+        "Verifies the three canonical conditions on the Ceres realizer's output.",
+    )
+}
+
 tasks.register("smokeCeres") {
     group = "verification"
     description = "Runs all Ceres FFM smoke examples."

@@ -118,7 +118,10 @@ enum class CeresOpcode(val code: Int, val metricName: String) {
     EdgeTangency(61, "EDGE_TANGENCY"),
     TangencyCentroid(62, "TANGENCY_CENTROID"),
     Centroid(63, "CENTROID"),
-    RadiusAboutCentroid(64, "RADIUS_ABOUT_CENTROID");
+    RadiusAboutCentroid(64, "RADIUS_ABOUT_CENTROID"),
+    PlanarHesse(65, "PLANAR_HESSE"),
+    PlanarFit(66, "PLANAR_FIT"),
+    GaugeRotation(67, "GAUGE_ROTATION");
 
     companion object {
         private val byCode = entries.associateBy { it.code }
@@ -890,6 +893,92 @@ data class RawProgramFragment(
     }
 }
 
+/**
+ * Face planarity with the plane in Hesse normal form: `{ x : x . n == d }`, `n` on a sphere manifold
+ * and `d` a scalar.
+ *
+ * Prefer this to [Planar]. [Planar]'s residual is `(P - O) . n`, which depends on the plane origin
+ * `O` only through `O . n` — so the two components of `O` in the plane are an *exact* null
+ * direction, two per face, restrained by nothing but a `1e-6` prior. On a solid with more faces
+ * than vertices that null space outnumbers the real parameters and a trust-region minimiser spends
+ * its whole budget crawling along it. `(n, d)` is three effective parameters per face with no null
+ * direction, and needs no stabilisers.
+ */
+data class PlanarHesse(
+    val points: List<PointId>,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePointList(points, 3, allowAll = false)
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.PlanarHesse)
+        out.countedPoints(points)
+        out += weight
+    }
+}
+
+/**
+ * Face planarity against the face's own Newell best-fit plane, computed inside the residual — no
+ * auxiliary plane variables at all.
+ *
+ * Each corner's residual depends on every corner of that face, which makes the Jacobian denser
+ * per row than [PlanarHesse]'s, but the problem carries only the points. This is exactly what
+ * [afield.stdlib.polytope.FacePlanarityConstraint] measures, so it is the choice that makes a Ceres
+ * solve and a Kotlin solve the *same* objective rather than two equivalent ones.
+ *
+ * A face naming the same vertex twice is skipped: the fit would need one parameter block twice,
+ * which Ceres forbids, and such a face is degenerate anyway.
+ */
+data class PlanarFit(
+    val points: List<PointId>,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePointList(points, 3, allowAll = false)
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.PlanarFit)
+        out.countedPoints(points)
+        out += weight
+    }
+}
+
+/**
+ * Remove the infinitesimal-rotation null space: three residuals holding `sum(reference_i x p_i)` at
+ * zero, where the reference pose is the one the problem was compiled with.
+ *
+ * A set of constraints that pins translation and scale but says nothing about orientation has a
+ * three-dimensional continuum of equally good answers, and a minimiser will wander along it —
+ * spending iterations, and making the answer depend on the path taken to it. Removing the freedom
+ * is cheaper than damping it. Pass [PointId.ALL_POINTS] alone for the whole cloud.
+ */
+data class GaugeRotation(
+    val points: List<PointId>,
+    override val weight: Double = 1.0,
+) : GeometryConstraint {
+    init {
+        requirePointList(points, 1, allowAll = true)
+        requireWeight(weight)
+    }
+
+    override val requiredFeature = CeresFeature.AbiV2
+
+    override fun encodeLegacy(out: MutableList<Double>) {
+        out.op(CeresOpcode.GaugeRotation)
+        if (points.size == 1 && points[0] == PointId.ALL_POINTS) out += -1.0 else out.countedPoints(points)
+        out += weight
+    }
+}
+
 class CeresProgramBuilder {
     private val constraints = mutableListOf<GeometryConstraint>()
 
@@ -1021,6 +1110,12 @@ class CeresProgramBuilder {
 
     fun radiusAboutCentroidAll(radius: Double, weight: Double = 1.0) =
         add(RadiusAboutCentroid(listOf(PointId.ALL_POINTS), radius, weight))
+
+    fun planarHesse(points: List<Int>, weight: Double = 1.0) = add(PlanarHesse(points.ids(), weight))
+
+    fun planarFit(points: List<Int>, weight: Double = 1.0) = add(PlanarFit(points.ids(), weight))
+
+    fun gaugeRotationAll(weight: Double = 1.0) = add(GaugeRotation(listOf(PointId.ALL_POINTS), weight))
 
     fun raw(vararg values: Double) = add(RawProgramFragment(values.toList()))
 

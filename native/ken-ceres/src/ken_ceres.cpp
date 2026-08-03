@@ -3,6 +3,9 @@
 // - See exported C API at bottom.
 
 #include <ceres/ceres.h>
+#if defined(KEN_CERES_HAVE_GLOG)
+#include <glog/logging.h>
+#endif
 #include <ceres/loss_function.h>
 #include <ceres/sphere_manifold.h>
 #include <Eigen/Dense>
@@ -75,7 +78,13 @@ namespace op
         EDGE_TANGENCY = 61,         // [a, b, radius, w]  |closest point of line AB to origin| - r
         TANGENCY_CENTROID = 62,     // [nEdges, a0,b0, a1,b1, ..., w]  mean tangency point == origin
         CENTROID = 63,              // [n, i0..., tx,ty,tz, w]  mean of listed points == target
-        RADIUS_ABOUT_CENTROID = 64  // [n, i0..., radius, w]  |p_i - mean| == radius
+        RADIUS_ABOUT_CENTROID = 64, // [n, i0..., radius, w]  |p_i - mean| == radius
+
+        // Two better-conditioned alternatives to PLANAR, and a rotation gauge. See the notes on
+        // PlanarHesse and PlanarFit below for why PLANAR alone is not enough.
+        PLANAR_HESSE = 65,     // [n, i0..., w]  plane as unit normal + scalar offset
+        PLANAR_FIT = 66,       // [n, i0..., w]  best-fit plane inside the residual, no plane vars
+        GAUGE_ROTATION = 67    // [n, i0..., w]  kill the infinitesimal-rotation null space
     };
 }
 
@@ -206,6 +215,18 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
             return -1;
         int n = (int)program[ip];
         int span = (n < 0) ? 3 : (1 + n + 2);
+        return (ip + span <= prog_len) ? span : -1;
+    }
+    case op::PLANAR_HESSE:
+    case op::PLANAR_FIT:
+        return counted(1);
+    case op::GAUGE_ROTATION:
+    {
+        // [n, <n indices | none if n<0>, w]
+        if (ip >= prog_len)
+            return -1;
+        int n = (int)program[ip];
+        int span = (n < 0) ? 2 : (1 + n + 1);
         return (ip + span <= prog_len) ? span : -1;
     }
     default:
@@ -372,6 +393,112 @@ struct DistanceW
         T dx = A[0] - B[0], dy = A[1] - B[1], dz = A[2] - B[2];
         T d = ceres::sqrt(dx * dx + dy * dy + dz * dz) + T(1e-20);
         r[0] = T(s) * (d - T(D));
+        return true;
+    }
+};
+
+// ------------------------------------------------------------
+// Better-conditioned planarity, and a rotation gauge.
+//
+// PLANAR parameterises each face's plane as an origin O and a unit normal n, and its residual is
+// (P - O) . n. That expression depends on O only through O . n, so the two components of O
+// tangential to the plane are an EXACT null direction — two per face, held up by nothing but the
+// 1e-6 OriginPriorW stabiliser. On a solid with more faces than vertices (any kis-like operator)
+// that dominates: a 72-face polyhedron carries 144 near-null directions against 114 real ones, and
+// Levenberg-Marquardt spends its whole iteration budget crawling along them.
+//
+// PLANAR_HESSE fixes the parameterisation: a plane is { x : x . n == d } with n on a sphere
+// manifold and d a scalar, which is three effective parameters per face and no null space.
+//
+// PLANAR_FIT removes the plane variables entirely by computing the Newell best-fit plane inside the
+// residual. It is exactly what afield.stdlib.polytope.FacePlanarityConstraint measures, so it makes
+// the Kotlin and Ceres realizers the same objective rather than merely equivalent ones.
+// ------------------------------------------------------------
+
+// Point on plane in Hesse normal form: P . n - d.
+struct PointOnPlaneHesseW
+{
+    double s;
+    explicit PointOnPlaneHesseW(double w) : s(std::sqrt(std::max(0.0, w))) {}
+    template <typename T>
+    bool operator()(const T *const P, const T *const n, const T *const d, T *r) const
+    {
+        r[0] = T(s) * (P[0] * n[0] + P[1] * n[1] + P[2] * n[2] - d[0]);
+        return true;
+    }
+};
+
+// Every corner's signed distance to the face's own Newell best-fit plane. One residual per corner,
+// no auxiliary variables. Mirrors facePlane() + signedPlaneDistance() in Constraints.kt, including
+// the 1e-10 floor on the normal length that keeps a degenerate face from dividing by zero.
+struct PlanarFitW
+{
+    int n;
+    double s;
+    PlanarFitW(int n_, double w) : n(n_), s(std::sqrt(std::max(0.0, w))) {}
+
+    template <typename T>
+    bool operator()(T const *const *p, T *r) const
+    {
+        T cx = T(0), cy = T(0), cz = T(0);
+        T nx = T(0), ny = T(0), nz = T(0);
+        for (int i = 0; i < n; ++i)
+        {
+            const T *a = p[i];
+            const T *b = p[(i + 1) % n];
+            cx += a[0];
+            cy += a[1];
+            cz += a[2];
+            nx += (a[1] - b[1]) * (a[2] + b[2]);
+            ny += (a[2] - b[2]) * (a[0] + b[0]);
+            nz += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        T inv = T(1.0 / (double)std::max(1, n));
+        cx *= inv;
+        cy *= inv;
+        cz *= inv;
+
+        T len = ceres::sqrt(nx * nx + ny * ny + nz * nz + T(1e-20));
+        if (len < T(1e-10))
+            len = T(1e-10);
+        for (int i = 0; i < n; ++i)
+        {
+            r[i] = T(s) * ((p[i][0] - cx) * nx + (p[i][1] - cy) * ny + (p[i][2] - cz) * nz) / len;
+        }
+        return true;
+    }
+};
+
+// Three residuals: sum_i (ref_i x p_i), the linearisation of "the cloud has not rotated relative to
+// where it started".
+//
+// The canonical conditions pin translation (TANGENCY_CENTROID) and scale (EDGE_TANGENCY) but say
+// nothing about orientation, so the optimum is a one-parameter-per-axis continuum and the minimiser
+// is free to wander along it. Removing the null space explicitly is cheaper than damping it, and it
+// makes the answer reproducible instead of dependent on the path taken to it.
+struct GaugeRotationW
+{
+    std::vector<double> ref; // 3 per point, in parameter-block order
+    double s;
+    GaugeRotationW(std::vector<double> ref_, double w)
+        : ref(std::move(ref_)), s(std::sqrt(std::max(0.0, w))) {}
+
+    template <typename T>
+    bool operator()(T const *const *p, T *r) const
+    {
+        T sx = T(0), sy = T(0), sz = T(0);
+        const int n = (int)(ref.size() / 3);
+        for (int i = 0; i < n; ++i)
+        {
+            T ax = T(ref[3 * i]), ay = T(ref[3 * i + 1]), az = T(ref[3 * i + 2]);
+            sx += ay * p[i][2] - az * p[i][1];
+            sy += az * p[i][0] - ax * p[i][2];
+            sz += ax * p[i][1] - ay * p[i][0];
+        }
+        T inv = T(1.0 / (double)std::max(1, n));
+        r[0] = T(s) * sx * inv;
+        r[1] = T(s) * sy * inv;
+        r[2] = T(s) * sz * inv;
         return true;
     }
 };
@@ -1048,6 +1175,7 @@ struct PlaneVar
 {
     double O[3];
     double n[3];
+    double d = 0.0; // PLANAR_HESSE offset: the plane is { x : x . n == d }
 };
 
 struct GroupCost
@@ -1139,7 +1267,10 @@ void SolverContext::build(int Npts, const double *points_in,
         }
         break;
         case op::PLANAR:
+        case op::PLANAR_HESSE:
         {
+            // Both allocate a PlaneVar, and planes.reserve() below is what keeps those addresses
+            // stable while the build pass hands pointers into the vector to Ceres.
             if (ip >= prog_len)
             {
                 ip = prog_len;
@@ -2123,6 +2254,198 @@ void SolverContext::build(int Npts, const double *points_in,
             ip += 2;
             break;
 
+        case op::PLANAR_HESSE:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            if (n < 3 || ip + n + 1 > prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            std::vector<int> idx(n);
+            for (int k = 0; k < n; ++k)
+                idx[k] = (int)program[ip++];
+            double w = program[ip++];
+
+            groups.push_back(GroupCost{});
+            GroupCost &G = groups.back();
+            G.opcode = op::PLANAR_HESSE;
+
+            planes.push_back(PlaneVar{});
+            PlaneVar &pv = planes.back();
+
+            // Seed from the current points, exactly as PLANAR does: centroid plus the smallest
+            // eigenvector of the scatter matrix.
+            Eigen::Vector3d c(0, 0, 0);
+            int seen = 0;
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    c += Eigen::Vector3d(pts[3 * id + 0], pts[3 * id + 1], pts[3 * id + 2]);
+                    ++seen;
+                }
+            if (seen > 0)
+                c /= double(seen);
+
+            Eigen::Matrix3d C = Eigen::Matrix3d::Zero();
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    Eigen::Vector3d v(pts[3 * id + 0] - c.x(), pts[3 * id + 1] - c.y(), pts[3 * id + 2] - c.z());
+                    C += v * v.transpose();
+                }
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(C);
+            Eigen::Vector3d nml(1, 0, 0);
+            if (es.info() == Eigen::Success)
+                nml = es.eigenvectors().col(0);
+            if (nml.norm() < 1e-12)
+                nml = Eigen::Vector3d(1, 0, 0);
+            nml.normalize();
+
+            pv.n[0] = nml.x();
+            pv.n[1] = nml.y();
+            pv.n[2] = nml.z();
+            pv.d = nml.dot(c);
+
+            problem->AddParameterBlock(pv.n, 3, new ceres::SphereManifold<3>());
+            problem->AddParameterBlock(&pv.d, 1);
+
+            // No stabilisers. Unlike PLANAR there is nothing to stabilise: (n, d) has no null
+            // direction, so the plane is fully determined by the residuals that use it.
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    auto *cost = new ceres::AutoDiffCostFunction<PointOnPlaneHesseW, 1, 3, 3, 1>(
+                        new PointOnPlaneHesseW(w));
+                    ceres::ResidualBlockId rid =
+                        problem->AddResidualBlock(cost, loss.make(), &pts[3 * id], pv.n, &pv.d);
+                    G.blocks.push_back(rid);
+                }
+        }
+        break;
+
+        case op::PLANAR_FIT:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            if (n < 3 || ip + n + 1 > prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            std::vector<int> idx;
+            for (int k = 0; k < n; ++k)
+            {
+                int id = (int)program[ip++];
+                if (id >= 0 && id < Npts)
+                    idx.push_back(id);
+            }
+            double w = program[ip++];
+
+            // The Newell fit reads each corner in cycle order, so a repeated vertex would need the
+            // same parameter block twice and Ceres forbids that. Such a face is degenerate anyway.
+            std::vector<int> sorted = idx;
+            std::sort(sorted.begin(), sorted.end());
+            bool repeats = std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end();
+            if ((int)idx.size() >= 3 && !repeats)
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::PLANAR_FIT;
+
+                auto *functor = new PlanarFitW((int)idx.size(), w);
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<PlanarFitW>(functor);
+                std::vector<double *> blocks;
+                for (int id : idx)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                cost->SetNumResiduals((int)idx.size());
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
+        case op::GAUGE_ROTATION:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            std::vector<int> idx;
+            if (n < 0)
+            {
+                if (ip + 1 > prog_len)
+                {
+                    ip = prog_len;
+                    break;
+                }
+                idx.resize(Npts);
+                for (int i = 0; i < Npts; ++i)
+                    idx[i] = i;
+            }
+            else
+            {
+                if (ip + n + 1 > prog_len)
+                {
+                    ip = prog_len;
+                    break;
+                }
+                for (int k = 0; k < n; ++k)
+                {
+                    int id = (int)program[ip++];
+                    if (id >= 0 && id < Npts)
+                        idx.push_back(id);
+                }
+            }
+            double w = program[ip++];
+
+            std::sort(idx.begin(), idx.end());
+            idx.erase(std::unique(idx.begin(), idx.end()), idx.end());
+            if (!idx.empty())
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::GAUGE_ROTATION;
+
+                // The reference pose is the one the problem was built with, which is the pose the
+                // caller handed to ken_ceres_solver_create.
+                std::vector<double> ref;
+                ref.reserve(3 * idx.size());
+                for (int id : idx)
+                {
+                    ref.push_back(points_in[3 * id]);
+                    ref.push_back(points_in[3 * id + 1]);
+                    ref.push_back(points_in[3 * id + 2]);
+                }
+                auto *functor = new GaugeRotationW(std::move(ref), w);
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<GaugeRotationW>(functor);
+                std::vector<double *> blocks;
+                for (int id : idx)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                cost->SetNumResiduals(3);
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
         case op::EDGE_TANGENCY:
         {
             if (ip + 4 > prog_len)
@@ -2677,6 +3000,27 @@ static int solve_with_context(SolverContext *ctx,
 extern "C"
 {
 
+    // Ceres logs through glog, and parts of it — the Levenberg-Marquardt strategy's "linear solver
+    // failure" warning in particular — use LOG(WARNING) directly rather than going through
+    // Solver::Options::logging_type. In a library loaded into someone else's process that means
+    // uninitialised-glog noise on stderr during an otherwise successful solve. Initialise once and
+    // keep it quiet; a caller who wants Ceres' own chatter asks for it per solve with
+    // minimizer_progress_to_stdout.
+    static void quiet_glog_once()
+    {
+#if defined(KEN_CERES_HAVE_GLOG)
+        static bool done = false;
+        if (done)
+            return;
+        done = true;
+        if (!google::IsGoogleLoggingInitialized())
+            google::InitGoogleLogging("ken_ceres");
+        FLAGS_minloglevel = google::GLOG_ERROR;
+        FLAGS_logtostderr = false;
+        FLAGS_stderrthreshold = google::GLOG_FATAL;
+#endif
+    }
+
     const char *ken_ceres_jvm_abi_version()
     {
         // v2 adds ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
@@ -2700,6 +3044,7 @@ extern "C"
         if (!points_in || !program || num_points < 0 || program_len < 0)
             return nullptr;
 
+        quiet_glog_once();
         auto *ctx = new SolverContext();
         ctx->build(num_points, points_in, program, program_len);
         ctx->hash = constraints_hash;

@@ -296,10 +296,30 @@ Not done, and deliberately left:
   each planar" but not "these faces share one plane". That is the natural home for the star and
   compound polyhedra, and it is blocked on item 1's boundary model more than on the solver.
 
-`kkC` is the standing reminder that item 3 is not finished as a *guarantee*: a 3-connected planar
-graph has a canonical form, and neither implemented iteration finds this one. A convergent method
-for spiky Catalan-like solids — Möbius-normalized reciprocation, or a proper second-order solve on
-the tangency conditions — is the piece that would close it.
+`kkC` *was* the standing reminder that item 3 is not finished as a guarantee: a 3-connected planar
+graph has a canonical form, and neither implemented iteration finds this one. The second of the two
+suggested fixes — a proper second-order solve on the tangency conditions — now works.
+`PolyhedralObject.relaxWithCeres(RelaxationPlan.canonicalConditions())` reaches `kkC` and `kkD`
+exactly (tangency spread `1e-8`, 12 iterations, 6 ms against `relax`'s 1507 ms and non-convergence)
+and brings `kkT`, `kkO` and `kkI` to spread `1e-4`, where `canonicalize()` leaves all of them worse
+than the seed it started from.
+
+Two things had to be true for that, and both are worth knowing here because the second is a defect
+in *this* library's objective, not in the solver:
+
+- the plane must be parameterised without a null space. `(origin, normal)` sees the origin only
+  through `origin . normal`, leaving two free directions per face — which on a kis-family solid
+  outnumber the real parameters.
+- the objective needs a floor on edge length. `EdgeTangencyConstraint` measures the distance from
+  the origin to the *line* through an edge, and as an edge collapses that line's direction becomes
+  arbitrary, so a collapsed edge satisfies its own constraint for free. The canonical objective
+  therefore has exact zero-cost solutions in which part of the solid has folded up, and `relax` is
+  saved from them only by converging too slowly to arrive. `kkT` reaches cost `5.7e-17` with 12 of
+  its 54 edges at length `1e-7`.
+
+`relaxWithCeres` needs the ABI v2 native wrapper, so `canonicalize()` remains the default path. See
+`dev_docs/CERES.md`. What is still open is the tail: `kkT`, `kkO` and `kkI` find a sane solid but
+not machine precision, and Möbius-normalized reciprocation is still the untried idea.
 
 ### 4. Complete the rendering bridge
 

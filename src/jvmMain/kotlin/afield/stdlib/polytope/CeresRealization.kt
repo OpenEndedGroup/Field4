@@ -78,7 +78,14 @@ object CeresRealization {
      * a tangency radius — is resolved here, exactly as the Kotlin constraint would resolve it, so
      * the two solvers are given the same numbers and not merely the same intent.
      */
-    fun program(plan: RelaxationPlan, problem: RealizationProblem): CeresProgram {
+    fun program(
+        plan: RelaxationPlan,
+        problem: RealizationProblem,
+        planes: PlaneFormulation = PlaneFormulation.HESSE,
+        gaugeRotationWeight: Double = 0.0,
+        minEdgeLengthFraction: Double = 0.0,
+        minEdgeLengthWeight: Double = 1.0,
+    ): CeresProgram {
         val missing = unsupported(plan)
         require(missing.isEmpty()) { "no Ceres equivalent for constraint families: $missing" }
 
@@ -98,8 +105,13 @@ object CeresRealization {
                         edges.forEach { (a, b) -> distance(a, b, goal, weight = w) }
                     }
 
-                    is FacePlanarityConstraint ->
-                        faces.forEach { cycle -> planar(*cycle.toIntArray(), weight = w) }
+                    is FacePlanarityConstraint -> faces.forEach { cycle ->
+                        when (planes) {
+                            PlaneFormulation.ORIGIN_NORMAL -> planar(*cycle.toIntArray(), weight = w)
+                            PlaneFormulation.HESSE -> planarHesse(cycle, weight = w)
+                            PlaneFormulation.NEWELL_FIT -> planarFit(cycle, weight = w)
+                        }
+                    }
 
                     is CentroidConstraint -> {
                         val goal = constraint.target ?: problem.initialCentroid().toList()
@@ -127,8 +139,42 @@ object CeresRealization {
                     else -> error("unreachable: unsupported() should have rejected ${constraint.name}")
                 }
             }
+            if (gaugeRotationWeight > 0.0) {
+                gaugeRotationAll(weight = gaugeRotationWeight * gaugeRotationWeight)
+            }
+            if (minEdgeLengthFraction > 0.0) {
+                // A fraction of the initial mean edge length, so the barrier means the same thing
+                // whatever scale the caller's polyhedron happens to be at.
+                val floor = minEdgeLengthFraction * problem.initialMeanEdgeLength
+                val w = minEdgeLengthWeight * minEdgeLengthWeight
+                if (floor > 0.0) edges.forEach { (a, b) -> minDistance(a, b, floor, weight = w) }
+            }
         }
     }
+}
+
+/**
+ * How a Ceres program should say "this face is planar". They minimise the same thing; they are not
+ * equally well conditioned.
+ */
+enum class PlaneFormulation {
+    /**
+     * The original `PLANAR` opcode: plane as origin plus normal. Carries an exact two-dimensional
+     * null space per face (the residual sees the origin only through `O . n`) restrained by a
+     * `1e-6` prior. Kept because it is what the architectural DSL has always used; not a good
+     * choice for realization.
+     */
+    ORIGIN_NORMAL,
+
+    /** Plane as unit normal plus scalar offset. Three effective parameters per face, no null space. */
+    HESSE,
+
+    /**
+     * No plane variables at all — the Newell best-fit plane is computed inside the residual, which
+     * is exactly what [FacePlanarityConstraint] does. The smallest problem, and the only choice
+     * under which the two realizers minimise the identical function.
+     */
+    NEWELL_FIT,
 }
 
 /** Solver knobs for [relaxWithCeres] that have no counterpart in [LeastSquaresOptions]. */
@@ -145,6 +191,42 @@ data class CeresRelaxationOptions(
     val functionTolerance: Double = 1e-10,
     val gradientTolerance: Double = 1e-14,
     val parameterTolerance: Double = 1e-12,
+    /** See [PlaneFormulation]. The default is the well-conditioned one, not the historic one. */
+    val planes: PlaneFormulation = PlaneFormulation.HESSE,
+    /**
+     * Weight on a [afield.stdlib.ceres.GaugeRotation] term, or zero for none.
+     *
+     * The canonical conditions pin translation and scale but not orientation, leaving a
+     * three-dimensional continuum of equally good answers for the minimiser to wander along. The
+     * plan's [RigidGauge] removes that freedom *after* the solve; this removes it during.
+     */
+    val gaugeRotationWeight: Double = 1.0,
+    /**
+     * Let the trust region accept an occasional worse step. Helps on the spiky kis-family solids
+     * whose canonical form sits past a ridge; costs nothing when the problem is already easy.
+     */
+    val nonmonotonicSteps: Boolean = false,
+    /**
+     * A floor on edge length, as a one-sided `max(0, floor - length)` barrier. Zero disables it.
+     *
+     * Not cosmetic. [EdgeTangencyConstraint] measures the distance from the origin to the *line*
+     * through an edge's endpoints, and as those endpoints converge that line's direction becomes
+     * arbitrary — so a collapsed edge can put its tangency point anywhere on the sphere and
+     * satisfies the constraint for free. Collapsing edges therefore *removes* constraints, and the
+     * canonical objective has a spurious zero-cost minimum in which a chunk of the solid has folded
+     * up. On the spiky kis-family solids Ceres finds it: `kkT` reaches cost 5.7e-17 with 12 of its
+     * 54 edges at length 1e-7.
+     *
+     * The floor is this fraction of the initial mean edge length, so it means the same thing at any
+     * scale. `max(0, floor - length)` contributes exactly nothing while every edge is longer than
+     * the floor — turning it on is bit-for-bit inert on `kkC`, `kkD`, `kC` and `tI` — and it rescues
+     * `kkO` and `kkI` from tangency spread 3e-1 to 2e-4. Larger values start to bias rather than
+     * merely guard, so the default is small.
+     *
+     * [relax] has no equivalent and shares the underlying defect; it is only saved from it by
+     * converging too slowly to reach the trap.
+     */
+    val minEdgeLengthFraction: Double = 0.01,
 )
 
 /** [RealizationSolveResult] plus what Ceres reported about the solve that produced it. */
@@ -182,7 +264,13 @@ fun PolyhedralObject.relaxWithCeres(
     val initialDiagnostics = geometryDiagnostics()
     val initialReports = plan.constraints.report(problem, initial)
 
-    val program = CeresRealization.program(plan, problem)
+    val program = CeresRealization.program(
+        plan,
+        problem,
+        options.planes,
+        options.gaugeRotationWeight,
+        options.minEdgeLengthFraction,
+    )
     val result = CachedCeresSolvers(backend).use { solvers ->
         solvers.solve(
             SolveRequest(
@@ -195,6 +283,7 @@ fun PolyhedralObject.relaxWithCeres(
                     functionTolerance = options.functionTolerance,
                     gradientTolerance = options.gradientTolerance,
                     parameterTolerance = options.parameterTolerance,
+                    nonmonotonicSteps = options.nonmonotonicSteps,
                     summary = true,
                 ),
             ),

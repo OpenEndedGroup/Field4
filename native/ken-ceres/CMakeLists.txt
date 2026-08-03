@@ -39,6 +39,15 @@ target_include_directories(ken_ceres_jvm PRIVATE src)
 if(KEN_CERES_SYSTEM_CERES)
   find_package(Ceres REQUIRED)
   target_link_libraries(ken_ceres_jvm PRIVATE Ceres::ceres Threads::Threads)
+  # A system Ceres logs through real glog, whose warnings bypass Solver::Options::logging_type and
+  # land on stderr. Tell the wrapper it can silence them. A MINIGLOG static build has no such
+  # symbols and no such problem.
+  find_package(glog QUIET)
+  if(glog_FOUND)
+    target_compile_definitions(ken_ceres_jvm PRIVATE KEN_CERES_HAVE_GLOG GLOG_USE_GLOG_EXPORT)
+    target_link_libraries(ken_ceres_jvm PRIVATE glog::glog)
+    message(STATUS "ken_ceres_jvm: glog found, library logging silenced")
+  endif()
   message(STATUS "ken_ceres_jvm: system Ceres ${Ceres_VERSION}")
 else()
   if(NOT KEN_CERES_STATIC_LIB)
