@@ -186,8 +186,10 @@ object KeySpec {
             val next = shifted ?: canonicalKeyToken(token)
                 ?: return null to "'$token' is not a key Field can bind"
             // Two keys in one spec is a two-keystroke chord, which Field does not do. Say so instead
-            // of binding whichever one happened to come last.
-            if (key != null && key != next) {
+            // of binding whichever one happened to come last. `key != next` was wrong: it let the
+            // same key twice (`cmd+k cmd+k`) through as a plain Cmd+K, which is exactly what this
+            // guard exists to refuse — a chord half-obeyed is worse than a chord rejected.
+            if (key != null) {
                 return null to "a shortcut is one key with modifiers — Field has no two-keystroke chords"
             }
             if (shifted != null) shift = true

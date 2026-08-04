@@ -157,6 +157,20 @@ class KeySpecTest {
         }
     }
 
+    /**
+     * The same key twice is still a two-keystroke chord. The guard used to compare the two keys and
+     * wave `cmd+k cmd+k` through as a plain Cmd+K — the exact silent half-obedience the refusal above
+     * exists to prevent, just in the one case the comparison could not see.
+     */
+    @Test
+    fun aChordOfTheSameKeyTwiceIsAlsoRefused() {
+        for (spec in listOf("cmd+k cmd+k", "a a", "cmd+k,cmd+k")) {
+            assertNull(KeySpec.parse(spec), "'$spec' parsed as a single keystroke")
+            val why = assertNotNull(KeySpec.explainFailure(spec), "'$spec' had no explanation")
+            assertTrue(why.contains("two-keystroke"), "unhelpful explanation for '$spec': $why")
+        }
+    }
+
     @Test
     fun failuresSayWhichPartIsWrong() {
         assertTrue(assertNotNull(KeySpec.explainFailure("cmd+shift+nope")).contains("'nope'"))
