@@ -100,10 +100,12 @@ so a coarse lane cannot read as a bug.
 
 ![gain lfo](assets/pat_gallery/pat-gain-lfo.svg)
 
-**Rhythm transforms, against the source.** `pat("a b c d")` and five transforms over four cycles, so
+**Rhythm transforms, against the source.** `pat("a b c d")` and seven transforms over four cycles, so
 the cycle-to-cycle ones are visible: `rev` mirrors, `euclid(3,8)` spaces three onsets over eight
 slots, `iter(4)` advances a quarter each cycle and comes back round, `linger(1/4)` holds the head,
-`shuffle(4)` permutes differently every cycle.
+`shuffle(4)` permutes differently every cycle, and `slow(2)` / `fast(2)` span cycles. Read the
+`slow(2)` lane across the bar lines: `a b`, then `c d`, then round again. Before this branch it played
+`a b` in every bar and `c d` was never heard at all — the lane is the proof.
 
 ![rhythm transforms](assets/pat_gallery/pat-rhythm-transforms.svg)
 

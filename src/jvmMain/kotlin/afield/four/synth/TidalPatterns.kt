@@ -576,19 +576,56 @@ fun <A> PatPattern<A>.delay(by: PatQ): PatPattern<A> =
         events(absArc).map { event -> PatEvent(event.arc.shift(-base + by), event.value, event.sourceSpan, event.annotations, event.additionalSpans) }
     }
 
-fun <A> PatPattern<A>.fast(n: Int): PatPattern<A> = cat(*Array(max(1, n)) { this })
-
-fun <A> PatPattern<A>.slow(n: Int): PatPattern<A> =
-    fromCycleIndexed { subArc, tile ->
-        val base = PatQ.of(tile)
-        val factor = PatQ.of(1, max(1, n))
-        val srcAbs = PatArc(base + subArc.start * factor, base + subArc.end * factor)
-        events(srcAbs).map { event ->
-            val startLocal = (event.arc.start - base) / factor
-            val endLocal = (event.arc.end - base) / factor
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+/**
+ * Multiplies the pattern's timeline by [by] — the one time transform, in **absolute** cycle time.
+ *
+ * `stretch(PatQ.of(2))` is twice as slow and genuinely spans two cycles; `stretch(PatQ.of(1, 2))` is
+ * twice as fast. Every other time operator in this file is defined in terms of it.
+ *
+ * This replaced three per-cycle-anchored implementations that all silently *dropped material*.
+ * `pat("a b c d").slow(2)` used to give `a b` in every cycle — `c d` was never heard, because the
+ * old implementation rescaled inside each cycle rather than across cycles. Same for mini-notation's
+ * `/n`, for `timeScale`, `density`, and therefore for `chunk`, whose whole point is to apply a
+ * transform to a different quarter each cycle and which used to apply it to the same one forever.
+ * `PatContractTest` pins the difference: `slow` is now (correctly) a per-cycle-varying pattern.
+ */
+fun <A> PatPattern<A>.stretch(by: PatQ): PatPattern<A> {
+    if (by <= PatQ.ZERO) return this
+    return PatPattern { arc ->
+        events(PatArc(arc.start / by, arc.end / by)).map { event ->
+            PatEvent(
+                PatArc(event.arc.start * by, event.arc.end * by),
+                event.value,
+                event.sourceSpan,
+                event.annotations,
+                event.additionalSpans
+            )
         }
     }
+}
+
+/** [stretch] by an exact fraction — `fastBy(PatQ.of(3, 2))` is one and a half times as fast. */
+fun <A> PatPattern<A>.fastBy(factor: PatQ): PatPattern<A> =
+    if (factor <= PatQ.ZERO) this else stretch(PatQ.ONE / factor)
+
+/** [stretch] by an exact fraction — `slowBy(PatQ.of(3, 2))` takes one and a half cycles per cycle. */
+fun <A> PatPattern<A>.slowBy(factor: PatQ): PatPattern<A> = stretch(factor)
+
+/**
+ * Plays the pattern [n] times per cycle.
+ *
+ * Cycle-spanning, so `pat("<a b>").fast(2)` reads `a b` in one cycle rather than `a a`. For a
+ * cycle-invariant pattern it is identical to the old `cat`-of-copies implementation.
+ */
+fun <A> PatPattern<A>.fast(n: Int): PatPattern<A> = fastBy(PatQ.of(max(1, n)))
+
+/**
+ * Takes [n] cycles to play the pattern once.
+ *
+ * `pat("a b c d").slow(2)` reads `a b` in one cycle and `c d` in the next — the second half really is
+ * heard. See [stretch] for what this used to do instead.
+ */
+fun <A> PatPattern<A>.slow(n: Int): PatPattern<A> = stretch(PatQ.of(max(1, n)))
 
 fun <A> PatPattern<A>.every(k: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
@@ -736,20 +773,8 @@ fun <A> PatPattern<A>.whenMod(
 fun <A> PatPattern<A>.chunk(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
     slow(n).let(transform).fast(n)
 
-fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> =
-    fromCycleIndexed { subArc, tile ->
-        val base = PatQ.of(tile)
-        val absArc = PatArc(base + subArc.start * ratio, base + subArc.end * ratio)
-        events(absArc).map { event ->
-            PatEvent(
-                PatArc((event.arc.start - base) / ratio, (event.arc.end - base) / ratio),
-                event.value,
-                event.sourceSpan,
-                event.annotations,
-                event.additionalSpans
-            )
-        }
-    }
+/** Scales density by an exact ratio: `timeScale(PatQ.of(3, 2))` is half again as fast. [stretch]'s inverse. */
+fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> = fastBy(ratio)
 
 fun <A> PatPattern<A>.density(ratio: Double): PatPattern<A> =
     timeScale(if (ratio <= 0.0) PatQ.ONE else PatQ.fromDouble(ratio))

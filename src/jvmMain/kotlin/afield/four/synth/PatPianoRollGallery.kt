@@ -304,7 +304,9 @@ object PatPianoRollGallery {
             blurb = "One source pattern and five transforms of it, drawn over four cycles so the " +
                 "cycle-to-cycle ones are visible: `rev` mirrors, `euclid(3,8)` spaces three onsets " +
                 "over eight slots, `iter(4)` advances a quarter each cycle, `linger(1/4)` holds the " +
-                "head, `shuffle(4)` permutes.",
+                "head, `shuffle(4)` permutes, and `slow(2)` / `fast(2)` really do span cycles — read " +
+                "the `slow(2)` lane across the bar lines and it goes `a b` then `c d`, where before " +
+                "this branch it played `a b` forever and the second half was never heard at all.",
             build = {
                 val source = pat("a b c d")
                 PatRollSpec(
@@ -318,6 +320,8 @@ object PatPianoRollGallery {
                         Lane("iter(4)", source.iter(4)),
                         Lane("linger(1/4)", source.linger(1, 4)),
                         Lane("shuffle(4)", source.shuffle(4)),
+                        Lane("slow(2)", source.slow(2)),
+                        Lane("fast(2)", source.fast(2)),
                     )
                 )
             },
@@ -347,6 +351,17 @@ object PatPianoRollGallery {
                     if (v != listOf("a", "b", "c", "d")) reordered = true
                 }
                 check(reordered) { "shuffle(4) never reordered over four cycles" }
+                // slow(2) spans cycles: the first half in even cycles, the second in odd ones. Before
+                // this branch it played `a b` in every cycle and `c d` was never heard at all.
+                check(lane("slow(2)").cycle(0).map { it.value } == listOf("a", "b")) {
+                    "slow(2) cycle 0: ${lane("slow(2)").cycle(0).map { it.value }}"
+                }
+                check(lane("slow(2)").cycle(1).map { it.value } == listOf("c", "d")) {
+                    "slow(2) cycle 1: ${lane("slow(2)").cycle(1).map { it.value }} — the second half is lost"
+                }
+                check(lane("fast(2)").cycle(0).map { it.value } == listOf("a", "b", "c", "d", "a", "b", "c", "d")) {
+                    "fast(2): ${lane("fast(2)").cycle(0).map { it.value }}"
+                }
             }
         ),
 

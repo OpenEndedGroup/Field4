@@ -20,8 +20,11 @@ import kotlin.test.assertTrue
  *  2. **Cycle-invariance.** A pattern with no per-cycle construct produces the same events in every
  *     cycle, up to a whole-cycle shift. Entries marked `varying()` are exempt, and the exemption
  *     list is itself asserted to be minimal.
- *  3. **Query-range additivity.** Asking for `[0, N)` in one call gives the same events as asking
- *     for each `[i, i+1)` separately.
+ *  3. **Query-range additivity, up to fragmentation.** Asking for `[0, N)` in one call loses and
+ *     invents nothing against asking for each `[i, i+1)`: the same onsets, and the same total
+ *     sounding time per value. Exact event equality is deliberately *not* claimed — a single-arc
+ *     event model necessarily returns one wide event where two narrow queries return two fragments,
+ *     which is precisely what a cycle-spanning `slow(2)` does.
  *  4. **Purity** and **query-order independence.** The same query twice gives the same answer, and
  *     asking for cycle 5 before cycle 0 gives the same answer as after.
  *  5. **Containment and well-formedness.** No event escapes the arc it was asked about, and no arc
@@ -73,7 +76,7 @@ class PatContractTest {
         "zoom" means pat("a b c d").zoom(PatQ.of(1, 4), PatQ.of(1, 2)),
         "delay" means pat("a b c").delay(PatQ.of(1, 8)),
         "fast" means pat("a b").fast(3),
-        "slow" means pat("a b c").slow(2),
+        ("slow" means pat("a b c").slow(2)).varying(),
         ("every" means pat("a b c").every(3) { it.rev() }).varying(),
         ("switchEvery" means pat("a b").switchEvery(2, pat("x y z"))).varying(),
         ("whenCycle" means pat("a b").whenCycle({ it % 2 == 0L }) { it.fast(2) }).varying(),
@@ -84,8 +87,8 @@ class PatContractTest {
         ("degradeBy" means pat("a*8").degradeBy(0.4)).varying(),
         "striate" means pat("a b").striate(3),
         "stutter" means pat("a b").stutter(3, PatQ.of(1, 4)),
-        "timeScale" means pat("a b c").timeScale(PatQ.of(3, 2)),
-        "density" means pat("a b c").density(1.5),
+        ("timeScale" means pat("a b c").timeScale(PatQ.of(3, 2))).varying(),
+        ("density" means pat("a b c").density(1.5)).varying(),
         "arp(list)" means pat("a b").arp(listOf("x", "y", "z"), speed = 3),
         "arp(pattern)" means pat("c, e, g").arp("0 2 1"),
         "zip" means pat("a b").zip(pat("1 2 3"), "v"),
@@ -268,19 +271,41 @@ class PatContractTest {
 
     // ── 3. query-range additivity ─────────────────────────────────────────────────────────
 
+    /**
+     * Query-range additivity, stated so that it is true rather than so that it is tidy.
+     *
+     * Exact event-for-event equality is **not** a property of this model. `PatEvent` carries a single
+     * arc, so an event spanning a cycle boundary — which is exactly what `slow(2)` produces — comes
+     * back as one wide event from a two-cycle query and as two clipped fragments from two one-cycle
+     * queries. Neither answer is wrong; they are the same music seen through different windows.
+     *
+     * What must hold is that nothing is invented or lost: every onset the wide query reports is also
+     * reported when asking cycle by cycle, and the total sounding duration of each value is the same
+     * either way. Fragmentation preserves both.
+     */
     @Test
-    fun `one multi-cycle query agrees with the same cycles queried separately`() {
+    fun `a multi-cycle query loses and invents nothing against per-cycle queries`() {
         val problems = mutableListOf<String>()
         for ((label, pattern) in corpus().map { it.label to it.pattern }) {
-            val whole = signature(pattern.events(PatArc(PatQ.ZERO, PatQ.of(CYCLES))))
-            val perCycle = signature(
-                (0 until CYCLES).flatMap { pattern.events(PatArc(PatQ.of(it), PatQ.of(it + 1))) }
-            )
-            if (whole != perCycle) {
-                problems += "$label: [0,$CYCLES) gave ${whole.size} events, per-cycle gave ${perCycle.size}" +
-                    (if (whole.size == perCycle.size) " (same count, different events)" else "") +
-                    "\n    only in whole:     ${(whole - perCycle.toSet()).take(4)}" +
-                    "\n    only in per-cycle: ${(perCycle - whole.toSet()).take(4)}"
+            val whole = pattern.events(PatArc(PatQ.ZERO, PatQ.of(CYCLES)))
+            val perCycle = (0 until CYCLES).flatMap { pattern.events(PatArc(PatQ.of(it), PatQ.of(it + 1))) }
+
+            // 1. every onset seen by the wide query is seen cycle by cycle.
+            val wideOnsets = whole.map { "${it.arc.start}|${it.value}" }.toSet()
+            val narrowOnsets = perCycle.map { "${it.arc.start}|${it.value}" }.toSet()
+            val missing = wideOnsets - narrowOnsets
+            if (missing.isNotEmpty()) problems += "$label: onsets lost when querying per cycle: ${missing.take(4)}"
+
+            // 2. the total sounding time of each value matches.
+            fun totals(events: List<PatEvent<String>>): Map<String, PatQ> =
+                events.groupBy { it.value }
+                    .mapValues { (_, group) -> group.fold(PatQ.ZERO) { acc, e -> acc + e.arc.dur } }
+            val a = totals(whole)
+            val b = totals(perCycle)
+            if (a != b) {
+                problems += "$label: total sounding duration differs" +
+                    "\n    wide:   $a" +
+                    "\n    narrow: $b"
             }
         }
         assertTrue(problems.isEmpty(), "query-range additivity failed for:\n" + problems.joinToString("\n"))

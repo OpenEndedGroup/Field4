@@ -12,7 +12,7 @@ were measured rather than assumed, and one advertised feature that turned out to
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
 
 Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` and
-`PatContractTest` (93 tests), the `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav`
+`PatContractTest` (97 tests), the `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav`
 renders — see [PAT_GALLERY.md](PAT_GALLERY.md).
 
 ---
@@ -165,12 +165,12 @@ queried cycle and is still safe to query out of order or in parallel.
 
 ---
 
-## 4. Three behaviours that were measured, not assumed
+## 4. Three behaviours that were measured, not assumed — and one that was fixed
 
-Writing the tests and the gallery turned up three places where the pre-existing code does something
-other than its name suggests. None of them is changed — callers depend on them — but all three are
-now documented and pinned by a test, and where a genuinely missing operator was hiding behind a name
-it has been added alongside.
+Writing the tests and the gallery turned up four places where the pre-existing code does something
+other than its name suggests. The first two are left alone — callers could reasonably depend on them —
+and are now documented and pinned by a test, with the genuinely missing operator added alongside where
+one was hiding behind a name. The third was a plain defect and is fixed.
 
 **`bjorklund(3, 8)` is `x..x.x..`**, a rotation of the canonical `x..x..x.`. Just as Euclidean (gaps
 3, 2, 3); the gallery asserts the gaps rather than the exact slots.
@@ -180,10 +180,26 @@ values and never interleaves. Tidal's actual `striate`, which plays the whole pa
 cycle with a different `begin`/`end` slice each pass, is added as **`striateAcross(n)`**.
 `pat("a b").chop(2)` reads `a a b b`; `pat("a b").striateAcross(2)` reads `a b a b`.
 
-**`slow(n)` and `timeScale(ratio)` are anchored per cycle**, not cycle-spanning. `cat(a, b).slow(2)`
-is *not* "two cycles of `a` then two of `b`" — it doubles the density instead. `whenCycle` is the
-right operator for that, and both before/after `.wav` scenes use it. (`fast(n).slow(n)` is still the
-identity on a cycle-invariant pattern, which is what `PatSignalsTest` asserts.)
+**`slow(n)`, `fast(n)`, `timeScale`, `density` and mini-notation's `/n` were anchored per cycle, and
+silently dropped material.** `pat("a b c d").slow(2)` gave `a b` in **every** cycle — `c d` was never
+heard at all, on any cycle, ever. `slow(4)` gave `a` forever. `[a b c d]/2` the same. `fast(n)` was
+`cat` of *n* copies, so `pat("<a b>").fast(2)` replayed cycle 0 twice and read `a a` instead of `a b`.
+And `chunk(n, f)`, built on both, applied its transform to the same quarter forever rather than
+walking through them.
+
+This was the deepest defect on the branch and it is fixed, not documented: all five are now defined in
+terms of one absolute-time primitive, `stretch(by: PatQ)`, which queries the source over `arc / by` and
+maps the result back by `× by`. `pat("a b c d").slow(2)` now reads `a b`, then `c d`, then `a b`. For a
+cycle-invariant pattern `fast(n)` is bit-identical to the old `cat`-of-copies, so nothing that worked
+before moves. `fastBy` / `slowBy` take an exact `PatQ`, and `fastBy(f).slowBy(f)` is asserted to be the
+identity for factors 2, 3, 3/2 and 5/4.
+
+The visible consequence in the contract sweep: `slow`, `timeScale` and `density` had to be re-marked
+as per-cycle-*varying*, which is the sweep saying out loud that they now span cycles.
+
+One thing that genuinely is a per-cycle operator and stays one: `cat`. `cat(a, b).slow(2)` is still not
+"two cycles of `a` then two of `b`" — `cat` packs its arguments into one cycle by design. `whenCycle` is
+the operator for that, and both before/after `.wav` scenes use it.
 
 Relatedly, `off(by)` *is* built on `delay`, which is genuinely cycle-spanning, so an echo whose arc
 crosses a cycle boundary wraps into the next cycle. `pat("a b c d").off(1, 8) { it }` yields **nine**
@@ -343,6 +359,9 @@ because `ply` is the name the Tidal docs use); and `someCyclesBy` is `sometimesB
 ---
 
 ## 7. The surface, at a glance
+
+**Time** (`TidalPatterns.kt`) — `stretch fastBy slowBy fast slow timeScale density zoom delay rev
+palindrome patFocus within cat stack`
 
 **Signals** (`PatSignals.kt`) — `sine cosine saw isaw tri square envL envLR rand irand perlin sig
 signalOf constant run grid` · `segment discretise struct bools quantise rounded range rangex bipolar

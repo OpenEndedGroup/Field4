@@ -457,4 +457,68 @@ class PatCompositionTest {
             run(8).toScale(patScaleSteps("minor"), root = 60).cycle().map { it.value }
         )
     }
+
+    // ── time: the operator family that used to drop material ──────────────────────────────
+
+    @Test
+    fun `slow really spans cycles instead of dropping the rest of the pattern`() {
+        val source = pat("a b c d")
+        // Cycle 0 is the first half, cycle 1 the second, and then it comes round.
+        assertEquals(listOf("a", "b"), source.slow(2).cycle(0).map { it.value })
+        assertEquals(listOf("c", "d"), source.slow(2).cycle(1).map { it.value })
+        assertEquals(listOf("a", "b"), source.slow(2).cycle(2).map { it.value })
+        assertEquals(
+            listOf(PatQ.ZERO to PatQ.of(1, 2), PatQ.of(1, 2) to PatQ.ONE),
+            arcsOf(source.slow(2).cycle(0))
+        )
+        // Nothing is lost: over two cycles all four atoms sound, exactly once each.
+        val twoCycles = source.slow(2).events(PatArc(PatQ.ZERO, PatQ.of(2))).map { it.value }
+        assertEquals(listOf("a", "b", "c", "d"), twoCycles.sorted())
+        // slow(4) spreads one atom per cycle rather than repeating the first forever.
+        assertEquals(
+            listOf("a", "b", "c", "d"),
+            (0L until 4L).map { source.slow(4).cycle(it).single().value }
+        )
+    }
+
+    @Test
+    fun `fast spans cycles too, so an alternation advances inside one bar`() {
+        // The tell for the old cat-of-copies implementation: it replayed cycle 0 n times, so
+        // `<a b>.fast(2)` was `a a`. Cycle-spanning, it is `a b`.
+        assertEquals(listOf("a", "b"), pat("<a b>").fast(2).cycle(0).map { it.value })
+        assertEquals(listOf("c", "a"), pat("<a b c>").fast(2).cycle(1).map { it.value })
+        // For a cycle-invariant pattern it is exactly what it always was.
+        assertEquals(
+            arcsOf(cat(pat("a b"), pat("a b")).cycle(0)),
+            arcsOf(pat("a b").fast(2).cycle(0))
+        )
+        assertEquals(listOf("a", "b", "a", "b"), pat("a b").fast(2).cycle(0).map { it.value })
+    }
+
+    @Test
+    fun `stretch is exact and fast and slow are inverse`() {
+        val source = pat("a b c")
+        // Two-thirds speed: exact rational arcs, no rounding.
+        val stretched = source.stretch(PatQ.of(3, 2)).cycle(0)
+        assertEquals(PatQ.of(1, 2), stretched.first().arc.end)
+        // Round trip: fast then slow by the same factor is the identity, on any factor.
+        for (factor in listOf(PatQ.of(2), PatQ.of(3), PatQ.of(3, 2), PatQ.of(5, 4))) {
+            val roundTrip = source.fastBy(factor).slowBy(factor).cycle(0)
+            assertEquals(arcsOf(source.cycle(0)), arcsOf(roundTrip), "factor $factor")
+            assertEquals(source.cycle(0).map { it.value }, roundTrip.map { it.value }, "factor $factor")
+        }
+        // timeScale is fastBy, and density is timeScale on a Double.
+        assertEquals(
+            arcsOf(source.fastBy(PatQ.of(3, 2)).cycle(0)),
+            arcsOf(source.timeScale(PatQ.of(3, 2)).cycle(0))
+        )
+    }
+
+    @Test
+    fun `mini-notation slash spans cycles like slow`() {
+        assertEquals(listOf("a", "b"), pat("[a b c d]/2").cycle(0).map { it.value })
+        assertEquals(listOf("c", "d"), pat("[a b c d]/2").cycle(1).map { it.value })
+        // and `*` is fast.
+        assertEquals(listOf("a", "b", "a", "b"), pat("[a b]*2").cycle(0).map { it.value })
+    }
 }
