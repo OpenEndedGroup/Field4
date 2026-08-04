@@ -360,6 +360,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "compute_s",
             "customization",
             "_tombstone",
+            // Set by reloadPersonal when a box's Kotlin environment is dropped out from under it.
+            // Has to reach the client or the mark is invisible and the box looks fine while holding
+            // classes from a personal/ build that no longer exists.
+            NEEDS_RERUN_PROPERTY,
             ".*_editorState",
             "code_decorationState",
             "metadata",

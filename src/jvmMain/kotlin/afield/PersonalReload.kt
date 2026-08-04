@@ -36,8 +36,11 @@ import kotlin.reflect.KType
  */
 var Box.needsRerun: String?
     get() = getPropertyRaw(NEEDS_RERUN_PROPERTY) as? String
+    // Both sides go through the raw accessors rather than touching `properties` directly: that is
+    // what enqueues the resync, and without it the editor never hears about the mark (or about it
+    // being cleared) and the box carries a stale outline for the rest of the session.
     set(value) {
-        if (value == null) properties.remove(NEEDS_RERUN_PROPERTY)
+        if (value == null) removePropertyRaw(NEEDS_RERUN_PROPERTY)
         else setPropertyRaw(NEEDS_RERUN_PROPERTY, value)
     }
 

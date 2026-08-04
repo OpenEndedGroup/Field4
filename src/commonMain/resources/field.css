@@ -3929,6 +3929,15 @@ kbd {
     transition: 0.16s filter, 0.16s opacity;
 }
 
+/* reloadPersonal dropped this box's Kotlin environment and did not re-run it -- deliberately, since
+   re-running is the user's call. Amber rather than red: nothing is broken, the box is just stale. */
+.needs-rerun {
+    outline: 1px dashed rgba(240, 176, 76, 0.85);
+    outline-offset: 2px;
+    box-shadow: 0 0 12px rgba(240, 176, 76, 0.18);
+    transition: 0.16s outline-color, 0.16s box-shadow;
+}
+
 .field-startup-progress {
     position: fixed;
     left: 10px;

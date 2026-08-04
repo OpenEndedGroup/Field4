@@ -5531,6 +5531,11 @@ suspend fun main() {
             found.getElementsByClassName("doubleClickToEdit").asList().firstOrNull()?.innerHTML = ""
             applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
         }
+        if (set.property == "_needsRerun") {
+            val element = found.unsafeCast<HTMLElement>()
+            element.classList.remove("needs-rerun")
+            element.title = ""
+        }
         if (set.property in monacoRemoteTextProperties) {
             notifyEmbeddedEditorOfRemoteUpdate(u, set.property, "")
             notifyPotentialEditedPropertyHasBeenRemoteUpdated(u, set.property, "")
@@ -5551,6 +5556,15 @@ suspend fun main() {
                 found.getElementsByClassName("doubleClickToEdit").asList()[0].innerHTML = set.value
                 found.unsafeCast<dynamic>().name = set.value
                 applyAi4AutoNameStyle(found.unsafeCast<HTMLElement>(), found.asDynamic().ai4_auto_name == true)
+            }
+
+            // reloadPersonal dropped this box's Kotlin environment. It is deliberately not re-run for
+            // you, so the box has to say so itself -- the value is the reason, which becomes the
+            // tooltip. Cleared via set-null when the box is next executed.
+            set.property == "_needsRerun" -> {
+                val element = found.unsafeCast<HTMLElement>()
+                element.classList.add("needs-rerun")
+                element.title = set.value
             }
 
             set.property == "code" -> {
