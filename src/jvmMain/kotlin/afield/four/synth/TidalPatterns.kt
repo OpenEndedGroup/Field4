@@ -240,6 +240,20 @@ data class PatArc(val start: PatQ, val end: PatQ) {
 
     fun scale(by: PatQ) = PatArc(start * by, end * by)
 
+    /**
+     * Applies [f] to both ends. Every time transform in this file should go through this rather than
+     * rebuilding a `PatArc` by hand, so that an event's [PatEvent.whole] can be carried along by the
+     * same map — see [PatEvent.mapTime].
+     *
+     * [f] may be decreasing (`rev` reflects time about the cycle), in which case the image is still
+     * the interval between the two results — just with the ends the other way round.
+     */
+    inline fun map(f: (PatQ) -> PatQ): PatArc {
+        val a = f(start)
+        val b = f(end)
+        return if (b > a) PatArc(a, b) else PatArc(b, a)
+    }
+
     fun intersect(other: PatArc): PatArc? {
         val s = if (start > other.start) start else other.start
         val e = if (end < other.end) end else other.end
@@ -305,9 +319,65 @@ data class PatSourceSpan(
     }
 }
 
-data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceSpan? = null, val annotations: Map<String, String> = emptyMap(), val additionalSpans: List<PatSourceSpan> = emptyList()) {
-    fun shift(by: PatQ) = copy(arc = arc.shift(by))
-    fun scale(by: PatQ) = copy(arc = arc.scale(by))
+/**
+ * One event: a value sounding over [arc].
+ *
+ * [arc] is the **part** — the slice of the event that the query being answered can actually see. A
+ * query never returns anything outside its own window, so an event longer than the window, or one
+ * straddling the window's edge, comes back clipped. [whole] is the **logical** extent it was clipped
+ * from: where the note really starts and ends, regardless of who is looking.
+ *
+ * Keeping both is what makes [hasOnset] answerable, and [hasOnset] is what stops a note being played
+ * twice. `pat("a b c").slow(2)` puts `b` across the bar line at `2/3 → 4/3`; a per-cycle scheduler
+ * asks for `[0,1)` and then `[1,2)`, and gets `b` back both times. Without [whole] those two
+ * fragments are indistinguishable from two separate notes, and the note is struck twice — once at
+ * `2/3` and again at the bar line. With it, only the fragment whose part starts where the whole
+ * starts is an onset, and `b` is struck once, for its full length. This is Tidal's whole/part
+ * distinction and it exists for exactly this reason.
+ *
+ * `whole == null` means an **analog** event: a sample of a continuous signal, which has no intrinsic
+ * start because it was never a note in the first place. Analog events count as their own onset, so a
+ * signal read per cycle behaves the way you would expect; discretise with `segment` to turn one into
+ * events with real onsets.
+ *
+ * Move an event with [mapTime] and re-value it with [withValue]; both carry [whole] across. Building
+ * a new `PatEvent` positionally from an old one silently drops it back to the part, which is the bug
+ * described above.
+ */
+data class PatEvent<A>(
+    val arc: PatArc,
+    val value: A,
+    val sourceSpan: PatSourceSpan? = null,
+    val annotations: Map<String, String> = emptyMap(),
+    val additionalSpans: List<PatSourceSpan> = emptyList(),
+    val whole: PatArc? = arc
+) {
+    /**
+     * True when this fragment carries the start of its event, so a scheduler should strike it.
+     *
+     * Analog events (`whole == null`) are always onsets: there is no earlier fragment they could be
+     * the tail of.
+     */
+    val hasOnset: Boolean
+        get() = whole == null || whole.start == arc.start
+
+    /** The event's real length — [whole] where there is one, otherwise the part that was visible. */
+    val extent: PatArc
+        get() = whole ?: arc
+
+    fun shift(by: PatQ) = copy(arc = arc.shift(by), whole = whole?.shift(by))
+    fun scale(by: PatQ) = copy(arc = arc.scale(by), whole = whole?.scale(by))
+
+    /** Moves the event in time, applying [f] to the part and the whole alike. */
+    inline fun mapTime(f: (PatQ) -> PatQ) = copy(arc = arc.map(f), whole = whole?.map(f))
+
+    /** Same event, same time, different value — keeps [whole], which a positional rebuild drops. */
+    fun <B> withValue(newValue: B): PatEvent<B> =
+        PatEvent(arc, newValue, sourceSpan, annotations, additionalSpans, whole)
+
+    /** Restricts the visible part to [part] without touching where the event logically begins. */
+    fun clipTo(part: PatArc) = copy(arc = part, whole = whole)
+
     fun mergeAnnotations(extra: Map<String, String>) = if (extra.isEmpty()) this else copy(annotations = annotations + extra)
     fun addSpan(span: PatSourceSpan?) = if (span == null) this else copy(additionalSpans = additionalSpans + span)
 
@@ -315,7 +385,13 @@ data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceS
         val source = sourceSpan?.let { ", source=$it" } ?: ""
         val ann = if (annotations.isEmpty()) "" else ", annotations=$annotations"
         val extra = if (additionalSpans.isEmpty()) "" else ", +${additionalSpans.size} spans"
-        return "PatEvent(arc=$arc, value=${synthPrettyValue(value)}$source$ann$extra)"
+        // Only worth showing when it differs from the part — otherwise every event grows a duplicate.
+        val extent = when {
+            whole == null -> ", analog"
+            whole != arc -> ", whole=$whole"
+            else -> ""
+        }
+        return "PatEvent(arc=$arc$extent, value=${synthPrettyValue(value)}$source$ann$extra)"
     }
 }
 
@@ -358,12 +434,28 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
 
     fun events(absArc: PatArc): List<PatEvent<A>> = renderAbs(absArc)
 
+    /**
+     * The events in playing order, one cycle at a time, each yielded **once** at its own start.
+     *
+     * Querying cycle by cycle is what a scheduler has to do — it cannot ask for all of time — but it
+     * means any event crossing a bar line comes back from two consecutive queries, clipped both
+     * times. Yielding both fragments strikes the note twice: `pat("a b c").slow(2)` would fire `b` at
+     * `2/3` and again at the bar line, because three steps do not divide into two cycles. So only the
+     * fragment carrying the onset is yielded, and it is widened back to its [PatEvent.whole] so the
+     * consumer gets the note's real length rather than the part that fitted inside one cycle.
+     *
+     * A note already sounding when [fromCycle] begins is therefore *not* replayed: its onset is in an
+     * earlier cycle, which is the same answer a musician would give.
+     */
     fun eventSequence(fromCycle: Long = 0): Sequence<PatEvent<A>> = sequence {
         var cycle = fromCycle
         while (true) {
             val arc = PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))
             val events = events(arc).sortedBy { it.arc.start.toDouble() }
-            for (event in events) yield(event)
+            for (event in events) {
+                if (!event.hasOnset) continue
+                yield(if (event.whole != null) event.copy(arc = event.whole) else event)
+            }
             cycle++
         }
     }
@@ -401,7 +493,7 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
     }
 
     fun <B> map(transform: (A) -> B): PatPattern<B> = PatPattern { absArc ->
-        events(absArc).map { PatEvent(it.arc, transform(it.value), it.sourceSpan, it.annotations, it.additionalSpans) }
+        events(absArc).map { it.withValue(transform(it.value)) }
     }
 
     fun respond(
@@ -462,7 +554,10 @@ fun <A> fromCycleIndexed(renderCycle: (PatArc, Long) -> List<PatEvent<A>>): PatP
 
 fun <A> pure(value: A, sourceSpan: PatSourceSpan? = null): PatPattern<A> = fromCycle { subArc ->
     val inter = PAT_CYCLE.intersect(subArc) ?: return@fromCycle emptyList()
-    listOf(PatEvent(inter, value, sourceSpan))
+    // The event is the whole cycle; `inter` is only as much of it as this query asked to see. Every
+    // clipped event in the language is born here, so this is where `whole` has to be set — see
+    // [PatEvent].
+    listOf(PatEvent(inter, value, sourceSpan, whole = PAT_CYCLE))
 }
 
 fun <A> silence(): PatPattern<A> = PatPattern { emptyList() }
@@ -480,9 +575,7 @@ fun <A> within(window: PatArc, pattern: PatPattern<A>): PatPattern<A> =
         )
         val childAbs = localInWindow.shift(base)
         pattern.events(childAbs).map { event ->
-            val startAbs = windowAbs.start + (event.arc.start - base) * window.dur
-            val endAbs = windowAbs.start + (event.arc.end - base) * window.dur
-            PatEvent(PatArc(startAbs, endAbs).shift(-base), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+            event.mapTime { t -> windowAbs.start + (t - base) * window.dur - base }
         }
     }
 
@@ -510,16 +603,7 @@ internal fun <A> patFocus(window: PatArc, cycleIndex: Long, pattern: PatPattern<
         val localEnd = base + (visible.end - window.start) / span
         if (localEnd <= localStart) return@PatPattern emptyList()
         pattern.events(PatArc(localStart, localEnd)).map { event ->
-            PatEvent(
-                PatArc(
-                    window.start + (event.arc.start - base) * span,
-                    window.start + (event.arc.end - base) * span
-                ),
-                event.value,
-                event.sourceSpan,
-                event.annotations,
-                event.additionalSpans
-            )
+            event.mapTime { t -> window.start + (t - base) * span }
         }
     }
 
@@ -550,9 +634,8 @@ fun <A> PatPattern<A>.rev(): PatPattern<A> =
         val base = PatQ.of(tile)
         val reflectedAbs = PatArc(base + PatQ.ONE - subArc.end, base + PatQ.ONE - subArc.start)
         events(reflectedAbs).map { event ->
-            val startLocal = PatQ.ONE - (event.arc.end - base)
-            val endLocal = PatQ.ONE - (event.arc.start - base)
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+            // Decreasing map — PatArc.map puts the reflected ends back in order.
+            event.mapTime { t -> PatQ.ONE - (t - base) }
         }
     }
 
@@ -562,18 +645,14 @@ fun <A> PatPattern<A>.zoom(start: PatQ, len: PatQ): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
         val absArc = PatArc(base + start + subArc.start * len, base + start + subArc.end * len)
-        events(absArc).map { event ->
-            val startLocal = (event.arc.start - (base + start)) / len
-            val endLocal = (event.arc.end - (base + start)) / len
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
-        }
+        events(absArc).map { event -> event.mapTime { t -> (t - (base + start)) / len } }
     }
 
 fun <A> PatPattern<A>.delay(by: PatQ): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
         val absArc = subArc.shift(base - by)
-        events(absArc).map { event -> PatEvent(event.arc.shift(-base + by), event.value, event.sourceSpan, event.annotations, event.additionalSpans) }
+        events(absArc).map { event -> event.shift(-base + by) }
     }
 
 /**
@@ -592,15 +671,9 @@ fun <A> PatPattern<A>.delay(by: PatQ): PatPattern<A> =
 fun <A> PatPattern<A>.stretch(by: PatQ): PatPattern<A> {
     if (by <= PatQ.ZERO) return this
     return PatPattern { arc ->
-        events(PatArc(arc.start / by, arc.end / by)).map { event ->
-            PatEvent(
-                PatArc(event.arc.start * by, event.arc.end * by),
-                event.value,
-                event.sourceSpan,
-                event.annotations,
-                event.additionalSpans
-            )
-        }
+        // The whole rides along with the part: an event stretched across a bar line keeps knowing
+        // where it really began, which is what stops `eventSequence` striking it twice.
+        events(PatArc(arc.start / by, arc.end / by)).map { event -> event.scale(by) }
     }
 }
 
@@ -710,7 +783,8 @@ fun euclid(pulses: Int, steps: Int, rotation: Int = 0): PatPattern<Boolean> =
                 if (index < mask.size && mask[index]) {
                     val window = PatArc(PatQ.of(index, stepCount), PatQ.of(index + 1, stepCount))
                     val inter = window.intersect(subArc) ?: continue
-                    add(PatEvent(inter, true))
+                    // The pulse lasts `window`; `inter` is only as much of it as this query can see.
+                    add(PatEvent(inter, true, whole = window))
                 }
             }
         }
@@ -891,10 +965,12 @@ fun PatPattern<String>.zip(valuePattern: PatPattern<String>, key: String): PatPa
     val zipEvents = valuePattern.events(absArc)
     sourceEvents.map { event ->
         val overlapping = zipEvents.firstOrNull { it.arc.intersect(event.arc) != null }
+        // `shift`, not `copy(arc = …)`: the whole has to return to local time along with the part,
+        // or the event ends up claiming to begin a cycle away from where it actually sounds.
         if (overlapping != null) {
-            event.mergeAnnotations(mapOf(key to overlapping.value)).addSpan(overlapping.sourceSpan).copy(arc = event.arc.shift(-base))
+            event.mergeAnnotations(mapOf(key to overlapping.value)).addSpan(overlapping.sourceSpan).shift(-base)
         } else {
-            event.copy(arc = event.arc.shift(-base))
+            event.shift(-base)
         }
     }
 }
@@ -1287,7 +1363,8 @@ object MiniPat {
         val annotations = mapOf("n" to index.toString())
         return fromCycle { subArc ->
             val inter = PatArc(PatQ.ZERO, PatQ.ONE).intersect(subArc) ?: return@fromCycle emptyList()
-            listOf(PatEvent(inter, node.name, node.sourceSpan, annotations))
+            // A whole-cycle atom, exactly like `pure` — clipped for the query, whole for the player.
+            listOf(PatEvent(inter, node.name, node.sourceSpan, annotations, whole = PAT_CYCLE))
         }
     }
 
@@ -1300,7 +1377,7 @@ object MiniPat {
             val midT = ((inter.start + inter.end) / PatQ.of(2)).toDouble()
             val value = PatExprEvaluator.evaluate(body, cycle = tile, t = midT)
                 ?: return@fromCycleIndexed emptyList() // failed expression → silence
-            listOf(PatEvent(inter, value, span))
+            listOf(PatEvent(inter, value, span, whole = PAT_CYCLE))
         }
     }
 

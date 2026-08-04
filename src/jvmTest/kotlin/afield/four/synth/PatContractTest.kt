@@ -2,6 +2,7 @@ package afield.four.synth
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -272,40 +273,51 @@ class PatContractTest {
     // ── 3. query-range additivity ─────────────────────────────────────────────────────────
 
     /**
-     * Query-range additivity, stated so that it is true rather than so that it is tidy.
+     * Query-range additivity, stated **exactly** — the window you look through must not change the
+     * music.
      *
-     * Exact event-for-event equality is **not** a property of this model. `PatEvent` carries a single
-     * arc, so an event spanning a cycle boundary — which is exactly what `slow(2)` produces — comes
-     * back as one wide event from a two-cycle query and as two clipped fragments from two one-cycle
-     * queries. Neither answer is wrong; they are the same music seen through different windows.
+     * This property used to be weakened to "same onsets, same total sounding duration", on the
+     * grounds that a single-arc event model necessarily returns one wide event where two narrow
+     * queries return two fragments. That was true of the old model and it was the wrong response:
+     * the weakened form compared onset *sets* in one direction only, and the bug it was papering
+     * over — a cycle-spanning event coming back as two indistinguishable fragments, and therefore
+     * being played twice — lived precisely in the direction it did not check.
      *
-     * What must hold is that nothing is invented or lost: every onset the wide query reports is also
-     * reported when asking cycle by cycle, and the total sounding duration of each value is the same
-     * either way. Fragmentation preserves both.
+     * Now that [PatEvent.whole] records where an event really begins and ends, the honest property
+     * is available: the events **with onsets** are the same events, whole for whole, however you
+     * slice the query. Fragments are still returned — a query cannot report time it was not asked
+     * about — but a fragment now knows it is one, so it is no longer mistaken for a new note.
      */
     @Test
-    fun `a multi-cycle query loses and invents nothing against per-cycle queries`() {
+    fun `a multi-cycle query and per-cycle queries report exactly the same notes`() {
         val problems = mutableListOf<String>()
         for ((label, pattern) in corpus().map { it.label to it.pattern }) {
-            val whole = pattern.events(PatArc(PatQ.ZERO, PatQ.of(CYCLES)))
+            val wide = pattern.events(PatArc(PatQ.ZERO, PatQ.of(CYCLES)))
             val perCycle = (0 until CYCLES).flatMap { pattern.events(PatArc(PatQ.of(it), PatQ.of(it + 1))) }
 
-            // 1. every onset seen by the wide query is seen cycle by cycle.
-            val wideOnsets = whole.map { "${it.arc.start}|${it.value}" }.toSet()
-            val narrowOnsets = perCycle.map { "${it.arc.start}|${it.value}" }.toSet()
-            val missing = wideOnsets - narrowOnsets
-            if (missing.isNotEmpty()) problems += "$label: onsets lost when querying per cycle: ${missing.take(4)}"
+            // A note is identified by where it really runs and what it says — not by the fragment
+            // this particular query happened to see.
+            fun notes(events: List<PatEvent<String>>): List<String> =
+                events.filter { it.hasOnset }.map { "${it.extent}|${it.value}" }.sorted()
 
-            // 2. the total sounding time of each value matches.
-            fun totals(events: List<PatEvent<String>>): Map<String, PatQ> =
-                events.groupBy { it.value }
-                    .mapValues { (_, group) -> group.fold(PatQ.ZERO) { acc, e -> acc + e.arc.dur } }
-            val a = totals(whole)
-            val b = totals(perCycle)
+            val a = notes(wide)
+            val b = notes(perCycle)
             if (a != b) {
-                problems += "$label: total sounding duration differs" +
-                    "\n    wide:   $a" +
-                    "\n    narrow: $b"
+                val lost = a - b.toSet()
+                val invented = b - a.toSet()
+                problems += "$label: the two ways of asking disagree" +
+                    (if (lost.isNotEmpty()) "\n    only in the wide query:      ${lost.take(4)}" else "") +
+                    (if (invented.isNotEmpty()) "\n    only in the per-cycle query: ${invented.take(4)}" else "") +
+                    (if (lost.isEmpty() && invented.isEmpty()) "\n    same set, different counts: ${a.size} vs ${b.size}" else "")
+            }
+
+            // A part is a window onto a whole, so it can never stick out of one.
+            for (event in wide + perCycle) {
+                val extent = event.whole ?: continue
+                if (event.arc.start < extent.start || event.arc.end > extent.end) {
+                    problems += "$label: part ${event.arc} escapes its whole $extent"
+                    break
+                }
             }
         }
         assertTrue(problems.isEmpty(), "query-range additivity failed for:\n" + problems.joinToString("\n"))
@@ -383,6 +395,85 @@ class PatContractTest {
                 }
             }
         }
+    }
+
+    // ── 6. the scheduler sees what the plot draws ─────────────────────────────────────────
+
+    /**
+     * The bug this whole whole/part apparatus exists for, pinned with its own numbers.
+     *
+     * `pat("a b c").slow(2)` is three steps stretched over two cycles, so nothing lands on the bar
+     * line: `a` runs `0 → 2/3`, `b` runs `2/3 → 4/3` **across** it, and `c` runs `4/3 → 2`. A
+     * scheduler asks one cycle at a time, so it sees `b` twice — once as `2/3 → 1` and again as
+     * `1 → 4/3`. Played naively that is four notes, with `b` struck twice and each strike shorter
+     * than the note actually is.
+     *
+     * Three notes, and `b` sounds once, for its full two thirds.
+     */
+    @Test
+    fun `an event across a bar line is scheduled once, at full length`() {
+        val pattern = pat("a b c").slow(2)
+
+        // The wide query — what the piano roll and the audio renderer draw — is three notes.
+        val drawn = pattern.events(PatArc(PatQ.ZERO, PatQ.of(2)))
+        assertEquals(listOf("a", "b", "c"), drawn.map { it.value })
+        assertEquals(PatArc(PatQ.of(2, 3), PatQ.of(4, 3)), drawn[1].arc, "b should straddle the bar line")
+
+        // Per-cycle querying still returns the two fragments — a query cannot report time it was
+        // not asked about — but only one of them is an onset.
+        val cycleOne = pattern.events(PatArc(PatQ.ONE, PatQ.of(2)))
+        val tail = cycleOne.single { it.value == "b" }
+        assertFalse(tail.hasOnset, "the second fragment of b is a continuation, not a new note")
+        assertEquals(PatArc(PatQ.of(2, 3), PatQ.of(4, 3)), tail.whole, "the fragment forgot where b began")
+
+        // And the scheduler — the thing that actually makes sound — strikes it once.
+        val scheduled = pattern.eventSequence(0).take(3).toList()
+        assertEquals(listOf("a", "b", "c"), scheduled.map { it.value })
+        assertEquals(
+            listOf(PatArc(PatQ.ZERO, PatQ.of(2, 3)), PatArc(PatQ.of(2, 3), PatQ.of(4, 3)), PatArc(PatQ.of(4, 3), PatQ.of(2))),
+            scheduled.map { it.arc },
+            "a scheduled note should carry its whole length, not the part that fitted in one cycle"
+        )
+        // The fourth thing the scheduler sees belongs to the next repeat, not to a re-struck b.
+        assertEquals(PatQ.of(2), pattern.eventSequence(0).drop(3).first().arc.start)
+    }
+
+    /**
+     * The same property across the whole corpus: **every** operator schedules exactly the notes it
+     * draws.
+     *
+     * This is the check that would have caught the `slow` regression, and the one the old
+     * "fragmentation is unavoidable" framing made unstateable. It compares the scheduling path
+     * (`eventSequence`, which queries one cycle at a time) against a single wide query — the shape
+     * the galleries and the audio renderer use. Before [PatEvent.whole] those two disagreed for any
+     * operator that could put an event across a bar line, and no artifact in the branch could see it
+     * because every artifact rendered from the wide query.
+     */
+    @Test
+    fun `every operator schedules exactly the notes a wide query draws`() {
+        val problems = mutableListOf<String>()
+        for ((label, pattern) in corpus().map { it.label to it.pattern }) {
+            val expected = pattern.events(PatArc(PatQ.ZERO, PatQ.of(CYCLES)))
+                .filter { it.hasOnset }
+                .map { "${it.extent}|${it.value}" }
+                .sorted()
+            // A pattern with nothing in the window has nothing to schedule, and asking an endless
+            // sequence for an event it will never produce would simply spin.
+            if (expected.isEmpty()) continue
+
+            // Taking exactly as many as we expect is what makes this safe on an infinite sequence,
+            // and it is still enough to catch a double-fire: a spurious extra note inside the
+            // window pushes a real later one out of the prefix, so the two lists stop matching.
+            val played = pattern.eventSequence(0).take(expected.size).toList()
+                .map { "${it.extent}|${it.value}" }
+                .sorted()
+            if (played != expected) {
+                problems += "$label: the scheduler and a wide query disagree" +
+                    "\n    drawn:  ${expected.take(6)}" +
+                    "\n    played: ${played.take(6)}"
+            }
+        }
+        assertTrue(problems.isEmpty(), "scheduling disagrees with rendering for:\n" + problems.joinToString("\n"))
     }
 
     @Test

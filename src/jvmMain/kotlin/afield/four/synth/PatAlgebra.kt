@@ -97,7 +97,11 @@ fun <A, B, C> PatPattern<A>.appBoth(other: PatPattern<B>, combine: (A, B) -> C):
                     combine(left.value, right.value),
                     left.sourceSpan,
                     left.annotations + right.annotations,
-                    left.additionalSpans + listOfNotNull(right.sourceSpan) + right.additionalSpans
+                    left.additionalSpans + listOfNotNull(right.sourceSpan) + right.additionalSpans,
+                    // Structure from both, so the event really runs for as long as both do. Analog
+                    // on either side makes the result analog: a signal has no onset to inherit.
+                    whole = if (left.whole == null || right.whole == null) null
+                            else left.whole.intersect(right.whole) ?: inter
                 )
             }
         }
@@ -114,7 +118,9 @@ fun <A, B, C> PatPattern<A>.appLeft(other: PatPattern<B>, combine: (A, B) -> C):
                 combine(left.value, right.value),
                 left.sourceSpan,
                 left.annotations + right.annotations,
-                left.additionalSpans + listOfNotNull(right.sourceSpan) + right.additionalSpans
+                left.additionalSpans + listOfNotNull(right.sourceSpan) + right.additionalSpans,
+                // Structure from the left: the left's events, unchanged in time, whole included.
+                whole = left.whole
             )
         }
     }
@@ -129,7 +135,9 @@ fun <A, B, C> PatPattern<A>.appRight(other: PatPattern<B>, combine: (A, B) -> C)
                 combine(left.value, right.value),
                 right.sourceSpan ?: left.sourceSpan,
                 right.annotations + left.annotations,
-                right.additionalSpans + listOfNotNull(left.sourceSpan) + left.additionalSpans
+                right.additionalSpans + listOfNotNull(left.sourceSpan) + left.additionalSpans,
+                // Structure from the right, so the right's whole is the one that survives.
+                whole = right.whole
             )
         }
     }
@@ -305,7 +313,7 @@ fun <A> PatPattern<A>.with(vararg params: PatParam): PatPattern<A> {
                 annotations = annotations + (p.key to sampled.value)
                 sampled.sourceSpan?.let { spans = spans + it }
             }
-            PatEvent(event.arc, event.value, event.sourceSpan, annotations, spans)
+            event.copy(annotations = annotations, additionalSpans = spans)
         }
     }
 }

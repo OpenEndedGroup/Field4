@@ -125,12 +125,7 @@ fun <A> PatPattern<A>.linger(fraction: PatQ): PatPattern<A> {
             val visible = window.intersect(subArc)
             if (visible != null) {
                 val sourceArc = PatArc(base + (visible.start - offset), base + (visible.end - offset))
-                out += events(sourceArc).map { event ->
-                    PatEvent(
-                        PatArc(event.arc.start - base + offset, event.arc.end - base + offset),
-                        event.value, event.sourceSpan, event.annotations, event.additionalSpans
-                    )
-                }
+                out += events(sourceArc).map { event -> event.mapTime { t -> t - base + offset } }
             }
             offset += fraction
         }
@@ -163,7 +158,7 @@ fun <A> PatPattern<A>.rot(n: Int): PatPattern<A> = mapEventsPerCycle { _, events
     val shift = ((n % size) + size) % size
     ordered.mapIndexed { index, event ->
         val donor = ordered[(index + shift) % size]
-        PatEvent(event.arc, donor.value, donor.sourceSpan, donor.annotations, donor.additionalSpans)
+        event.copy(value = donor.value, sourceSpan = donor.sourceSpan, annotations = donor.annotations, additionalSpans = donor.additionalSpans)
     }
 }
 
@@ -184,12 +179,7 @@ fun <A> PatPattern<A>.shuffle(n: Int, salt: Int = 0): PatPattern<A> {
             val source = PatArc(PatQ.of(order[slot], parts), PatQ.of(order[slot] + 1, parts))
             val delta = source.start - window.start
             val sourceArc = PatArc(base + visible.start + delta, base + visible.end + delta)
-            out += events(sourceArc).map { event ->
-                PatEvent(
-                    PatArc(event.arc.start - base - delta, event.arc.end - base - delta),
-                    event.value, event.sourceSpan, event.annotations, event.additionalSpans
-                )
-            }
+            out += events(sourceArc).map { event -> event.mapTime { t -> t - base - delta } }
         }
         out
     }
@@ -453,7 +443,7 @@ fun chords(source: String): PatPattern<List<Int>> = pat(source).chordsOf()
 fun PatPattern<String>.chordsOf(): PatPattern<List<Int>> = PatPattern { arc ->
     events(arc).mapNotNull { event ->
         val notes = patParseChord(event.value) ?: return@mapNotNull null
-        PatEvent(event.arc, notes, event.sourceSpan, event.annotations, event.additionalSpans)
+        event.withValue(notes)
     }
 }
 
@@ -477,7 +467,7 @@ fun PatPattern<Double>.chord(name: String): PatPattern<List<Int>> {
 fun PatPattern<List<Int>>.notesOf(): PatPattern<Double> = PatPattern { arc ->
     events(arc).flatMap { event ->
         event.value.map { note ->
-            PatEvent(event.arc, note.toDouble(), event.sourceSpan, event.annotations, event.additionalSpans)
+            event.withValue(note.toDouble())
         }
     }
 }
@@ -521,7 +511,7 @@ fun PatPattern<List<Int>>.voiceLead(center: Int = 60, spread: Int = 12): PatPatt
         ordered.map { event ->
             val led = patLeadVoicing(event.value, previous, center, spread)
             if (led.isNotEmpty()) previous = led
-            PatEvent(event.arc, led, event.sourceSpan, event.annotations, event.additionalSpans)
+            event.copy(value = led)
         }
     }
 
@@ -590,21 +580,28 @@ internal fun maxQ(a: PatQ, b: PatQ): PatQ = if (a > b) a else b
  * whole cycle *into* the outer event. It is what makes mini-notation nesting expressible from
  * Kotlin values rather than only from a string.
  *
- * Because `PatEvent` has one arc rather than a whole/part pair, an outer event clipped by the query
- * arc squeezes the inner pattern into the *clipped* arc. Every scheduling path queries whole cycles,
- * so this matters only for hand-written partial queries — the same caveat as [appLeft].
+ * The inner pattern is fitted to the outer event's [PatEvent.whole] — where the event *really* runs
+ * — not to whatever part of it the current query happens to see. Those differ whenever an outer
+ * event crosses the query's edge, and squeezing into the clipped part would compress the inner
+ * pattern into a fragment and repeat it in the next query. Results are clipped back to [arc]
+ * afterwards, so a partial query still answers only for the window it asked about.
  */
 fun <A> squeezeJoin(patterns: PatPattern<PatPattern<A>>): PatPattern<A> = PatPattern { arc ->
     patterns.events(arc).flatMap { outer ->
-        val span = outer.arc.dur
+        val extent = outer.extent
+        val span = extent.dur
         if (span <= PatQ.ZERO) return@flatMap emptyList()
-        outer.value.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { inner ->
+        outer.value.events(PatArc(PatQ.ZERO, PatQ.ONE)).mapNotNull { inner ->
+            val place = { t: PatQ -> extent.start + t * span }
+            val placedPart = inner.arc.map(place)
+            val visible = placedPart.intersect(arc) ?: return@mapNotNull null
             PatEvent(
-                PatArc(outer.arc.start + inner.arc.start * span, outer.arc.start + inner.arc.end * span),
+                visible,
                 inner.value,
                 inner.sourceSpan ?: outer.sourceSpan,
                 outer.annotations + inner.annotations,
-                outer.additionalSpans + inner.additionalSpans
+                outer.additionalSpans + inner.additionalSpans,
+                whole = inner.whole?.map(place)
             )
         }
     }
@@ -653,9 +650,9 @@ fun <A> PatPattern<A>.swingBy(amount: PatQ, n: Int): PatPattern<A> {
         events.mapNotNull { event ->
             val index = qFloorDiv(event.arc.start, slot)
             if (index % 2L == 0L) return@mapNotNull event
-            val moved = PatArc(event.arc.start + shift, event.arc.end + shift)
-            val visible = moved.intersect(PatArc(PatQ.ZERO, PatQ.ONE)) ?: return@mapNotNull null
-            PatEvent(visible, event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+            val moved = event.shift(shift)
+            val visible = moved.arc.intersect(PatArc(PatQ.ZERO, PatQ.ONE)) ?: return@mapNotNull null
+            moved.clipTo(visible)
         }
     }
 }
@@ -769,7 +766,7 @@ fun euclidInv(pulses: Int, steps: Int, rotation: Int = 0): PatPattern<Boolean> {
                     if (index.toLong() in onset) continue
                     val window = PatArc(PatQ.of(index, stepCount), PatQ.of(index + 1, stepCount))
                     val inter = window.intersect(subArc) ?: continue
-                    add(PatEvent(inter, true))
+                    add(PatEvent(inter, true, whole = window))
                 }
             }
         }

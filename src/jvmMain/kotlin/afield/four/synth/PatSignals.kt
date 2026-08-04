@@ -65,10 +65,14 @@ fun patArcMidpoint(arc: PatArc): PatQ = (arc.start + arc.end) / PatQ.of(2)
  *
  * Queried with any arc, the result is a single event spanning that whole arc whose value is
  * sampled at [patArcMidpoint]. See the file header for why.
+ *
+ * The event is **analog** — `whole == null` — because a continuous signal has no note to start: ask
+ * for a different window and you get a different event with a different value, so there is nothing
+ * for a scheduler to strike once. [segment] is how you give a signal real onsets.
  */
 fun signalOf(sample: (exact: PatQ, t: Double) -> Double): PatPattern<Double> = PatPattern { arc ->
     val mid = patArcMidpoint(arc)
-    listOf(PatEvent(arc, sample(mid, mid.toDouble())))
+    listOf(PatEvent(arc, sample(mid, mid.toDouble()), whole = null))
 }
 
 /** Builds a continuous pattern from a plain function of cycle time. `sig { t -> t * t }`. */
@@ -165,7 +169,7 @@ fun run(n: Int): PatPattern<Double> {
             for (index in 0 until count) {
                 val cell = PatArc(PatQ.of(index, count), PatQ.of(index + 1, count))
                 val inter = cell.intersect(subArc) ?: continue
-                add(PatEvent(inter, index.toDouble()))
+                add(PatEvent(inter, index.toDouble(), whole = cell))
             }
         }
     }
@@ -197,7 +201,9 @@ fun <A> PatPattern<A>.segment(n: Int): PatPattern<A> {
             val chosen = source.firstOrNull { it.arc.contains(patArcMidpoint(cellArc)) }
                 ?: source.firstOrNull()
                 ?: continue
-            out += PatEvent(visible, chosen.value, chosen.sourceSpan, chosen.annotations, chosen.additionalSpans)
+            // The cell is the new event, so `cellArc` is its whole even when the query clips it.
+            // This is exactly what discretising a signal means: analog in, real onsets out.
+            out += PatEvent(visible, chosen.value, chosen.sourceSpan, chosen.annotations, chosen.additionalSpans, whole = cellArc)
         }
         out
     }
@@ -222,7 +228,10 @@ fun <A> struct(structure: PatPattern<Boolean>, values: PatPattern<A>): PatPatter
             valued.value,
             valued.sourceSpan ?: structural.sourceSpan,
             structural.annotations + valued.annotations,
-            structural.additionalSpans + valued.additionalSpans
+            structural.additionalSpans + valued.additionalSpans,
+            // Rhythm comes from `structure`, so its whole is the one that matters — a sampled
+            // continuous `values` contributes no onset of its own.
+            whole = structural.whole
         )
     }
 }
@@ -267,7 +276,7 @@ fun PatPattern<Double>.rounded(): PatPattern<Int> = map { v -> Math.round(v).toI
 /** Reads mini-notation atoms as numbers, dropping anything unparseable. */
 fun PatPattern<String>.nums(): PatPattern<Double> = PatPattern { arc ->
     events(arc).mapNotNull { e ->
-        e.value.trim().toDoubleOrNull()?.let { v -> PatEvent(e.arc, v, e.sourceSpan, e.annotations, e.additionalSpans) }
+        e.value.trim().toDoubleOrNull()?.let { v -> e.withValue(v) }
     }
 }
 
