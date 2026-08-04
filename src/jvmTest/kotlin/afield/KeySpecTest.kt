@@ -143,6 +143,43 @@ class KeySpecTest {
         assertEquals("Cmd+,", KeySpec.label(assertNotNull(KeySpec.parse("cmd+,")), mac = true))
     }
 
+    /**
+     * A spec that names two keys is a VS-Code-style two-keystroke chord, which Field does not have.
+     * It used to parse as whichever key came last — `cmd+k cmd+s` silently became Cmd+S — which is
+     * worse than a refusal, because nothing tells you your shortcut went somewhere else.
+     */
+    @Test
+    fun twoKeystrokeChordsAreRefusedRatherThanHalfObeyed() {
+        for (spec in listOf("cmd+k cmd+s", "cmd+k,cmd+s", "a b")) {
+            assertNull(KeySpec.parse(spec), "'$spec' should not parse")
+            val why = assertNotNull(KeySpec.explainFailure(spec), "'$spec' had no explanation")
+            assertTrue(why.contains("two-keystroke"), "unhelpful explanation for '$spec': $why")
+        }
+    }
+
+    /**
+     * The same key twice is still a two-keystroke chord. The guard used to compare the two keys and
+     * wave `cmd+k cmd+k` through as a plain Cmd+K — the exact silent half-obedience the refusal above
+     * exists to prevent, just in the one case the comparison could not see.
+     */
+    @Test
+    fun aChordOfTheSameKeyTwiceIsAlsoRefused() {
+        for (spec in listOf("cmd+k cmd+k", "a a", "cmd+k,cmd+k")) {
+            assertNull(KeySpec.parse(spec), "'$spec' parsed as a single keystroke")
+            val why = assertNotNull(KeySpec.explainFailure(spec), "'$spec' had no explanation")
+            assertTrue(why.contains("two-keystroke"), "unhelpful explanation for '$spec': $why")
+        }
+    }
+
+    @Test
+    fun failuresSayWhichPartIsWrong() {
+        assertTrue(assertNotNull(KeySpec.explainFailure("cmd+shift+nope")).contains("'nope'"))
+        assertTrue(assertNotNull(KeySpec.explainFailure("cmd+shift")).contains("no key"))
+        assertTrue(assertNotNull(KeySpec.explainFailure("   ")).contains("empty"))
+        // ...and nothing that parses gets an explanation.
+        for (spec in shippedDefaults) assertNull(KeySpec.explainFailure(spec), "'$spec' was called a failure")
+    }
+
     @Test
     fun scopeNormalizationFallsBackToBoth() {
         assertEquals(KeyScope.canvas, KeyScope.normalize("canvas"))

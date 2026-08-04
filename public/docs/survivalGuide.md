@@ -2,7 +2,9 @@
 
 _Field·4_ is a place for writing, running, debugging, understanding code — quickly. It's also a place for experimentation, making mistakes, getting frustrated, and delighting in discovery. This guide should help you get to the point where you have some muscle memory.
 
-The cheat-sheet can be accessed by pressing the '?' key. Right now it looks like this:
+The cheat-sheet can be accessed by pressing the '?' key. Every shortcut on it is yours to change, and
+the card shows whatever you have bound rather than these defaults — [Keyboard
+Shortcuts](keybindings.md) is the whole story. Right now it looks like this:
 <hr>
 <span class="leftKey">n</span> <span class="rightKey">creates a <b>new box</b></span><br>
 <span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>

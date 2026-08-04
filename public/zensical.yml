@@ -7,6 +7,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Survival Guide: survivalGuide.md
+  - Keyboard Shortcuts: keybindings.md
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
   - The Documentation Browser: completion_doc_browser.md

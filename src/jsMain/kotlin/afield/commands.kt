@@ -1999,6 +1999,7 @@ fun refreshLayerShortcutActions() {
         [{
             id:'solo-next-layer',
             label:$nextLabel,
+            keyLabel:'Solo Next Layer',
             detail:$nextDetail,
             keys: 'alt+]',
             run: () => {
@@ -2008,6 +2009,7 @@ fun refreshLayerShortcutActions() {
         },{
             id:'solo-previous-layer',
             label:$previousLabel,
+            keyLabel:'Solo Previous Layer',
             detail:$previousDetail,
             keys: 'alt+[',
             run: () => {
@@ -2316,7 +2318,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'connect', label:${jsStringLiteral(connectLabel)}, 
+                id:'connect', label:${jsStringLiteral(connectLabel)}, keyLabel:'Connect boxes',
                 detail:${jsStringLiteral("Shared selected variables from one box to another")},
                 keys: 'g', keyScope: 'canvas',
                 run: () => { 
@@ -2332,7 +2334,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'nest-into', label:${jsStringLiteral(nestLabel)}, 
+                id:'nest-into', label:${jsStringLiteral(nestLabel)}, keyLabel:'Nest selection into a box',
                 detail:${jsStringLiteral("Hide one box 'inside' the nest of another box")},
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
@@ -2347,7 +2349,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'disconnect', label:${jsStringLiteral(disconnectLabel)}, 
+                id:'disconnect', label:${jsStringLiteral(disconnectLabel)}, keyLabel:'Disconnect boxes',
                 detail:${jsStringLiteral("Stop sharing variables between these two boxes")},
                 keys: 'u', keyScope: 'canvas',
                 run: () => { 
@@ -2369,7 +2371,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
                 ({
-                    id:'move-to-active-layer', label:${jsStringLiteral(moveLabel)},
+                    id:'move-to-active-layer', label:${jsStringLiteral(moveLabel)}, keyLabel:'Move selection to the active layer',
                     detail:${jsStringLiteral("Assign selected box"+(if (boxes.size>1) "es" else "")+" to the current active layer")},
                     run: () => {
                         const layer = ${jsStringLiteral(layerLabel)};

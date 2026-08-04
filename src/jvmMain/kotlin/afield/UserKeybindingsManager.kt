@@ -23,8 +23,46 @@ import kotlin.time.Duration.Companion.milliseconds
  * client falls back to a command's own default for anything the file does not mention.
  */
 object UserKeybindingsManager {
-    private val configDir = File(System.getProperty("user.home"), ".afield")
-    private val bindingsFile = File(configDir, "keybindings.yaml")
+    private fun defaultBindingsFile(): File =
+        File(File(System.getProperty("user.home"), ".afield"), "keybindings.yaml")
+
+    /**
+     * The file being watched. Normally `~/.afield/keybindings.yaml`; [watchFile] points it elsewhere.
+     */
+    @Volatile
+    private var bindingsFile: File = defaultBindingsFile()
+
+    private val configDir: File
+        get() = bindingsFile.parentFile ?: defaultBindingsFile().parentFile
+
+    /**
+     * Watches [file] instead of `~/.afield/keybindings.yaml` — or the default again, when null — and
+     * re-reads immediately.
+     *
+     * Field never calls this itself. It exists so that a test, or a documentation capture that has to
+     * show a rebind actually taking effect, can drive the whole real path (file → watcher → parse →
+     * push → client re-registration) against a scratch file rather than rewriting the shortcuts of
+     * whoever happens to be running Field at the time.
+     */
+    fun watchFile(file: File?) {
+        bindingsFile = file ?: defaultBindingsFile()
+        // Pointing this at a *fresh scratch path* is also how you get a pristine copy of the defaults
+        // out of a running Field, so generate the file when one was named and is not there yet.
+        //
+        // Deliberately NOT for `null`. Restoring the real `~/.afield/keybindings.yaml` must never
+        // create it: `inventory` is a JVM-global, so whatever the caller last reported gets written —
+        // and the caller here is usually a test's `@AfterTest` holding a handful of invented commands.
+        // On any machine where that file does not exist yet, `./gradlew jvmTest` would create
+        // `~/.afield/` and fill it with fakes. The real file is generated the real way: by a real
+        // client reporting a real inventory through `applyInventory`.
+        val known = inventory
+        if (file != null && !bindingsFile.exists() && known.isNotEmpty()) applyInventory(CommandInventory(known))
+        else reloadNow()
+    }
+
+    /** The bindings in force right now, exactly as the clients were last told about them. */
+    val resolved: UserKeybindings
+        get() = current
 
     private const val header = """# Field keybindings.
 #
@@ -36,13 +74,18 @@ object UserKeybindingsManager {
 #   command-id: cmd+shift+d      one shortcut
 #   command-id: [alt+enter, f5]  several shortcuts for the same command
 #   command-id: ""               no shortcut at all
-#   (delete a line)              go back to Field's default
+#   (delete a line)              go back to Field's default — Field writes the line back, with the
+#                                default as its value, the next time it takes stock of its commands
 #
 # Modifiers are cmd, alt and shift, joined with `+`. `cmd` means Command on macOS and Control
 # elsewhere (ctrl, control, meta and mod are accepted spellings of it); `alt` is Option on macOS.
 # Keys are a-z, 0-9, f1-f24, enter, escape, backspace, delete, space, tab, up, down, left, right,
 # home, end, pageup, pagedown, insert, and punctuation written as itself: [ ] ' ; , . / \ - = `
-# A shifted character stands for shift plus that key, so `?` means the same as `shift+/`.
+# A shifted character stands for shift plus that key, so `?` means the same as `shift+/`. One key per
+# shortcut: there are no two-keystroke chords, so `cmd+k cmd+s` is rejected rather than half-obeyed.
+#
+# The whole story, including how to find a command id and what happens when a line is wrong:
+# http://openendedgroup.com/Field4/keybindings/
 #
 # Some commands only make sense in one place, and Field records that here as well:
 #   #scope canvas   only when the canvas has focus (bare letters, so they don't hijack typing)
@@ -79,6 +122,9 @@ bindings:
         if (!configDir.exists()) configDir.mkdirs()
         current = read()
         lastSignature = signature()
+        // A file that was already broken when Field started has to say so now. Reporting problems only
+        // from the watcher meant a typo'd shortcut simply did nothing, silently, until the next save.
+        logProblems()
 
         GlobalScope.launch(Dispatchers.IO) {
             while (true) {
@@ -148,8 +194,17 @@ bindings:
 
             val addition = buildString {
                 if (!text.endsWith("\n")) append("\n")
-                append("\n# Commands that appeared after this file was written:\n")
-                append(renderEntries(missing))
+                // One such section, not one per run: commands come and go with the selection, and a
+                // line the user deleted to get the default back is "missing" again next time, so this
+                // path runs more than once over the life of a file.
+                if (appendedSectionHeaders.none { text.contains(it) }) append("\n$appendedSectionHeader\n")
+                // A hand-written file is allowed to be a bare mapping with no `bindings:` wrapper
+                // (`read` accepts one), and appending indented entries to *that* would produce a file
+                // that is no longer valid YAML at all — Field breaking the user's own file.
+                //
+                // Grouped, like the rest of the file: an appended entry with no `# ── Canvas ──` over
+                // it looks like it belongs to whatever section it happens to land under.
+                append(renderGroups(missing, indent = if (hasBindingsWrapper(text)) "  " else ""))
             }
             bindingsFile.safeSave(text + addition, createBackup = false, atomic = true)
             lprintln(
@@ -165,17 +220,39 @@ bindings:
 
     // ── rendering ────────────────────────────────────────────────────────────────
 
-    private fun renderGroups(commands: List<CommandBinding>): String = buildString {
+    private fun renderGroups(commands: List<CommandBinding>, indent: String = "  "): String = buildString {
         val byGroup = commands.groupBy { it.group.ifBlank { "Other" } }
         for (group in byGroup.keys.sorted()) {
-            append("\n  # ── $group ")
+            append("\n$indent# ── $group ")
             append("─".repeat((66 - group.length).coerceAtLeast(3)))
             append("\n")
-            append(renderEntries(byGroup.getValue(group)))
+            append(renderEntries(byGroup.getValue(group), indent))
         }
     }
 
-    private fun renderEntries(commands: List<CommandBinding>): String = buildString {
+    /** The one comment introducing entries Field added on its own, and the marker it is found by. */
+    private const val appendedSectionHeader = "# Commands Field added after this file was written:"
+
+    /**
+     * Every wording this banner has ever had, so an existing file gets *no* new banner rather than one
+     * more. Matching only [appendedSectionHeader] made the dedupe true for files written from now on
+     * and false for every file already on disk — a file carrying two older banners collected a third.
+     * Append to this list rather than editing an entry; the older strings are what is out in the world.
+     */
+    private val appendedSectionHeaders = listOf(
+        appendedSectionHeader,
+        "# Commands that appeared after this file was written:"
+    )
+
+    /**
+     * True when the file keeps its entries under a `bindings:` mapping, which is what Field generates
+     * and therefore what almost every file looks like. A bare top-level mapping is also legal input.
+     */
+    private fun hasBindingsWrapper(text: String): Boolean = text.lines().any { line ->
+        line.startsWith("bindings:") || line.trimEnd() == "bindings:"
+    }
+
+    private fun renderEntries(commands: List<CommandBinding>, indent: String = "  "): String = buildString {
         for (command in commands.sortedBy { it.id }) {
             val value = when {
                 command.defaults.isEmpty() -> "\"\""
@@ -186,7 +263,7 @@ bindings:
             command.label.trim().takeIf { it.isNotEmpty() }?.let { notes.add(it) }
             if (command.scope != KeyScope.both) notes.add("#scope ${command.scope}")
             val comment = if (notes.isEmpty()) "" else "  # ${notes.joinToString("  ")}"
-            append("  ${yamlKey(command.id)}: $value$comment\n")
+            append("$indent${yamlKey(command.id)}: $value$comment\n")
         }
     }
 
@@ -254,7 +331,9 @@ bindings:
                                 "has registered — check the spelling if the shortcut does nothing"
                         )
                     }
-                    bindings[id] = specsFor(id, rawValue, problems)
+                    // null means "the user asked for something and none of it was usable" — leave the
+                    // id out of the map entirely so the default applies. See [specsFor].
+                    specsFor(id, rawValue, problems)?.let { bindings[id] = it }
                 }
             }
         }
@@ -290,7 +369,19 @@ bindings:
         return map
     }
 
-    private fun specsFor(id: String, raw: Any?, problems: MutableList<String>): List<String> {
+    /**
+     * The shortcuts to use for [id], or null to mean "use the command's own default".
+     *
+     * The two empty outcomes are not the same thing and must not be conflated. An empty *list* is a
+     * deliberate unbind — `stop-all: ""` says "I want no shortcut for this", and the client honours a
+     * present-but-empty override by leaving the command unbound. Null is a *failure*: the user asked
+     * for something Field could not read, so the line is ignored and the default stands.
+     *
+     * Returning an empty list for a rejected spec made a typo indistinguishable from an unbind, so
+     * `open-anything: cmd+k cmd+s` did not mean "Cmd+K Cmd+S is not a chord, keep Cmd+P" — it meant
+     * `open-anything` had no shortcut at all. A reported error should not also take the default away.
+     */
+    private fun specsFor(id: String, raw: Any?, problems: MutableList<String>): List<String>? {
         val candidates: List<String> = when (raw) {
             null -> emptyList()
             is String -> if (raw.isBlank()) emptyList() else listOf(raw)
@@ -298,7 +389,8 @@ bindings:
             is Number, is Boolean -> listOf(raw.toString())
             else -> {
                 problems.add("keybindings.yaml: '$id' should be a shortcut or a list of shortcuts")
-                emptyList()
+                // Unreadable, not unbound.
+                return null
             }
         }
 
@@ -306,11 +398,17 @@ bindings:
         for (candidate in candidates) {
             val canonical = KeySpec.canonicalize(candidate)
             if (canonical == null) {
-                problems.add("keybindings.yaml: '$candidate' (for '$id') is not a shortcut Field understands")
+                // Say *why*. "not a shortcut Field understands" is no help at all when the answer is
+                // either a misspelled key or a two-keystroke chord Field simply does not have.
+                val reason = KeySpec.explainFailure(candidate) ?: "Field cannot read it"
+                problems.add("keybindings.yaml: '$candidate' (for '$id') is not a shortcut — $reason")
             } else {
                 out.add(canonical)
             }
         }
+        // Every spec on the line was rejected, but the user did write one — keep the default rather
+        // than silently unbinding the command on top of the error we already reported.
+        if (out.isEmpty() && candidates.isNotEmpty()) return null
         return out
     }
 

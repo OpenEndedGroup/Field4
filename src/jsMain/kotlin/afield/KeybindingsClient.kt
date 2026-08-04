@@ -228,9 +228,16 @@ object Keybindings {
     private fun bindingsFrom(action: dynamic, group: String): CommandBinding? {
         val id = (action?.id as? String)?.takeIf { it.isNotEmpty() } ?: return null
         val defaults = declaredSpecs(action.keys).mapNotNull { KeySpec.canonicalize(it) }
+        // Some palette labels describe the current selection — "Connect 'a' to 'b'", "Solo Next
+        // Layer: sketches". Those are right in the palette and wrong in `keybindings.yaml`, where the
+        // label becomes a comment that outlives the selection it was written from, so a command with
+        // a moving label declares a fixed `keyLabel` for the file to use instead.
+        val label = (action.keyLabel as? String)?.takeIf { it.isNotBlank() }
+            ?: (action.label as? String)
+            ?: id
         return CommandBinding(
             id = id,
-            label = (action.label as? String) ?: id,
+            label = label,
             detail = (action.detail as? String) ?: "",
             defaults = defaults,
             scope = KeyScope.normalize(action.keyScope as? String),
@@ -393,7 +400,12 @@ object Keybindings {
         window.setTimeout(::tick, 150)
     }
 
-    fun apply(next: UserKeybindings, announce: Boolean) {
+    /**
+     * Installs [next] everywhere. [announceSuccess] is for the "reloaded" notification only — a file
+     * with problems in it says so whatever push it arrives on, including the first one at startup,
+     * because a shortcut that silently does nothing is the hardest kind of mistake to find.
+     */
+    fun apply(next: UserKeybindings, announceSuccess: Boolean) {
         userBindings = next.bindings
         effective = next.effective
         chordCache.clear()
@@ -404,13 +416,11 @@ object Keybindings {
         // A reload can land before Monaco is up (the server pushes on connect); keep watching.
         awaitMonaco()
 
-        if (announce) {
-            val problems = next.problems
-            if (problems.isEmpty()) {
-                notify("Reloaded keybindings from ${next.path}", "command")
-            } else {
-                problems.take(3).forEach { notify(it, "error") }
-            }
+        val problems = next.problems
+        if (problems.isNotEmpty()) {
+            problems.take(3).forEach { notify(it, "error") }
+        } else if (announceSuccess) {
+            notify("Reloaded keybindings from ${next.path}", "command")
         }
     }
 
@@ -429,8 +439,8 @@ object Keybindings {
         handlers.put("set-user-keybindings") { message, _ ->
             val next = Json.decodeFromJsonElement<UserKeybindings>(message.payload!!)
             // The first push on connect is just Field catching the client up; only a genuine
-            // file change (or an explicit reload) is worth a notification.
-            apply(next, announce = firstApplyDone)
+            // file change (or an explicit reload) is worth a *success* notification.
+            apply(next, announceSuccess = firstApplyDone)
             firstApplyDone = true
             Handled.yes
         }
