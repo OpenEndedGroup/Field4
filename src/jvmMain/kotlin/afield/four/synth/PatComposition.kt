@@ -38,8 +38,9 @@
 
     `voiceLead` picks each chord's inversion and octave to minimise the total semitone movement
     of the voices from the previous chord. Played as block chords straight from their roots, that
-    progression moves 30 semitones; voice-led it moves 9. `PatCompositionTest` computes both
-    numbers rather than asserting a remembered one.
+    progression moves **83** semitones; voice-led it moves **9**, and the harmony is unchanged —
+    every chord is still the same set of pitch classes. `PatCompositionTest` computes both numbers
+    live rather than asserting a remembered one.
  */
 package afield.four.synth
 
@@ -291,6 +292,27 @@ fun <A> PatPattern<A>.chop(n: Int): PatPattern<A> = mapEventsPerCycle { _, event
     }
 }
 
+/**
+ * Plays the whole pattern [n] times per cycle, each pass annotated with a different `begin`/`end`
+ * slice of the source — Tidal's `striate`.
+ *
+ * The existing [striate] in `TidalPatterns.kt` does something different despite the name: it
+ * slices each event *in place*, exactly like [chop] but without the `begin`/`end` bookkeeping.
+ * That behaviour is left alone — callers depend on it — and the interleaving version, which is
+ * what makes a sliced break sound like a granular wash rather than a stutter, is this.
+ *
+ * `pat("a b").striateAcross(2)` reads `a b a b`, the first pair from the first half of each
+ * sample and the second pair from the second half; `pat("a b").chop(2)` reads `a a b b`.
+ */
+fun <A> PatPattern<A>.striateAcross(n: Int): PatPattern<A> {
+    val slices = max(1, n)
+    return cat(
+        *Array(slices) { index ->
+            this with param("begin", index.toDouble() / slices) with param("end", (index + 1).toDouble() / slices)
+        }
+    )
+}
+
 // ── pitch: scales ──────────────────────────────────────────────────────────────────────────
 
 /**
@@ -390,7 +412,11 @@ private val PAT_NOTE_LETTERS = mapOf('c' to 0, 'd' to 2, 'e' to 4, 'f' to 5, 'g'
 
 /**
  * Reads a MIDI note from a token: a bare number (`60`), or a note name with optional accidentals
- * and octave (`c`, `cs`, `ef4`, `a3`). Octave 5 is the default, so bare `c` is MIDI 60.
+ * and octave (`c`, `cs`, `ef4`, `a3`).
+ *
+ * `s`/`#` sharpen and `f` flattens, repeatably. The octave is Tidal's, not scientific pitch
+ * notation's: `c5` is MIDI 60 and 5 is the default, so a bare `c` is middle C, `c4` is 48 and
+ * `a` is 69.
  */
 fun patNoteNumber(token: String): Int? {
     val text = token.trim()
@@ -411,7 +437,7 @@ fun patNoteNumber(token: String): Int? {
     }
     val octaveText = text.substring(index)
     val octave = if (octaveText.isEmpty()) 5 else octaveText.toIntOrNull() ?: return null
-    return letter + accidental + 12 * (octave + 1)
+    return letter + accidental + 12 * octave
 }
 
 /**

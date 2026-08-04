@@ -274,11 +274,18 @@ fun PatPattern<String>.nums(): PatPattern<Double> = PatPattern { arc ->
 /** Renders numeric atoms back to strings, so a numeric pattern can drive `notes` / `with`. */
 fun PatPattern<Double>.texts(): PatPattern<String> = map { patFormatNumber(it) }
 
-/** Canonical, locale-free short form for a parameter value. `1.0` → `1`, `0.25` → `0.25`. */
+/**
+ * Canonical, locale-free short form for a parameter value. `1.0` → `1`, `0.25` → `0.25`.
+ *
+ * Named parameters live in `PatEvent.annotations`, which is a `Map<String, String>`, so every
+ * numeric parameter round-trips through text. Nine decimal places is the chosen resolution: far
+ * finer than any audible parameter (a cutoff in Hz, a gain in 0..1) and still short enough that
+ * an event prints readably in a box output.
+ */
 fun patFormatNumber(v: Double): String {
     if (!v.isFinite()) return "0"
     if (v == Math.rint(v) && Math.abs(v) < 1e15) return v.toLong().toString()
-    return java.math.BigDecimal(v).setScale(6, java.math.RoundingMode.HALF_UP)
+    return java.math.BigDecimal(v).setScale(9, java.math.RoundingMode.HALF_UP)
         .stripTrailingZeros().toPlainString()
 }
 
