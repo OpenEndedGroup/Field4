@@ -358,6 +358,239 @@ class SpatialGeometryTest {
         assertTrue(bounds.h > 30.0 + 2.0 * 14.0 - 6.0, "outline height ${bounds.h} should be about 30 + 2*14")
     }
 
+    // ------------------------------------------------------------------------------------------
+    // contours.kt — the weight callbacks, and the flattening they are keyed on
+    // ------------------------------------------------------------------------------------------
+
+    @Test
+    fun theFlattenedGraphSaysWhichInstructionEachPointCameFrom() {
+        // `nodeIndex` is what makes per-node data interpolable across the flattening, so its
+        // convention is the contract: integral at a moveTo/lineTo, and running from just past the
+        // previous instruction up to `i` across a cubic.
+        val line = fline {
+            moveTo(0.0, 0.0)
+            cubicTo(10.0, 0.0, 20.0, 0.0, 30.0, 0.0)
+            lineTo(40.0, 0.0)
+        }
+        val graph = pointEdgeGraph2D(line, samplesPerCubic = 8)
+        assertEquals(1 + 8 + 1, graph.points.size, "one point per moveTo/lineTo, samplesPerCubic per cubic")
+        assertEquals(graph.points.size, graph.nodeIndex.size, "one node index per point")
+        assertEquals(0.0, graph.nodeIndex.first(), "the moveTo is instruction 0")
+        for (k in 1..8) {
+            assertEquals(
+                k / 8.0, graph.nodeIndex[k], 1e-12,
+                "sample $k of the cubic at instruction 1 should sit at (1-1) + $k/8",
+            )
+        }
+        assertEquals(1.0, graph.nodeIndex[8], 1e-12, "the cubic's end point lands exactly on its own index")
+        assertEquals(2.0, graph.nodeIndex.last(), 1e-12, "the trailing lineTo is instruction 2")
+    }
+
+    @Test
+    fun theFlatteningAgreesWithUniformLinearizeAboutTheInstructionIndex() {
+        // The differential test that keeps the two flatteners from drifting apart. contours.kt has
+        // its own sampler, but it must key per-node data the same way the renderer's
+        // FLine.uniform_linearize does, or a weight and a colour authored on the same node would
+        // ramp differently.
+        val line = fline {
+            moveTo(0.0, 0.0)
+            cubicTo(10.0, 30.0, 40.0, 30.0, 50.0, 0.0)
+            lineTo(80.0, 10.0)
+            cubicTo(90.0, 20.0, 100.0, 20.0, 110.0, 0.0)
+        }
+        val samples = 8
+        val fromRenderer = mutableListOf<Pair<Double, Vec2>>()
+        line.uniform_linearize(samplesPerCubic = samples) { at, instr ->
+            // Negative instruction values are subpath-break sentinels, and re-emit a point the walk
+            // has already visited. The graph has an edge list instead, so it has no equivalent.
+            if (instr >= 0f) fromRenderer += instr.toDouble() to vec(at.x, at.y)
+        }
+
+        val graph = pointEdgeGraph2D(line, samplesPerCubic = samples)
+        // The graph's extra point is the moveTo, which uniform_linearize only ever emits as a break.
+        val fromGraph = graph.nodeIndex.drop(1).zip(graph.points.drop(1))
+        assertEquals(fromRenderer.size, fromGraph.size, "the two flattenings should produce the same samples")
+        fromRenderer.forEachIndexed { i, (instr, point) ->
+            val (graphInstr, graphPoint) = fromGraph[i]
+            assertEquals(instr, graphInstr, 1e-5, "sample $i: instruction index must agree")
+            assertEquals(point.x.toDouble(), graphPoint.x.toDouble(), 1e-3, "sample $i: x must agree")
+            assertEquals(point.y.toDouble(), graphPoint.y.toDouble(), 1e-3, "sample $i: y must agree")
+        }
+    }
+
+    @Test
+    fun theEdgeCountIsNotAFunctionOfTheInstructionCount() {
+        // Why the weights could not be lists. Three points, and *not* two edges: the coincident pair
+        // is joined by nothing at all, so no caller could have sized an `edgeWeights` list from the
+        // line they passed in.
+        val degenerate = fline {
+            moveTo(0.0, 0.0)
+            lineTo(0.0, 0.0)
+            lineTo(10.0, 0.0)
+        }
+        val graph = pointEdgeGraph2D(degenerate, samplesPerCubic = 4)
+        assertEquals(3, graph.points.size)
+        assertEquals(1, graph.edges.size, "the zero-length lineTo contributes a point but no edge")
+
+        // Same instruction list, one coordinate moved: now both edges exist.
+        val healthy = fline {
+            moveTo(0.0, 0.0)
+            lineTo(5.0, 0.0)
+            lineTo(10.0, 0.0)
+        }
+        assertEquals(2, pointEdgeGraph2D(healthy, samplesPerCubic = 4).edges.size)
+    }
+
+    @Test
+    fun isoWeightsRampsBetweenTheNodesThatSetItAndHoldsAtTheEnds() {
+        val line = fline {
+            moveTo(0.0, 0.0)
+            lineTo(1.0, 0.0)
+            lineTo(2.0, 0.0)
+            lineTo(3.0, 0.0)
+            lineTo(4.0, 0.0)
+        }
+        line.nodes[0].isoWeight = 1.0
+        line.nodes[4].isoWeight = 0.2
+        val w = line.isoWeights()
+        // Keyframes, not carry-forward: the intervening nodes interpolate. Under the carry-forward
+        // convention of colorsPer()/pointSizePer() every one of these would read 1.0 and the taper
+        // would collapse into a step at the last node.
+        assertEquals(1.0, w(0.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.8, w(1.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.6, w(2.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.4, w(3.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.2, w(4.0, vec(0.0, 0.0)), 1e-12)
+        // A fractional index — the cubic case — interpolates too.
+        assertEquals(0.7, w(1.5, vec(0.0, 0.0)), 1e-12)
+
+        // A keyframe in the middle makes it piecewise, and the ends hold flat.
+        line.nodes[1].isoWeight = 0.5
+        val piecewise = line.isoWeights()
+        assertEquals(1.0, piecewise(0.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.75, piecewise(0.5, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.5, piecewise(1.0, vec(0.0, 0.0)), 1e-12)
+        assertEquals(0.4, piecewise(2.0, vec(0.0, 0.0)), 1e-12)
+
+        // No node sets one: the line-level property, then 1.0.
+        val bare = fline { moveTo(0.0, 0.0); lineTo(1.0, 0.0) }
+        assertEquals(1.0, bare.isoWeights()(0.0, vec(0.0, 0.0)), 1e-12)
+        bare.isoWeight = 0.3
+        assertEquals(0.3, bare.isoWeights()(1.0, vec(0.0, 0.0)), 1e-12)
+
+        // Reading a node's weight must not make it a keyframe — the delegate has no default to
+        // materialise, so `bare` still has exactly one weight in it and it is the line's.
+        assertEquals(null, bare.nodes[0].isoWeight)
+        assertEquals(null, bare.nodes[1].isoWeight)
+        assertEquals(0.3, bare.isoWeights()(0.5, vec(0.0, 0.0)), 1e-12)
+    }
+
+    @Test
+    fun anEdgeTakesTheMinimumOfItsEndpointWeightsSoACapsuleCannotBulge() {
+        // The other half of the weight contract, and the one that is a real choice. Two sparse points
+        // 40 apart, one heavy and one light: the capsule between them gets the *light* radius, so the
+        // tube is thin all the way along until it reaches the fat disc. Deriving the edge weight from
+        // the maximum instead would put a 10-wide capsule under a 2-wide end and the taper would
+        // vanish exactly where it was asked for.
+        val points = listOf(vec(0.0, 0.0), vec(40.0, 0.0))
+        val field = pointEdgeScalarField2D(
+            points = points,
+            edges = listOf(0 to 1),
+            radius = 10.0,
+            pointWeight = { index, _ -> if (index == 0) 1.0 else 0.2 },
+        )
+        assertTrue(field(20.0, 0.0) > 0.0, "the centreline is inside the capsule")
+        assertEquals(2.0, field(20.0, 0.0), 1e-9, "…by the light end's radius, 10 * 0.2")
+        assertTrue(field(20.0, 3.0) < 0.0, "3 out from the centreline is outside a 2-wide capsule")
+        assertTrue(field(1.0, 8.0) > 0.0, "…while the heavy end's own disc is still 10 wide")
+    }
+
+    @Test
+    fun aTaperedTubeIsWideWhereTheWeightIsHighAndNarrowWhereItIsLow() {
+        // What the whole mechanism is for. A cubic flattens densely enough that the union of discs
+        // *is* the taper, so the tube's half-width should track the weight along the line.
+        val stroke = fline {
+            moveTo(0.0, 0.0)
+            cubicTo(33.0, 0.0, 66.0, 0.0, 100.0, 0.0)
+        }
+        stroke.nodes[0].isoWeight = 1.0
+        stroke.nodes[1].isoWeight = 0.4
+        val radius = 20.0
+        val field = pointEdgeScalarField2D(
+            line = stroke,
+            radius = radius,
+            samplesPerCubic = 64,
+            pointWeight = stroke.isoWeights(),
+        )
+
+        // Half-width at an x: how far off the axis the field stays non-negative.
+        fun halfWidth(x: Double): Double {
+            var y = 0.0
+            while (y < radius * 2.0 && field(x, y) >= 0.0) y += 0.01
+            return y
+        }
+
+        // The cubic's parameter is not arclength, so the weight at a given x is only approximately
+        // linear in x; the assertions are on the shape, plus the two ends where the mapping is exact.
+        assertEquals(radius * 1.0, halfWidth(0.0), 0.2, "the fat end is a full-radius disc")
+        assertEquals(radius * 0.4, halfWidth(100.0), 0.2, "the thin end is 0.4 of one")
+        val widths = listOf(10.0, 30.0, 50.0, 70.0, 90.0).map { halfWidth(it) }
+        widths.zipWithNext { a, b ->
+            assertTrue(b < a, "the tube must narrow monotonically along the stroke, got $widths")
+        }
+
+        // And the outline the caller actually gets is one closed taper, not a string of lumps.
+        val outline = generateSmoothIsoContours(
+            stroke,
+            radius = radius,
+            spatialStep = 1.5,
+            samplesPerCubic = 64,
+            pointWeight = stroke.isoWeights(),
+        )
+        assertEquals(1, outline.size, "a tapered stroke is still one outline")
+    }
+
+    @Test
+    fun aWeightOverOneStillFitsInsideTheSamplingWindow() {
+        // The window is grown by the *widest* weighted radius, not the nominal one — otherwise a
+        // weight above 1.0 would run the tube off the edge of the grid and the outline would come
+        // back open, cut by the window rather than closed around the stroke.
+        val stroke = fline {
+            moveTo(0.0, 0.0)
+            lineTo(60.0, 0.0)
+        }
+        stroke.nodes[0].isoWeight = 3.0
+        stroke.nodes[1].isoWeight = 3.0
+        val outline = generateSmoothIsoContours(
+            stroke,
+            radius = 10.0,
+            spatialStep = 1.5,
+            pointWeight = stroke.isoWeights(),
+        )
+        assertEquals(1, outline.size)
+        val bounds = outline[0].fast2DBounds()
+        assertTrue(
+            bounds.h > 2.0 * 10.0 * 3.0 - 2.0,
+            "a 3x weighted tube should be about 60 tall, got ${bounds.h} — the window clipped it",
+        )
+    }
+
+    @Test
+    fun aNegativeWeightIsRejectedWithAMessageThatNamesTheCallback() {
+        val failure = assertFailsWith<IllegalArgumentException> {
+            pointEdgeScalarField2D(
+                points = listOf(vec(0.0, 0.0), vec(10.0, 0.0)),
+                edges = listOf(0 to 1),
+                radius = 5.0,
+                pointWeight = { index, _ -> if (index == 1) -1.0 else 1.0 },
+            )
+        }
+        assertTrue(
+            failure.message!!.contains("pointWeight"),
+            "the message should name the callback, not a list: ${failure.message}",
+        )
+    }
+
     // ==========================================================================================
     // graph_connectivity.kt — 2D Delaunay and the Voronoi dual
     // ==========================================================================================

@@ -11,6 +11,7 @@ import afield.stdlib.vec
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
@@ -27,6 +28,31 @@ import kotlin.math.sqrt
  *
  * [smoothIsoContours] and [generateSmoothIsoContours] fit cubic splines through the polylines,
  * treating a contour that ends on the sampling bounds as open and the rest as closed loops.
+ *
+ * # Varying the radius along the line — weights
+ *
+ * A tube of one radius is `pointRadius`/`edgeRadius`. To make it *taper*, weight the primitives:
+ * every function that builds a point/edge field takes a **weight callback** rather than a list of
+ * weights. On an explicit graph that is [PointEdgeWeight], `(index, point) -> Double`, indexed the
+ * same way as the `points` you passed in. On an `FLine` it is [FLinePointWeight],
+ * `(nodeIndex, point) -> Double`, where `nodeIndex` is the *fractional* drawing-instruction index of
+ * the flattened point — integral at a `moveTo`/`lineTo`, and interpolated across a `cubicTo`, which
+ * is the same quantity `FLine.uniform_linearize` hands its callback and `linesOut` uses to look up
+ * per-node colour. [FLine.isoWeights] is the stock implementation: it reads a per-node property and
+ * interpolates between the nodes that set it.
+ *
+ * These used to be two `List<Double>?` parameters, `pointWeights` and `edgeWeights`, sized against
+ * the points and edges. On the `FLine` overloads that was unusable and not just awkward: the counts
+ * belonged to the *internal* flattening, and the edge count is not even a function of the node
+ * counts, because [pointEdgeGraph2D] drops an edge between near-coincident samples. A caller could
+ * only guess and read the `IllegalArgumentException`. A callback removes the question — and it
+ * survives a change to `samplesPerCubic`, which a list of weights could not.
+ *
+ * An edge's weight is always the **minimum** of its two endpoints'. A capsule has one radius for its
+ * whole length and so cannot taper: the taper comes from the union of densely sampled discs, and the
+ * edges only bridge the gaps between them. Taking the *maximum* would let a capsule bulge past the
+ * disc envelope exactly where the weight changes fastest; the minimum fills the gap without ever
+ * fattening it.
  *
  * # The sign convention, and why it is asymmetric
  *
@@ -71,7 +97,120 @@ import kotlin.math.sqrt
  */
 
 private data class Vec2Segment(val a: Vec2, val b: Vec2)
-private data class PointEdgeGraph2D(val points: List<Vec2>, val edges: List<Pair<Int, Int>>)
+
+/**
+ * A 2D `FLine` flattened into the point/edge graph that [pointEdgeScalarField2D] contours, plus the
+ * provenance of each point.
+ *
+ * [nodeIndex] is one fractional drawing-instruction index per entry of [points]: `i` exactly for the
+ * point contributed by `nodes[i]` when that node is a `moveTo` or a `lineTo`, and
+ * `(i - 1) + k / samplesPerCubic` for sample `k` of a `cubicTo`, so it runs from just after the
+ * previous instruction up to `i` at the cubic's end point. That is the same quantity
+ * `FLine.uniform_linearize` hands its callback, and it is what makes any per-node quantity
+ * interpolable across the flattening — see [FLinePointWeight]. Unlike `uniform_linearize`'s it is
+ * never negative: there is no subpath-break sentinel here, because the edge list already says what
+ * is connected to what.
+ *
+ * [edges] indexes into [points]. It is *not* recoverable from the node counts: [pointEdgeGraph2D]
+ * drops the edge between two samples that land on top of each other, so the count depends on the
+ * line's geometry and not only on its instructions.
+ */
+data class PointEdgeGraph2D(
+    val points: List<Vec2>,
+    val edges: List<Pair<Int, Int>>,
+    val nodeIndex: List<Double>
+)
+
+/**
+ * Per-point weight for a field built from an explicit point/edge graph — a multiplier on
+ * `pointRadius` for the disc around `points[index]`.
+ *
+ * Must return `>= 0`. See the file overview for why there is no matching edge callback: an edge's
+ * weight is the minimum of its endpoints'.
+ */
+typealias PointEdgeWeight = (index: Int, point: Vec2) -> Double
+
+/**
+ * Per-point weight for a field built from an `FLine` — a multiplier on `pointRadius` for the disc
+ * around one *flattened* sample of the line.
+ *
+ * `nodeIndex` is that sample's fractional drawing-instruction index, as described on
+ * [PointEdgeGraph2D]: integral at a `moveTo`/`lineTo`, interpolated across a `cubicTo`. So
+ * `{ ni, _ -> 1.0 - 0.8 * ni / (line.nodes.size - 1.0) }` tapers smoothly along the whole line
+ * whatever mix of instructions it is made of, and [FLine.isoWeights] does the same from properties
+ * set on the nodes themselves.
+ *
+ * Must return `>= 0`.
+ */
+typealias FLinePointWeight = (nodeIndex: Double, point: Vec2) -> Double
+
+/**
+ * Default property name that [FLine.isoWeights] reads a per-node weight from.
+ */
+const val FLINE_ISO_WEIGHT_KEY = "isoWeight"
+
+/**
+ * Read a per-node weight property off this line's instructions and interpolate it into an
+ * [FLinePointWeight], for [generateIsoContours] and friends.
+ *
+ * ```
+ * val stroke = fline { moveTo(0, 0); here.isoWeight = 1.0; cubicTo(...); here.isoWeight = 0.2 }
+ * generateSmoothIsoContours(stroke, radius = 14.0, spatialStep = 2.0, pointWeight = stroke.isoWeights())
+ * ```
+ *
+ * # Keyframes, not carry-forward
+ *
+ * A node that does not set [key] is **not** a keyframe: the weight ramps linearly, in fractional
+ * node index, between the nodes that do, and holds flat before the first and after the last. This is
+ * deliberately *not* the convention of `FLine.colorsPer`/`pointSizePer`, which carry the previous
+ * node's value forward — under carry-forward, setting the weight on only the first and last node of
+ * a ten-node stroke would give you nine nodes at the first value and a step at the tenth, which is
+ * the one thing a taper must not be.
+ *
+ * Falls back to the line-level property and then to `1.0`, so a line with no weights anywhere is a
+ * tube of constant radius. The properties are read *now*, when this function is called — unlike the
+ * point positions, which [pointEdgeScalarField2D] re-reads on every sample.
+ */
+fun FLine.isoWeights(key: String = FLINE_ISO_WEIGHT_KEY): FLinePointWeight {
+    val keyframes = mutableListOf<Pair<Double, Double>>()
+    nodes.forEachIndexed { index, node ->
+        (node.properties[key] as? Number)?.let { keyframes += index.toDouble() to it.toDouble() }
+    }
+    val lineLevel = (properties[key] as? Number)?.toDouble() ?: 1.0
+    if (keyframes.isEmpty()) return { _, _ -> lineLevel }
+    if (keyframes.size == 1) {
+        val only = keyframes[0].second
+        return { _, _ -> only }
+    }
+    return { nodeIndex, _ ->
+        when {
+            nodeIndex <= keyframes.first().first -> keyframes.first().second
+            nodeIndex >= keyframes.last().first -> keyframes.last().second
+            else -> {
+                var upper = 1
+                while (upper < keyframes.size - 1 && keyframes[upper].first < nodeIndex) upper++
+                val (i0, w0) = keyframes[upper - 1]
+                val (i1, w1) = keyframes[upper]
+                val t = if (i1 == i0) 0.0 else (nodeIndex - i0) / (i1 - i0)
+                w0 + t * (w1 - w0)
+            }
+        }
+    }
+}
+
+/**
+ * Per-node tube weight — a multiplier on `pointRadius` at this instruction, which
+ * [FLine.isoWeights] interpolates into an [FLinePointWeight]. `null`, the default, means "this node
+ * is not a keyframe".
+ *
+ * Nullable and *not* defaulted on read, unlike `FLine.color`: a delegate that materialises its
+ * default would make merely *reading* `node.isoWeight` pin that node to 1.0, which would silently
+ * turn it into a keyframe and flatten the taper either side of it.
+ */
+var FLine.Node.isoWeight by Delegation<Double?>(null)
+
+/** Line-wide fallback weight, used for every node when no node sets an [isoWeight] of its own. */
+var FLine.isoWeight by Delegation<Double?>(null)
 
 /**
  * How far a marched crossing is kept from a grid corner, as a fraction of the cell edge.
@@ -138,7 +277,9 @@ typealias ScalarField2D = (Double, Double) -> Double
  * negative values are outside. This makes `iso = 0.0` the natural choice for
  * [generateIsoContours].
  *
- * The returned field reads the supplied [points] list each time it is sampled,
+ * [pointWeight] scales each disc; an edge's capsule takes the *minimum* of its two endpoints'
+ * weights, for the reason set out in the file overview. Weights are resolved once, here. The point
+ * *positions* are not: the returned field reads the supplied [points] list each time it is sampled,
  * so mutating those `Vec2`s updates the field live.
  */
 fun pointEdgeScalarField2D(
@@ -146,25 +287,30 @@ fun pointEdgeScalarField2D(
     edges: List<Pair<Int, Int>>,
     pointRadius: Double,
     edgeRadius: Double,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: PointEdgeWeight? = null
 ): ScalarField2D {
     require(pointRadius >= 0.0) { "pointRadius must be >= 0" }
     require(edgeRadius >= 0.0) { "edgeRadius must be >= 0" }
-    pointWeights?.let {
-        require(it.size == points.size) { "pointWeights must match points.size" }
-        require(it.all { w -> w >= 0.0 }) { "pointWeights must all be >= 0" }
-    }
-    edgeWeights?.let {
-        require(it.size == edges.size) { "edgeWeights must match edges.size" }
-        require(it.all { w -> w >= 0.0 }) { "edgeWeights must all be >= 0" }
-    }
     edges.forEachIndexed { index, (a, b) ->
         require(a in points.indices) { "edge $index references missing point index $a" }
         require(b in points.indices) { "edge $index references missing point index $b" }
     }
 
     if (points.isEmpty() && edges.isEmpty()) return { _, _ -> Double.NEGATIVE_INFINITY }
+
+    val pointWeights = pointWeight?.let { weightOf ->
+        DoubleArray(points.size) { index ->
+            val w = weightOf(index, points[index])
+            require(w >= 0.0) { "pointWeight returned $w for point $index; weights must be >= 0" }
+            w
+        }
+    }
+    val edgeWeights = pointWeights?.let { pw ->
+        DoubleArray(edges.size) { index ->
+            val (a, b) = edges[index]
+            min(pw[a], pw[b])
+        }
+    }
 
     return { x, y ->
         var best = Double.NEGATIVE_INFINITY
@@ -189,24 +335,25 @@ fun pointEdgeScalarField2D(
     points: List<Vec2>,
     edges: List<Pair<Int, Int>>,
     radius: Double,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: PointEdgeWeight? = null
 ): ScalarField2D = pointEdgeScalarField2D(
     points = points,
     edges = edges,
     pointRadius = radius,
     edgeRadius = radius,
-    pointWeights = pointWeights,
-    edgeWeights = edgeWeights
+    pointWeight = pointWeight
 )
 
+/**
+ * Flatten a 2D [FLine] into a point/edge graph and build the union-of-discs-and-capsules field
+ * around it. See [FLinePointWeight] and [FLine.isoWeights] for the taper.
+ */
 fun pointEdgeScalarField2D(
     line: FLine,
     pointRadius: Double,
     edgeRadius: Double,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: FLinePointWeight? = null
 ): ScalarField2D {
     val graph = pointEdgeGraph2D(line, samplesPerCubic)
     return pointEdgeScalarField2D(
@@ -214,8 +361,7 @@ fun pointEdgeScalarField2D(
         edges = graph.edges,
         pointRadius = pointRadius,
         edgeRadius = edgeRadius,
-        pointWeights = pointWeights,
-        edgeWeights = edgeWeights
+        pointWeight = graph.perPoint(pointWeight)
     )
 }
 
@@ -223,16 +369,22 @@ fun pointEdgeScalarField2D(
     line: FLine,
     radius: Double,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: FLinePointWeight? = null
 ): ScalarField2D = pointEdgeScalarField2D(
     line = line,
     pointRadius = radius,
     edgeRadius = radius,
     samplesPerCubic = samplesPerCubic,
-    pointWeights = pointWeights,
-    edgeWeights = edgeWeights
+    pointWeight = pointWeight
 )
+
+/**
+ * Re-key an [FLinePointWeight] onto this graph's own point indices, by looking up each point's
+ * fractional node index. `null` in, `null` out — an absent weight stays absent rather than becoming
+ * a constant `1.0`, so the field can skip the per-primitive multiply entirely.
+ */
+private fun PointEdgeGraph2D.perPoint(weight: FLinePointWeight?): PointEdgeWeight? =
+    weight?.let { w -> { index, point -> w(nodeIndex[index], point) } }
 
 /**
  * Generate iso-contours for a scalar field using marching squares.
@@ -428,6 +580,9 @@ fun generateIsoContoursWithStep(
 /**
  * Convenience overload that turns a 2D [FLine] into a point/edge scalar field,
  * expands its bounds by the effective tube radius, and extracts contours.
+ *
+ * [pointWeight] tapers the tube — see [FLinePointWeight] and [FLine.isoWeights]. It also widens the
+ * sampling window, which is grown by the largest weighted radius rather than the nominal one.
  */
 fun generateIsoContours(
     line: FLine,
@@ -437,34 +592,16 @@ fun generateIsoContours(
     iso: Double = 0.0,
     padding: Double? = null,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: FLinePointWeight? = null
 ): List<List<Vec2>> {
     if (line.nodes.isEmpty()) return emptyList()
-    val graph = pointEdgeGraph2D(line, samplesPerCubic)
-    val field = pointEdgeScalarField2D(
-        points = graph.points,
-        edges = graph.edges,
-        pointRadius = pointRadius,
-        edgeRadius = edgeRadius,
-        pointWeights = pointWeights,
-        edgeWeights = edgeWeights
-    )
-    val bounds = expandedIsoBounds(
-        line = line,
-        pointRadius = pointRadius,
-        edgeRadius = edgeRadius,
-        spatialStep = spatialStep,
-        padding = padding,
-        pointWeights = pointWeights,
-        edgeWeights = edgeWeights
-    )
+    val tube = isoTube(line, pointRadius, edgeRadius, spatialStep, padding, samplesPerCubic, pointWeight)
     return generateIsoContoursWithStep(
-        field = field,
-        xMin = bounds.x,
-        xMax = bounds.x + bounds.w,
-        yMin = bounds.y,
-        yMax = bounds.y + bounds.h,
+        field = tube.field,
+        xMin = tube.bounds.x,
+        xMax = tube.bounds.x + tube.bounds.w,
+        yMin = tube.bounds.y,
+        yMax = tube.bounds.y + tube.bounds.h,
         spatialStep = spatialStep,
         value = iso
     )
@@ -477,8 +614,7 @@ fun generateIsoContours(
     iso: Double = 0.0,
     padding: Double? = null,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null
+    pointWeight: FLinePointWeight? = null
 ): List<List<Vec2>> = generateIsoContours(
     line = line,
     pointRadius = radius,
@@ -487,8 +623,7 @@ fun generateIsoContours(
     iso = iso,
     padding = padding,
     samplesPerCubic = samplesPerCubic,
-    pointWeights = pointWeights,
-    edgeWeights = edgeWeights
+    pointWeight = pointWeight
 )
 
 /**
@@ -516,6 +651,10 @@ fun smoothIsoContours(
     }
 }
 
+/**
+ * The whole `FLine` in, smooth outline out path. See [FLinePointWeight] and [FLine.isoWeights] to
+ * taper it.
+ */
 fun generateSmoothIsoContours(
     line: FLine,
     pointRadius: Double,
@@ -524,38 +663,33 @@ fun generateSmoothIsoContours(
     iso: Double = 0.0,
     padding: Double? = null,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null,
+    pointWeight: FLinePointWeight? = null,
     tension: Float = 1f,
     boundaryEpsilon: Double = spatialStep * 0.75
 ): List<FLine> {
     if (line.nodes.isEmpty()) return emptyList()
-    val bounds = expandedIsoBounds(
-        line = line,
-        pointRadius = pointRadius,
-        edgeRadius = edgeRadius,
+    // One graph, one field, one set of bounds: this used to flatten the line and grow the bounds
+    // twice over, once here and once inside generateIsoContours.
+    val tube = isoTube(line, pointRadius, edgeRadius, spatialStep, padding, samplesPerCubic, pointWeight)
+    val xMin = tube.bounds.x
+    val xMax = tube.bounds.x + tube.bounds.w
+    val yMin = tube.bounds.y
+    val yMax = tube.bounds.y + tube.bounds.h
+    val contours = generateIsoContoursWithStep(
+        field = tube.field,
+        xMin = xMin,
+        xMax = xMax,
+        yMin = yMin,
+        yMax = yMax,
         spatialStep = spatialStep,
-        padding = padding,
-        pointWeights = pointWeights,
-        edgeWeights = edgeWeights
-    )
-    val contours = generateIsoContours(
-        line = line,
-        pointRadius = pointRadius,
-        edgeRadius = edgeRadius,
-        spatialStep = spatialStep,
-        iso = iso,
-        padding = padding,
-        samplesPerCubic = samplesPerCubic,
-        pointWeights = pointWeights,
-        edgeWeights = edgeWeights
+        value = iso
     )
     return smoothIsoContours(
         contours = contours,
-        xMin = bounds.x,
-        xMax = bounds.x + bounds.w,
-        yMin = bounds.y,
-        yMax = bounds.y + bounds.h,
+        xMin = xMin,
+        xMax = xMax,
+        yMin = yMin,
+        yMax = yMax,
         tension = tension,
         boundaryEpsilon = boundaryEpsilon
     )
@@ -568,8 +702,7 @@ fun generateSmoothIsoContours(
     iso: Double = 0.0,
     padding: Double? = null,
     samplesPerCubic: Int = 24,
-    pointWeights: List<Double>? = null,
-    edgeWeights: List<Double>? = null,
+    pointWeight: FLinePointWeight? = null,
     tension: Float = 1f,
     boundaryEpsilon: Double = spatialStep * 0.75
 ): List<FLine> = generateSmoothIsoContours(
@@ -580,8 +713,7 @@ fun generateSmoothIsoContours(
     iso = iso,
     padding = padding,
     samplesPerCubic = samplesPerCubic,
-    pointWeights = pointWeights,
-    edgeWeights = edgeWeights,
+    pointWeight = pointWeight,
     tension = tension,
     boundaryEpsilon = boundaryEpsilon
 )
@@ -693,18 +825,34 @@ private fun distanceToSegment(x: Double, y: Double, a: Vec2, b: Vec2): Double {
     return sqrt(dx * dx + dy * dy)
 }
 
-private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2D {
+/**
+ * Flatten a 2D [FLine] into the points and edges that [pointEdgeScalarField2D] turns into a field:
+ * one point per `moveTo`/`lineTo`, [samplesPerCubic] per `cubicTo`, and an edge for every pair of
+ * consecutive points — including the wrap-around edge of a `close`.
+ *
+ * Public because the point and edge *counts* are the answer to "how big is a weight list", which is
+ * the question the weight callbacks exist to avoid asking; if you want to reason about the flattening
+ * directly, or attach your own per-point data to it, this is the flattening the contour functions
+ * use. [PointEdgeGraph2D.nodeIndex] says which instruction each point came from.
+ *
+ * Near-coincident consecutive samples are joined by no edge at all — a zero-length `lineTo`, a
+ * `close` on an already-closed subpath, or a cubic whose control points coincide all lose one — so
+ * `edges.size` is a function of the line's geometry and not just of its instruction list.
+ */
+fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int = 24): PointEdgeGraph2D {
     require(samplesPerCubic >= 1) { "samplesPerCubic must be >= 1" }
-    if (line.nodes.isEmpty()) return PointEdgeGraph2D(emptyList(), emptyList())
+    if (line.nodes.isEmpty()) return PointEdgeGraph2D(emptyList(), emptyList(), emptyList())
 
     val points = mutableListOf<Vec2>()
     val edges = mutableListOf<Pair<Int, Int>>()
+    val nodeIndices = mutableListOf<Double>()
     var currentIndex: Int? = null
     var subpathStartIndex: Int? = null
     var currentPoint: Vec2? = null
 
-    fun addPoint(point: Vec2): Int {
+    fun addPoint(point: Vec2, nodeIndex: Double): Int {
         points += Vec2(point)
+        nodeIndices += nodeIndex
         return points.lastIndex
     }
 
@@ -714,11 +862,11 @@ private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2
         edges += from to to
     }
 
-    line.nodes.forEach { node ->
+    line.nodes.forEachIndexed { ordinal, node ->
         when (node) {
             is FLine.MoveTo -> {
                 val point = vec(node.to.x, node.to.y)
-                val index = addPoint(point)
+                val index = addPoint(point, ordinal.toDouble())
                 currentIndex = index
                 subpathStartIndex = index
                 currentPoint = point
@@ -726,7 +874,7 @@ private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2
 
             is FLine.LineTo -> {
                 val point = vec(node.to.x, node.to.y)
-                val index = addPoint(point)
+                val index = addPoint(point, ordinal.toDouble())
                 val previous = currentIndex
                 if (previous != null) connect(previous, index)
                 else subpathStartIndex = index
@@ -739,7 +887,7 @@ private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2
                 val previous = currentIndex
                 if (start == null || previous == null) {
                     val point = vec(node.to.x, node.to.y)
-                    val index = addPoint(point)
+                    val index = addPoint(point, ordinal.toDouble())
                     currentIndex = index
                     subpathStartIndex = index
                     currentPoint = point
@@ -754,7 +902,10 @@ private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2
                             b = vec(node.to.x, node.to.y),
                             t = t
                         )
-                        val index = addPoint(point)
+                        // The fractional instruction index, lerped from the previous instruction to
+                        // this one exactly as FLine.uniform_linearize_cubic does it, so per-node data
+                        // interpolates across the flattening the same way in both.
+                        val index = addPoint(point, (ordinal - 1) + t)
                         connect(lastIndex, index)
                         lastIndex = index
                     }
@@ -773,7 +924,45 @@ private fun pointEdgeGraph2D(line: FLine, samplesPerCubic: Int): PointEdgeGraph2
         }
     }
 
-    return PointEdgeGraph2D(points = points, edges = edges)
+    return PointEdgeGraph2D(points = points, edges = edges, nodeIndex = nodeIndices)
+}
+
+/** A tapered tube's field and the window to march it over, built together from one flattening. */
+private class IsoTube(val field: ScalarField2D, val bounds: Rect)
+
+private fun isoTube(
+    line: FLine,
+    pointRadius: Double,
+    edgeRadius: Double,
+    spatialStep: Double,
+    padding: Double?,
+    samplesPerCubic: Int,
+    pointWeight: FLinePointWeight?
+): IsoTube {
+    val graph = pointEdgeGraph2D(line, samplesPerCubic)
+    val perPoint = graph.perPoint(pointWeight)
+    val field = pointEdgeScalarField2D(
+        points = graph.points,
+        edges = graph.edges,
+        pointRadius = pointRadius,
+        edgeRadius = edgeRadius,
+        pointWeight = perPoint
+    )
+    // The window has to clear the *widest* disc, so the weights have to be evaluated to grow it. Free
+    // here: the graph is already flattened, and the field will evaluate them again on exactly these
+    // points. An edge is never wider than its endpoints, so one maximum covers both primitives.
+    val maxWeight = perPoint?.let { weightOf ->
+        graph.points.indices.maxOfOrNull { weightOf(it, graph.points[it]) } ?: 1.0
+    } ?: 1.0
+    val bounds = expandedIsoBounds(
+        line = line,
+        pointRadius = pointRadius,
+        edgeRadius = edgeRadius,
+        spatialStep = spatialStep,
+        padding = padding,
+        maxWeight = maxWeight
+    )
+    return IsoTube(field, bounds)
 }
 
 private fun expandedIsoBounds(
@@ -782,13 +971,11 @@ private fun expandedIsoBounds(
     edgeRadius: Double,
     spatialStep: Double,
     padding: Double?,
-    pointWeights: List<Double>?,
-    edgeWeights: List<Double>?
+    maxWeight: Double
 ): Rect {
     val base = line.fast2DBounds()
-    val maxPointExtent = pointRadius * (pointWeights?.maxOrNull() ?: 1.0)
-    val maxEdgeExtent = edgeRadius * (edgeWeights?.maxOrNull() ?: 1.0)
-    val pad = padding ?: (2.0 * max(maxPointExtent, maxEdgeExtent)) + spatialStep
+    val maxExtent = max(pointRadius, edgeRadius) * maxWeight
+    val pad = padding ?: (2.0 * maxExtent) + spatialStep
     return Rect(
         x = base.x - pad,
         y = base.y - pad,
