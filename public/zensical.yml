@@ -49,6 +49,7 @@ nav:
       - Automating Field: automating_field.md
       - Agent Transcript Gallery: agent_transcripts.md
       - Field Systems:
+        - Field Audio AI: field_audio_ai.md
         - RemoteJS & WebXR: ar_reference.md
         - Apple Vision Pro (WiP): vision.md
         - Geometry in the Headset: vision_geometry.md

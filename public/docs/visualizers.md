@@ -1017,6 +1017,34 @@ sample decimation would miss. Zooming and panning request a new envelope with at
 the audio itself continues to stream from the immutable representation. Set `showPlayhead = false`
 for a waveform-only inspection surface.
 
+### Beat and pitch analysis views
+
+The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
+only bounded preview trajectories to the browser. `analysisVisualizationHtml(...)` presents three
+different operations in the same zoomable, pannable timeline:
+
+- multi-scale tempo curves, onset strength, and beat markers;
+- monophonic pYIN pitch and voicing confidence;
+- Basic Pitch polyphonic note rectangles and activity summaries.
+
+```kotlin
+import afield.stdlib.noir.audioai.*
+
+val client = FieldAudioClient()
+client.assetByFilename("*Nancy*").thenCompose { asset ->
+    val region = AssetRegion(asset.id, startSeconds = 0.0, durationSeconds = 30.0)
+    client.submit(multiScaleBeatAnalysis(region, scalesSeconds = listOf(2.0, 4.0, 8.0, 16.0)))
+}.thenCompose(client::awaitAnalysis).thenAccept { result ->
+    display("analysis", analysisVisualizationHtml(result))
+}
+```
+
+Replace the request with `monophonicPitchAnalysis(region)` or
+`polyphonicPitchAnalysis(region)` without changing the job/result path. The returned
+`AnalysisResult` exposes the complete NPZ representation and, for Basic Pitch, a MIDI artifact.
+The visualization endpoint caps previews at 4096 points; zoom and pan never turn the full activation
+tensor into a large JSON response.
+
 ### Waveform-summary endpoint contract
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The

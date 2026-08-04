@@ -189,6 +189,21 @@ class FieldAudioClient(
             CodecReconstructionResult.serializer(),
         )
 
+    fun analysisResult(id: String): CompletableFuture<AnalysisResult> =
+        send(
+            HttpRequest.newBuilder(resolve("/v1/analysis-results/$id")).GET().build(),
+            AnalysisResult.serializer(),
+        )
+
+    fun analysisPreview(id: String, points: Int = 1200): CompletableFuture<AnalysisPreview> {
+        require(points in 16..4096) { "analysis preview points must be between 16 and 4096" }
+        return send(
+            HttpRequest.newBuilder(resolve("/v1/analysis-results/$id/preview?points=$points"))
+                .GET().build(),
+            AnalysisPreview.serializer(),
+        )
+    }
+
     fun judge(candidateSetId: String, candidateIndex: Int, judgement: CandidateJudgement): CompletableFuture<String> =
         putJson(
             "/v1/candidate-sets/$candidateSetId/candidates/$candidateIndex",
@@ -243,6 +258,19 @@ class FieldAudioClient(
                 )
             } else {
                 codecResult(requireNotNull(job.codecResultId) { "completed codec job has no result" })
+            }
+        }
+
+    fun awaitAnalysis(accepted: JobAccepted): CompletableFuture<AnalysisResult> =
+        await(accepted.jobId).thenCompose { job ->
+            if (job.state != JobState.COMPLETE) {
+                CompletableFuture.failedFuture(
+                    FieldAudioJobException(job.id, job.state, job.error)
+                )
+            } else {
+                analysisResult(requireNotNull(job.analysisResultId) {
+                    "completed analysis job has no result"
+                })
             }
         }
 
@@ -320,7 +348,40 @@ class FieldAudioClient(
     }
 }
 
-/** Ergonomic live-code constructor for the first source-window instrument. */
+/** Global controls exposed by the pinned MusicGen-Style checkpoint. */
+data class MusicGenStyleControls(
+    val useSampling: Boolean = true,
+    val topK: Int = 250,
+    val topP: Double = 0.0,
+    val temperature: Double = 1.0,
+    val cfg: Double = 3.0,
+    val cfgBeta: Double? = 5.0,
+    val twoStepCfg: Boolean = false,
+    val styleQuantization: Int = 1,
+    val styleExcerptSeconds: Double? = null,
+    val styleDownsampleFactor: Int? = null,
+    val styleEncodecCodebooks: Int? = null,
+) {
+    init {
+        require(topK >= 0) { "topK must be non-negative" }
+        require(topP in 0.0..1.0) { "topP must be between zero and one" }
+        require(temperature > 0.0) { "temperature must be positive" }
+        require(cfg >= 0.0) { "cfg must be non-negative" }
+        require(cfgBeta == null || cfgBeta >= 0.0) { "cfgBeta must be non-negative" }
+        require(styleQuantization > 0) { "styleQuantization must be positive" }
+        require(styleExcerptSeconds == null || styleExcerptSeconds > 0.0) {
+            "styleExcerptSeconds must be positive"
+        }
+        require(styleDownsampleFactor == null || styleDownsampleFactor > 0) {
+            "styleDownsampleFactor must be positive"
+        }
+        require(styleEncodecCodebooks == null || styleEncodecCodebooks > 0) {
+            "styleEncodecCodebooks must be positive"
+        }
+    }
+}
+
+/** Ergonomic live-code constructor for the source-window style instrument. */
 fun styleCandidates(
     source: AssetRegion,
     prompt: String = "",
@@ -328,19 +389,41 @@ fun styleCandidates(
     seeds: LongRange = 0L until 8L,
     backend: String? = null,
     requestedBy: String? = null,
+    controls: MusicGenStyleControls = MusicGenStyleControls(),
+    forceRegenerate: Boolean = false,
 ): ModelOperation {
+    require(source.durationSeconds in 1.5..4.5) {
+        "MusicGen-Style source window must be between 1.5 and 4.5 seconds"
+    }
+    require(durationSeconds > 0.0) { "durationSeconds must be positive" }
+    require(controls.styleExcerptSeconds == null || controls.styleExcerptSeconds <= source.durationSeconds) {
+        "styleExcerptSeconds cannot exceed the source window"
+    }
     val seedList = seeds.toList()
+    require(seedList.isNotEmpty()) { "seeds must not be empty" }
     return ModelOperation(
         operation = "generate.style",
         inputs = listOf(source),
         parameters = buildJsonObject {
             put("duration_seconds", durationSeconds)
             if (prompt.isNotBlank()) put("prompt", prompt)
+            put("use_sampling", controls.useSampling)
+            put("top_k", controls.topK)
+            put("top_p", controls.topP)
+            put("temperature", controls.temperature)
+            put("cfg", controls.cfg)
+            if (prompt.isNotBlank()) controls.cfgBeta?.let { put("cfg_beta", it) }
+            put("two_step_cfg", controls.twoStepCfg)
+            put("style_quantization", controls.styleQuantization)
+            controls.styleExcerptSeconds?.let { put("style_excerpt_seconds", it) }
+            controls.styleDownsampleFactor?.let { put("style_downsample_factor", it) }
+            controls.styleEncodecCodebooks?.let { put("style_encodec_codebooks", it) }
         },
         seeds = seedList,
         candidateCount = seedList.size,
         backendPreference = backend,
         requestedBy = requestedBy,
+        forceRegenerate = forceRegenerate,
     )
 }
 

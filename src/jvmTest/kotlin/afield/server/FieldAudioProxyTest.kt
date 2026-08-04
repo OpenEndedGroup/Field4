@@ -30,6 +30,12 @@ class FieldAudioProxyTest {
         assertTrue(isAllowedFieldAudioProxyRequest(HttpMethod.Get, "/v1/jobs"))
         assertTrue(
             isAllowedFieldAudioProxyRequest(
+                HttpMethod.Get,
+                "/v1/analysis-results/analysis_abc-123/preview",
+            )
+        )
+        assertTrue(
+            isAllowedFieldAudioProxyRequest(
                 HttpMethod.Post,
                 "/v1/jobs/job_abc-123/cancel",
             )
@@ -38,6 +44,12 @@ class FieldAudioProxyTest {
         assertFalse(isAllowedFieldAudioProxyRequest(HttpMethod.Post, "/v1/operations"))
         assertFalse(isAllowedFieldAudioProxyRequest(HttpMethod.Get, "/v1/jobs/job_abc-123"))
         assertFalse(isAllowedFieldAudioProxyRequest(HttpMethod.Get, "/v1/assets/sha256:secret"))
+        assertFalse(
+            isAllowedFieldAudioProxyRequest(
+                HttpMethod.Get,
+                "/v1/analysis-results/../../metadata.sqlite/preview",
+            )
+        )
         assertFalse(
             isAllowedFieldAudioProxyRequest(
                 HttpMethod.Get,

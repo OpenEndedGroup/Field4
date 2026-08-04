@@ -37,6 +37,8 @@ private val representationContentPath =
     Regex("^/v1/representations/[A-Za-z0-9:_-]+/content$")
 private val representationWaveformPath =
     Regex("^/v1/representations/[A-Za-z0-9:_-]+/waveform$")
+private val analysisPreviewPath =
+    Regex("^/v1/analysis-results/[A-Za-z0-9:_-]+/preview$")
 private val candidateJudgementPath =
     Regex("^/v1/candidate-sets/[A-Za-z0-9:_-]+/candidates/[0-9]+$")
 private val jobCancellationPath =
@@ -44,7 +46,8 @@ private val jobCancellationPath =
 
 internal fun isAllowedFieldAudioProxyRequest(method: HttpMethod, path: String): Boolean = when (method) {
     HttpMethod.Get -> path == "/monitor" || path == "/v1/jobs" ||
-        representationContentPath.matches(path) || representationWaveformPath.matches(path)
+        representationContentPath.matches(path) || representationWaveformPath.matches(path) ||
+        analysisPreviewPath.matches(path)
     HttpMethod.Post -> jobCancellationPath.matches(path)
     HttpMethod.Put -> candidateJudgementPath.matches(path)
     else -> false

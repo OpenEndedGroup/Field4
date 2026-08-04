@@ -70,6 +70,7 @@ enum class JobState {
     @SerialName("loading_model") LOADING_MODEL,
     @SerialName("preparing_audio") PREPARING_AUDIO,
     @SerialName("encoding_source") ENCODING_SOURCE,
+    @SerialName("analysing") ANALYSING,
     @SerialName("decoding") DECODING,
     @SerialName("generating") GENERATING,
     @SerialName("writing_assets") WRITING_ASSETS,
@@ -114,6 +115,7 @@ data class JobRecord(
     val error: StructuredError? = null,
     @SerialName("candidate_set_id") val candidateSetId: String? = null,
     @SerialName("codec_result_id") val codecResultId: String? = null,
+    @SerialName("analysis_result_id") val analysisResultId: String? = null,
     @SerialName("cache_hit") val cacheHit: Boolean = false,
 )
 
@@ -130,6 +132,7 @@ data class JobSummary(
     val error: StructuredError? = null,
     @SerialName("candidate_set_id") val candidateSetId: String? = null,
     @SerialName("codec_result_id") val codecResultId: String? = null,
+    @SerialName("analysis_result_id") val analysisResultId: String? = null,
     @SerialName("cache_hit") val cacheHit: Boolean = false,
     val operation: String,
     @SerialName("requested_by") val requestedBy: String? = null,
@@ -185,6 +188,48 @@ data class CodecReconstructionResult(
 )
 
 @Serializable
+data class AnalysisResult(
+    val id: String,
+    @SerialName("operation_id") val operationId: String,
+    @SerialName("request_hash") val requestHash: String,
+    val source: AssetRegion,
+    val data: AssetRepresentation,
+    val artifacts: List<AssetRepresentation> = emptyList(),
+    val summary: JsonObject = JsonObject(emptyMap()),
+    val analysis: JsonObject = JsonObject(emptyMap()),
+    @SerialName("created_at") val createdAt: String,
+)
+
+@Serializable
+data class AnalysisSeries(
+    val name: String,
+    val label: String,
+    val unit: String? = null,
+    @SerialName("times_seconds") val timesSeconds: List<Double?>,
+    val values: List<Double?>,
+    val metadata: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class AnalysisNote(
+    @SerialName("start_seconds") val startSeconds: Double,
+    @SerialName("end_seconds") val endSeconds: Double,
+    val midi: Int,
+    val amplitude: Double,
+)
+
+@Serializable
+data class AnalysisPreview(
+    val operation: String,
+    @SerialName("duration_seconds") val durationSeconds: Double,
+    val series: List<AnalysisSeries>,
+    @SerialName("beat_times_seconds") val beatTimesSeconds: List<Double> = emptyList(),
+    val notes: List<AnalysisNote> = emptyList(),
+    val summary: JsonObject = JsonObject(emptyMap()),
+    val analysis: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
 data class ProgressEvent(
     val sequence: Long,
     @SerialName("job_id") val jobId: String,
@@ -224,6 +269,7 @@ data class SavedAudioOperation(
     val job: JobRecord? = null,
     @SerialName("candidate_set") val candidateSet: CandidateSet? = null,
     @SerialName("codec_result") val codecResult: CodecReconstructionResult? = null,
+    @SerialName("analysis_result") val analysisResult: AnalysisResult? = null,
     val judgements: Map<Int, CandidateJudgement> = emptyMap(),
 )
 
