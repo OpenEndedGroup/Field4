@@ -201,7 +201,8 @@ class RunnerOptions:
     clip_selector: str | None  # for capture="ui": clip to a CSS selector (overlays not backed by a box)
     warm_completion: bool  # for capture="ui": pre-warm the K1 completion engine (autocomplete captures)
     audio: str | None  # path to .wav output; offline-renders a registered synth scene to WAV
-    audio_spec: str | None  # name of the DoughDspSoundDocs scene to offline-render for audio=
+    audio_spec: str | None  # name of the scene to offline-render for audio=
+    audio_renderer: str  # object providing renderWav(name, path) — DoughDspSoundDocs by default
     hidden: bool
     language_key: str
 
@@ -1299,7 +1300,7 @@ class RunnerState:
 
         Parallel to `ensure_video`, but the "capture" is a deterministic, headless
         DSP render rather than a browser recording. The runner generates the box code
-        (`DoughDspSoundDocs.renderWav("<scene>", "<abs wav>")`), runs it in the shared
+        (`<audio-renderer>.renderWav("<scene>", "<abs wav>")`), runs it in the shared
         Field JVM, and `wait-file`s the WAV into existence (with --fail-on-error-uid so
         a box error surfaces fast). No realtime engine, no audio device, no browser —
         the WAV is produced by the same offline block-render the plot gallery uses, so
@@ -1311,7 +1312,7 @@ class RunnerState:
 
         # The box code the runner generates: an offline render straight to the WAV path.
         generated_code = (
-            "afield.four.synth.DoughDspSoundDocs.renderWav("
+            f"{options.audio_renderer}.renderWav("
             f"{json.dumps(options.audio_spec)}, {json.dumps(str(audio_path))})"
         )
 
@@ -1989,12 +1990,18 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     video = first_attr(attrs, "video")
     audio = first_attr(attrs, "audio")
     audio_spec = first_attr(attrs, "audio-spec", "audio_spec", "audioSpec", "sound", "scene")
+    # Which harness owns the scene. Any object with `renderWav(name, outPath)` qualifies; the
+    # default keeps every existing dough_dsp_sound.md fence hashing exactly as it did.
+    audio_renderer = (
+        first_attr(attrs, "audio-renderer", "audio_renderer", "audioRenderer")
+        or "afield.four.synth.DoughDspSoundDocs"
+    ).strip()
     if not screenshot and not video and not audio:
         raise RuntimeError(f"{page_path}:{line_number} {runner_name} requires screenshot=\"...\", video=\"...\" and/or audio=\"...\"")
     if audio and not audio_spec:
         raise RuntimeError(
             f"{page_path}:{line_number} audio=\"...\" requires audio-spec=\"<scene>\" "
-            f"(a registered afield.four.synth.DoughDspSoundDocs scene)"
+            f"(a scene registered with {audio_renderer})"
         )
 
     capture = (first_attr(attrs, "capture", "mode") or "box").strip().lower()
@@ -2098,6 +2105,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         warm_completion=parse_bool(first_attr(attrs, "warm-completion", "warm_completion", "warmCompletion"), default=False),
         audio=audio,
         audio_spec=audio_spec,
+        audio_renderer=audio_renderer,
         hidden=parse_bool(first_attr(attrs, "hidden", "hide-source", "hide_source"), default=False),
         language_key=fence_language_key(open_line=open_line, fence_name=runner_name),
     )
@@ -2645,6 +2653,10 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
     if options.audio:
         payload["audio"] = options.audio
         payload["audioSpec"] = options.audio_spec
+        # Only when it is not the historic default, so existing fences keep their digest and
+        # do not all re-render on this change.
+        if options.audio_renderer != "afield.four.synth.DoughDspSoundDocs":
+            payload["audioRenderer"] = options.audio_renderer
     return payload
 
 

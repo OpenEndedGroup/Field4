@@ -184,8 +184,8 @@ cycle with a different `begin`/`end` slice each pass, is added as **`striateAcro
 silently dropped material.** `pat("a b c d").slow(2)` gave `a b` in **every** cycle — `c d` was never
 heard at all, on any cycle, ever. `slow(4)` gave `a` forever. `[a b c d]/2` the same. `fast(n)` was
 `cat` of *n* copies, so `pat("<a b>").fast(2)` replayed cycle 0 twice and read `a a` instead of `a b`.
-And `chunk(n, f)`, built on both, applied its transform to the same quarter forever rather than
-walking through them.
+And `chunk(n, f)`, built on both, did not walk through the bar — see the separate note below, because
+that one turned out not to be a consequence of this bug at all.
 
 This was the deepest defect on the branch and it is fixed, not documented: all five are now defined in
 terms of one absolute-time primitive, `stretch(by: PatQ)`, which queries the source over `arc / by` and
@@ -204,6 +204,77 @@ the operator for that, and both before/after `.wav` scenes use it.
 Relatedly, `off(by)` *is* built on `delay`, which is genuinely cycle-spanning, so an echo whose arc
 crosses a cycle boundary wraps into the next cycle. `pat("a b c d").off(1, 8) { it }` yields **nine**
 events in a cycle, not eight: four originals, four echoes, and the previous cycle's clipped tail.
+
+---
+
+## 4b. Whole and part — and the note that was struck twice
+
+Making time cycle-spanning created a problem it did not, at first, solve. Once an event can cross a
+bar line, a scheduler that queries one cycle at a time sees it twice.
+
+`pat("a b c").slow(2)` is three steps over two cycles, so nothing lands on the bar line:
+
+```
+wide query, events([0,2))     a 0→2/3    b 2/3→4/3    c 4/3→2          three notes
+per-cycle, what a player asks a 0→2/3    b 2/3→1  |  b 1→4/3   c 4/3→2  four
+```
+
+Both answers are honest — a query cannot report time it was not asked about — but the second one is
+what `eventSequence`, `scheduled()`, `respond {}` and `peek()` all use, and played naively it strikes
+`b` twice, each strike shorter than the note really is. **Every rendered artifact on this branch
+draws from the wide query**, so the piano rolls and the `.wav`s were structurally incapable of
+showing it.
+
+`PatEvent` now carries Tidal's whole/part pair, for Tidal's reason:
+
+- **`arc`** is the *part* — what this query can see.
+- **`whole`** is where the note really runs, regardless of who is looking.
+- **`hasOnset`** is `whole.start == arc.start`: this fragment carries the beginning of the note.
+- **`whole == null`** marks an *analog* event — a sample of a continuous signal, which has no note to
+  start. `segment(n)` is what turns one into events with real onsets.
+
+`eventSequence` yields only the fragment with the onset, widened back to its whole. So a note sounds
+once, for its full length, and a note already playing when you start listening is not re-struck.
+
+The invariant is easy to break and so is enforced by construction rather than by care: time
+transforms go through `PatEvent.mapTime` / `PatArc.map`, which carry the whole along with the part,
+and re-valuing goes through `withValue`. Rebuilding a `PatEvent` positionally from an old one drops
+the whole back to the part, which *is* the bug, so no site in the language does that any more. Two
+latent instances turned up while wiring it: `zip` returned the part to local time with
+`copy(arc = …)` and left the whole a cycle behind, and `squeezeJoin` fitted inner patterns into the
+clipped part rather than the real extent — the caveat its own KDoc described, and the same one
+`appLeft` carried.
+
+**The scope was wider than `slow`.** With the fix reverted, the corpus sweep reddens for `delay`,
+`slow`, `timeScale`, `density`, mini-notation's `/n` and `off` — everything that can move an event
+across a bar line.
+
+### `chunk` was `inside` wearing its name
+
+A separate correction, found while checking the claim above. `chunk(n, f)` was
+`slow(n).let(f).fast(n)`. That is a real Tidal operator — it is **`inside`** — but it is
+cycle-invariant and applies the transform to the same material every cycle. Tidal's `chunk` applies
+`f` to a different `1/n` of the bar each cycle and walks through all of them.
+
+An earlier draft of this document claimed `chunk` had been fixed to walk. It had not, and the
+contract corpus quietly agreed with the code rather than the prose: the entry sat un-`varying()`,
+which is only possible for an operator that does the same thing every cycle. `chunk` now walks and
+its entry *has* to be marked varying; `inside` and `outside` carry the old behaviour under their own
+names.
+
+Doing it properly needed two primitives that were missing:
+
+- **`playWhen`** — keep events whose *onset* satisfies a predicate. Filtering on the onset rather
+  than the visible part is the point: an event overlapping the edge of a region either belongs to it
+  or does not, and clipping it in half would invent a note. Only expressible once `whole` existed.
+- **`slowcat`** — one pattern per cycle, which is **Tidal's `cat`**. Field's `cat` fits all of its
+  arguments into a single cycle, which is Tidal's `fastcat`; that is why the first attempt at a
+  walking `chunk` walked nowhere. The behaviour already existed, inlined in the mini-notation
+  compiler for `<a b>`; both now share this one. `fastcat` is available as a spelling of `cat` that
+  says which operator it is.
+
+`withinCycle` is Tidal's `within` (apply `f` inside a window, leave the rest alone). Field's existing
+`within` is Tidal's `compress`, and its KDoc now says so.
 
 ---
 
@@ -283,7 +354,8 @@ first.
 | --- | --- |
 | **liveness** — every pattern makes an event in each of the first six cycles | the whole "works once, then silent" family |
 | **cycle-invariance** — a pattern with no per-cycle construct repeats exactly | drift, frozen alternation, off-by-one tile arithmetic |
-| **query-range additivity** — `[0,N)` in one call equals N single-cycle calls | events lost or duplicated at a query boundary |
+| **query-range additivity** — `[0,N)` in one call reports exactly the notes N single-cycle calls do | events lost or duplicated at a query boundary |
+| **scheduling matches rendering** — `eventSequence` plays what a wide query draws | a bar-crossing note struck twice, which no rendered artifact can see |
 | **purity** and **query-order independence** | accidental state between queries |
 | **containment and well-formedness** | events escaping the queried arc; empty or inverted arcs, at whole-cycle, sub-cycle, straddling and negative arcs |
 
@@ -352,16 +424,25 @@ Also in this batch: `ncat` (weighted `cat`, exact rational shares), `pick` (inde
 numeric pattern), `euclidInv` / `euclidFull` (the off-beats of a Euclidean figure), and `toScale` (an
 arbitrary scale from a list of semitones).
 
-Three names deliberately *not* added, because the surface already has them:
-`inside(n, f)` is the existing `chunk(n, f)`; `ply(n)` is `stutter(n, PatQ.ZERO)` (kept as an alias
-because `ply` is the name the Tidal docs use); and `someCyclesBy` is `sometimesBy`.
+Two names deliberately *not* added, because the surface already has them: `ply(n)` is
+`stutter(n, PatQ.ZERO)` (kept as an alias because `ply` is the name the Tidal docs use), and
+`someCyclesBy` is `sometimesBy`.
+
+`inside(n, f)` was originally left out on the grounds that it was "the existing `chunk(n, f)`". That
+was the right observation and the wrong conclusion: the two really are the same function, but the
+name that should have gone was `chunk`. See "`chunk` was `inside` wearing its name" above — `inside`
+and `outside` now exist under their own names and `chunk` does what Tidal's `chunk` does.
 
 ---
 
 ## 7. The surface, at a glance
 
 **Time** (`TidalPatterns.kt`) — `stretch fastBy slowBy fast slow timeScale density zoom delay rev
-palindrome patFocus within cat stack`
+palindrome patFocus within withinCycle playWhen chunk inside outside cat fastcat slowcat stack`
+
+**Events** (`TidalPatterns.kt`) — `PatEvent.whole PatEvent.arc hasOnset extent mapTime withValue
+clipTo` · `PatArc.map` — the whole/part model of §4b. Move an event with `mapTime`, re-value it with
+`withValue`; a positional rebuild drops the whole and is the bug.
 
 **Signals** (`PatSignals.kt`) — `sine cosine saw isaw tri square envL envLR rand irand perlin sig
 signalOf constant run grid` · `segment discretise struct bools quantise rounded range rangex bipolar
