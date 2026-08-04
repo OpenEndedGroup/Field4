@@ -626,7 +626,7 @@ object FloatEarcut {
 
         p = m
 
-        while (p !== stop) {
+        do {
             if (hx >= p!!.x && p.x >= mx && pointInTriangle(
                     if (hy < my) hx else qx,
                     hy,
@@ -654,7 +654,7 @@ object FloatEarcut {
             }
 
             p = p.next
-        }
+        } while (p !== stop)
 
         return m
     }

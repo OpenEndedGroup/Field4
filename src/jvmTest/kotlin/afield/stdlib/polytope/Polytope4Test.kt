@@ -190,12 +190,23 @@ class Polytope4Test {
 
     @Test
     fun aRankFourTopologyCannotBeMistakenForAPolyhedron() {
-        val four = tesseract()
-        // The rank-3 pipeline is not silently reachable: PolyhedralObject would reject the topology
-        // even before anyone asked it for triangles.
-        val failure = runCatching { PolyhedralObject(four.topology).triangulate() }.exceptionOrNull()
-        assertNotNull(failure, "a rank-4 topology was accepted by the rank-3 triangulator")
-        // And Polytope4 rejects a rank-3 topology just as firmly.
-        assertNotNull(runCatching { Polytope4(cube().topology) }.exceptionOrNull())
+        // PolyhedralObject is deliberately rank-agnostic, so wrapping a rank-4 topology in one
+        // succeeds. The rank-3 assumption belongs to the operators that need it, so this asserts the
+        // rejection where it is really performed: the Conway surface transforms.
+        val four = PolyhedralObject(tesseract().topology)
+        assertEquals(4, four.topology.rank, "PolyhedralObject should have kept the rank-4 topology")
+        val conwayFailure = runCatching { four.dual() }.exceptionOrNull()
+        assertNotNull(conwayFailure, "a Conway surface transform accepted a rank-4 topology")
+        assertTrue(
+            conwayFailure.message.orEmpty().contains("require rank 3"),
+            "the rank check should be what rejected it, not something downstream: $conwayFailure",
+        )
+        // And Polytope4 rejects a rank-3 topology just as firmly, in its own constructor.
+        val rankThreeFailure = runCatching { Polytope4(cube().topology) }.exceptionOrNull()
+        assertNotNull(rankThreeFailure, "Polytope4 accepted a rank-3 topology")
+        assertTrue(
+            rankThreeFailure.message.orEmpty().contains("requires a rank-4 topology"),
+            "expected Polytope4's own rank check: $rankThreeFailure",
+        )
     }
 }

@@ -2,11 +2,17 @@
 // Integrated 3D constraint solver for Emscripten/Ceres
 // - See exported C API at bottom.
 
+#include "ken_ceres_export.h"
 #include <ceres/ceres.h>
+#if defined(KEN_CERES_HAVE_GLOG)
+#include <glog/logging.h>
+#endif
 #include <ceres/loss_function.h>
 #include <ceres/sphere_manifold.h>
+#include <ceres/manifold.h>
 #include <Eigen/Dense>
 #include <cstdint>
+#include <deque>
 #include <vector>
 #include <memory>
 #include <cmath>
@@ -75,9 +81,90 @@ namespace op
         EDGE_TANGENCY = 61,         // [a, b, radius, w]  |closest point of line AB to origin| - r
         TANGENCY_CENTROID = 62,     // [nEdges, a0,b0, a1,b1, ..., w]  mean tangency point == origin
         CENTROID = 63,              // [n, i0..., tx,ty,tz, w]  mean of listed points == target
-        RADIUS_ABOUT_CENTROID = 64  // [n, i0..., radius, w]  |p_i - mean| == radius
+        RADIUS_ABOUT_CENTROID = 64, // [n, i0..., radius, w]  |p_i - mean| == radius
+
+        // Two better-conditioned alternatives to PLANAR, and a rotation gauge. See the notes on
+        // PlanarHesse and PlanarFit below for why PLANAR alone is not enough.
+        PLANAR_HESSE = 65,     // [n, i0..., w]  plane as unit normal + scalar offset
+        PLANAR_FIT = 66,       // [n, i0..., w]  best-fit plane inside the residual, no plane vars
+        GAUGE_ROTATION = 67,   // [n, i0..., w]  kill the infinitesimal-rotation null space
+
+        // A caller-supplied residual, as a little register machine evaluated in T. See ExprVm.
+        EXPR = 68,
+
+        // A free variable: dim scalars with an initial value, a manifold, and optional per-component
+        // box bounds, declared once at the head of the program and referenced by index from EXPR.
+        // See VariableBlock.
+        VARIABLE = 69 // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
     };
 }
+
+// ============================================================
+// Residual expression VM
+// ============================================================
+//
+// Every opcode above is a residual someone wrote in C++, which means every new kind of residual
+// costs a native rebuild and a matching Kotlin change. EXPR breaks that: the caller ships a small
+// program, this evaluates it, and because the evaluator is templated on the scalar type Ceres
+// autodiffs straight through it. No new C++ for a new residual.
+//
+// It is a register machine, not a stack machine, for one reason: the caller compiles an expression
+// DAG, and with named destination slots common subexpressions are shared by construction. A stack
+// machine would have to recompute them or juggle DUP/SWAP.
+//
+// It reads two kinds of unknown. PARAM reads a *point*, which is what the caller was solving for
+// anyway. VAR reads a *free variable* — an unknown Ceres solves for that is not a point, declared by
+// op::VARIABLE and optionally living on a manifold. That is not a convenience: PLANAR_HESSE beats
+// PLANAR on the kis-family solids precisely because it introduces a plane as a free variable with its
+// normal on a SphereManifold, and PLANAR_FIT, which is the same objective with the plane eliminated
+// inside the residual, does not converge on kkC at all. Without VAR the general mechanism cannot
+// state the reformulation that has mattered most here.
+//
+// Instructions are four doubles: [op, dst, a, b]. `a` and `b` are slot indices except where noted;
+// unary operators ignore `b`.
+namespace expr
+{
+    enum : int
+    {
+        CONST = 0,  // a = index into the constant pool
+        PARAM = 1,  // a = parameter-block index, b = component 0..2
+        ADD = 2,
+        SUB = 3,
+        MUL = 4,
+        DIV = 5,
+        NEG = 6,
+        SQRT = 7,
+        ABS = 8,
+        SIN = 9,
+        COS = 10,
+        TAN = 11,
+        EXP = 12,
+        LOG = 13,
+        POW = 14,
+        MIN = 15,
+        MAX = 16,
+        ATAN2 = 17,
+        SQUARE = 18,
+        RECIP = 19,
+        VAR = 20,   // a = free-variable index (local to this residual), b = component
+    };
+}
+
+// The manifold a free variable lives on. Codes are this ABI's own, never ceres' internal ones.
+namespace manifold
+{
+    enum : int
+    {
+        NONE = 0,       // Euclidean
+        SPHERE = 1,     // unit norm, dim >= 2
+        QUATERNION = 2, // a rotation, w first, dim == 4
+    };
+}
+
+// A bound on one free variable's size. Nothing in this vocabulary needs a hundred-component unknown,
+// and the build pass allocates from this number, so it is checked rather than trusted. Must match
+// CeresVariableDecl.MAX_DIMENSION on the Kotlin side.
+#define KEN_CERES_MAX_VARIABLE_DIM 64
 
 // ============================================================
 // Operand layout
@@ -206,6 +293,77 @@ static int operand_span(int opcode, const double *program, int ip, int prog_len)
             return -1;
         int n = (int)program[ip];
         int span = (n < 0) ? 3 : (1 + n + 2);
+        return (ip + span <= prog_len) ? span : -1;
+    }
+    case op::PLANAR_HESSE:
+    case op::PLANAR_FIT:
+        return counted(1);
+    case op::GAUGE_ROTATION:
+    {
+        // [n, <n indices | none if n<0>, w]
+        if (ip >= prog_len)
+            return -1;
+        int n = (int)program[ip];
+        int span = (n < 0) ? 2 : (1 + n + 1);
+        return (ip + span <= prog_len) ? span : -1;
+    }
+    case op::EXPR:
+    {
+        // [nParams, p..., nVars, v..., nResiduals, r..., nSlots, nConsts, c..., nInstr,
+        //  (op,dst,a,b)..., w]
+        //
+        // The variable-reference run is present whether or not it is empty, which is why an EXPR
+        // stream is ABI v3 and a v2 wrapper is not allowed to try: it would read that count as the
+        // residual count and desync from there.
+        int at = ip;
+        auto take = [&](int count) -> bool
+        {
+            if (at + count > prog_len)
+                return false;
+            at += count;
+            return true;
+        };
+        auto counted_run = [&]() -> bool
+        {
+            if (at >= prog_len)
+                return false;
+            int n = (int)program[at];
+            return n >= 0 && take(1 + n);
+        };
+        if (!counted_run())      // params
+            return -1;
+        if (!counted_run())      // free-variable references
+            return -1;
+        if (!counted_run())      // residual slots
+            return -1;
+        if (!take(1))            // nSlots
+            return -1;
+        if (!counted_run())      // constants
+            return -1;
+        if (at >= prog_len)
+            return -1;
+        int instructions = (int)program[at];
+        if (instructions < 0 || !take(1 + 4 * instructions))
+            return -1;
+        if (!take(1))            // weight
+            return -1;
+        return at - ip;
+    }
+    case op::VARIABLE:
+    {
+        // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
+        if (ip >= prog_len)
+            return -1;
+        int dim = (int)program[ip];
+        if (dim < 1 || dim > KEN_CERES_MAX_VARIABLE_DIM)
+            return -1;
+        int at = ip + 2 + dim;
+        if (at >= prog_len)
+            return -1;
+        int bounds = (int)program[at];
+        if (bounds < 0 || bounds > dim)
+            return -1;
+        int span = (at + 1 + 3 * bounds) - ip;
         return (ip + span <= prog_len) ? span : -1;
     }
     default:
@@ -372,6 +530,221 @@ struct DistanceW
         T dx = A[0] - B[0], dy = A[1] - B[1], dz = A[2] - B[2];
         T d = ceres::sqrt(dx * dx + dy * dy + dz * dz) + T(1e-20);
         r[0] = T(s) * (d - T(D));
+        return true;
+    }
+};
+
+// The evaluator for op::EXPR. One instance per residual block; `code`, `constants` and
+// `residualSlots` are fixed at build time and only the scalar type varies.
+//
+// Templated on T so the same code runs on double for evaluation and on ceres::Jet for
+// differentiation — which is the whole point: a residual defined at runtime still gets exact
+// derivatives, not finite differences.
+struct ExprVm
+{
+    std::vector<int> code;          // 4 ints per instruction: op, dst, a, b
+    std::vector<double> constants;
+    std::vector<int> residualSlots;
+    int slotCount = 0;
+    // The point blocks come first in `p`, then the free-variable blocks, so VAR reads
+    // p[paramCount + a]. Fixed at build time; the evaluator does no arithmetic on it beyond the add.
+    int paramCount = 0;
+    double s = 1.0;
+
+    int instructionCount() const { return (int)(code.size() / 4); }
+
+    template <typename T>
+    bool operator()(T const *const *p, T *residuals) const
+    {
+        // One scratch slot vector per evaluation. Small and short-lived; if this ever shows up in a
+        // profile the fix is a fixed-size buffer for the common case, not a redesign.
+        std::vector<T> slot(slotCount, T(0));
+
+        const int n = instructionCount();
+        for (int i = 0; i < n; ++i)
+        {
+            const int op = code[4 * i];
+            const int dst = code[4 * i + 1];
+            const int a = code[4 * i + 2];
+            const int b = code[4 * i + 3];
+            switch (op)
+            {
+            case expr::CONST:
+                slot[dst] = T(constants[a]);
+                break;
+            case expr::PARAM:
+                slot[dst] = p[a][b];
+                break;
+            case expr::VAR:
+                slot[dst] = p[paramCount + a][b];
+                break;
+            case expr::ADD:
+                slot[dst] = slot[a] + slot[b];
+                break;
+            case expr::SUB:
+                slot[dst] = slot[a] - slot[b];
+                break;
+            case expr::MUL:
+                slot[dst] = slot[a] * slot[b];
+                break;
+            case expr::DIV:
+                slot[dst] = slot[a] / slot[b];
+                break;
+            case expr::NEG:
+                slot[dst] = -slot[a];
+                break;
+            case expr::SQRT:
+                slot[dst] = ceres::sqrt(slot[a]);
+                break;
+            case expr::ABS:
+                slot[dst] = ceres::abs(slot[a]);
+                break;
+            case expr::SIN:
+                slot[dst] = ceres::sin(slot[a]);
+                break;
+            case expr::COS:
+                slot[dst] = ceres::cos(slot[a]);
+                break;
+            case expr::TAN:
+                slot[dst] = ceres::tan(slot[a]);
+                break;
+            case expr::EXP:
+                slot[dst] = ceres::exp(slot[a]);
+                break;
+            case expr::LOG:
+                slot[dst] = ceres::log(slot[a]);
+                break;
+            case expr::POW:
+                slot[dst] = ceres::pow(slot[a], slot[b]);
+                break;
+            case expr::MIN:
+                slot[dst] = ceres::fmin(slot[a], slot[b]);
+                break;
+            case expr::MAX:
+                slot[dst] = ceres::fmax(slot[a], slot[b]);
+                break;
+            case expr::ATAN2:
+                slot[dst] = ceres::atan2(slot[a], slot[b]);
+                break;
+            case expr::SQUARE:
+                slot[dst] = slot[a] * slot[a];
+                break;
+            case expr::RECIP:
+                slot[dst] = T(1.0) / slot[a];
+                break;
+            default:
+                return false; // validated at build time; a bad opcode here means memory corruption
+            }
+        }
+
+        for (size_t i = 0; i < residualSlots.size(); ++i)
+            residuals[i] = T(s) * slot[residualSlots[i]];
+        return true;
+    }
+};
+
+// ------------------------------------------------------------
+// Better-conditioned planarity, and a rotation gauge.
+//
+// PLANAR parameterises each face's plane as an origin O and a unit normal n, and its residual is
+// (P - O) . n. That expression depends on O only through O . n, so the two components of O
+// tangential to the plane are an EXACT null direction — two per face, held up by nothing but the
+// 1e-6 OriginPriorW stabiliser. On a solid with more faces than vertices (any kis-like operator)
+// that dominates: a 72-face polyhedron carries 144 near-null directions against 114 real ones, and
+// Levenberg-Marquardt spends its whole iteration budget crawling along them.
+//
+// PLANAR_HESSE fixes the parameterisation: a plane is { x : x . n == d } with n on a sphere
+// manifold and d a scalar, which is three effective parameters per face and no null space.
+//
+// PLANAR_FIT removes the plane variables entirely by computing the Newell best-fit plane inside the
+// residual. It is exactly what afield.stdlib.polytope.FacePlanarityConstraint measures, so it makes
+// the Kotlin and Ceres realizers the same objective rather than merely equivalent ones.
+// ------------------------------------------------------------
+
+// Point on plane in Hesse normal form: P . n - d.
+struct PointOnPlaneHesseW
+{
+    double s;
+    explicit PointOnPlaneHesseW(double w) : s(std::sqrt(std::max(0.0, w))) {}
+    template <typename T>
+    bool operator()(const T *const P, const T *const n, const T *const d, T *r) const
+    {
+        r[0] = T(s) * (P[0] * n[0] + P[1] * n[1] + P[2] * n[2] - d[0]);
+        return true;
+    }
+};
+
+// Every corner's signed distance to the face's own Newell best-fit plane. One residual per corner,
+// no auxiliary variables. Mirrors facePlane() + signedPlaneDistance() in Constraints.kt, including
+// the 1e-10 floor on the normal length that keeps a degenerate face from dividing by zero.
+struct PlanarFitW
+{
+    int n;
+    double s;
+    PlanarFitW(int n_, double w) : n(n_), s(std::sqrt(std::max(0.0, w))) {}
+
+    template <typename T>
+    bool operator()(T const *const *p, T *r) const
+    {
+        T cx = T(0), cy = T(0), cz = T(0);
+        T nx = T(0), ny = T(0), nz = T(0);
+        for (int i = 0; i < n; ++i)
+        {
+            const T *a = p[i];
+            const T *b = p[(i + 1) % n];
+            cx += a[0];
+            cy += a[1];
+            cz += a[2];
+            nx += (a[1] - b[1]) * (a[2] + b[2]);
+            ny += (a[2] - b[2]) * (a[0] + b[0]);
+            nz += (a[0] - b[0]) * (a[1] + b[1]);
+        }
+        T inv = T(1.0 / (double)std::max(1, n));
+        cx *= inv;
+        cy *= inv;
+        cz *= inv;
+
+        T len = ceres::sqrt(nx * nx + ny * ny + nz * nz + T(1e-20));
+        if (len < T(1e-10))
+            len = T(1e-10);
+        for (int i = 0; i < n; ++i)
+        {
+            r[i] = T(s) * ((p[i][0] - cx) * nx + (p[i][1] - cy) * ny + (p[i][2] - cz) * nz) / len;
+        }
+        return true;
+    }
+};
+
+// Three residuals: sum_i (ref_i x p_i), the linearisation of "the cloud has not rotated relative to
+// where it started".
+//
+// The canonical conditions pin translation (TANGENCY_CENTROID) and scale (EDGE_TANGENCY) but say
+// nothing about orientation, so the optimum is a one-parameter-per-axis continuum and the minimiser
+// is free to wander along it. Removing the null space explicitly is cheaper than damping it, and it
+// makes the answer reproducible instead of dependent on the path taken to it.
+struct GaugeRotationW
+{
+    std::vector<double> ref; // 3 per point, in parameter-block order
+    double s;
+    GaugeRotationW(std::vector<double> ref_, double w)
+        : ref(std::move(ref_)), s(std::sqrt(std::max(0.0, w))) {}
+
+    template <typename T>
+    bool operator()(T const *const *p, T *r) const
+    {
+        T sx = T(0), sy = T(0), sz = T(0);
+        const int n = (int)(ref.size() / 3);
+        for (int i = 0; i < n; ++i)
+        {
+            T ax = T(ref[3 * i]), ay = T(ref[3 * i + 1]), az = T(ref[3 * i + 2]);
+            sx += ay * p[i][2] - az * p[i][1];
+            sy += az * p[i][0] - ax * p[i][2];
+            sz += ax * p[i][1] - ay * p[i][0];
+        }
+        T inv = T(1.0 / (double)std::max(1, n));
+        r[0] = T(s) * sx * inv;
+        r[1] = T(s) * sy * inv;
+        r[2] = T(s) * sz * inv;
         return true;
     }
 };
@@ -1048,7 +1421,34 @@ struct PlaneVar
 {
     double O[3];
     double n[3];
+    double d = 0.0; // PLANAR_HESSE offset: the plane is { x : x . n == d }
 };
+
+// A free variable: one parameter block Ceres owns, that is not a point.
+//
+// Held in a std::deque rather than a std::vector because the build pass hands &values[0] to Ceres as
+// it goes and there is no pre-count pass for these — a deque never moves an element it already
+// holds, so no reserve() is needed and nobody has to remember one.
+struct VariableBlock
+{
+    std::vector<double> values;
+    int manifold = manifold::NONE;
+};
+
+// The ABI's manifold codes are deliberately its own; ceres' enum values are not stable across
+// versions and were never meant to be an interchange format.
+static ceres::Manifold *make_manifold(int kind, int dim)
+{
+    switch (kind)
+    {
+    case manifold::SPHERE:
+        return new ceres::SphereManifold<ceres::DYNAMIC>(dim);
+    case manifold::QUATERNION:
+        return new ceres::QuaternionManifold();
+    default:
+        return nullptr; // Euclidean: Ceres' own default, no manifold object needed
+    }
+}
 
 struct GroupCost
 {
@@ -1069,8 +1469,9 @@ struct SolverContext
     std::vector<double> prior_wx, prior_wy, prior_wz; // N
     std::vector<uint8_t> prior_mask;                  // N bitmask X=1,Y=2,Z=4
 
-    std::vector<PlaneVar> planes;  // for PLANAR constraints
-    std::vector<GroupCost> groups; // for per-group metrics
+    std::vector<PlaneVar> planes;      // for PLANAR constraints
+    std::deque<VariableBlock> vars;    // for op::VARIABLE, in declaration order
+    std::vector<GroupCost> groups;     // for per-group metrics
 
     robust::Choice loss;      // set by SET_LOSS; Huber(1e-3) if the program does not say
     std::string build_error;  // empty when the whole program parsed
@@ -1105,6 +1506,7 @@ void SolverContext::build(int Npts, const double *points_in,
     prior_wz.assign(Npts, 1e-6);
     prior_mask.assign(Npts, 0);
     planes.clear();
+    vars.clear();
 
     for (int i = 0; i < 3 * Npts; ++i)
     {
@@ -1138,8 +1540,138 @@ void SolverContext::build(int Npts, const double *points_in,
                 loss.scale = 1e-3;
         }
         break;
-        case op::PLANAR:
+        case op::VARIABLE:
         {
+            // Declared here, in the counting pass, for the same reason SET_LOSS is: an EXPR anywhere
+            // in the program references a variable by index, and the indices have to exist before the
+            // build pass reaches the first reference. Program-scoped, not positional — which is also
+            // what lets several residual blocks share one variable, the difference between "each face
+            // has its own plane" and "these fifty observations see one camera".
+            int span = operand_span(op::VARIABLE, program, ip, prog_len);
+            if (span < 0)
+            {
+                build_error = "malformed VARIABLE at offset " + std::to_string(ip - 1);
+                ip = prog_len;
+                break;
+            }
+            int dim = (int)program[ip];
+            int kind = (int)program[ip + 1];
+            const double *init = program + ip + 2;
+            const int boundCount = (int)program[ip + 2 + dim];
+            const double *boundSpec = program + ip + 3 + dim; // (component, lower, upper) triples
+            ip += span;
+
+            // Validated here rather than at first use: a bad manifold/dimension pairing is a
+            // std::abort inside Ceres, and a non-finite seed is a solve that fails with no
+            // explanation of why.
+            bool finite = true;
+            double norm2 = 0.0;
+            for (int k = 0; k < dim; ++k)
+            {
+                if (!std::isfinite(init[k]))
+                    finite = false;
+                norm2 += init[k] * init[k];
+            }
+            const int index = (int)vars.size();
+            if (!finite)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " has a non-finite initial value";
+                ip = prog_len;
+                break;
+            }
+            if (kind != manifold::NONE && kind != manifold::SPHERE && kind != manifold::QUATERNION)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " names unknown manifold " +
+                              std::to_string(kind);
+                ip = prog_len;
+                break;
+            }
+            if (kind == manifold::SPHERE && dim < 2)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " is on a sphere manifold but has only one component";
+                ip = prog_len;
+                break;
+            }
+            if (kind == manifold::QUATERNION && dim != 4)
+            {
+                build_error = "VARIABLE " + std::to_string(index) + " is a quaternion but has " +
+                              std::to_string(dim) + " components";
+                ip = prog_len;
+                break;
+            }
+            if ((kind == manifold::SPHERE || kind == manifold::QUATERNION) && norm2 <= 1e-20)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " is on a curved manifold and cannot start at the origin";
+                ip = prog_len;
+                break;
+            }
+
+            // Bounds are ambient-coordinate statements; a manifold steps in the tangent space and can
+            // walk straight through one, so the pair is refused rather than quietly misbehaving.
+            if (boundCount > 0 && kind != manifold::NONE)
+            {
+                build_error = "VARIABLE " + std::to_string(index) +
+                              " has bounds and a manifold, which do not compose";
+                ip = prog_len;
+                break;
+            }
+            bool boundsOk = true;
+            for (int b = 0; b < boundCount && boundsOk; ++b)
+            {
+                const int component = (int)boundSpec[3 * b];
+                const double lower = boundSpec[3 * b + 1];
+                const double upper = boundSpec[3 * b + 2];
+                if (component < 0 || component >= dim)
+                {
+                    build_error = "VARIABLE " + std::to_string(index) + " bounds component " +
+                                  std::to_string(component) + " of " + std::to_string(dim);
+                    boundsOk = false;
+                }
+                else if (!(lower <= upper) || std::isnan(lower) || std::isnan(upper))
+                {
+                    build_error = "VARIABLE " + std::to_string(index) + " component " +
+                                  std::to_string(component) + " has an empty or NaN bound";
+                    boundsOk = false;
+                }
+                else if (init[component] < lower || init[component] > upper)
+                {
+                    // Ceres requires a feasible start; an infeasible one is a CHECK failure inside the
+                    // minimiser, which would take the whole process down.
+                    build_error = "VARIABLE " + std::to_string(index) + " component " +
+                                  std::to_string(component) + " starts outside its own bound";
+                    boundsOk = false;
+                }
+            }
+            if (!boundsOk)
+            {
+                ip = prog_len;
+                break;
+            }
+
+            vars.push_back(VariableBlock{});
+            VariableBlock &v = vars.back();
+            v.manifold = kind;
+            v.values.assign(init, init + dim);
+            problem->AddParameterBlock(v.values.data(), dim, make_manifold(kind, dim));
+            for (int b = 0; b < boundCount; ++b)
+            {
+                const int component = (int)boundSpec[3 * b];
+                const double lower = boundSpec[3 * b + 1];
+                const double upper = boundSpec[3 * b + 2];
+                if (lower > -std::numeric_limits<double>::max())
+                    problem->SetParameterLowerBound(v.values.data(), component, lower);
+                if (upper < std::numeric_limits<double>::max())
+                    problem->SetParameterUpperBound(v.values.data(), component, upper);
+            }
+        }
+        break;
+        case op::PLANAR:
+        case op::PLANAR_HESSE:
+        {
+            // Both allocate a PlaneVar, and planes.reserve() below is what keeps those addresses
+            // stable while the build pass hands pointers into the vector to Ceres.
             if (ip >= prog_len)
             {
                 ip = prog_len;
@@ -2123,6 +2655,207 @@ void SolverContext::build(int Npts, const double *points_in,
             ip += 2;
             break;
 
+        case op::VARIABLE:
+        {
+            // Also already consumed — the parameter block exists before this pass starts. Step over
+            // it via the one span table rather than a second copy of the layout.
+            int span = operand_span(op::VARIABLE, program, ip, prog_len);
+            ip = (span < 0) ? prog_len : ip + span;
+        }
+        break;
+
+        case op::PLANAR_HESSE:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            if (n < 3 || ip + n + 1 > prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            std::vector<int> idx(n);
+            for (int k = 0; k < n; ++k)
+                idx[k] = (int)program[ip++];
+            double w = program[ip++];
+
+            groups.push_back(GroupCost{});
+            GroupCost &G = groups.back();
+            G.opcode = op::PLANAR_HESSE;
+
+            planes.push_back(PlaneVar{});
+            PlaneVar &pv = planes.back();
+
+            // Seed from the current points, exactly as PLANAR does: centroid plus the smallest
+            // eigenvector of the scatter matrix.
+            Eigen::Vector3d c(0, 0, 0);
+            int seen = 0;
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    c += Eigen::Vector3d(pts[3 * id + 0], pts[3 * id + 1], pts[3 * id + 2]);
+                    ++seen;
+                }
+            if (seen > 0)
+                c /= double(seen);
+
+            Eigen::Matrix3d C = Eigen::Matrix3d::Zero();
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    Eigen::Vector3d v(pts[3 * id + 0] - c.x(), pts[3 * id + 1] - c.y(), pts[3 * id + 2] - c.z());
+                    C += v * v.transpose();
+                }
+            Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> es(C);
+            Eigen::Vector3d nml(1, 0, 0);
+            if (es.info() == Eigen::Success)
+                nml = es.eigenvectors().col(0);
+            if (nml.norm() < 1e-12)
+                nml = Eigen::Vector3d(1, 0, 0);
+            nml.normalize();
+
+            pv.n[0] = nml.x();
+            pv.n[1] = nml.y();
+            pv.n[2] = nml.z();
+            pv.d = nml.dot(c);
+
+            problem->AddParameterBlock(pv.n, 3, new ceres::SphereManifold<3>());
+            problem->AddParameterBlock(&pv.d, 1);
+
+            // No stabilisers. Unlike PLANAR there is nothing to stabilise: (n, d) has no null
+            // direction, so the plane is fully determined by the residuals that use it.
+            for (int id : idx)
+                if (id >= 0 && id < Npts)
+                {
+                    auto *cost = new ceres::AutoDiffCostFunction<PointOnPlaneHesseW, 1, 3, 3, 1>(
+                        new PointOnPlaneHesseW(w));
+                    ceres::ResidualBlockId rid =
+                        problem->AddResidualBlock(cost, loss.make(), &pts[3 * id], pv.n, &pv.d);
+                    G.blocks.push_back(rid);
+                }
+        }
+        break;
+
+        case op::PLANAR_FIT:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            if (n < 3 || ip + n + 1 > prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            std::vector<int> idx;
+            for (int k = 0; k < n; ++k)
+            {
+                int id = (int)program[ip++];
+                if (id >= 0 && id < Npts)
+                    idx.push_back(id);
+            }
+            double w = program[ip++];
+
+            // The Newell fit reads each corner in cycle order, so a repeated vertex would need the
+            // same parameter block twice and Ceres forbids that. Such a face is degenerate anyway.
+            std::vector<int> sorted = idx;
+            std::sort(sorted.begin(), sorted.end());
+            bool repeats = std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end();
+            if ((int)idx.size() >= 3 && !repeats)
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::PLANAR_FIT;
+
+                auto *functor = new PlanarFitW((int)idx.size(), w);
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<PlanarFitW>(functor);
+                std::vector<double *> blocks;
+                for (int id : idx)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                cost->SetNumResiduals((int)idx.size());
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
+        case op::GAUGE_ROTATION:
+        {
+            if (ip >= prog_len)
+            {
+                ip = prog_len;
+                break;
+            }
+            int n = (int)program[ip++];
+            std::vector<int> idx;
+            if (n < 0)
+            {
+                if (ip + 1 > prog_len)
+                {
+                    ip = prog_len;
+                    break;
+                }
+                idx.resize(Npts);
+                for (int i = 0; i < Npts; ++i)
+                    idx[i] = i;
+            }
+            else
+            {
+                if (ip + n + 1 > prog_len)
+                {
+                    ip = prog_len;
+                    break;
+                }
+                for (int k = 0; k < n; ++k)
+                {
+                    int id = (int)program[ip++];
+                    if (id >= 0 && id < Npts)
+                        idx.push_back(id);
+                }
+            }
+            double w = program[ip++];
+
+            std::sort(idx.begin(), idx.end());
+            idx.erase(std::unique(idx.begin(), idx.end()), idx.end());
+            if (!idx.empty())
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::GAUGE_ROTATION;
+
+                // The reference pose is the one the problem was built with, which is the pose the
+                // caller handed to ken_ceres_solver_create.
+                std::vector<double> ref;
+                ref.reserve(3 * idx.size());
+                for (int id : idx)
+                {
+                    ref.push_back(points_in[3 * id]);
+                    ref.push_back(points_in[3 * id + 1]);
+                    ref.push_back(points_in[3 * id + 2]);
+                }
+                auto *functor = new GaugeRotationW(std::move(ref), w);
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<GaugeRotationW>(functor);
+                std::vector<double *> blocks;
+                for (int id : idx)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                cost->SetNumResiduals(3);
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
         case op::EDGE_TANGENCY:
         {
             if (ip + 4 > prog_len)
@@ -2321,6 +3054,238 @@ void SolverContext::build(int Npts, const double *points_in,
                     blocks.push_back(&pts[3 * id]);
                 }
                 cost->SetNumResiduals((int)idx.size());
+                ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
+                G.blocks.push_back(rid);
+            }
+        }
+        break;
+
+        case op::EXPR:
+        {
+            // [nParams, p..., nResiduals, slot..., nSlots, nConsts, c..., nInstr, (op,dst,a,b)..., w]
+            //
+            // Validated hard here rather than in the evaluator: the evaluator runs once per
+            // residual per Jet per iteration, and an out-of-range slot index there is an
+            // out-of-bounds write in someone else's process.
+            int span = operand_span(op::EXPR, program, ip, prog_len);
+            if (span < 0)
+            {
+                build_error = "malformed EXPR at offset " + std::to_string(ip - 1);
+                ip = prog_len;
+                break;
+            }
+            const int end = ip + span;
+
+            int nParams = (int)program[ip++];
+            std::vector<int> params(nParams);
+            for (int k = 0; k < nParams; ++k)
+                params[k] = (int)program[ip++];
+
+            int nVars = (int)program[ip++];
+            std::vector<int> varRefs(nVars);
+            for (int k = 0; k < nVars; ++k)
+                varRefs[k] = (int)program[ip++];
+
+            int nResiduals = (int)program[ip++];
+            std::vector<int> residualSlots(nResiduals);
+            for (int k = 0; k < nResiduals; ++k)
+                residualSlots[k] = (int)program[ip++];
+
+            int nSlots = (int)program[ip++];
+
+            int nConsts = (int)program[ip++];
+            std::vector<double> constants(nConsts);
+            for (int k = 0; k < nConsts; ++k)
+                constants[k] = program[ip++];
+
+            int nInstr = (int)program[ip++];
+            std::vector<int> code(4 * nInstr);
+            for (int k = 0; k < 4 * nInstr; ++k)
+                code[k] = (int)program[ip++];
+
+            double w = program[ip++];
+            ip = end; // defensive: never let a miscount here desync the rest of the program
+
+            auto fail = [&](const std::string &why)
+            {
+                build_error = "EXPR: " + why;
+            };
+
+            bool ok = true;
+            if (nParams < 0 || nResiduals < 1 || nSlots < 1)
+            {
+                fail("needs a non-negative point count, one residual and one slot");
+                ok = false;
+            }
+            // Points OR free variables — a fit ("what sphere passes through this fixed data") has no
+            // point unknowns at all, and forcing it to name a point it never reads would give Ceres a
+            // Jacobian column of zeros. Zero of both is a residual that cannot depend on anything.
+            if (ok && nParams + nVars < 1)
+            {
+                fail("names neither a point nor a free variable, so nothing can change its value");
+                ok = false;
+            }
+            // Ceres forbids naming the same parameter block twice in one residual block.
+            std::vector<int> sortedParams = params;
+            std::sort(sortedParams.begin(), sortedParams.end());
+            if (ok && std::adjacent_find(sortedParams.begin(), sortedParams.end()) != sortedParams.end())
+            {
+                fail("the same point appears twice in one expression's parameter list");
+                ok = false;
+            }
+            if (ok)
+                for (int id : params)
+                    if (id < 0 || id >= Npts)
+                    {
+                        fail("point index " + std::to_string(id) + " out of range");
+                        ok = false;
+                        break;
+                    }
+            if (ok && nVars < 0)
+            {
+                fail("negative free-variable count");
+                ok = false;
+            }
+            // Same rule as for points, for the same reason: one residual block, one appearance per
+            // parameter block.
+            std::vector<int> sortedVars = varRefs;
+            std::sort(sortedVars.begin(), sortedVars.end());
+            if (ok && std::adjacent_find(sortedVars.begin(), sortedVars.end()) != sortedVars.end())
+            {
+                fail("the same free variable appears twice in one expression");
+                ok = false;
+            }
+            if (ok)
+                for (int v : varRefs)
+                    if (v < 0 || v >= (int)vars.size())
+                    {
+                        fail("free variable " + std::to_string(v) + " of " + std::to_string(vars.size()) +
+                             " declared");
+                        ok = false;
+                        break;
+                    }
+            if (ok)
+                for (int slotIndex : residualSlots)
+                    if (slotIndex < 0 || slotIndex >= nSlots)
+                    {
+                        fail("residual reads slot " + std::to_string(slotIndex) + " of " + std::to_string(nSlots));
+                        ok = false;
+                        break;
+                    }
+            // A variable this residual names but never reads gives Ceres a Jacobian column of exact
+            // zeros for a parameter that provably cannot affect the answer. Caught here so that a
+            // hand-assembled program gets the same refusal the Kotlin compiler already gives.
+            std::vector<char> varRead(nVars > 0 ? nVars : 0, 0);
+            if (ok)
+                for (int k = 0; k < nInstr; ++k)
+                    if (code[4 * k] == expr::VAR)
+                    {
+                        int v = code[4 * k + 2];
+                        if (v >= 0 && v < nVars)
+                            varRead[v] = 1;
+                    }
+            if (ok)
+                for (int v = 0; v < nVars; ++v)
+                    if (!varRead[v])
+                    {
+                        fail("free variable " + std::to_string(v) + " is named but never read");
+                        ok = false;
+                        break;
+                    }
+            if (ok)
+                for (int k = 0; k < nInstr; ++k)
+                {
+                    const int o = code[4 * k], dst = code[4 * k + 1];
+                    const int a = code[4 * k + 2], b = code[4 * k + 3];
+                    if (o < expr::CONST || o > expr::VAR)
+                    {
+                        fail("unknown expression op " + std::to_string(o) + " at instruction " + std::to_string(k));
+                        ok = false;
+                        break;
+                    }
+                    if (dst < 0 || dst >= nSlots)
+                    {
+                        fail("instruction " + std::to_string(k) + " writes slot " + std::to_string(dst));
+                        ok = false;
+                        break;
+                    }
+                    if (o == expr::CONST)
+                    {
+                        if (a < 0 || a >= nConsts)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads constant " + std::to_string(a));
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else if (o == expr::PARAM)
+                    {
+                        if (a < 0 || a >= nParams || b < 0 || b > 2)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads parameter " +
+                                 std::to_string(a) + " component " + std::to_string(b));
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else if (o == expr::VAR)
+                    {
+                        // The component is checked against *that variable's* declared dimension, not
+                        // against a constant: a scalar offset and a quaternion are both legal blocks.
+                        const int dim = (a >= 0 && a < nVars) ? (int)vars[varRefs[a]].values.size() : 0;
+                        if (a < 0 || a >= nVars || b < 0 || b >= dim)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads free variable " +
+                                 std::to_string(a) + " component " + std::to_string(b) + " of " +
+                                 std::to_string(dim));
+                            ok = false;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        // Every remaining op reads slots. Binary ops read both; unary ops ignore b,
+                        // and the encoder writes 0 there, which is always a valid slot.
+                        if (a < 0 || a >= nSlots || b < 0 || b >= nSlots)
+                        {
+                            fail("instruction " + std::to_string(k) + " reads slots " +
+                                 std::to_string(a) + "," + std::to_string(b) + " of " + std::to_string(nSlots));
+                            ok = false;
+                            break;
+                        }
+                    }
+                }
+
+            if (ok)
+            {
+                groups.push_back(GroupCost{});
+                GroupCost &G = groups.back();
+                G.opcode = op::EXPR;
+
+                auto *vm = new ExprVm();
+                vm->code = std::move(code);
+                vm->constants = std::move(constants);
+                vm->residualSlots = residualSlots;
+                vm->slotCount = nSlots;
+                vm->paramCount = nParams;
+                vm->s = std::sqrt(std::max(0.0, w));
+
+                auto *cost = new ceres::DynamicAutoDiffCostFunction<ExprVm>(vm);
+                std::vector<double *> blocks;
+                for (int id : params)
+                {
+                    cost->AddParameterBlock(3);
+                    blocks.push_back(&pts[3 * id]);
+                }
+                // Free-variable blocks after the point blocks, in the order the caller named them,
+                // which is the order expr::VAR indexes. Their sizes vary; the points' never do.
+                for (int v : varRefs)
+                {
+                    VariableBlock &vb = vars[v];
+                    cost->AddParameterBlock((int)vb.values.size());
+                    blocks.push_back(vb.values.data());
+                }
+                cost->SetNumResiduals(nResiduals);
                 ceres::ResidualBlockId rid = problem->AddResidualBlock(cost, loss.make(), blocks);
                 G.blocks.push_back(rid);
             }
@@ -2677,41 +3642,96 @@ static int solve_with_context(SolverContext *ctx,
 extern "C"
 {
 
-    const char *ken_ceres_jvm_abi_version()
+    // Ceres logs through glog, and parts of it — the Levenberg-Marquardt strategy's "linear solver
+    // failure" warning in particular — use LOG(WARNING) directly rather than going through
+    // Solver::Options::logging_type. In a library loaded into someone else's process that means
+    // uninitialised-glog noise on stderr during an otherwise successful solve. Initialise once and
+    // keep it quiet; a caller who wants Ceres' own chatter asks for it per solve with
+    // minimizer_progress_to_stdout.
+    static void quiet_glog_once()
     {
-        // v2 adds ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
+#if defined(KEN_CERES_HAVE_GLOG)
+        static bool done = false;
+        if (done)
+            return;
+        done = true;
+        if (!google::IsGoogleLoggingInitialized())
+            google::InitGoogleLogging("ken_ceres");
+        FLAGS_minloglevel = google::GLOG_ERROR;
+        FLAGS_logtostderr = false;
+        FLAGS_stderrthreshold = google::GLOG_FATAL;
+#endif
+    }
+
+    KEN_CERES_API const char *ken_ceres_jvm_abi_version()
+    {
+        // v2 added ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
         // and the SET_LOSS / EDGE_TANGENCY / TANGENCY_CENTROID / CENTROID / RADIUS_ABOUT_CENTROID
-        // opcodes. Every v1 entry point still behaves exactly as it did.
-        return "ken_ceres_jvm_abi_v2";
+        // opcodes.
+        //
+        // v3 adds op::VARIABLE and expr::VAR — free variables an EXPR residual can read, on a
+        // manifold if it wants one — plus ken_ceres_solver_variables to read their solved values back.
+        // It also *changes* EXPR's operand layout: the variable-reference run is present whether or
+        // not it is empty, so a v2 caller's EXPR stream is not a v3 stream and vice versa. That is why
+        // the version moves rather than the feature being sniffed; a wrapper silently misparsing an
+        // operand stream is the failure mode v2 was built to end.
+        //
+        // Every v1 and v2 entry point still behaves exactly as it did.
+        return "ken_ceres_jvm_abi_v3";
     }
 
     // Empty when the whole program parsed. Non-empty means residuals are MISSING from the problem
     // and any solve is of a different, smaller problem than the caller asked for.
-    const char *ken_ceres_solver_last_error(void *handle)
+    KEN_CERES_API const char *ken_ceres_solver_last_error(void *handle)
     {
         auto *ctx = static_cast<SolverContext *>(handle);
         return (ctx && !ctx->build_error.empty()) ? ctx->build_error.c_str() : "";
     }
 
-    void *ken_ceres_solver_create(const double *points_in, int num_points,
+    // The free variables, flattened in declaration order. Returns the total component count whatever
+    // `cap` is, so a caller can size a buffer with (nullptr, 0) and then fill it.
+    KEN_CERES_API int ken_ceres_solver_variables(void *handle, double *out, int cap)
+    {
+        auto *ctx = static_cast<SolverContext *>(handle);
+        if (!ctx)
+            return 0;
+        int total = 0;
+        for (const VariableBlock &v : ctx->vars)
+            total += (int)v.values.size();
+        if (out && cap > 0)
+        {
+            int at = 0;
+            for (const VariableBlock &v : ctx->vars)
+                for (double value : v.values)
+                {
+                    if (at >= cap)
+                        return total;
+                    out[at++] = value;
+                }
+        }
+        return total;
+    }
+
+    KEN_CERES_API void *ken_ceres_solver_create(const double *points_in, int num_points,
                                   const double *program, int program_len,
                                   uint32_t constraints_hash)
     {
         if (!points_in || !program || num_points < 0 || program_len < 0)
             return nullptr;
 
+        quiet_glog_once();
         auto *ctx = new SolverContext();
         ctx->build(num_points, points_in, program, program_len);
         ctx->hash = constraints_hash;
         return ctx;
     }
 
-    void ken_ceres_solver_destroy(void *handle)
+    KEN_CERES_API void ken_ceres_solver_destroy(void *handle)
     {
         delete static_cast<SolverContext *>(handle);
     }
 
-    int ken_ceres_solver_solve(void *handle,
+    KEN_CERES_API int ken_ceres_solver_solve(void *handle,
                                const double *points_in, int num_points,
                                int max_iters,
                                const double *prior_w_xyz,
@@ -2745,7 +3765,7 @@ extern "C"
     //   [7] minimizer_progress_to_stdout (0/1)
     //
     // summary_out is a flat array of at most 12 slots; see the writer in solve_with_context.
-    int ken_ceres_solver_solve2(void *handle,
+    KEN_CERES_API int ken_ceres_solver_solve2(void *handle,
                                 const double *points_in, int num_points,
                                 const double *options, int options_len,
                                 const double *prior_w_xyz,
@@ -2780,7 +3800,7 @@ extern "C"
     }
 
     // Basic: no dynamic prior weights, no metrics
-    int solve_constraints(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints(const double *points_in, int num_points,
                           const double *program, int program_len,
                           uint32_t constraints_hash, int max_iters,
                           double *points_out)
@@ -2823,7 +3843,7 @@ extern "C"
     }
 
     // Extended: dynamic per-axis prior weights (length 3*N array or null)
-    int solve_constraints_ex(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints_ex(const double *points_in, int num_points,
                              const double *program, int program_len,
                              uint32_t constraints_hash, int max_iters,
                              const double *prior_w_xyz, // nullable, len = 3*N
@@ -2878,7 +3898,7 @@ extern "C"
     }
 
     // Metrics variant: returns total and per-group costs
-    int solve_constraints_metrics(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints_metrics(const double *points_in, int num_points,
                                   const double *program, int program_len,
                                   uint32_t constraints_hash, int max_iters,
                                   const double *prior_w_xyz, // nullable

@@ -1,7 +1,6 @@
 package afield.examples.ceres
 
 import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.FfmCeresBackend
 import afield.stdlib.ceres.PointCloud
@@ -14,7 +13,8 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
- * Exercises everything ABI v2 added, against a problem with a known closed-form answer.
+ * Exercises the solver options, the summary, the selectable loss and the midsphere constraint
+ * family, against a problem with a known closed-form answer.
  *
  * The test object is a cube's twelve edges. Ask for every edge tangent to a unit sphere about the
  * origin and the tangency points centred there, and the answer is the cube of half-edge 1 — each
@@ -23,11 +23,7 @@ import kotlin.math.sqrt
  */
 fun main() {
     val backend = FfmCeresBackend()
-    println("abi=${backend.abiVersion} features=${backend.supportedFeatures}")
-    check(CeresFeature.AbiV2 in backend.supportedFeatures) {
-        "this smoke needs the v2 wrapper; build it with ./gradlew buildCeresNative and pass " +
-            "-PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
-    }
+    println("abi=${backend.abiVersion}")
 
     val cache = CachedCeresSolvers(backend)
 

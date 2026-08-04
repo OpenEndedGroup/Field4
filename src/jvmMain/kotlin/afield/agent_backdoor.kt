@@ -96,6 +96,7 @@ private fun registerDocumentSession(session: WebSocketSession, info: SessionInfo
     thisSessionInfo.set(info)
     info.sessions.add(session)
     UserThemeManager.sendTo(session)
+    UserKeybindingsManager.sendTo(session)
     broadcastWelcomeEvent("session-attached")
 }
 

@@ -1,8 +1,35 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
 import kotlin.math.abs
 import kotlin.math.sqrt
+
+/**
+ * Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*.
+ *
+ * Two unrelated jobs, kept in one file because the second is what makes the first reproducible.
+ *
+ * [PolytopeTopology.realize] is the first of the library's three realization verbs. It differs from
+ * [RealizationPolicy3], which computes a Conway output's coordinates from its *source's*: a
+ * [RealizationConstruction] sees only the incidence structure and must invent an embedding from
+ * nothing. [SpectralRealization] is the one built in — the low Laplacian modes of the vertex graph,
+ * which is exactly the symmetric solid for a vertex-transitive graph and a good symmetry-respecting
+ * starting point otherwise.
+ *
+ * [RigidGauge] is the other half. Every constraint family in this package is invariant under rigid
+ * motion, and most under scale, so a solver's answer is only defined up to seven degrees of freedom.
+ * Leaving that to a weak proximity term makes results depend on solver damping; instead
+ * [PolyhedralObject.normalize] translates a declared centre to the origin, scales a declared measured
+ * length to a target, and — given a reference embedding — applies the one rotation that best matches
+ * it. The rotation gauge is anchored to a reference rather than to the inertia tensor on purpose: the
+ * principal axes of a symmetric solid are degenerate, so an inertia gauge would spin.
+ *
+ * Nothing here claims a shape is *good*. A construction can return a self-intersecting embedding with
+ * non-planar faces and this file will not notice; that is what [PolyhedralObject.canonicalDiagnostics]
+ * and [PolyhedralObject.geometryDiagnostics] are for.
+ */
 
 /**
  * Construct coordinates for an abstract topology according to a declared policy.
@@ -12,6 +39,9 @@ import kotlin.math.sqrt
  * [RealizationConstruction] sees only combinatorics and must invent an embedding from nothing.
  */
 fun interface RealizationConstruction {
+    /**
+     * Invent coordinates for [topology]. Must return one point per rank-0 element, in `elements(0)` order.
+     */
     fun construct(topology: PolytopeTopology): Realization3
 }
 
@@ -46,7 +76,16 @@ fun PolyhedralObject.realize(policy: RealizationConstruction): PolyhedralObject 
  *        eigenvector magnitudes that otherwise flatten a non-degenerate embedding.
  */
 data class SpectralRealization(
+    /**
+     * Scale every vertex to unit length. On by default because the three eigenvectors have wildly
+     * different magnitudes whenever the modes are not degenerate, which flattens the embedding into a
+     * ribbon; the projection trades that for a shape that is at least round.
+     */
     val projectToSphere: Boolean = true,
+    /**
+     * Cyclic Jacobi sweeps allowed for the eigendecomposition. The iteration exits early once the
+     * off-diagonal mass is negligible, so this is a ceiling rather than a cost.
+     */
     val sweeps: Int = 64,
 ) : RealizationConstruction {
     init {
@@ -99,7 +138,13 @@ data class SpectralRealization(
 // Explicit removal of the rigid-motion and scale null spaces
 // ==============================================================================================
 
-/** Which point of the embedding is moved to the origin. */
+/**
+ * Which point of the embedding is moved to the origin.
+ *
+ * `VERTEX_CENTROID` is cheap and unambiguous. `EDGE_TANGENCY_CENTROID` is the canonical form's own
+ * centre and costs a short fixed-point iteration, because the tangency points are defined relative to
+ * the origin and therefore move whenever the object does. `NONE` leaves the position alone.
+ */
 enum class GaugeCentre {
     NONE,
     VERTEX_CENTROID,
@@ -108,7 +153,15 @@ enum class GaugeCentre {
     EDGE_TANGENCY_CENTROID,
 }
 
-/** Which measured length is driven to the gauge's scale target. */
+/**
+ * Which measured length is driven to the gauge's scale target.
+ *
+ * `MEAN_EDGE_LENGTH` is the everyday choice and the default. `MEAN_VERTEX_RADIUS` and
+ * `MAX_VERTEX_RADIUS` size the object by its circumsphere instead, which is what you want when
+ * comparing two objects side by side. `MEAN_EDGE_TANGENCY_RADIUS` is the canonical form's own scale,
+ * so it is the one that makes a canonicalized solid's diagnostics read as relative errors. `NONE`
+ * leaves the size alone.
+ */
 enum class GaugeScale {
     NONE,
     MEAN_EDGE_LENGTH,
@@ -131,9 +184,24 @@ enum class GaugeScale {
  * library produces.
  */
 data class RigidGauge(
+    /**
+     * Which point of the embedding is moved to the origin. [GaugeCentre.EDGE_TANGENCY_CENTROID] is not a
+     * single subtraction — tangency points move when the object does, so it is iterated to a fixed point.
+     */
     val centre: GaugeCentre = GaugeCentre.VERTEX_CENTROID,
+    /**
+     * Which measured length is driven to [scaleTarget]. A measurement smaller than `1e-12` is left alone
+     * rather than dividing by it, so a collapsed object survives normalization unscaled.
+     */
     val scale: GaugeScale = GaugeScale.MEAN_EDGE_LENGTH,
+    /**
+     * What that measured length becomes. Must be finite and positive.
+     */
     val scaleTarget: Double = 1.0,
+    /**
+     * Rotate to best match the reference embedding, when one is supplied. With no reference this does
+     * nothing and the input orientation is kept — still deterministic, just not canonical.
+     */
     val alignToReference: Boolean = true,
 ) {
     init {

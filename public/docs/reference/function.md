@@ -1023,7 +1023,7 @@ with(Functions) {
 }
 ```
 
-## Which ops, and how the honesty is enforced
+### Which ops, and how the honesty is enforced
 
 The interpreter covers the smooth algebraic core — see `FnAutoDiff.differentiableOps`. That is
 deliberately a *subset*: the piecewise oscillators (`saw`, `square`), the table-backed
@@ -1036,7 +1036,7 @@ re-evaluates the interpreter against `Functions.Fn.eval` on the caller's own sam
 reports the worst disagreement, and the fitters run that check before switching over. A mismatch
 demotes the run to finite differences rather than returning a confident wrong gradient.
 
-## Ops indexed by leaf, not by node
+### Ops indexed by leaf, not by node
 
 θ-indices are assigned by exactly the traversal `Functions.Fn.mapGraphNumbers` uses — post-order
 DFS over `node.children` in order, one index per node carrying `numbers["value"]` — so index *i*
@@ -1096,7 +1096,7 @@ The [`AD`](math.md#autodiff-kt-ad) counterpart of [`FnMetric`](function.md#fnmet
 One declaration of each `Fn` op's pointwise semantics, walked by two evaluators — so `Fn.eval` and
 the reverse-mode gradient cannot compute different functions.
 
-## The problem this solves
+### The problem this solves
 
 `autodiff_fn.kt`'s first draft re-implemented each op's formula in [`AD`](math.md#autodiff-kt-ad) arithmetic beside the
 hand-written `Double` closure in `Functions.kt`. That is two transcriptions of one truth, and the
@@ -1121,7 +1121,7 @@ every op with a formula it asserts the `Double` walker's output is bit-identical
 `Functions`' own `eval` across a grid **and** at perturbed parameters. A formula that is not a
 faithful transcription cannot reach `main`.
 
-## Why `Fn.eval` is not simply replaced by the walker
+### Why `Fn.eval` is not simply replaced by the walker
 
 It could be, and the seam is a single one: every op in `Functions` builds its `Fn` through one
 private factory, `graphFn(domain, name, op, …, eval: (Double) -> Double)` at `Functions.kt:886`, so

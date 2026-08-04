@@ -187,6 +187,63 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
     receiver-applicable extension functions, classifiers, and — at an argument position — the enclosing
     call's not-yet-supplied **named parameters** (`:442-453`). Named-argument completion is AA-only; the
     K1 delegate produces none (this is what the E2E probe asserts to prove AA actually served).
+  - **The expected type at the caret** — see below.
+
+#### The type expected at the caret (`expectedTypesAt` / `enumerableValuesOf`)
+
+At `d.scheme = ‸` the answer is the three entries of the `Scheme` enum, and until this existed completion
+answered with every name in scope instead, because neither backend asked what type belonged there. AA can
+be asked — `KaExpressionTypeProvider.expectedType` — which is why this is AA-only: K1 has no equivalent,
+so `InfixCompletion` (`execution.kt:751`) had to *guess* the analogous thing for infix operands by
+regexing the source index.
+
+Three pieces, all in the non-dot branch of `completeAt`:
+
+1. **A dummy name at the caret** (`CARET_MARKER = __fieldCaret__`, spliced in `complete()`). An empty slot
+   has no expression to ask about, and the parse is worse than empty: `d.scheme =` followed by
+   `display(…)` on the next line parses as `d.scheme = display(…)`, because a newline does not end an
+   assignment's RHS. Splicing `__fieldCaret__` gives both a `KtExpression` to query and the intended
+   parse. This is what IntelliJ does with `IntellijIdeaRulezzz`. It is gated to *untyped* expression slots
+   (`wantsCaretMarker`: after `=`, `(`, `,`, `[`, `->`, `?:`, `&&`, `||`, `return`) — a typed prefix
+   already *is* a name expression, and outside those slots the marker would only risk the PSI recovery the
+   other paths depend on. The marker starts with `__`, so `AaCandidate.isSynthetic` guarantees it can
+   never itself be offered.
+2. **`expectedTypesAt()`** returns `expectedType` on that expression, with a fallback for argument slots:
+   the parameter types from `resolveToCallCandidates()` unioned over overloads (named argument matched by
+   name, positional by index). The fallback matters because `expectedType` needs the call to resolve, and
+   code being typed usually doesn't. Expectations too weak to act on are dropped
+   (`isUsefulExpectation`: `Any`, `Any?`, `Unit`, `Nothing`, error types — `errorType.isSubtypeOf(x)` is
+   vacuously true, the same trap the dot path documents).
+3. **`enumerableValuesOf()`** turns an expected type whose inhabitants are enumerable into candidates:
+   an enum's entries, a sealed type's inheritors (`sealedClassInheritors` — works for binary sealed types
+   too), and `Boolean` → `true`/`false`. Everything else gets no values, only the fit flag.
+   - Entries are **displayed bare** (`BLEND`) and **inserted qualified** (`FabricateAlphaMode.BLEND`, via
+     `AaCandidate.insertText`), because Kotlin only resolves a bare entry from the expected type inside a
+     `when` subject. `qualifierFor()` picks the shortest form that actually compiles in the file's import
+     context, falling back to fully qualified.
+   - A binary enum's entries are **not** in `declaredMemberScope** — that comes back empty, and they are in
+     the static scopes. All three are unioned, the same lesson `staticScopeCandidates` learned on the dot
+     path.
+
+Every other candidate the branch produces is flagged `fitsExpected` when its (substituted) return type
+`isSubtypeOf` the expectation, so a local, a member or a factory function of the right type ranks with the
+literals. Named parameters at an argument position are flagged too — at `f(‸` the parameter names *are* the
+answer, and the collapse below must not hide them behind type-fitting values.
+
+Because the candidate list is name-sorted before `limit` is applied, the sidecar puts fitting candidates
+first *before* truncating (`CodeUseSemanticSidecar.kt`) — otherwise `UD`/`SD_*` fall off the end of a
+200-row cut behind every `Box` member.
+
+**Server side** (`execution.kt`): a fitting candidate arrives as `extraInfo["expectedTypeMatch"]`
+(`AaCompletionClient.EXPECTED_TYPE_MATCH`) and gets `InfixCompletion.OPERAND_MATCH_BOOST`, the same boost
+the infix path uses. And with **nothing typed yet**, the reply is collapsed to *only* the fitting
+candidates (`typeFitFilterActive`) — that is what makes the panel at `d.scheme = ‸` three rows instead of
+three hundred, regardless of how the client ranks or how old its `fieldSuggest.js` is. One keystroke
+restores the full list with the fits merely boosted, so nothing is permanently hidden, and the collapse
+needs ≥2 fits (≥3 for the infix path) so a bad resolution can never empty the panel.
+
+Not done on **dot** positions: `d.scheme = foo.‸` could boost members returning `Scheme`, but the dot
+branch resolves from the qualified expression and was left byte-for-byte alone.
 
 #### The ASM symbol index (`AaSymbolIndex`)
 

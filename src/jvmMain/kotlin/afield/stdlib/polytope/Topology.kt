@@ -1,24 +1,103 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
-/** A globally unique element identifier within one [PolytopeTopology]. */
+/**
+ * The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one
+ * layer that knows nothing about coordinates.
+ *
+ * A [PolytopeTopology] is a set of ranked [Element]s with identity, incidences between *adjacent*
+ * ranks only, and one explicitly ordered vertex cycle per rank-2 face. Nothing in this file holds a
+ * position, an `FLine`, a triangle, a normal or a renderer; a `Realization3` sits above it and can
+ * be replaced or thrown away without disturbing the combinatorics. That separation is what lets a
+ * Conway operator discard every coordinate, make new ones, and still answer "which face is this,
+ * and what was it before".
+ *
+ * Ordered cycles are stored rather than derived because unoriented incidence does not choose a
+ * traversal: four edges in a ring are equally consistent with two different quadrilaterals. A cycle
+ * *can* be recovered from incidence where a boundary happens to be a single ring —
+ * [PolytopeTopology.dual] does that for its own output — but that is a construction step, not a
+ * property of the poset.
+ *
+ * ## Ranks, and the element that is the whole thing
+ *
+ * Ranks are zero-based: 0 vertices, 1 edges, 2 polygons, 3 cells. A topology's
+ * [PolytopeTopology.rank] is its *top* rank, and by convention the element or elements there stand
+ * for the whole object rather than for a geometric feature. So a polyhedron is rank 3 with one
+ * rank-3 element meaning "the solid", and its proper ranks are `0 until rank`. This is why
+ * [PolytopeTopology.eulerCharacteristic] sums the proper ranks only: it returns 2 for a closed
+ * polyhedral surface and 0 for a convex 4-polytope, which are the numbers a reader is checking
+ * against.
+ *
+ * ## Validation reports; it does not throw
+ *
+ * [PolytopeTopologyBuilder] records what it is told and checks almost nothing. Structural
+ * complaints are [ValidationIssue] *values* returned by [PolytopeTopology.validate], so a tool or a
+ * test can see everything wrong with a malformed input at once, rather than the first thing. Call
+ * [ValidationResult.throwIfInvalid] — or [PolytopeTopologyBuilder.buildValidated] — where an
+ * exception is what you actually wanted.
+ *
+ * ```kotlin
+ * val b = PolytopeTopologyBuilder(rank = 3)
+ * val v = List(3) { b.addElement(0) }
+ * val f = b.addElement(2)
+ * b.setFaceCycle(f, v)
+ * b.build().validate().issues.forEach { println(it.message) }   // three edges never recorded
+ * ```
+ *
+ * ## What is deliberately absent
+ *
+ * One cycle per face, so no holes and no annuli. No orientation of the complex as a whole, and no
+ * assumption that it is a closed manifold: `validate(checkManifold = true)` is an opt-in stricter
+ * pass, and a 4-polytope legitimately fails it because an edge there bounds three or more polygons.
+ * No incidence between non-adjacent ranks. And no general incidence-poset isomorphism —
+ * [isCombinatoriallyIsomorphicTo] is a rank-3 helper and says so.
+ */
+
+/**
+ * A globally unique element identifier within one [PolytopeTopology].
+ *
+ * Ids are drawn from a single counter shared by every rank, so an id does not carry its rank and
+ * ordering two ids tells you nothing about which is a vertex. Ask [PolytopeTopology.element].
+ */
 @JvmInline
 value class ElementId(val value: Int)
 
-/** An element of the incidence poset. Ranks are zero-based. */
+/**
+ * An element of the incidence poset: an identity and the rank it lives at, and nothing else.
+ *
+ * Ranks are zero-based — 0 vertex, 1 edge, 2 polygon, 3 cell — and an element at a topology's top
+ * rank is the whole polytope rather than a feature of it.
+ */
 data class Element(
     val id: ElementId,
     val rank: Int,
 )
 
-/** One structured problem found while building or validating a topology. */
+/**
+ * One structured problem found while validating a topology, reported as a value rather than thrown.
+ *
+ * Every issue [PolytopeTopology.validate] returns makes [ValidationResult.isValid] false; there is
+ * no warning tier. What differs between them is reachability: [NonManifoldEdge] is produced only
+ * when `checkManifold` is set, because non-manifold incidence is legal at this layer, and
+ * [NonReciprocalIncidence] cannot be produced at all through the public builder.
+ *
+ * [message] is for a human. The implementing class is the machine-readable half — the validation
+ * summary groups issues by class name — so branch on the type, not on the text.
+ */
 sealed interface ValidationIssue {
     val message: String
 }
 
+/** An incidence endpoint or a face-cycle owner names an id that is not in this topology. */
 data class InvalidElementReference(val context: String, val reference: ElementId) : ValidationIssue {
     override val message = "$context references missing element ${reference.value}"
 }
 
+/**
+ * An incidence spans non-adjacent ranks. Such an incidence is also omitted from the up/down maps
+ * entirely, so the topology behaves as though it had never been recorded.
+ */
 data class IncorrectRankTransition(
     val lower: ElementId,
     val lowerRank: Int,
@@ -29,32 +108,43 @@ data class IncorrectRankTransition(
         "incidence ${lower.value} (rank $lowerRank) -> ${higher.value} (rank $higherRank) is not between adjacent ranks"
 }
 
+/** The same ordered pair was recorded twice; the second call added nothing. */
 data class DuplicateIncidence(val lower: ElementId, val higher: ElementId) : ValidationIssue {
     override val message = "incidence ${lower.value} -> ${higher.value} appears more than once"
 }
 
+/**
+ * The up and down views of one incidence disagree. Unreachable through [PolytopeTopologyBuilder],
+ * which derives both from a single list — a guard against a future construction path, not a
+ * diagnosis of anything a caller can write today.
+ */
 data class NonReciprocalIncidence(val lower: ElementId, val higher: ElementId) : ValidationIssue {
     override val message = "incidence ${lower.value} -> ${higher.value} is not reciprocal"
 }
 
+/** An edge with other than two distinct vertices: a self-loop, a hyperedge, or one never joined up. */
 data class EdgeEndpointCount(val edge: ElementId, val count: Int) : ValidationIssue {
     override val message = "edge ${edge.value} has $count distinct endpoint vertices; expected exactly 2"
 }
 
+/** A face with fewer than three distinct edges, or a cycle with fewer than three vertices. */
 data class FaceTooSmall(val face: ElementId, val edgeCount: Int, val vertexCount: Int) : ValidationIssue {
     override val message =
         "face ${face.value} has $edgeCount distinct edges and $vertexCount boundary vertices; expected at least 3 of each"
 }
 
+/** A rank-2 element nobody called [PolytopeTopologyBuilder.setFaceCycle] for. */
 data class MissingFaceCycle(val face: ElementId) : ValidationIssue {
     override val message = "rank-2 face ${face.value} has no ordered boundary cycle"
 }
 
+/** A cycle was set on an element that is not a polygon — usually the wrong id, or an off-by-one rank. */
 data class FaceCycleOwnerWrongRank(val element: ElementId, val actualRank: Int) : ValidationIssue {
     override val message =
         "ordered face cycle belongs to element ${element.value} of rank $actualRank; expected rank 2"
 }
 
+/** A cycle names something that is not a vertex of this topology; a null [actualRank] means missing. */
 data class FaceCycleWrongElement(val face: ElementId, val element: ElementId, val actualRank: Int?) : ValidationIssue {
     override val message = when (actualRank) {
         null -> "face ${face.value} cycle references missing element ${element.value}"
@@ -62,40 +152,70 @@ data class FaceCycleWrongElement(val face: ElementId, val element: ElementId, va
     }
 }
 
+/** A cycle visits the same vertex twice — a pinched or doubled-back boundary, not a simple polygon. */
 data class DuplicateFaceCycleVertex(val face: ElementId, val vertex: ElementId) : ValidationIssue {
     override val message = "face ${face.value} cycle repeats vertex ${vertex.value}"
 }
 
+/** The ordered boundary and the recorded edge incidences disagree about which vertices are on the face. */
 data class FaceCycleVertexNotIncident(val face: ElementId, val vertex: ElementId) : ValidationIssue {
     override val message = "face ${face.value} cycle vertex ${vertex.value} is absent from the face's edge incidences"
 }
 
+/** Two consecutive cycle vertices with no edge of this face joining them; usually a cycle out of order. */
 data class FaceCycleEdgeMismatch(val face: ElementId, val a: ElementId, val b: ElementId) : ValidationIssue {
     override val message =
         "face ${face.value} boundary step ${a.value} -> ${b.value} has no matching edge incident to that face"
 }
 
+/** The face claims an edge its own ordered boundary never traverses — an extra or stale incidence. */
 data class FaceIncidenceAbsentFromCycle(val face: ElementId, val edge: ElementId) : ValidationIssue {
     override val message = "face ${face.value} incidence edge ${edge.value} does not occur in its ordered cycle"
 }
 
+/**
+ * The face's edges do not form one closed ring in which every vertex has degree two: two separate
+ * polygons recorded as a single face, a figure-of-eight, or a boundary with a gap in it.
+ */
 data class DisconnectedFaceBoundary(val face: ElementId) : ValidationIssue {
     override val message = "face ${face.value} incident edges do not form one connected degree-2 boundary"
 }
 
+/**
+ * An edge with other than exactly two faces. Produced only under `validate(checkManifold = true)`;
+ * every edge of a 4-polytope reports this, which is the point of the flag being opt-in.
+ */
 data class NonManifoldEdge(val edge: ElementId, val faceCount: Int) : ValidationIssue {
     override val message = "edge ${edge.value} belongs to $faceCount faces; a closed manifold surface requires exactly 2"
 }
 
+/**
+ * An immutable report, not a control-flow exception: everything one [PolytopeTopology.validate] pass
+ * found, in the order it found it.
+ *
+ * [PolytopeTopology.validate] deduplicates before constructing this, so a fault two checks both
+ * notice is listed once. The list is copied on the way in, and empty is the only valid state.
+ */
 class ValidationResult(issues: List<ValidationIssue>) {
     val issues: List<ValidationIssue> = issues.toList()
     val isValid: Boolean get() = issues.isEmpty()
 
+    /**
+     * Throw [TopologyValidationException] carrying every issue, or return quietly. The bridge from
+     * the report style back to ordinary Kotlin failure, used by
+     * [PolytopeTopologyBuilder.buildValidated] and by each Field adapter before it assumes a
+     * well-formed input.
+     */
     fun throwIfInvalid() {
         if (!isValid) throw TopologyValidationException(this)
     }
 }
 
+/**
+ * The report turned into a throw. Its message is every [ValidationIssue.message] as a bulleted list,
+ * and [result] is kept, so a caller that catches this can branch on the issue classes instead of
+ * parsing that text.
+ */
 class TopologyValidationException(val result: ValidationResult) : IllegalArgumentException(
     result.issues.joinToString(prefix = "invalid polytope topology:\n", separator = "\n") { "- ${it.message}" }
 )
@@ -110,13 +230,25 @@ private data class Incidence(val lower: ElementId, val higher: ElementId)
  * cycles because unoriented incidence alone does not choose a polygon traversal.
  *
  * Public array accessors return copies; callers cannot mutate the stored incidence or cycles.
+ *
+ * The constructor is internal: make one with [PolytopeTopologyBuilder], or take one from a seed such
+ * as [cube] or from a Conway expression. Construction is also the only moment anything is derived —
+ * the adjacent-rank up and down maps are computed once here, and an incidence whose ranks are *not*
+ * adjacent is quietly left out of them rather than repaired. That is why [validate], and not
+ * construction, is where you find out about it.
  */
 class PolytopeTopology internal constructor(
+    /** The top rank, whose elements are the whole polytope; the proper ranks are `0 until rank`. */
     val rank: Int,
     elementsByRank: List<List<Element>>,
     incidences: List<Pair<ElementId, ElementId>>,
     faceCycles: Map<ElementId, IntArray>,
 ) {
+    /**
+     * Every element, indexed by rank: an outer list of length `rank + 1`, each inner list in the
+     * order the builder allocated them. Unmodifiable at both levels, and the ordering is the one
+     * every parallel array in this package — realization coordinates included — is aligned to.
+     */
     val elementsByRank: List<List<Element>> = java.util.Collections.unmodifiableList(
         elementsByRank.map { java.util.Collections.unmodifiableList(it.toList()) },
     )
@@ -143,8 +275,14 @@ class PolytopeTopology internal constructor(
         down = downMutable.mapValues { (_, ids) -> ids.toIntArray() }
     }
 
+    /**
+     * The elements at one rank, or an empty list for a rank outside `0..rank`. Total by design, so a
+     * sweep over ranks or a speculative query about a rank this object may not have needs no bounds
+     * check — and an empty result never distinguishes "no such rank" from "nothing there".
+     */
     fun elements(rank: Int): List<Element> = elementsByRank.getOrElse(rank) { emptyList() }
 
+    /** The element with this id, or null if it belongs to some other topology. The way to learn an id's rank. */
     fun element(id: ElementId): Element? = elementById[id]
 
     /** IDs incident one rank above [element], in stable construction order. */
@@ -153,18 +291,33 @@ class PolytopeTopology internal constructor(
     /** IDs incident one rank below [element], in stable construction order. */
     fun incidentDown(element: ElementId): IntArray = down[element]?.copyOf() ?: intArrayOf()
 
-    /** The explicitly stored ordered vertex boundary of a rank-2 face. */
+    /**
+     * The explicitly stored ordered vertex boundary of a rank-2 face, as a fresh array of raw
+     * [ElementId] values in traversal order.
+     *
+     * Throws when the element has no cycle — which a legally built, merely un-validated topology can
+     * be, and which [dual] output routinely is where a dual boundary was not one ring. Use
+     * [faceCycleOrNull] whenever you have not validated first.
+     */
     fun faceCycle(face: ElementId): IntArray = storedFaceCycles[face]?.copyOf()
         ?: throw IllegalArgumentException("element ${face.value} has no ordered face cycle")
 
+    /** [faceCycle] without the throw: null for any element that has no stored boundary. */
     fun faceCycleOrNull(face: ElementId): IntArray? = storedFaceCycles[face]?.copyOf()
 
-    /** All vertices of [face], in boundary order. */
+    /**
+     * All vertices of [face], in boundary order. Throws if the cycle names an id this topology does
+     * not hold — a state [validate] would have reported as [FaceCycleWrongElement].
+     */
     fun verticesOfFace(face: ElementId): List<Element> = faceCycle(face).map { id ->
         elementById[ElementId(id)] ?: throw IllegalStateException("face ${face.value} references missing vertex $id")
     }
 
-    /** Alternating count of all proper ranks; the whole-polytope rank is deliberately excluded. */
+    /**
+     * Alternating count of all proper ranks; the whole-polytope rank is deliberately excluded. So it
+     * is 2 for a closed polyhedral surface and 0 for a convex 4-polytope, and either number is a
+     * cheap check that a transform did not lose or duplicate elements.
+     */
     fun eulerCharacteristic(): Int = (0 until rank).sumOf { r ->
         if (r % 2 == 0) elements(r).size else -elements(r).size
     }
@@ -173,6 +326,10 @@ class PolytopeTopology internal constructor(
      * Validate basic incidence and explicit polygon boundaries. Set [checkManifold] to additionally
      * require every edge to have exactly two incident faces. Non-manifold structures remain legal
      * at the core level.
+     *
+     * Nothing is cached: each call re-walks every incidence and every face, deduplicating the issues
+     * at the end. That is fine once per construction and expensive in a per-frame loop — and note
+     * that a topology summary validates twice, once plainly and once for the manifold verdict.
      */
     fun validate(checkManifold: Boolean = false): ValidationResult {
         val issues = mutableListOf<ValidationIssue>()
@@ -283,6 +440,12 @@ class PolytopeTopology internal constructor(
     /**
      * Abstract dual. Proper ranks are reversed while the whole-polytope rank remains the whole.
      * For rank 3 this is exactly vertices <-> faces and edges <-> edges.
+     *
+     * Combinatorics only — there are no coordinates here to dualize, so `PolyhedralObject.dual` is
+     * the call that also applies a realization policy. Boundary cycles for the dual's polygons are
+     * *recovered* from incidence, and only where a boundary is a single ring; anywhere it is not, the
+     * dual face is left without a cycle and [validate] will say so even though the primal passed.
+     * Requires rank at least 1.
      */
     fun dual(): PolytopeTopology {
         require(rank >= 1) { "rank-0 topology has no represented proper-rank dual" }
@@ -340,8 +503,24 @@ class PolytopeTopology internal constructor(
     }
 }
 
-/** Mutable assembly surface whose [build] result is immutable. */
-class PolytopeTopologyBuilder(val rank: Int) {
+/**
+ * Mutable assembly surface whose [build] result is immutable — and the only way to make a
+ * [PolytopeTopology].
+ *
+ * It records; it does not check. The one eager check is [addElement]'s rank bound. Missing
+ * references, non-adjacent ranks, duplicate incidences and malformed cycles are all
+ * [ValidationIssue] values from [PolytopeTopology.validate] afterwards, which is what lets a caller
+ * assemble in whatever order is convenient — every element first, then every incidence, then the
+ * cycles — rather than in an order the checks would allow.
+ *
+ * [build] does not consume the builder: you may build, look at the result, add more, and build
+ * again. [PolytopeTopology.dual] depends on exactly that, building once to find the dual's face
+ * boundaries and again to keep them.
+ */
+class PolytopeTopologyBuilder(
+    /** The top rank of the topology being assembled; [addElement] accepts `0..rank` inclusive. */
+    val rank: Int,
+) {
     private val elements = MutableList(rank + 1) { mutableListOf<Element>() }
     private val incidences = mutableListOf<Pair<ElementId, ElementId>>()
     private val faceCycles = mutableMapOf<ElementId, IntArray>()
@@ -351,6 +530,13 @@ class PolytopeTopologyBuilder(val rank: Int) {
         require(rank >= 0) { "rank must be non-negative, got $rank" }
     }
 
+    /**
+     * Allocate a fresh element at one rank and return its new id. Ids come from a single counter
+     * shared by all ranks, so they are unique but carry no rank information.
+     *
+     * Throws immediately for a rank outside `0..rank` — the builder's only eager check, because an
+     * out-of-range rank has nowhere to be stored and so could not be reported later.
+     */
     fun addElement(rank: Int): ElementId {
         require(rank in 0..this.rank) { "element rank $rank is outside topology ranks 0..${this.rank}" }
         val id = ElementId(nextId++)
@@ -366,15 +552,34 @@ class PolytopeTopologyBuilder(val rank: Int) {
         incidences += lower to higher
     }
 
+    /**
+     * Give a rank-2 face the ordered vertex boundary that unoriented incidence cannot supply. The
+     * array is copied, and a face has at most one cycle, so a second call replaces the first.
+     *
+     * This traversal order is what polygons are drawn, wound and triangulated in. Whether the ids are
+     * really vertices, really incident to the face, or really form a ring is
+     * [PolytopeTopology.validate]'s business, not this call's.
+     */
     fun setFaceCycle(face: ElementId, vertices: IntArray): PolytopeTopologyBuilder = apply {
         faceCycles[face] = vertices.copyOf()
     }
 
+    /** The same, spelt in [ElementId]s — the form construction code normally has to hand. */
     fun setFaceCycle(face: ElementId, vertices: List<ElementId>): PolytopeTopologyBuilder =
         setFaceCycle(face, vertices.map { it.value }.toIntArray())
 
+    /**
+     * Materialise an immutable [PolytopeTopology] from whatever has been recorded so far. Always
+     * succeeds: a malformed topology is a buildable one, and inspecting it is how you learn what is
+     * wrong. The builder stays usable afterwards.
+     */
     fun build(): PolytopeTopology = PolytopeTopology(rank, elements, incidences, faceCycles)
 
+    /**
+     * [build] followed by [ValidationResult.throwIfInvalid], so a bad assembly fails here rather than
+     * at the first adapter that assumed a well-formed input. Set [checkManifold] to also demand
+     * exactly two faces per edge — true of every rank-3 seed in this package, and of no 4-polytope.
+     */
     fun buildValidated(checkManifold: Boolean = false): PolytopeTopology = build().also {
         it.validate(checkManifold).throwIfInvalid()
     }
@@ -384,6 +589,16 @@ class PolytopeTopologyBuilder(val rank: Int) {
  * Small rank-3 combinatorial isomorphism helper. It tries vertex bijections, then compares edge
  * endpoint pairs and face cycles up to rotation/reversal. This is intentionally not a general
  * unrestricted incidence-poset graph-isomorphism solver.
+ *
+ * Because cycles are compared up to *reversal* the test is blind to orientation: a solid and its
+ * mirror image compare equal. Anything not rank 3 on both sides, and any pair whose element counts
+ * differ, answers `false` rather than complaining — but a face with no stored cycle throws, through
+ * [PolytopeTopology.faceCycle], so validate before asking.
+ *
+ * The search is pruned by a per-vertex signature — edge degree, plus the sorted sizes of the faces
+ * around that vertex — which is enough to make the Platonic and Conway solids it was written for
+ * quick. It remains backtracking over bijections, and a large, highly symmetric pair is where that
+ * shows.
  */
 fun PolytopeTopology.isCombinatoriallyIsomorphicTo(other: PolytopeTopology): Boolean {
     if (rank != 3 || other.rank != 3) return false

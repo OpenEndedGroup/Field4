@@ -39,6 +39,36 @@ A faked capture is worse than none: it stops testing anything, silently rots as 
 and misrepresents the product to the reader. (If you just want a picture for yourself, take a
 screenshot by hand — that never enters the docs pipeline.)
 
+## Captures with a build prerequisite — you may skip these
+
+One qualification on "omit and say why", because there is now a capture the docs build **cannot**
+produce on a fresh clone however correct the code is.
+
+| page | asset | prerequisite |
+|---|---|---|
+| `public/docs/polytope_examples.md` | `assets/polytope_examples/kkc_canonical.png` | `./gradlew buildCeresRedistributable` |
+
+That figure calls `relaxWithCeres`, and the Ceres wrapper is an optional extra with **no committed
+binary** — see `dev_docs/CERES.md`. Without it, `FfmCeresBackend`'s constructor refuses (by design,
+naming the command), the box errors, and the capture fails.
+
+**You have license to skip it.** This is not the "fix the code" case: the code is fine and the
+picture on disk is a true capture of it. Concretely:
+
+- The **default incremental build already does the right thing.** `continue_on_error` defaults to
+  true in `incremental` mode, so a failed capture is logged as a failure, the committed asset on
+  disk is kept, and the build finishes. That is the intended outcome, not a workaround.
+- **`FIELD_DOCS_RUNNER_MODE=always` flips `continue_on_error` to false**, so a forced re-capture
+  without the wrapper *will* fail the build. If you are force-recapturing a page for some unrelated
+  reason and do not want to build Ceres, set
+  `FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR=true` alongside it.
+- If you skip, **leave the committed PNG and its prose alone.** The one thing that is still not
+  allowed is editing the numbers in the surrounding text to match a picture you did not regenerate,
+  or replacing the figure with a hand-made one. A stale-but-real capture with prose that matches it
+  is honest; anything else is the fake this page exists to forbid.
+
+Prefer building the wrapper when the figure is what you are changing. Skipping is for when it is not.
+
 ## Decision guide (what works today)
 
 | You want… | Do this | Status |

@@ -188,32 +188,185 @@ class TessellationRingRobustnessTest {
 
     // ------------------------------------------------------------------------------ mixed planes
 
+    /** Build one FLine out of several closed rings, in the order given. */
+    private fun lineOf(vararg rings: List<Vec3>): FLine {
+        val f = FLine()
+        rings.forEach { ring ->
+            f.moveTo(ring[0])
+            ring.drop(1).forEach { f.lineTo(it) }
+            f.close()
+        }
+        return f
+    }
+
+    private fun triangulate(f: FLine, coplanarity: Coplanarity): List<Tri> {
+        val out = ArrayList<Tri>()
+        f.tessellate(4, coplanarity) { verts, index ->
+            var i = 0
+            while (i + 2 < index.size) {
+                fun v(k: Int) = Vec3(verts[3 * k], verts[3 * k + 1], verts[3 * k + 2])
+                out.add(Tri(v(index[i]), v(index[i + 1]), v(index[i + 2])))
+                i += 3
+            }
+        }
+        return out
+    }
+
+    /** Signed area of [tris] along [normal]: positive when they are wound with it. */
+    private fun signedArea(tris: List<Tri>, normal: Vec3): Float {
+        val l = sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z)
+        if (l == 0f) return 0f
+        return tris.sumOf { t ->
+            val ux = t.b.x - t.a.x; val uy = t.b.y - t.a.y; val uz = t.b.z - t.a.z
+            val vx = t.c.x - t.a.x; val vy = t.c.y - t.a.y; val vz = t.c.z - t.a.z
+            val cx = uy * vz - uz * vy
+            val cy = uz * vx - ux * vz
+            val cz = ux * vy - uy * vx
+            (0.5 * (cx * normal.x + cy * normal.y + cz * normal.z) / l)
+        }.toFloat()
+    }
+
     /**
-     * The documented limit of a *single* dominant axis: one FLine holding filled subpaths in two
-     * different planes. Only one axis is chosen, from the strongest ring, and every subpath not
-     * facing that way projects onto a line and vanishes.
+     * What used to be the documented limit of a *single* dominant axis, now the assertion that it is
+     * gone: one FLine holding filled subpaths in two different planes fills **both**.
      *
-     * This is a characterisation, not an aspiration — it records where the current design stops so
-     * that a future change to per-group projection has something to move. It is *not* a regression
-     * from `e4b309379`: before it, the axis was permanently (x, y) and the XZ subpath vanished just
-     * the same. What changed is only *which* of the two survives.
+     * This test was written the other way round on 2026-08-02 — it characterised the limit rather
+     * than asserting an ideal, "so a future move to per-group projection has something to move". This
+     * is that move. Per-plane grouping gives each coplanar group of subpaths its own projected frame,
+     * so an XZ wall and an XY floor in one line no longer have to agree about an axis.
+     *
+     * The old behaviour is still measurable rather than merely described: [Coplanarity.SINGLE_PLANE]
+     * puts every ring in one plane whatever its geometry says, which is exactly what the single-axis
+     * code did, and under it the XY subpath still vanishes.
      */
     @Test
-    fun oneFLineSpanningTwoPlanesFillsOnlyTheDominantOne() {
-        val f = FLine()
-        // XZ, area 40000 -- the stronger ring, so it wins the axis
-        f.moveTo(Vec3(0f, 0f, 0f)).lineTo(Vec3(200f, 0f, 0f))
-            .lineTo(Vec3(200f, 0f, 200f)).lineTo(Vec3(0f, 0f, 200f)).close()
-        // XY, area 10000 -- projects onto a line under the XZ axis and contributes nothing
-        f.moveTo(Vec3(500f, 0f, 0f)).lineTo(Vec3(600f, 0f, 0f))
-            .lineTo(Vec3(600f, 100f, 0f)).lineTo(Vec3(500f, 100f, 0f)).close()
+    fun oneFLineSpanningTwoPlanesNowFillsBoth() {
+        val xzWall = listOf(
+            Vec3(0f, 0f, 0f), Vec3(200f, 0f, 0f), Vec3(200f, 0f, 200f), Vec3(0f, 0f, 200f)
+        )
+        val xyFloor = listOf(
+            Vec3(500f, 0f, 0f), Vec3(600f, 0f, 0f), Vec3(600f, 100f, 0f), Vec3(500f, 100f, 0f)
+        )
+        val f = lineOf(xzWall, xyFloor)
 
-        val a = area(triangulate(f))
+        val both = area(triangulate(f))
+        assertTrue(abs(both - 50000f) < 1f, "both subpaths should fill: 40000 + 10000, got $both")
+
+        // the counterfactual, measured: one plane for everything is the pre-2026-08-03 behaviour
+        val forcedToOnePlane = area(triangulate(lineOf(xzWall, xyFloor), Coplanarity.SINGLE_PLANE))
         assertTrue(
-            abs(a - 40000f) < 1f,
-            "expected only the dominant XZ subpath (40000) to fill; got $a. If this now reports " +
-                    "50000, per-subpath projection has been implemented and this test should become " +
-                    "an assertion of that instead."
+            abs(forcedToOnePlane - 40000f) < 1f,
+            "forced into one plane, only the dominant XZ subpath fills; got $forcedToOnePlane"
         )
     }
+
+    /**
+     * And each of those planes keeps its holes, and each faces the way its own ring is wound. A hole
+     * is a per-plane decision now, so this is the case that would break if the grouping and the
+     * nesting ever came apart.
+     */
+    @Test
+    fun eachPlaneOfAMultiPlaneFLineKeepsItsOwnHolesAndItsOwnFacing() {
+        val wall = listOf(
+            Vec3(0f, 0f, 0f), Vec3(200f, 0f, 0f), Vec3(200f, 0f, 200f), Vec3(0f, 0f, 200f)
+        )
+        val wallHole = listOf(
+            Vec3(50f, 0f, 50f), Vec3(50f, 0f, 150f), Vec3(150f, 0f, 150f), Vec3(150f, 0f, 50f)
+        )
+        val floor = listOf(
+            Vec3(0f, 0f, 400f), Vec3(200f, 0f, 400f), Vec3(200f, 200f, 400f), Vec3(0f, 200f, 400f)
+        )
+        val floorHole = listOf(
+            Vec3(50f, 50f, 400f), Vec3(50f, 150f, 400f), Vec3(150f, 150f, 400f), Vec3(150f, 50f, 400f)
+        )
+
+        val tris = triangulate(lineOf(wall, wallHole, floor, floorHole))
+        val total = area(tris)
+        assertTrue(
+            abs(total - 60000f) < 1f,
+            "two 200x200 faces less a 100x100 hole each is 60000, got $total"
+        )
+
+        // and the facing, split back out by which plane each triangle landed in
+        val onTheWall = tris.filter { abs(it.a.y) < 1e-3f && abs(it.b.y) < 1e-3f && abs(it.c.y) < 1e-3f }
+        val onTheFloor = tris.filter { abs(it.a.z - 400f) < 1e-3f }
+        assertTrue(onTheWall.isNotEmpty() && onTheFloor.isNotEmpty(), "one of the two planes vanished")
+        assertTrue(
+            signedArea(onTheWall, newell(wall)) > 29000f,
+            "the wall faces its own normal: ${signedArea(onTheWall, newell(wall))}"
+        )
+        assertTrue(
+            signedArea(onTheFloor, newell(floor)) > 29000f,
+            "the floor faces its own normal: ${signedArea(onTheFloor, newell(floor))}"
+        )
+    }
+
+    /**
+     * The decision worth defending. A ring nested inside another *in projection* but lying in a
+     * different plane is not a hole — it is a coincidence of the axis that happened to be chosen.
+     *
+     * Here a tilted parallelogram sits inside an XY square when both are flattened onto `(x, y)`.
+     * Under one shared frame it was subtracted, and the square came back with a hole in it that
+     * nothing in the geometry justifies. Scoped to a plane, the square fills whole and the
+     * parallelogram fills as the separate surface it is.
+     *
+     * The counterfactual is worth measuring for a second reason. Forced into one plane, the result is
+     * not merely the square-with-a-hole one might picture: the hole *boundary* is at z 0 and z 40, so
+     * the triangles that bridge out to it climb out of the square's plane, and the "area" comes back
+     * as 12276 for a figure whose flat interpretation is 8400. The old shared frame did not just
+     * misclassify the ring, it emitted a surface that lies in no plane at all.
+     */
+    @Test
+    fun aRingInADifferentPlaneIsNotAHoleEvenWhenItProjectsInsideOne() {
+        val square = listOf(
+            Vec3(0f, 0f, 0f), Vec3(100f, 0f, 0f), Vec3(100f, 100f, 0f), Vec3(0f, 100f, 0f)
+        )
+        // planar, tilted about x, and its (x, y) shadow is the 40x40 square at (30, 30)
+        val tilted = listOf(
+            Vec3(30f, 30f, 0f), Vec3(70f, 30f, 0f), Vec3(70f, 70f, 40f), Vec3(30f, 70f, 40f)
+        )
+        val tiltedArea = 40f * sqrt(40f * 40f + 40f * 40f)
+        val rings = listOf(square, tilted)
+
+        assertEquals(
+            listOf(0 to emptyList<Int>(), 1 to emptyList()),
+            PlanarTessellation.tessellate(rings).map { it.outer to it.holes },
+            "the tilted ring is a separate surface, not a hole"
+        )
+        val separate = area(triangulate(lineOf(square, tilted)))
+        assertTrue(
+            abs(separate - (10000f + tiltedArea)) < 2f,
+            "the square should fill whole (10000) and the tilted ring separately ($tiltedArea); got $separate"
+        )
+
+        // the counterfactual: one frame for everything, which is what the code did before
+        assertEquals(
+            listOf(0 to listOf(1)),
+            PlanarTessellation.tessellate(rings, Coplanarity.SINGLE_PLANE).map { it.outer to it.holes },
+            "forced into one plane the tilted ring should be subtracted as a hole"
+        )
+        val forcedToOnePlane = area(triangulate(lineOf(square, tilted), Coplanarity.SINGLE_PLANE))
+        assertTrue(
+            forcedToOnePlane > 12000f,
+            "the forced surface is not planar and over-measures its own area; got $forcedToOnePlane"
+        )
+    }
+
+    /**
+     * A ring with no normal is not allowed to decide anybody's plane. Listed first — where a naive
+     * greedy clustering would let it seed one — it must still leave the real geometry that follows
+     * with its own frame.
+     */
+    @Test
+    fun aRingWithNoNormalDoesNotSeedAPlane() {
+        val collinear = listOf(Vec3(300f, 0f, 0f), Vec3(350f, 0f, 0f), Vec3(400f, 0f, 0f))
+        val wall = listOf(
+            Vec3(0f, 0f, 0f), Vec3(200f, 0f, 0f), Vec3(200f, 0f, 200f), Vec3(0f, 0f, 200f)
+        )
+        val tris = triangulate(lineOf(collinear, wall))
+        assertEquals(2, tris.size, "the XZ wall is two triangles, and the collinear ring is none")
+        assertTrue(abs(area(tris) - 40000f) < 1f, "area was ${area(tris)}")
+    }
+
+    private fun newell(ring: List<Vec3>): Vec3 = PlanarTessellation.newellNormal(ring)
 }

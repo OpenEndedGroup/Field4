@@ -1,7 +1,60 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
 
+/**
+ * The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics,
+ * each paired with a policy for giving the result coordinates.
+ *
+ * A transform happens in two independent halves, and keeping them apart is the whole point of this
+ * file. [PolytopeTopology.transform] is pure combinatorics — it consumes an incidence complex and
+ * produces a new one plus, for every output element, an [ImmediateElementProvenance] naming the
+ * source elements it came from and the role it plays (`face-center`, `edge-midpoint`,
+ * `kis-triangle`, `gyro-pentagon`, …). A [RealizationPolicy3] then reads those roles and computes
+ * coordinates from the source's; an [AttributePropagationPolicy] does the same for attributes. Swap
+ * the policy and you get a different solid over identical combinatorics.
+ *
+ * ## Five primitives, eight composites
+ *
+ * `d` dual, `a` ambo, `k` kis, `t` truncate and `g` gyro are implemented. `j n z o e s m b` are
+ * defined as primitive *words* — `j = da`, `b = ta`, `s = dgd`, `o = jj`, `m = kj` — and run one
+ * primitive at a time, so they cost as many topology rebuilds as their expansion is long.
+ * [PolytopeTransformResult.history] is the expanded trace; `notationHistory` keeps the composite you
+ * actually asked for.
+ *
+ * ## Beyond standard notation
+ *
+ * `k`, `t` and `g` also take an [ElementSelector] and an [ElementDoubleParameter], so one step can
+ * kis only the pentagons, or truncate every vertex by a fraction that varies with its height. Conway
+ * notation cannot say either thing; [TransformDeployment] records what was selected and which
+ * scalars were resolved, so such a step is still exactly replayable.
+ *
+ * ## What this will not do
+ *
+ * - **Rank 3 and closed manifolds only.** Every step validates its input *and* its output with
+ *   manifold checking on, so a non-manifold complex or an inconsistently oriented vertex fan throws
+ *   rather than producing a plausible-looking bad mesh.
+ * - **The composites are declared on [PolyhedralObject] only.** `cube().ambo()` returns a
+ *   [PolytopeTransformResult], which has no `bevel()` — so `cube().ambo().bevel()` does not compile.
+ *   Write `cube().ambo().transform(ConwayOperator.BEVEL)`, or let `conway("baC")` parse the whole
+ *   expression. `needle`, `zip` and `ortho` have no extension function at all and are reachable only
+ *   through [ConwayOperator] or Conway notation.
+ * - **Nothing here produces a canonical shape.** The default policies are cheap local constructions —
+ *   a centroid, a midpoint, a fraction along an edge — so a long chain drifts away from anything
+ *   symmetric. [PolyhedralObject.canonicalize] is the repair.
+ */
+
+/**
+ * The Conway operator vocabulary, each with the single letter Conway notation writes it as.
+ *
+ * [primitive] is the load-bearing flag: only the five primitive operators (`d`, `a`, `k`, `t`, `g`)
+ * have an implementation in [PolytopeTopology.transform]. The other eight are *words* over those
+ * five and are expanded by `primitiveExpansion` before anything runs, which is why they cost as
+ * many topology rebuilds as their expansion is long. [displayName] is the lower-case English name
+ * used in error messages, not a UI label.
+ */
 enum class ConwayOperator(val symbol: Char, val displayName: String, val primitive: Boolean) {
     DUAL('d', "dual", true),
     AMBO('a', "ambo", true),
@@ -37,6 +90,9 @@ val ConwayOperator.primitiveExpansion: List<ConwayOperator>
         ConwayOperator.BEVEL -> listOf(ConwayOperator.AMBO, ConwayOperator.TRUNCATE) // b = ta
     }
 
+/**
+ * A source element named by both id and rank, so provenance can be read without the topology in hand.
+ */
 data class ElementRef(val id: ElementId, val rank: Int)
 
 /** Direct explanation of how one output element was made from elements of the previous topology. */
@@ -46,9 +102,24 @@ data class ImmediateElementProvenance(
     val attributeSources: List<ElementRef> = sources,
 )
 
+/**
+ * The complete derivation of one output element, back to the seed elements it descends from.
+ *
+ * [ImmediateElementProvenance] records one step; this records the whole chain, so a vertex of `bkC`
+ * still knows which cube face it came from. Nodes are shared between siblings but traversal is a
+ * tree, so a shared ancestor is visited once per path — use `sourceElements` rather than walking it
+ * by hand when all you want is the seed set.
+ */
 sealed interface ElementLineage {
+    /**
+     * A seed element: it was already in the object the chain started from.
+     */
     data class Source(val element: ElementRef) : ElementLineage
 
+    /**
+     * One operator's output, naming the role the transform gave it (`face-center`, `kis-triangle`, …)
+     * and the lineages it was built from.
+     */
     data class Derived(
         val operation: ConwayOperator,
         val role: String,
@@ -56,11 +127,22 @@ sealed interface ElementLineage {
     ) : ElementLineage
 }
 
+/**
+ * Every seed element this lineage descends from, deduplicated, in order of first encounter.
+ */
 fun ElementLineage.sourceElements(): Set<ElementRef> = when (this) {
     is ElementLineage.Source -> setOf(element)
     is ElementLineage.Derived -> parents.flatMapTo(linkedSetOf()) { it.sourceElements() }
 }
 
+/**
+ * One primitive operator's combinatorial output: the new topology, plus why each of its elements
+ * exists.
+ *
+ * No coordinates and no attributes — this is the half of a Conway step that a [RealizationPolicy3]
+ * and an [AttributePropagationPolicy] then read in order to produce the other half. The topology
+ * has already been validated as a closed manifold by the time you hold one of these.
+ */
 class TopologyTransform internal constructor(
     val operation: ConwayOperator,
     val topology: PolytopeTopology,
@@ -68,6 +150,10 @@ class TopologyTransform internal constructor(
 ) {
     private val storedProvenance = immediateProvenance.toMap()
 
+    /**
+     * How [element] was made, in one step. Provenance is total over the output, so an unknown element
+     * throws rather than returning null — a miss means the caller has an id from a different topology.
+     */
     fun provenance(element: ElementId): ImmediateElementProvenance = storedProvenance[element]
         ?: throw IllegalArgumentException("element ${element.value} is not in this transform output")
 }
@@ -102,10 +188,30 @@ class TransformDeployment internal constructor(
     }
 }
 
+/**
+ * Coordinates for a transform's output, computed from the source object's coordinates and the
+ * transform's provenance roles.
+ *
+ * Returning `null` means "no realization", and every built-in policy does exactly that when the
+ * source is itself abstract — so a Conway chain over a topology with no coordinates stays abstract
+ * instead of inventing some. A policy that meets a role it does not recognise should fail loudly;
+ * the built-ins call `error`, because a silently misplaced vertex is far harder to notice than an
+ * exception.
+ */
 fun interface RealizationPolicy3 {
     fun realize(source: PolyhedralObject, transform: TopologyTransform): Realization3?
 }
 
+/**
+ * Which of a source element's attributes survive onto one output element.
+ *
+ * Called once per output element with that element's [ImmediateElementProvenance]; whatever map it
+ * returns *is* the output element's attribute map, so an empty map drops everything.
+ * [PreserveCommonAttributes] is the default and the conservative choice. Note that a policy is
+ * handed `provenance.attributeSources`, which is not always the same list as `provenance.sources` —
+ * kis triangles, for instance, are sourced from a face and an edge but inherit only the face's
+ * attributes.
+ */
 fun interface AttributePropagationPolicy {
     fun attributesFor(
         source: PolyhedralObject,
@@ -133,6 +239,16 @@ object PreserveCommonAttributes : AttributePropagationPolicy {
     }
 }
 
+/**
+ * A polyhedron plus the record of how it was made: the object itself, per-element lineage, and
+ * three histories.
+ *
+ * This — not [PolyhedralObject] — is what a Conway chain passes along, because each step needs the
+ * previous step's lineage to keep provenance and attributes attached. [history] is the expanded
+ * primitive trace, [notationHistory] is the operators the caller actually named (so `bC` reads back
+ * as one `bevel` rather than `truncate` then `ambo`), and [deployments] records the element
+ * selections and resolved scalar parameters needed to replay a step exactly.
+ */
 class PolytopeTransformResult internal constructor(
     val polyhedron: PolyhedralObject,
     lineage: Map<ElementId, ElementLineage>,
@@ -145,12 +261,22 @@ class PolytopeTransformResult internal constructor(
 ) {
     internal val storedLineage = lineage.toMap()
 
+    /**
+     * How [element] came to be, back to the seed. Throws for an element this result does not contain.
+     */
     fun lineage(element: ElementId): ElementLineage = storedLineage[element]
         ?: throw IllegalArgumentException("element ${element.value} is not in this transform result")
 
+    /**
+     * The seed elements [element] descends from — its lineage flattened and deduplicated.
+     */
     fun sourceElements(element: ElementId): Set<ElementRef> = lineage(element).sourceElements()
 
     companion object {
+        /**
+         * Start a chain from an existing object: every element becomes its own [ElementLineage.Source] and
+         * all three histories start empty. Cheap; it copies no coordinates.
+         */
         fun seed(polyhedron: PolyhedralObject): PolytopeTransformResult {
             val lineage = polyhedron.topology.elementsByRank.flatten().associate { element ->
                 element.id to ElementLineage.Source(ElementRef(element.id, element.rank))
@@ -297,6 +423,14 @@ private class SurfaceContext(val topology: PolytopeTopology) {
         }
 }
 
+/**
+ * Run one primitive operator over this complex, producing new combinatorics and their provenance.
+ *
+ * Primitives only — a composite throws, naming the primitive word to use instead. The input must be
+ * rank 3 and a closed manifold with a consistently oriented fan at every vertex, and the output is
+ * validated the same way, so both a malformed input and an operator that produced a non-manifold
+ * result surface as an exception rather than as a bad mesh.
+ */
 fun PolytopeTopology.transform(operation: ConwayOperator): TopologyTransform {
     require(operation.primitive) {
         "${operation.displayName} is a named composite; transform a PolyhedralObject or expand ${operation.symbol} to ${operation.primitiveExpansion.joinToString("") { it.symbol.toString() }}"
@@ -347,6 +481,12 @@ private fun PolytopeTopology.transformAmbo(surface: SurfaceContext): TopologyTra
     return buildTransform(this, ConwayOperator.AMBO, vertices, faces)
 }
 
+/**
+ * Kis only the named faces: each grows an apex, every other face is copied unchanged.
+ *
+ * The selection must be rank-2 elements of this topology; anything else throws. Combinatorics only —
+ * `PolytopeTransformResult.kis` is the version that also places the apexes.
+ */
 fun PolytopeTopology.kis(selectedFaces: Collection<ElementId>): TopologyTransform {
     val selected = validateSelection(selectedFaces, expectedRank = 2, label = "kis faces")
     return transformKis(SurfaceContext(this), selected)
@@ -394,6 +534,13 @@ private fun PolytopeTopology.transformKis(
     return buildTransform(this, ConwayOperator.KIS, vertices, faces)
 }
 
+/**
+ * Truncate only the named vertices: each is replaced by a face, its neighbours left alone.
+ *
+ * The selection must be rank-0 elements of this topology; anything else throws. A face with only
+ * some of its corners selected is kept and grows the corresponding pairs of points, recorded with
+ * the role `partially-truncated-face` — which is a shape standard Conway notation cannot describe.
+ */
 fun PolytopeTopology.truncate(selectedVertices: Collection<ElementId>): TopologyTransform {
     val selected = validateSelection(selectedVertices, expectedRank = 0, label = "truncate vertices")
     return transformTruncate(SurfaceContext(this), selected)
@@ -527,6 +674,14 @@ private fun PolytopeTopology.transformGyro(surface: SurfaceContext): TopologyTra
     return buildTransform(this, ConwayOperator.GYRO, vertices, faces)
 }
 
+/**
+ * Every dual vertex sits at the centroid of the face it replaces.
+ *
+ * Cheap, and exactly right for a face-transitive seed. For anything else the dual's faces are not
+ * planar, because a dual face's vertices are the centroids of the faces around one original vertex
+ * and those centroids need not be coplanar — and `dd` therefore returns a shrunken, distorted copy
+ * rather than the original. Follow with [PolyhedralObject.canonicalize] when that matters.
+ */
 object DualCentroidRealization : RealizationPolicy3 {
     override fun realize(source: PolyhedralObject, transform: TopologyTransform): Realization3? {
         if (source.realization == null) return null
@@ -534,6 +689,13 @@ object DualCentroidRealization : RealizationPolicy3 {
     }
 }
 
+/**
+ * Every ambo vertex sits at its source edge's midpoint — the rectification you would draw by hand.
+ *
+ * The faces inherited from original faces are planar whenever those were; the new vertex-faces are
+ * planar only when the edge midpoints around a vertex happen to be coplanar, which for a Conway
+ * output is usually not true.
+ */
 object AmboMidpointRealization : RealizationPolicy3 {
     override fun realize(source: PolyhedralObject, transform: TopologyTransform): Realization3? {
         if (source.realization == null) return null
@@ -541,6 +703,15 @@ object AmboMidpointRealization : RealizationPolicy3 {
     }
 }
 
+/**
+ * Raise each selected face's apex along the face normal, by a multiple of that face's own mean edge
+ * length.
+ *
+ * [heightScale] is therefore relative rather than a distance: the same number gives visually
+ * comparable spikes on a triangle and on a decagon, and on an object of any overall size. Must be
+ * finite and positive — 0 would leave the apex in the face plane and produce degenerate triangles,
+ * so it is rejected rather than tolerated.
+ */
 class KisFaceNormalRealization private constructor(
     val heightScale: Double,
     private val perFaceHeightScale: Map<ElementId, Double>,
@@ -584,6 +755,14 @@ class KisFaceNormalRealization private constructor(
     }
 }
 
+/**
+ * Cut each selected vertex off at [fraction] of the way along every edge leaving it.
+ *
+ * Strictly between 0 and 0.5, and that bound is not conservative: at 0.5 the two cut points on a
+ * shared edge coincide and the edge collapses. The default 1/3 is *not* the value that makes a
+ * truncated Platonic exactly Archimedean — it is close enough to read as one, and
+ * [PolyhedralObject.canonicalize] is how you get the exact solid.
+ */
 class TruncateAlongEdgesRealization private constructor(
     val fraction: Double,
     private val perVertexFraction: Map<ElementId, Double>,
@@ -625,6 +804,13 @@ class TruncateAlongEdgesRealization private constructor(
     }
 }
 
+/**
+ * Place gyro's two directed points on each edge at [edgeFraction] and one minus [edgeFraction]
+ * along it.
+ *
+ * Strictly between 0 and 0.5 for the same reason as truncation: at 0.5 the pair coincides and the
+ * pentagons degenerate. 1/3 is the default and the value gyro is conventionally drawn with.
+ */
 class GyroSubdivisionRealization private constructor(
     val edgeFraction: Double,
     private val perEdgeFraction: Map<ElementId, Double>,
@@ -707,12 +893,28 @@ private fun defaultRealizationPolicy(operation: ConwayOperator): RealizationPoli
     else -> error("${operation.displayName} is a composite and has no single-step realization policy")
 }
 
+/**
+ * Apply one Conway operator — primitive or composite — and start a chain from this object.
+ *
+ * Equivalent to seeding a [PolytopeTransformResult] and transforming that. Passing a
+ * [realizationPolicy] for a *composite* throws: a composite runs as several primitive steps and one
+ * policy cannot speak for all of them; configure the primitives instead.
+ */
 fun PolyhedralObject.transform(
     operation: ConwayOperator,
     realizationPolicy: RealizationPolicy3? = null,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = PolytopeTransformResult.seed(this).transform(operation, realizationPolicy, attributePolicy)
 
+/**
+ * Apply the next Conway operator to this chain.
+ *
+ * A composite is expanded into its primitive word and run one primitive at a time with each
+ * primitive's default policy, then recorded in [notationHistory] as the single operator you asked
+ * for while [history] keeps every step. Passing a [realizationPolicy] alongside a composite throws.
+ * This is also the escape hatch for the composites that have no extension function of their own:
+ * `transform(ConwayOperator.NEEDLE)`, `ZIP`, `ORTHO`, and any composite mid-chain.
+ */
 fun PolytopeTransformResult.transform(
     operation: ConwayOperator,
     realizationPolicy: RealizationPolicy3? = null,
@@ -780,41 +982,81 @@ private fun PolytopeTransformResult.applyTransform(
     )
 }
 
+/**
+ * Conway `d`: faces become vertices and vertices become faces, edges staying edges.
+ *
+ * An involution combinatorially — `dd` is the original complex — but not geometrically, because the
+ * default [DualCentroidRealization] moves every vertex to a face centroid. See
+ * [DualCentroidRealization] for what that costs.
+ */
 fun PolyhedralObject.dual(
     realizationPolicy: RealizationPolicy3 = DualCentroidRealization,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.DUAL, realizationPolicy, attributePolicy)
 
+/**
+ * Conway `a`: rectification. Each edge midpoint becomes a vertex, so the result has one face per
+ * original face and one per original vertex, and every vertex has degree exactly 4.
+ *
+ * `aC` is the cuboctahedron; `aa` is the composite `e` (expand).
+ */
 fun PolyhedralObject.ambo(
     realizationPolicy: RealizationPolicy3 = AmboMidpointRealization,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.AMBO, realizationPolicy, attributePolicy)
 
+/**
+ * Conway `k`: raise a pyramid on every face. Original vertices stay exactly where they were; a face
+ * of n sides becomes n triangles around a new apex, so the result is a triangulation.
+ *
+ * `kC` is the tetrakis hexahedron. The [ElementSelector] overload kises only some faces, which is
+ * the direction this library extends furthest beyond standard notation.
+ */
 fun PolyhedralObject.kis(
     realizationPolicy: RealizationPolicy3 = KisFaceNormalRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.KIS, realizationPolicy, attributePolicy)
 
+/**
+ * Conway `t`: cut every vertex off and replace it with a face. A vertex of degree n becomes an
+ * n-gon; a face of m sides becomes a 2m-gon.
+ *
+ * `tC` is an approximately regular truncated cube — canonicalize for the Archimedean one. The
+ * [ElementSelector] overload truncates only some vertices, which standard notation cannot say.
+ */
 fun PolyhedralObject.truncate(
     realizationPolicy: RealizationPolicy3 = TruncateAlongEdgesRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.TRUNCATE, realizationPolicy, attributePolicy)
 
+/**
+ * `dual` in the middle of a chain: same operator, carrying lineage, history and deployments forward.
+ */
 fun PolytopeTransformResult.dual(
     realizationPolicy: RealizationPolicy3 = DualCentroidRealization,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.DUAL, realizationPolicy, attributePolicy)
 
+/**
+ * `ambo` in the middle of a chain: same operator, carrying lineage, history and deployments forward.
+ */
 fun PolytopeTransformResult.ambo(
     realizationPolicy: RealizationPolicy3 = AmboMidpointRealization,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.AMBO, realizationPolicy, attributePolicy)
 
+/**
+ * `kis` in the middle of a chain: same operator, carrying lineage, history and deployments forward.
+ */
 fun PolytopeTransformResult.kis(
     realizationPolicy: RealizationPolicy3 = KisFaceNormalRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.KIS, realizationPolicy, attributePolicy)
 
+/**
+ * `truncate` in the middle of a chain: same operator, carrying lineage, history and deployments
+ * forward.
+ */
 fun PolytopeTransformResult.truncate(
     realizationPolicy: RealizationPolicy3 = TruncateAlongEdgesRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
@@ -827,6 +1069,13 @@ fun PolyhedralObject.kis(
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = PolytopeTransformResult.seed(this).kis(selector, heightScale, attributePolicy)
 
+/**
+ * Kis only the faces the selector matches, mid-chain, with a height scale evaluated once per
+ * selected face.
+ *
+ * Both the selection and the resolved heights are recorded in [deployments], so the step can be
+ * replayed exactly. A height that is not finite and positive throws, naming the face.
+ */
 fun PolytopeTransformResult.kis(
     selector: ElementSelector,
     heightScale: ElementDoubleParameter = ElementParameters.constant(0.5),
@@ -863,6 +1112,13 @@ fun PolyhedralObject.truncate(
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = PolytopeTransformResult.seed(this).truncate(selector, fraction, attributePolicy)
 
+/**
+ * Truncate only the vertices the selector matches, mid-chain, with a cut fraction evaluated once per
+ * selected vertex.
+ *
+ * Both the selection and the resolved fractions are recorded in [deployments]. A fraction outside
+ * (0, 0.5) throws, naming the vertex.
+ */
 fun PolytopeTransformResult.truncate(
     selector: ElementSelector,
     fraction: ElementDoubleParameter = ElementParameters.constant(1.0 / 3.0),
@@ -898,6 +1154,13 @@ fun PolyhedralObject.gyro(
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = PolytopeTransformResult.seed(this).gyro(edgeFraction, attributePolicy)
 
+/**
+ * Gyro everywhere, mid-chain, with the directed edge-point fraction evaluated once per source edge.
+ *
+ * Unlike the selector overloads of kis and truncate this has no selection — gyro is applied to the
+ * whole object and only its *parameter* varies, because a partially gyrated surface has no
+ * well-defined combinatorics here.
+ */
 fun PolytopeTransformResult.gyro(
     edgeFraction: ElementDoubleParameter,
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
@@ -925,27 +1188,68 @@ fun PolytopeTransformResult.gyro(
     )
 }
 
+/**
+ * Conway `g`: every oriented half-edge becomes a pentagon, so an n-gon face becomes n pentagons and
+ * the result is chiral.
+ *
+ * `gD` gives the combinatorics of the pentagonal hexecontahedron. `s = dgd` (snub) is how the snub
+ * solids are built from it.
+ */
 fun PolyhedralObject.gyro(
     realizationPolicy: RealizationPolicy3 = GyroSubdivisionRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.GYRO, realizationPolicy, attributePolicy)
 
+/**
+ * `gyro` in the middle of a chain: same operator, carrying lineage, history and deployments forward.
+ */
 fun PolytopeTransformResult.gyro(
     realizationPolicy: RealizationPolicy3 = GyroSubdivisionRealization(),
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.GYRO, realizationPolicy, attributePolicy)
 
+/**
+ * Conway `j = da`: the rhombic form. Every original edge becomes one quadrilateral spanning its two
+ * endpoints and the centres of its two faces; `jC` is the rhombic dodecahedron.
+ *
+ * Declared on [PolyhedralObject] only, like every composite here — mid-chain write
+ * `transform(ConwayOperator.JOIN)`, or let `conway("jC")` parse the whole expression.
+ */
 fun PolyhedralObject.join(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
     transform(ConwayOperator.JOIN, attributePolicy = attributePolicy)
 
+/**
+ * Conway `e = aa`: pull every face away from the centre, filling the gaps with a quadrilateral per
+ * original edge and an n-gon per original vertex. `eC` is the rhombicuboctahedron.
+ *
+ * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.EXPAND)`.
+ */
 fun PolyhedralObject.expand(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
     transform(ConwayOperator.EXPAND, attributePolicy = attributePolicy)
 
+/**
+ * Conway `s = dgd`: the snub. Original faces survive, separated by bands of triangles, and the
+ * result is chiral. `sC` is the snub cube.
+ *
+ * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.SNUB)`.
+ */
 fun PolyhedralObject.snub(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
     transform(ConwayOperator.SNUB, attributePolicy = attributePolicy)
 
+/**
+ * Conway `m = kj`: triangulate completely by adding both a face centre and an edge midpoint, so
+ * every output face is a triangle. `mC` has 48 of them.
+ *
+ * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.META)`.
+ */
 fun PolyhedralObject.meta(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
     transform(ConwayOperator.META, attributePolicy = attributePolicy)
 
+/**
+ * Conway `b = ta`: truncate the rectification, so each original face, vertex and edge becomes a face
+ * and no two of the original faces touch. `bC` is the truncated cuboctahedron.
+ *
+ * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.BEVEL)`.
+ */
 fun PolyhedralObject.bevel(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
     transform(ConwayOperator.BEVEL, attributePolicy = attributePolicy)

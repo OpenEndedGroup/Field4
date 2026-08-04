@@ -423,8 +423,18 @@ The right panel is the other entry point. `pointEdgeScalarField2D` builds a fiel
 edges — or straight from an `FLine`, sampling its cubics — as the union of weighted discs and
 capsules, signed so that `iso = 0.0` is the tube boundary. `generateSmoothIsoContours` then fits cubic
 splines through the marched polylines, so what comes back is a smooth outline of a stroke and not a
-staircase. Raising the radius or lowering `iso` fattens it. Both `pointRadius`/`edgeRadius` and the
-per-point/per-edge `pointWeights`/`edgeWeights` are separate knobs, so a stroke can taper.
+staircase. Raising the radius or lowering `iso` fattens it, and `pointRadius`/`edgeRadius` are
+separate knobs.
+
+To make a stroke *taper*, pass a `pointWeight` callback: `(nodeIndex, point) -> Double`, a multiplier
+on the radius, where `nodeIndex` is the *fractional* drawing-instruction index of each flattened
+sample — integral at a `moveTo`/`lineTo` and interpolated across a `cubicTo`, the same quantity
+`FLine.uniform_linearize` hands the renderer to look up per-node colour. `line.isoWeights()` builds
+one for you out of `isoWeight` properties set on the nodes themselves, treating the nodes that set it
+as keyframes and ramping linearly between them. An edge's capsule always takes the *minimum* of its
+two endpoints' weights: a capsule has one radius for its whole length and so cannot taper, the taper
+is the union of densely sampled discs, and the minimum keeps a capsule from bulging out past the thin
+end it is feeding into.
 
 ### The two things the marcher gets right, and the one it does not
 
@@ -1226,7 +1236,8 @@ bridge does its own repair.
 | the level set of any 2D function | `generateIsoContours(field, xMin, xMax, yMin, yMax, nx, ny, iso)` |
 | …by cell size instead of cell count | `generateIsoContoursWithStep(field, …, spatialStep, iso)` |
 | a smooth outline around an `FLine` | `generateSmoothIsoContours(line, radius, spatialStep)` |
-| …that tapers | pass `pointWeights` / `edgeWeights` |
+| …that tapers | set `here.isoWeight` as you build, then pass `pointWeight = line.isoWeights()` |
+| …tapered by something other than a node property | pass any `pointWeight = { nodeIndex, p -> … }` |
 | is this contour a loop or does it run off the edge? | `isoContourClosed(contour, xMin, xMax, yMin, yMax, eps)` |
 | contours of an image | `img.luma().isoContourFLines(iso)` — see [Imaging](imaging_examples.md) |
 | clusters, without committing to *k* | `vec2Agglomerative(points)` then `partition(k)` |

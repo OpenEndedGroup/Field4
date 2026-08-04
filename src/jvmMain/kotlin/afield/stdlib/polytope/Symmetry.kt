@@ -1,8 +1,40 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.LeastSquaresOptions
 import kotlin.math.max
 import kotlin.math.sqrt
+
+/**
+ * Symmetry as a combinatorial fact, and as something a solver can be asked for.
+ *
+ * The library never computes a symmetry *group*. It computes a partition — [combinatorialOrbits] —
+ * of the elements into classes that no automorphism of the topology can tell apart, by iterated
+ * incidence-colour refinement over the ranked incidence structure. Coordinates play no part, so the
+ * classes of a lumpy embedding and of its canonical form are identical: they are a property of the
+ * combinatorics.
+ *
+ * Two things are built on that. [SymmetryOrbitConstraint] turns the partition into residuals — same
+ * edge length within an edge class, same vertex radius within a vertex class, same face-plane distance
+ * within a face class — so a realization run can be *asked* to look symmetric, and
+ * [RelaxationPlan.Companion.symmetricCanonical] is the canonical conditions plus that family.
+ * [symmetryDeviation] is the readout in the other direction: how equal the geometry actually is inside
+ * each class, as a relative spread.
+ *
+ * ## The caveat that runs through all of it
+ *
+ * Colour refinement is not a complete isomorphism invariant, so a class is a *union* of true
+ * automorphism orbits and may be strictly coarser than them. Constraining a class is therefore at
+ * least as strong as constraining an orbit — and on a topology where it is strictly stronger, the
+ * constraint asks for an equality no embedding can deliver. Nothing here detects that case; the
+ * `symmetry-orbit` family simply reports a real residual and the reader is expected to look. The
+ * long-term fix named in `dev_docs/POLYTOPE_ALGEBRA.md` is Wythoff construction, which would supply
+ * actual group orbits.
+ *
+ * These are all soft constraints. Nothing in this file projects onto a symmetry group's fixed
+ * subspace, so nothing here can manufacture symmetry the topology does not have.
+ */
 
 /**
  * A partition of the elements into classes that combinatorially indistinguishable elements share.
@@ -26,8 +58,10 @@ import kotlin.math.sqrt
  * deterministic and prints usefully.
  */
 data class CombinatorialOrbits(
+    /** Rank-0 classes, each sorted, the classes ordered by their smallest member. */
     val vertexClasses: List<List<ElementId>>,
     val edgeClasses: List<List<ElementId>>,
+    /** Rank-2 classes. Ranks above 2 are not refined and are absent from this value entirely. */
     val faceClasses: List<List<ElementId>>,
 ) {
     val vertexClassCount: Int get() = vertexClasses.size
@@ -41,12 +75,22 @@ data class CombinatorialOrbits(
 
 /** Compact inspection value; the class *sizes* are the interesting fact at a live-coding prompt. */
 data class CombinatorialOrbitsSummary(
+    /** Sizes only, in class order. Which elements are in which class is not recoverable from here. */
     val vertexClassSizes: List<Int>,
     val edgeClassSizes: List<Int>,
     val faceClassSizes: List<Int>,
     val fullyTransitive: Boolean,
 )
 
+/**
+ * Class sizes per rank — a cube reports `[8]`, `[12]`, `[6]`, one class each, because it is fully
+ * transitive.
+ *
+ * Reading this line is the fastest way to see what a Conway expression produced: a single size at
+ * every rank means a fully transitive solid, and two vertex classes mean the operator split the
+ * vertices into kinds. Sizes only, so two genuinely different partitions of the same shape print
+ * identically.
+ */
 fun CombinatorialOrbits.summary() = CombinatorialOrbitsSummary(
     vertexClasses.map { it.size },
     edgeClasses.map { it.size },
@@ -57,8 +101,25 @@ fun CombinatorialOrbits.summary() = CombinatorialOrbitsSummary(
 /**
  * Refine the elements of ranks 0..2 into combinatorial classes. See [CombinatorialOrbits] for
  * exactly what the classes do and do not promise.
+ *
+ * Ranks above 2 take no part: on a rank-3 object the whole-body element is not classified, and its
+ * incidence contributes the same unknown colour to every face, which is harmless because it is
+ * uniform. The refinement stops the round the partition stops getting finer, which on the shapes this
+ * vocabulary makes is a handful of rounds and not the `elements + 2` worst case — but the answer
+ * depends only on the topology, so cache it rather than calling it per frame.
  */
-fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
+fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits = refineCombinatorialOrbits().orbits
+
+/**
+ * [combinatorialOrbits] together with the number of refinement rounds it actually ran, so a test can
+ * assert the early stop really fires. Pass `stopWhenStable = false` to spend the whole `elements + 2`
+ * budget, which is only useful for showing that stopping early costs nothing.
+ */
+internal data class CombinatorialOrbitsRefinement(val orbits: CombinatorialOrbits, val rounds: Int)
+
+internal fun PolytopeTopology.refineCombinatorialOrbits(
+    stopWhenStable: Boolean = true,
+): CombinatorialOrbitsRefinement {
     val ranks = 0..minOf(2, rank)
     val elements = ranks.flatMap { elements(it) }
     // Seed on rank and local degree: two elements of different rank or valence can never be
@@ -69,7 +130,11 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
     }
 
     var classes = colour.values.distinct().size
-    repeat(elements.size + 2) {
+    var rounds = 0
+    // Each round's colour string carries the previous round's colour as its prefix, so the partition
+    // can only get finer. A round that does not add a class has therefore reached the fixed point and
+    // every later round would just renumber it: stop.
+    for (round in 1..elements.size + 2) {
         val next = elements.associate { element ->
             val below = incidentDown(element.id).map { colour[ElementId(it)] ?: "?" }.sorted()
             val above = incidentUp(element.id).map { colour[ElementId(it)] ?: "?" }.sorted()
@@ -80,7 +145,8 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
         val renumbered = next.mapValues { (_, value) -> canonical.getValue(value) }
         val count = renumbered.values.distinct().size
         colour = renumbered
-        if (count == classes) return@repeat
+        rounds = round
+        if (count == classes && stopWhenStable) break
         classes = count
     }
 
@@ -90,9 +156,16 @@ fun PolytopeTopology.combinatorialOrbits(): CombinatorialOrbits {
         .map { group -> group.map { it.id }.sortedBy { it.value } }
         .sortedBy { it.first().value }
 
-    return CombinatorialOrbits(classesOf(0), classesOf(1), classesOf(2))
+    return CombinatorialOrbitsRefinement(CombinatorialOrbits(classesOf(0), classesOf(1), classesOf(2)), rounds)
 }
 
+/**
+ * This object's combinatorial classes, which are a fact about its topology alone.
+ *
+ * The coordinates are not consulted, so a badly distorted embedding and its canonical form report the
+ * same classes. That is the whole point: the classes say what the object *should* look like, and
+ * [symmetryDeviation] says how far this embedding is from it.
+ */
 fun PolyhedralObject.combinatorialOrbits(): CombinatorialOrbits = topology.combinatorialOrbits()
 
 /**
@@ -107,9 +180,19 @@ fun PolyhedralObject.combinatorialOrbits(): CombinatorialOrbits = topology.combi
  *
  * Build one with [PolyhedralObject.symmetryOrbitConstraint] rather than by hand; the class indices
  * must be in `topology.elements(rank)` order.
+ *
+ * `vertexCount + edgeCount + faceCount` residuals, each a deviation from its own class's mean and so a
+ * length in coordinate units; a class with one member contributes exactly zero. The face measurement
+ * is the signed distance from the *vertex* centroid to the face's plane, not to the tangency centre.
+ *
+ * The class lists are checked against the topology inside the residual evaluation rather than at
+ * construction, so a constraint built for a different object constructs happily and fails on the
+ * solver's first residual call. It also has no Ceres equivalent — a plan containing this family cannot
+ * be handed to [PolyhedralObject.relaxWithCeres].
  */
 data class SymmetryOrbitConstraint(
     override val weight: Double = 1.0,
+    /** One non-negative class index per vertex, in `topology.elements(0)` order. Gaps are harmless. */
     val vertexClass: List<Int>,
     val edgeClass: List<Int>,
     val faceClass: List<Int>,
@@ -165,7 +248,12 @@ data class SymmetryOrbitConstraint(
     }
 }
 
-/** The [SymmetryOrbitConstraint] for this object's own combinatorial classes. */
+/**
+ * The [SymmetryOrbitConstraint] for this object's own combinatorial classes.
+ *
+ * Runs the colour refinement on every call and bakes the resulting element order into the constraint,
+ * so the value is tied to this topology and cannot be reused across a transform.
+ */
 fun PolyhedralObject.symmetryOrbitConstraint(weight: Double = 1.0): SymmetryOrbitConstraint {
     val orbits = combinatorialOrbits()
     fun indices(rank: Int, classes: List<List<ElementId>>): List<Int> {
@@ -189,6 +277,10 @@ fun PolyhedralObject.symmetryOrbitConstraint(weight: Double = 1.0): SymmetryOrbi
  * O(iterations × elements). This plan runs a finite-difference Levenberg-Marquardt solve over
  * `3 × vertexCount` parameters, which is the right tool for tens of vertices and the wrong one for
  * hundreds.
+ *
+ * The plan captures [polyhedron]'s classes at the moment it is built, so it belongs to that topology
+ * and no other. Because the symmetry family has no native counterpart, this is also the one stock plan
+ * that cannot be handed to [PolyhedralObject.relaxWithCeres].
  */
 fun RelaxationPlan.Companion.symmetricCanonical(
     polyhedron: PolyhedralObject,
@@ -214,13 +306,24 @@ fun RelaxationPlan.Companion.symmetricCanonical(
  * numeric statement of "this embedding respects the topology's symmetry".
  */
 data class SymmetryDeviation(
+    /** Worst `(max - min) / |mean|` of vertex-to-centroid distance within any one vertex class. */
     val vertexRadiusSpread: Double,
     val edgeLengthSpread: Double,
+    /** The same, for the signed distance from the vertex centroid to each face's plane. */
     val faceDistanceSpread: Double,
     val orbits: CombinatorialOrbitsSummary,
 )
 
-/** Largest within-class relative spread of each measured quantity. */
+/**
+ * Largest within-class relative spread of each measured quantity.
+ *
+ * Dimensionless, so it reads as a fraction: `1e-8` is a canonical-quality solid, `3e-1` is a lump. It
+ * takes the *worst* class at each rank, and skips any class with fewer than two members or a mean
+ * within `1e-12` of zero — so `0.0` can mean "perfectly equal" or "there was nothing here to compare",
+ * and [SymmetryDeviation.orbits] is what tells the two apart.
+ *
+ * Requires a realization and a topology that validates, via [RealizationProblem.of].
+ */
 fun PolyhedralObject.symmetryDeviation(): SymmetryDeviation {
     val problem = RealizationProblem.of(this)
     val x = problem.initialCoordinates

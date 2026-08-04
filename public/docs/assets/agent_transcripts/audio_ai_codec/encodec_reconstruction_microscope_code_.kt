@@ -1,0 +1,27 @@
+import afield.stdlib.noir.audioai.*
+
+val sampleRate = 8000
+val seconds = 4.0
+val source = FloatArray((sampleRate * seconds).toInt()) { i ->
+    val t = i / sampleRate.toDouble()
+    val chirp = sin(2.0 * PI * (180.0 * t + 110.0 * t * t))
+    val room = 0.28 * sin(2.0 * PI * 720.0 * t) * exp(-0.16 * t)
+    (0.62 * chirp + room + 0.025 * sin(2.0 * PI * 3100.0 * t)).toFloat()
+}
+val reconstruction = FloatArray(source.size) { i ->
+    source[i] * 0.91f +
+        (0.008 * sin(i * 0.173) + 0.004 * sin(i * 0.037)).toFloat()
+}
+val tokenFrames = (seconds * 50).toInt()
+val tokenValues = LongArray(4 * tokenFrames) { i ->
+    val codebook = i / tokenFrames
+    val frame = i % tokenFrames
+    ((frame * (31 + codebook * 8) + 173 * codebook + 97 * sin(frame * 0.11)).toLong() and 2047)
+}
+val data = CodecVisualizationData(
+    source, reconstruction, sampleRate,
+    NpyIntTensor(intArrayOf(1, 4, tokenFrames), tokenValues),
+    ReconstructionMetrics(0.0123, 18.7, 0.143),
+    50.0, 2048, "EnCodec 32 kHz · deterministic documentation fixture",
+)
+display("main", CodecVisualization.renderHtml(data, width = 1100))

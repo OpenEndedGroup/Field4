@@ -85,7 +85,14 @@ python3 tools/run_field_tests.py --id examples.demo-transcript.exec --port <free
 ```
 
 The transcript is `dev_docs/agents/transcripts/rewrite_strategies_demo.yaml`
-(`baseline` / `once` / `subset` / `topdown` / `bottomup` / `then` / `choice` / `repeat`).
+(`baseline` / `once` / `subset` / `topdown` / `bottomup` / `then` / `choice` / `repeat` /
+`nested pattern`).
+
+A pattern may itself be nested — `from { f(f(x)) }` matches a pair of calls and binds `x` to what
+they wrap — and a strategy drives it like any other rule, so each `topdown` step consumes two levels:
+`repeat(topdown("fg"), 2)` takes `f(f(f(f(1))))` to `g(g(1))` (= 201 for `f(v) = v * 2`,
+`g(v) = v + 100`). Covered by `testStrategyNestedPatternUnderRepeat` and the transcript's
+`rw_nested` box.
 
 Coverage lives in `afield.PatternRewriteSmokeTest` (`kotlin.pattern-rewrite.smoke`) — each strategy
 case asserts a result *different from the default global fixpoint*, which is the proof it does

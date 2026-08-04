@@ -110,15 +110,26 @@ fun abletonLinkNativeLibraryName(): String {
 
 val abletonLinkNative = layout.projectDirectory.file("libs/${abletonLinkNativeLibraryName()}")
 
-// The Ceres wrapper the JVM loads. `libs/` holds a committed, self-contained build; `buildCeresNative`
-// produces a fresh one from native/ken-ceres. -PceresLibrary=<path> points every run/test/smoke task
-// at a different one, which is how you A/B a wrapper change against the committed artifact without
-// overwriting it.
-val ceresNativeCommitted = layout.projectDirectory.file("libs/libken_ceres_jvm.dylib")
-val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/libken_ceres_jvm.dylib")
+// The Ceres wrapper the JVM loads. Nothing is committed — the solver is an optional extra, so a fresh
+// clone builds it once with `buildCeresRedistributable` (self-contained, shippable) or
+// `buildCeresNative` (links the Homebrew Ceres, seconds instead of minutes, for iterating on the
+// wrapper). -PceresLibrary=<path> points every run/test/smoke task at a specific one, which is how two
+// wrappers get A/B'd against each other.
+// dylib/so/dll, chosen the same way tools/build_ceres_native.py and CeresNativeLibrary choose it.
+fun ceresNativeLibraryName(): String {
+    val os = System.getProperty("os.name").lowercase()
+    return when {
+        os.contains("windows") -> "ken_ceres_jvm.dll"
+        os.contains("mac") || os.contains("darwin") -> "libken_ceres_jvm.dylib"
+        else -> "libken_ceres_jvm.so"
+    }
+}
+
+val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/${ceresNativeLibraryName()}")
+val ceresRedistributable = layout.buildDirectory.file("ken-ceres-redistributable/${ceresNativeLibraryName()}")
 val ceresNative: RegularFile = providers.gradleProperty("ceresLibrary")
     .map { layout.projectDirectory.file(it) }
-    .getOrElse(ceresNativeCommitted)
+    .getOrElse(ceresRedistributable.get())
 val printRunJvmClasspath = providers.gradleProperty("printRunJvmClasspath")
     .map(String::toBoolean)
     .orElse(true)
@@ -2048,18 +2059,28 @@ fun JavaExec.configureCeresSmokeTask(entrypoint: String, taskDescription: String
     mainClass.set(entrypoint)
     workingDir = projectDir
     jvmArgs(requiredRunJvmArgs())
-    inputs.file(ceresNative)
+    // Optional on purpose. Nothing is committed, so on a fresh clone this file is simply absent, and
+    // a required input fails at validation time with Gradle's generic "an input file was expected to
+    // be present" — which tells you nothing about what to do. Declaring it optional lets the check
+    // below run and name the command instead.
+    inputs.files(ceresNative)
     doFirst {
         if (!ceresNative.asFile.exists()) {
-            throw GradleException("Ceres native library not found at ${ceresNative.asFile.absolutePath}")
+            throw GradleException(
+                "No Ceres native library at ${ceresNative.asFile.absolutePath}.\n" +
+                    "The solver is an optional extra and is not committed; build it once with\n" +
+                    "  ./gradlew buildCeresRedistributable\n" +
+                    "or, if you have `brew install ceres-solver` and are iterating on the wrapper,\n" +
+                    "  ./gradlew buildCeresNative -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib",
+            )
         }
     }
 }
 
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
-// one. That build is configured with Eigen/SuiteSparse/Accelerate sparse backends, so the wrapper
-// can ask for SPARSE_NORMAL_CHOLESKY; the committed libs/ artifact is statically linked against a
-// Ceres built with every sparse backend off and can only do DENSE_QR.
+// one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
+// carries /opt/homebrew in its load commands, so it is not the one to ship (see
+// buildCeresRedistributable for that).
 //
 // This is deliberately not wired into `check` or into the smoke tasks: it needs a system Ceres
 // (`brew install ceres-solver`) that a fresh clone will not have. Run it by hand, then point the
@@ -2099,6 +2120,46 @@ val buildCeresNative = tasks.register("buildCeresNative") {
     }
 }
 
+// The redistributable counterpart of `buildCeresNative`: same wrapper, but statically linked against
+// a Ceres built from pinned source, so `otool -L` shows only libc++ and libSystem. This is the one
+// the runtime looks for by default, and nothing is committed, so a fresh clone runs this once before
+// any solver feature works. See tools/build_ceres_native.py, which owns the version
+// pins, the checksums, and the self-containment assertion.
+//
+// Also not wired into `check`: it needs the network on its first run, and building Ceres takes
+// minutes where `buildCeresNative` takes seconds. Reach for it when you intend to *ship* an artifact;
+// reach for buildCeresNative while iterating on the wrapper.
+//
+//     ./gradlew buildCeresRedistributable
+//     ./gradlew smokeCeres -PceresLibrary=build/ken-ceres-redistributable/libken_ceres_jvm.dylib
+val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
+    group = "build"
+    description = "Builds a self-contained ken_ceres_jvm from pinned Ceres/Eigen source (needs cmake, network on first run)."
+
+    val script = layout.projectDirectory.file("tools/build_ceres_native.py")
+    val sourceDir = layout.projectDirectory.dir("native/ken-ceres")
+    inputs.dir(sourceDir)
+    inputs.file(script)
+    outputs.file(ceresRedistributable)
+
+    doLast {
+        // `python3` everywhere but Windows, where the launcher is `python`. Both are what
+        // tools/ci_ceres_abi.py is invoked as in .github/workflows/ceres-abi.yml.
+        val python = if (System.getProperty("os.name").lowercase().contains("windows")) "python" else "python3"
+        val result = providers.exec {
+            commandLine(python, script.asFile.absolutePath)
+            isIgnoreExitValue = true
+        }
+        val out = result.standardOutput.asText.get()
+        val err = result.standardError.asText.get()
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException("${script.asFile.name} failed with exit code $code:\n$out$err")
+        }
+        out.trim().lines().forEach { logger.lifecycle(it) }
+    }
+}
+
 val smokeCeresGeometryPrimitives = tasks.register<JavaExec>("smokeCeresGeometryPrimitives") {
     configureCeresSmokeTask(
         "afield.examples.ceres.CeresGeometryPrimitivesSmokeKt",
@@ -2120,17 +2181,15 @@ val smokeCeresInteractionExamples = tasks.register<JavaExec>("smokeCeresInteract
     )
 }
 
-// Needs the v2 wrapper, so it is not in `smokeCeres` — the committed libs/ artifact is v1.
-//     ./gradlew buildCeresNative
-//     ./gradlew smokeCeresAbiV2 -PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib
-tasks.register<JavaExec>("smokeCeresAbiV2") {
+// Solver options, the summary, a selectable loss, and the midsphere/global constraint family.
+val smokeCeresSolverOptions = tasks.register<JavaExec>("smokeCeresSolverOptions") {
     configureCeresSmokeTask(
-        "afield.examples.ceres.CeresAbiV2SmokeKt",
-        "Runs the Ceres ABI v2 smoke: midsphere constraints, solver options, summary, error channel.",
+        "afield.examples.ceres.CeresSolverOptionsSmokeKt",
+        "Runs the Ceres solver-options smoke: midsphere constraints, options, summary, error channel.",
     )
 }
 
-// Same plan, both realizers, on a ladder of Conway solids. Needs the v2 wrapper (see above).
+// Same plan, both realizers, on a ladder of Conway solids.
 tasks.register<JavaExec>("ceresPolytopeComparison") {
     configureCeresSmokeTask(
         "afield.examples.ceres.CeresPolytopeRealizerComparisonKt",
@@ -2139,10 +2198,83 @@ tasks.register<JavaExec>("ceresPolytopeComparison") {
     group = "application"
 }
 
+// Prints the shape of the Ceres problem behind each canonical realization.
+tasks.register<JavaExec>("ceresRealizerDiagnostic") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresRealizerDiagnosticKt",
+        "Reports parameter/residual counts for the Ceres polyhedron realizer.",
+    )
+    group = "application"
+}
+
+// Plane parameterisation and rotation gauge, measured.
+tasks.register<JavaExec>("ceresPlaneFormulationStudy") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresPlaneFormulationStudyKt",
+        "Measures PLANAR vs PLANAR_HESSE vs PLANAR_FIT, with and without a rotation gauge.",
+    )
+    group = "application"
+}
+
+// Checks the Ceres realizer reaches a real canonical form, not just a small residual.
+val smokeCeresCanonical = tasks.register<JavaExec>("smokeCeresCanonical") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresCanonicalVerificationKt",
+        "Verifies the three canonical conditions on the Ceres realizer's output.",
+    )
+}
+
+// The residual expression VM: equivalence with the hand-written opcodes, DAG sharing, validation,
+// and the Thomson problem — which no opcode in the vocabulary can express.
+val smokeCeresExpression = tasks.register<JavaExec>("smokeCeresExpression") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionSmokeKt",
+        "Runs the Ceres residual-expression VM smoke.",
+    )
+}
+
+// Where the time in relaxWithCeres goes: program mapping vs native compile vs solve. Needs the v2
+// wrapper. This is the measurement behind relaxWithCeres' KDoc note about repeated solves.
+tasks.register<JavaExec>("ceresRealizerCacheCost") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresRealizerCacheCostKt",
+        "Measures how much of a relaxWithCeres call a cached native program could remove.",
+    )
+    group = "application"
+}
+
+// Free variables and manifolds in the expression VM: PLANAR_HESSE re-derived as a Kotlin expression
+// over the whole kk family, plus closed-form fits whose unknowns are not points at all.
+val smokeCeresExpressionVariables = tasks.register<JavaExec>("smokeCeresExpressionVariables") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionVariablesSmokeKt",
+        "Runs the Ceres expression free-variable smoke: PLANAR_HESSE in Kotlin, manifolds, fits.",
+    )
+}
+
+// What the expression VM costs against the equivalent hand-written functor.
+tasks.register<JavaExec>("ceresExpressionCost") {
+    configureCeresSmokeTask(
+        "afield.examples.ceres.CeresExpressionCostKt",
+        "Times the residual-expression VM against the equivalent native opcode.",
+    )
+    group = "application"
+}
+
 tasks.register("smokeCeres") {
     group = "verification"
     description = "Runs all Ceres FFM smoke examples."
-    dependsOn(smokeCeresGeometryPrimitives, smokeCeresArchitecturalDsl, smokeCeresInteractionExamples)
+    // All of them: before there was one committed ABI v1 artifact and the newer smokes could not
+    // run against it, so they were left out of here. There is one wrapper now.
+    dependsOn(
+        smokeCeresGeometryPrimitives,
+        smokeCeresArchitecturalDsl,
+        smokeCeresInteractionExamples,
+        smokeCeresSolverOptions,
+        smokeCeresCanonical,
+        smokeCeresExpression,
+        smokeCeresExpressionVariables,
+    )
 }
 
 tasks.register<JavaExec>("runfilestore") {

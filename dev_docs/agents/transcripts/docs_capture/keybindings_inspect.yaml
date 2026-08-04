@@ -1,0 +1,44 @@
+name: keybindings_inspect
+description: >
+  One box that asks Field what its shortcuts currently are, reading the same resolved bindings the
+  keypresses themselves use (afield.UserKeybindingsManager.resolved). Backs the "Asking Field
+  directly" capture on public/docs/keybindings.md, and is worth running on its own when a shortcut
+  is not doing what a keybindings.yaml says it should. The box code here is exactly what that page
+  shows.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for it.
+operations:
+  - create:
+      box: agent_keybindings_inspect
+      name: What is bound right now
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 640.0
+        h: 170.0
+      properties:
+        code: |
+          // Point the watcher at ~/.afield/keybindings.yaml — a no-op unless something moved it,
+          // which the rebinding figure further up this page does.
+          afield.UserKeybindingsManager.watchFile(null)
+
+          val live = afield.UserKeybindingsManager.resolved
+          val ids = listOf("new-box", "open-command-palette", "show-cheatsheet", "execute-fragment", "connect")
+          val rows = ids.joinToString("") { id ->
+              val specs = (live.effective[id] ?: live.bindings[id])?.joinToString(" or ") ?: "not registered yet"
+              "<tr><td style=\"padding:1px 16px 1px 0\">$id</td><td>$specs</td></tr>"
+          }
+          display("main", """
+            <div style="font:12px/1.6 ui-monospace,monospace;color:#cfd8e3;padding:10px 12px">
+              <div style="opacity:0.65">${live.path}</div>
+              <div style="opacity:0.65">${live.problems.size} problem(s) in it</div>
+              <table style="margin-top:8px;border-collapse:collapse">$rows</table>
+            </div>
+          """)
+  - execute:
+      box: agent_keybindings_inspect
+      property: code
+      type: all
+  - wait:
+      millis: 400

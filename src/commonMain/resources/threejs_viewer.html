@@ -292,7 +292,6 @@ raycaster.params.Points = { threshold: 1.5 };
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
-const EDGE_SAMPLES = 24;
 const HANDLE_ANCHOR_SIZE_PX = 8;
 const HANDLE_CONTROL_SIZE_PX = 7;
 const HANDLE_SELECTED_BONUS_PX = 2;
@@ -321,6 +320,20 @@ function arrayFromVec3(value) {
     return [value.x, value.y, value.z];
 }
 
+// [viewer-region cubic-sampling] BEGIN
+//
+// The second liftable region (see the `planar-tessellation` sentinels below for what that means):
+// executed on GraalJS by `ViewerJavaScript.kt` and compared against `FLine.uniform_linearize_cubic`
+// by `ThreeJsViewerCubicSamplingParityTest`. The two are *deliberately* separate implementations —
+// `dev_docs/fline_fill_orientation.md` records the standing decision not to unify the independent
+// flatteners — so the job of a test here is to pin that they agree, not to merge them.
+//
+// EDGE_SAMPLES lives here, rather than up with the interaction constants, because it is this
+// region's only parameter and the region has to be liftable on its own. Moving a module-scope
+// `const` is behaviour-neutral: its only reader is the default argument of `sampleCubic`, evaluated
+// per call, long after the module has finished loading.
+const EDGE_SAMPLES = 24;
+
 function cubicPoint(a, c1, c2, b, t) {
     const mt = 1 - t;
     const mt2 = mt * mt;
@@ -339,6 +352,8 @@ function sampleCubic(a, c1, c2, b, count = EDGE_SAMPLES) {
     }
     return out;
 }
+
+// [viewer-region cubic-sampling] END
 
 function pointRef(lineIndex, nodeIndex, handle) {
     return { lineIndex, nodeIndex, handle };
@@ -1297,6 +1312,250 @@ function buildPointsGeometry(points, color, alpha, size) {
     return geometry;
 }
 
+// [viewer-region planar-tessellation] BEGIN
+//
+// Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
+// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
+// so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
+// by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
+// `ShapeUtils.triangulateShape`.
+//
+// --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
+//
+// Editable mode re-triangulates client-side, because the user drags points and the fill has to
+// follow between server round-trips. It used to do that with a naive fan over each subpath's
+// boundary — no holes, no projection, no concavity — so `editable = true` and `editable = false`
+// could disagree about both the holes and the facing of the *same* FLine. This is the rule the
+// server runs, so now they agree.
+//
+// Keep in step with `src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt`, and with the two
+// tolerances in `Coplanarity`. Both are dimensionless: COPLANAR_SINE_OF_ANGLE is the sine of the
+// angle between two rings' unit Newell normals — unsigned, so antiparallel counts as parallel,
+// because a hole is normally wound against the ring it is a hole in — and COPLANAR_OFFSET_FRACTION
+// is a fraction of the diagonal of the whole line's bounding box, so clustering is invariant under
+// a uniform scale of the drawing.
+const COPLANAR_SINE_OF_ANGLE = 1e-3;
+const COPLANAR_OFFSET_FRACTION = 1e-3;
+const RING_SANITIZE_EPS = 1e-5;
+
+/** The server's ring sanitiser: drop consecutive duplicates in 3D, and a repeated final point. */
+function sanitizeRing3D(ring) {
+    const same = (a, b) => Math.abs(a[0] - b[0]) <= RING_SANITIZE_EPS
+        && Math.abs(a[1] - b[1]) <= RING_SANITIZE_EPS
+        && Math.abs(a[2] - b[2]) <= RING_SANITIZE_EPS;
+    const out = [];
+    ring.forEach((p) => { if (!out.length || !same(out[out.length - 1], p)) out.push(p.slice()); });
+    if (out.length >= 2 && same(out[0], out[out.length - 1])) out.pop();
+    return out;
+}
+
+function ringNewellNormal(ring) {
+    let nx = 0, ny = 0, nz = 0;
+    for (let i = 0; i < ring.length; i += 1) {
+        const p = ring[i];
+        const q = ring[(i + 1) % ring.length];
+        nx += (p[1] - q[1]) * (p[2] + q[2]);
+        ny += (p[2] - q[2]) * (p[0] + q[0]);
+        nz += (p[0] - q[0]) * (p[1] + q[1]);
+    }
+    return [nx, ny, nz];
+}
+
+/**
+ * Group `rings` (each an array of `[x, y, z]`) into coplanar planes, decide which rings are holes in
+ * which *within* a plane, and triangulate each group on an orientation-preserving projected frame.
+ *
+ * Returns `[{ outer, holes, triangles }]`, where `outer` and each of `holes` index into `rings`, and
+ * `triangles` is a flat list of `[ringIndex, vertexIndex]` pairs, three per triangle. Ordered by
+ * `outer`, so the answer does not depend on the order the planes were discovered in.
+ */
+function tessellateCoplanarGroups(rings) {
+    if (!rings.length) return [];
+    const normals = rings.map(ringNewellNormal);
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    rings.forEach((ring) => ring.forEach((p) => {
+        if (p[0] < minX) minX = p[0];
+        if (p[0] > maxX) maxX = p[0];
+        if (p[1] < minY) minY = p[1];
+        if (p[1] > maxY) maxY = p[1];
+        if (p[2] < minZ) minZ = p[2];
+        if (p[2] > maxZ) maxZ = p[2];
+    }));
+    const dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+    const tolerance = COPLANAR_OFFSET_FRACTION * Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+    const planeHolds = (plane, ring) => ring.every((p) =>
+        Math.abs(plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] - plane[3]) <= tolerance);
+    const sineBetween = (plane, u) => {
+        const cx = plane[1] * u[2] - plane[2] * u[1];
+        const cy = plane[2] * u[0] - plane[0] * u[2];
+        const cz = plane[0] * u[1] - plane[1] * u[0];
+        return Math.sqrt(cx * cx + cy * cy + cz * cz);
+    };
+
+    // Greedy: each ring joins the first plane it matches or seeds one, and a plane is represented by
+    // the ring that seeded it — never a running average, so near-coplanarity does not accumulate
+    // along a chain. A ring with no normal cannot seed a plane, and is placed only after every ring
+    // that can has had its say.
+    const groups = [];
+    const withoutANormal = [];
+    rings.forEach((ring, i) => {
+        const n = normals[i];
+        const length = Math.sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+        if (!Number.isFinite(length) || length <= 0) { withoutANormal.push(i); return; }
+        const u = [n[0] / length, n[1] / length, n[2] / length];
+        const found = groups.find((g) => g.plane
+            && sineBetween(g.plane, u) <= COPLANAR_SINE_OF_ANGLE && planeHolds(g.plane, ring));
+        if (found) { found.members.push(i); return; }
+        let cx = 0, cy = 0, cz = 0;
+        ring.forEach((p) => { cx += p[0]; cy += p[1]; cz += p[2]; });
+        const inv = 1 / ring.length;
+        groups.push({
+            plane: [u[0], u[1], u[2], u[0] * cx * inv + u[1] * cy * inv + u[2] * cz * inv],
+            members: [i]
+        });
+    });
+    withoutANormal.forEach((i) => {
+        const found = groups.find((g) => g.plane && planeHolds(g.plane, rings[i]));
+        if (found) found.members.push(i); else groups.push({ plane: null, members: [i] });
+    });
+
+    const out = [];
+    groups.forEach((group) => fillCoplanarGroup(rings, normals, group.members, out));
+    out.sort((a, b) => a.outer - b.outer);
+    return out;
+}
+
+function fillCoplanarGroup(rings, normals, members, out) {
+    // The axis, and the fallback hemisphere, from this plane's strongest ring.
+    let axis = 2, strongest = 0, defaultFlipped = false;
+    members.forEach((m) => {
+        const n = normals[m];
+        const l2 = n[0] * n[0] + n[1] * n[1] + n[2] * n[2];
+        if (l2 <= strongest) return;
+        strongest = l2;
+        const ax = Math.abs(n[0]), ay = Math.abs(n[1]), az = Math.abs(n[2]);
+        axis = (ax >= ay && ax >= az) ? 0 : (ay >= az ? 1 : 2);
+        defaultFlipped = n[axis] < 0;
+    });
+
+    // The right-handed pair kept about `axis`: x -> (y, z), y -> (z, x), z -> (x, y). Earcut
+    // normalises the winding of every ring it is handed, so the projected frame is the *only* thing
+    // that decides which way the emitted triangles face; the mirror of this pair inverts all of them.
+    const px = (p) => (axis === 0 ? p[1] : axis === 1 ? p[2] : p[0]);
+    const py = (p) => (axis === 0 ? p[2] : axis === 1 ? p[0] : p[1]);
+
+    const infos = members.map((m) => {
+        const points = rings[m];
+        let lo0 = px(points[0]), hi0 = lo0, lo1 = py(points[0]), hi1 = lo1;
+        for (let i = 1; i < points.length; i += 1) {
+            const a = px(points[i]), b = py(points[i]);
+            if (a < lo0) lo0 = a;
+            if (a > hi0) hi0 = a;
+            if (b < lo1) lo1 = b;
+            if (b > hi1) hi1 = b;
+        }
+        let sum = 0;
+        for (let i = 0; i < points.length; i += 1) {
+            const a = points[i], b = points[(i + 1) % points.length];
+            sum += px(a) * py(b) - px(b) * py(a);
+        }
+        return { ring: m, points, area: 0.5 * sum, lo0, hi0, lo1, hi1 };
+    });
+
+    const inside = (points, p) => {
+        let hit = false;
+        let j = points.length - 1;
+        const qx = px(p), qy = py(p);
+        for (let i = 0; i < points.length; i += 1) {
+            const xi = px(points[i]), yi = py(points[i]);
+            const xj = px(points[j]), yj = py(points[j]);
+            if (((yi > qy) !== (yj > qy)) && (qx < (xj - xi) * (qy - yi) / ((yj - yi) + 1e-12) + xi)) {
+                hit = !hit;
+            }
+            j = i;
+        }
+        return hit;
+    };
+
+    // Bounding boxes, signed areas and containment all run in the *unflipped* frame. A mirror does
+    // not change what is inside what, so the nesting is the same either way.
+    //
+    // A container is *strictly* larger than what it contains: geometrically free, and it is what makes
+    // `parent` a forest rather than a graph that can cycle. Two overlapping rings of equal projected
+    // area could otherwise each be chosen as the other's parent, and the depth walk below would spin
+    // forever — freezing the tab on two overlapping subpaths. Keep in step with
+    // `PlanarTessellation.fill`, and see `PlanarTessellationParentCycleTest`.
+    const parent = infos.map((info, i) => {
+        const test = info.points[0];
+        const x = px(test), y = py(test);
+        const own = Math.abs(info.area);
+        let best = -1, bestArea = Infinity;
+        infos.forEach((other, j) => {
+            if (i === j) return;
+            if (x < other.lo0 || x > other.hi0 || y < other.lo1 || y > other.hi1) return;
+            if (!inside(other.points, test)) return;
+            const a = Math.abs(other.area);
+            if (a <= own) return;
+            if (a < bestArea) { bestArea = a; best = j; }
+        });
+        return best;
+    });
+    const depth = infos.map((_, i) => {
+        let d = 0, p = parent[i];
+        while (p !== -1 && d <= infos.length) { d += 1; p = parent[p]; }
+        return d;
+    });
+
+    infos.forEach((info, i) => {
+        if (depth[i] % 2 !== 0) return;
+        const holes = [];
+        infos.forEach((_, j) => { if (parent[j] === i && depth[j] % 2 === 1) holes.push(j); });
+
+        // This group is its own polygon, so it faces its own way: read the hemisphere from its own
+        // outer ring, not from whichever ring in the plane happened to be biggest.
+        const hemisphere = normals[info.ring][axis];
+        const flipped = hemisphere === 0 ? defaultFlipped : hemisphere < 0;
+        const project = (p) => (flipped
+            ? new THREE.Vector2(py(p), px(p))
+            : new THREE.Vector2(px(p), py(p)));
+
+        // `refs` is built in exactly the index space `triangulateShape` returns: the contour, then
+        // each hole in turn. The rings are pre-sanitised, so three.js's `removeDupEndPts` finds
+        // nothing to pop and cannot shift those indices out from under us.
+        const refs = [];
+        const contour = [];
+        info.points.forEach((p, v) => { refs.push([info.ring, v]); contour.push(project(p)); });
+        const holeContours = holes.map((h) => {
+            const hi = infos[h];
+            const c = [];
+            hi.points.forEach((p, v) => { refs.push([hi.ring, v]); c.push(project(p)); });
+            return c;
+        });
+        if (refs.length < 3) return;
+
+        let faces = null;
+        try {
+            faces = THREE.ShapeUtils.triangulateShape(contour, holeContours);
+        } catch (error) {
+            faces = null;
+        }
+        if (!faces || !faces.length) return;
+        const triangles = [];
+        faces.forEach((triangle) => triangle.forEach((at) => {
+            if (refs[at]) triangles.push(refs[at]);
+        }));
+        if (triangles.length < 3) return;
+        out.push({ outer: info.ring, holes: holes.map((h) => infos[h].ring), triangles });
+    });
+}
+
+// [viewer-region planar-tessellation] END
+
 function buildFaceGeometry(boundary) {
     if (!boundary || boundary.length < 3) return null;
     const positions = [];
@@ -1435,18 +1694,43 @@ function renderEditableBaseGeometry() {
         }
     });
 
+    // One fill mesh per *polygon*, not per subpath. The subpaths of a filled line are grouped into
+    // planes and into outer-ring-plus-holes exactly as the server groups them, so a hole ring gets no
+    // mesh of its own (it is part of its outer ring's) and a subpath in its own plane gets one.
+    const fillByFaceIndex = new Map();
+    const facesByLine = new Map();
     editorState.faces.forEach((face, faceIndex) => {
         const line = sceneData.lines[face.lineIndex];
-        if (!line || !line.filled || !face.boundary || face.boundary.length < 3) {
+        if (!line || !line.filled || !face.boundary || face.boundary.length < 3) return;
+        if (!facesByLine.has(face.lineIndex)) facesByLine.set(face.lineIndex, []);
+        facesByLine.get(face.lineIndex).push({ faceIndex, ring: sanitizeRing3D(face.boundary) });
+    });
+    facesByLine.forEach((entries) => {
+        const rings = entries.map((entry) => entry.ring);
+        tessellateCoplanarGroups(rings).forEach((polygon) => {
+            const order = [polygon.outer].concat(polygon.holes);
+            const base = new Map();
+            const positions = [];
+            let packed = 0;
+            order.forEach((ring) => {
+                base.set(ring, packed);
+                rings[ring].forEach((point) => positions.push(point[0], point[1], point[2]));
+                packed += rings[ring].length;
+            });
+            const indices = polygon.triangles.map((ref) => base.get(ref[0]) + ref[1]);
+            fillByFaceIndex.set(entries[polygon.outer].faceIndex, { positions, indices });
+        });
+    });
+
+    editorState.faces.forEach((face, faceIndex) => {
+        const line = sceneData.lines[face.lineIndex];
+        const fill = fillByFaceIndex.get(faceIndex);
+        if (!line || !line.filled || !fill) {
             editableGeometrySlots.faces[faceIndex] = removeSlot(editableGeometrySlots.faces[faceIndex]);
             return;
         }
-        const positions = [];
-        const indices = [];
-        face.boundary.forEach((point) => positions.push(point[0], point[1], point[2]));
-        for (let i = 1; i < face.boundary.length - 1; i += 1) {
-            indices.push(0, i, i + 1);
-        }
+        const positions = fill.positions;
+        const indices = fill.indices;
         const count = positions.length / 3;
         const colors = new Array(count * 3);
         const alphas = new Array(count);

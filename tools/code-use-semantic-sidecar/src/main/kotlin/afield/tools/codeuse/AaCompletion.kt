@@ -11,11 +11,17 @@ import org.jetbrains.kotlin.analysis.api.components.KaExtensionApplicabilityResu
 import org.jetbrains.kotlin.analysis.api.components.KaScopeKind
 import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
+import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaEnumEntrySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
+import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.metadata.ProtoBuf
@@ -30,6 +36,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.org.objectweb.asm.AnnotationVisitor
 import org.jetbrains.org.objectweb.asm.ClassReader
@@ -95,6 +102,20 @@ data class AaCandidate(
     val icon: String = "property",
     /** Rendered parameter list for functions, e.g. "(v: Vec3)"; null for non-functions. */
     val params: String? = null,
+    /**
+     * What to type into the editor, when that differs from [name]. An enum entry is offered by its
+     * bare name (`SD_COLLAPSED` — that is what the panel should read) but must be *inserted* qualified
+     * (`Scheme.SD_COLLAPSED`), because Kotlin does not resolve a bare entry from the expected type
+     * outside a `when` subject. Null = insert [name] (every other candidate).
+     */
+    val insertText: String? = null,
+    /**
+     * This candidate's type fits the type expected at the caret ([AaCompleter.expectedTypesAt]).
+     * Consumed by the server as a ranking boost, and — at an untyped caret — as the signal to show
+     * *only* these, which is what makes `d.scheme = ‸` a three-row panel instead of a three-hundred
+     * row one. See `execution.kt`'s `typeFitFilterActive`.
+     */
+    val fitsExpected: Boolean = false,
 ) {
     enum class Kind { MEMBER, EXTENSION, TOP_LEVEL, CLASSIFIER, PARAM }
 
@@ -361,6 +382,17 @@ private class MetadataVisitor(private val onTypeAlias: (String) -> Unit) : Annot
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
 
 /**
+ * The dummy name spliced in at an otherwise-empty expression slot, so there is a `KtExpression` at the
+ * caret whose *expected* type the Analysis API can report. (IntelliJ does the same with
+ * `IntellijIdeaRulezzz`.) Starts with `__`, so [AaCandidate.isSynthetic] guarantees it can never itself
+ * be offered as a completion.
+ */
+private const val CARET_MARKER = "__fieldCaret__"
+
+/** `return` as a whole trailing token — `return ‸` is an expression slot, `myreturn‸` is not. */
+private val RETURN_TAIL = Regex("""(?:^|[^A-Za-z0-9_.])return$""")
+
+/**
  * K2 Analysis-API completion candidate generation. Reusable across the spike harness (Stage A/B) and
  * the sidecar HTTP endpoint (Stage C). Construct once per session with a [contextFile] from that
  * session (used to contextualize in-memory dangling snippet files) and a prebuilt [index].
@@ -469,6 +501,11 @@ class AaCompleter(
         val prefix = Regex("[A-Za-z0-9_]*$").find(before)?.value ?: ""
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
         val isDot = before.dropLast(prefix.length).trimEnd().endsWith(".")
+        // At an untyped expression slot (`d.scheme = ‸`, `f(‸`) there is no expression at the caret to
+        // ask the expected type of — and the parser doesn't even leave a hole: `d.scheme =` followed by
+        // `display(…)` on the next line parses as `d.scheme = display(…)`. So splice a dummy name in,
+        // the way IntelliJ does. See [wantsCaretMarker] for why this is limited to those slots.
+        val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(before)
 
         // A dangling file's own TOP-LEVEL declarations do NOT enter the completion scope (only imports,
         // implicit receivers, and LOCAL declarations do). So the inherited preamble is split: import
@@ -498,6 +535,7 @@ class AaCompleter(
         (localStubs + declarationStubs).forEach { sb.append("    ").append(it).append('\n') }
         recvs.indices.forEach { i -> sb.append("with(__r").append(i).append(") { ") }
         sb.append(before)
+        if (spliceCaret) sb.append(CARET_MARKER)
         val cursorOffset = sb.length
         sb.append(after)
         recvs.forEach { _ -> sb.append(" }") }
@@ -511,6 +549,28 @@ class AaCompleter(
         } catch (t: Throwable) {
             AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
         }
+    }
+
+    /**
+     * True when the caret sits where a *value* is expected and there is nothing there yet, so splicing
+     * [CARET_MARKER] in buys us an expression to ask [expectedTypesAt] about.
+     *
+     * Deliberately narrow. The marker perturbs the synthetic file for every request it fires on, and
+     * outside these slots it buys nothing while risking the PSI recovery the other paths already rely
+     * on (`f(a,‸)` recovers to a value-argument list today; `foo()‸` would become the parse error
+     * `foo()__caret__`). So: only after a token that cannot be followed by anything but an expression.
+     * A typed prefix needs no marker at all — `d.scheme = SD‸` already *has* a name expression in the
+     * slot, and its expected type resolves from that.
+     */
+    internal fun wantsCaretMarker(before: String): Boolean {
+        val head = before.trimEnd()
+        if (head.isEmpty()) return false
+        // `=` covers assignment, a named argument's value, and `==`/`>=`/`+=`; `(`/`,` an argument;
+        // `[` an index. `<` is NOT here: it is ambiguous with a type-argument list.
+        if (head.last() in "=(,[") return true
+        if (head.endsWith("->") || head.endsWith("?:") || head.endsWith("&&") || head.endsWith("||")) return true
+        // `return ‸` — a keyword, so match it as a whole token.
+        return RETURN_TAIL.containsMatchIn(head)
     }
 
     /**
@@ -605,9 +665,73 @@ class AaCompleter(
                 ?.joinToString(", ", "(", ")") { p: KaValueParameterSymbol ->
                     "${p.name.asString()}: ${shortenType(runCatching { p.returnType.toString() }.getOrDefault("?"))}"
                 }
+
+            /**
+             * The type a value at the caret has to have: the property's type at `d.scheme = ‸`, the
+             * parameter's type at `f(word = ‸)` / `f(‸`, the function's return type at `return ‸`, and
+             * every other slot `KaExpressionTypeProvider.expectedType` knows about (if/while condition,
+             * elvis operand, `val x: T = ‸`, …). Empty when there is no expected type, or when it is too
+             * weak to be worth acting on ([isUsefulExpectation]).
+             *
+             * Two sources, in order:
+             *  1. `expectedType` on the expression at the caret — the real answer, and the only one that
+             *     is substituted (`f<Scheme>(‸)`) and slot-shape aware.
+             *  2. For an argument slot only: the parameter types from `resolveToCallCandidates`, unioned
+             *     over overloads. This is the fallback for a call that does not fully resolve — which is
+             *     the normal state of code being typed — where (1) returns null because FIR has no
+             *     argument→parameter mapping to read. Named argument by name, positional by index.
+             */
+            fun expectedTypesAt(): List<KaType> {
+                val ref = PsiTreeUtil.getParentOfType(leaf, KtSimpleNameExpression::class.java)
+                val direct = ref?.let { runCatching { it.expectedType }.getOrNull() }
+                if (direct != null) return listOf(direct)
+
+                val arg = PsiTreeUtil.getParentOfType(leaf, KtValueArgument::class.java) ?: return emptyList()
+                val list = arg.parent as? KtValueArgumentList ?: return emptyList()
+                val call = PsiTreeUtil.getParentOfType(list, KtCallExpression::class.java) ?: return emptyList()
+                val named = arg.getArgumentName()?.asName?.asString()
+                val at = list.arguments.indexOf(arg)
+                return runCatching { call.resolveToCallCandidates() }.getOrDefault(emptyList())
+                    .mapNotNull { it.candidate as? KaFunctionCall<*> }
+                    .mapNotNull { c ->
+                        val ps = c.partiallyAppliedSymbol.signature.valueParameters
+                        val p = if (named != null) ps.firstOrNull { it.symbol.name.asString() == named }
+                        else ps.getOrNull(at)
+                        runCatching { p?.returnType }.getOrNull()
+                    }
+                    .distinctBy { runCatching { it.toString() }.getOrDefault("?") }
+            }
+
+            /**
+             * Is this expectation specific enough to rank by? `Any`/`Any?` is satisfied by literally
+             * every candidate, so boosting on it says nothing while the untyped-caret collapse it feeds
+             * would hide nothing — pure cost. An error type is not a type (the same trap the dot path
+             * documents: `errorType` makes `isSubtypeOf` vacuously true, so EVERYTHING would "fit").
+             * `Unit`/`Nothing` are not values anyone completes.
+             */
+            fun isUsefulExpectation(t: KaType): Boolean {
+                if (t is KaErrorType) return false
+                val fq = ((t as? KaClassType)?.classId)?.asFqNameString() ?: return false
+                return fq !in setOf("kotlin.Any", "kotlin.Unit", "kotlin.Nothing")
+            }
+
+            val expectedTypes: List<KaType> =
+                if (isDot) emptyList()
+                else runCatching { expectedTypesAt().filter(::isUsefulExpectation) }.getOrDefault(emptyList())
+
+            /** Would a value of type [t] be accepted at the caret? Drives [AaCandidate.fitsExpected]. */
+            fun fits(t: KaType?): Boolean {
+                if (expectedTypes.isEmpty() || t == null || t is KaErrorType) return false
+                return expectedTypes.any { e -> runCatching { t.isSubtypeOf(e) }.getOrDefault(false) }
+            }
+
             fun asCandidate(sym: KaCallableSymbol, kind: AaCandidate.Kind, container: String?): AaCandidate? {
                 val nm = (sym as? KaNamedSymbol)?.name?.asString() ?: return null
-                return AaCandidate(nm, kind, runCatching { sym.returnType.toString() }.getOrNull(), container, iconFor(sym), paramsOf(sym))
+                val type = runCatching { sym.returnType }.getOrNull()
+                return AaCandidate(
+                    nm, kind, runCatching { type?.toString() }.getOrNull(), container, iconFor(sym), paramsOf(sym),
+                    fitsExpected = fits(type),
+                )
             }
 
             /**
@@ -716,6 +840,84 @@ class AaCompleter(
                     }
                 }
                 return out
+            }
+
+            /**
+             * The shortest source-legal way to write [id] in this file: the bare (or nested) name when
+             * the file's imports already bring it in, else fully qualified. An insertion has to compile
+             * in the box it is inserted into, and the box may not have imported anything.
+             */
+            fun qualifierFor(id: ClassId): String {
+                val pkg = id.packageFqName.asString()
+                val rel = id.relativeClassName.asString()          // "Scheme" | "Functions.RectifyMode"
+                val fq = if (pkg.isEmpty()) rel else "$pkg.$rel"
+                val outer = if (rel.contains('.')) fq.substringBeforeLast('.') else null
+                for (d in file.importDirectives) {
+                    val imported = d.importedFqName?.asString() ?: continue
+                    // `import sentences.Scheme`, `import a.b.Functions.RectifyMode` → the short name.
+                    if (!d.isAllUnder && imported == fq) return id.shortClassName.asString()
+                    // `import a.b.Functions.*` → a nested name without its outer class.
+                    if (d.isAllUnder && outer != null && imported == outer) return id.shortClassName.asString()
+                    // `import sentences.*` → the name relative to the package.
+                    if (d.isAllUnder && imported == pkg) return rel
+                }
+                return if (pkg == file.packageFqName.asString()) rel else fq
+            }
+
+            /**
+             * The values that can be *written out* at the caret, for an expected type whose inhabitants
+             * are enumerable: an enum's entries, a sealed hierarchy's inheritors, and Boolean. This is
+             * the compact answer — `d.scheme = ‸` is `SD_BASIC | SD_COLLAPSED | UD`, not the several
+             * hundred names that happen to be in scope at that point in the file.
+             *
+             * Offered under the bare name (what the panel should read, and what the user is about to
+             * type) but *inserted* qualified via [AaCandidate.insertText], because Kotlin only resolves a
+             * bare enum entry from the expected type inside a `when` subject.
+             */
+            fun enumerableValuesOf(t: KaType): List<AaCandidate> {
+                val id = (t as? KaClassType)?.classId ?: return emptyList()
+                val typeName = shortenType(runCatching { t.toString() }.getOrDefault(id.shortClassName.asString()))
+                if (id.asFqNameString() == "kotlin.Boolean")
+                    return listOf("true", "false").filter { prefix.isEmpty() || it.startsWith(prefix) }
+                        .map { AaCandidate(it, AaCandidate.Kind.TOP_LEVEL, "Boolean", null, "val", fitsExpected = true) }
+
+                val cls = runCatching { findClassLike(id) as? KaClassSymbol }.getOrNull() ?: return emptyList()
+                if (cls.classKind == KaClassKind.ENUM_CLASS) return runCatching {
+                    val qualifier = qualifierFor(id)
+                    // Which scope an enum's entries live in is not stable across AA versions / origins —
+                    // for a BINARY enum `declaredMemberScope` comes back empty and the entries are in the
+                    // static scopes, which is why the dot path (`staticScopeCandidates`) harvests all
+                    // three. Same union here, deduplicated by name.
+                    listOf(cls.staticDeclaredMemberScope, cls.staticMemberScope, cls.declaredMemberScope)
+                        .flatMap { scope -> runCatching { scope.callables(match).toList() }.getOrDefault(emptyList()) }
+                        .filterIsInstance<KaEnumEntrySymbol>()
+                        .distinctBy { it.name.asString() }
+                        .map {
+                            val name = it.name.asString()
+                            AaCandidate(
+                                name, AaCandidate.Kind.MEMBER, typeName, id.asFqNameString(), "val", null,
+                                insertText = "$qualifier.$name", fitsExpected = true,
+                            )
+                        }
+                }.getOrDefault(emptyList())
+
+                if (cls.modality == KaSymbolModality.SEALED) return runCatching {
+                    (cls as? KaNamedClassSymbol)?.sealedClassInheritors.orEmpty()
+                        .filter { match(it.name) }
+                        .mapNotNull { sub ->
+                            val subId = sub.classId ?: return@mapNotNull null
+                            // An object IS the value; a subclass has to be constructed.
+                            val isObject = sub.classKind == KaClassKind.OBJECT
+                            AaCandidate(
+                                sub.name.asString(), AaCandidate.Kind.MEMBER, typeName, id.asFqNameString(),
+                                if (isObject) "val" else "class", null,
+                                insertText = qualifierFor(subId) + if (isObject) "" else "(",
+                                fitsExpected = true,
+                            )
+                        }
+                }.getOrDefault(emptyList())
+
+                return emptyList()
             }
 
             if (isDot) {
@@ -827,7 +1029,13 @@ class AaCompleter(
                 // Argument position → the enclosing call's remaining (not-yet-supplied) named params,
                 // unioned across all overloads (an incomplete call may resolve to a no-arg overload).
                 val argList = PsiTreeUtil.getParentOfType(leaf, KtValueArgumentList::class.java)
-                val namedParams: List<AaCandidate> = if (argList != null) {
+                // …but NOT once the caret is past a named argument's `=`: at `f(word = ‸)` the caret is in
+                // the VALUE slot, where `family = ` is not just unhelpful, it is a syntax error. The
+                // parameter names were offered there anyway until the expected-type work made that slot
+                // answerable at all.
+                val inNamedValueSlot = PsiTreeUtil.getParentOfType(leaf, KtValueArgument::class.java)
+                    ?.let { it.getArgumentName() != null && it.getArgumentExpression() != null } == true
+                val namedParams: List<AaCandidate> = if (argList != null && !inNamedValueSlot) {
                     val call = PsiTreeUtil.getParentOfType(argList, KtCallExpression::class.java)
                     val callCands = call?.resolveToCallCandidates().orEmpty()
                         .mapNotNull { it.candidate as? KaFunctionCall<*> }
@@ -836,8 +1044,22 @@ class AaCompleter(
                         .distinctBy { it.name.asString() }
                         .filter { it.name.asString() !in supplied }
                         .filter { prefix.isEmpty() || it.name.asString().startsWith(prefix) }
-                        .map { AaCandidate(it.name.asString(), AaCandidate.Kind.PARAM, runCatching { it.returnType.toString() }.getOrNull(), null, "var") }
+                        // Marked as fitting whenever the caret HAS an expectation: at `f(‸` the parameter
+                        // names are the canonical answer, so the untyped-caret collapse that the flag
+                        // drives must keep them (it would otherwise hide `x =` behind Float-valued values).
+                        .map {
+                            AaCandidate(
+                                it.name.asString(), AaCandidate.Kind.PARAM,
+                                runCatching { it.returnType.toString() }.getOrNull(), null, "var",
+                                fitsExpected = expectedTypes.isNotEmpty(),
+                            )
+                        }
                 } else emptyList()
+
+                // The enumerable inhabitants of the expected type — the compact "what goes here" list.
+                val expectedValues = expectedTypes.flatMap {
+                    runCatching { enumerableValuesOf(it) }.getOrDefault(emptyList())
+                }
 
                 val ctx = file.scopeContext(pos)
                 // Scope filtering: (1) implicit-receiver members come from `fromReceivers` below, so drop
@@ -863,7 +1085,8 @@ class AaCompleter(
                     rec.type.scope?.getCallableSignatures(match)?.mapNotNull { sig ->
                         (sig.symbol as? KaNamedSymbol)?.name?.asString()?.let {
                             AaCandidate(it, AaCandidate.Kind.MEMBER, runCatching { sig.returnType.toString() }.getOrNull(),
-                                runCatching { rec.type.toString() }.getOrNull(), iconFor(sig.symbol), paramsOf(sig.symbol))
+                                runCatching { rec.type.toString() }.getOrNull(), iconFor(sig.symbol), paramsOf(sig.symbol),
+                                fitsExpected = fits(runCatching { sig.returnType }.getOrNull()))
                         }
                     } ?: emptySequence()
                 }.toList()
@@ -907,9 +1130,17 @@ class AaCompleter(
                     }
                 }
 
-                val out = (namedParams + fromScopes + sourceClassifiers + fromReceivers + topCallables + receiverExtensions + classifiers)
+                val out = (expectedValues + namedParams + fromScopes + sourceClassifiers + fromReceivers +
+                    topCallables + receiverExtensions + classifiers)
                     .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
-                AaCompletionResult(out, if (out.isEmpty()) "0 candidates at name position" else "")
+                AaCompletionResult(
+                    out,
+                    if (out.isEmpty()) "0 candidates at name position"
+                    else if (expectedTypes.isNotEmpty())
+                        "expected=${expectedTypes.joinToString("|") { shortenType(runCatching { it.toString() }.getOrDefault("?")) }}" +
+                            " values=${expectedValues.size} fits=${out.count { it.fitsExpected }}"
+                    else ""
+                )
             }
         }
     }

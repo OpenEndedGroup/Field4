@@ -1738,6 +1738,7 @@ class Server {
             runAll(plugins)
             runAll(installHandlers)
             UserThemeManager.start()
+            UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
 
             inMain {

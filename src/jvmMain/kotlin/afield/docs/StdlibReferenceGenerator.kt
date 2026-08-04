@@ -135,6 +135,31 @@ object StdlibReferenceGenerator {
         "Graphics" to "Everything that ends up as an `FLine`, a colour or a shader: drawing " +
             "helpers, contouring, geometry, colour spaces, keyframing and the small shading " +
             "languages' host side.",
+        "Polytopes" to "Polyhedra as topology first and coordinates second. An abstract incidence " +
+            "complex you can build and validate; the Conway operator algebra — `dual`, `ambo`, " +
+            "`kis`, `truncate`, `gyro` and the composites written over them — that rewrites it, " +
+            "with per-element provenance and lineage carried through every step; and three " +
+            "realization verbs that hand the result coordinates: `realize` for a first embedding, " +
+            "`relax` for one that satisfies constraints you declare, and `canonicalize` for the " +
+            "classical edge-tangent form you would recognise as a solid. Everything is immutable " +
+            "and CPU-only, so a Conway expression evaluates in a box, a test or a headless docs " +
+            "capture equally well; `FieldAdapters.kt` is where a polytope becomes `FLine`s or a " +
+            "`TriMesh`. 4-polytopes, their Schlegel and slice projections, and an OFF importer " +
+            "live here too. Files are listed alphabetically below; a reader new to the package " +
+            "wants `Topology.kt`, then `Transforms.kt`, then `Conway.kt`, then `Canonical.kt`, " +
+            "then `FieldAdapters.kt` — and [Polytopes: topology first, coordinates later]" +
+            "(../polytope_examples.md) for the same ground with pictures.",
+        "Solvers" to "Nonlinear least squares, aimed at geometry. A constraint vocabulary — " +
+            "planarity, colinearity, fixed distances, perpendicularity, dihedral angles, panel " +
+            "areas, positions held hard or held softly — assembled into a program, compiled once " +
+            "and solved by Ceres across a foreign-function bridge; the architectural layer above " +
+            "it for gridshells and panel families; and the reuse-oriented half that re-solves the " +
+            "same program every frame while a user drags. Residuals you cannot express in the " +
+            "vocabulary can be written in Kotlin and differentiated exactly by Ceres through the " +
+            "expression VM. These entry points need the native Ceres library present, and nothing " +
+            "here draws — a solve returns points, and drawing them is your business. Start from " +
+            "`CeresGeometry.kt`, which is the vocabulary everything else is written in; " +
+            "`ArchitecturalGeometry.kt` is the layer you will actually call.",
         "Imaging" to "Rasters and computer vision: convolution and the filter family, gradients " +
             "and edges, corners, blobs and morphology, multiscale pyramids, warps and optical " +
             "flow. Dependency-free CPU float math built on one value type, `Img`, with the " +
@@ -299,13 +324,41 @@ object StdlibReferenceGenerator {
          * Only entry points count — top-level functions, types and values, never members. A member
          * name like `transform`, `origin` or `previous` is an ordinary English word that turns up in
          * unrelated example code; a top-level call `stft(` or a type `Spectrogram` does not.
+         *
+         * [GENERIC_CALL_NAMES] is excluded on top of that, because "exactly one file defines it" is
+         * not the same as "seeing it means that file".
          */
         fun evidenceTokens(): Set<Pair<String, String>> = buildSet {
-            topLevelFunctions.forEach { if (it.simpleName.length >= 3) add("call" to it.simpleName) }
+            topLevelFunctions.forEach {
+                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_CALL_NAMES) add("call" to it.simpleName)
+            }
             types.forEach { if (it.symbol.simpleName.length >= 4) add("type" to it.symbol.simpleName) }
             topLevelValues.forEach { if (it.simpleName.length >= 5) add("name" to it.simpleName) }
         }
     }
+
+    /**
+     * Call names that are never evidence of anything, however uniquely a file owns them.
+     *
+     * The evidence index counts a name only when exactly one documented file declares it — which
+     * looked like enough until `CeresExpression.kt` was published. That file declares top-level
+     * `exp`, `cos`, `tan`, `min`, `max`, `abs`, `sqrt`, `pow` and `atan2` as expression builders, and
+     * it is the only file in the corpus that declares them at top level, so it "uniquely owned" the
+     * whole `kotlin.math` vocabulary. Every docs page with arithmetic in a code fence matched two or
+     * more, and `functions_examples.md` — which has nothing whatsoever to do with the Ceres
+     * expression VM — was published as a worked example of it.
+     *
+     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain verbs
+     * that happen to be short stay in (`kis`, `dual`, `stft`): seeing one really does mean the page
+     * is about that file.
+     */
+    private val GENERIC_CALL_NAMES = setOf(
+        "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "exp", "floor", "hypot",
+        "ln", "log", "log10", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh", "sqrt",
+        "tan", "tanh",
+        // Not kotlin.math, but words an unrelated code fence uses about anything.
+        "constant", "square", "reciprocal",
+    )
 
     private data class TypeEntry(
         val symbol: Symbol,
@@ -897,7 +950,10 @@ object StdlibReferenceGenerator {
     ): String = buildString {
         appendLine("## ${doc.fileName} { #${fileAnchor(doc)} }")
         appendLine()
-        doc.overview?.let { appendLine(fencesToDiffstatic(linkify(it, typeAnchors))); appendLine() }
+        // demoteHeadings before fencesToDiffstatic: the latter rewrites an opening fence to
+        // "```diffstatic {data-lang=…}", which FENCE_OPENER no longer matches, so a demotion run
+        // afterwards mistakes the *closing* fence for an opening one and stops demoting from there on.
+        doc.overview?.let { appendLine(fencesToDiffstatic(demoteHeadings(linkify(it, typeAnchors)))); appendLine() }
         appendLine("`${doc.relativePath}`")
         appendLine()
         evidenceLinks(doc, evidence)?.let {
@@ -1364,6 +1420,47 @@ object StdlibReferenceGenerator {
     private const val BANNER =
         "<!-- DO NOT EDIT — generated by afield.docs.StdlibReferenceGenerator from KDoc in src/jvmMain/kotlin. -->\n" +
             "<!-- Regenerate: ./gradlew generateCodebaseReference -->"
+
+    /**
+     * Re-levels the headings in a file overview so its shallowest one becomes `###` — a child of the
+     * `## SomeFile.kt` section the prose is printed inside — with deeper headings keeping their
+     * relative depth.
+     *
+     * A file overview is written as free-standing prose and its author reasonably starts at `#` or
+     * `##`. Printed verbatim, a `#` competed with the page's own title and a `##` became a *sibling*
+     * of the file heading: `reference/polytopes.md` rendered 45 `h2`s of which only 17 were files, and
+     * the page's table of contents read as a flat list alternating "Canonical.kt" with "Two
+     * iterations, and why there are two". Normalising to `###` puts them at the same level as the
+     * `### TypeName` sections that follow in the same file, which is where they belong, and means an
+     * overview reads the same whichever convention its author used.
+     *
+     * Lines inside a fenced block are left alone — `#` is a comment in several of the languages the
+     * overviews quote. Levels are clamped at `######`, markdown's deepest.
+     */
+    private fun demoteHeadings(text: String): String {
+        if ('#' !in text) return text
+        val lines = text.split("\n")
+        var fenced = false
+        val headingLevels = mutableListOf<Int>()
+        lines.forEach { line ->
+            if (FENCE_OPENER.matchEntire(line) != null) { fenced = !fenced; return@forEach }
+            if (fenced) return@forEach
+            HEADING.matchEntire(line)?.let { headingLevels += it.groupValues[1].length }
+        }
+        val shallowest = headingLevels.minOrNull() ?: return text
+        val shift = 3 - shallowest
+        if (shift == 0) return text
+        fenced = false
+        return lines.joinToString("\n") { line ->
+            if (FENCE_OPENER.matchEntire(line) != null) { fenced = !fenced; return@joinToString line }
+            if (fenced) return@joinToString line
+            val match = HEADING.matchEntire(line) ?: return@joinToString line
+            val level = (match.groupValues[1].length + shift).coerceIn(1, 6)
+            "${"#".repeat(level)} ${match.groupValues[2]}"
+        }
+    }
+
+    private val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
 
     /**
      * Rewrites the markdown code fences in KDoc-derived prose to the docs site's `diffstatic` fence.

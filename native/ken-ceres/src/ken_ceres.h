@@ -3,6 +3,7 @@
 
 #pragma once
 #include <cstdint>
+#include "ken_ceres_export.h"
 
 // ------------------------------------------------------------
 // Opcodes (must match solver_kernel.cpp and your JS helpers)
@@ -64,7 +65,18 @@ namespace op {
     EDGE_TANGENCY = 61,         // [a, b, radius, w]
     TANGENCY_CENTROID = 62,     // [nEdges, a0,b0, ..., w]
     CENTROID = 63,              // [n, i0..., tx,ty,tz, w]   (n<0 means "all points")
-    RADIUS_ABOUT_CENTROID = 64  // [n, i0..., radius, w]     (n<0 means "all points")
+    RADIUS_ABOUT_CENTROID = 64, // [n, i0..., radius, w]     (n<0 means "all points")
+
+    PLANAR_HESSE = 65,          // [n, i0..., w]  plane as unit normal + scalar offset
+    PLANAR_FIT = 66,            // [n, i0..., w]  best-fit plane inside the residual
+    GAUGE_ROTATION = 67,        // [n, i0..., w]  (n<0 means "all points")
+
+    // A caller-supplied residual as a little register program, and the free variables it may read.
+    // See the ExprVm and VariableBlock notes in ken_ceres.cpp.
+    EXPR = 68,                  // [nP, p..., nV, v..., nR, r..., nSlots, nC, c..., nI, (op,dst,a,b)..., w]
+    // [dim, manifold, init0..init_{dim-1}, nBounds, (component, lower, upper)...]
+    //   manifold: 0=none 1=sphere 2=quaternion. Bounds only on manifold 0.
+    VARIABLE = 69
   };
 }
 
@@ -85,19 +97,30 @@ extern "C" {
 // JVM/FFM-oriented handle API. A handle owns one compiled Ceres problem. Create
 // it with the initial pose so build-time locks can capture their targets; then
 // solve repeatedly with updated poses and optional dynamic prior weights.
-const char* ken_ceres_jvm_abi_version();
+KEN_CERES_API const char* ken_ceres_jvm_abi_version();
 
-void* ken_ceres_solver_create(const double* points_in, int num_points,
+KEN_CERES_API void* ken_ceres_solver_create(const double* points_in, int num_points,
                               const double* program, int program_len,
                               uint32_t constraints_hash);
 
-void ken_ceres_solver_destroy(void* handle);
+KEN_CERES_API void ken_ceres_solver_destroy(void* handle);
 
 // "" when the program parsed completely; otherwise a description of where parsing stopped. A
 // non-empty error means residual blocks are missing and a solve answers a different question.
-const char* ken_ceres_solver_last_error(void* handle);
+KEN_CERES_API const char* ken_ceres_solver_last_error(void* handle);
 
-int ken_ceres_solver_solve(void* handle,
+// The current values of the free variables the program declared with op::VARIABLE, concatenated in
+// declaration order.
+//
+// Returns the total number of components the problem holds — always, whatever `cap` is — and writes
+// the first min(cap, total) of them to `out`. Pass out = nullptr, cap = 0 to size a buffer.
+//
+// A solve reports its answer in points_out; a free variable is not a point, so its solved value has
+// to be read from here or the mechanism is write-only. The values are also warm-started across
+// solves, exactly as the PLANAR opcode's planes always have been.
+KEN_CERES_API int ken_ceres_solver_variables(void* handle, double* out, int cap);
+
+KEN_CERES_API int ken_ceres_solver_solve(void* handle,
                            const double* points_in, int num_points,
                            int max_iters,
                            const double* prior_w_xyz, // nullable (len = 3*N)
@@ -127,7 +150,7 @@ int ken_ceres_solver_solve(void* handle,
 //   [6] total seconds          [7] num_residuals
 //   [8] num_effective_parameters  [9] num_parameter_blocks
 //  [10] num_residual_blocks   [11] ceres::LinearSolverType actually used
-int ken_ceres_solver_solve2(void* handle,
+KEN_CERES_API int ken_ceres_solver_solve2(void* handle,
                             const double* points_in, int num_points,
                             const double* options, int options_len,
                             const double* prior_w_xyz, // nullable (len = 3*N)
@@ -140,7 +163,7 @@ int ken_ceres_solver_solve2(void* handle,
                             int summary_cap);
 
 // Simple solve (no dynamic prior weights, no metrics)
-int solve_constraints(const double* points_in, int num_points,
+KEN_CERES_API int solve_constraints(const double* points_in, int num_points,
                       const double* program, int program_len,
                       uint32_t constraints_hash, int max_iters,
                       double* points_out);
@@ -148,7 +171,7 @@ int solve_constraints(const double* points_in, int num_points,
 // Extended solve with dynamic per-axis prior weights.
 // prior_w_xyz is length 3*num_points (xyz per point) or nullptr to keep
 // the weights that were installed at build-time by PRIOR_* opcodes.
-int solve_constraints_ex(const double* points_in, int num_points,
+KEN_CERES_API int solve_constraints_ex(const double* points_in, int num_points,
                          const double* program, int program_len,
                          uint32_t constraints_hash, int max_iters,
                          const double* prior_w_xyz,   // nullable (len = 3*N)
@@ -159,7 +182,7 @@ int solve_constraints_ex(const double* points_in, int num_points,
 // The function writes up to that many entries and sets out_group_count
 // (if provided). Costs are 0.5 * sum(residual_i^2) with loss applied,
 // matching Ceres' Evaluate semantics.
-int solve_constraints_metrics(const double* points_in, int num_points,
+KEN_CERES_API int solve_constraints_metrics(const double* points_in, int num_points,
                               const double* program, int program_len,
                               uint32_t constraints_hash, int max_iters,
                               const double* prior_w_xyz,   // nullable (len = 3*N)

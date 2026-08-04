@@ -20,6 +20,9 @@ import kotlin.script.experimental.api.SourceCodeCompletionVariant
  */
 object AaCompletionClient {
 
+    /** `extraInfo` key marking a candidate whose type fits the type expected at the caret. */
+    const val EXPECTED_TYPE_MATCH = "expectedTypeMatch"
+
     @Serializable
     private data class Req(
         val snippet: String,
@@ -46,6 +49,8 @@ object AaCompletionClient {
         val icon: String,
         val receiverType: String = "",
         val receiverQualifiedName: String = "",
+        /** The candidate's type fits the type expected at the caret (AA's `expectedType`). */
+        val expectedTypeMatch: Boolean = false,
     )
 
     @Serializable
@@ -160,12 +165,17 @@ object AaCompletionClient {
                     // Mirror the K1 delegate's extraInfo so the server's doc-enrichment pipeline
                     // (member KDoc via `receiverType.member`, AI-draft docs, receiver docs) attaches to
                     // AA candidates too — otherwise dot completions come back doc-less.
-                    if (it.receiverType.isNotBlank() || it.receiverQualifiedName.isNotBlank()) {
-                        extraInfo = mapOf(
-                            "receiverType" to it.receiverType,
-                            "receiverQualifiedName" to it.receiverQualifiedName,
-                        )
+                    val info = buildMap {
+                        if (it.receiverType.isNotBlank() || it.receiverQualifiedName.isNotBlank()) {
+                            put("receiverType", it.receiverType)
+                            put("receiverQualifiedName", it.receiverQualifiedName)
+                        }
+                        // Read back by `KotlinExecution.complete` as the type-fit ranking boost — the
+                        // only channel from the sidecar to the server's ranking, since a
+                        // SourceCodeCompletionVariant has no field for it.
+                        if (it.expectedTypeMatch) put(EXPECTED_TYPE_MATCH, "true")
                     }
+                    if (info.isNotEmpty()) extraInfo = info
                 }
             }
             Outcome(

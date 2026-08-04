@@ -591,8 +591,18 @@ object FieldMLCompletionEngine {
         }.toList()
     }
 
+    /**
+     * Finds the source text of `fun <name>(...)`.
+     *
+     * [name] comes from `KotlinSourceIndex`, which happily reports backtick-quoted declarations, so
+     * it must be **escaped** before being spliced into a pattern. Unescaped, a legal Kotlin name
+     * containing a regex metacharacter — `` fun `|+|`(…) ``, or a test named
+     * `` fun `a (b) works`() `` — throws `PatternSyntaxException` and takes the whole completion
+     * index down with it.
+     */
     private fun findFunctionSignature(text: String, name: String): String? {
-        val regex = Regex("""(?m)(?:^|\n)\s*(?:public\s+|internal\s+|private\s+)?fun\s+(?:[A-Za-z_][A-Za-z0-9_.<>?]*\.)?$name\s*\(""")
+        val quoted = Regex.escape(name)
+        val regex = Regex("""(?m)(?:^|\n)\s*(?:public\s+|internal\s+|private\s+)?fun\s+(?:[A-Za-z_][A-Za-z0-9_.<>?]*\.)?$quoted\s*\(""")
         val match = regex.find(text) ?: return null
         val start = match.value.indexOf("fun ").let { if (it >= 0) match.range.first + it else match.range.first }
         val open = text.indexOf('(', match.range.last - 1)

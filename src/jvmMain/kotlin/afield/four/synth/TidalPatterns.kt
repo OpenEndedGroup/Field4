@@ -149,6 +149,16 @@
  - `asNotes(...)` is the memoized bridge when you want the same future schedule
    to drive playback logic and piano-roll inspection without recomputing it.
 
+ Three companion files extend this one, and are worth knowing about before you reach for a
+ `map { }`:
+
+ - `PatSignals.kt` — continuous/signal patterns (`sine`, `saw`, `perlin`, `rand`) and the
+   discretisers that turn them back into events (`segment`, `struct`, `range`, `quantise`).
+ - `PatAlgebra.kt` — how two patterns of different types meet, and whose rhythm survives
+   (`|+|` / `|+` / `+|`, `#`, and named parameters via `with(gain(...), pan(...))`).
+ - `PatComposition.kt` — arrangement (`off`, `superimpose`, `jux`, `iter`, `linger`, `randcat`,
+   `shuffle`) and pitch (`scale`, `chords`, `voiceLead`).
+
  The intentionally generic hooks in this file are `respond(...)` and
  `respondAhead(...)`: atoms can drive synth voices, visuals, property
  mutations, OSC, sample playback, box launches, or any other live-coded
@@ -230,6 +240,20 @@ data class PatArc(val start: PatQ, val end: PatQ) {
 
     fun scale(by: PatQ) = PatArc(start * by, end * by)
 
+    /**
+     * Applies [f] to both ends. Every time transform in this file should go through this rather than
+     * rebuilding a `PatArc` by hand, so that an event's [PatEvent.whole] can be carried along by the
+     * same map — see [PatEvent.mapTime].
+     *
+     * [f] may be decreasing (`rev` reflects time about the cycle), in which case the image is still
+     * the interval between the two results — just with the ends the other way round.
+     */
+    inline fun map(f: (PatQ) -> PatQ): PatArc {
+        val a = f(start)
+        val b = f(end)
+        return if (b > a) PatArc(a, b) else PatArc(b, a)
+    }
+
     fun intersect(other: PatArc): PatArc? {
         val s = if (start > other.start) start else other.start
         val e = if (end < other.end) end else other.end
@@ -295,9 +319,65 @@ data class PatSourceSpan(
     }
 }
 
-data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceSpan? = null, val annotations: Map<String, String> = emptyMap(), val additionalSpans: List<PatSourceSpan> = emptyList()) {
-    fun shift(by: PatQ) = copy(arc = arc.shift(by))
-    fun scale(by: PatQ) = copy(arc = arc.scale(by))
+/**
+ * One event: a value sounding over [arc].
+ *
+ * [arc] is the **part** — the slice of the event that the query being answered can actually see. A
+ * query never returns anything outside its own window, so an event longer than the window, or one
+ * straddling the window's edge, comes back clipped. [whole] is the **logical** extent it was clipped
+ * from: where the note really starts and ends, regardless of who is looking.
+ *
+ * Keeping both is what makes [hasOnset] answerable, and [hasOnset] is what stops a note being played
+ * twice. `pat("a b c").slow(2)` puts `b` across the bar line at `2/3 → 4/3`; a per-cycle scheduler
+ * asks for `[0,1)` and then `[1,2)`, and gets `b` back both times. Without [whole] those two
+ * fragments are indistinguishable from two separate notes, and the note is struck twice — once at
+ * `2/3` and again at the bar line. With it, only the fragment whose part starts where the whole
+ * starts is an onset, and `b` is struck once, for its full length. This is Tidal's whole/part
+ * distinction and it exists for exactly this reason.
+ *
+ * `whole == null` means an **analog** event: a sample of a continuous signal, which has no intrinsic
+ * start because it was never a note in the first place. Analog events count as their own onset, so a
+ * signal read per cycle behaves the way you would expect; discretise with `segment` to turn one into
+ * events with real onsets.
+ *
+ * Move an event with [mapTime] and re-value it with [withValue]; both carry [whole] across. Building
+ * a new `PatEvent` positionally from an old one silently drops it back to the part, which is the bug
+ * described above.
+ */
+data class PatEvent<A>(
+    val arc: PatArc,
+    val value: A,
+    val sourceSpan: PatSourceSpan? = null,
+    val annotations: Map<String, String> = emptyMap(),
+    val additionalSpans: List<PatSourceSpan> = emptyList(),
+    val whole: PatArc? = arc
+) {
+    /**
+     * True when this fragment carries the start of its event, so a scheduler should strike it.
+     *
+     * Analog events (`whole == null`) are always onsets: there is no earlier fragment they could be
+     * the tail of.
+     */
+    val hasOnset: Boolean
+        get() = whole == null || whole.start == arc.start
+
+    /** The event's real length — [whole] where there is one, otherwise the part that was visible. */
+    val extent: PatArc
+        get() = whole ?: arc
+
+    fun shift(by: PatQ) = copy(arc = arc.shift(by), whole = whole?.shift(by))
+    fun scale(by: PatQ) = copy(arc = arc.scale(by), whole = whole?.scale(by))
+
+    /** Moves the event in time, applying [f] to the part and the whole alike. */
+    inline fun mapTime(f: (PatQ) -> PatQ) = copy(arc = arc.map(f), whole = whole?.map(f))
+
+    /** Same event, same time, different value — keeps [whole], which a positional rebuild drops. */
+    fun <B> withValue(newValue: B): PatEvent<B> =
+        PatEvent(arc, newValue, sourceSpan, annotations, additionalSpans, whole)
+
+    /** Restricts the visible part to [part] without touching where the event logically begins. */
+    fun clipTo(part: PatArc) = copy(arc = part, whole = whole)
+
     fun mergeAnnotations(extra: Map<String, String>) = if (extra.isEmpty()) this else copy(annotations = annotations + extra)
     fun addSpan(span: PatSourceSpan?) = if (span == null) this else copy(additionalSpans = additionalSpans + span)
 
@@ -305,7 +385,13 @@ data class PatEvent<A>(val arc: PatArc, val value: A, val sourceSpan: PatSourceS
         val source = sourceSpan?.let { ", source=$it" } ?: ""
         val ann = if (annotations.isEmpty()) "" else ", annotations=$annotations"
         val extra = if (additionalSpans.isEmpty()) "" else ", +${additionalSpans.size} spans"
-        return "PatEvent(arc=$arc, value=${synthPrettyValue(value)}$source$ann$extra)"
+        // Only worth showing when it differs from the part — otherwise every event grows a duplicate.
+        val extent = when {
+            whole == null -> ", analog"
+            whole != arc -> ", whole=$whole"
+            else -> ""
+        }
+        return "PatEvent(arc=$arc$extent, value=${synthPrettyValue(value)}$source$ann$extra)"
     }
 }
 
@@ -348,12 +434,28 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
 
     fun events(absArc: PatArc): List<PatEvent<A>> = renderAbs(absArc)
 
+    /**
+     * The events in playing order, one cycle at a time, each yielded **once** at its own start.
+     *
+     * Querying cycle by cycle is what a scheduler has to do — it cannot ask for all of time — but it
+     * means any event crossing a bar line comes back from two consecutive queries, clipped both
+     * times. Yielding both fragments strikes the note twice: `pat("a b c").slow(2)` would fire `b` at
+     * `2/3` and again at the bar line, because three steps do not divide into two cycles. So only the
+     * fragment carrying the onset is yielded, and it is widened back to its [PatEvent.whole] so the
+     * consumer gets the note's real length rather than the part that fitted inside one cycle.
+     *
+     * A note already sounding when [fromCycle] begins is therefore *not* replayed: its onset is in an
+     * earlier cycle, which is the same answer a musician would give.
+     */
     fun eventSequence(fromCycle: Long = 0): Sequence<PatEvent<A>> = sequence {
         var cycle = fromCycle
         while (true) {
             val arc = PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))
             val events = events(arc).sortedBy { it.arc.start.toDouble() }
-            for (event in events) yield(event)
+            for (event in events) {
+                if (!event.hasOnset) continue
+                yield(if (event.whole != null) event.copy(arc = event.whole) else event)
+            }
             cycle++
         }
     }
@@ -391,7 +493,7 @@ class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
     }
 
     fun <B> map(transform: (A) -> B): PatPattern<B> = PatPattern { absArc ->
-        events(absArc).map { PatEvent(it.arc, transform(it.value), it.sourceSpan, it.annotations, it.additionalSpans) }
+        events(absArc).map { it.withValue(transform(it.value)) }
     }
 
     fun respond(
@@ -452,7 +554,10 @@ fun <A> fromCycleIndexed(renderCycle: (PatArc, Long) -> List<PatEvent<A>>): PatP
 
 fun <A> pure(value: A, sourceSpan: PatSourceSpan? = null): PatPattern<A> = fromCycle { subArc ->
     val inter = PAT_CYCLE.intersect(subArc) ?: return@fromCycle emptyList()
-    listOf(PatEvent(inter, value, sourceSpan))
+    // The event is the whole cycle; `inter` is only as much of it as this query asked to see. Every
+    // clipped event in the language is born here, so this is where `whole` has to be set — see
+    // [PatEvent].
+    listOf(PatEvent(inter, value, sourceSpan, whole = PAT_CYCLE))
 }
 
 fun <A> silence(): PatPattern<A> = PatPattern { emptyList() }
@@ -470,12 +575,45 @@ fun <A> within(window: PatArc, pattern: PatPattern<A>): PatPattern<A> =
         )
         val childAbs = localInWindow.shift(base)
         pattern.events(childAbs).map { event ->
-            val startAbs = windowAbs.start + (event.arc.start - base) * window.dur
-            val endAbs = windowAbs.start + (event.arc.end - base) * window.dur
-            PatEvent(PatArc(startAbs, endAbs).shift(-base), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+            event.mapTime { t -> windowAbs.start + (t - base) * window.dur - base }
         }
     }
 
+/**
+ * Maps cycle [cycleIndex] of [pattern] onto the **absolute** arc [window].
+ *
+ * The absolute-time counterpart of [within], which reads its window as a local arc inside a single
+ * cycle (`base + window.start`). That distinction was a real bug: `MiniPat.compilePolyLayer` builds
+ * absolute windows — repetition *r* of a three-slot layer against an eight-pulse grid sits at
+ * `[3r/8, (3r+1)/8)`, which leaves `[0, 1)` as soon as `r >= 3` — and handed them to `within`, whose
+ * tile arithmetic then found no intersection. The result was that **every polymeter went silent
+ * after cycle 0**: `pat("{bd hh 808:4}%8")` played eight events in the first bar and nothing ever
+ * again. `MiniNotationTest` pins the fix.
+ *
+ * [cycleIndex] is the child's own cycle, so per-cycle constructs inside a polymeter layer — `<a b>`,
+ * `every`, `?` — advance once per repetition rather than being frozen on cycle 0.
+ */
+internal fun <A> patFocus(window: PatArc, cycleIndex: Long, pattern: PatPattern<A>): PatPattern<A> =
+    PatPattern { arc ->
+        val visible = arc.intersect(window) ?: return@PatPattern emptyList()
+        val span = window.dur
+        if (span <= PatQ.ZERO) return@PatPattern emptyList()
+        val base = PatQ.of(cycleIndex)
+        val localStart = base + (visible.start - window.start) / span
+        val localEnd = base + (visible.end - window.start) / span
+        if (localEnd <= localStart) return@PatPattern emptyList()
+        pattern.events(PatArc(localStart, localEnd)).map { event ->
+            event.mapTime { t -> window.start + (t - base) * span }
+        }
+    }
+
+/**
+ * Fits every pattern into one cycle, side by side.
+ *
+ * **Note for readers coming from Tidal: this is Tidal's `fastcat`, not Tidal's `cat`.** Tidal's `cat`
+ * plays one pattern per cycle, which here is [slowcat]. [fastcat] is available as a spelling of this
+ * one that says so out loud.
+ */
 fun <A> cat(vararg patterns: PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
@@ -491,6 +629,26 @@ fun <A> cat(vararg patterns: PatPattern<A>): PatPattern<A> =
         out
     }
 
+/** [cat] under the name Tidal gives this behaviour, for when the distinction matters to the reader. */
+fun <A> fastcat(vararg patterns: PatPattern<A>): PatPattern<A> = cat(*patterns)
+
+/**
+ * Plays one pattern per cycle, in turn — **Tidal's `cat`** (also its `slowcat`).
+ *
+ * `slowcat(pat("a b"), pat("c"))` reads `a b` in one cycle and `c` in the next, where [cat] would
+ * fit both into every cycle. It is what mini-notation's `<a b>` alternation has always been built
+ * from; that construction was inlined in the compiler until [chunk] needed it too.
+ */
+fun <A> slowcat(vararg patterns: PatPattern<A>): PatPattern<A> {
+    if (patterns.isEmpty()) return silence()
+    return fromCycleIndexed { subArc, tile ->
+        val base = PatQ.of(tile)
+        val size = patterns.size.toLong()
+        val index = (((tile % size) + size) % size).toInt()
+        patterns[index].events(subArc.shift(base)).map { it.shift(-base) }
+    }
+}
+
 fun <A> stack(vararg patterns: PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
@@ -503,9 +661,8 @@ fun <A> PatPattern<A>.rev(): PatPattern<A> =
         val base = PatQ.of(tile)
         val reflectedAbs = PatArc(base + PatQ.ONE - subArc.end, base + PatQ.ONE - subArc.start)
         events(reflectedAbs).map { event ->
-            val startLocal = PatQ.ONE - (event.arc.end - base)
-            val endLocal = PatQ.ONE - (event.arc.start - base)
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+            // Decreasing map — PatArc.map puts the reflected ends back in order.
+            event.mapTime { t -> PatQ.ONE - (t - base) }
         }
     }
 
@@ -515,33 +672,60 @@ fun <A> PatPattern<A>.zoom(start: PatQ, len: PatQ): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
         val absArc = PatArc(base + start + subArc.start * len, base + start + subArc.end * len)
-        events(absArc).map { event ->
-            val startLocal = (event.arc.start - (base + start)) / len
-            val endLocal = (event.arc.end - (base + start)) / len
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
-        }
+        events(absArc).map { event -> event.mapTime { t -> (t - (base + start)) / len } }
     }
 
 fun <A> PatPattern<A>.delay(by: PatQ): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
         val absArc = subArc.shift(base - by)
-        events(absArc).map { event -> PatEvent(event.arc.shift(-base + by), event.value, event.sourceSpan, event.annotations, event.additionalSpans) }
+        events(absArc).map { event -> event.shift(-base + by) }
     }
 
-fun <A> PatPattern<A>.fast(n: Int): PatPattern<A> = cat(*Array(max(1, n)) { this })
-
-fun <A> PatPattern<A>.slow(n: Int): PatPattern<A> =
-    fromCycleIndexed { subArc, tile ->
-        val base = PatQ.of(tile)
-        val factor = PatQ.of(1, max(1, n))
-        val srcAbs = PatArc(base + subArc.start * factor, base + subArc.end * factor)
-        events(srcAbs).map { event ->
-            val startLocal = (event.arc.start - base) / factor
-            val endLocal = (event.arc.end - base) / factor
-            PatEvent(PatArc(startLocal, endLocal), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
-        }
+/**
+ * Multiplies the pattern's timeline by [by] — the one time transform, in **absolute** cycle time.
+ *
+ * `stretch(PatQ.of(2))` is twice as slow and genuinely spans two cycles; `stretch(PatQ.of(1, 2))` is
+ * twice as fast. Every other time operator in this file is defined in terms of it.
+ *
+ * This replaced three per-cycle-anchored implementations that all silently *dropped material*.
+ * `pat("a b c d").slow(2)` used to give `a b` in every cycle — `c d` was never heard, because the
+ * old implementation rescaled inside each cycle rather than across cycles. Same for mini-notation's
+ * `/n`, for `timeScale`, `density`, and therefore for `chunk`, whose whole point is to apply a
+ * transform to a different quarter each cycle and which used to apply it to the same one forever.
+ * `PatContractTest` pins the difference: `slow` is now (correctly) a per-cycle-varying pattern.
+ */
+fun <A> PatPattern<A>.stretch(by: PatQ): PatPattern<A> {
+    if (by <= PatQ.ZERO) return this
+    return PatPattern { arc ->
+        // The whole rides along with the part: an event stretched across a bar line keeps knowing
+        // where it really began, which is what stops `eventSequence` striking it twice.
+        events(PatArc(arc.start / by, arc.end / by)).map { event -> event.scale(by) }
     }
+}
+
+/** [stretch] by an exact fraction — `fastBy(PatQ.of(3, 2))` is one and a half times as fast. */
+fun <A> PatPattern<A>.fastBy(factor: PatQ): PatPattern<A> =
+    if (factor <= PatQ.ZERO) this else stretch(PatQ.ONE / factor)
+
+/** [stretch] by an exact fraction — `slowBy(PatQ.of(3, 2))` takes one and a half cycles per cycle. */
+fun <A> PatPattern<A>.slowBy(factor: PatQ): PatPattern<A> = stretch(factor)
+
+/**
+ * Plays the pattern [n] times per cycle.
+ *
+ * Cycle-spanning, so `pat("<a b>").fast(2)` reads `a b` in one cycle rather than `a a`. For a
+ * cycle-invariant pattern it is identical to the old `cat`-of-copies implementation.
+ */
+fun <A> PatPattern<A>.fast(n: Int): PatPattern<A> = fastBy(PatQ.of(max(1, n)))
+
+/**
+ * Takes [n] cycles to play the pattern once.
+ *
+ * `pat("a b c d").slow(2)` reads `a b` in one cycle and `c d` in the next — the second half really is
+ * heard. See [stretch] for what this used to do instead.
+ */
+fun <A> PatPattern<A>.slow(n: Int): PatPattern<A> = stretch(PatQ.of(max(1, n)))
 
 fun <A> PatPattern<A>.every(k: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
@@ -626,7 +810,8 @@ fun euclid(pulses: Int, steps: Int, rotation: Int = 0): PatPattern<Boolean> =
                 if (index < mask.size && mask[index]) {
                     val window = PatArc(PatQ.of(index, stepCount), PatQ.of(index + 1, stepCount))
                     val inter = window.intersect(subArc) ?: continue
-                    add(PatEvent(inter, true))
+                    // The pulse lasts `window`; `inter` is only as much of it as this query can see.
+                    add(PatEvent(inter, true, whole = window))
                 }
             }
         }
@@ -686,23 +871,70 @@ fun <A> PatPattern<A>.whenMod(
     transform: (PatPattern<A>) -> PatPattern<A>
 ): PatPattern<A> = whenCycle({ tile -> (tile % n) == (k % n).toLong() }, transform)
 
-fun <A> PatPattern<A>.chunk(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
-    slow(n).let(transform).fast(n)
-
-fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> =
-    fromCycleIndexed { subArc, tile ->
-        val base = PatQ.of(tile)
-        val absArc = PatArc(base + subArc.start * ratio, base + subArc.end * ratio)
-        events(absArc).map { event ->
-            PatEvent(
-                PatArc((event.arc.start - base) / ratio, (event.arc.end - base) / ratio),
-                event.value,
-                event.sourceSpan,
-                event.annotations,
-                event.additionalSpans
-            )
+/**
+ * Keeps only the events whose **onset** satisfies [predicate], which is asked about cycle position.
+ *
+ * Filtering on the onset rather than on the visible part is the point: an event straddling the edge
+ * of a region either belongs to it or does not, and clipping it in half would invent a note. Tidal's
+ * `playWhen` — and only expressible here once [PatEvent.whole] could say where an event begins.
+ */
+fun <A> PatPattern<A>.playWhen(predicate: (cyclePos: PatQ) -> Boolean): PatPattern<A> =
+    PatPattern { arc ->
+        events(arc).filter { event ->
+            val start = event.extent.start
+            predicate(start - PatQ.of(qFloor(start)))
         }
     }
+
+/**
+ * Applies [transform] only to the events starting inside [window] of each cycle; the rest play on
+ * untouched.
+ *
+ * This is **Tidal's `within`**. Field's existing [within] is a different operator that happens to
+ * share the name: it squeezes a whole pattern *into* a window, which is Tidal's `compress`.
+ */
+fun <A> PatPattern<A>.withinCycle(window: PatArc, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> {
+    val inside = { pos: PatQ -> pos >= window.start && pos < window.end }
+    return stack(transform(this).playWhen(inside), playWhen { !inside(it) })
+}
+
+/**
+ * Applies [transform] to a different `1/n` of the cycle each cycle, walking through all [n] of them
+ * before it repeats.
+ *
+ * `pat("a b c d").chunk(4) { it.rev() }` reverses the first quarter in cycle 0, the second in cycle
+ * 1, and so on: the transform travels through the bar. That travelling is the whole point of the
+ * operator, and this is the first implementation here that does it. `chunk` used to be
+ * `slow(n).let(transform).fast(n)` — a real and useful Tidal operator, but a *different* one. That
+ * is `inside`: it is cycle-invariant and applies the transform to the same material every cycle. The
+ * two were conflated, and the commit and documentation that introduced the conflation claimed
+ * `chunk` had been fixed to walk when it never had. [inside] now carries the old behaviour under its
+ * own name.
+ */
+fun <A> PatPattern<A>.chunk(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> {
+    val parts = max(1, n)
+    // slowcat, not cat: the point is a different quarter *each cycle*. Field's `cat` fits all of
+    // its arguments into one cycle, which is what made the first draft of this walk nowhere.
+    return slowcat(*Array(parts) { index ->
+        withinCycle(PatArc(PatQ.of(index, parts), PatQ.of(index + 1, parts)), transform)
+    })
+}
+
+/**
+ * Slows by [n], applies [transform], speeds back up — so the transform sees [n] cycles' worth of
+ * material as a single cycle. Tidal's `inside`.
+ *
+ * Cycle-invariant, which is exactly how it differs from [chunk].
+ */
+fun <A> PatPattern<A>.inside(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
+    slow(max(1, n)).let(transform).fast(max(1, n))
+
+/** The mirror of [inside]: speeds up, transforms, slows back down. Tidal's `outside`. */
+fun <A> PatPattern<A>.outside(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
+    fast(max(1, n)).let(transform).slow(max(1, n))
+
+/** Scales density by an exact ratio: `timeScale(PatQ.of(3, 2))` is half again as fast. [stretch]'s inverse. */
+fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> = fastBy(ratio)
 
 fun <A> PatPattern<A>.density(ratio: Double): PatPattern<A> =
     timeScale(if (ratio <= 0.0) PatQ.ONE else PatQ.fromDouble(ratio))
@@ -819,10 +1051,12 @@ fun PatPattern<String>.zip(valuePattern: PatPattern<String>, key: String): PatPa
     val zipEvents = valuePattern.events(absArc)
     sourceEvents.map { event ->
         val overlapping = zipEvents.firstOrNull { it.arc.intersect(event.arc) != null }
+        // `shift`, not `copy(arc = …)`: the whole has to return to local time along with the part,
+        // or the event ends up claiming to begin a cycle away from where it actually sounds.
         if (overlapping != null) {
-            event.mergeAnnotations(mapOf(key to overlapping.value)).addSpan(overlapping.sourceSpan).copy(arc = event.arc.shift(-base))
+            event.mergeAnnotations(mapOf(key to overlapping.value)).addSpan(overlapping.sourceSpan).shift(-base)
         } else {
-            event.copy(arc = event.arc.shift(-base))
+            event.shift(-base)
         }
     }
 }
@@ -841,6 +1075,8 @@ object MiniPat {
     data class Slow(val expr: Node, val n: Int) : Node
     data class Elongate(val expr: Node, val steps: Int) : Node
     data class Euclid(val expr: Node, val pulses: Int, val steps: Int, val offset: Int = 0) : Node
+    /** `a?` / `a?0.3` — drop this term with the given probability, independently per event. */
+    data class Degrade(val expr: Node, val probability: Double, val salt: Int) : Node
     data class Expr(val body: String, val sourceSpan: PatSourceSpan) : Node
 
     fun parseToAst(
@@ -854,6 +1090,9 @@ object MiniPat {
         source: String,
         parseContext: PatParseContext = PatParseContext(source)
     ): PatPattern<String> = compile(parseToAst(source, parseContext))
+
+    /** Characters that may follow a standalone `.` / `_` / `!` step marker. */
+    private val STANDALONE_FOLLOWERS = setOf(']', '}', '>', ')', ',', '|', '.', '_', '!')
 
     private class Parser(private val src: String, private val parseContext: PatParseContext) {
         private var index = 0
@@ -892,21 +1131,75 @@ object MiniPat {
             }
         }
 
+        /**
+         * A sequence of terms, with the three standalone step markers Tidal allows between them:
+         *
+         *  - `.` groups what precedes it against what follows: `bd sd . hh hh hh` is
+         *    `[bd sd] [hh hh hh]`, two equal halves rather than five equal fifths;
+         *  - `_` extends the previous step by one slot: `bd _ _ sd` is `bd@3 sd`.
+         *
+         * A bare `!` — `bd ! !` for `bd bd bd` — needs nothing here: [parseTerm]'s postfix loop
+         * already skips whitespace before an operator, so it sees each `!` itself. What it needed was
+         * for repeats to *accumulate* instead of nest; see `accumulateRepeat`.
+         *
+         * Both are only markers when they stand alone — followed by whitespace, the end of the
+         * string, or a closing/separating character. That is what keeps `0.5`, `my_atom`, `bd!2` and
+         * `g:(0,0.12)` parsing exactly as they did before: their `.`, `_` and `!` are inside a token,
+         * so `readAtom` consumes them and this loop never sees them.
+         */
         private fun parseSeq(stop: Set<Char>): Node {
-            val terms = mutableListOf<Node>()
+            val groups = mutableListOf(mutableListOf<Node>())
             while (true) {
                 skipWs()
                 if (eof() || peekIn(stop) || peek() == ',') break
-                terms += parseTerm(stop)
+                when {
+                    isStandaloneMarker('.') -> {
+                        index++
+                        groups += mutableListOf<Node>()
+                    }
+                    isStandaloneMarker('_') -> {
+                        index++
+                        groups.last().let { g -> if (g.isNotEmpty()) g[g.size - 1] = elongateOnce(g.last()) }
+                    }
+                    else -> groups.last() += parseTerm(stop)
+                }
                 skipWs()
                 if (eof() || peekIn(stop) || peek() == ',') break
             }
-            return when (terms.size) {
-                0 -> Seq(emptyList())
-                1 -> terms[0]
-                else -> Seq(terms)
+            val used = groups.filter { it.isNotEmpty() }
+            // One group is the pre-existing path, byte for byte: no `.` means no behaviour change.
+            if (used.size <= 1) {
+                val terms = used.firstOrNull() ?: emptyList<Node>()
+                return when (terms.size) {
+                    0 -> Seq(emptyList())
+                    1 -> terms[0]
+                    else -> Seq(terms)
+                }
+            }
+            return Seq(used.map { group -> if (group.size == 1) group[0] else Seq(group) })
+        }
+
+        /** True when [marker] is at the cursor *and* stands alone rather than opening a token. */
+        private fun isStandaloneMarker(marker: Char): Boolean {
+            if (eof() || src[index] != marker) return false
+            val next = src.getOrNull(index + 1) ?: return true
+            return next.isWhitespace() || next in STANDALONE_FOLLOWERS
+        }
+
+        private fun accumulateRepeat(node: Node, count: Int): Node {
+            val extra = (count.coerceAtLeast(1) - 1)
+            return when (node) {
+                is Repeat -> node.copy(times = node.times.coerceAtLeast(1) + extra)
+                else -> Repeat(node, count.coerceAtLeast(1))
             }
         }
+
+        private fun elongateOnce(node: Node): Node = when (node) {
+            is Elongate -> node.copy(steps = node.steps.coerceAtLeast(1) + 1)
+            else -> Elongate(node, 2)
+        }
+
+
 
         private fun parseTerm(stop: Set<Char>): Node {
             var node = parseFactor(stop)
@@ -931,8 +1224,13 @@ object MiniPat {
                             else -> error("% is only supported after polymetric { ... } forms at $index")
                         }
                     }
+                    match('?') -> node = Degrade(node, readDouble() ?: 0.5, nextSalt++)
                     match('@') -> node = Elongate(node, readInt() ?: 2)
-                    match('!') -> node = Repeat(node, readInt() ?: 2)
+                    // Accumulate rather than nest. This loop already tolerates whitespace before a
+                    // postfix operator, so `bd ! !` reaches here as two separate `!`s — and nesting
+                    // them (`Repeat(Repeat(bd, 2), 2)`) gives FOUR copies where Tidal gives three.
+                    // Each `!n` adds n-1 more copies of what is already there.
+                    match('!') -> node = accumulateRepeat(node, readInt() ?: 2)
                     match('*') -> node = Fast(node, readInt() ?: 2)
                     match('/') -> node = Slow(node, readInt() ?: 2)
                     else -> return node
@@ -1011,11 +1309,20 @@ object MiniPat {
 
         private fun readRequiredInt(message: String): Int = readInt() ?: error(message)
 
+        /** A bare decimal immediately after a modifier, as in `bd?0.3`. No leading whitespace. */
+        private fun readDouble(): Double? {
+            val start = index
+            while (!eof() && (src[index].isDigit() || src[index] == '.')) index++
+            if (index <= start) return null
+            return src.substring(start, index).toDoubleOrNull()
+        }
+
         private fun readAtom(): Atom? {
             val start = index
             while (!eof()) {
                 val ch = src[index]
-                val ok = ch.isLetterOrDigit() || ch == '_' || ch == '-' || ch == ':' || ch == '.' || ch == '+'
+                val ok = ch.isLetterOrDigit() || ch == '_' || ch == '-' || ch == ':' || ch == '.' ||
+                    ch == '+' || ch == '\''
                 if (!ok) break
                 index++
                 if (ch == ':' && !eof() && src[index] == '(') {
@@ -1073,7 +1380,7 @@ object MiniPat {
     }
 
     private fun compileNode(node: Node): PatPattern<String> = when (node) {
-        is Atom -> pure(node.name, node.sourceSpan)
+        is Atom -> compileAtom(node)
         is Expr -> compileExpr(node)
         is Rest -> silence()
         is Seq -> when (node.items.size) {
@@ -1086,20 +1393,8 @@ object MiniPat {
             1 -> compileNode(node.layers[0])
             else -> stack(*node.layers.map(::compileNode).toTypedArray())
         }
-        is Choice -> {
-            val compiled = node.alts.map(::compileNode)
-            fromCycleIndexed { subArc, tile ->
-                if (compiled.isEmpty()) {
-                    emptyList()
-                } else {
-                    val base = PatQ.of(tile)
-                    val absSub = subArc.shift(base)
-                    val size = compiled.size.toLong()
-                    val idx = ((tile % size) + size) % size
-                    compiled[idx.toInt()].events(absSub).map { it.shift(-base) }
-                }
-            }
-        }
+        // `<a b>` is one alternative per cycle, which is exactly [slowcat].
+        is Choice -> slowcat(*node.alts.map(::compileNode).toTypedArray())
         is RandomChoice -> {
             val compiled = node.alts.map(::compileNode)
             fromCycleIndexed { subArc, tile ->
@@ -1122,10 +1417,28 @@ object MiniPat {
         is Fast -> compileNode(node.expr).fast(node.n.coerceAtLeast(1))
         is Slow -> compileNode(node.expr).slow(node.n.coerceAtLeast(1))
         is Elongate -> compileNode(node.expr)
+        is Degrade -> compileNode(node.expr).degradeBy(node.probability, node.salt)
         is Euclid -> {
             val pulses = node.pulses.coerceAtLeast(0)
             val steps = node.steps.coerceAtLeast(1)
             euclidFill(pulses, steps, rotation = -node.offset, on = compileNode(node.expr))
+        }
+    }
+
+    /**
+     * An atom becomes a one-event-per-cycle pattern. A trailing `:n` — the sample-index suffix —
+     * is additionally surfaced as an `n` **annotation**, so `pat("bd:3")` is both the atom `bd:3`
+     * that every existing caller already sees and an event carrying `n = 3` for the parameter
+     * algebra. Nothing is taken away; use [dropSampleIndex] if you want the bare name.
+     */
+    private fun compileAtom(node: Atom): PatPattern<String> {
+        val index = patSampleIndexSuffix(node.name)
+        if (index == null) return pure(node.name, node.sourceSpan)
+        val annotations = mapOf("n" to index.toString())
+        return fromCycle { subArc ->
+            val inter = PatArc(PatQ.ZERO, PatQ.ONE).intersect(subArc) ?: return@fromCycle emptyList()
+            // A whole-cycle atom, exactly like `pure` — clipped for the query, whole for the player.
+            listOf(PatEvent(inter, node.name, node.sourceSpan, annotations, whole = PAT_CYCLE))
         }
     }
 
@@ -1138,7 +1451,7 @@ object MiniPat {
             val midT = ((inter.start + inter.end) / PatQ.of(2)).toDouble()
             val value = PatExprEvaluator.evaluate(body, cycle = tile, t = midT)
                 ?: return@fromCycleIndexed emptyList() // failed expression → silence
-            listOf(PatEvent(inter, value, span))
+            listOf(PatEvent(inter, value, span, whole = PAT_CYCLE))
         }
     }
 
@@ -1204,7 +1517,10 @@ object MiniPat {
                         PatQ.of(globalStartSlot + width.toLong(), pulseCount.toLong())
                     )
                     val inter = absArc.intersect(window) ?: continue
-                    out += within(window, compileNode(sequenceBody(item))).events(inter)
+                    // `patFocus`, not `within`: these windows are ABSOLUTE and run off past cycle 1,
+                    // while `within` reads its window as a local, inside-one-cycle arc. That is why
+                    // polymeter used to fall silent after cycle 0 — see patFocus's KDoc.
+                    out += patFocus(window, repetition, compileNode(sequenceBody(item))).events(inter)
                 }
             }
             out
@@ -1329,6 +1645,27 @@ private object PatExprEvaluator {
             $body
         }
     """.trimIndent()
+}
+
+/**
+ * The integer after the last `:` of an atom name, when the whole tail is digits — mini-notation's
+ * sample-index suffix. `"bd:3"` is `3`; `"bd"`, `"g:(0,0.1)"` and `"808:x"` are all `null`.
+ */
+fun patSampleIndexSuffix(name: String): Int? {
+    val colon = name.lastIndexOf(':')
+    if (colon <= 0 || colon == name.length - 1) return null
+    val tail = name.substring(colon + 1)
+    if (!tail.all { it.isDigit() }) return null
+    return tail.toIntOrNull()
+}
+
+/** Strips a trailing `:n` sample-index suffix from every atom, leaving the `n` annotation intact. */
+fun PatPattern<String>.dropSampleIndex(): PatPattern<String> = PatPattern { arc ->
+    events(arc).map { event ->
+        val colon = event.value.lastIndexOf(':')
+        if (patSampleIndexSuffix(event.value) == null) event
+        else event.copy(value = event.value.substring(0, colon))
+    }
 }
 
 fun pat(source: String): PatPattern<String> = MiniPat.parse(source, parseContext = currentPatParseContext(source))
@@ -1470,7 +1807,7 @@ private fun defaultPatClock(): PatClock? {
     return Box.context.get()?.patClock ?: musicClock()
 }
 
-private fun <A> PatPattern<A>.mapEventsPerCycle(
+internal fun <A> PatPattern<A>.mapEventsPerCycle(
     transform: (cycle: Long, eventsLocal: List<PatEvent<A>>) -> List<PatEvent<A>>
 ): PatPattern<A> = fromCycleIndexed { subArc, tile ->
     val base = PatQ.of(tile)
@@ -1479,14 +1816,14 @@ private fun <A> PatPattern<A>.mapEventsPerCycle(
     transform(tile, eventsLocal)
 }
 
-private fun qFloor(x: PatQ): Long {
+internal fun qFloor(x: PatQ): Long {
     val divRem = x.n.divideAndRemainder(x.d)
     val q = divRem[0]
     val r = divRem[1]
     return if (x.n.signum() < 0 && r != BigInteger.ZERO) q.subtract(BigInteger.ONE).toLong() else q.toLong()
 }
 
-private fun qCeil(x: PatQ): Long {
+internal fun qCeil(x: PatQ): Long {
     val exact = x.n.mod(x.d) == BigInteger.ZERO
     return if (exact) x.n.divide(x.d).toLong() else qFloor(x) + 1
 }
@@ -1503,19 +1840,19 @@ private fun ceilDiv(n: Long, d: Long): Long {
     return -floorDiv(-n, d)
 }
 
-private fun splitmix64(seed: Long): Long {
+internal fun splitmix64(seed: Long): Long {
     var z = seed + -0x61c8864680b583ebL
     z = (z xor (z ushr 30)) * -0x4b1b3c39ec3d2dcdL
     z = (z xor (z ushr 27)) * -0x441d67c49c2c49c9L
     return z xor (z ushr 31)
 }
 
-private fun toUnitDouble(x: Long): Double {
+internal fun toUnitDouble(x: Long): Double {
     val value = x ushr 11
     return value.toDouble() / (1L shl 53).toDouble()
 }
 
-private fun floorMod(value: Long, modulus: Int): Int {
+internal fun floorMod(value: Long, modulus: Int): Int {
     require(modulus > 0) { "Modulus must be positive" }
     val mod = value % modulus.toLong()
     return if (mod < 0L) (mod + modulus).toInt() else mod.toInt()
@@ -1523,9 +1860,16 @@ private fun floorMod(value: Long, modulus: Int): Int {
 
 private fun parseArpIndexToken(token: String): Int? = token.trim().toIntOrNull()
 
-private fun hashQ(q: PatQ): Int = 31 * q.n.hashCode() + q.d.hashCode()
+internal fun hashQ(q: PatQ): Int = 31 * q.n.hashCode() + q.d.hashCode()
 
-private fun eventKey(cycle: Long, arc: PatArc, salt: Int): Long {
+/**
+ * The per-event hash `degradeBy` uses to decide what to drop.
+ *
+ * Internal rather than private because `unDegradeBy` must be its exact complement: two independent
+ * implementations of "the same hash" would silently overlap or leave gaps, and `sometimesEventBy`
+ * would then double or drop notes.
+ */
+internal fun eventKey(cycle: Long, arc: PatArc, salt: Int): Long {
     var h = 1469598103934665603L
     fun mix(i: Int) {
         h = (h xor i.toLong()) * 1099511628211L

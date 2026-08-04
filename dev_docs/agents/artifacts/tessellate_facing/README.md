@@ -1,14 +1,17 @@
-# `FLine.tessellate` facing — before and after
+# `FLine.tessellate` facing and planes — before and after
 
-Two renders of the same scene, produced by the same code, differing only in
-`src/jvmMain/kotlin/afield/graphics/FLine.kt`.
+Two before/after pairs, all four images from
+`src/jvmTest/kotlin/afield/graphics/TessellationFacingRenderTest.kt`, which builds its scenes out of
+filled FLines and rasterises them through a perspective camera with **back-face culling** and flat
+diffuse shading. Culling is the whole instrument: it is the thing that notices which way a triangle
+faces, and it is the thing Field's own viewers switch off (`four/modules/MeshModule.kt:466` sets
+`VK_CULL_MODE_NONE`; `threejs_viewer.html:915` uses `THREE.DoubleSide`), which is why both of these
+defects shipped without anyone seeing them.
 
-The scene is a cube built as **six filled FLines**, one per face, each with a square hole, each
-wound counter-clockwise seen from *outside* the cube. It is drawn through a perspective camera with
-**back-face culling** and flat diffuse shading. Culling is the whole instrument: it is the thing
-that notices which way a triangle faces, and it is the thing Field's own viewers switch off
-(`four/modules/MeshModule.kt:466` sets `VK_CULL_MODE_NONE`; `threejs_viewer.html:900` uses
-`THREE.DoubleSide`), which is why this defect shipped without anyone seeing it.
+## Pair one — facing (2026-08-02)
+
+A cube built as **six filled FLines**, one per face, each with a square hole, each wound
+counter-clockwise seen from *outside* the cube.
 
 | | |
 |---|---|
@@ -24,12 +27,25 @@ Three of the six faces were emitted back-to-front:
 
 `-y` came out right in the before image only by the accident of two mirrors cancelling.
 
+## Pair two — planes (2026-08-03)
+
+The same three camera-facing faces, with the same holes, in **one** FLine: six subpaths, three outer
+rings in three mutually perpendicular planes.
+
+| | |
+|---|---|
+| `multi_plane_fline_single_plane.png` | One face. The three outer rings are congruent unit squares, the first of them wins the FLine's single projection axis, and the other two project onto a line and vanish. |
+| `multi_plane_fline.png` | All three, each with its hole. Per-plane grouping gives each coplanar group of subpaths its own projected frame, and scopes hole classification to that group. |
+
+`multi_plane_fline.png` is **byte-identical to `after_fixed.png`**, and the test asserts it: with
+three of the cube's faces culled anyway, one FLine spanning three planes has to rasterise to exactly
+the same frame as six independent single-plane ones. That equivalence is the claim, stated in pixels
+rather than in coverage thresholds.
+
 ## Regenerating
 
-Both images come from `src/jvmTest/kotlin/afield/graphics/TessellationFacingRenderTest.kt`, which
-also asserts the same fact numerically (so it fails in CI without anyone looking at a picture).
-
-After:
+All four images come from that one test class, which also asserts the same facts numerically, so it
+fails in CI without anyone looking at a picture.
 
 ```
 AFIELD_TESSELLATION_RENDER_OUT=dev_docs/agents/artifacts/tessellate_facing \
@@ -38,7 +54,15 @@ mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
    dev_docs/agents/artifacts/tessellate_facing/after_fixed.png
 ```
 
-Before — revert only the tessellator, keep the test:
+That writes `cube_faces.png`, `multi_plane_fline.png` and `multi_plane_fline_single_plane.png`. Only
+the first needs renaming; the other two land on their committed names.
+
+The second pair's "before" needs **no reverted file** — `Coplanarity.SINGLE_PLANE` reproduces the
+one-axis-per-FLine behaviour exactly, every ring in one plane whatever its geometry says, so both
+halves come out of one run and the before cannot rot away from the code.
+
+The first pair's before still needs the old recipe, because the frame it shows is not reachable from
+any current parameter:
 
 ```
 git checkout 590e1f781 -- src/jvmMain/kotlin/afield/graphics/FLine.kt
@@ -49,5 +73,9 @@ mv dev_docs/agents/artifacts/tessellate_facing/cube_faces.png \
 git checkout HEAD -- src/jvmMain/kotlin/afield/graphics/FLine.kt
 ```
 
-Without the environment variable the test renders to a temp directory and asserts there, so an
+Since 2026-08-03 that checkout no longer compiles against the current test file — `tessellate` has
+gained a `coplanarity` parameter and the multi-plane tests use it — so the honest way to get that
+image is the committed PNG, or to revert the test file to `590e1f781` as well.
+
+Without the environment variable every test renders to a temp directory and asserts there, so an
 ordinary test run never writes into the repository.

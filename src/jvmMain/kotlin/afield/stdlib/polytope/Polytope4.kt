@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
@@ -5,6 +7,43 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+/**
+ * Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest
+ * about being rank-general rather than a polyhedron library with a rank field.
+ *
+ * Four regular seeds — [fiveCell], [tesseract], [sixteenCell] and the self-dual [twentyFourCell] —
+ * plus [Realization4] for coordinates, an abstract [Polytope4.dual], and [Projection4] for getting a
+ * picture out. Everything a rank-3 reader would assume is wrong here, deliberately: there are four
+ * proper ranks rather than three, an edge bounds three or more polygons rather than exactly two (so
+ * `validate(checkManifold = true)` *must reject* a tesseract, and does), and there is no
+ * `triangulate()`, because a projected 4-polytope's polygons do not bound a surface and filling them
+ * would claim they did.
+ *
+ * ## The face lattice is derived, not declared
+ *
+ * [convexPolytope4] is the one call the seeds are built from. You give it vertex coordinates and
+ * outward facet normals; it works out cells, polygons, boundary orders and edges itself. So a wrong
+ * derivation shows up as a wrong published count — 24 cells, 96 edges — rather than as a shape nobody
+ * checked. The trade is in the name: the criteria it uses are true of convex polytopes and only of
+ * convex polytopes.
+ *
+ * ## Coordinates, and why they are not `Vec3`
+ *
+ * Field's graphics vocabulary has no `Vec4` and should not grow one for this, so [Realization4]
+ * stores plain `DoubleArray`s and every public read hands back a copy. That also means rank 4 is the
+ * double-precision half of this package while `Realization3` is single-precision.
+ *
+ * ## Projection is a camera, not geometry
+ *
+ * ```kotlin
+ * val t = tesseract()
+ * val points = t.project(RotatedProjection4(0, 3, angle = 0.6))   // cube inside a cube, turning
+ * ```
+ *
+ * A [Projection4] lives *above* realization: swapping one for another changes the picture and not
+ * the object, and nothing in the topology moves when you do it.
+ */
 
 /**
  * Immutable ownership boundary around four-dimensional vertex coordinates.
@@ -21,9 +60,16 @@ class Realization4(vertexCoordinates: List<DoubleArray>) {
         it.copyOf()
     }
 
+    /** How many vertices are realized; equal to the topology's rank-0 element count. */
     val size: Int get() = coordinates.size
+
+    /** Every coordinate, freshly copied on each read — so this is a snapshot, not a view, and not free. */
     val vertexCoordinates: List<DoubleArray> get() = coordinates.map { it.copyOf() }
 
+    /**
+     * The four components of one vertex, in `topology.elements(0)` order. A **copy**: writing into
+     * the returned array changes nothing, which is the whole point of this class existing.
+     */
     operator fun get(index: Int): DoubleArray = coordinates[index].copyOf()
 
     internal fun raw(index: Int): DoubleArray = coordinates[index]
@@ -39,7 +85,9 @@ class Realization4(vertexCoordinates: List<DoubleArray>) {
  * [Projection4] above realization, not a reason to flatten the topology.
  */
 data class Polytope4(
+    /** Must be rank 4; the constructor rejects a rank-3 topology rather than treating it as degenerate. */
     val topology: PolytopeTopology,
+    /** Optional coordinates, in `topology.elements(0)` order. Null means a purely combinatorial object. */
     val realization: Realization4? = null,
 ) {
     init {
@@ -49,12 +97,25 @@ data class Polytope4(
         }
     }
 
+    /** Rank-0 elements, in the order every realization and projection result is indexed by. */
     val vertices: List<Element> get() = topology.elements(0)
+
+    /** Rank-1 elements. Each belongs to three or more [polygons] here, never to exactly two. */
     val edges: List<Element> get() = topology.elements(1)
+
+    /** Rank-2 elements: the flat polygonal faces, each with its own ordered boundary cycle. */
     val polygons: List<Element> get() = topology.elements(2)
+
+    /** Rank-3 elements: the polyhedral facets. The rank a reader arriving from rank 3 does not expect. */
     val cells: List<Element> get() = topology.elements(3)
 
-    /** The abstract dual. Vertices become cells and polygons become edges. */
+    /**
+     * The abstract dual. Vertices become cells and polygons become edges.
+     *
+     * Combinatorics only: the result carries **no realization**, so [project] on it throws until
+     * coordinates are supplied. Dualizing [twentyFourCell] is therefore a test of self-duality by
+     * incidence, not a second picture of the same solid.
+     */
     fun dual(): Polytope4 = Polytope4(topology.dual())
 }
 
@@ -64,14 +125,25 @@ data class Polytope4Summary(
     val edges: Int,
     val polygons: Int,
     val cells: Int,
+    /** Polygon side count to how many polygons have it: `{3=96}` for the 24-cell, all triangles. */
     val polygonDegrees: Map<Int, Int>,
+    /** Polygons-per-cell to how many cells have that many: `{8=24}` for the 24-cell's octahedra. */
     val cellPolygonCounts: Map<Int, Int>,
     /** `V - E + F - C`, which is zero for every convex 4-polytope. */
     val eulerCharacteristic: Int,
+    /** The *ordinary* validation verdict. Never the manifold one, which no 4-polytope can pass. */
     val valid: Boolean,
+    /** Whether coordinates are attached at all — false after a [Polytope4.dual]. */
     val realized: Boolean,
 )
 
+/**
+ * Reduce a [Polytope4] to the counts worth reading at a prompt, and the ones the tests assert.
+ *
+ * Runs a full [PolytopeTopology.validate] pass each time it is called, so it is an inspection call
+ * rather than something to put in a loop. Polygons with no stored boundary cycle are simply absent
+ * from [Polytope4Summary.polygonDegrees] instead of counted as zero-sided.
+ */
 fun Polytope4.summary(): Polytope4Summary = Polytope4Summary(
     vertices = vertices.size,
     edges = edges.size,
@@ -88,7 +160,12 @@ fun Polytope4.summary(): Polytope4Summary = Polytope4Summary(
 // Seeds
 // ==============================================================================================
 
-/** The regular 5-cell (4-simplex): 5 vertices, 10 edges, 10 triangles, 5 tetrahedral cells. */
+/**
+ * The regular 5-cell (4-simplex): 5 vertices, 10 edges, 10 triangles, 5 tetrahedral cells.
+ *
+ * A tetrahedron in the `w = -1/sqrt(5)` hyperplane plus an apex on the `w` axis; centred at the
+ * origin, circumradius `4/sqrt(5)` (about 1.79), edge length `2*sqrt(2)`.
+ */
 fun fiveCell(): Polytope4 {
     val s = 1.0 / sqrt(5.0)
     val coordinates = listOf(
@@ -103,7 +180,13 @@ fun fiveCell(): Polytope4 {
     return convexPolytope4(coordinates, coordinates.map { v -> DoubleArray(4) { -v[it] } })
 }
 
-/** The tesseract (8-cell): 16 vertices, 32 edges, 24 squares, 8 cubic cells. */
+/**
+ * The tesseract (8-cell): 16 vertices, 32 edges, 24 squares, 8 cubic cells.
+ *
+ * All sixteen sign combinations of `(±1, ±1, ±1, ±1)`, so edge length 2 and circumradius 2. Under
+ * [PerspectiveProjection4] this is the cube-inside-a-cube; under [OrthographicProjection4] its two
+ * outermost cells land exactly on top of each other.
+ */
 fun tesseract(): Polytope4 {
     val coordinates = buildList {
         for (a in listOf(-1.0, 1.0)) for (b in listOf(-1.0, 1.0)) {
@@ -116,7 +199,13 @@ fun tesseract(): Polytope4 {
     return convexPolytope4(coordinates, normals)
 }
 
-/** The 16-cell (4-orthoplex): 8 vertices, 24 edges, 32 triangles, 16 tetrahedral cells. */
+/**
+ * The 16-cell (4-orthoplex): 8 vertices, 24 edges, 32 triangles, 16 tetrahedral cells.
+ *
+ * The eight unit axis vectors, so it is inscribed in the unit sphere with edge length `sqrt(2)` — and
+ * it is the dual of [tesseract], which is why the two seeds' vertices and facet normals are the same
+ * two lists swapped over.
+ */
 fun sixteenCell(): Polytope4 {
     val coordinates = buildList {
         for (axis in 0..3) for (sign in listOf(1.0, -1.0)) add(DoubleArray(4) { if (it == axis) sign else 0.0 })
@@ -133,6 +222,10 @@ fun sixteenCell(): Polytope4 {
  * The 24-cell: 24 vertices, 96 edges, 96 triangles, 24 octahedral cells. It is self-dual and has
  * no three-dimensional analogue, which makes it the honest test that the core is rank-general and
  * not a polyhedron library wearing a hat.
+ *
+ * The 24 permutations of `(±1, ±1, 0, 0)`: circumradius and edge length are both `sqrt(2)`, so every
+ * vertex is as far from the origin as it is from its neighbours. Its facet normals are the tesseract's
+ * vertices together with the 16-cell's.
  */
 fun twentyFourCell(): Polytope4 {
     val coordinates = buildList {
@@ -159,6 +252,19 @@ fun twentyFourCell(): Polytope4 {
  * edges are the polygons' consecutive pairs. A polygon is incident to a cell exactly when its
  * vertices are a subset of that cell's, which is the standard criterion for convex polytopes and
  * only for convex polytopes — hence the function's name.
+ *
+ * Nothing is silently skipped. A normal supporting fewer than four vertices, a coordinate list of
+ * fewer than five, a normal or coordinate of the wrong length, no two-dimensional facet intersection
+ * anywhere, or a polygon whose vertices turn out collinear all throw. Repeated normals are harmless:
+ * cells are keyed by the vertex set they support, so the same hyperplane twice yields one cell. The
+ * result is [PolytopeTopologyBuilder.buildValidated], so a derivation that produced a malformed
+ * lattice fails here rather than downstream.
+ *
+ * [tolerance] is an *absolute* comparison against dot products of the normals you supply with the
+ * coordinates you supply — it is therefore scale-sensitive at both ends, and the default assumes both
+ * are of order one, as all four seeds here are. Every pair of cells is tested for a shared face, so
+ * the work grows with the square of the facet count: this is a lattice derivation for a few dozen
+ * facets, not a convex-hull algorithm for thousands.
  */
 fun convexPolytope4(
     coordinates: List<DoubleArray>,
@@ -289,10 +395,19 @@ private inline fun <T : Any> requireNonNull(value: T?, message: () -> String): T
  * object.
  */
 fun interface Projection4 {
+    /**
+     * Map one four-component point to a viewing position. Called once per vertex, so it should be
+     * cheap; it may throw to reject a point it cannot see, as [PerspectiveProjection4] does.
+     */
     fun project(point: DoubleArray): Vec3
 }
 
-/** Drop one axis. Honest, cheap, and usually unreadable — every cell folds onto every other. */
+/**
+ * Drop one axis. Honest, cheap, and usually unreadable — every cell folds onto every other.
+ *
+ * The three surviving axes become x, y and z in ascending index order, so `axis = 3` is the identity
+ * on the first three components and `axis = 0` shifts the rest down.
+ */
 data class OrthographicProjection4(val axis: Int = 3) : Projection4 {
     init {
         require(axis in 0..3) { "projection axis must be 0..3" }
@@ -308,8 +423,18 @@ data class OrthographicProjection4(val axis: Int = 3) : Projection4 {
  * Perspective from a viewpoint on one axis — the projection that makes a tesseract look like a cube
  * inside a cube and a 24-cell readable at all. [eye] must be outside the object on that axis; the
  * nearer it is, the more extreme the nesting.
+ *
+ * "Must" is enforced per point, at projection time rather than construction time: a vertex at or
+ * behind the viewpoint throws, so one badly placed vertex fails the whole projection. The default 3.0
+ * clears every seed in this file — the largest circumradius among them is the tesseract's 2 — with
+ * room left for a [RotatedProjection4] in front of it.
  */
-data class PerspectiveProjection4(val eye: Double = 3.0, val axis: Int = 3) : Projection4 {
+data class PerspectiveProjection4(
+    /** Viewpoint distance along [axis]; smaller exaggerates the nesting, and must exceed the object's extent. */
+    val eye: Double = 3.0,
+    /** Which of the four coordinates is depth. The other three become x, y, z in ascending order. */
+    val axis: Int = 3,
+) : Projection4 {
     init {
         require(axis in 0..3) { "projection axis must be 0..3" }
         require(eye.isFinite() && eye > 0.0) { "the 4D viewpoint must be a positive finite distance" }
@@ -332,11 +457,19 @@ data class PerspectiveProjection4(val eye: Double = 3.0, val axis: Int = 3) : Pr
  * Rotate in the `(a, b)` coordinate plane, then project. Rotations of 4-space are the reason a
  * projected 4-polytope reads as one object rather than a tangle: the inner cell turns itself
  * inside out as the angle advances.
+ *
+ * Only the two named coordinates move; the other two are untouched. Pick a plane that includes the
+ * depth axis of [then] — `(0, 3)` against the default — and the rotation changes which cell is
+ * nearest. Pick one that does not, such as `(0, 1)`, and you get an ordinary spin of the picture.
  */
 data class RotatedProjection4(
+    /** First axis of the rotation plane, `0..3`. */
     val a: Int,
+    /** Second axis of the rotation plane, `0..3` and distinct from [a]. */
     val b: Int,
+    /** Rotation in radians, applied before [then]. Animate this, not the object. */
     val angle: Double,
+    /** What turns the rotated 4D point into a viewing position; nesting these composes rotations. */
     val then: Projection4 = PerspectiveProjection4(),
 ) : Projection4 {
     init {
@@ -352,7 +485,14 @@ data class RotatedProjection4(
     }
 }
 
-/** Project every vertex, in `topology.elements(0)` order. */
+/**
+ * Project every vertex, in `topology.elements(0)` order — so the result is index-parallel to
+ * [Polytope4.vertices], and a face cycle's element ids have to be looked up in that list rather than
+ * used as indices into this one.
+ *
+ * Throws if the polytope has no realization, which includes anything just returned by
+ * [Polytope4.dual]; and propagates whatever the projection itself rejects.
+ */
 fun Polytope4.project(projection: Projection4): List<Vec3> {
     val realization = realization ?: throw IllegalStateException("projection requires a 4D realization")
     return (0 until realization.size).map { projection.project(realization.raw(it)) }

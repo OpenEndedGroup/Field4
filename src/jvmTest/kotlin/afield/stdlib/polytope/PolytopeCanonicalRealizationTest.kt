@@ -181,6 +181,37 @@ class PolytopeCanonicalRealizationTest {
         assertEquals(listOf(12, 20, 60), hexecontahedron.vertexClasses.map { it.size }.sorted())
     }
 
+    /**
+     * The refinement stops when the class count stops growing. This asserts the two halves of that
+     * claim separately: the round count is bounded by the rounds the shape actually needs — a
+     * handful — and not by the `elements + 2` worst-case budget, and stopping there costs nothing,
+     * because spending the whole budget lands on the same partition.
+     */
+    @Test
+    fun combinatorialOrbitRefinementStopsAsSoonAsTheClassCountIsStable() {
+        // gD is the largest of the seeds here: 92 vertices, 150 edges, 60 faces.
+        for (expression in listOf("C", "tC", "eC", "gD", "bC")) {
+            val topology = conway(expression).polyhedron.topology
+            val elements = (0..2).sumOf { topology.elements(it).size }
+            val budget = elements + 2
+
+            val early = topology.refineCombinatorialOrbits()
+            val full = topology.refineCombinatorialOrbits(stopWhenStable = false)
+            val report = "$expression: $elements elements, stopped after ${early.rounds} of $budget rounds"
+
+            // Bounded by the rounds needed, not by the budget: colour refinement on these shapes
+            // reaches its fixed point almost immediately, and the seed colouring does much of it.
+            // Measured: 1 round for C, 2 for tC and bC, 3 for eC, 4 for gD.
+            assertTrue(early.rounds in 1..8, report)
+            assertTrue(early.rounds < budget, report)
+            assertEquals(budget, full.rounds, "the unbounded run should spend the whole budget")
+
+            // ...and the early stop is not an approximation: same classes, same order.
+            assertEquals(full.orbits, early.orbits, report)
+            assertEquals(early.orbits, topology.combinatorialOrbits(), report)
+        }
+    }
+
     @Test
     fun canonicalFormRespectsTheCombinatorialOrbits() {
         for (expression in listOf("C", "tC", "gD", "eC", "bC")) {
@@ -254,7 +285,8 @@ class PolytopeCanonicalRealizationTest {
         val source = conway("aC").polyhedron
         val solved = source.relax(RelaxationPlan.canonicalConditions())
         assertEquals(
-            listOf("face-planarity", "edge-tangency", "tangency-centroid"),
+            // The fourth is the floor guarding edge-tangency's zero-cost minimum, not a shape family.
+            listOf("face-planarity", "edge-tangency", "tangency-centroid", "min-edge-length"),
             solved.finalConstraints.map { it.name },
         )
         val diagnostics = solved.polyhedron.canonicalDiagnostics()
@@ -351,5 +383,100 @@ class PolytopeCanonicalRealizationTest {
         assertTrue(canonical.polyhedron.canonicalDiagnostics().tangencyRadiusSpread < 5e-6)
         // And the summary keeps reporting the Conway chain rather than the realization run.
         assertEquals(listOf("kis"), canonical.summary().requestedOperations)
+    }
+
+    // ---- MinEdgeLengthConstraint: the guard on EdgeTangencyConstraint's zero-cost minimum --------
+
+    private fun minEdgeOverMean(problem: RealizationProblem, p: PolyhedralObject): Double {
+        val coordinates = p.realization!!.vertexCoordinates
+        val x = DoubleArray(coordinates.size * 3)
+        coordinates.forEachIndexed { i, v ->
+            x[3 * i] = v.x.toDouble()
+            x[3 * i + 1] = v.y.toDouble()
+            x[3 * i + 2] = v.z.toDouble()
+        }
+        val lengths = (0 until problem.edgeCount).map { edge ->
+            val a = problem.edgeA(edge)
+            val b = problem.edgeB(edge)
+            val dx = x[3 * b] - x[3 * a]
+            val dy = x[3 * b + 1] - x[3 * a + 1]
+            val dz = x[3 * b + 2] - x[3 * a + 2]
+            kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+        }
+        return lengths.min() / lengths.average()
+    }
+
+    @Test
+    fun theEdgeLengthFloorContributesExactlyZeroAboveItself() {
+        // Not "small" — zero. That is what makes it safe to have on by default, and it is why every
+        // healthy solid below is bit-identical with and without it.
+        val problem = RealizationProblem.of(conway("kC").polyhedron)
+        val residuals = DoubleArray(problem.edgeCount)
+        MinEdgeLengthConstraint(fraction = 0.01)
+            .residuals(problem, problem.initialCoordinates, residuals, 0)
+        assertTrue(residuals.all { it == 0.0 }, "a healthy solid must contribute exactly 0.0, got ${residuals.max()}")
+    }
+
+    @Test
+    fun theEdgeLengthFloorPushesBackOnlyBelowItself() {
+        val problem = RealizationProblem.of(conway("C").polyhedron)
+        val x = problem.initialCoordinates.copyOf()
+        // Collapse one edge's endpoints onto each other.
+        val a = problem.edgeA(0)
+        val b = problem.edgeB(0)
+        for (axis in 0..2) x[3 * b + axis] = x[3 * a + axis]
+        val residuals = DoubleArray(problem.edgeCount)
+        val floor = 0.01 * problem.initialMeanEdgeLength
+        MinEdgeLengthConstraint(fraction = 0.01).residuals(problem, x, residuals, 0)
+        assertEquals(floor, residuals[0], 1e-12, "a collapsed edge must be pushed by the whole floor")
+        assertTrue(
+            residuals.drop(1).all { it == 0.0 },
+            "collapsing one edge must not make any other edge's residual non-zero",
+        )
+    }
+
+    @Test
+    fun canonicalConditionsCarriesTheFloorSoBothRealizersMinimiseTheSameFunction() {
+        val plan = RelaxationPlan.canonicalConditions()
+        assertEquals(1, plan.constraints.count { it is MinEdgeLengthConstraint })
+        assertTrue(RelaxationPlan.canonicalConditions(minEdgeLengthFraction = 0.0)
+            .constraints.none { it is MinEdgeLengthConstraint })
+        // And it crosses over to Ceres rather than being rejected as an unsupported family.
+        assertEquals(emptyList(), CeresRealization.unsupported(plan))
+    }
+
+    @Test
+    fun theFloorLeavesAHealthySolidBitIdentical() {
+        val seed = conway("kC").polyhedron
+        val withFloor = seed.relax(RelaxationPlan.canonicalConditions()).polyhedron
+        val without = seed.relax(RelaxationPlan.canonicalConditions(minEdgeLengthFraction = 0.0)).polyhedron
+        val a = withFloor.realization!!.vertexCoordinates
+        val b = without.realization!!.vertexCoordinates
+        // Bit-identical, so exact equality rather than a tolerance.
+        for (i in a.indices) {
+            assertEquals(b[i].x, a[i].x, "vertex $i x moved")
+            assertEquals(b[i].y, a[i].y, "vertex $i y moved")
+            assertEquals(b[i].z, a[i].z, "vertex $i z moved")
+        }
+    }
+
+    @Test
+    fun theFloorReducesTheEdgeRelaxCollapsesOnKkT() {
+        // `kkT` is where `relax` actually falls into the minimum EdgeTangencyConstraint documents:
+        // without a floor it returns a tangency spread of 1e-4 bought with an edge at 7e-4 of the
+        // mean. The floor is soft — a least-squares penalty, not a hard constraint — so it does not
+        // reach the floor itself, but it is an order of magnitude less degenerate. The spread gets
+        // *worse* in exchange, which is the point: that number was measuring a folded solid.
+        val seed = conway("kkT").polyhedron
+        val problem = RealizationProblem.of(seed)
+        val without = seed.relax(RelaxationPlan.canonicalConditions(minEdgeLengthFraction = 0.0)).polyhedron
+        val withFloor = seed.relax(RelaxationPlan.canonicalConditions()).polyhedron
+        val ratioWithout = minEdgeOverMean(problem, without)
+        val ratioWith = minEdgeOverMean(problem, withFloor)
+        assertTrue(ratioWithout < 1e-3, "expected relax to collapse an edge without a floor, got $ratioWithout")
+        assertTrue(
+            ratioWith > ratioWithout * 5.0,
+            "the floor should materially open the collapsed edge: $ratioWithout -> $ratioWith",
+        )
     }
 }

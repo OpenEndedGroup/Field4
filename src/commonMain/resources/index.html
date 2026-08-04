@@ -83,62 +83,50 @@
 
 <div class="centered-container cheatsheet-hidden" id="cheatsheet">
     <div class="centered-container-div">
+        <!-- Legends carrying data-command are filled from the live keybindings by cheatsheet.js; the
+             hand-written ones are mouse gestures and multi-taps, which are not rebindable commands. -->
         <div class="cheatsheet-section">Basics</div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="new-box"><kbd>N</kbd></span> <span class="rightKey">creates a <b>new box</b></span></div>
         <div class="cheatsheet-row"><span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span></div>
 
         <div class="cheatsheet-section">Search and Help</div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd>?</kbd></span> <span class="rightKey">shows this <b>help card</b></span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd data-key="shift"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens the searchable <b>command palette</b></span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens <b>anything</b>: boxes, properties, commands, and document text</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="show-cheatsheet"><kbd>?</kbd></span> <span class="rightKey">shows this <b>help card</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="open-command-palette"><kbd data-key="mod"></kbd> <kbd data-key="shift"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens the searchable <b>command palette</b></span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="open-anything"><kbd data-key="mod"></kbd> <kbd>P</kbd></span> <span class="rightKey">opens <b>anything</b>: boxes, properties, commands, and document text</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd data-key="shift"></kbd></span> <span class="rightKey">double tap <b>opens anything</b> from the canvas</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd data-key="mod"></kbd></span> <span class="rightKey">double tap and hold for <b>spatial navigation</b>; use arrow keys to move between boxes</span></div>
 
         <div class="cheatsheet-section">Run</div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="execute-all"><kbd data-key="alt"></kbd> <kbd>0</kbd></span> <span class="rightKey"><b>executes all code</b> in a box</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> click</span> <span class="rightKey"><b>launches</b> a box</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Up</kbd></span> <span class="rightKey">also <b>launches</b> a box</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd data-key="shift"></kbd> <kbd>Up</kbd></span> <span class="rightKey"><b>continues</b> a launched box</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Down</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd data-key="shift"></kbd> <kbd>Down</kbd></span> <span class="rightKey">also <b>stops</b> a launched box</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> <kbd>Enter</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="launch-all"><kbd data-key="alt"></kbd> <kbd>Up</kbd></span> <span class="rightKey">also <b>launches</b> a box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="continue-all"><kbd data-key="alt"></kbd> <kbd data-key="shift"></kbd> <kbd>Up</kbd></span> <span class="rightKey"><b>continues</b> a launched box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="stop-all"><kbd data-key="alt"></kbd> <kbd>Down</kbd></span> <span class="rightKey"><b>stops</b> a launched box</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="execute-fragment"><kbd data-key="alt"></kbd> <kbd>Enter</kbd></span> <span class="rightKey">executes the <b>current line</b> / block of code</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="alt"></kbd> drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span></div>
 
         <div class="cheatsheet-section">Editor</div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd>Esc</kbd> <kbd>Esc</kbd></span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd>Esc</kbd> <kbd>Esc</kbd> <kbd>Esc</kbd></span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span></div>
         <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>Space</kbd></span> <span class="rightKey">opens <b>autocomplete</b></span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="mod"></kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="insert-from-workspace"><kbd data-key="mod"></kbd> <kbd>T</kbd></span> <span class="rightKey"><b>insert from workspace</b> (templates)</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="toggle-docs"><kbd data-key="mod"></kbd> <kbd>/</kbd></span> <span class="rightKey"><b>toggle docs iframe</b> (docs & editor)</span></div>
 
         <div class="cheatsheet-section">Graph</div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd data-key="mod"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>save bookmark</b> 1-9</span></div>
-        <div class="cheatsheet-row"><span class="leftKey"><kbd data-key="shift"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>restore bookmark</b> 1-9</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="connect"><kbd>G</kbd></span> <span class="rightKey"><b>groups</b> two selected boxes</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command="disconnect"><kbd>U</kbd></span> <span class="rightKey"><b>ungroups</b> boxes</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command-group="save-bookmark" data-command-from="1" data-command-to="9"><kbd data-key="shift"></kbd> <kbd data-key="mod"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>save bookmark</b> 1-9</span></div>
+        <div class="cheatsheet-row"><span class="leftKey" data-command-group="restore-bookmark" data-command-from="1" data-command-to="9"><kbd data-key="shift"></kbd> <kbd>F1-F9</kbd></span> <span class="rightKey"><b>restore bookmark</b> 1-9</span></div>
 
-        <div class="cheatsheet-url">Browser URL form: <b>http://localhost:9092/index.html?file=helloWorld</b></div>
+        <!-- Sticky, because the card scrolls and this should not be something you have to find. -->
+        <div class="cheatsheet-footer">
+            <div class="cheatsheet-footer-line">Every shortcut here is yours to change: run <a href="#" class="cheatsheet-command-link" data-run-command="open-user-keybindings">Open Keybindings</a><span class="cheatsheet-inline-keys" data-command-inline="open-user-keybindings"></span>, or edit <code data-keybindings-path>~/.afield/keybindings.yaml</code> &mdash; it is watched, so changes apply as you save.</div>
+            <div class="cheatsheet-footer-line">Browser URL form: <b>http://localhost:9092/index.html?file=helloWorld</b></div>
+        </div>
     </div>
 </div>
 
-<script>
-    (() => {
-        const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
-        const isMac = platform.includes("mac");
-        const labels = {
-            mod: isMac ? "Command" : "Ctrl",
-            alt: isMac ? "Option" : "Alt",
-            shift: "Shift"
-        };
-        const apply = () => {
-            document.querySelectorAll("#cheatsheet kbd[data-key]").forEach((key) => {
-                key.textContent = labels[key.dataset.key] || key.dataset.key || "";
-            });
-        };
-        if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", apply, { once: true });
-        else apply();
-    })();
-</script>
+<script src="cheatsheet.js"></script>
 
 
 <canvas id="overlaycanvas" class="overlay-canvas"></canvas>

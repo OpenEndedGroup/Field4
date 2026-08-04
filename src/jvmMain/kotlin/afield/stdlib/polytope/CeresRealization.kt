@@ -1,8 +1,9 @@
+@file:afield.CompletionCategory("Polytopes")
+
 package afield.stdlib.polytope
 
 import afield.stdlib.Vec3
 import afield.stdlib.ceres.CachedCeresSolvers
-import afield.stdlib.ceres.CeresFeature
 import afield.stdlib.ceres.CeresLinearSolver
 import afield.stdlib.ceres.CeresProgram
 import afield.stdlib.ceres.CeresSolveSummary
@@ -13,7 +14,42 @@ import afield.stdlib.ceres.RobustLoss
 import afield.stdlib.ceres.SolveOptions
 import afield.stdlib.ceres.SolveRequest
 import afield.stdlib.ceres.buildCeresProgram
+import afield.stdlib.ceres.planarHesseExpression
 import afield.stdlib.ceres.Vec3 as CeresVec3
+
+/**
+ * Optional bridge: run a [RelaxationPlan] on the native Ceres solver instead of the built-in one.
+ *
+ * ## It needs the native library
+ *
+ * Everything in this file requires the `ken-ceres` wrapper to be built and loaded — there is no
+ * pure-Kotlin path here, and nothing is committed. Build it once with
+ * `./gradlew buildCeresRedistributable`; see `dev_docs/CERES.md`.
+ * [ceresRealizationAvailable] answers whether this JVM has one, and [PolyhedralObject.relaxWithCeres]
+ * throws a description of what is missing rather than falling back to [PolyhedralObject.relax], because
+ * a silent fallback would make every comparison between the two a lie.
+ *
+ * ## What it buys
+ *
+ * The same objective, solved properly. [PolyhedralObject.relax] takes a central finite-difference
+ * Jacobian and forms a dense `3V x 3V` normal matrix every iteration; Ceres differentiates each
+ * residual analytically over only the parameters it touches and can factor the sparse normal equations,
+ * so the per-iteration cost tracks the number of *incidences* rather than the square of the vertex
+ * count. On the objective that matters that is the difference between an answer and no answer: `kkC` and
+ * `kkD` reach a tangency spread of `1e-8` in 12 iterations and about 6 ms, where `relax` takes 1507 ms
+ * and does not converge at all. Plus a real termination report in [CeresSolveSummary].
+ *
+ * It is deliberately a *second implementation of the same declared objective*, not a replacement:
+ * same plan in, the same [RealizationSolveResult] out, the same [RigidGauge] applied afterwards, so the
+ * two can be run on one plan and diffed. Three places where they genuinely differ — the plane
+ * parameterisation, the weight convention and the robust loss — are set out on [CeresRealization], and
+ * the fourth is [CeresRelaxationOptions.minEdgeLengthFraction], which guards a defect in the objective
+ * that both solvers share.
+ *
+ * Not everything crosses over. [CeresRealization.unsupported] names the families with no native
+ * equivalent; in practice that means a custom [RealizationConstraint] or [SymmetryOrbitConstraint], so
+ * [RelaxationPlan.Companion.symmetricCanonical] cannot be solved here.
+ */
 
 /**
  * The same [RelaxationPlan] the Kotlin solver runs, handed to Ceres instead.
@@ -33,8 +69,8 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  *
  * ## Availability
  *
- * Needs the ABI v2 native wrapper (`./gradlew buildCeresNative`, then run with
- * `-Dafield.ceres.library=build/ken-ceres/libken_ceres_jvm.dylib`). [ceresRealizationAvailable]
+ * Needs the native wrapper, which is not committed — build it once with
+ * `./gradlew buildCeresRedistributable`. [ceresRealizationAvailable]
  * answers whether this JVM has one; [relaxWithCeres] throws a description of what is missing rather
  * than falling back silently, because a silent fallback would make a performance comparison lie.
  *
@@ -54,7 +90,13 @@ import afield.stdlib.ceres.Vec3 as CeresVec3
  *   programs are built with [RobustLoss.NONE].
  */
 object CeresRealization {
-    /** Families with no Ceres equivalent yet; a plan containing one cannot cross over. */
+    /**
+     * Families with no Ceres equivalent yet; a plan containing one cannot cross over.
+     *
+     * Only families with a positive weight are considered, so a disabled unsupported family is not an
+     * obstacle. An empty list means [program] will accept the plan. In practice the answer is
+     * [SymmetryOrbitConstraint] or a constraint the caller wrote themselves.
+     */
     fun unsupported(plan: RelaxationPlan): List<String> =
         plan.constraints.filter { it.weight > 0.0 }.mapNotNull { constraint ->
             when (constraint) {
@@ -65,6 +107,7 @@ object CeresRealization {
                 is ProximityConstraint,
                 is EdgeTangencyConstraint,
                 is TangencyCentroidConstraint,
+                is MinEdgeLengthConstraint,
                 -> null
 
                 else -> constraint.name
@@ -77,8 +120,20 @@ object CeresRealization {
      * Every default resolved from the initial embedding — an edge-length target, a centroid target,
      * a tangency radius — is resolved here, exactly as the Kotlin constraint would resolve it, so
      * the two solvers are given the same numbers and not merely the same intent.
+     *
+     * Exposed separately from [PolyhedralObject.relaxWithCeres] so a program can be inspected, cached or
+     * solved by hand. Rejects a plan with an unsupported family; the last three arguments have no
+     * counterpart in the plan at all, which is why they are arguments and not constraints — see
+     * [CeresRelaxationOptions].
      */
-    fun program(plan: RelaxationPlan, problem: RealizationProblem): CeresProgram {
+    fun program(
+        plan: RelaxationPlan,
+        problem: RealizationProblem,
+        planes: PlaneFormulation = PlaneFormulation.HESSE,
+        gaugeRotationWeight: Double = 0.0,
+        minEdgeLengthFraction: Double = 0.0,
+        minEdgeLengthWeight: Double = 1.0,
+    ): CeresProgram {
         val missing = unsupported(plan)
         require(missing.isEmpty()) { "no Ceres equivalent for constraint families: $missing" }
 
@@ -98,8 +153,17 @@ object CeresRealization {
                         edges.forEach { (a, b) -> distance(a, b, goal, weight = w) }
                     }
 
-                    is FacePlanarityConstraint ->
-                        faces.forEach { cycle -> planar(*cycle.toIntArray(), weight = w) }
+                    is FacePlanarityConstraint -> faces.forEach { cycle ->
+                        when (planes) {
+                            PlaneFormulation.ORIGIN_NORMAL -> planar(*cycle.toIntArray(), weight = w)
+                            PlaneFormulation.HESSE -> planarHesse(cycle, weight = w)
+                            PlaneFormulation.NEWELL_FIT -> planarFit(cycle, weight = w)
+                            // The opcode seeds each plane from the pose the problem is compiled with;
+                            // an expression has no access to that, so it is handed the same pose.
+                            PlaneFormulation.HESSE_EXPRESSION ->
+                                planarHesseExpression(cycle, problem.initialCoordinates, weight = w)
+                        }
+                    }
 
                     is CentroidConstraint -> {
                         val goal = constraint.target ?: problem.initialCentroid().toList()
@@ -124,14 +188,74 @@ object CeresRealization {
 
                     is TangencyCentroidConstraint -> tangencyCentroid(edges, weight = w)
 
+                    // The same one-sided floor the Kotlin family writes, as the native opcode. A
+                    // fraction of the initial mean edge length, so it means the same at any scale.
+                    is MinEdgeLengthConstraint -> {
+                        val floor = constraint.fraction * problem.initialMeanEdgeLength
+                        if (floor > 0.0) edges.forEach { (a, b) -> minDistance(a, b, floor, weight = w) }
+                    }
+
                     else -> error("unreachable: unsupported() should have rejected ${constraint.name}")
                 }
+            }
+            if (gaugeRotationWeight > 0.0) {
+                gaugeRotationAll(weight = gaugeRotationWeight * gaugeRotationWeight)
+            }
+            if (minEdgeLengthFraction > 0.0) {
+                // A fraction of the initial mean edge length, so the barrier means the same thing
+                // whatever scale the caller's polyhedron happens to be at.
+                val floor = minEdgeLengthFraction * problem.initialMeanEdgeLength
+                val w = minEdgeLengthWeight * minEdgeLengthWeight
+                if (floor > 0.0) edges.forEach { (a, b) -> minDistance(a, b, floor, weight = w) }
             }
         }
     }
 }
 
-/** Solver knobs for [relaxWithCeres] that have no counterpart in [LeastSquaresOptions]. */
+/**
+ * How a Ceres program should say "this face is planar". They minimise the same thing; they are not
+ * equally well conditioned.
+ */
+enum class PlaneFormulation {
+    /**
+     * The original `PLANAR` opcode: plane as origin plus normal. Carries an exact two-dimensional
+     * null space per face (the residual sees the origin only through `O . n`) restrained by a
+     * `1e-6` prior. Kept because it is what the architectural DSL has always used; not a good
+     * choice for realization.
+     */
+    ORIGIN_NORMAL,
+
+    /** Plane as unit normal plus scalar offset. Three effective parameters per face, no null space. */
+    HESSE,
+
+    /**
+     * No plane variables at all — the Newell best-fit plane is computed inside the residual, which
+     * is exactly what [FacePlanarityConstraint] does. The smallest problem, and the only choice
+     * under which the two realizers minimise the identical function.
+     */
+    NEWELL_FIT,
+
+    /**
+     * [HESSE], but written in Kotlin as an expression over free variables rather than reached through
+     * the C++ opcode — see [afield.stdlib.ceres.planarHesseExpression].
+     *
+     * The same objective on the same parameterisation, compiled to an interpreted register program
+     * instead of a template. Here so that the two can be run against each other on the whole `kk`
+     * family: if the expression layer's free variables and its `SphereManifold` are right, this
+     * reaches the same solid, and if it disagrees the disagreement is a bug in the VM rather than a
+     * difference of opinion about the objective.
+     */
+    HESSE_EXPRESSION,
+}
+
+/**
+ * Solver knobs for [relaxWithCeres] that have no counterpart in [LeastSquaresOptions].
+ *
+ * The three tolerances are passed straight through to Ceres and are far tighter than
+ * [LeastSquaresOptions]'s defaults; that alone accounts for part of the gap between the two solvers'
+ * final residuals. The rest of the fields change the *problem*, not just the search — read
+ * [planes] and [minEdgeLengthFraction] before assuming the defaults are neutral.
+ */
 data class CeresRelaxationOptions(
     val maxIterations: Int = 200,
     /**
@@ -141,39 +265,117 @@ data class CeresRelaxationOptions(
      * actually used.
      */
     val linearSolver: CeresLinearSolver = CeresLinearSolver.SPARSE_NORMAL_CHOLESKY,
+    /** Residual and Jacobian evaluation threads, passed straight through to Ceres. */
     val threads: Int = 1,
     val functionTolerance: Double = 1e-10,
     val gradientTolerance: Double = 1e-14,
     val parameterTolerance: Double = 1e-12,
+    /** See [PlaneFormulation]. The default is the well-conditioned one, not the historic one. */
+    val planes: PlaneFormulation = PlaneFormulation.HESSE,
+    /**
+     * Weight on a [afield.stdlib.ceres.GaugeRotation] term, or zero for none.
+     *
+     * The canonical conditions pin translation and scale but not orientation, leaving a
+     * three-dimensional continuum of equally good answers for the minimiser to wander along. The
+     * plan's [RigidGauge] removes that freedom *after* the solve; this removes it during.
+     */
+    val gaugeRotationWeight: Double = 1.0,
+    /**
+     * Let the trust region accept an occasional worse step. Helps on the spiky kis-family solids
+     * whose canonical form sits past a ridge; costs nothing when the problem is already easy.
+     */
+    val nonmonotonicSteps: Boolean = false,
+    /**
+     * A floor on edge length, as a one-sided `max(0, floor - length)` barrier. Zero disables it.
+     *
+     * Not cosmetic. [EdgeTangencyConstraint] measures the distance from the origin to the *line*
+     * through an edge's endpoints, and as those endpoints converge that line's direction becomes
+     * arbitrary — so a collapsed edge can put its tangency point anywhere on the sphere and
+     * satisfies the constraint for free. Collapsing edges therefore *removes* constraints, and the
+     * canonical objective has a spurious zero-cost minimum in which a chunk of the solid has folded
+     * up. On the spiky kis-family solids Ceres finds it: `kkT` reaches cost 5.7e-17 with 12 of its
+     * 54 edges at length 1e-7.
+     *
+     * The floor is this fraction of the initial mean edge length, so it means the same thing at any
+     * scale. `max(0, floor - length)` contributes exactly nothing while every edge is longer than
+     * the floor — turning it on is bit-for-bit inert on `kkC`, `kkD`, `kC` and `tI` — and it rescues
+     * `kkO` and `kkI` from tangency spread 3e-1 to 2e-4. Larger values start to bias rather than
+     * merely guard, so keep it small.
+     *
+     * **Defaults to zero because the plan now carries the floor**, as
+     * [MinEdgeLengthConstraint] — so both realizers minimise the identical function rather than only
+     * this one being guarded. Set this as well only to add a *second*, different floor; two one-sided
+     * barriers compose to one at the larger of the two, which is legal but rarely what anyone wants.
+     */
+    val minEdgeLengthFraction: Double = 0.0,
 )
 
-/** [RealizationSolveResult] plus what Ceres reported about the solve that produced it. */
+/**
+ * [RealizationSolveResult] plus what Ceres reported about the solve that produced it.
+ *
+ * Do not compare [summary]'s cost with [realization]'s residual report. Ceres' cost counts residuals the
+ * caller never wrote — the free plane variables' weak `1e-6` stabilisers, for instance — and on a
+ * many-faced solid those dominate once the real residuals reach `1e-8`. The realization result
+ * re-evaluates the plan's own residuals precisely so that it stays comparable with
+ * [PolyhedralObject.relax]; the summary is for iteration counts, timings and termination type.
+ */
 data class CeresRelaxationResult(
     val realization: RealizationSolveResult,
+    /** Iterations, timings, termination type, and which linear solver Ceres actually used. */
     val summary: CeresSolveSummary,
 )
 
-/** True when this JVM has a native wrapper new enough to run [relaxWithCeres]. */
-fun ceresRealizationAvailable(): Boolean = runCatching {
-    CeresFeature.AbiV2 in FfmCeresBackend().supportedFeatures
-}.getOrDefault(false)
+/**
+ * True when this JVM can load the native wrapper at all, and so can run [relaxWithCeres].
+ *
+ * False on a fresh clone: nothing is committed, so the library has to be built once with
+ * `./gradlew buildCeresRedistributable`. Swallows every failure — no library, wrong ABI, link error —
+ * so it is safe to call unconditionally to decide between this and [PolyhedralObject.canonicalize].
+ */
+fun ceresRealizationAvailable(): Boolean = runCatching { FfmCeresBackend() }.isSuccess
 
 /**
  * [relax], with Ceres doing the minimisation.
  *
  * Same plan in, same [RealizationSolveResult] out, same [RigidGauge] applied afterwards — so a
  * caller can swap one for the other, or run both and compare the reported per-family errors.
+ *
+ * Throws rather than degrading: [IllegalArgumentException] naming the Gradle task and the system
+ * property when the native wrapper cannot be loaded, when the plan's active weights are all zero, or
+ * when the plan carries a family [CeresRealization.unsupported] rejects.
+ *
+ * ## Every call compiles its own native program, and that is not the cost that matters
+ *
+ * The [CachedCeresSolvers] below is created and closed inside this call, so nothing is amortised
+ * across calls. That reads like an obvious waste. `./gradlew ceresRealizerCacheCost` — the measurement
+ * behind this paragraph, on this plan and these solids — says it is not the cost worth chasing:
+ *
+ * - Compiling the program is **4–9% of a call** on `C`, `kC`, `tI` and `kkC`, and **0.1–0.3%** on
+ *   `kkkC` and `kkkkC`. The share *falls* as the problem grows, because the solve grows far faster
+ *   than the compile does: on `kkkkC` a 2.4 ms compile sits in front of a 1.7 s solve.
+ * - Keeping one cache open across 20 solves of a bit-identical program speeds the Ceres side up by
+ *   about 1.1–2x on the small solids and by nothing measurable on the large ones. A prototype that
+ *   let the caller pass a cache in gave 1.1–1.8x over 20 whole calls, biggest on a cube.
+ * - In the case a cache is usually wanted for — an animated chain relaxing a *moving* solid — it
+ *   cannot help at all. [CeresRealization.program] resolves the plan's unset targets from the current
+ *   embedding and bakes them into the program, so every frame hashes differently: 20 frames of a
+ *   wobbling solid produce 20 distinct programs and therefore 20 misses, at every size measured.
+ *
+ * So that prototype was measured and dropped rather than shipped. It would have been public API
+ * paying off only when a bit-identical program is re-solved, and [CachedCeresSolvers] is an
+ * access-ordered `LinkedHashMap` of native handles with no locking, so the shared default it wants
+ * would be a data race between boxes. If you are in that narrow case — a sweep over
+ * [CeresRelaxationOptions] on one fixed seed, say, since the solver options are not part of the cache
+ * key — build the program once with [CeresRealization.program] and drive your own
+ * [CachedCeresSolvers]; that also skips the per-call program mapping and hash. To make a *moving*
+ * solid cacheable at all, state the plan's targets explicitly so the program stops depending on the
+ * embedding.
  */
 fun PolyhedralObject.relaxWithCeres(
     plan: RelaxationPlan,
     options: CeresRelaxationOptions = CeresRelaxationOptions(),
     backend: CeresSolverBackend = FfmCeresBackend(),
 ): CeresRelaxationResult {
-    require(CeresFeature.AbiV2 in backend.supportedFeatures) {
-        "the Ceres realizer needs the ABI v2 native wrapper; build it with ./gradlew buildCeresNative " +
-            "and point -Dafield.ceres.library at build/ken-ceres/libken_ceres_jvm.dylib"
-    }
-
     val problem = RealizationProblem.of(this)
     val active = plan.constraints.filter { it.weight > 0.0 }
     require(active.isNotEmpty()) { "every constraint in the plan has zero weight" }
@@ -182,7 +384,15 @@ fun PolyhedralObject.relaxWithCeres(
     val initialDiagnostics = geometryDiagnostics()
     val initialReports = plan.constraints.report(problem, initial)
 
-    val program = CeresRealization.program(plan, problem)
+    val program = CeresRealization.program(
+        plan,
+        problem,
+        options.planes,
+        options.gaugeRotationWeight,
+        options.minEdgeLengthFraction,
+    )
+    // One-shot: compiled here, closed before returning. See the note on this function for why keying
+    // this cache open across calls was measured and rejected.
     val result = CachedCeresSolvers(backend).use { solvers ->
         solvers.solve(
             SolveRequest(
@@ -195,6 +405,7 @@ fun PolyhedralObject.relaxWithCeres(
                     functionTolerance = options.functionTolerance,
                     gradientTolerance = options.gradientTolerance,
                     parameterTolerance = options.parameterTolerance,
+                    nonmonotonicSteps = options.nonmonotonicSteps,
                     summary = true,
                 ),
             ),

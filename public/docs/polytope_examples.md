@@ -4,9 +4,9 @@
 provenance that survives every operator, and only then coordinates.*
 
 *Every declaration used below is listed, with its KDoc, in the codebase reference:
-[Uncategorised](reference/uncategorised.md). It is filed there rather than under Graphics because
-these source files carry no `@file:CompletionCategory` yet — the pages are grouped by the label the
-source itself declares, and this family has not declared one.*
+[Polytopes](reference/polytopes.md) — the topology, the operator algebra, the three realization
+verbs and the `FLine` adapters, file by file. The nonlinear solver that `relax` and the Ceres
+realization path lean on has its own page, [Solvers](reference/solvers.md).*
 
 Most "polyhedron libraries" are mesh libraries wearing a hat. You get vertices, faces as triangles,
 maybe a normal, and every question you actually want to ask — *which* face is this, where did it
@@ -954,13 +954,101 @@ section.
     answer came from.
 
     That is not a promise that every input converges. `kkC` — kis applied twice to the cube — is the
-    worked counter-example: neither iteration finds its canonical form, and the library returns
-    `converged = false` with `reason = "max iterations"` and finite coordinates, rather than a
-    smoothed lie. A test pins that failure as a *reported* one, so it cannot quietly start returning
-    garbage instead.
+    worked counter-example for *these two iterations*: neither finds its canonical form, and the
+    library returns `converged = false` with `reason = "max iterations"` and finite coordinates,
+    rather than a smoothed lie. A test pins that failure as a *reported* one, so it cannot quietly
+    start returning garbage instead.
+
+    It is no longer a gap in the library, though. `relaxWithCeres` reaches it in 12 iterations and
+    about 6 ms, at a tangency spread of order `1e-8`, and why it can is worth knowing — because it was
+    never solver horsepower. `canonicalize()` on `kkC` does not merely run out of its iteration budget:
+    it moves *away* from the answer, ending worse than the embedding it started from and with a minimum
+    dihedral angle of 0.003 radians — a collapsed sliver rather than a solid. The next section measures
+    all three side by side.
 
     `Realization3` stores Field's single-precision `Vec3`, so the achievable residual floor is about
     `1e-7` relative, however good the iteration is.
+
+#### The counter-example, and what actually fixes it
+
+Three embeddings of the same combinatorics: `kkC` as `kis kis C` built it, what `canonicalize()`
+converges to, and what `relaxWithCeres` reaches. Nothing about the topology differs between them.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+import java.util.Base64
+
+// kis applied twice to the cube: 38 vertices, 108 edges, 72 faces. The standing counter-example.
+// relaxWithCeres needs the native wrapper: ./gradlew buildCeresRedistributable
+val seed = conway("kkC").polyhedron
+val iterated = seed.canonicalize()
+val solved = seed.relaxWithCeres(RelaxationPlan.canonicalConditions(), CeresRelaxationOptions(maxIterations = 500))
+
+:::fold gauge all three to one scale, render them, and tabulate the three defining conditions
+val gauge = RigidGauge()
+val panels = listOf(
+    "kkC as built" to seed.normalize(gauge),
+    "canonicalize()" to iterated.polyhedron.normalize(gauge),
+    "relaxWithCeres()" to solved.realization.polyhedron.normalize(gauge),
+)
+val view = MeshView(width = 380, height = 340, wireframe = false, distance = 3.2)
+fun panel(label: String, p: PolyhedralObject): String {
+    val png = Base64.getEncoder().encodeToString(p.toTriMesh().renderPng(view, caption = "", title = null))
+    return "<div><div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>$label</div>" +
+        "<img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/></div>"
+}
+fun row(label: String, p: PolyhedralObject): String {
+    val d = p.canonicalDiagnostics()
+    return ("<tr><td style='padding:2px 14px 2px 0'>%s</td><td>%.3e</td><td>%.3e</td><td>%.3e</td>" +
+        "<td>%.3f</td></tr>").format(
+        label, d.tangencyRadiusSpread, d.tangencyCentroidOffset, d.maxFacePlanarityError,
+        d.dihedralAngleMin)
+}
+
+display("kkc", """
+    <div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px'>
+      ${panels.joinToString("") { (label, p) -> panel(label, p) }}
+    </div>
+    <table style='color:#c3ccd9;font:12px monospace;border-collapse:collapse;margin-top:12px'>
+      <thead style='color:#6d7787'><tr>
+        <th style='text-align:left;padding-right:14px'>embedding</th>
+        <th>tangency radius spread</th><th>tangency centroid offset</th>
+        <th>max planarity err</th><th>min dihedral</th>
+      </tr></thead>
+      <tbody>${panels.joinToString("") { (label, p) -> row(label, p) }}</tbody>
+    </table>
+    <div style='color:#93a4ba;font:12px monospace;padding-top:8px'>
+      canonicalize(): converged = ${iterated.converged} &middot; reason = ${iterated.reason}
+      <br/>relaxWithCeres(): ${solved.summary}
+    </div>
+""".trimIndent())
+:::endfold
+```
+
+![Three shaded solids in a row above a table. The left, kkC as built, is a compact spiky ball of triangles. The middle, canonicalize(), is not a solid at all — it has collapsed to a thin diagonal sliver a few pixels wide, essentially a line. The right, relaxWithCeres(), is a clean stellated form with deep triangular spikes. The table gives tangency radius spread 3.386e-01, 1.930e+00 and 5.104e-08 for the three, and minimum dihedral angle 0.955, 0.003 and 0.340; canonicalize() reports converged = false with reason max iterations, while relaxWithCeres converges in 12 iterations](assets/polytope_examples/kkc_canonical.png)
+
+Read the middle column, not the outer two. `canonicalize()` reports `converged = false`, and it would
+be easy to read that as "needed more iterations". It is not: the embedding it hands back is *worse than
+the one it was given*, with a minimum dihedral angle of 0.003 and a tangency spread that has risen from
+`3.4e-01` to `1.9e+00`. It has not stalled on the way to the answer — it has walked somewhere else. And
+it is somewhere the objective actively rewards: an edge
+tangency is measured from the centre to the **line** through an edge, so as that edge shrinks its
+direction becomes arbitrary and it satisfies its own constraint for nothing. Collapsing edges removes
+constraints, and a formulation that lets them collapse has a spurious zero-cost minimum sitting next
+to the answer.
+
+`relax` minimises the identical formula and falls into the same trap, just on a different solid: on
+`kkT` it reports a tangency spread of `1.2e-04` for a solid with an edge at seven ten-thousandths of
+the mean edge length. `RelaxationPlan.canonicalConditions()` therefore carries a one-sided floor under
+edge length by default — `MinEdgeLengthConstraint`, exactly zero above itself and so bit-identical on a
+healthy solid — which opens that edge by an order of magnitude and makes the reported spread *worse*,
+because the flattering number was measuring a fold. So the
+fix was not a stronger solver: it was three changes to how the problem is *posed* — each face's plane
+carried as a free unit normal plus an offset rather than an origin and a normal (which has an exact
+two-dimensional null space per face, 144 of `kkC`'s 474 parameters), a one-sided floor under edge
+length that is inert on a healthy solid, and a gauge term for the rotation the canonical conditions
+leave free. `dev_docs/CERES.md` works through all three with the parameter counts.
 
 ### `realize(...)`: coordinates from the combinatorics alone
 
@@ -1067,7 +1155,11 @@ nobody checked.
 
 This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
 four polygons, never two, so `validate(checkManifold = true)` must **reject** a tesseract — and does.
-`PolyhedralObject` refuses a rank-4 topology and `Polytope4` refuses a rank-3 one.
+`Polytope4` refuses a rank-3 topology outright, in its constructor. `PolyhedralObject` is the
+permissive one: it checks a realization's length and its attribute keys, not the rank, so a rank-4
+topology wraps up in one without complaint. The rank-3 assumption is enforced by the operators that
+depend on it — the Conway surface transforms require rank 3, and `triangulate`, FLine conversion and
+face normals each require a realization — which is where a mismatched topology is really caught.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/rank4.png" wait="3.0" capture="box" open-outputs="true" w="1180" h="760" padding="14"}
 :::static
@@ -1309,7 +1401,8 @@ Two operation transcripts build a working document you can open, edit and re-run
   expression, canonicalizes it, and draws the realized and canonical forms side by side in the
   viewer with the diagnostics underneath. Change `val expression = "gD"` to `"ktC"`, `"bD"` or
   `"sD"` and re-run: the notation re-parses, both solids redraw, and the tangency-radius spread
-  drops by six orders of magnitude. Set it to `"kkC"` and watch it report an honest failure instead.
+  drops by six orders of magnitude. Set it to `"kkC"` and watch this box report an honest failure — it
+  calls `canonicalize()`, which does not reach that one; `relaxWithCeres` does.
 
 Replay any of them from the repository root:
 
@@ -1333,8 +1426,10 @@ drops the caveats is worse than no page:
   parameter descriptors, domains, units or composition yet.
 - All three realization verbs exist, but there is no **Wythoff construction** to supply a symmetry
   specification and a high-quality initial embedding — the canonicaliser rediscovers symmetry
-  numerically instead of being told it. And `kkC` remains a real algorithmic gap: a 3-connected
-  planar graph must have a canonical form, and neither implemented method finds this one.
+  numerically instead of being told it. `kkC` is no longer an algorithmic gap — `relaxWithCeres`
+  reaches it exactly — but the two pure-Kotlin iterations still do not, so a caller who wants a
+  guaranteed canonical form needs the native solver. `kkT`, `kkO` and `kkI` reach spread `1e-4` rather
+  than machine precision even there.
 - `relax(...)` builds its Jacobian by finite differences over `3·V` parameters. That is a
   tens-of-vertices tool, not a mesh optimiser.
 - Normals are flat only. Smooth and crease-aware generation, and stable face/edge/vertex picking ids
@@ -1348,6 +1443,12 @@ drops the caveats is worse than no page:
 
 ## See also
 
+- [Polytopes reference](reference/polytopes.md) — every public declaration in
+  `afield.stdlib.polytope`, with the KDoc that lives beside it: the operator algebra and its
+  composition rules, the realization verbs and their diagnostics, the attribute and selector algebra,
+  and the `FLine`/`TriMesh` adapters. This page is the tour; that one is the index.
+- [Solvers reference](reference/solvers.md) — the Ceres constraint vocabulary behind `relax` and
+  `CeresRealization`, plus the expression VM for residuals the vocabulary cannot say.
 - [Meshes & 3D Geometry](mesh_examples.md) — `TriMesh`, `MeshView`, `showMesh` and the CPU rasteriser
   every gallery on this page is rendered by.
 - [FLine Examples](fline_examples.md) — `threeLines(...)`, `onClick`, `hoverColor` and the rest of

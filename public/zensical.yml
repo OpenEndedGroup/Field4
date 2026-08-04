@@ -7,6 +7,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Survival Guide: survivalGuide.md
+  - Keyboard Shortcuts: keybindings.md
   - Feature Overview: funFeatures.md
   - AI Overview: aiFeatures.md
   - The Documentation Browser: completion_doc_browser.md
@@ -27,16 +28,14 @@ nav:
       - Math: reference/math.md
       - Data: reference/data.md
       - Graphics: reference/graphics.md
+      - Polytopes: reference/polytopes.md
+      - Solvers: reference/solvers.md
       - Imaging: reference/imaging.md
       - ALife: reference/alife.md
       - Function: reference/function.md
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md
       - Workspace: reference/workspace.md
-      # Files carrying no `@file:CompletionCategory` land here. Today that is the whole of
-      # `afield.stdlib.polytope`; a one-line file annotation on those sources would move them
-      # into a real category and this page would disappear on the next regeneration.
-      - Uncategorised: reference/uncategorised.md
     - Linear Algebra: linear_algebra.md
     - Generated Vector API: linear_algebra_api.md
     - FLine Examples: fline_examples.md
@@ -86,6 +85,7 @@ nav:
         - Typography as Geometry: typography_examples.md
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
+        - Patterns & Rhythm: pattern_language.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md

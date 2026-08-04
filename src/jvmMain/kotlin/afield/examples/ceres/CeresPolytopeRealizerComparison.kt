@@ -71,8 +71,7 @@ private fun summarise(label: String, result: RealizationSolveResult, nanos: Long
 
 fun main() {
     check(ceresRealizationAvailable()) {
-        "needs the ABI v2 wrapper: ./gradlew buildCeresNative, then run with " +
-            "-PceresLibrary=build/ken-ceres/libken_ceres_jvm.dylib"
+        "no Ceres wrapper: build one with ./gradlew buildCeresRedistributable"
     }
 
     for (case in CASES) {

@@ -953,6 +953,55 @@ internal object InfixCompletion {
     }
 }
 
+/**
+ * What the server does with a *type fit* — a candidate whose type is right for where the caret is.
+ *
+ * Two sources feed it, and both end up as a `contextScore` boost on the [Metadata]:
+ *  - the infix operand type, resolved here from the source index ([InfixCompletion]);
+ *  - the **expected type at the caret**, resolved by the AA sidecar with
+ *    `KaExpressionTypeProvider.expectedType` and arriving as an
+ *    [AaCompletionClient.EXPECTED_TYPE_MATCH] flag in `extraInfo` (a property's type at
+ *    `d.scheme = ‸`, a parameter's at `f(word = ‸)`, a function's return type at `return ‸`).
+ *    K1 produces no such flag, so nothing here engages on the K1 fallback path.
+ *
+ * The boost alone is not enough: it is applied client-side by `fieldSuggest.js`, and an editor running
+ * an older copy of that file would ignore it. So at an *untyped* caret the reply is collapsed to the
+ * fitting candidates only — which is also what turns `d.scheme = ‸` from a several-hundred-row panel
+ * into the three entries of the enum. One keystroke restores the full list (with the fits merely
+ * boosted), so nothing is ever permanently hidden.
+ */
+internal object CompletionTypeFit {
+    /** An expected type is *resolved*, not guessed, and two rows can be the whole answer
+     *  (`Boolean` → `true`/`false`). */
+    const val MIN_FITS_EXPECTED_TYPE = 2
+
+    /** The infix operand type is inferred from indexed source text, so it takes a wider margin before
+     *  it is allowed to hide anything. This is the threshold the infix path shipped with. */
+    const val MIN_FITS_INFIX = 3
+
+    /** True when the engine flagged at least one candidate as fitting the caret's expected type. */
+    fun expectedTypeKnown(metadata: List<SourceCodeCompletionVariant>): Boolean =
+        metadata.any { it.extraInfo[AaCompletionClient.EXPECTED_TYPE_MATCH] == "true" }
+
+    /**
+     * [enriched] unchanged, or just its type-fitting members when the caret is untyped and there are
+     * enough of them to be a plausible answer on their own. Returns [enriched] itself (identity) when it
+     * does not collapse, so callers can report which happened.
+     */
+    fun collapse(
+        enriched: List<Metadata>,
+        typedToken: String,
+        expectedTypeKnown: Boolean,
+        infixTypeKnown: Boolean,
+    ): List<Metadata> {
+        if (!expectedTypeKnown && !infixTypeKnown) return enriched
+        if (typedToken.isNotBlank()) return enriched
+        val fits = enriched.filter { it.contextScore > 0 }
+        val minFits = if (expectedTypeKnown) MIN_FITS_EXPECTED_TYPE else MIN_FITS_INFIX
+        return if (fits.size >= minFits) fits else enriched
+    }
+}
+
 private fun symbolContextResponse(symbol: String = "", html: String = ""): SymbolContextResponse {
     return SymbolContextResponse(
         symbol = symbol,
@@ -3151,7 +3200,12 @@ class KotlinExecution : BoxExecution {
                     }
                     return@mapNotNull null
                 }
-                if (infixExpectedTypes.isNotEmpty() && InfixCompletion.matchesOperandType(it, infixExpectedTypes)) {
+                // Two independent type-fit signals, one boost. The infix one is resolved here from the
+                // source index (K1 could not be asked); the expected-type one is resolved by the AA
+                // sidecar from `KaExpressionTypeProvider.expectedType` and arrives as an extraInfo flag.
+                val typeFits = (infixExpectedTypes.isNotEmpty() && InfixCompletion.matchesOperandType(it, infixExpectedTypes)) ||
+                    it.extraInfo[AaCompletionClient.EXPECTED_TYPE_MATCH] == "true"
+                if (typeFits) {
                     categorizedMetadata.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
                 } else {
                     categorizedMetadata
@@ -3246,16 +3300,22 @@ class KotlinExecution : BoxExecution {
                         val boundsStart = synthetic?.bounds?.start ?: if (useTokenBounds) tokenBounds.start else c.bounds.start
                         val boundsEnd = synthetic?.bounds?.end ?: if (useTokenBounds) tokenBounds.end else c.bounds.end
 
+                        // Did the engine tell us the type expected at the caret? (AA only: the sidecar
+                        // resolves `expectedType` and flags the candidates that fit — a property's type at
+                        // `d.scheme = ‸`, a parameter's at `f(word = ‸)`. K1 has no such signal.)
+                        val expectedTypeKnown = CompletionTypeFit.expectedTypeKnown(c.metadata)
+                        val typeAware = infixExpectedTypes.isNotEmpty() || expectedTypeKnown
                         val enriched = completionFor(c, infixExpectedTypes)
-                        val infixMatches = if (infixExpectedTypes.isEmpty()) emptyList() else enriched.filter { it.contextScore > 0 }
-                        // At an infix operand with nothing typed yet, show ONLY the fitting values, so
-                        // they surface no matter how the client ranks (client-side boosting can't help
-                        // if the editor is still running an older fieldSuggest.js). Once the user types a
-                        // character we hand back the full list with the fitting values merely boosted, so
-                        // nothing is permanently hidden. Guarded on a few matches so a bad type
-                        // resolution never collapses completion to an empty/tiny list.
-                        val infixFilterActive = typedToken.isBlank() && infixMatches.size >= 3
-                        val bodyMetadata = if (infixFilterActive) infixMatches else enriched
+                        val bodyMetadata = CompletionTypeFit.collapse(
+                            enriched, typedToken, expectedTypeKnown, infixExpectedTypes.isNotEmpty()
+                        )
+                        if (completionTraceEnabled() && typeAware) {
+                            completionTrace(
+                                "completion type-fit expectedTypeKnown=$expectedTypeKnown " +
+                                    "fits=${enriched.count { it.contextScore > 0 }} " +
+                                    "collapsed=${bodyMetadata !== enriched} uid='${inside.id}' position=$position"
+                            )
+                        }
 
                         // Import ("(import) …") suggestions only make sense when completing a top-level
                         // name to bring into scope. At a dot/safe-dot position you're selecting a member of
@@ -3271,10 +3331,10 @@ class KotlinExecution : BoxExecution {
                             boundsEnd = boundsEnd,
                             metadata = ((synthetic?.metadata ?: emptyList()) + fieldSnippets + bodyMetadata + importHelp)
                                 .map(KotlinCompletionSupport::withCategoryDocumentationHeader)
-                                // Front-load the type-matching operands after an infix function so they
-                                // lead the list even for clients that lean on server order. Stable, so
-                                // everything else keeps its relative order.
-                                .let { if (infixExpectedTypes.isEmpty()) it else it.sortedByDescending { m -> m.contextScore } }
+                                // Front-load the type-matching candidates (infix operand, or expected type
+                                // at the caret) so they lead the list even for clients that lean on server
+                                // order. Stable, so everything else keeps its relative order.
+                                .let { if (!typeAware) it else it.sortedByDescending { m -> m.contextScore } }
                         )
 
                         reply(

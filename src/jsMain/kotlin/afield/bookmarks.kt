@@ -397,33 +397,24 @@ fun restoreBookmarkSlot(bookmarkNumber: Int) {
 }
 
 /**
- * Registers keyboard shortcuts for bookmarks:
- * - Shift+F1-F9: Restore bookmark 1-9
- * - Shift+Ctrl/Cmd+F1-F9: Save bookmark 1-9
+ * Registers keyboard shortcuts for bookmarks. Defaults are Shift+F1-F9 to restore and
+ * Cmd/Ctrl+Shift+F1-F9 to save; both are rebindable per slot in `~/.afield/keybindings.yaml` as
+ * `restore-bookmark-N` / `save-bookmark-N`.
  */
 fun registerBookmarkShortcuts() {
     fun handler(event: dynamic) {
-        val ke = event
-        val key = ke.key as? String ?: return@handler
-
-        // Check for F1-F9 keys
-        if (key.startsWith("F") && key.length == 2) {
-            val fKeyNumber = key.substring(1).toIntOrNull()
-            if (fKeyNumber != null && fKeyNumber in 1..9) {
-                val shiftKey = ke.shiftKey as? Boolean ?: false
-                val ctrlKey = ke.ctrlKey as? Boolean ?: false
-                val metaKey = ke.metaKey as? Boolean ?: false
-
-                // Shift+Ctrl/Cmd+F-key: Save bookmark
-                if (shiftKey && (ctrlKey || metaKey)) {
-                    ke.preventDefault()
-                    saveBookmarkSlot(fKeyNumber)
-                }
-                // Shift+F-key: Restore bookmark
-                else if (shiftKey && !ctrlKey && !metaKey) {
-                    ke.preventDefault()
-                    restoreBookmarkSlot(fKeyNumber)
-                }
+        // Matched here rather than via canvasKeybinding because this listener runs in the capture
+        // phase, so the F-keys reach us even when Monaco has focus.
+        for (slot in 1..9) {
+            if (Keybindings.matches(event, "save-bookmark-$slot")) {
+                event.preventDefault()
+                saveBookmarkSlot(slot)
+                return
+            }
+            if (Keybindings.matches(event, "restore-bookmark-$slot")) {
+                event.preventDefault()
+                restoreBookmarkSlot(slot)
+                return
             }
         }
     }
@@ -445,7 +436,8 @@ fun registerBookmarkActions() {
         val saveAction = js("{}")
         saveAction.id = "save-bookmark-$i"
         saveAction.label = "Save Bookmark $i"
-        saveAction.canvasKeybinding = eval("(event) => false") // Handled by global keydown
+        // No `keys` here: registerBookmarkShortcuts owns the chord in the capture phase, so a
+        // canvas predicate as well would fire the action twice.
         saveAction.run = eval("() => { saveBookmarkSlot($i) }")
         bookmarkActions.push(saveAction)
 
@@ -453,7 +445,6 @@ fun registerBookmarkActions() {
         val restoreAction = js("{}")
         restoreAction.id = "restore-bookmark-$i"
         restoreAction.label = "Restore Bookmark $i"
-        restoreAction.canvasKeybinding = eval("(event) => false") // Handled by global keydown
         restoreAction.run = eval("() => { restoreBookmarkSlot($i) }")
         bookmarkActions.push(restoreAction)
     }

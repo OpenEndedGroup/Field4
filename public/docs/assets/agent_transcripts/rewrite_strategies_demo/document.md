@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 9 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. Baseline (global fixpoint)
@@ -154,5 +154,24 @@ strategy { once("p2a") }
 val r = p(1) + p(2)
 println("once: r = $r  -> only the first p() rewritten: A(1) + p(2)")
 check(r == 12) { "once expected 12, got $r" }
+```
+
+## 9. nested pattern (two levels deep)
+
+<!-- field-box id="rw_nested" index="8" -->
+
+```edn [field-box id="rw_nested" role="properties"]
+{"id" "rw_nested" "index" 8 "name" "nested pattern (two levels deep)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "nested pattern (two levels deep)" "_tombstone" false "frame" #afield/rect [740.0 470.0 340.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_nested_code_.kt" "lines" 8 "characters" 307 "sha256" "155a5e7223ffbc6b3e897ae57b0db994387108f7ea91ee86c5dc5c3911174fde"}]}
+```
+
+```kotlin [field-property box="rw_nested" name="code" path="rw_nested_code_.kt"]
+fun f(v: Int) = v * 2
+fun g(v: Int) = v + 100
+rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+strategy { repeat(topdown("fg"), 2) }
+val r = f(f(f(f(1))))
+println("nested pattern: r = $r  -> each step eats TWO f's: g(g(1)) = g(101) = 201")
+check(r == 201) { "nested pattern expected 201, got $r" }
+r
 ```
 

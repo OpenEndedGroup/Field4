@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="tb_compute" index="1" -->
 
 ```edn [field-box id="tb_compute" role="properties"]
-{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [240.0 40.0 160.0 90.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 17 "characters" 687 "sha256" "996709fd860e9115d1be3653819a8d27833a939de89d595391bfbca02e9afbac"}]}
+{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [240.0 40.0 160.0 90.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 23 "characters" 964 "sha256" "07b5f1e26af78a8614bf539bc3d7f3489e0748c5601853096a27d1bf0eb7d37e"}]}
 ```
 
 ```glsl [field-property box="tb_compute" name="compute" path="tb_compute_compute_.glsl"]
@@ -68,13 +68,19 @@ var inData = defaultBuffer { size = N.vec4s }.buffer
 var outData = defaultBuffer { size = N.vec4s }.buffer
 m.inData = { inData }
 m.outData = { outData }
-var x = 0.0
-m.something = { x += 0.01; x.f }
+// The live renderer uses monotonic time; frame-synchronous docs capture replaces this
+// with frameIndex/fps, so an already-running multi-box scene still restarts at movie t=0.
+m.something = { (AnimationClock.nowSeconds() * 0.6).f }
 fieldProbeHere(samples = 4096).display("probe")
 displayOpen("probe")   // mark the channel open so the card starts expanded when it arrives
 prop<FrameBufferGroup>(outputPositions) = outData
 m.x = N / 64; m.y = 1; m.z = 1
-inData.write { for (i in 0 until N) put(vec(Math.random(), Math.random(), Math.random(), Math.random())) }
+val seeded = kotlin.random.Random(0x4f1e1d)
+inData.write {
+    for (i in 0 until N) {
+        put(vec(seeded.nextDouble(), seeded.nextDouble(), seeded.nextDouble(), seeded.nextDouble()))
+    }
+}
 println("compute launched, N=" + N)
 ```
 

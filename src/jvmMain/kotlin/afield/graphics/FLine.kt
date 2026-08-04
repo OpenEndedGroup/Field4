@@ -996,13 +996,35 @@ class FLine : HasProperties {
     /**
      * Tessellate filled subpaths into triangle indices.
      *
+     * The line is flattened into rings, the rings are sanitised, and the rest is
+     * [PlanarTessellation] — the one hole-capable triangulator, shared with the polytope adapters'
+     * `EarcutFaceTriangulator`. Everything interesting about *which way the triangles face*, and
+     * about which rings count as holes in which, is documented there and in
+     * `dev_docs/fline_fill_orientation.md`. The short version: [FloatEarcut] normalises the winding
+     * of every ring it is handed, so the projected frame decides the facing; a filled FLine may hold
+     * subpaths in several different planes and each of those planes gets its own frame; and a ring is
+     * only ever a hole in a ring it is coplanar with.
+     *
+     * [meshAcceptor] is called once per filled polygon, and never with an empty index list.
+     *
+     * @param samplesPerCubic flattening density for curved segments.
+     * @param coplanarity how close two subpaths have to be to count as the same surface.
      * @param meshAcceptor Called with a packed vertex array (x,y,z) and index list.
      */
-    fun tessellate(samplesPerCubic: Int = 100, meshAcceptor: (FloatArray, List<Int>) -> Unit) {
+    fun tessellate(
+        samplesPerCubic: Int = 100,
+        coplanarity: Coplanarity = Coplanarity.DEFAULT,
+        meshAcceptor: (FloatArray, List<Int>) -> Unit,
+    ) {
         var current = mutableListOf<Vec3>()
         val rings = mutableListOf<List<Vec3>>()
         val eps = 1e-5f
 
+        // The duplicate test is three-dimensional, and that is load-bearing rather than merely
+        // defensible: a wall in the XZ plane has only two distinct (x, y) pairs along its whole
+        // boundary, so a two-dimensional predicate collapsed it to two points and the ring was
+        // dropped before any projection could run. (`TessellationRingRobustnessTest
+        // .theThreeDimensionalDuplicateTestIsWhatMakesAnXZWallTessellableAtAll` measures both halves.)
         fun same3D(a: Vec3, b: Vec3): Boolean {
             return abs(a.x - b.x) <= eps && abs(a.y - b.y) <= eps && abs(a.z - b.z) <= eps
         }
@@ -1039,224 +1061,29 @@ class FLine : HasProperties {
 
         if (rings.isEmpty()) return
 
-        // Earcut is 2D. Filled FLines can be planar in any 3D orientation, so select the dominant
-        // Newell-normal axis of the strongest ring and project only for tessellation. Original XYZ
-        // coordinates are still passed to the mesh acceptor.
-        //
-        // The projection has to be *orientation preserving*, and that is not a nicety.
-        // [FloatEarcut] normalises the winding of whatever ring it is handed (`FloatEarcut.kt:705`
-        // reverses the outer ring when its signed area has the wrong sign), so the facing of every
-        // triangle that comes back is decided by the projected frame alone — never by the winding
-        // the caller authored. Two properties make the frame agree with the polygon:
-        //
-        //  1. the kept pair is the right-handed cycle about the dropped axis: x -> (y, z),
-        //     y -> (z, x), z -> (x, y). (x, z) for a y-dominant face is the mirror of that, and
-        //     mirrors the facing of every wall-like face;
-        //  2. the pair is swapped when the normal points down the *negative* half of the dominant
-        //     axis, because otherwise the far side of a face comes back inside out — a polygon and
-        //     the same polygon turned over must tessellate to the same triangles turned over.
-        //
-        // Together these make tessellation commute with rigid rotation, which
-        // `TessellationOrientationOracleTest` pins. (`EarcutFaceTriangulator`,
-        // `polytope/FieldAdapters.kt:96`, reaches the same place by projecting on the mirror and
-        // then flipping every triangle back against the face normal.)
-        //
-        // The *axis* is one decision for the whole FLine, because the ring nesting below has to be
-        // measured in one frame to mean anything. The *hemisphere* is not: coplanar is not the same
-        // as co-oriented, and one FLine can hold subpaths wound against each other, so each filled
-        // group picks its own from its own outer ring, further down.
-        fun newellNormal(ring: List<Vec3>): Vec3 {
-            var nx = 0f
-            var ny = 0f
-            var nz = 0f
-            for (i in ring.indices) {
-                val p = ring[i]
-                val q = ring[(i + 1) % ring.size]
-                nx += (p.y - q.y) * (p.z + q.z)
-                ny += (p.z - q.z) * (p.x + q.x)
-                nz += (p.x - q.x) * (p.y + q.y)
-            }
-            return Vec3(nx, ny, nz)
-        }
-
-        val ringNormals = rings.map { newellNormal(it) }
-        var projectionAxis = 2
-        var strongestNormal = 0f
-        // The hemisphere of the strongest ring, used only as the fallback for a group whose own
-        // outer ring is degenerate along the chosen axis.
-        var defaultFlipped = false
-        for (n in ringNormals) {
-            val lengthSquared = n.x * n.x + n.y * n.y + n.z * n.z
-            if (lengthSquared > strongestNormal) {
-                strongestNormal = lengthSquared
-                projectionAxis = when {
-                    abs(n.x) >= abs(n.y) && abs(n.x) >= abs(n.z) -> 0
-                    abs(n.y) >= abs(n.z) -> 1
-                    else -> 2
-                }
-                // A ring can only be the strongest if its normal is non-zero, so this reads the
-                // hemisphere of a component we know dominates. Rings that are entirely degenerate
-                // never get here and leave the default: project on (x, y), as before.
-                defaultFlipped = when (projectionAxis) {
-                    0 -> n.x
-                    1 -> n.y
-                    else -> n.z
-                } < 0f
-            }
-        }
-
-        /** The first of the right-handed pair kept about [projectionAxis]. */
-        fun projectedX(p: Vec3): Float = when (projectionAxis) {
-            0 -> p.y
-            1 -> p.z
-            else -> p.x
-        }
-
-        /** The second of the right-handed pair kept about [projectionAxis]. */
-        fun projectedY(p: Vec3): Float = when (projectionAxis) {
-            0 -> p.z
-            1 -> p.x
-            else -> p.y
-        }
-
-        data class BBox(val minX: Float, val minY: Float, val maxX: Float, val maxY: Float)
-        data class RingInfo(val points: List<Vec3>, val area: Float, val bbox: BBox)
-
-        fun bboxOf(points: List<Vec3>): BBox {
-            var minX = projectedX(points[0])
-            var minY = projectedY(points[0])
-            var maxX = projectedX(points[0])
-            var maxY = projectedY(points[0])
-            for (i in 1 until points.size) {
-                val p = points[i]
-                minX = min(minX, projectedX(p))
-                minY = min(minY, projectedY(p))
-                maxX = max(maxX, projectedX(p))
-                maxY = max(maxY, projectedY(p))
-            }
-            return BBox(minX, minY, maxX, maxY)
-        }
-
-        fun area2D(points: List<Vec3>): Float {
-            var sum = 0f
-            for (i in points.indices) {
-                val a = points[i]
-                val b = points[(i + 1) % points.size]
-                sum += (projectedX(a) * projectedY(b)) - (projectedX(b) * projectedY(a))
-            }
-            return 0.5f * sum
-        }
-
-        fun bboxContains(b: BBox, p: Vec3): Boolean {
-            val x = projectedX(p)
-            val y = projectedY(p)
-            return x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY
-        }
-
-        fun pointInPolygon(points: List<Vec3>, p: Vec3): Boolean {
-            var inside = false
-            var j = points.size - 1
-            for (i in points.indices) {
-                val xi = projectedX(points[i])
-                val yi = projectedY(points[i])
-                val xj = projectedX(points[j])
-                val yj = projectedY(points[j])
-                val px = projectedX(p)
-                val py = projectedY(p)
-                val intersect = ((yi > py) != (yj > py)) &&
-                        (px < (xj - xi) * (py - yi) / ((yj - yi) + 1e-12f) + xi)
-                if (intersect) inside = !inside
-                j = i
-            }
-            return inside
-        }
-
-        val infos = rings.map { RingInfo(it, area2D(it), bboxOf(it)) }
-        val parent = IntArray(infos.size) { -1 }
-
-        for (i in infos.indices) {
-            val test = infos[i].points[0]
-            var best = -1
-            var bestArea = Float.POSITIVE_INFINITY
-            for (j in infos.indices) {
-                if (i == j) continue
-                if (!bboxContains(infos[j].bbox, test)) continue
-                if (!pointInPolygon(infos[j].points, test)) continue
-                val area = abs(infos[j].area)
-                if (area < bestArea) {
-                    bestArea = area
-                    best = j
-                }
-            }
-            parent[i] = best
-        }
-
-        val depth = IntArray(infos.size)
-        for (i in infos.indices) {
-            var d = 0
-            var p = parent[i]
-            while (p != -1) {
-                d++
-                p = parent[p]
-            }
-            depth[i] = d
-        }
-
-        val groups = mutableListOf<List<Int>>()
-        for (i in infos.indices) {
-            if (depth[i] % 2 == 0) {
-                val group = mutableListOf<Int>()
-                group.add(i)
-                for (j in infos.indices) {
-                    if (parent[j] == i && depth[j] % 2 == 1) {
-                        group.add(j)
-                    }
-                }
-                groups.add(group)
-            }
-        }
-
-        for (group in groups) {
+        PlanarTessellation.tessellate(rings, coplanarity).forEach { polygon ->
+            // Pack only this polygon's own rings, outer ring first, and re-index its triangles into
+            // that pack: the acceptor gets one self-contained mesh per filled polygon, as it always
+            // has.
+            val order = ArrayList<Int>(1 + polygon.holes.size)
+            order.add(polygon.outer)
+            order.addAll(polygon.holes)
+            val base = HashMap<Int, Int>()
             val verts = ArrayList<Float>()
-            val projected = ArrayList<Float>()
-            val holes = ArrayList<Int>()
             var vertCount = 0
-
-            // This group is its own polygon, so it faces its own way. Read the hemisphere from the
-            // group's outer ring rather than from whichever ring in the whole FLine was biggest:
-            // two disjoint subpaths wound against each other are two polygons back to back, and a
-            // single decision for both gets one of them inside out. Bounding boxes, areas and
-            // containment above all stay in the unflipped frame — a mirror does not change what is
-            // inside what, so the nesting is the same either way, and keeping one frame there keeps
-            // the groups stable.
-            val outerNormal = ringNormals[group[0]]
-            val hemisphere = when (projectionAxis) {
-                0 -> outerNormal.x
-                1 -> outerNormal.y
-                else -> outerNormal.z
-            }
-            val flipped = if (hemisphere == 0f) defaultFlipped else hemisphere < 0f
-
-            for ((idx, ringIndex) in group.withIndex()) {
-                if (idx > 0) holes.add(vertCount)
-                val pts = infos[ringIndex].points
-                for (p in pts) {
+            order.forEach { ring ->
+                base[ring] = vertCount
+                rings[ring].forEach { p ->
                     verts.add(p.x)
                     verts.add(p.y)
                     verts.add(p.z)
-                    projected.add(if (flipped) projectedY(p) else projectedX(p))
-                    projected.add(if (flipped) projectedX(p) else projectedY(p))
                 }
-                vertCount += pts.size
+                vertCount += rings[ring].size
             }
-
-            if (vertCount < 3) continue
-            val holeIndices = if (holes.isEmpty()) null else holes.toIntArray()
-            val da = verts.toFloatArray()
-            val c = FloatEarcut.earcut(projected.toFloatArray(), holeIndices, 2)
-            if (c.isNotEmpty()) {
-                meshAcceptor(da, c)
-            }
+            meshAcceptor(
+                verts.toFloatArray(),
+                polygon.triangles.map { base.getValue(it.ring) + it.vertex },
+            )
         }
     }
 

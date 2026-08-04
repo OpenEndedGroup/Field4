@@ -111,9 +111,10 @@ canonical form exists and is unique up to Möbius transformations of the sphere;
 centroid at the origin picks one representative, and the gauge removes the remaining rigid and scale
 freedom. That covers every Conway operator over a Platonic seed. Nothing is guaranteed for
 non-convex, self-intersecting, higher-genus or non-3-connected input; the run returns `converged`
-plus the diagnostics and expects the caller to look. `kkC` is the worked counter-example: neither
-iteration finds its canonical form, and the library reports the failure rather than returning a
-smoothed lie.
+plus the diagnostics and expects the caller to look. `kkC` is the worked counter-example for the two
+iterations here: neither finds its canonical form, and the library reports the failure rather than
+returning a smoothed lie. `relaxWithCeres` does reach it, and that took a change of *objective* rather
+than a better solver — see the roadmap section below.
 
 Because the canonical form is determined by the *combinatorics*, a starting embedding the iteration
 cannot use is not by itself a reason to fail. When an attempt diverges or plateaus above
@@ -186,7 +187,13 @@ number of polygons round an edge against the last entry of each Schläfli symbol
 
 This is also where the rank-3 assumptions get audited. An edge of a 4-polytope belongs to three or
 four polygons, never two, so `validate(checkManifold = true)` must *reject* a tesseract — and does.
-`PolyhedralObject` refuses a rank-4 topology and `Polytope4` refuses a rank-3 one.
+`Polytope4` refuses a rank-3 topology in its own constructor. `PolyhedralObject`, by contrast, is
+deliberately rank-agnostic — its `init` checks only that a realization has one coordinate per vertex
+and that no attribute names a foreign element, so a rank-4 topology wraps up in one quite happily.
+The rank-3 assumption belongs to the operators that actually need it: `SurfaceContext` requires rank
+3 for the Conway surface transforms, and the `FieldAdapters` entry points — `triangulate`, FLine
+conversion, face normals — require a realization. `Polytope4Test` asserts the rejection at those two
+points rather than at construction.
 
 Viewing is a `Projection4` above realization, and deliberately not part of the geometry:
 `OrthographicProjection4` (honest and unreadable — it collapses the tesseract's two cubes onto each
@@ -233,8 +240,9 @@ counts for each phase, whether the run had to re-seed, and the combinatorial orb
 face reports its degree, its symmetry orbit, and its face-plane distance from the centre — which is
 constant within an orbit exactly when the embedding is canonical.
 
-Try `"gD"`, `"ktC"`, `"bD"`, `"sD"`, `"dkD"`, `"tI"`, `"eC"`. `"kkC"` is the honest failure: the
-diagnostics stay large and the run reports `max iterations`.
+Try `"gD"`, `"ktC"`, `"bD"`, `"sD"`, `"dkD"`, `"tI"`, `"eC"`. `"kkC"` is the honest failure for this
+box, which canonicalizes: the diagnostics stay large and the run reports `max iterations`. Send the
+same expression through `relaxWithCeres` and it comes out exact.
 
 ### `polytope_conway_demo.yaml`
 
@@ -296,10 +304,32 @@ Not done, and deliberately left:
   each planar" but not "these faces share one plane". That is the natural home for the star and
   compound polyhedra, and it is blocked on item 1's boundary model more than on the solver.
 
-`kkC` is the standing reminder that item 3 is not finished as a *guarantee*: a 3-connected planar
-graph has a canonical form, and neither implemented iteration finds this one. A convergent method
-for spiky Catalan-like solids — Möbius-normalized reciprocation, or a proper second-order solve on
-the tangency conditions — is the piece that would close it.
+`kkC` *was* the standing reminder that item 3 is not finished as a guarantee: a 3-connected planar
+graph has a canonical form, and neither implemented iteration finds this one. The second of the two
+suggested fixes — a proper second-order solve on the tangency conditions — now works.
+`PolyhedralObject.relaxWithCeres(RelaxationPlan.canonicalConditions())` reaches `kkC` and `kkD`
+exactly (tangency spread `1e-8`, 12 iterations, 6 ms against `relax`'s 1507 ms and non-convergence)
+and brings `kkT`, `kkO` and `kkI` to spread `1e-4`, where `canonicalize()` leaves all of them worse
+than the seed it started from.
+
+Two things had to be true for that, and both are worth knowing here because the second is a defect
+in *this* library's objective, not in the solver:
+
+- the plane must be parameterised without a null space. `(origin, normal)` sees the origin only
+  through `origin . normal`, leaving two free directions per face — which on a kis-family solid
+  outnumber the real parameters.
+- the objective needs a floor on edge length. `EdgeTangencyConstraint` measures the distance from
+  the origin to the *line* through an edge, and as an edge collapses that line's direction becomes
+  arbitrary, so a collapsed edge satisfies its own constraint for free. The canonical objective
+  therefore has exact zero-cost solutions in which part of the solid has folded up. Ceres finds them —
+  `kkT` reaches cost `5.7e-17` with 12 of its 54 edges at length `1e-7` — and so, it turns out, does
+  `relax`: on `kkT` it returns spread `1.2e-04` with an edge at `0.0007` of the mean. The floor is now
+  `MinEdgeLengthConstraint`, in the plan rather than in either solver's options, so both minimise the
+  same function.
+
+`relaxWithCeres` needs the ABI v2 native wrapper, so `canonicalize()` remains the default path. See
+`dev_docs/CERES.md`. What is still open is the tail: `kkT`, `kkO` and `kkI` find a sane solid but
+not machine precision, and Möbius-normalized reciprocation is still the untried idea.
 
 ### 4. Complete the rendering bridge
 
