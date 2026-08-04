@@ -29,8 +29,8 @@ package afield.stdlib.polytope
  */
 
 /**
- * The five Platonic seeds a Conway expression can start from, with the capital letter notation names
- * them by.
+ * The five Platonic seeds a Conway expression can start from, each with the capital letter the
+ * notation names it by.
  *
  * These are the only seeds the parser knows. Anything else — a prism, an imported mesh, a topology you
  * built by hand — has to enter through [PolyhedralObject] and the operator extension functions rather

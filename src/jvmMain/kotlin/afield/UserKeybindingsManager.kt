@@ -78,6 +78,9 @@ object UserKeybindingsManager {
 # A shifted character stands for shift plus that key, so `?` means the same as `shift+/`. One key per
 # shortcut: there are no two-keystroke chords, so `cmd+k cmd+s` is rejected rather than half-obeyed.
 #
+# The whole story, including how to find a command id and what happens when a line is wrong:
+# http://openendedgroup.com/Field4/keybindings/
+#
 # Some commands only make sense in one place, and Field records that here as well:
 #   #scope canvas   only when the canvas has focus (bare letters, so they don't hijack typing)
 #   #scope editor   only inside a code editor
