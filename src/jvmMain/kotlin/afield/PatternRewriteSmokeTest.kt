@@ -87,6 +87,7 @@ object PatternRewriteSmokeTest {
             testStrategySeqThenOrderingAndFailFast()
             testStrategyChoiceFirstApplicable()
             testStrategyRepeatBoundedVsUnbounded()
+            testStrategyNestedPatternUnderRepeat()
             testStrategyAttemptIsIdentityOnFailure()
             testStrategyAnonymousRulesDoNotFire()
             testStrategyUnknownRuleFailsClosed()
@@ -778,6 +779,20 @@ object PatternRewriteSmokeTest {
 
         val unbounded = expand("$rule\nstrategy { repeat(topdown(\"fg\")) }\nf(f(a))").text
         require("g(g(a))" in unbounded) { "unbounded repeat drives topdown to a fixpoint: $unbounded" }
+    }
+
+    /**
+     * A pattern may itself be *nested* (`f(f(x))`), and a strategy drives it like any other: each
+     * `topdown` step consumes two levels of a deep nest, so `repeat(…, 2)` collapses four `f`s.
+     */
+    private fun testStrategyNestedPatternUnderRepeat() {
+        val rule = """rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }"""
+        val out = expand("$rule\nstrategy { repeat(topdown(\"fg\"), 2) }\nf(f(f(f(a))))").text
+        require("g(g(a))" in out) { "each topdown step must consume two f's: $out" }
+
+        // One step only: the outermost f(f(...)) collapses, the inner pair survives.
+        val one = expand("$rule\nstrategy { repeat(topdown(\"fg\"), 1) }\nf(f(f(f(a))))").text
+        require("g(f(f(a)))" in one) { "a single step must leave the inner pair: $one" }
     }
 
     /** `attempt(s)` rescues a failing step into identity, so a following step can still run. */

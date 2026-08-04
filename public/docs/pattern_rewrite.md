@@ -397,6 +397,22 @@ rule("zzz") { x: Expr -> from { zzz(x) }; to { Z(x) } }
 strategy { attempt("zzz") then "fg" }   //  f(a)  →  g(a)   (the missing zzz is rescued, fg still runs)
 ```
 
+**Nested patterns.** Nothing says a pattern has to be one level deep. `from { f(f(x)) }`
+matches a *pair* of nested calls and binds `x` to whatever they wrap, and a strategy
+drives it like any other rule — so each `topdown` step eats two levels at a time:
+
+```diffstatic {data-lang=kotlin}
+rule("fg") { x: Expr -> from { f(f(x)) }; to { g(x) } }
+strategy { repeat(topdown("fg"), 2) }
+
+f(f(f(f(a))))    // →  g(g(a))    (step 1 collapses the outer pair, step 2 the inner)
+```
+
+With real definitions behind those names — `fun f(v: Int) = v * 2` and
+`fun g(v: Int) = v + 100` — `f(f(f(f(1))))` evaluates to **201**, not the 16 the
+unrewritten source would give. The `nested pattern` box of the
+`rewrite_strategies_demo` transcript below runs exactly that and `check`s the 201.
+
 ### The combinators at a glance
 
 | Strategy | Effect |
@@ -447,9 +463,9 @@ compile-and-run pipeline a live box uses:
   exercising negation, the precedence guard, the `isCallTo` termination idiom, a
   variadic hole, `unquote`, and an inherited (ambient) rule.
 - `dev_docs/agents/transcripts/rewrite_strategies_demo.yaml` — named rules driven
-  by `once` / `topdown` / `bottomup` / `then` / `choice` / `repeat`, each box
-  self-checking that the strategy produced a *different* result than the default
-  fixpoint would.
+  by `once` / `topdown` / `bottomup` / `then` / `choice` / `repeat`, plus a nested
+  two-level pattern, each box self-checking that the strategy produced a
+  *different* result than the default fixpoint would.
 
 Replay every shipped demo transcript — including both of these — through the real
 engine with:
