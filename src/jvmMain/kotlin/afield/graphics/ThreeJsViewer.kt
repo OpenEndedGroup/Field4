@@ -461,8 +461,11 @@ private class BoundsTracker {
  * `internal` rather than private so `ThreeJsEditableFillParityTest` can assert the one number the two
  * modes must agree on: `meta.triangles`. Editable mode re-triangulates client-side (the user drags
  * points, and the fill has to follow between round-trips), so the two triangulations are written
- * twice — here, and as `tessellateCoplanarGroups` in `threejs_viewer.html`. This count is what stops
- * them silently diverging.
+ * twice — here, and as `tessellateCoplanarGroups` in `threejs_viewer.html`.
+ *
+ * This count is the cheap guard. The real one is `ThreeJsViewerTessellationParityTest`, which *executes*
+ * the viewer's JavaScript on GraalJS and compares it to [PlanarTessellation] triangle for triangle; see
+ * `ViewerJavaScript`.
  */
 internal fun buildThreeGeometryPayload(
     uid: String,

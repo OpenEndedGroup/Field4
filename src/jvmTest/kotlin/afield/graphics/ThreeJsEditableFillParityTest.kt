@@ -17,11 +17,17 @@ import kotlin.test.assertTrue
  * supposed to be about editing.
  *
  * `threejs_viewer.html` now runs the same rule ([PlanarTessellation], transliterated as
- * `tessellateCoplanarGroups`), and this test is the guard on the seam. It cannot execute the
- * JavaScript — that is verified by real browser captures, in
- * `dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/` — but it can pin the number
- * the two sides report for the same geometry, which is the thing that goes wrong first when one of
- * them is changed and the other is not.
+ * `tessellateCoplanarGroups`), and this test pins the number the two sides report for the same
+ * geometry — the thing that goes wrong first when one of them is changed and the other is not.
+ *
+ * **What this test is not**, corrected 2026-08-04. It used to say it was "the guard on the seam". It is
+ * not: both sides of every assertion here are computed in Kotlin — `editable = true` and
+ * `editable = false` are two paths through [buildThreeGeometryPayload] — so **the JavaScript does not
+ * run in this file**, and none of these assertions could have caught `bf65e10e3` or `d3d81fee1`. The
+ * differential that does execute the JavaScript is [ThreeJsViewerTessellationParityTest], over
+ * [ViewerJavaScript]; the pixels are in
+ * `dev_docs/agents/artifacts/tessellate_facing/multi_plane_fill_demo/`. A `meta.triangles` count is
+ * still worth pinning on its own, which is why this file stays.
  */
 class ThreeJsEditableFillParityTest {
 
