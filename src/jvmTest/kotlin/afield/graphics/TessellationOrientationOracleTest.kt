@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
  *  * the same number of triangles,
  *  * the same total surface area (so holes are still holes, not filled and not double-counted),
  *  * every triangle wound consistently *with respect to the polygon's own normal* — because the
- *    consumers of these triangles ([ThreeJsViewer.appendFilledMesh], `ThreeJsViewer.kt:850`, and
+ *    consumers of these triangles ([ThreeJsViewer.appendFilledMesh], `ThreeJsViewer.kt:820`, and
  *    `StandardDrawing.linesOut`, `StandardDrawing.kt:134`) put them straight into a mesh whose
  *    facing is read from that winding.
  *
@@ -240,6 +240,8 @@ class TessellationOrientationOracleTest {
      * outer ring when its signed area has the wrong sign), so the winding of the triangles that come
      * back is decided entirely by the projected coordinate frame — never by the input winding. That
      * makes the choice of projected axis pair a choice about which way every emitted triangle faces.
+     * It does *not* also decide which ring is the outer one; that is array position
+     * (`FloatEarcut.kt:19`, and `FloatEarcutOuterRingTest`).
      *
      * For the projection to preserve orientation, the pair must be right-handed about the dominant
      * axis: x -> (y, z), y -> (z, x), z -> (x, y). And the pair has to be *flipped* when the
