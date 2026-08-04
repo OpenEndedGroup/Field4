@@ -1297,6 +1297,16 @@ function buildPointsGeometry(points, color, alpha, size) {
     return geometry;
 }
 
+// [viewer-region planar-tessellation] BEGIN
+//
+// Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
+// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
+// so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
+// by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
+// `ShapeUtils.triangulateShape`.
+//
 // --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
 //
 // Editable mode re-triangulates client-side, because the user drags points and the fill has to
@@ -1459,22 +1469,30 @@ function fillCoplanarGroup(rings, normals, members, out) {
 
     // Bounding boxes, signed areas and containment all run in the *unflipped* frame. A mirror does
     // not change what is inside what, so the nesting is the same either way.
+    //
+    // A container is *strictly* larger than what it contains: geometrically free, and it is what makes
+    // `parent` a forest rather than a graph that can cycle. Two overlapping rings of equal projected
+    // area could otherwise each be chosen as the other's parent, and the depth walk below would spin
+    // forever — freezing the tab on two overlapping subpaths. Keep in step with
+    // `PlanarTessellation.fill`, and see `PlanarTessellationParentCycleTest`.
     const parent = infos.map((info, i) => {
         const test = info.points[0];
         const x = px(test), y = py(test);
+        const own = Math.abs(info.area);
         let best = -1, bestArea = Infinity;
         infos.forEach((other, j) => {
             if (i === j) return;
             if (x < other.lo0 || x > other.hi0 || y < other.lo1 || y > other.hi1) return;
             if (!inside(other.points, test)) return;
             const a = Math.abs(other.area);
+            if (a <= own) return;
             if (a < bestArea) { bestArea = a; best = j; }
         });
         return best;
     });
     const depth = infos.map((_, i) => {
         let d = 0, p = parent[i];
-        while (p !== -1) { d += 1; p = parent[p]; }
+        while (p !== -1 && d <= infos.length) { d += 1; p = parent[p]; }
         return d;
     });
 
@@ -1520,6 +1538,8 @@ function fillCoplanarGroup(rings, normals, members, out) {
         out.push({ outer: info.ring, holes: holes.map((h) => infos[h].ring), triangles });
     });
 }
+
+// [viewer-region planar-tessellation] END
 
 function buildFaceGeometry(boundary) {
     if (!boundary || boundary.length < 3) return null;
