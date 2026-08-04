@@ -197,7 +197,7 @@ bindings:
                 // One such section, not one per run: commands come and go with the selection, and a
                 // line the user deleted to get the default back is "missing" again next time, so this
                 // path runs more than once over the life of a file.
-                if (!text.contains(appendedSectionHeader)) append("\n$appendedSectionHeader\n")
+                if (appendedSectionHeaders.none { text.contains(it) }) append("\n$appendedSectionHeader\n")
                 // A hand-written file is allowed to be a bare mapping with no `bindings:` wrapper
                 // (`read` accepts one), and appending indented entries to *that* would produce a file
                 // that is no longer valid YAML at all — Field breaking the user's own file.
@@ -232,6 +232,17 @@ bindings:
 
     /** The one comment introducing entries Field added on its own, and the marker it is found by. */
     private const val appendedSectionHeader = "# Commands Field added after this file was written:"
+
+    /**
+     * Every wording this banner has ever had, so an existing file gets *no* new banner rather than one
+     * more. Matching only [appendedSectionHeader] made the dedupe true for files written from now on
+     * and false for every file already on disk — a file carrying two older banners collected a third.
+     * Append to this list rather than editing an entry; the older strings are what is out in the world.
+     */
+    private val appendedSectionHeaders = listOf(
+        appendedSectionHeader,
+        "# Commands that appeared after this file was written:"
+    )
 
     /**
      * True when the file keeps its entries under a `bindings:` mapping, which is what Field generates

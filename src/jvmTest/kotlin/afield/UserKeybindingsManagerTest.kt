@@ -185,4 +185,28 @@ class UserKeybindingsManagerTest {
         }
     }
 
+    /**
+     * A file carrying an *older* wording of the appended-commands banner must not collect a new one.
+     * The dedupe matched only the current string, so every file already on disk gained one more banner
+     * per top-up rather than none — this machine's own keybindings file had accumulated three.
+     */
+    @Test
+    fun anOlderBannerWordingStillCountsAsABanner() {
+        UserKeybindingsManager.watchFile(scratch)
+        UserKeybindingsManager.applyInventory(inventory())
+
+        // Rewrite the file the way an older Field would have left it, one command short.
+        val legacy = scratch.readLines()
+            .filterNot { it.trim().startsWith("export-ipynb:") || it.startsWith("# Commands Field added") }
+            .joinToString("\n")
+        scratch.writeText(legacy + "\n\n# Commands that appeared after this file was written:\n")
+        UserKeybindingsManager.watchFile(scratch)
+        UserKeybindingsManager.applyInventory(inventory())
+
+        val text = scratch.readText()
+        val banners = text.lines().count { it.startsWith("# Commands ") && it.endsWith("after this file was written:") }
+        assertEquals(1, banners, "expected the legacy banner to be reused, got $banners in:\n$text")
+        assertTrue(text.contains("export-ipynb:"), "the missing command was not appended:\n$text")
+    }
+
 }
