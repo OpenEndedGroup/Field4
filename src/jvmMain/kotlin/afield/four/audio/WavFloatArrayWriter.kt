@@ -59,6 +59,76 @@ object WavFloatArrayWriter {
         return buffer.array()
     }
 
+    /**
+     * Writes interleaved stereo 16-bit PCM WAV from two equal-length channels.
+     *
+     * Needed by anything whose whole point is the stereo image — a `jux`-panned pattern, a plate
+     * reverb's decorrelated tail — where folding to mono destroys the thing being demonstrated.
+     */
+    fun writeStereo16(file: File, left: FloatArray, right: FloatArray, sampleRate: Int, normalizePeak: Float? = null) {
+        file.parentFile?.mkdirs()
+        file.writeBytes(encodeStereo16(left, right, sampleRate, normalizePeak))
+    }
+
+    /** [writeStereo16] to a path. */
+    fun writeStereo16(path: String, left: FloatArray, right: FloatArray, sampleRate: Int, normalizePeak: Float? = null) {
+        writeStereo16(File(path), left, right, sampleRate, normalizePeak)
+    }
+
+    /**
+     * Encodes interleaved stereo 16-bit PCM WAV and returns the complete `.wav` bytes.
+     *
+     * When [normalizePeak] is set, both channels are scaled by the *same* factor — the peak of the
+     * louder one — so normalisation cannot move the stereo image.
+     */
+    fun encodeStereo16(left: FloatArray, right: FloatArray, sampleRate: Int, normalizePeak: Float? = null): ByteArray {
+        require(sampleRate > 0) { "sampleRate must be > 0" }
+        require(left.size == right.size) { "channels must be the same length: ${left.size} vs ${right.size}" }
+
+        val l = left.copyOf()
+        val r = right.copyOf()
+        if (normalizePeak != null) {
+            var peak = 0.0f
+            for (v in l) { val a = kotlin.math.abs(v); if (a > peak) peak = a }
+            for (v in r) { val a = kotlin.math.abs(v); if (a > peak) peak = a }
+            if (peak > 0.0f) {
+                val scale = normalizePeak / peak
+                for (i in l.indices) { l[i] *= scale; r[i] *= scale }
+            }
+        }
+
+        val frames = l.size
+        val dataSize = frames * 4
+        val buffer = ByteBuffer.allocate(44 + dataSize).order(ByteOrder.LITTLE_ENDIAN)
+
+        buffer.putAscii("RIFF")
+        buffer.putInt(36 + dataSize)
+        buffer.putAscii("WAVE")
+
+        buffer.putAscii("fmt ")
+        buffer.putInt(16)
+        buffer.putShort(1) // PCM
+        buffer.putShort(2) // stereo
+        buffer.putInt(sampleRate)
+        buffer.putInt(sampleRate * 4)
+        buffer.putShort(4)
+        buffer.putShort(16)
+
+        buffer.putAscii("data")
+        buffer.putInt(dataSize)
+        for (i in 0 until frames) {
+            buffer.putShort(pcm16(l[i]))
+            buffer.putShort(pcm16(r[i]))
+        }
+
+        return buffer.array()
+    }
+
+    private fun pcm16(sample: Float): Short {
+        val clipped = sample.coerceIn(-1.0f, 1.0f)
+        return (clipped * 32767.0f).roundToInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+    }
+
     private fun ByteBuffer.putAscii(value: String) {
         put(value.toByteArray(Charsets.US_ASCII))
     }

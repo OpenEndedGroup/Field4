@@ -1,0 +1,319 @@
+# Patterns: writing rhythm as a function of time
+
+`pat("bd sd hh hh")` is a **pattern** — not a list of notes, but a function you can ask
+"what is sounding between *here* and *there*?". Ask it about one cycle and you get four
+events. Ask about the second half and you get two. Ask about a hundred cycles and it will
+tell you, because nothing was ever stored; the events are computed from the query.
+
+That one decision is what makes the rest composable. A pattern can be reversed, slowed,
+sliced, stacked against another, or handed a continuous curve to read its volume from, and
+none of those operations has to know how long the music is or where it will be sampled.
+The design comes from [TidalCycles](https://tidalcycles.org), and where Field's operators
+share a name with Tidal's they mean the same thing — the places they do not are called out
+below.
+
+Everything on this page is produced by running the real code at docs-build time. The piano
+rolls are drawn from live `PatPattern.events(...)` queries, and the audio is rendered
+offline through the same voice the language uses — no hand-drawn figures, no pre-baked
+recordings.
+
+---
+
+## Two things every pattern is made of
+
+An **event** is a value with a span of time. A **query** is a span you ask about. The whole
+language is functions from queries to lists of events.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/first-query.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-first-query"}
+// Nothing is stored. Ask the same pattern three different questions.
+val drums = pat("bd sd hh hh")
+
+val answers = listOf(
+    "one cycle" to PatArc(PatQ.ZERO, PatQ.ONE),
+    "second half" to PatArc(PatQ.of(1, 2), PatQ.ONE),
+    "cycle 97" to PatArc(PatQ.of(97), PatQ.of(98)),
+).joinToString("\n") { (label, arc) ->
+    "%-12s %s".format(label, drums.events(arc).joinToString("  ") { "${it.value}@${it.arc.start}" })
+}
+println(answers)
+display("<pre>" + answers + "</pre>")
+```
+
+Time is exact rational arithmetic (`PatQ`), never floating point. A sixteenth note is
+`1/16`, not `0.0625`, so a pattern subdivided into thirds and one subdivided into fifths
+still line up perfectly fifteen cycles later.
+
+---
+
+## Mini-notation
+
+The string inside `pat(...)` is the same mini-notation Tidal uses. Space separates steps,
+brackets group, and a handful of suffixes modify a step.
+
+| written | means |
+| --- | --- |
+| `bd sd` | two steps, half a cycle each |
+| `bd [sd sd]` | the second half subdivided |
+| `bd*4` | four times as fast |
+| `bd/2` | half as fast — spans two cycles |
+| `bd!3` | repeated three times |
+| `bd@3 sd` | `bd` gets three quarters of the cycle |
+| `bd ~ sd ~` | `~` is a rest |
+| `<bd sd>` | alternates: `bd` one cycle, `sd` the next |
+| `bd(3,8)` | Euclidean: three onsets spread over eight slots |
+| `bd?0.3` | dropped 30% of the time, deterministically |
+| `bd:3` | sample index 3, also readable as an `n` parameter |
+| `{bd sd, hh hh hh}` | polymeter — layers of different lengths |
+| `bd sd . hh hh hh` | `.` groups without brackets |
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/mini-notation.png" wait="2" capture="box" open-outputs="true" name="pat-doc-mini-notation"}
+:::static
+// Each shorthand is drawn directly above the bracketed form it stands for, so a pair that
+// does not line up is visible rather than merely wrong.
+showPatRoll("mini-notation")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of the mini-notation step markers, each drawn above its bracketed equivalent](assets/pattern_language/mini-notation.png)
+
+Read the two polymeter lanes across the bar line: `{bd hh 808:4}%8` *phases* — cycle 1 is
+offset from cycle 0. That is the whole reason to write a polymeter instead of a fast
+sequence.
+
+---
+
+## Continuous signals
+
+`sine()`, `saw()`, `tri()`, `square()`, `perlin()` and `rand()` are patterns too — they
+just answer *every* query with exactly one event, sampled at the query's exact midpoint.
+They have no rhythm of their own, so you either give them one with `segment(n)` or hand
+them to something that already has one.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/signals.png" wait="2" capture="box" open-outputs="true" name="pat-doc-signals"}
+:::static
+// Six signals through segment(16), two cycles. The polyline is the value each cell
+// latched; the rectangle height is the same number.
+showPatRoll("signals-segment")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of six continuous signals discretised through segment(16)](assets/pattern_language/signals.png)
+
+The midpoint convention is what makes the picture readable: `sine()` peaks a quarter of the
+way in, `square()` switches exactly on the half, `saw()` climbs monotonically.
+
+### A parameter can be a function
+
+The useful consequence: a signal can drive a *parameter* without changing the rhythm.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/continuous-parameter.png" wait="2" capture="box" open-outputs="true" name="pat-doc-parameter"}
+:::static
+// Lane 1 is a cutoff staircase typed out by hand, one literal per note — the whole of what
+// a pattern language without signals can do. Lane 2 is appBoth, which shatters four kicks
+// into sixteen. Lanes 3-5 are `with(cutoff(curve))` over 4, 8 and 16 notes: the same curve,
+// sampled at whatever density the rhythm happens to be, note count untouched.
+showPatRoll("continuous-parameter")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll comparing a hand-typed cutoff staircase, appBoth fragmentation, and a continuous parameter read at three note densities](assets/pattern_language/continuous-parameter.png)
+
+Hear it — sixteen hats a cycle, two cycles flat and then two with the gain following a
+sine. Same notes, same count, one parameter now a function of time:
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/gain-lfo.wav" audio-spec="gain-lfo-before-after" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-gain-audio"}
+// offline-rendered by PatSoundDocs — listen below
+```
+
+---
+
+## Whose rhythm survives
+
+When two patterns meet, the rhythm has to come from somewhere. There are exactly three
+answers, and Field spells them the way Tidal does — the bar marks the side the structure
+comes from.
+
+| operator | structure | `pat("0 1")` against `pat("10 20 30")` |
+| --- | --- | --- |
+| `` `|+|` `` | both | 4 events — every intersection |
+| `` `|+` `` | left | 2 events — exactly the left's |
+| `` `+|` `` | right | 3 events — exactly the right's |
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/structure-choice.png" wait="2" capture="box" open-outputs="true" name="pat-doc-structure"}
+:::static
+showPatRoll("structure-choice")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll showing the three structure-choice combinators producing four, two and three events](assets/pattern_language/structure-choice.png)
+
+Kotlin will not accept `/`, `<` or `>` in an identifier, so division is `` `|over|` `` and
+the take-a-value family spells its arrow as an `L` or an `R`. The bar always keeps its
+Tidal meaning.
+
+---
+
+## Rhythm transforms
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/rhythm.png" wait="2" capture="box" open-outputs="true" name="pat-doc-rhythm"}
+:::static
+// pat("a b c d") and seven transforms over four cycles, so the per-cycle ones are visible.
+showPatRoll("rhythm-transforms")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of rev, euclid, iter, linger, shuffle, slow and fast against a four-step source](assets/pattern_language/rhythm.png)
+
+`rev` mirrors, `euclid(3,8)` spaces three onsets over eight slots, `iter(4)` advances a
+quarter each cycle, `shuffle(4)` permutes differently every cycle. Read the `slow(2)` lane
+*across* the bar lines: `a b`, then `c d`, then round again.
+
+### Time spans cycles, and events can cross bar lines
+
+`slow`, `fast`, `timeScale`, `density` and mini-notation's `/n` are defined in absolute
+time, so `pat("a b c d").slow(2)` really does take two cycles: `a b` in the first, `c d` in
+the second.
+
+The consequence is that an event can straddle a bar line. `pat("a b c").slow(2)` is three
+steps over two cycles, so `b` runs from `2/3` to `4/3` — through it. A player asks for one
+cycle at a time, so it sees `b` twice, clipped both times, and would strike it twice if the
+events did not know better.
+
+They do. Every event carries both the **part** you can see and the **whole** it was clipped
+from:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/whole-and-part.png" wait="1.5" capture="box" open-outputs="true" name="pat-doc-whole-part"}
+val crossing = pat("a b c").slow(2)
+
+val lines = buildList {
+    // One wide query: three notes, and b genuinely spans the bar line.
+    add("drawn    " + crossing.events(PatArc(PatQ.ZERO, PatQ.of(2)))
+        .joinToString("  ") { "${it.value}[${it.arc}]" })
+    // Cycle by cycle, b comes back twice — but only one fragment carries its onset.
+    for (cycle in 0..1) {
+        add("cycle $cycle  " + crossing.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1)))
+            .joinToString("  ") { "${it.value}[${it.arc}]" + if (it.hasOnset) "" else " (continues)" })
+    }
+    // And what actually gets played: three notes, each at its full length.
+    add("played   " + crossing.eventSequence(0).take(3).toList()
+        .joinToString("  ") { "${it.value}[${it.arc}]" })
+}.joinToString("\n")
+println(lines)
+display("<pre>" + lines + "</pre>")
+```
+
+`hasOnset` is the difference, and `eventSequence` — which every scheduling path uses —
+yields only the fragment that has one, widened back to the note's real length. A signal
+event has no `whole` at all (`null`), because a continuous curve has no note to begin;
+`segment(n)` is what gives it one.
+
+---
+
+## Groove
+
+Swing here is exact rational time, not a nudge in milliseconds: `swing(4)` puts every
+off-beat exactly a third of a subdivision late, and the pattern stays exactly quantised.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/groove.png" wait="2" capture="box" open-outputs="true" name="pat-doc-groove"}
+:::static
+showPatRoll("groove")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Piano roll of swing, press, squeeze, ncat, euclidFull and sometimesEventBy](assets/pattern_language/groove.png)
+
+Eight hats a cycle: two cycles dead straight, then two swung.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/swing.wav" audio-spec="swing-before-after" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-swing-audio"}
+// offline-rendered by PatSoundDocs — listen below
+```
+
+`chunk(n, f)` applies a transform to a different `1/n` of the bar each cycle, walking
+through all of them before it repeats. `inside(n, f)` is its cycle-invariant cousin —
+it slows down, transforms, and speeds back up, doing the same thing every cycle. They are
+easy to confuse, and were in fact once the same function here.
+
+---
+
+## Harmony and voice leading
+
+Chords are written `root'name` — `c'maj7`, `a'min7` — and everything that applies to a
+pattern applies to a pattern of chords.
+
+`voiceLead()` chooses each chord's inversion and octave to minimise how far the voices have
+to move, without changing the harmony.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/voice-leading.png" wait="2" capture="box" open-outputs="true" name="pat-doc-voice-leading"}
+:::static
+showPatRoll("voice-leading")
+:::fold open the output pane
+displayOpen("main")
+:::endfold
+```
+
+![Pitched piano roll: a chord progression as written, then voice-led, then arpeggiated](assets/pattern_language/voice-leading.png)
+
+Spelled from their own roots the progression spans 60–79 and leaps; voice-led it sits
+inside 53–64 with near-horizontal lines where common tones are held. 83 semitones of
+movement becomes 9, and the pitch-class sets are identical.
+
+```diffstatic_runner {data-lang=kotlin audio="assets/pattern_language/voice-leading.wav" audio-spec="voice-leading" audio-renderer="afield.four.synth.PatSoundDocs" embed=true hidden=true name="pat-doc-voice-leading-audio"}
+// offline-rendered by PatSoundDocs — listen below
+```
+
+---
+
+## Where Field differs from Tidal
+
+Three names to know if you are coming from Tidal:
+
+| Field | Tidal | note |
+| --- | --- | --- |
+| `cat` | `fastcat` | fits every argument into **one** cycle |
+| `slowcat` | `cat` | one pattern per cycle — what `<a b>` is built on |
+| `within(window, p)` | `compress` | squeezes a pattern *into* a window |
+| `withinCycle(window, f)` | `within` | applies `f` *inside* a window, leaves the rest |
+
+`fastcat` exists as an alias for `cat` when you want the code to say which one it means.
+
+---
+
+## Playing a pattern
+
+`eventSequence` gives you the events in playing order. `scheduled(cps)` turns them into
+wall-clock times. `respond {}` calls you back as each one arrives.
+
+```
+pat("bd sd hh hh").respond(cps = 2.0) { event ->
+    println("${event.start}s  ${event.value}  gain=${event.num("gain")}")
+}
+```
+
+Because a note is scheduled at its onset and carries its whole length, a pattern that
+crosses bar lines plays correctly without the consumer knowing anything about cycles.
+
+---
+
+## Where to go next
+
+- **The full operator surface, and the design decisions behind it** —
+  [`dev_docs/PATTERN_LANGUAGE.md`](https://github.com/) in the repository, including the
+  whole/part model, the contract sweep, and the three behaviours that were measured rather
+  than assumed.
+- **The capture harnesses** — `dev_docs/PAT_GALLERY.md` documents the nine piano rolls and
+  eight `.wav` scenes, all of which regenerate headlessly.
+- **A loadable document** — the *Pattern language* starting point in the welcome screen
+  opens eight boxes covering signals, structure choice, parameters, voice leading, groove
+  and mini-notation, each with a live roll and most with audio. Edit any string and re-run.
