@@ -69,10 +69,22 @@ class RenderTarget(
 
     var seenBefore = mutableSetOf<Int>()
 
+    // Identity of the swapchain `seenBefore` was populated against. When the swapchain is recreated
+    // (resize, or the Wayland fullscreen configure landing after startup) its images are brand-new
+    // and start in UNDEFINED layout, making the "seen -> oldLayout = PRESENT_SRC" assumption stale.
+    // If we don't reset, the first frame per image submits a barrier with the wrong oldLayout and
+    // validation flags SwapchainImage[i] as UNDEFINED-vs-PRESENT_SRC_KHR (once per image).
+    private var seenBeforeSwapChain: Long = 0L
+
     override fun render(command: CommandBuffer, index: Int) {
         val swapChainExtent = ctx.swapChain.swapChainExtent
         val width = swapChainExtent.width()
         val height = swapChainExtent.height()
+
+        if (ctx.swapChain.vkSwapChain != seenBeforeSwapChain) {
+            seenBefore.clear()
+            seenBeforeSwapChain = ctx.swapChain.vkSwapChain
+        }
 
         MemoryStack.stackPush().use { stack ->
 

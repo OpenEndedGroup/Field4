@@ -283,9 +283,11 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
     init {
         if (enabled) {
             lock.withLock {
-                // Switch to the alternate screen buffer (saving the user's current terminal) and clear it,
-                // like vim/htop/less. shutdown() switches back, restoring the terminal to its prior state.
-                write("$ENTER_ALT$CLEAR_HOME")
+                // Clear the screen and fence off the top rows as a fixed header. Unlike vim/htop/less we do
+                // NOT switch to the alternate screen buffer: staying in the primary buffer means that on exit
+                // the final frame — pinned header + the tail of the scrolling log — stays in the terminal's
+                // scrollback instead of being wiped when the app quits. shutdown() only drops the region.
+                write(CLEAR_HOME)
                 ensureRegion()
                 dirty = true
                 logDirty = true
@@ -490,9 +492,11 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
             runCatching { savedStty?.let { setStty(it) } ?: setStty("sane") } // restore cooked tty mode
         }
         lock.withLock {
-            // Disable mouse tracking, drop the scroll region, then leave the alternate screen —
-            // restoring the terminal to exactly what it showed before Field started.
-            write((if (inputActive) MOUSE_OFF else "") + "${CSI}r$LEAVE_ALT")
+            // Disable mouse tracking and drop the scroll region. We never entered the alternate screen, so
+            // there is nothing to "leave" and nothing gets wiped: the final frame stays on screen and in
+            // scrollback. Park the cursor on a fresh line below it so the returning shell prompt doesn't
+            // land on top of the last log line.
+            write((if (inputActive) MOUSE_OFF else "") + "${CSI}r" + "$CSI${cachedH};1H\n")
         }
     }
 
@@ -993,8 +997,6 @@ private class PinnedConsoleSink(initialChannels: List<PinnedChannel>) : LogSink 
         const val ITALIC = "\u001B[3m"
         const val RESET = "\u001B[0m"
         const val BULLET = "●"
-        const val ENTER_ALT = "\u001B[?1049h"   // save screen + switch to the alternate buffer
-        const val LEAVE_ALT = "\u001B[?1049l"   // switch back, restoring the saved screen
         const val CLEAR_HOME = "\u001B[2J\u001B[H"
 
         const val MOUSE_ON = "$CSI?1000h$CSI?1006h"   // SGR mouse reporting (for the scroll wheel)

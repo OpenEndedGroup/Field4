@@ -328,9 +328,11 @@ run_field() {
     ELECTRON_PID=$!
 
     # Ctrl-C / TERM stop both; and if either exits on its own, stop the other. On EXIT, guarantee the
-    # terminal is restored (drop scroll region + leave the alternate screen) even if the backend was
-    # hard-killed and its JVM shutdown hook never ran. Emitting these when not in the alt buffer is a
-    # harmless no-op.
+    # terminal is usable again (restore stty, mouse off, drop the scroll region) even if the backend was
+    # hard-killed and its JVM shutdown hook never ran. We deliberately do NOT touch the alternate screen
+    # buffer: the console runs in the primary buffer, so the final frame — pinned header + the tail of the
+    # scrolling log — stays in scrollback on exit instead of being wiped. Emitting these outside a scroll
+    # region / with mouse tracking already off is a harmless no-op.
     restore_terminal() {
         [ -t 1 ] || return 0
         if [ -n "$SAVED_STTY" ]; then
@@ -338,7 +340,7 @@ run_field() {
         else
             stty sane </dev/tty 2>/dev/null                     # fallback: no snapshot -> canonical reset
         fi
-        printf '\033[?1000l\033[?1006l\033[r\033[?1049l' 2>/dev/null # mouse off, drop region, leave alt
+        printf '\033[?1000l\033[?1006l\033[r' 2>/dev/null       # mouse off, drop scroll region
     }
     trap 'restore_terminal' EXIT
     trap 'kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null' INT TERM

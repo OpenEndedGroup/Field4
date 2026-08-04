@@ -27,6 +27,7 @@ class SwapChain(
     presentationQueue: PresentQueue, concurrentQueues: Array<Queue>?
 ) {
     val device: Device
+    val surface: Surface
     val imageViews: Array<ImageView>
     var surfaceFormat: SurfaceFormat
     var swapChainExtent: VkExtent2D
@@ -46,6 +47,7 @@ class SwapChain(
 
     init {
         this.device = device
+        this.surface = surface
         MemoryStack.stackPush().use { stack ->
             val physicalDevice = device.physicalDevice
             // Get surface capabilities
@@ -132,6 +134,9 @@ class SwapChain(
     }
 
     var nextPresentId: Long = 1 // must be > 0
+
+    /** Rate-limits the "persistent SUBOPTIMAL at a matching extent" warning to once per swapchain. */
+    private var loggedSuboptimal = false
 
     data class PresentResult(val resize: Boolean, val presentId: Long?, val result: Int)
 
@@ -449,6 +454,25 @@ class SwapChain(
         return result
     }
 
+    /**
+     * True if the surface's current extent differs from the extent this swapchain was created with.
+     * Used to decide whether a VK_SUBOPTIMAL_KHR present result is worth a full swapchain recreate.
+     * Returns false if capabilities can't be queried or the extent is driver-undefined (0xFFFFFFFF),
+     * so we never recreate on the strength of a value we can't compare.
+     */
+    private fun surfaceExtentChanged(): Boolean {
+        MemoryStack.stackPush().use { stack ->
+            val caps = VkSurfaceCapabilitiesKHR.calloc(stack)
+            val r = KHRSurface.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+                device.physicalDevice.vkPhysicalDevice, surface.vkSurface, caps
+            )
+            if (r != VK10.VK_SUCCESS) return false
+            val ce = caps.currentExtent()
+            if (ce.width() == -0x1) return false
+            return ce.width() != swapChainExtent.width() || ce.height() != swapChainExtent.height()
+        }
+    }
+
     fun cleanup() {
         swapChainExtent.free()
         Arrays.asList(*imageViews).forEach(Consumer { obj: ImageView -> obj.cleanup() })
@@ -575,8 +599,17 @@ class SwapChain(
             if (err == KHRSwapchain.VK_ERROR_OUT_OF_DATE_KHR) {
                 resize = true
             } else if (err == KHRSwapchain.VK_SUBOPTIMAL_KHR) {
-                // Not optimal but swap chain can still be used
-                println(" warning: vk_suboptimal_hkr")
+                // Swapchain still usable but no longer optimally matches the surface. This is common
+                // on Wayland when the compositor's fullscreen configure lands after the swapchain was
+                // created. Recreate only when the surface extent has actually changed; recreating
+                // unconditionally would spin (waitIdle + full rebuild) every frame on drivers that
+                // keep reporting SUBOPTIMAL at a matching extent.
+                if (surfaceExtentChanged()) {
+                    resize = true
+                } else if (!loggedSuboptimal) {
+                    loggedSuboptimal = true
+                    lprintln("warning,perf", "[swapchain] present returned SUBOPTIMAL_KHR; surface extent unchanged, keeping swapchain")
+                }
             } else if (err != VK10.VK_SUCCESS) {
                 throw RuntimeException("Failed to present KHR: $err")
             }
