@@ -1422,21 +1422,6 @@ object StdlibReferenceGenerator {
             "<!-- Regenerate: ./gradlew generateCodebaseReference -->"
 
     /**
-     * Rewrites the markdown code fences in KDoc-derived prose to the docs site's `diffstatic` fence.
-     *
-     * KDoc is written with ordinary triple-backtick `kotlin` fences, which is what IDEs and Field's own
-     * in-app documentation panel expect, so the sources stay exactly as they are. The published
-     * reference, though, is a Zensical page where every other code block on the site is a `diffstatic`
-     * fence rendered by Field's own highlighter — a passed-through `kotlin` fence gets the site's
-     * default highlighter instead and reads as a foreign element (different type colours, a line-number
-     * gutter, a copy button). Normalising at emission rather than in the KDoc keeps one convention in
-     * the source and one on the page, and covers every overview written after this without asking
-     * anyone to remember.
-     *
-     * A fence with no language is treated as Kotlin, which is what those blocks have always been in
-     * practice. Closing fences are left alone, and an already-`diffstatic` fence is passed through.
-     */
-    /**
      * Re-levels the headings in a file overview so its shallowest one becomes `###` — a child of the
      * `## SomeFile.kt` section the prose is printed inside — with deeper headings keeping their
      * relative depth.
@@ -1477,6 +1462,21 @@ object StdlibReferenceGenerator {
 
     private val HEADING = Regex("""^(#{1,6})\s+(.*)$""")
 
+    /**
+     * Rewrites the markdown code fences in KDoc-derived prose to the docs site's `diffstatic` fence.
+     *
+     * KDoc is written with ordinary triple-backtick `kotlin` fences, which is what IDEs and Field's own
+     * in-app documentation panel expect, so the sources stay exactly as they are. The published
+     * reference, though, is a Zensical page where every other code block on the site is a `diffstatic`
+     * fence rendered by Field's own highlighter — a passed-through `kotlin` fence gets the site's
+     * default highlighter instead and reads as a foreign element (different type colours, a line-number
+     * gutter, a copy button). Normalising at emission rather than in the KDoc keeps one convention in
+     * the source and one on the page, and covers every overview written after this without asking
+     * anyone to remember.
+     *
+     * A fence with no language is treated as Kotlin, which is what those blocks have always been in
+     * practice. Closing fences are left alone, and an already-`diffstatic` fence is passed through.
+     */
     private fun fencesToDiffstatic(text: String): String {
         if (!text.contains("```")) return text
         var open = false
