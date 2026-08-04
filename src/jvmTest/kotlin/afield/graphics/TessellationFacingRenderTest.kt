@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
  * "It compiles" and "the assertions pass" are not verification for a rendering path, and the
  * winding defect this branch fixes is *invisible* in Field's own default viewers: the Vulkan mesh
  * pipeline sets `VK_CULL_MODE_NONE` (`four/modules/MeshModule.kt:466`, `four/modules/Module.kt:803`)
- * and the three.js viewer uses `THREE.DoubleSide` (`threejs_viewer.html:900`). Both draw a
+ * and the three.js viewer uses `THREE.DoubleSide` (`threejs_viewer.html:915`). Both draw a
  * back-to-front triangle exactly as happily as a front-to-back one, so nothing on screen complains.
  *
  * That is precisely why it needs a picture taken with an instrument that *does* care. This test

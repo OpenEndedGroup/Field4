@@ -391,7 +391,7 @@ fun Box.threeLines(
  * Found 2026-08-04 by taking a capture to the pixels and wondering why two of three panes were blank.
  *
  * [URLEncoder] is form encoding, so a space becomes `+`. That is exactly what the client decodes:
- * `URLSearchParams` (`threejs_viewer.html:212`, `:2029`) turns `+` back into a space and `%27` back
+ * `URLSearchParams` (`threejs_viewer.html:212`, `:2044`) turns `+` back into a space and `%27` back
  * into an apostrophe, so the uid round-trips byte for byte and the `__threejs__` routing key still
  * matches. The server's `/threejs` route never reads the parameter at all (`Server.kt:4450`).
  *

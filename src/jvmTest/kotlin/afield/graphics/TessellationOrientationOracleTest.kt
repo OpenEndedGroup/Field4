@@ -26,7 +26,7 @@ import kotlin.test.assertTrue
  *  * the same number of triangles,
  *  * the same total surface area (so holes are still holes, not filled and not double-counted),
  *  * every triangle wound consistently *with respect to the polygon's own normal* — because the
- *    consumers of these triangles ([ThreeJsViewer.appendFilledMesh], `ThreeJsViewer.kt:820`, and
+ *    consumers of these triangles ([ThreeJsViewer.appendFilledMesh], `ThreeJsViewer.kt:843`, and
  *    `StandardDrawing.linesOut`, `StandardDrawing.kt:134`) put them straight into a mesh whose
  *    facing is read from that winding.
  *

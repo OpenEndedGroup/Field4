@@ -449,7 +449,7 @@ class ThreeJsViewerTessellationParityTest {
 
     /**
      * `sanitizeRing3D` is the viewer's copy of the sanitiser inside `FLine.tessellate`
-     * (`FLine.kt:1021-1045`): drop consecutive duplicates in **three** dimensions, then drop a
+     * (`FLine.kt:1021-1044`): drop consecutive duplicates in **three** dimensions, then drop a
      * repeated final point, both at `1e-5`. The three-dimensional part is load-bearing — a wall in the
      * XZ plane has only two distinct `(x, y)` pairs along its whole boundary, so a 2D predicate
      * collapses it to two points and the ring is dropped before any projection runs.

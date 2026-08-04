@@ -5,7 +5,7 @@
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
 `FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014`). It flattens the line into
 rings and hands them to `PlanarTessellation`
-(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:163`), which groups them into planes,
+(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170`), which groups them into planes,
 works out which rings are holes in which, and hands each group to `FloatEarcut`.
 
 *Updated 2026-08-03: the second half of this document — "The limit that remains" and "A convention
@@ -84,7 +84,7 @@ Worth recording, because it is the obvious suspicion and it is false.
 
 The mirror flips the sign of `area2D`, and `area2D` is what the code uses to pick between candidate
 parent rings. It does **not** corrupt anything, because `tessellate` only ever consumes the signed
-area through `abs()` (`PlanarTessellation.kt:381`), and point-in-polygon containment is mirror
+area through `abs()` (`PlanarTessellation.kt:389`), and point-in-polygon containment is mirror
 invariant. So
 triangle counts, total areas and nesting parity were already invariant under rigid rotation before
 this branch, and still are. Measured, not reasoned: `TessellationOrientationOracleTest`'s area,
@@ -105,7 +105,7 @@ measures both halves, including the counterfactual.)
 | | |
 |---|---|
 | `StandardDrawing.kt:134` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:831` | inside `appendFilledMesh` (`:820`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:361`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69`). |
+| `ThreeJsViewer.kt:854` | inside `appendFilledMesh` (`:843`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:362`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69`). |
 
 Not on this path at all: SVG export (`graphics/someSkiko.kt:553` writes `<path fill=…>`), the 2D Skia canvas
 (`graphics/someSkiko.kt:368`, a filled Skia `Path`), and typography extrusion (`typography_field.kt:342` calls
@@ -114,9 +114,9 @@ Not on this path at all: SVG export (`graphics/someSkiko.kt:553` writes `<path f
 And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan pipeline is
 `VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
 `:664`; `four/imgui/ImGuiRenderToTexture.kt:250`). The three.js fill materials are
-`MeshStandardMaterial` with `side: THREE.DoubleSide` (`threejs_viewer.html:900`, `:999`), and
-although they do derive normals from the winding — `computeVertexNormals()` at `:744`, `:795`,
-`:1120`, `:1549` — three.js flips the normal for back-facing fragments on a double-sided material,
+`MeshStandardMaterial` with `side: THREE.DoubleSide` (`threejs_viewer.html:915`, `:1014`), and
+although they do derive normals from the winding — `computeVertexNormals()` at `:759`, `:810`,
+`:1135`, `:1572` — three.js flips the normal for back-facing fragments on a double-sided material,
 so a uniformly mis-wound flat face still shades correctly. The visionOS viewer sets
 `faceCulling = .none` explicitly (`FLineMeshBuilder.swift:401`).
 
@@ -183,7 +183,7 @@ What made this more than a change of projection is the sentence the old version 
 on: hole classification has to be scoped to a plane as well as to a projection, because "ring A is a
 hole in ring B" is measured on projected coordinates. It only *means* something when A and B are
 flattened in the same frame, and it is only *true* when they lie in the same surface. So the rings
-are clustered into planes first (`PlanarTessellation.kt:195`), and everything downstream — frame,
+are clustered into planes first (`PlanarTessellation.kt:202`), and everything downstream — frame,
 nesting, hole parity, hemisphere — is scoped to a cluster.
 
 ### The clustering rule
@@ -204,7 +204,7 @@ absolute epsilon would say they are not, silently changing its mind somewhere be
 
 Three more decisions, each of which someone will eventually want to know the reason for:
 
-**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:216`), not the
+**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:223`), not the
 nearest. Planes are grown greedily and a plane is represented by the ring that *seeded* it, never by
 a running average of its members. Nearest-plane needs a global pass over every candidate; "first"
 is the only tie-break that stays stable as rings are appended; and seed-not-average is what stops a
@@ -232,7 +232,7 @@ and the same ring at twice it (a polygon), on both implementations, plus the sam
 
 **A degenerate ring has no plane.** A ring whose Newell normal is zero — collinear, all-identical, a
 bowtie — cannot vote on a plane and is not allowed to seed one. Those rings are placed *after* every
-ring that has a normal (`PlanarTessellation.kt:238`), by the distance test alone; one that matches
+ring that has a normal (`PlanarTessellation.kt:245`), by the distance test alone; one that matches
 nothing gets a plane to itself, where it fills nothing. This reproduces the single-axis code's
 behaviour exactly: its `projectionAxis` kept its `(x, y)` default when no ring had a normal, and an
 all-degenerate FLine still comes out the same way.
@@ -319,7 +319,7 @@ obviously wrong.
 
 *Was: a naive JS fan. Fixed 2026-08-03, in the same pass.*
 
-`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:831`, inside
+`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:854`, inside
 `appendFilledMesh` — is only half the story for the three.js viewer, because `editable = true`
 **re-triangulates client-side**. It has to: the user drags points, and the fill has to follow between
 server round-trips.
