@@ -209,4 +209,28 @@ class UserKeybindingsManagerTest {
         assertTrue(text.contains("export-ipynb:"), "the missing command was not appended:\n$text")
     }
 
+    /**
+     * A shortcut Field cannot read leaves the command on its default — it is not also an unbind.
+     *
+     * `""` means "I want no shortcut for this" and the client honours it. A *rejected* spec used to
+     * produce the same empty list, so `open-anything: cmd+k cmd+s` did not mean "that is not a chord,
+     * keep Cmd+P" — it meant `open-anything` had no shortcut at all, on top of the reported error.
+     */
+    @Test
+    fun aSpecFieldCannotReadFallsBackToTheDefault() {
+        UserKeybindingsManager.watchFile(scratch)
+        UserKeybindingsManager.applyInventory(inventory())
+
+        scratch.writeText("bindings:\n  stop-all: cmd+k cmd+s\n  edit-hashtag: \"\"\n")
+        UserKeybindingsManager.watchFile(scratch)
+        val resolved = UserKeybindingsManager.resolved
+
+        assertTrue(resolved.problems.any { it.contains("cmd+k cmd+s") }, "problems were ${resolved.problems}")
+        // The rejected line is absent from the overrides, so the default applies...
+        assertFalse("stop-all" in resolved.bindings, "a rejected spec was recorded as an override")
+        assertEquals(listOf("alt+down", "alt+shift+down"), resolved.effective["stop-all"])
+        // ...while a deliberate `""` still unbinds, which is the distinction that was being lost.
+        assertEquals(emptyList(), resolved.bindings["edit-hashtag"])
+        assertEquals(emptyList(), resolved.effective["edit-hashtag"])
+    }
 }

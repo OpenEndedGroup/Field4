@@ -208,6 +208,13 @@ Field would rather tell you than guess.
       — a shortcut is one key with modifiers, Field has no two-keystroke chords
     ```
 
+    **The command keeps its default.** A line Field cannot read is ignored, not obeyed
+    halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. That
+    distinction matters, because an empty value means something quite different — `""` is a
+    deliberate unbind (below). If a rejected spec also produced "no shortcut", a typo and a
+    decision would look identical, and the error message would be quietly telling you about
+    a shortcut you had just lost.
+
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
   the id, and the binding is kept anyway rather than dropped. It has to be: the
   selection-only commands genuinely are not registered most of the time, and silently

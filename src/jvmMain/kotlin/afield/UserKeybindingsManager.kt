@@ -331,7 +331,9 @@ bindings:
                                 "has registered — check the spelling if the shortcut does nothing"
                         )
                     }
-                    bindings[id] = specsFor(id, rawValue, problems)
+                    // null means "the user asked for something and none of it was usable" — leave the
+                    // id out of the map entirely so the default applies. See [specsFor].
+                    specsFor(id, rawValue, problems)?.let { bindings[id] = it }
                 }
             }
         }
@@ -367,7 +369,19 @@ bindings:
         return map
     }
 
-    private fun specsFor(id: String, raw: Any?, problems: MutableList<String>): List<String> {
+    /**
+     * The shortcuts to use for [id], or null to mean "use the command's own default".
+     *
+     * The two empty outcomes are not the same thing and must not be conflated. An empty *list* is a
+     * deliberate unbind — `stop-all: ""` says "I want no shortcut for this", and the client honours a
+     * present-but-empty override by leaving the command unbound. Null is a *failure*: the user asked
+     * for something Field could not read, so the line is ignored and the default stands.
+     *
+     * Returning an empty list for a rejected spec made a typo indistinguishable from an unbind, so
+     * `open-anything: cmd+k cmd+s` did not mean "Cmd+K Cmd+S is not a chord, keep Cmd+P" — it meant
+     * `open-anything` had no shortcut at all. A reported error should not also take the default away.
+     */
+    private fun specsFor(id: String, raw: Any?, problems: MutableList<String>): List<String>? {
         val candidates: List<String> = when (raw) {
             null -> emptyList()
             is String -> if (raw.isBlank()) emptyList() else listOf(raw)
@@ -375,7 +389,8 @@ bindings:
             is Number, is Boolean -> listOf(raw.toString())
             else -> {
                 problems.add("keybindings.yaml: '$id' should be a shortcut or a list of shortcuts")
-                emptyList()
+                // Unreadable, not unbound.
+                return null
             }
         }
 
@@ -391,6 +406,9 @@ bindings:
                 out.add(canonical)
             }
         }
+        // Every spec on the line was rejected, but the user did write one — keep the default rather
+        // than silently unbinding the command on top of the error we already reported.
+        if (out.isEmpty() && candidates.isNotEmpty()) return null
         return out
     }
 
