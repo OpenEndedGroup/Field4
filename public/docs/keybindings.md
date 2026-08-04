@@ -371,7 +371,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `provisional-reject-current` | *(none)* | editor | Reject All Provisional (This Editor) |
 | `send-to-preamble` | `alt+shift+p` | editor | Move code to preamble |
 | `stop-all` | `alt+down` or `alt+shift+down` | editor | Stop Box |
-| `toggle-fold-current-line` | `cmd+` | editor | Toggle Fold on Current Line |
+| `toggle-fold-current-line` | `cmd+'` | editor | Toggle Fold on Current Line |
 | `update-shader` | `alt+shift+enter` | editor | Update Shader |
 
 ### Bookmarks

@@ -150,14 +150,28 @@ def parse_entries(text: str) -> list[dict[str, str]]:
     return rows
 
 
+def unquote(value: str) -> str:
+    """Strip *matching* YAML quotes, and only those.
+
+    `strip("\"'")` is wrong here: it strips those characters from both ends regardless of pairing, so
+    a spec whose key *is* a quote character loses it — `"cmd+'"` came out as `cmd+` and the published
+    table advertised a shortcut that does not exist.
+    """
+    value = value.strip()
+    for quote in ('"', "'"):
+        if len(value) >= 2 and value[0] == quote and value[-1] == quote:
+            return value[1:-1]
+    return value
+
+
 def format_specs(value: str) -> str:
     value = value.strip()
     if value in {'""', "''", ""}:
         return "*(none)*"
     if value.startswith("["):
-        parts = [p.strip().strip("\"'") for p in value.strip("[]").split(",")]
+        parts = [unquote(p) for p in value.strip("[]").split(",")]
     else:
-        parts = [value.strip("\"'")]
+        parts = [unquote(value)]
     return " or ".join(f"`{p}`" for p in parts if p)
 
 
