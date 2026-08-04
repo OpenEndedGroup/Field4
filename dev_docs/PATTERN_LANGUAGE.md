@@ -11,9 +11,9 @@ were measured rather than assumed, and one advertised feature that turned out to
 | `PatAlgebra.kt` | how two patterns of different types meet, whose rhythm survives, and named parameters |
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
 
-Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` (83 tests), the
-`synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav` renders — see
-[PAT_GALLERY.md](PAT_GALLERY.md).
+Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` and
+`PatContractTest` (93 tests), the `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav`
+renders — see [PAT_GALLERY.md](PAT_GALLERY.md).
 
 ---
 
@@ -250,6 +250,49 @@ unchanged.
 `PatSourceSpan` bookkeeping is preserved throughout — the editor highlighting in `Marker.patHighlight`
 still points back into the pattern text, and `with(...)` adds the parameter pattern's spans to the
 event's `additionalSpans` so a highlighted event can show where its parameter came from too.
+
+---
+
+## 5b. The contract sweep
+
+The polymeter bug was not a polymeter bug so much as an instance of a *class*: an operator that
+answers cycle 0 and then stops. Nothing in the language would have caught it, because every other
+test — and the scheduler itself — only ever asks for one cycle at a time and only ever looks at the
+first.
+
+`PatContractTest` closes that class. It holds one expression per operator across all four files
+(currently 106 entries, guarded against shrinking) and asserts five properties of `PatPattern` itself:
+
+| property | what it catches |
+| --- | --- |
+| **liveness** — every pattern makes an event in each of the first six cycles | the whole "works once, then silent" family |
+| **cycle-invariance** — a pattern with no per-cycle construct repeats exactly | drift, frozen alternation, off-by-one tile arithmetic |
+| **query-range additivity** — `[0,N)` in one call equals N single-cycle calls | events lost or duplicated at a query boundary |
+| **purity** and **query-order independence** | accidental state between queries |
+| **containment and well-formedness** | events escaping the queried arc; empty or inverted arcs, at whole-cycle, sub-cycle, straddling and negative arcs |
+
+Two exemption lists keep it honest, and both are themselves asserted:
+
+- `mayBeSilent()` is exactly `{silence, mini rest, unDegradeBy}`, each with a stated reason. Adding to
+  it is the obvious way to defeat the liveness property, so the membership is pinned by an assertion.
+- `varying()` entries are exempt from cycle-invariance, and a separate test requires each of them to
+  *actually* differ across six cycles — an unearned exemption fails the build. That test immediately
+  found seven entries I had marked as varying which are in fact cycle-invariant, including `slow`,
+  `zoom` and `within`, all for the documented tile-anchoring reason.
+
+And the sweep was **checked for sensitivity** rather than assumed: reinstating the old `within` call
+in `compilePolyLayer` makes it fail with
+
+```
+patterns that fall silent (the polymeter-bug family):
+  mini polymeter:       events per cycle = [6, 0, 0, 0, 0, 0]
+  mini polymeter %:     events per cycle = [8, 0, 0, 0, 0, 0]
+  mini poly alternate:  events per cycle = [4, 0, 0, 0, 0, 0]
+```
+
+A first draft of the sweep did *not* catch it: query-range additivity holds when a bug is silent
+everywhere, because the multi-cycle query and the single-cycle queries agree on producing nothing.
+Liveness is the property that has teeth here, which is worth knowing before adding the next one.
 
 ---
 
