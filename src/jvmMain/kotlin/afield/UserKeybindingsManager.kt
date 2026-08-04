@@ -46,7 +46,12 @@ object UserKeybindingsManager {
      */
     fun watchFile(file: File?) {
         bindingsFile = file ?: defaultBindingsFile()
-        reloadNow()
+        // Same rule as a missing `~/.afield/keybindings.yaml`: if the file is not there, write it from
+        // what Field knows about its own commands. So pointing this at a fresh path is also how you
+        // get a pristine copy of the defaults out of a running Field.
+        val known = inventory
+        if (!bindingsFile.exists() && known.isNotEmpty()) applyInventory(CommandInventory(known))
+        else reloadNow()
     }
 
     /** The bindings in force right now, exactly as the clients were last told about them. */
@@ -187,7 +192,10 @@ bindings:
                 // A hand-written file is allowed to be a bare mapping with no `bindings:` wrapper
                 // (`read` accepts one), and appending indented entries to *that* would produce a file
                 // that is no longer valid YAML at all — Field breaking the user's own file.
-                append(renderEntries(missing, indent = if (hasBindingsWrapper(text)) "  " else ""))
+                //
+                // Grouped, like the rest of the file: an appended entry with no `# ── Canvas ──` over
+                // it looks like it belongs to whatever section it happens to land under.
+                append(renderGroups(missing, indent = if (hasBindingsWrapper(text)) "  " else ""))
             }
             bindingsFile.safeSave(text + addition, createBackup = false, atomic = true)
             lprintln(
@@ -203,13 +211,13 @@ bindings:
 
     // ── rendering ────────────────────────────────────────────────────────────────
 
-    private fun renderGroups(commands: List<CommandBinding>): String = buildString {
+    private fun renderGroups(commands: List<CommandBinding>, indent: String = "  "): String = buildString {
         val byGroup = commands.groupBy { it.group.ifBlank { "Other" } }
         for (group in byGroup.keys.sorted()) {
-            append("\n  # ── $group ")
+            append("\n$indent# ── $group ")
             append("─".repeat((66 - group.length).coerceAtLeast(3)))
             append("\n")
-            append(renderEntries(byGroup.getValue(group)))
+            append(renderEntries(byGroup.getValue(group), indent))
         }
     }
 

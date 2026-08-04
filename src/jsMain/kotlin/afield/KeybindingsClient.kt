@@ -228,9 +228,16 @@ object Keybindings {
     private fun bindingsFrom(action: dynamic, group: String): CommandBinding? {
         val id = (action?.id as? String)?.takeIf { it.isNotEmpty() } ?: return null
         val defaults = declaredSpecs(action.keys).mapNotNull { KeySpec.canonicalize(it) }
+        // Some palette labels describe the current selection — "Connect 'a' to 'b'", "Solo Next
+        // Layer: sketches". Those are right in the palette and wrong in `keybindings.yaml`, where the
+        // label becomes a comment that outlives the selection it was written from, so a command with
+        // a moving label declares a fixed `keyLabel` for the file to use instead.
+        val label = (action.keyLabel as? String)?.takeIf { it.isNotBlank() }
+            ?: (action.label as? String)
+            ?: id
         return CommandBinding(
             id = id,
-            label = (action.label as? String) ?: id,
+            label = label,
             detail = (action.detail as? String) ?: "",
             defaults = defaults,
             scope = KeyScope.normalize(action.keyScope as? String),
