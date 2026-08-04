@@ -35,7 +35,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     # The guard that matters. GitHub's default is 6 hours, so one hung MSVC build would spend 720
     # minutes of a 3000-minute monthly allowance at the Windows 2x rate before anyone noticed.
-    timeout-minutes: 30
+    #
+    # 45 rather than 30 because the first Windows run was cancelled at 30 while still compiling
+    # Ceres, before /MP was passed. With /MP the cold build should come in far under this; the cap is
+    # here to bound a hang, not to be the thing that decides whether a healthy build passes.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

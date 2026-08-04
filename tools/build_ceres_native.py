@@ -77,6 +77,13 @@ WRAPPER_SOURCE = REPO_ROOT / "native" / "ken-ceres"
 IS_WINDOWS = platform.system() == "Windows"
 IS_MAC = platform.system() == "Darwin"
 
+# Under a pipe (which is what CI is) Python block-buffers stdout, so progress arrives in one lump at
+# the end, or not at all if the job is cancelled first.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+except (AttributeError, ValueError):
+    pass
+
 
 def library_name() -> str:
     """What the loader looks for. Mirrors CeresNativeLibrary.defaultPath on the JVM side."""
@@ -142,11 +149,16 @@ def parallel_jobs(requested: int | None = None) -> int:
 
 
 def run(command: list[str], what: str) -> None:
+    """Run a build step, streaming its output.
+
+    Deliberately not capture_output: a Ceres build takes minutes, and a step that prints nothing
+    until it finishes is indistinguishable from a hung one. Worse, when CI cancels the job on
+    timeout, captured output dies with the process — the first Windows run of this script produced a
+    completely empty log for exactly that reason, so there was nothing to diagnose.
+    """
     print(f"  $ {' '.join(str(c) for c in command)}", flush=True)
-    result = subprocess.run([str(c) for c in command], capture_output=True, text=True)
+    result = subprocess.run([str(c) for c in command])
     if result.returncode != 0:
-        sys.stderr.write(result.stdout)
-        sys.stderr.write(result.stderr)
         raise SystemExit(f"error: {what} failed with exit code {result.returncode}")
 
 
@@ -323,7 +335,11 @@ def main() -> int:
     }
     ceres_defines.update(msvc_runtime_defines())
     if IS_WINDOWS:
-        ceres_defines["CMAKE_CXX_FLAGS"] = "/bigobj"
+        # /MP{n} is what actually parallelises this build. `cmake --build --parallel` maps to
+        # MSBuild's /m, which parallelises across *projects*, and Ceres is a single project of ~100
+        # translation units — so without /MP the whole thing compiles one file at a time and blows
+        # past any sane CI timeout. Bounded by the same memory budget as the job count.
+        ceres_defines["CMAKE_CXX_FLAGS"] = f"/bigobj /MP{jobs}"
     cmake_configure(ceres_source, WORK / "ceres-build", ceres_defines, "configuring Ceres")
     cmake_build(WORK / "ceres-build", "building Ceres", jobs)
     install = ["cmake", "--install", str(WORK / "ceres-build")]
@@ -345,7 +361,7 @@ def main() -> int:
     )
     wrapper_defines = {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_FLAGS": ("/bigobj " if IS_WINDOWS else "") + f"-DMAX_LOG_LEVEL={LOG_LEVEL}",
+        "CMAKE_CXX_FLAGS": (f"/bigobj /MP{jobs} " if IS_WINDOWS else "") + f"-DMAX_LOG_LEVEL={LOG_LEVEL}",
         "KEN_CERES_SYSTEM_CERES": "OFF",
         "KEN_CERES_STATIC_LIB": str(static_ceres),
         "KEN_CERES_INCLUDE_DIRS": include_dirs,
