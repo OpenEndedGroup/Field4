@@ -11,6 +11,7 @@ import handleCustomizationRequest
 import handleEvalRequest
 import handleOutputAreaRequest
 import handleOutputAreaControl
+import clearOutputAreaContents
 import teardownBoxOutputs
 import kotlinext.js.asJsObject
 import kotlinx.browser.document
@@ -4801,6 +4802,10 @@ suspend fun main() {
         findBoxElementByUid(uid)?.let { box ->
             handleOutputAreaControl(box, OutputControl(uid = uid, action = "clear-all"))
         }
+        Unit
+    }
+    window.asDynamic().clearOutputAreaContentsForBox = { uid: String ->
+        findBoxElementByUid(uid)?.let(::clearOutputAreaContents)
         Unit
     }
 

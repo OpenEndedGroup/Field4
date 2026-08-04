@@ -783,6 +783,32 @@ fun handleOutputAreaControl(box: HTMLElement, control: OutputControl) {
 }
 
 /**
+ * Empty each ordinary output channel without removing its disclosure shell.
+ *
+ * Frame-synchronous docs capture measures an already-open output disclosure, then
+ * relaunches the box from a clean presentation boundary. Removing the disclosure
+ * here would make the next generic `set-output` recreate it closed, leaving the
+ * previously measured movie clip full of background. Keeping the shell preserves
+ * its open state and measured geometry while ensuring that no stale frame content
+ * leaks into the relaunched capture.
+ */
+fun clearOutputAreaContents(box: HTMLElement) {
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement ?: return
+    val contain = outputArea.querySelector(".disclosure-group") ?: return
+    val di = js("window.disclosureInterface")
+    if (di == null || di == undefined) return
+    val inter = di(contain)
+    val ids = contain.querySelectorAll(".disclosure").asList().mapNotNull {
+        it.asDynamic().__disclosureId as? String
+    }
+    ids.forEach { id ->
+        if (id != "nested") {
+            (inter.setContent as (String, String) -> Unit).invoke(id, "")
+        }
+    }
+}
+
+/**
  * Tear down every output-area disclosure owned by [box]: disconnects its
  * ResizeObserver/MutationObserver, disposes any embedded Monaco editor, removes
  * the wrap (including any output iframe and the render loop running inside it),

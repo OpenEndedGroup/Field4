@@ -3,6 +3,7 @@ package afield
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class AnimationClockTest {
@@ -45,5 +46,45 @@ class AnimationClockTest {
         } finally {
             AnimationClock.endFrameIndexed(token)
         }
+    }
+
+    @Test
+    fun videoOutputCaptureAcceptsVisibleDecodedContent() {
+        assertNull(
+            videoOutputCaptureProblem(
+                VideoOutputCaptureState(
+                    boxFound = true,
+                    outputAreaFound = true,
+                    disclosureCount = 1,
+                    openDisclosureCount = 1,
+                    nonEmptyContentCount = 1,
+                    imageCount = 1,
+                    failedImageCount = 0,
+                )
+            )
+        )
+    }
+
+    @Test
+    fun videoOutputCaptureExplainsMissingOrInvisibleContent() {
+        val valid = VideoOutputCaptureState(
+            boxFound = true,
+            outputAreaFound = true,
+            disclosureCount = 1,
+            openDisclosureCount = 1,
+            nonEmptyContentCount = 1,
+            imageCount = 1,
+            failedImageCount = 0,
+        )
+
+        assertEquals("the box is absent from the page", videoOutputCaptureProblem(valid.copy(boxFound = false)))
+        assertEquals("the box has no output area", videoOutputCaptureProblem(valid.copy(outputAreaFound = false)))
+        assertEquals("the output area has no disclosures", videoOutputCaptureProblem(valid.copy(disclosureCount = 0)))
+        assertEquals("every output disclosure is closed", videoOutputCaptureProblem(valid.copy(openDisclosureCount = 0)))
+        assertEquals("every open output disclosure is empty", videoOutputCaptureProblem(valid.copy(nonEmptyContentCount = 0)))
+        assertEquals(
+            "1 of 1 output images failed to decode",
+            videoOutputCaptureProblem(valid.copy(failedImageCount = 1))
+        )
     }
 }

@@ -1,6 +1,7 @@
 package afield
 
 import afield.logger.lprintln
+import afield.stdlib._fieldProbe
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.Clip
 import com.microsoft.playwright.options.ScreenshotType
@@ -1170,6 +1171,7 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
                 clip = clip,
                 durationSec = request.durationSec,
                 fps = request.fps,
+                visibleOutputUid = request.uid.takeIf { request.openOutputs && !request.editorOnly },
                 prepare = videoCapturePreparation(
                     info = info,
                     page = page,
@@ -1258,6 +1260,7 @@ suspend fun captureBoxVideo(info: SessionInformation, request: AgentBoxVideo): A
                 clip = clip,
                 durationSec = request.durationSec,
                 fps = request.fps,
+                visibleOutputUid = request.uid.takeIf { request.openOutputs },
                 prepare = videoCapturePreparation(
                     info = info,
                     page = page,
@@ -1341,11 +1344,128 @@ private data class FrameCaptureGate(
 internal fun videoFrameCount(durationSec: Double, fps: Int): Int =
     maxOf(1, kotlin.math.ceil(durationSec * fps.coerceAtLeast(1)).toInt())
 
+internal data class VideoOutputCaptureState(
+    val boxFound: Boolean,
+    val outputAreaFound: Boolean,
+    val disclosureCount: Int,
+    val openDisclosureCount: Int,
+    val nonEmptyContentCount: Int,
+    val imageCount: Int,
+    val failedImageCount: Int,
+)
+
+internal fun videoOutputCaptureProblem(state: VideoOutputCaptureState): String? = when {
+    !state.boxFound -> "the box is absent from the page"
+    !state.outputAreaFound -> "the box has no output area"
+    state.disclosureCount == 0 -> "the output area has no disclosures"
+    state.openDisclosureCount == 0 -> "every output disclosure is closed"
+    state.nonEmptyContentCount == 0 -> "every open output disclosure is empty"
+    state.failedImageCount > 0 -> "${state.failedImageCount} of ${state.imageCount} output images failed to decode"
+    else -> null
+}
+
+private fun videoOutputCaptureState(raw: Any?): VideoOutputCaptureState {
+    val map = raw as? Map<*, *>
+        ?: throw IllegalStateException("Browser returned no output-capture state")
+    return VideoOutputCaptureState(
+        boxFound = map["boxFound"] as? Boolean ?: false,
+        outputAreaFound = map["outputAreaFound"] as? Boolean ?: false,
+        disclosureCount = (map["disclosureCount"] as? Number)?.toInt() ?: 0,
+        openDisclosureCount = (map["openDisclosureCount"] as? Number)?.toInt() ?: 0,
+        nonEmptyContentCount = (map["nonEmptyContentCount"] as? Number)?.toInt() ?: 0,
+        imageCount = (map["imageCount"] as? Number)?.toInt() ?: 0,
+        failedImageCount = (map["failedImageCount"] as? Number)?.toInt() ?: 0,
+    )
+}
+
+private fun visibleVideoOutputReady(page: Page, uid: String): Boolean {
+    val raw = page.evaluate(
+        """async uid => {
+            const boxes = Array.from(document.getElementsByClassName('box'));
+            const box = boxes.find(candidate => candidate.uid === uid);
+            if (!box) return {
+                boxFound: false, outputAreaFound: false, disclosureCount: 0,
+                openDisclosureCount: 0, nonEmptyContentCount: 0,
+                imageCount: 0, failedImageCount: 0
+            };
+            const outputArea = box.querySelector('.outputArea');
+            if (!outputArea) return {
+                boxFound: true, outputAreaFound: false, disclosureCount: 0,
+                openDisclosureCount: 0, nonEmptyContentCount: 0,
+                imageCount: 0, failedImageCount: 0
+            };
+            const disclosures = Array.from(outputArea.querySelectorAll('.disclosure'))
+                .filter(disclosure => disclosure.__disclosureId !== 'nested');
+            const visibleContent = disclosures
+                .map(disclosure => disclosure.querySelector('.disclosure-content'))
+                .filter(content => {
+                    if (!content) return false;
+                    const style = getComputedStyle(content);
+                    const rect = content.getBoundingClientRect();
+                    return style.display !== 'none' && style.visibility !== 'hidden' &&
+                        Number(style.opacity || 1) > 0 && rect.width > 0 && rect.height > 0;
+                });
+            const images = visibleContent.flatMap(content => Array.from(content.querySelectorAll('img')));
+            let failedImageCount = 0;
+            await Promise.all(images.map(async image => {
+                try {
+                    if (typeof image.decode === 'function') {
+                        await image.decode();
+                    } else if (!image.complete) {
+                        await new Promise((resolve, reject) => {
+                            image.addEventListener('load', resolve, { once: true });
+                            image.addEventListener('error', reject, { once: true });
+                        });
+                    }
+                    if (!image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+                        throw new Error('image has no decoded dimensions');
+                    }
+                } catch (_) {
+                    failedImageCount += 1;
+                }
+            }));
+            const nonEmptyContentCount = visibleContent.filter(content =>
+                content.childElementCount > 0 || (content.textContent || '').trim().length > 0
+            ).length;
+            return {
+                boxFound: true,
+                outputAreaFound: true,
+                disclosureCount: disclosures.length,
+                openDisclosureCount: visibleContent.length,
+                nonEmptyContentCount,
+                imageCount: images.length,
+                failedImageCount
+            };
+        }""".trimIndent(),
+        uid
+    )
+    val state = videoOutputCaptureState(raw)
+    val problem = videoOutputCaptureProblem(state) ?: return true
+
+    // Some renderers enqueue their first display result only after a later GPU/runloop boundary.
+    // An open, empty disclosure is therefore a valid short lead-in; the recorder still takes that
+    // frame and advances virtual time, then requires visible content somewhere in the completed
+    // clip. Missing/closed output is structural and fails immediately.
+    val awaitingFirstContent = state.boxFound && state.outputAreaFound &&
+        state.disclosureCount > 0 && state.openDisclosureCount > 0 &&
+        state.nonEmptyContentCount == 0 && state.failedImageCount == 0
+    if (awaitingFirstContent) return false
+
+    throw IllegalStateException(
+        "Frame-synchronous capture expected visible output for box $uid, but $problem " +
+            "(disclosures=${state.disclosureCount}, open=${state.openDisclosureCount}, " +
+            "nonEmpty=${state.nonEmptyContentCount}, images=${state.imageCount}, " +
+            "failedImages=${state.failedImageCount})"
+    )
+}
+
 private suspend fun clearVideoPresentation(
     info: SessionInformation,
     page: Page,
     uid: String?,
+    clearOutputContents: Boolean = true,
 ) {
+    uid?.let(info.boxes::get)?._fieldProbe?.resetFrameSynchronousCapture()
     withContext(playwrightDispatcher) {
         // A launch can enter its first frame after sending println/marker output but before the
         // browser has handled that websocket message. Clear only after all pre-boundary output
@@ -1355,15 +1475,21 @@ private suspend fun clearVideoPresentation(
             while (!info.outputsDelivered()) delay(1)
         }
         page.evaluate(
-            """uid => {
+            """request => {
+                const uid = request.uid;
                 const clear = window.clearEditorOutputsForBox;
                 if (uid && typeof clear === 'function') clear(uid);
-                const clearDisplays = window.clearOutputAreasForBox;
-                if (uid && typeof clearDisplays === 'function') clearDisplays(uid);
+                if (request.clearOutputContents) {
+                    const clearDisplays = window.clearOutputAreaContentsForBox;
+                    if (uid && typeof clearDisplays !== 'function') {
+                        throw new Error('clearOutputAreaContentsForBox is unavailable');
+                    }
+                    if (uid) clearDisplays(uid);
+                }
                 const refreshMarkers = window.refreshMarkerDecorations;
                 if (typeof refreshMarkers === 'function') refreshMarkers();
             }""".trimIndent(),
-            uid
+            mapOf("uid" to uid, "clearOutputContents" to clearOutputContents)
         )
         page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
     }
@@ -1441,7 +1567,7 @@ private fun videoCapturePreparation(
                 // at the exact first active runloop boundary: the old launch can no longer publish,
                 // and the new launch has not yet accumulated a machine-speed-dependent history.
                 target.markers.clear()
-                clearVideoPresentation(info, page, uid)
+                clearVideoPresentation(info, page, uid, clearOutputContents = false)
             }
         )
     }
@@ -1607,6 +1733,7 @@ private suspend fun recordFrameSynchronousToMp4(
     clip: Rect?,
     durationSec: Double,
     fps: Int,
+    visibleOutputUid: String? = null,
     prepare: suspend () -> FrameCaptureGate,
 ): ScreencastResult {
     val frames = mutableListOf<ByteArray>()
@@ -1616,6 +1743,7 @@ private suspend fun recordFrameSynchronousToMp4(
     val completed = CompletableDeferred<Unit>()
     val gate = AtomicReference(FrameCaptureGate(ready = { false }))
     var resetAtFirstBoundary = false
+    var visibleOutputSeen = visibleOutputUid == null
     val hookName = "docs-video-${UUID.randomUUID()}"
     val readyDeadline = AtomicReference(Long.MAX_VALUE)
     val clockToken = AnimationClock.beginFrameIndexed(safeFps)
@@ -1666,6 +1794,9 @@ private suspend fun recordFrameSynchronousToMp4(
                         withTimeout(10_000) {
                             while (!info.outputsDelivered()) delay(1)
                         }
+                        if (visibleOutputUid != null && visibleVideoOutputReady(page, visibleOutputUid)) {
+                            visibleOutputSeen = true
+                        }
                         // Let websocket output and layout reach a painted browser frame while
                         // Field itself remains parked at this exact runloop boundary.
                         page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
@@ -1685,7 +1816,17 @@ private suspend fun recordFrameSynchronousToMp4(
             }
             yield(Unit)
         }
-        if (!completed.isCompleted) completed.complete(Unit)
+        if (!completed.isCompleted) {
+            if (!visibleOutputSeen) {
+                completed.completeExceptionally(
+                    IllegalStateException(
+                        "Frame-synchronous capture completed without visible output from box $visibleOutputUid"
+                    )
+                )
+            } else {
+                completed.complete(Unit)
+            }
+        }
     }
 
     try {

@@ -257,7 +257,7 @@ data class FieldProbeSnapshot(
         }
 
         val detailHtml = when (dimensions) {
-            PROBE_TYPE_SCALAR -> scalarValues()?.let { values ->
+            PROBE_TYPE_SCALAR -> scalarValues()?.sorted()?.let { values ->
                 val stats = requireNotNull(scalarSummary())
                 val box = SummaryStatsBox(
                     values = values,
@@ -268,7 +268,7 @@ data class FieldProbeSnapshot(
                     droppedNonFinite = nanCount + infCount,
                     droppedByCapacity = max(acceptedCount - sampleCount.toLong(), 0L)
                 )
-                val previousBox = previous?.scalarValues()?.let { previousValues ->
+                val previousBox = previous?.scalarValues()?.sorted()?.let { previousValues ->
                     SummaryStatsBox(
                         values = previousValues,
                         stats = requireNotNull(previous.scalarSummary()),
@@ -627,6 +627,27 @@ class ShaderFieldProbe(
         displayGeneration += 1L
     }
 
+    /**
+     * Establish a clean display/readback generation at an offline movie boundary.
+     *
+     * Compute readbacks finish asynchronously. Without a generation boundary, a snapshot queued
+     * before frame-indexed capture can arrive after the output card is cleared and become movie
+     * frame zero. Its value then depends on how many live renderer frames happened during setup.
+     * Keep the configured display/callback registrations, but invalidate queued work and make the
+     * next completed capture-frame readback authoritative.
+     */
+    internal fun resetFrameSynchronousCapture() {
+        pendingPerImage.fill(false)
+        latestSnapshot = null
+        previousDisplayedSnapshot = null
+        lastDisplayDispatchNanos = 0L
+        lastSnapshotReadNanos = 0L
+        hasDisplayDispatch = false
+        hasSnapshotRead = false
+        pendingDisplayWork.set(null)
+        displayGeneration += 1L
+    }
+
     internal fun requireContinuousSnapshotReads() {
         continuousSnapshotReads = true
     }
@@ -638,7 +659,8 @@ class ShaderFieldProbe(
         return !hasSnapshotRead || now < lastSnapshotReadNanos || now - lastSnapshotReadNanos >= minIntervalNanos
     }
 
-    private fun dispatchSnapshot(snapshot: FieldProbeSnapshot) {
+    private fun dispatchSnapshot(snapshot: FieldProbeSnapshot, generation: Long = displayGeneration) {
+        if (generation != displayGeneration) return
         displayChannel?.takeIf { snapshot.sampleCount > 0 }?.let { channel ->
             val now = (AnimationClock.nowSeconds() * 1_000_000_000.0).toLong()
             val minIntervalNanos = if (maxDisplayHz > 0.0) (1_000_000_000.0 / maxDisplayHz).toLong() else 0L
@@ -647,7 +669,7 @@ class ShaderFieldProbe(
             ) {
                 lastDisplayDispatchNanos = now
                 hasDisplayDispatch = true
-                enqueueDisplay(DisplayWork(channel, snapshot, displayGeneration))
+                enqueueDisplay(DisplayWork(channel, snapshot, generation))
             }
         }
 
@@ -662,38 +684,46 @@ class ShaderFieldProbe(
     }
 
     private fun enqueueDisplay(work: DisplayWork) {
+        if (AnimationClock.isFrameIndexed()) {
+            renderDisplayWork(work)
+            return
+        }
         pendingDisplayWork.set(work)
         if (displayWorkerScheduled.compareAndSet(false, true)) {
             fieldProbeDisplayExecutor.execute(::drainDisplayWork)
         }
     }
 
+    private fun renderDisplayWork(work: DisplayWork) {
+        if (work.generation != displayGeneration) return
+
+        val previous = previousDisplayedSnapshot
+        val html = runCatching {
+            work.snapshot.summaryHtml(previous = previous)
+        }.onFailure {
+            lprintln(
+                "error,graphics",
+                "field probe statistics failed for '${box.name}' (${box.id}): ${it.message}"
+            )
+        }.getOrNull() ?: return
+
+        if (work.generation != displayGeneration) return
+        runCatching {
+            box.display(work.channel, html)
+        }.onFailure {
+            lprintln(
+                "error,graphics",
+                "field probe display callback failed for '${box.name}' (${box.id}): ${it.message}"
+            )
+        }
+        previousDisplayedSnapshot = work.snapshot
+    }
+
     private fun drainDisplayWork() {
         try {
             while (true) {
                 val work = pendingDisplayWork.getAndSet(null) ?: break
-                if (work.generation != displayGeneration) continue
-
-                val previous = previousDisplayedSnapshot
-                val html = runCatching {
-                    work.snapshot.summaryHtml(previous = previous)
-                }.onFailure {
-                    lprintln(
-                        "error,graphics",
-                        "field probe statistics failed for '${box.name}' (${box.id}): ${it.message}"
-                    )
-                }.getOrNull() ?: continue
-
-                if (work.generation != displayGeneration) continue
-                runCatching {
-                    box.display(work.channel, html)
-                }.onFailure {
-                    lprintln(
-                        "error,graphics",
-                        "field probe display callback failed for '${box.name}' (${box.id}): ${it.message}"
-                    )
-                }
-                previousDisplayedSnapshot = work.snapshot
+                renderDisplayWork(work)
             }
         } finally {
             displayWorkerScheduled.set(false)
@@ -892,20 +922,30 @@ class ShaderFieldProbe(
         lastSnapshotReadNanos = now
         hasSnapshotRead = true
 
+        val generation = displayGeneration
         renderer.afterCurrentComputeFrameSubmitted { fence ->
-            fieldProbeReadbackExecutor.submit {
+            val readback = Runnable {
                 runCatching {
                     fence.fenceWait()
                     val snapshot = readSnapshot(renderer, imageIndex)
-                    latestSnapshot = snapshot
-                    dispatchSnapshot(snapshot)
+                    if (generation == displayGeneration) {
+                        latestSnapshot = snapshot
+                        dispatchSnapshot(snapshot, generation)
+                    }
                 }.onFailure {
                     lprintln(
                         "error,graphics",
                         "field probe readback failed for '${box.name}' (${box.id}): ${it.message}"
                     )
                 }
-            }.also { computeReadbacks[imageIndex] = it }
+            }
+            if (AnimationClock.isFrameIndexed()) {
+                readback.run()
+                computeReadbacks[imageIndex] = null
+                null
+            } else {
+                fieldProbeReadbackExecutor.submit(readback).also { computeReadbacks[imageIndex] = it }
+            }
         }
     }
 
