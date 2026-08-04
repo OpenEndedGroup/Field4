@@ -1,0 +1,83 @@
+# Cross-platform conformance for the Ceres wrapper's C ABI.
+#
+# Deliberately thin: every decision lives in tools/ci_ceres_abi.py, which runs identically on a
+# developer's machine, in a container, and here. A bug in a `run:` block costs a push and a fresh
+# runner to find; a bug in the script is found locally for free.
+#
+# This does not build Field. `./gradlew smokeCeres` is the richer test and needs jvmMain's runtime
+# classpath — ~470k lines of Kotlin against a snapshot compiler fork, plus the 190 MB LFS blob that
+# fork ships in. What actually varies by platform is the native build and the ABI, so that is what
+# runs here, in minutes instead of tens of minutes, and inside the org's included Actions allowance
+# rather than over it.
+#
+# macOS is absent on purpose: it bills at 10x a Linux minute, and it is the one platform that is
+# developed and verified locally on every change anyway.
+
+name: ceres-abi
+
+on:
+  push:
+    branches: ['ci/**']
+  workflow_dispatch:
+
+# A re-push supersedes the run it replaces instead of racing it. Windows minutes bill at 2x, so a
+# stack of abandoned runs is the expensive kind of mistake.
+concurrency:
+  group: ceres-abi-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    # The guard that matters. GitHub's default is 6 hours, so one hung MSVC build would spend 720
+    # minutes of a 3000-minute monthly allowance at the Windows 2x rate before anyone noticed.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      # lfs defaults to false, which is what we want and worth being explicit about: the repo's LFS
+      # content is a 190 MB compiler jar that nothing here touches, and LFS bandwidth is metered.
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      # 22 is the floor — that is where java.lang.foreign stopped being a preview API. 25 matches the
+      # toolchain the Gradle build pins.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      # Guarantees a `python` on PATH with the same name on both runners; ubuntu-latest ships python3
+      # and windows-latest ships python, and hardcoding either one breaks the other.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The pinned Ceres build is the expensive part and its inputs are fixed, so it should be paid
+      # for once per platform rather than once per push. The key covers the version pins and the two
+      # files that decide how Ceres is configured, so a change to either invalidates it.
+      - uses: actions/cache@v4
+        with:
+          path: build/ceres-dist
+          key: ceres-dist-${{ matrix.os }}-${{ hashFiles('tools/build_ceres_native.py', 'native/ken-ceres/CMakeLists.txt') }}
+
+      - name: Build the wrapper and run ABI conformance
+        run: python tools/ci_ceres_abi.py
+
+      # Uploaded on failure too: a Windows DLL that fails the self-containment check is much easier to
+      # diagnose by pulling it down with `gh run download` than by adding print statements and pushing.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ken-ceres-jvm-${{ matrix.os }}
+          path: build/ken-ceres-redistributable/*
+          retention-days: 3
+          if-no-files-found: warn

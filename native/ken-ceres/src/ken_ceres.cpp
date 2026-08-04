@@ -2,6 +2,7 @@
 // Integrated 3D constraint solver for Emscripten/Ceres
 // - See exported C API at bottom.
 
+#include "ken_ceres_export.h"
 #include <ceres/ceres.h>
 #if defined(KEN_CERES_HAVE_GLOG)
 #include <glog/logging.h>
@@ -3662,7 +3663,7 @@ extern "C"
 #endif
     }
 
-    const char *ken_ceres_jvm_abi_version()
+    KEN_CERES_API const char *ken_ceres_jvm_abi_version()
     {
         // v2 added ken_ceres_solver_solve2 (solver options + summary), ken_ceres_solver_last_error,
         // and the SET_LOSS / EDGE_TANGENCY / TANGENCY_CENTROID / CENTROID / RADIUS_ABOUT_CENTROID
@@ -3681,7 +3682,7 @@ extern "C"
 
     // Empty when the whole program parsed. Non-empty means residuals are MISSING from the problem
     // and any solve is of a different, smaller problem than the caller asked for.
-    const char *ken_ceres_solver_last_error(void *handle)
+    KEN_CERES_API const char *ken_ceres_solver_last_error(void *handle)
     {
         auto *ctx = static_cast<SolverContext *>(handle);
         return (ctx && !ctx->build_error.empty()) ? ctx->build_error.c_str() : "";
@@ -3689,7 +3690,7 @@ extern "C"
 
     // The free variables, flattened in declaration order. Returns the total component count whatever
     // `cap` is, so a caller can size a buffer with (nullptr, 0) and then fill it.
-    int ken_ceres_solver_variables(void *handle, double *out, int cap)
+    KEN_CERES_API int ken_ceres_solver_variables(void *handle, double *out, int cap)
     {
         auto *ctx = static_cast<SolverContext *>(handle);
         if (!ctx)
@@ -3711,7 +3712,7 @@ extern "C"
         return total;
     }
 
-    void *ken_ceres_solver_create(const double *points_in, int num_points,
+    KEN_CERES_API void *ken_ceres_solver_create(const double *points_in, int num_points,
                                   const double *program, int program_len,
                                   uint32_t constraints_hash)
     {
@@ -3725,12 +3726,12 @@ extern "C"
         return ctx;
     }
 
-    void ken_ceres_solver_destroy(void *handle)
+    KEN_CERES_API void ken_ceres_solver_destroy(void *handle)
     {
         delete static_cast<SolverContext *>(handle);
     }
 
-    int ken_ceres_solver_solve(void *handle,
+    KEN_CERES_API int ken_ceres_solver_solve(void *handle,
                                const double *points_in, int num_points,
                                int max_iters,
                                const double *prior_w_xyz,
@@ -3764,7 +3765,7 @@ extern "C"
     //   [7] minimizer_progress_to_stdout (0/1)
     //
     // summary_out is a flat array of at most 12 slots; see the writer in solve_with_context.
-    int ken_ceres_solver_solve2(void *handle,
+    KEN_CERES_API int ken_ceres_solver_solve2(void *handle,
                                 const double *points_in, int num_points,
                                 const double *options, int options_len,
                                 const double *prior_w_xyz,
@@ -3799,7 +3800,7 @@ extern "C"
     }
 
     // Basic: no dynamic prior weights, no metrics
-    int solve_constraints(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints(const double *points_in, int num_points,
                           const double *program, int program_len,
                           uint32_t constraints_hash, int max_iters,
                           double *points_out)
@@ -3842,7 +3843,7 @@ extern "C"
     }
 
     // Extended: dynamic per-axis prior weights (length 3*N array or null)
-    int solve_constraints_ex(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints_ex(const double *points_in, int num_points,
                              const double *program, int program_len,
                              uint32_t constraints_hash, int max_iters,
                              const double *prior_w_xyz, // nullable, len = 3*N
@@ -3897,7 +3898,7 @@ extern "C"
     }
 
     // Metrics variant: returns total and per-group costs
-    int solve_constraints_metrics(const double *points_in, int num_points,
+    KEN_CERES_API int solve_constraints_metrics(const double *points_in, int num_points,
                                   const double *program, int program_len,
                                   uint32_t constraints_hash, int max_iters,
                                   const double *prior_w_xyz, // nullable
