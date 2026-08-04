@@ -157,10 +157,13 @@ The invariants are now pinned by `src/jvmTest/kotlin/afield/graphics/`:
 
 Added 2026-08-04, closing three gaps this list had:
 
-* `ViewerJavaScript` + `ViewerJavaScriptRegionTest` + `ThreeJsViewerTessellationParityTest` — the
-  viewer's *JavaScript*, executed on GraalJS and compared triangle for triangle against
-  `PlanarTessellation`, with four counterfactuals that prove it goes red. See "Guarding the seam by
-  running the JavaScript" below.
+* `ViewerJavaScript` + `ViewerJavaScriptRegionTest` + `ThreeJsViewerTessellationParityTest` +
+  `ThreeJsViewerCubicSamplingParityTest` — the viewer's *JavaScript*, executed on GraalJS and compared
+  against `PlanarTessellation` and `FLine.uniform_linearize_cubic`, with five counterfactuals that
+  prove it goes red. See "Guarding the seam by running the JavaScript" below.
+* `PlanarTessellationParentCycleTest` — two overlapping rings of equal area, which used to hang the
+  nesting depth walk in both implementations.
+* `ThreeJsViewerIframeSourceTest` — an apostrophe in a viewer name, which used to blank the pane.
 * `CoplanarityToleranceTest` — `Coplanarity`'s two tolerances, which had no tests, on both
   implementations; and the non-transitivity of `sineOfAngle`, measured.
 * `FloatEarcutOuterRingTest` — what actually decides which ring is the outer one, which five places in
@@ -359,6 +362,20 @@ and the extractor **throws if a sentinel is missing**, so deleting the markers t
 rather than vacuous. Two rules keep a region liftable, both asserted by `ViewerJavaScriptRegionTest`
 rather than requested: no DOM, and no `THREE` beyond `Vector2` and `ShapeUtils.triangulateShape`.
 
+There are two marked regions, and the second one is the evidence that the generality earned its keep.
+`ViewerJavaScript.KNOWN_REGIONS` is the inventory; `ViewerJavaScriptRegionTest` iterates it, so a third
+region is found, unique, liftable and evaluable without anyone writing those four tests again.
+
+| region | duplicates | pinned by |
+|---|---|---|
+| `planar-tessellation` | `PlanarTessellation` — clustering, frame, hemisphere, nesting | `ThreeJsViewerTessellationParityTest` |
+| `cubic-sampling` | `FLine.uniform_linearize_cubic` — the cubic editable mode re-samples client-side | `ThreeJsViewerCubicSamplingParityTest` |
+
+The cubic pair are also the one place the two sides **deliberately disagree**: `EDGE_SAMPLES` is 24 and
+`Box.threeLines`'s `samplesPerCubic` default is 48, and nobody passes either, so a curved stroke is
+drawn at half the resolution with `editable = true`. That is characterised, with its measured
+consequence, rather than changed. Adding that region cost two comments in the HTML and one test file.
+
 `ThreeJsViewerTessellationParityTest` then runs ~60 ring sets — every case that ever bit, each also
 rigidly rotated three ways — through both implementations and compares them **triangle for triangle**.
 
@@ -387,9 +404,27 @@ on the shipped source:
 | one hemisphere for the whole plane | defect 3 above |
 | both tolerances to `Infinity` | the pre-`f531b1804` single plane — and this one must *equal* `Coplanarity.SINGLE_PLANE`, not merely differ from the default |
 
-There is also a real browser before/after pair in
-[`agents/artifacts/tessellate_facing/multi_plane_fill_demo/`](agents/artifacts/tessellate_facing/multi_plane_fill_demo/README.md),
-which remains the only thing that shows the *pixels*.
+### And the pixels, which found two more defects
+
+A differential is a statement about numbers. `dev_docs/agents/artifacts/threejs_js_harness/` is the
+statement about pixels: a replayable four-box transcript
+(`agents/transcripts/docs_capture/threejs_editable_fill_pixels.yaml`, run at
+`applied=9 skipped=0 errors=0`) showing the client's own triangulation of the three-plane holed line
+next to the server's — same picture, same `24 tri` — plus the overlapping pair that used to hang, and a
+curved petal pair drawn through the client's own cubic sampler. There is also the earlier before/after
+pair in
+[`agents/artifacts/tessellate_facing/multi_plane_fill_demo/`](agents/artifacts/tessellate_facing/multi_plane_fill_demo/README.md).
+
+Making those captures is what found the second defect on this branch. Two of three panes were
+permanently blank and the third was fine, and the only difference between them was an **apostrophe in a
+display name**: `Box.threeLines(name = …)` put the view uid into a *single-quoted* `src` attribute
+unescaped, so `name = "the client's own triangulation"` closed the attribute at the apostrophe, the
+iframe loaded with no `uid`, and the viewer sat on `waiting for data…` forever with nothing in the
+console, the server log, or the box output. Percent-encoded now (`threeViewerIframeSource`,
+`ThreeJsViewerIframeSourceTest`), and the transcript keeps the apostrophe deliberately.
+
+Both defects — that one and the depth-walk hang — were in code that had already been reviewed,
+documented, and declared guarded. That is the argument for a test that runs the thing, in one sentence.
 
 That count found a second thing on the way: `meta.triangles` for editable mode was itself a fan
 estimate, `boundaryPoints - 2` per subpath, so the viewer's own HUD said `12 tri` for a line that the
