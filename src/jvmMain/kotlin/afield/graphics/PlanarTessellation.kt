@@ -49,9 +49,13 @@ data class Coplanarity(
  * Rings in, triangles out, where a triangle is three references back into the rings that were handed
  * in — so a caller can map them onto whatever its own vertices happen to be: packed `xyz` floats
  * (`FLine.tessellate`), or indices into a `Realization3` (`EarcutFaceTriangulator`). Field had two
- * implementations of this before; the reason for having one is not tidiness, it is that the two
- * disagreed about the handedness of the projected frame, and one of the two conventions *cannot*
- * carry holes. See the "convention note" in `dev_docs/fline_fill_orientation.md`.
+ * implementations of this before, and they disagreed about the handedness of the projected frame: one
+ * projected a y-dominant face onto the mirror of the right-handed pair and flipped every returned
+ * triangle back afterwards. That composition is correct, holes included — the claim that a mirrored
+ * frame inverts [FloatEarcut]'s outer-versus-hole decision was wrong, and `FloatEarcutOuterRingTest`
+ * measures why. The reason for having one implementation is that a convention needing every caller to
+ * remember a compensating flip is a convention callers get wrong. See the "convention note" in
+ * `dev_docs/fline_fill_orientation.md`.
  *
  * The work, in order:
  *
@@ -69,8 +73,11 @@ data class Coplanarity(
  * [FloatEarcut] **normalises the winding of every ring it is handed** (`FloatEarcut.kt:705` walks the
  * ring forwards or backwards depending on the sign of its signed area), so the facing of every
  * triangle that comes back is decided by the projected frame and never by the winding the caller
- * authored. That makes "which two coordinates do I keep?" a statement about the surface normal, not
- * an implementation detail. Two properties make the frame agree with the polygon:
+ * authored. Which ring is the *outer* one is decided earlier, and separately, by **array position**
+ * (`FloatEarcut.kt:19`, `:21`, `:484`) — the winding never enters that. So the frame is the whole of
+ * the facing question and none of the nesting question. That makes "which two coordinates do I keep?"
+ * a statement about the surface normal, not an implementation detail. Two properties make the frame
+ * agree with the polygon:
  *
  *  * the kept pair is the right-handed cycle about the dropped axis: `x -> (y, z)`, `y -> (z, x)`,
  *    `z -> (x, y)`. `(x, z)` for a y-dominant face is the mirror of that, and mirrors the facing of
@@ -369,6 +376,7 @@ object PlanarTessellation {
         val parent = IntArray(infos.size) { -1 }
         for (i in infos.indices) {
             val test = infos[i].points[0]
+            val own = abs(infos[i].area)
             var best = -1
             var bestArea = Float.POSITIVE_INFINITY
             for (j in infos.indices) {
@@ -379,6 +387,18 @@ object PlanarTessellation {
                 if (x < b.minX || x > b.maxX || y < b.minY || y > b.maxY) continue
                 if (!pointInPolygon(b.points, test)) continue
                 val area = abs(b.area)
+                // A container is *strictly* larger than what it contains. Geometrically that is free —
+                // a simple ring cannot enclose one of equal or greater area — and it is what makes the
+                // relation a forest: `parent` strictly increases area, so it cannot cycle.
+                //
+                // Without it, two overlapping rings of equal projected area can each be the other's
+                // parent, because a parent is chosen by containment of a single point and the two
+                // choices are made independently. The depth walk below then never terminates. Two
+                // overlapping squares in one filled FLine is an ordinary drawing, and it hung the
+                // renderer — and, identically, the browser tab, because `threejs_viewer.html` copies
+                // this loop. Found 2026-08-04 by the differential corpus;
+                // `PlanarTessellationParentCycleTest` is the reproduction.
+                if (area <= own) continue
                 if (area < bestArea) {
                     bestArea = area
                     best = j
@@ -391,7 +411,10 @@ object PlanarTessellation {
         for (i in infos.indices) {
             var d = 0
             var p = parent[i]
-            while (p != -1) {
+            // `d <= infos.size` cannot bind, given the strictly-increasing-area invariant above. It is
+            // here because the failure it would catch is a hang rather than a wrong answer, and a
+            // wrong depth is the better of those two.
+            while (p != -1 && d <= infos.size) {
                 d++
                 p = parent[p]
             }

@@ -292,7 +292,6 @@ raycaster.params.Points = { threshold: 1.5 };
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
-const EDGE_SAMPLES = 24;
 const HANDLE_ANCHOR_SIZE_PX = 8;
 const HANDLE_CONTROL_SIZE_PX = 7;
 const HANDLE_SELECTED_BONUS_PX = 2;
@@ -321,6 +320,20 @@ function arrayFromVec3(value) {
     return [value.x, value.y, value.z];
 }
 
+// [viewer-region cubic-sampling] BEGIN
+//
+// The second liftable region (see the `planar-tessellation` sentinels below for what that means):
+// executed on GraalJS by `ViewerJavaScript.kt` and compared against `FLine.uniform_linearize_cubic`
+// by `ThreeJsViewerCubicSamplingParityTest`. The two are *deliberately* separate implementations —
+// `dev_docs/fline_fill_orientation.md` records the standing decision not to unify the independent
+// flatteners — so the job of a test here is to pin that they agree, not to merge them.
+//
+// EDGE_SAMPLES lives here, rather than up with the interaction constants, because it is this
+// region's only parameter and the region has to be liftable on its own. Moving a module-scope
+// `const` is behaviour-neutral: its only reader is the default argument of `sampleCubic`, evaluated
+// per call, long after the module has finished loading.
+const EDGE_SAMPLES = 24;
+
 function cubicPoint(a, c1, c2, b, t) {
     const mt = 1 - t;
     const mt2 = mt * mt;
@@ -339,6 +352,8 @@ function sampleCubic(a, c1, c2, b, count = EDGE_SAMPLES) {
     }
     return out;
 }
+
+// [viewer-region cubic-sampling] END
 
 function pointRef(lineIndex, nodeIndex, handle) {
     return { lineIndex, nodeIndex, handle };
@@ -1297,6 +1312,16 @@ function buildPointsGeometry(points, color, alpha, size) {
     return geometry;
 }
 
+// [viewer-region planar-tessellation] BEGIN
+//
+// Everything between this sentinel and its END is lifted verbatim, as text, and executed on GraalJS
+// by `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt`, then compared ring-set by ring-set
+// against `afield.graphics.PlanarTessellation` — the Kotlin it is a transliteration of — by
+// `ThreeJsViewerTessellationParityTest`. The extractor fails loudly if either sentinel goes missing,
+// so the seam cannot be quietly deleted. Two rules keep the region liftable, and both are asserted
+// by `ViewerJavaScriptRegionTest`: no DOM, and no `THREE` beyond `Vector2` and
+// `ShapeUtils.triangulateShape`.
+//
 // --- planar tessellation, ported from afield.graphics.PlanarTessellation --------------------
 //
 // Editable mode re-triangulates client-side, because the user drags points and the fill has to
@@ -1459,22 +1484,30 @@ function fillCoplanarGroup(rings, normals, members, out) {
 
     // Bounding boxes, signed areas and containment all run in the *unflipped* frame. A mirror does
     // not change what is inside what, so the nesting is the same either way.
+    //
+    // A container is *strictly* larger than what it contains: geometrically free, and it is what makes
+    // `parent` a forest rather than a graph that can cycle. Two overlapping rings of equal projected
+    // area could otherwise each be chosen as the other's parent, and the depth walk below would spin
+    // forever — freezing the tab on two overlapping subpaths. Keep in step with
+    // `PlanarTessellation.fill`, and see `PlanarTessellationParentCycleTest`.
     const parent = infos.map((info, i) => {
         const test = info.points[0];
         const x = px(test), y = py(test);
+        const own = Math.abs(info.area);
         let best = -1, bestArea = Infinity;
         infos.forEach((other, j) => {
             if (i === j) return;
             if (x < other.lo0 || x > other.hi0 || y < other.lo1 || y > other.hi1) return;
             if (!inside(other.points, test)) return;
             const a = Math.abs(other.area);
+            if (a <= own) return;
             if (a < bestArea) { bestArea = a; best = j; }
         });
         return best;
     });
     const depth = infos.map((_, i) => {
         let d = 0, p = parent[i];
-        while (p !== -1) { d += 1; p = parent[p]; }
+        while (p !== -1 && d <= infos.length) { d += 1; p = parent[p]; }
         return d;
     });
 
@@ -1520,6 +1553,8 @@ function fillCoplanarGroup(rings, normals, members, out) {
         out.push({ outer: info.ring, holes: holes.map((h) => infos[h].ring), triangles });
     });
 }
+
+// [viewer-region planar-tessellation] END
 
 function buildFaceGeometry(boundary) {
     if (!boundary || boundary.length < 3) return null;

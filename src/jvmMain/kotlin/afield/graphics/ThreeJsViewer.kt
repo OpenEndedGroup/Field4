@@ -12,6 +12,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.net.URLEncoder
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
@@ -368,7 +369,7 @@ fun Box.threeLines(
     editable: Boolean = false
 ): ThreeGeometryViewState {
     val uid = "${this.id}_$name"
-    val ln = "/threejs?uid=$uid"
+    val ln = threeViewerIframeSource(uid)
     display(
         channel, """
 <iframe src='${ln}' style='border:none;padding:0;margin:0;width:100%;height:${height}px'>
@@ -379,6 +380,25 @@ fun Box.threeLines(
     view.update(payload)
     return view
 }
+
+/**
+ * The `src` of a viewer iframe, for a view uid.
+ *
+ * The uid is `"${box.id}_$name"`, and `name` is a caller's prose that lands in a **single-quoted**
+ * `src` attribute as well as in a query string. An apostrophe — `name = "the client's triangulation"`
+ * — closed the attribute early, so the iframe loaded with no `uid` at all and the viewer sat on
+ * "waiting for data…" forever, with no error in the browser console, the server log or the box output.
+ * Found 2026-08-04 by taking a capture to the pixels and wondering why two of three panes were blank.
+ *
+ * [URLEncoder] is form encoding, so a space becomes `+`. That is exactly what the client decodes:
+ * `URLSearchParams` (`threejs_viewer.html:212`, `:2044`) turns `+` back into a space and `%27` back
+ * into an apostrophe, so the uid round-trips byte for byte and the `__threejs__` routing key still
+ * matches. The server's `/threejs` route never reads the parameter at all (`Server.kt:4450`).
+ *
+ * `internal` so `ThreeJsViewerIframeSourceTest` can hold the encoding to that contract.
+ */
+internal fun threeViewerIframeSource(uid: String): String =
+    "/threejs?uid=" + URLEncoder.encode(uid, "UTF-8")
 
 /**
  * Vararg convenience overload of [threeLines].
@@ -461,8 +481,11 @@ private class BoundsTracker {
  * `internal` rather than private so `ThreeJsEditableFillParityTest` can assert the one number the two
  * modes must agree on: `meta.triangles`. Editable mode re-triangulates client-side (the user drags
  * points, and the fill has to follow between round-trips), so the two triangulations are written
- * twice — here, and as `tessellateCoplanarGroups` in `threejs_viewer.html`. This count is what stops
- * them silently diverging.
+ * twice — here, and as `tessellateCoplanarGroups` in `threejs_viewer.html`.
+ *
+ * This count is the cheap guard. The real one is `ThreeJsViewerTessellationParityTest`, which *executes*
+ * the viewer's JavaScript on GraalJS and compares it to [PlanarTessellation] triangle for triangle; see
+ * `ViewerJavaScript`.
  */
 internal fun buildThreeGeometryPayload(
     uid: String,

@@ -163,13 +163,18 @@ interface HoleAwareFaceTriangulator : FaceTriangulator {
  *
  * This is a thin adapter over [afield.graphics.PlanarTessellation], which is also what
  * `FLine.tessellate` runs on. It used to be a second, independent implementation of the same idea,
- * and the two did not agree: this one projected onto the *mirror* of the right-handed pair for a
- * y-dominant face and then flipped each returned triangle back against the face's 3D normal. That
- * arrived at the right answer, but only for a face with no holes — [FloatEarcut] decides which ring
- * is the outer one from the *sign of its projected area*, so a mirrored frame inverts the
- * hole-versus-outer decision itself, and no amount of flipping triangles afterwards repairs it.
- * "No hole support" was therefore a consequence of the convention, not a missing feature. Fixing the
- * frame is what removes it. See `dev_docs/fline_fill_orientation.md`.
+ * and the two disagreed about the handedness of the projected frame: this one projected onto the
+ * *mirror* of the right-handed pair for a y-dominant face and then flipped each returned triangle back
+ * against the face's 3D normal.
+ *
+ * That is a correct composition — a mirror flips the facing of every triangle and nothing else, so
+ * flipping them all back arrives at the same place — and it stayed correct with holes, which the
+ * earlier version of this note denied. [FloatEarcut] decides which ring is the outer one from **array
+ * position**, not from any area sign (`FloatEarcut.kt:19`, `:21`, `:484-492`), so a mirror cannot
+ * invert the hole-versus-outer decision; `FloatEarcutOuterRingTest` measures that. The reason for
+ * having one implementation is therefore the ordinary one: two conventions for the same question, one
+ * of which needs every caller to remember a compensating flip, and a hole ring is one more thing for a
+ * caller to get wrong. See `dev_docs/fline_fill_orientation.md`.
  */
 object EarcutFaceTriangulator : HoleAwareFaceTriangulator {
     override fun triangulate(outer: IntArray, holes: List<IntArray>, realization: Realization3): IntArray {

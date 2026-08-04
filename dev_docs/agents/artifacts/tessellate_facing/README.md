@@ -5,7 +5,7 @@ Two before/after pairs, all four images from
 filled FLines and rasterises them through a perspective camera with **back-face culling** and flat
 diffuse shading. Culling is the whole instrument: it is the thing that notices which way a triangle
 faces, and it is the thing Field's own viewers switch off (`four/modules/MeshModule.kt:466` sets
-`VK_CULL_MODE_NONE`; `threejs_viewer.html:900` uses `THREE.DoubleSide`), which is why both of these
+`VK_CULL_MODE_NONE`; `threejs_viewer.html:915` uses `THREE.DoubleSide`), which is why both of these
 defects shipped without anyone seeing them.
 
 ## Pair one — facing (2026-08-02)

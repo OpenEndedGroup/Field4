@@ -5,7 +5,7 @@
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
 `FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014`). It flattens the line into
 rings and hands them to `PlanarTessellation`
-(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:163`), which groups them into planes,
+(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170`), which groups them into planes,
 works out which rings are holes in which, and hands each group to `FloatEarcut`.
 
 *Updated 2026-08-03: the second half of this document — "The limit that remains" and "A convention
@@ -84,7 +84,7 @@ Worth recording, because it is the obvious suspicion and it is false.
 
 The mirror flips the sign of `area2D`, and `area2D` is what the code uses to pick between candidate
 parent rings. It does **not** corrupt anything, because `tessellate` only ever consumes the signed
-area through `abs()` (`PlanarTessellation.kt:381`), and point-in-polygon containment is mirror
+area through `abs()` (`PlanarTessellation.kt:389`), and point-in-polygon containment is mirror
 invariant. So
 triangle counts, total areas and nesting parity were already invariant under rigid rotation before
 this branch, and still are. Measured, not reasoned: `TessellationOrientationOracleTest`'s area,
@@ -105,7 +105,7 @@ measures both halves, including the counterfactual.)
 | | |
 |---|---|
 | `StandardDrawing.kt:134` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:850` | inside `appendFilledMesh`, reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:361`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69`). |
+| `ThreeJsViewer.kt:854` | inside `appendFilledMesh` (`:843`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:362`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69`). |
 
 Not on this path at all: SVG export (`graphics/someSkiko.kt:553` writes `<path fill=…>`), the 2D Skia canvas
 (`graphics/someSkiko.kt:368`, a filled Skia `Path`), and typography extrusion (`typography_field.kt:342` calls
@@ -114,9 +114,9 @@ Not on this path at all: SVG export (`graphics/someSkiko.kt:553` writes `<path f
 And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan pipeline is
 `VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
 `:664`; `four/imgui/ImGuiRenderToTexture.kt:250`). The three.js fill materials are
-`MeshStandardMaterial` with `side: THREE.DoubleSide` (`threejs_viewer.html:900`, `:999`), and
-although they do derive normals from the winding — `computeVertexNormals()` at `:744`, `:795`,
-`:1059`, `:1236` — three.js flips the normal for back-facing fragments on a double-sided material,
+`MeshStandardMaterial` with `side: THREE.DoubleSide` (`threejs_viewer.html:915`, `:1014`), and
+although they do derive normals from the winding — `computeVertexNormals()` at `:759`, `:810`,
+`:1135`, `:1572` — three.js flips the normal for back-facing fragments on a double-sided material,
 so a uniformly mis-wound flat face still shades correctly. The visionOS viewer sets
 `faceCulling = .none` explicitly (`FLineMeshBuilder.swift:401`).
 
@@ -155,6 +155,20 @@ The invariants are now pinned by `src/jvmTest/kotlin/afield/graphics/`:
 * `src/jvmTest/kotlin/afield/stdlib/polytope/EarcutFaceTriangulatorHolesTest` — holes through the
   polytope adapter, in every orientation.
 
+Added 2026-08-04, closing three gaps this list had:
+
+* `ViewerJavaScript` + `ViewerJavaScriptRegionTest` + `ThreeJsViewerTessellationParityTest` +
+  `ThreeJsViewerCubicSamplingParityTest` — the viewer's *JavaScript*, executed on GraalJS and compared
+  against `PlanarTessellation` and `FLine.uniform_linearize_cubic`, with five counterfactuals that
+  prove it goes red. See "Guarding the seam by running the JavaScript" below.
+* `PlanarTessellationParentCycleTest` — two overlapping rings of equal area, which used to hang the
+  nesting depth walk in both implementations.
+* `ThreeJsViewerIframeSourceTest` — an apostrophe in a viewer name, which used to blank the pane.
+* `CoplanarityToleranceTest` — `Coplanarity`'s two tolerances, which had no tests, on both
+  implementations; and the non-transitivity of `sineOfAngle`, measured.
+* `FloatEarcutOuterRingTest` — what actually decides which ring is the outer one, which five places in
+  the tree got wrong.
+
 ## The limit that used to remain
 
 *Was: "one FLine, one projection axis." Fixed 2026-08-03.*
@@ -169,7 +183,7 @@ What made this more than a change of projection is the sentence the old version 
 on: hole classification has to be scoped to a plane as well as to a projection, because "ring A is a
 hole in ring B" is measured on projected coordinates. It only *means* something when A and B are
 flattened in the same frame, and it is only *true* when they lie in the same surface. So the rings
-are clustered into planes first (`PlanarTessellation.kt:195`), and everything downstream — frame,
+are clustered into planes first (`PlanarTessellation.kt:202`), and everything downstream — frame,
 nesting, hole parity, hemisphere — is scoped to a cluster.
 
 ### The clustering rule
@@ -190,7 +204,7 @@ absolute epsilon would say they are not, silently changing its mind somewhere be
 
 Three more decisions, each of which someone will eventually want to know the reason for:
 
-**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:216`), not the
+**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:223`), not the
 nearest. Planes are grown greedily and a plane is represented by the ring that *seeded* it, never by
 a running average of its members. Nearest-plane needs a global pass over every candidate; "first"
 is the only tie-break that stays stable as rings are appended; and seed-not-average is what stops a
@@ -198,9 +212,27 @@ chain of pairwise-near-coplanar rings from transitively collapsing into one plan
 answer depends on ring order to the extent that earlier rings seed. That is the price of not doing a
 global fit, and it is stable and predictable.
 
+*Measured 2026-08-04, because "depends on ring order" was doing a lot of work in that sentence.*
+"Within `sineOfAngle` of" is not transitive, so the order dependence is not cosmetic — it can change
+whether a subpath is **a hole or a surface of its own**. Three rings whose normals sit at `0`, `0.9 t`
+and `1.8 t` from a common reference: listing the `0` ring first gives three separate filled polygons
+(the `1.8 t` ring is outside the tolerance of the seed), and listing the `0.9 t` ring first gives two,
+with the `1.8 t` ring subtracted as a hole — because from `0.9 t` both of the others are inside the
+tolerance. Same rings, same geometry, different subpath order, different fill.
+`CoplanarityToleranceTest.theSineToleranceIsNotTransitiveSoRingOrderCanDecideWhetherARingIsAHole`
+pins it on both implementations. It is not fixed here, deliberately: the alternatives (a global fit, or
+transitive closure) each have their own drift, and the right time to choose between them is not the
+moment the behaviour is first written down.
+
+The default `1e-3` itself was, until the same date, pinned by nothing at all — it could have moved to
+`0.5` with every test in the suite still green, because nothing in the corpus held two rings *near*
+enough to one plane to care. `CoplanarityToleranceTest` now holds a ring at half the tolerance (a hole)
+and the same ring at twice it (a polygon), on both implementations, plus the same pair for
+`offsetFraction`.
+
 **A degenerate ring has no plane.** A ring whose Newell normal is zero — collinear, all-identical, a
 bowtie — cannot vote on a plane and is not allowed to seed one. Those rings are placed *after* every
-ring that has a normal (`PlanarTessellation.kt:238`), by the distance test alone; one that matches
+ring that has a normal (`PlanarTessellation.kt:245`), by the distance test alone; one that matches
 nothing gets a plane to itself, where it fills nothing. This reproduces the single-axis code's
 behaviour exactly: its `projectionAxis` kept its `(x, y)` default when no ring had a normal, and an
 all-degenerate FLine still comes out the same way.
@@ -230,21 +262,44 @@ face normal. Both landed in the same place and both were correct, and the old ve
 noted that the after-the-fact flip "is only safe because `EarcutFaceTriangulator` has no hole
 support".
 
-That is worth restating more strongly, because it is the reason the two were merged. "No hole
-support" was not a missing feature that someone had not got round to. `FloatEarcut` decides which of
-the rings it is handed is the *outer* one from the sign of its projected area (`FloatEarcut.kt:705`),
-so a mirrored frame inverts the hole-versus-outer decision **before any triangle exists to flip**.
-The convention and the absence of holes were the same fact. Fixing the frame is what removes both.
+> **Corrected 2026-08-04, and this correction is the point of the paragraph.** This section used to
+> restate the note "more strongly", as: *"`FloatEarcut` decides which of the rings it is handed is the
+> outer one from the sign of its projected area (`FloatEarcut.kt:705`), so a mirrored frame inverts the
+> hole-versus-outer decision before any triangle exists to flip. The convention and the absence of
+> holes were the same fact."* That is **false**, and it was the stated justification for unifying the
+> two triangulators, which makes it worth a paragraph rather than a silent edit.
+
+What the code does. `earcut(data, holeIndices, dim)` slices the flat vertex array by **array
+position**: `outerLen = holeIndices[0] * dim` (`FloatEarcut.kt:19`), the outer ring is `[0, outerLen)`
+(`:21`), and each remaining slice is a hole (`:484`–`:492`). No area is consulted to make that
+decision. `linkedList` (`:705`) *does* read `signedArea`, but only to choose a **traversal direction**
+against a target its caller supplies — `true` for the outer ring, `false` for every hole — which is
+what normalises the winding of everything handed in.
+
+So a mirror flips every ring's area sign *equally* and cannot reorder outer and hole. What it changes
+is the handedness of the frame, and therefore the facing of every triangle that comes back — which the
+old `EarcutFaceTriangulator` compensated for correctly, holes or no holes. The measurement is
+`src/jvmTest/kotlin/afield/graphics/FloatEarcutOuterRingTest.kt`: all four windings of a square and
+its hole give the same `8400` annulus, swapping the *array order* changes the answer, and mirroring the
+frame keeps the `8400` while flipping the sign of every triangle.
+
+The honest justification for having one implementation is therefore the ordinary one, and it is still
+a good one: two conventions for the same question, one of which requires every caller to remember a
+compensating flip, and a hole ring is one more thing for a caller to get wrong. `EarcutFaceTriangulator`
+*gained* hole support because it became an adapter over code that already had it — not because the old
+convention forbade it.
+
+The claim also reached `f531b1804`'s commit message, which cannot be amended. It is wrong there too.
 
 So there is now one implementation — `PlanarTessellation` — and two thin adapters over it:
 
 | | |
 |---|---|
 | `FLine.tessellate` (`FLine.kt:1014`) | flattens and sanitises, then packs each returned polygon's own vertices |
-| `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:122`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
+| `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:179`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
 
 `EarcutFaceTriangulator` therefore *gained* hole support, through a new
-`HoleAwareFaceTriangulator` (`polytope/FieldAdapters.kt:97`) that adds
+`HoleAwareFaceTriangulator` (`polytope/FieldAdapters.kt:149`) that adds
 `triangulate(outer, holes, realization)` without disturbing the existing `fun interface
 FaceTriangulator`. Holes are still not reachable from `PolyhedralObject.triangulate`, because a
 `faceCycle` is a single cycle and the topology has no notion of a hole in a face; the capability is
@@ -256,14 +311,15 @@ enough to be worth saying out loud. That standing note is about curve *flattenin
 and friends, turning a cubic into line segments, where the implementations differ in tolerance model
 and in what they are allowed to allocate. Nothing here touches that: `FLine.tessellate` still calls
 `uniform_linearize`, `EarcutFaceTriangulator` still reads a realized face cycle, and neither
-flattener moved. What was unified is the triangulation of an already-flat ring set, where one of the
-two copies could not be fixed in place.
+flattener moved. What was unified is the triangulation of an already-flat ring set, where the two
+copies had disagreed about the handedness of the projected frame for years without either being
+obviously wrong.
 
 ## And the client-side half
 
 *Was: a naive JS fan. Fixed 2026-08-03, in the same pass.*
 
-`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:850`, inside
+`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:854`, inside
 `appendFilledMesh` — is only half the story for the three.js viewer, because `editable = true`
 **re-triangulates client-side**. It has to: the user drags points, and the fill has to follow between
 server round-trips.
@@ -281,11 +337,94 @@ earcut, so the winding normalisation the frame compensates for is the same prope
 its own.
 
 Being written twice is a real cost. The reason to pay it, rather than shipping the server's
-triangulation in the payload, is that a dragged point must not wait for a round-trip to re-fill. The
-seam is guarded two ways: `ThreeJsEditableFillParityTest` asserts that both modes report the same
-`meta.triangles` for the same line — which is what goes wrong first when one side is changed and the
-other is not — and there is a real browser before/after pair in
+triangulation in the payload, is that a dragged point must not wait for a round-trip to re-fill.
+
+### Guarding the seam by *running* the JavaScript
+
+*2026-08-04.* The first guard on this seam was `ThreeJsEditableFillParityTest`, which asserts that
+`editable = true` and `editable = false` report the same `meta.triangles`. Both sides of that assertion
+are computed in Kotlin, so **the JavaScript never ran**, and it could not have caught either of the two
+defects found in this neighbourhood within hours of the seam landing (`d3d81fee1`, `bf65e10e3`). It
+still earns its place — `meta.triangles` is worth pinning — but it is not the differential.
+
+`src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt` is. It lifts a **marked region** of
+`threejs_viewer.html` as text and evaluates it on **GraalJS**, which is already a first-party dependency
+(`build.gradle.kts:979`, and `afield.morpho.MorphoRuntime` is the established idiom). A region is
+delimited by two comments and nothing else:
+
+```
+// [viewer-region planar-tessellation] BEGIN
+…
+// [viewer-region planar-tessellation] END
+```
+
+and the extractor **throws if a sentinel is missing**, so deleting the markers turns a passing test red
+rather than vacuous. Two rules keep a region liftable, both asserted by `ViewerJavaScriptRegionTest`
+rather than requested: no DOM, and no `THREE` beyond `Vector2` and `ShapeUtils.triangulateShape`.
+
+There are two marked regions, and the second one is the evidence that the generality earned its keep.
+`ViewerJavaScript.KNOWN_REGIONS` is the inventory; `ViewerJavaScriptRegionTest` iterates it, so a third
+region is found, unique, liftable and evaluable without anyone writing those four tests again.
+
+| region | duplicates | pinned by |
+|---|---|---|
+| `planar-tessellation` | `PlanarTessellation` — clustering, frame, hemisphere, nesting | `ThreeJsViewerTessellationParityTest` |
+| `cubic-sampling` | `FLine.uniform_linearize_cubic` — the cubic editable mode re-samples client-side | `ThreeJsViewerCubicSamplingParityTest` |
+
+The cubic pair are also the one place the two sides **deliberately disagree**: `EDGE_SAMPLES` is 24 and
+`Box.threeLines`'s `samplesPerCubic` default is 48, and nobody passes either, so a curved stroke is
+drawn at half the resolution with `editable = true`. That is characterised, with its measured
+consequence, rather than changed. Adding that region cost two comments in the HTML and one test file.
+
+`ThreeJsViewerTessellationParityTest` then runs ~60 ring sets — every case that ever bit, each also
+rigidly rotated three ways — through both implementations and compares them **triangle for triangle**.
+
+Two things about that comparison are worth knowing before extending it.
+
+* **The shimmed `THREE.ShapeUtils.triangulateShape` is `FloatEarcut`.** Not a compromise: the viewer's
+  three.js comes from a CDN (`threejs_viewer.html:197`) and the only in-repo copy,
+  `extensions/remote_ar/vendor/super-three/0.184.0/`, is an incomplete vendoring whose
+  `three.module.js` imports a `three.core.js` that was never committed, so it cannot be loaded at all.
+  Holding the triangulator fixed also makes the comparison exact rather than a count, and earcut is
+  upstream on both sides — the duplicated logic is the clustering, the frame, the hemisphere, the
+  nesting and the `refs` index bookkeeping. What stays uncovered is float32-versus-float64 inside
+  earcut itself, which is what the browser captures below are for.
+* **The shim checks a claim the viewer only asserted in a comment**: that the rings are pre-sanitised,
+  so three.js's `removeDupEndPts` finds nothing to pop and cannot shift the `refs` indices. Every ring
+  handed to the shim is now checked for a repeated final point.
+
+And it can go red. Four counterfactuals rewrite the region's *text* — never the shipped viewer, and a
+rewrite that matched nothing is refused — and each asserts the differential fails and then passes again
+on the shipped source:
+
+| counterfactual | what it reproduces |
+|---|---|
+| one polygon per subpath, fanned, holes ignored | `bf65e10e3`, the fan `editable = true` used to be |
+| `(x, z)` for a y-dominant face | defect 1 above, the mirrored pair |
+| one hemisphere for the whole plane | defect 3 above |
+| both tolerances to `Infinity` | the pre-`f531b1804` single plane — and this one must *equal* `Coplanarity.SINGLE_PLANE`, not merely differ from the default |
+
+### And the pixels, which found two more defects
+
+A differential is a statement about numbers. `dev_docs/agents/artifacts/threejs_js_harness/` is the
+statement about pixels: a replayable four-box transcript
+(`agents/transcripts/docs_capture/threejs_editable_fill_pixels.yaml`, run at
+`applied=9 skipped=0 errors=0`) showing the client's own triangulation of the three-plane holed line
+next to the server's — same picture, same `24 tri` — plus the overlapping pair that used to hang, and a
+curved petal pair drawn through the client's own cubic sampler. There is also the earlier before/after
+pair in
 [`agents/artifacts/tessellate_facing/multi_plane_fill_demo/`](agents/artifacts/tessellate_facing/multi_plane_fill_demo/README.md).
+
+Making those captures is what found the second defect on this branch. Two of three panes were
+permanently blank and the third was fine, and the only difference between them was an **apostrophe in a
+display name**: `Box.threeLines(name = …)` put the view uid into a *single-quoted* `src` attribute
+unescaped, so `name = "the client's own triangulation"` closed the attribute at the apostrophe, the
+iframe loaded with no `uid`, and the viewer sat on `waiting for data…` forever with nothing in the
+console, the server log, or the box output. Percent-encoded now (`threeViewerIframeSource`,
+`ThreeJsViewerIframeSourceTest`), and the transcript keeps the apostrophe deliberately.
+
+Both defects — that one and the depth-walk hang — were in code that had already been reviewed,
+documented, and declared guarded. That is the argument for a test that runs the thing, in one sentence.
 
 That count found a second thing on the way: `meta.triangles` for editable mode was itself a fan
 estimate, `boundaryPoints - 2` per subpath, so the viewer's own HUD said `12 tri` for a line that the
