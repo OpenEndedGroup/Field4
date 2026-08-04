@@ -146,14 +146,24 @@ object KeySpec {
     /**
      * Parses a spec such as `cmd+shift+d`, `alt+]`, `f12` or `?`. Separators may be `+`, `-`, space or
      * comma; a trailing `-` or `+` is treated as the key itself (so `cmd+-` and `cmd+plus` both work).
-     * Returns null for a blank or unparseable spec.
+     * Returns null for a blank or unparseable spec — [explainFailure] says why.
      */
-    fun parse(spec: String): KeyChord? {
+    fun parse(spec: String): KeyChord? = parseDetailed(spec).first
+
+    /**
+     * Why [spec] is not a shortcut, phrased for someone looking at their own `keybindings.yaml`, or
+     * null when it parses. The bad cases are worth distinguishing: a misspelled key and a
+     * VS-Code-style two-keystroke chord fail for completely different reasons, and the second used to
+     * be silently *accepted* as its last key — `cmd+k cmd+s` quietly became Cmd+S.
+     */
+    fun explainFailure(spec: String): String? = parseDetailed(spec).second
+
+    private fun parseDetailed(spec: String): Pair<KeyChord?, String?> {
         val trimmed = spec.trim()
-        if (trimmed.isEmpty()) return null
+        if (trimmed.isEmpty()) return null to "it is empty"
 
         val tokens = tokenize(trimmed)
-        if (tokens.isEmpty()) return null
+        if (tokens.isEmpty()) return null to "it is empty"
 
         var ctrlCmd = false
         var alt = false
@@ -173,16 +183,19 @@ object KeySpec {
             }
             // A bare shifted character (`?`) means Shift plus its unshifted key.
             val shifted = shiftedChars[token]
-            if (shifted != null) {
-                shift = true
-                key = shifted
-                continue
+            val next = shifted ?: canonicalKeyToken(token)
+                ?: return null to "'$token' is not a key Field can bind"
+            // Two keys in one spec is a two-keystroke chord, which Field does not do. Say so instead
+            // of binding whichever one happened to come last.
+            if (key != null && key != next) {
+                return null to "a shortcut is one key with modifiers — Field has no two-keystroke chords"
             }
-            key = canonicalKeyToken(token) ?: return null
+            if (shifted != null) shift = true
+            key = next
         }
 
-        val resolved = key ?: return null
-        return KeyChord(ctrlCmd = ctrlCmd, alt = alt, shift = shift, key = resolved)
+        val resolved = key ?: return null to "it has modifiers but no key"
+        return KeyChord(ctrlCmd = ctrlCmd, alt = alt, shift = shift, key = resolved) to null
     }
 
     private fun tokenize(spec: String): List<String> {
