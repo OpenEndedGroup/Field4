@@ -115,8 +115,18 @@ val abletonLinkNative = layout.projectDirectory.file("libs/${abletonLinkNativeLi
 // `buildCeresNative` (links the Homebrew Ceres, seconds instead of minutes, for iterating on the
 // wrapper). -PceresLibrary=<path> points every run/test/smoke task at a specific one, which is how two
 // wrappers get A/B'd against each other.
-val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/libken_ceres_jvm.dylib")
-val ceresRedistributable = layout.buildDirectory.file("ken-ceres-redistributable/libken_ceres_jvm.dylib")
+// dylib/so/dll, chosen the same way tools/build_ceres_native.py and CeresNativeLibrary choose it.
+fun ceresNativeLibraryName(): String {
+    val os = System.getProperty("os.name").lowercase()
+    return when {
+        os.contains("windows") -> "ken_ceres_jvm.dll"
+        os.contains("mac") || os.contains("darwin") -> "libken_ceres_jvm.dylib"
+        else -> "libken_ceres_jvm.so"
+    }
+}
+
+val ceresNativeBuilt = layout.buildDirectory.file("ken-ceres/${ceresNativeLibraryName()}")
+val ceresRedistributable = layout.buildDirectory.file("ken-ceres-redistributable/${ceresNativeLibraryName()}")
 val ceresNative: RegularFile = providers.gradleProperty("ceresLibrary")
     .map { layout.projectDirectory.file(it) }
     .getOrElse(ceresRedistributable.get())
@@ -2036,7 +2046,7 @@ val buildCeresNative = tasks.register("buildCeresNative") {
 // The redistributable counterpart of `buildCeresNative`: same wrapper, but statically linked against
 // a Ceres built from pinned source, so `otool -L` shows only libc++ and libSystem. This is the one
 // the runtime looks for by default, and nothing is committed, so a fresh clone runs this once before
-// any solver feature works. See native/ken-ceres/build_redistributable.sh, which owns the version
+// any solver feature works. See tools/build_ceres_native.py, which owns the version
 // pins, the checksums, and the self-containment assertion.
 //
 // Also not wired into `check`: it needs the network on its first run, and building Ceres takes
@@ -2049,14 +2059,18 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
     group = "build"
     description = "Builds a self-contained ken_ceres_jvm from pinned Ceres/Eigen source (needs cmake, network on first run)."
 
-    val script = layout.projectDirectory.file("native/ken-ceres/build_redistributable.sh")
+    val script = layout.projectDirectory.file("tools/build_ceres_native.py")
     val sourceDir = layout.projectDirectory.dir("native/ken-ceres")
     inputs.dir(sourceDir)
+    inputs.file(script)
     outputs.file(ceresRedistributable)
 
     doLast {
+        // `python3` everywhere but Windows, where the launcher is `python`. Both are what
+        // tools/ci_ceres_abi.py is invoked as in .github/workflows/ceres-abi.yml.
+        val python = if (System.getProperty("os.name").lowercase().contains("windows")) "python" else "python3"
         val result = providers.exec {
-            commandLine(script.asFile.absolutePath)
+            commandLine(python, script.asFile.absolutePath)
             isIgnoreExitValue = true
         }
         val out = result.standardOutput.asText.get()

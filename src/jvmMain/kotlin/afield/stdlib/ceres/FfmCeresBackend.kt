@@ -419,11 +419,27 @@ private const val ABI_V3 = "ken_ceres_jvm_abi_v3"
  * a fresh clone has no library until someone runs that once. `afield.ceres.library` or
  * `AFIELD_CERES_LIBRARY` override it — that is also how you point at the faster, Homebrew-linked
  * `buildCeresNative` build while iterating on the wrapper.
- *
- * macOS only, and hardcoded so: there is no os/arch dispatch here yet because there has never been a
- * second platform's artifact to dispatch to.
  */
 object CeresNativeLibrary {
+    private val isWindows: Boolean
+        get() = System.getProperty("os.name").lowercase().contains("win")
+
+    /**
+     * The three names `tools/build_ceres_native.py` can produce, chosen the same way it chooses.
+     *
+     * The platform is read at call time rather than baked in, because this is also how a
+     * cross-built artifact gets named on a machine that is not the one that built it.
+     */
+    private val libraryFileName: String
+        get() {
+            val os = System.getProperty("os.name").lowercase()
+            return when {
+                os.contains("win") -> "ken_ceres_jvm.dll"
+                os.contains("mac") || os.contains("darwin") -> "libken_ceres_jvm.dylib"
+                else -> "libken_ceres_jvm.so"
+            }
+        }
+
     val defaultPath: Path
         get() = System.getProperty("afield.ceres.library")
             ?.takeIf { it.isNotBlank() }
@@ -431,8 +447,9 @@ object CeresNativeLibrary {
             ?: System.getenv("AFIELD_CERES_LIBRARY")
                 ?.takeIf { it.isNotBlank() }
                 ?.let(Path::of)
-            ?: Path.of("build", "ken-ceres-redistributable", "libken_ceres_jvm.dylib")
+            ?: Path.of("build", "ken-ceres-redistributable", libraryFileName)
 
-    /** What to tell someone whose [defaultPath] is not there. */
-    const val HOW_TO_BUILD: String = "./gradlew buildCeresRedistributable"
+    /** What to tell someone whose [defaultPath] is not there, in the shell they are actually in. */
+    val HOW_TO_BUILD: String
+        get() = if (isWindows) "gradlew.bat buildCeresRedistributable" else "./gradlew buildCeresRedistributable"
 }
