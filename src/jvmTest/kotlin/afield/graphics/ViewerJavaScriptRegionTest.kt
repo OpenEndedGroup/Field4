@@ -21,6 +21,28 @@ class ViewerJavaScriptRegionTest {
 
     private val region: String by lazy { ViewerJavaScript.regionSource("planar-tessellation") }
 
+    /**
+     * Every region in [ViewerJavaScript.KNOWN_REGIONS], held to the same four rules — so a third region
+     * inherits this file rather than needing its own copy of it.
+     */
+    @Test
+    fun everyKnownRegionIsFoundAndDeclaresWhatItExports() {
+        assertTrue(ViewerJavaScript.KNOWN_REGIONS.size >= 2, "the region inventory shrank")
+        ViewerJavaScript.KNOWN_REGIONS.forEach { (name, exports) ->
+            val source = ViewerJavaScript.regionSource(name)
+            assertTrue(source.length > 200, "region `$name` shrank to ${source.length} characters")
+            exports.forEach { export ->
+                assertTrue(
+                    Regex("""(function|const)\s+$export\b""").containsMatchIn(source),
+                    "region `$name` no longer declares `$export`, which ViewerJavaScript exports",
+                )
+            }
+            ViewerJavaScript.Session.open(regionName = name, exports = exports).use { js ->
+                exports.forEach { export -> js.member(export) }
+            }
+        }
+    }
+
     @Test
     fun theRegionIsFoundAndHoldsTheFunctionsTheHarnessExports() {
         assertTrue(region.length > 2000, "the region shrank to ${region.length} characters")
@@ -51,12 +73,28 @@ class ViewerJavaScriptRegionTest {
      * being executable and the differential stopped meaning anything.
      */
     @Test
-    fun theRegionUsesNoDomAndOnlyTheTwoThreeMembersTheHarnessShims() {
-        listOf("document", "window", "navigator", "requestAnimationFrame", "localStorage").forEach {
-            assertTrue(!Regex("""\b$it\b""").containsMatchIn(region), "the region reaches for `$it`")
+    fun noRegionUsesTheDomAndOnlyTheShimmedThreeMembersAppear() {
+        val allowed = setOf("Vector2", "ShapeUtils.triangulateShape")
+        ViewerJavaScript.KNOWN_REGIONS.keys.forEach { name ->
+            val source = ViewerJavaScript.regionSource(name)
+            listOf("document", "window", "navigator", "requestAnimationFrame", "localStorage").forEach {
+                assertTrue(
+                    !Regex("""\b$it\b""").containsMatchIn(source),
+                    "region `$name` reaches for `$it`",
+                )
+            }
+            val used = Regex("""THREE\.(\w+(?:\.\w+)?)""").findAll(source).map { it.groupValues[1] }.toSet()
+            assertTrue(
+                used.all { it in allowed },
+                "region `$name` uses THREE members the harness does not shim: ${used - allowed}",
+            )
         }
-        val used = Regex("""THREE\.(\w+(?:\.\w+)?)""").findAll(region).map { it.groupValues[1] }.toSet()
-        assertEquals(setOf("Vector2", "ShapeUtils.triangulateShape"), used, "the region's THREE surface changed")
+        // And the shimmed surface is exactly used, not merely permitted — if the tessellation region
+        // stops needing `triangulateShape`, the shim has become dead weight and should be reconsidered.
+        val tessellation = ViewerJavaScript.regionSource("planar-tessellation")
+        val inTessellation = Regex("""THREE\.(\w+(?:\.\w+)?)""").findAll(tessellation)
+            .map { it.groupValues[1] }.toSet()
+        assertEquals(allowed, inTessellation, "the tessellation region's THREE surface changed")
     }
 
     /**

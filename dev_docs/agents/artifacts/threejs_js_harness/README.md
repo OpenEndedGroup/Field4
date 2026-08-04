@@ -6,7 +6,7 @@
 GraalJS and compares it to `afield.graphics.PlanarTessellation` triangle for triangle. That is a strong
 statement about the numbers and **no statement at all about the pixels**, so these are the pixels.
 
-Replayable, and replayed to make these three images:
+Replayable, and replayed to make these four images:
 
 ```
 uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
@@ -18,16 +18,19 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
   --command 'click-box fill_editable_overlap --wait-ms 2500' \
   --command 'screenshot-box fill_editable_overlap dev_docs/agents/artifacts/threejs_js_harness/editable_overlap.png --timeout 120' \
   --command 'click-box fill_static_planes --wait-ms 2500' \
-  --command 'screenshot-box fill_static_planes dev_docs/agents/artifacts/threejs_js_harness/static_planes.png --timeout 120'
+  --command 'screenshot-box fill_static_planes dev_docs/agents/artifacts/threejs_js_harness/static_planes.png --timeout 120' \
+  --command 'click-box stroke_editable_curve --wait-ms 2500' \
+  --command 'screenshot-box stroke_editable_curve dev_docs/agents/artifacts/threejs_js_harness/editable_curve.png --timeout 120'
 ```
 
-Reported `applied=7 skipped=0 errors=0`.
+Reported `applied=9 skipped=0 errors=0`.
 
 | | |
 |---|---|
 | `editable_planes.png` | `editable = true`, so the **client** triangulated: three perpendicular faces, three square holes, `24 ln \| 24 tri \| 24 p`. Nothing inside out, no hole filled in, no face missing. |
 | `static_planes.png` | the same FLine with `editable = false`, so the **server** triangulated: the same picture and the same `24 tri`. Agreement, in pixels. |
 | `editable_overlap.png` | two congruent overlapping squares, each listed from a vertex inside the other, `editable = true`, `8 ln \| 4 tri \| 8 p`. **Until 2026-08-04 this froze the tab** — the nesting pass could name each ring the other's parent and the depth walk never returned. Both squares fill; neither is a hole in the other, because neither is larger. |
+| `editable_curve.png` | the *other* thing editable mode does for itself: `sampleCubic` re-samples every cubic in the browser. Two curved petals, filled and stroked, `194 ln \| 188 tri \| 6 p`, smooth. Pinned numerically against `FLine.uniform_linearize_cubic` by `ThreeJsViewerCubicSamplingParityTest` — this is the same code drawing something. |
 
 ## Two things worth knowing before you regenerate these
 

@@ -157,6 +157,44 @@ operations:
       property: code
       type: fragment
 
+  - create:
+      box: stroke_editable_curve
+      name: Editable stroke — cubics, sampled client-side
+      frame: { x: 640.0, y: 560.0, w: 520.0, h: 480.0 }
+      properties:
+        code: |
+          // The *other* thing editable mode does for itself: `sampleCubic` re-samples every cubic in
+          // the browser, so a dragged control point moves its curve before the server hears about it.
+          // `ThreeJsViewerCubicSamplingParityTest` pins that sampler against
+          // `FLine.uniform_linearize_cubic`; this is the same code drawing something.
+          //
+          // Two overlapping curved petals, filled and stroked. The fill boundary is flattened on the
+          // server; the stroke is flattened in the client, at EDGE_SAMPLES = 24 rather than the
+          // server's samplesPerCubic = 48, which is the one place the two deliberately differ.
+          val petals = FLine()
+          listOf(0.0, 1.0).forEach { turn ->
+              val s = if (turn == 0.0) 1.0 else -1.0
+              petals.moveTo(0.0, 0.0, 0.0)
+              petals.cubicTo(0.9, s * 1.5, 0.0, 2.1, s * 1.5, 0.0, 3.0, 0.0, 0.0)
+              petals.cubicTo(2.1, s * -0.6, 0.0, 0.9, s * -0.6, 0.0, 0.0, 0.0, 0.0)
+              petals.close()
+          }
+          petals.filled = true
+          petals.stroked = true
+          petals.thickness = 2.0
+          petals.color = vec(0.55, 0.92, 0.62, 0.45)
+
+          threeLines(
+              petals, channel = "editableCurve",
+              name = "editable true - cubics sampled in the client's own loop",
+              height = 420, autoFrame = true, editable = true,
+          )
+          displayOpen("editableCurve")
+  - execute:
+      box: stroke_editable_curve
+      property: code
+      type: fragment
+
   # A `threejs` output pane reports its text before its geometry arrives — measured at 20-25 s on this
   # machine. Screenshot before that and the capture is an empty frame.
   - wait:

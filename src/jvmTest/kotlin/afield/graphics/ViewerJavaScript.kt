@@ -241,6 +241,26 @@ $region
         }
     }
 
+    /**
+     * Every marked region, and what each one exports.
+     *
+     * Kept here rather than only in the tests so that the *inventory* is one thing: adding a region
+     * means adding a line here, and [ViewerJavaScriptRegionTest] then holds the new region to the same
+     * rules as the old ones — found, unique, liftable, evaluable — without anyone having to remember to
+     * write those four tests again.
+     */
+    val KNOWN_REGIONS: Map<String, List<String>> = mapOf(
+        "planar-tessellation" to listOf(
+            "COPLANAR_SINE_OF_ANGLE",
+            "COPLANAR_OFFSET_FRACTION",
+            "RING_SANITIZE_EPS",
+            "sanitizeRing3D",
+            "ringNewellNormal",
+            "tessellateCoplanarGroups",
+        ),
+        "cubic-sampling" to listOf("EDGE_SAMPLES", "cubicPoint", "sampleCubic"),
+    )
+
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */
     val DEFAULT_EXPORTS: List<String> = listOf(
         "COPLANAR_SINE_OF_ANGLE",
