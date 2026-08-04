@@ -149,6 +149,16 @@
  - `asNotes(...)` is the memoized bridge when you want the same future schedule
    to drive playback logic and piano-roll inspection without recomputing it.
 
+ Three companion files extend this one, and are worth knowing about before you reach for a
+ `map { }`:
+
+ - `PatSignals.kt` — continuous/signal patterns (`sine`, `saw`, `perlin`, `rand`) and the
+   discretisers that turn them back into events (`segment`, `struct`, `range`, `quantise`).
+ - `PatAlgebra.kt` — how two patterns of different types meet, and whose rhythm survives
+   (`|+|` / `|+` / `+|`, `#`, and named parameters via `with(gain(...), pan(...))`).
+ - `PatComposition.kt` — arrangement (`off`, `superimpose`, `jux`, `iter`, `linger`, `randcat`,
+   `shuffle`) and pitch (`scale`, `chords`, `voiceLead`).
+
  The intentionally generic hooks in this file are `respond(...)` and
  `respondAhead(...)`: atoms can drive synth voices, visuals, property
  mutations, OSC, sample playback, box launches, or any other live-coded
@@ -841,6 +851,8 @@ object MiniPat {
     data class Slow(val expr: Node, val n: Int) : Node
     data class Elongate(val expr: Node, val steps: Int) : Node
     data class Euclid(val expr: Node, val pulses: Int, val steps: Int, val offset: Int = 0) : Node
+    /** `a?` / `a?0.3` — drop this term with the given probability, independently per event. */
+    data class Degrade(val expr: Node, val probability: Double, val salt: Int) : Node
     data class Expr(val body: String, val sourceSpan: PatSourceSpan) : Node
 
     fun parseToAst(
@@ -931,6 +943,7 @@ object MiniPat {
                             else -> error("% is only supported after polymetric { ... } forms at $index")
                         }
                     }
+                    match('?') -> node = Degrade(node, readDouble() ?: 0.5, nextSalt++)
                     match('@') -> node = Elongate(node, readInt() ?: 2)
                     match('!') -> node = Repeat(node, readInt() ?: 2)
                     match('*') -> node = Fast(node, readInt() ?: 2)
@@ -1011,11 +1024,20 @@ object MiniPat {
 
         private fun readRequiredInt(message: String): Int = readInt() ?: error(message)
 
+        /** A bare decimal immediately after a modifier, as in `bd?0.3`. No leading whitespace. */
+        private fun readDouble(): Double? {
+            val start = index
+            while (!eof() && (src[index].isDigit() || src[index] == '.')) index++
+            if (index <= start) return null
+            return src.substring(start, index).toDoubleOrNull()
+        }
+
         private fun readAtom(): Atom? {
             val start = index
             while (!eof()) {
                 val ch = src[index]
-                val ok = ch.isLetterOrDigit() || ch == '_' || ch == '-' || ch == ':' || ch == '.' || ch == '+'
+                val ok = ch.isLetterOrDigit() || ch == '_' || ch == '-' || ch == ':' || ch == '.' ||
+                    ch == '+' || ch == '\''
                 if (!ok) break
                 index++
                 if (ch == ':' && !eof() && src[index] == '(') {
@@ -1073,7 +1095,7 @@ object MiniPat {
     }
 
     private fun compileNode(node: Node): PatPattern<String> = when (node) {
-        is Atom -> pure(node.name, node.sourceSpan)
+        is Atom -> compileAtom(node)
         is Expr -> compileExpr(node)
         is Rest -> silence()
         is Seq -> when (node.items.size) {
@@ -1122,10 +1144,27 @@ object MiniPat {
         is Fast -> compileNode(node.expr).fast(node.n.coerceAtLeast(1))
         is Slow -> compileNode(node.expr).slow(node.n.coerceAtLeast(1))
         is Elongate -> compileNode(node.expr)
+        is Degrade -> compileNode(node.expr).degradeBy(node.probability, node.salt)
         is Euclid -> {
             val pulses = node.pulses.coerceAtLeast(0)
             val steps = node.steps.coerceAtLeast(1)
             euclidFill(pulses, steps, rotation = -node.offset, on = compileNode(node.expr))
+        }
+    }
+
+    /**
+     * An atom becomes a one-event-per-cycle pattern. A trailing `:n` — the sample-index suffix —
+     * is additionally surfaced as an `n` **annotation**, so `pat("bd:3")` is both the atom `bd:3`
+     * that every existing caller already sees and an event carrying `n = 3` for the parameter
+     * algebra. Nothing is taken away; use [dropSampleIndex] if you want the bare name.
+     */
+    private fun compileAtom(node: Atom): PatPattern<String> {
+        val index = patSampleIndexSuffix(node.name)
+        if (index == null) return pure(node.name, node.sourceSpan)
+        val annotations = mapOf("n" to index.toString())
+        return fromCycle { subArc ->
+            val inter = PatArc(PatQ.ZERO, PatQ.ONE).intersect(subArc) ?: return@fromCycle emptyList()
+            listOf(PatEvent(inter, node.name, node.sourceSpan, annotations))
         }
     }
 
@@ -1331,6 +1370,27 @@ private object PatExprEvaluator {
     """.trimIndent()
 }
 
+/**
+ * The integer after the last `:` of an atom name, when the whole tail is digits — mini-notation's
+ * sample-index suffix. `"bd:3"` is `3`; `"bd"`, `"g:(0,0.1)"` and `"808:x"` are all `null`.
+ */
+fun patSampleIndexSuffix(name: String): Int? {
+    val colon = name.lastIndexOf(':')
+    if (colon <= 0 || colon == name.length - 1) return null
+    val tail = name.substring(colon + 1)
+    if (!tail.all { it.isDigit() }) return null
+    return tail.toIntOrNull()
+}
+
+/** Strips a trailing `:n` sample-index suffix from every atom, leaving the `n` annotation intact. */
+fun PatPattern<String>.dropSampleIndex(): PatPattern<String> = PatPattern { arc ->
+    events(arc).map { event ->
+        val colon = event.value.lastIndexOf(':')
+        if (patSampleIndexSuffix(event.value) == null) event
+        else event.copy(value = event.value.substring(0, colon))
+    }
+}
+
 fun pat(source: String): PatPattern<String> = MiniPat.parse(source, parseContext = currentPatParseContext(source))
 
 fun <A> pat(source: String, atomMapper: (String) -> A): PatPattern<A> =
@@ -1470,7 +1530,7 @@ private fun defaultPatClock(): PatClock? {
     return Box.context.get()?.patClock ?: musicClock()
 }
 
-private fun <A> PatPattern<A>.mapEventsPerCycle(
+internal fun <A> PatPattern<A>.mapEventsPerCycle(
     transform: (cycle: Long, eventsLocal: List<PatEvent<A>>) -> List<PatEvent<A>>
 ): PatPattern<A> = fromCycleIndexed { subArc, tile ->
     val base = PatQ.of(tile)
@@ -1479,14 +1539,14 @@ private fun <A> PatPattern<A>.mapEventsPerCycle(
     transform(tile, eventsLocal)
 }
 
-private fun qFloor(x: PatQ): Long {
+internal fun qFloor(x: PatQ): Long {
     val divRem = x.n.divideAndRemainder(x.d)
     val q = divRem[0]
     val r = divRem[1]
     return if (x.n.signum() < 0 && r != BigInteger.ZERO) q.subtract(BigInteger.ONE).toLong() else q.toLong()
 }
 
-private fun qCeil(x: PatQ): Long {
+internal fun qCeil(x: PatQ): Long {
     val exact = x.n.mod(x.d) == BigInteger.ZERO
     return if (exact) x.n.divide(x.d).toLong() else qFloor(x) + 1
 }
@@ -1503,19 +1563,19 @@ private fun ceilDiv(n: Long, d: Long): Long {
     return -floorDiv(-n, d)
 }
 
-private fun splitmix64(seed: Long): Long {
+internal fun splitmix64(seed: Long): Long {
     var z = seed + -0x61c8864680b583ebL
     z = (z xor (z ushr 30)) * -0x4b1b3c39ec3d2dcdL
     z = (z xor (z ushr 27)) * -0x441d67c49c2c49c9L
     return z xor (z ushr 31)
 }
 
-private fun toUnitDouble(x: Long): Double {
+internal fun toUnitDouble(x: Long): Double {
     val value = x ushr 11
     return value.toDouble() / (1L shl 53).toDouble()
 }
 
-private fun floorMod(value: Long, modulus: Int): Int {
+internal fun floorMod(value: Long, modulus: Int): Int {
     require(modulus > 0) { "Modulus must be positive" }
     val mod = value % modulus.toLong()
     return if (mod < 0L) (mod + modulus).toInt() else mod.toInt()
