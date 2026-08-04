@@ -1990,8 +1990,9 @@ fun refreshLayerShortcutActions() {
     val previous = soloLayerTarget(-1)
     val nextLabel = jsCommandStringLiteral("Solo Next Layer: $next")
     val previousLabel = jsCommandStringLiteral("Solo Previous Layer: $previous")
-    val nextDetail = jsCommandStringLiteral("Hide every other layer and make \"$next\" active. Shortcut: Alt+]")
-    val previousDetail = jsCommandStringLiteral("Hide every other layer and make \"$previous\" active. Shortcut: Alt+[")
+    // No shortcut in the detail text: it is rebindable now, and the palette renders the live one.
+    val nextDetail = jsCommandStringLiteral("Hide every other layer and make \"$next\" active")
+    val previousDetail = jsCommandStringLiteral("Hide every other layer and make \"$previous\" active")
 
     allActions.layerNavigation = eval(
         """
@@ -1999,11 +2000,7 @@ fun refreshLayerShortcutActions() {
             id:'solo-next-layer',
             label:$nextLabel,
             detail:$nextDetail,
-            keybindings:(typeof monaco !== 'undefined') ? [(() => {
-                const key = monaco.KeyCode.BracketRight || monaco.KeyCode.US_CLOSE_SQUARE_BRACKET || monaco.KeyCode.CloseBracket || 0;
-                return key ? (monaco.KeyMod.Alt | key) : 0;
-            })()].filter(Boolean) : [],
-            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === ']' || event.code === 'BracketRight'),
+            keys: 'alt+]',
             run: () => {
                 window.soloNextLayer()
                 if (typeof updateActions === 'function') updateActions()
@@ -2012,11 +2009,7 @@ fun refreshLayerShortcutActions() {
             id:'solo-previous-layer',
             label:$previousLabel,
             detail:$previousDetail,
-            keybindings:(typeof monaco !== 'undefined') ? [(() => {
-                const key = monaco.KeyCode.BracketLeft || monaco.KeyCode.US_OPEN_SQUARE_BRACKET || monaco.KeyCode.OpenBracket || 0;
-                return key ? (monaco.KeyMod.Alt | key) : 0;
-            })()].filter(Boolean) : [],
-            canvasKeybinding: (event) => event.altKey && !event.shiftKey && !event.ctrlKey && !event.metaKey && (event.key === '[' || event.code === 'BracketLeft'),
+            keys: 'alt+[',
             run: () => {
                 window.soloPreviousLayer()
                 if (typeof updateActions === 'function') updateActions()
@@ -2103,7 +2096,6 @@ fun insertFromWorkspace() {
                 label:'$escapedTemplateName', 
                 description: '$escapedDescription',
                 detail: '$escapedDetail',
-                canvasKeybinding: (event) => false, 
                 run: () => {
                     import("./afield.mjs").then( (afield) => {
                         afield.send("insert-template", {
@@ -2180,42 +2172,6 @@ external fun updateActions(): Unit
 @JsName("getSelectedIds")
 fun getSelectedIds() = selected.map { it.unsafeCast<dynamic>().uid as String }.toList()
 
-fun parseKeybindingSpec(spec: String): String? {
-    val tokens = spec.lowercase().replace(",", "+").split('+', ' ', '\t').filter { it.isNotBlank() }
-    val mods = mutableListOf<String>()
-    var mainKey: String? = null
-    for (raw in tokens) {
-        val t = raw.trim()
-        when (t) {
-            "alt", "option" -> mods.add("monaco.KeyMod.Alt")
-            "shift" -> mods.add("monaco.KeyMod.Shift")
-            "ctrl", "control", "cmd", "command", "meta", "ctrlcmd" -> mods.add("monaco.KeyMod.CtrlCmd")
-            else -> {
-                val key = when {
-                    t.length == 1 && t[0] in 'a'..'z' -> "monaco.KeyCode.Key" + t.uppercase()
-                    t.length == 1 && t[0] in '0'..'9' -> "monaco.KeyCode.Digit" + t
-                    t.startsWith("f") && t.drop(1).toIntOrNull() != null -> "monaco.KeyCode." + t.uppercase()
-                    t == "enter" || t == "return" -> "monaco.KeyCode.Enter"
-                    t == "escape" || t == "esc" -> "monaco.KeyCode.Escape"
-                    t == "backspace" -> "monaco.KeyCode.Backspace"
-                    t == "delete" || t == "del" -> "monaco.KeyCode.Delete"
-                    t == "space" || t == "spacebar" -> "monaco.KeyCode.Space"
-                    t == "tab" -> "monaco.KeyCode.Tab"
-                    t == "left" || t == "arrowleft" -> "monaco.KeyCode.LeftArrow"
-                    t == "right" || t == "arrowright" -> "monaco.KeyCode.RightArrow"
-                    t == "up" || t == "arrowup" -> "monaco.KeyCode.UpArrow"
-                    t == "down" || t == "arrowdown" -> "monaco.KeyCode.DownArrow"
-                    else -> null
-                }
-                if (key != null) mainKey = key
-            }
-        }
-    }
-    if (mainKey == null && mods.isEmpty()) return null
-    return (mods + listOfNotNull(mainKey)).joinToString(" | ")
-}
-
-
 fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<Action_Desc>>) {
     val all = eval("[]")
     val selId = selected.map { it.unsafeCast<dynamic>().uid as String }.map { "'$it'" }.joinToString(",")
@@ -2245,17 +2201,21 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
 
         val usesContextualShaderUpdateShortcut =
             it.key == "moduleHere_update" || it.key == "computeModuleHere_update"
-        val kbExpr = if (usesContextualShaderUpdateShortcut) null else parseKeybindingSpec(kbSpec.trim())
-        val kbLine = if (kbExpr != null) "keybindings: [$kbExpr]," else "keybindings: [],"
+        // The server declares its shortcut after a `|` in the description; canonicalize it into a
+        // `keys` spec so a server-declared action is rebindable like any other command.
+        val kbSpecCanonical =
+            if (usesContextualShaderUpdateShortcut) null else KeySpec.canonicalize(kbSpec.trim())
+        // Quoted via JSON, not '...': a canonical spec can itself contain an apostrophe (`cmd+'`).
+        val kbLine =
+            if (kbSpecCanonical != null) "keys: ${jsStringLiteral(kbSpecCanonical)}, keyScope: 'editor'," else ""
 
         val e = """
             ({
-                id:'${it.key}', label:'$label', 
+                id:'${it.key}', label:'$label',
                 detail:'$detailEscaped',
                 docHtml:$docHtml,
                 docJs:$docJs,
                 $kbLine
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     clearErrors(globalEditor)                
                     
@@ -2278,7 +2238,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'fmt-property', label:'Format', 
                 detail:'Format the current property with the backend formatter',
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-format-property',
@@ -2296,7 +2255,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'fmt-kotlin', label:'Format Kotlin', 
                 detail:'Fix the formatting of your code',
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-format-kotlin',
@@ -2311,10 +2269,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         run {
             val e = """
             ({
-                id:'-copy', label:'Duplicate box(es)', 
+                id:'-copy', label:'Duplicate box(es)',
                 detail:'Duplicate the currently selected boxes',
-                canvasKeybinding: (event) => (event.key=='D'||event.key=='d') && event.shiftKey && (event.ctrlKey || event.metaKey) && !event.altKey, 
-                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D],
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-copy',
@@ -2331,7 +2287,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'export-selection-edn', label:'Export selection (.edn)', 
                 detail:'Downloads the selected boxes as a self contained .edn file',
-                canvasKeybinding: (event) => false,
                 run: () => { 
                     exportSelectedBoxesToDownload()
                 }
@@ -2363,7 +2318,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'connect', label:${jsStringLiteral(connectLabel)}, 
                 detail:${jsStringLiteral("Shared selected variables from one box to another")},
-                canvasKeybinding: (event) => event.key=='g' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
+                keys: 'g', keyScope: 'canvas',
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-connect',
@@ -2379,7 +2334,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'nest-into', label:${jsStringLiteral(nestLabel)}, 
                 detail:${jsStringLiteral("Hide one box 'inside' the nest of another box")},
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-nest-into',
@@ -2395,7 +2349,7 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'disconnect', label:${jsStringLiteral(disconnectLabel)}, 
                 detail:${jsStringLiteral("Stop sharing variables between these two boxes")},
-                canvasKeybinding: (event) => event.key=='u' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey, 
+                keys: 'u', keyScope: 'canvas',
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-disconnect',
@@ -2417,7 +2371,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
                 ({
                     id:'move-to-active-layer', label:${jsStringLiteral(moveLabel)},
                     detail:${jsStringLiteral("Assign selected box"+(if (boxes.size>1) "es" else "")+" to the current active layer")},
-                    canvasKeybinding: (event) => false,
                     run: () => {
                         const layer = ${jsStringLiteral(layerLabel)};
                         if (!layer) return;
@@ -2444,7 +2397,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'-update-check', label:'Check for updates & download', 
                 detail:'Check the shared server for updates to Field and download them',
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-update-check',
@@ -2461,7 +2413,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'normalize-nested-pan', label:'Normalize Nested contents', 
                 detail:'Reset nest offset so that the boxes appear in the current position when the document is opened',
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     normalizeNestedPanForSelection()
                 }
@@ -2475,7 +2426,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'un-nest', label:'Un-nest selection', 
                 detail:'Bring a nested box out of it\'s nest',
-                canvasKeybinding: (event) => false, 
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-un-nest',
@@ -2493,7 +2443,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
         ({
             id:'select-all-boxes', label:'Select All Boxes',
             detail:'Select every box on the canvas',
-            canvasKeybinding: (event) => false,
             run: () => { selectAllBoxes() }
         })
     """.trimIndent()
@@ -2506,7 +2455,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'select-all-nested', label:'Select all nested',
                 detail:'Select all boxes that are currently nested inside another box',
-                canvasKeybinding: (event) => false,
                 run: () => { selectAllNestedBoxes() }
             })
         """.trimIndent()
@@ -2520,7 +2468,6 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
             ({
                 id:'connect-nest-parent-to-selection', label:'Connect from nest parent to selection',
                 detail:'For each selected nested box, connect its nest parent to it',
-                canvasKeybinding: (event) => false,
                 run: () => { connectFromNestParentToSelection() }
             })
         """.trimIndent()
@@ -2543,6 +2490,8 @@ fun registerBuiltinCommands() {
     w.soloPreviousLayer = ::soloPreviousLayer
     w.refreshLayerShortcutActions = ::refreshLayerShortcutActions
     w.openUserThemeProxyBox = ::openUserThemeProxyBox
+    w.openUserKeybindingsProxyBox = ::openUserKeybindingsProxyBox
+    w.reloadUserKeybindings = ::reloadUserKeybindings
     w.macroTranscriptMarkStart = ::macroTranscriptMarkStart
     w.macroTranscriptMarkEndAndSave = ::macroTranscriptMarkEndAndSave
     w.macroTranscriptRunOnSelection = ::macroTranscriptRunOnSelection
@@ -2557,12 +2506,8 @@ fun registerBuiltinCommands() {
         [{
             id:'new-box',
             label:"New Box",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyCode.KEY_N] : [],
+            keys: 'n',
             detail:"Make a new box under the mouse",
-            canvasKeybinding: (event) => {
-                let a = event.key=='n' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
-                return a
-            },
             run: (args) => {
                 newBox(args)
             }
@@ -2570,7 +2515,6 @@ fun registerBuiltinCommands() {
             id:'set-main-language',
             label:"Set Main Language",
             detail:"Choose the language used by child boxes of the selected language root",
-            canvasKeybinding: (event) => false,
             run: () => {
                 if (typeof window.openFieldCommandPalette === 'function') {
                     window.openFieldCommandPalette({ includeEditor: false, editor: window.globalEditor, query: 'Set Main Language:' })
@@ -2580,7 +2524,6 @@ fun registerBuiltinCommands() {
             id:'macro-transcript-panel',
             label:"Macro: Recorder Panel",
             detail:"Open the macro recorder and browser",
-            canvasKeybinding: (event) => false,
             run: () => {
                 macroTranscriptPanel()
             }
@@ -2588,7 +2531,6 @@ fun registerBuiltinCommands() {
             id:'macro-transcript-start',
             label:"Macro: Mark Start",
             detail:"Insert a start marker into the operation transcript",
-            canvasKeybinding: (event) => false,
             run: () => {
                 macroTranscriptMarkStart()
             }
@@ -2596,7 +2538,6 @@ fun registerBuiltinCommands() {
             id:'macro-transcript-save',
             label:"Macro: Mark End & Save",
             detail:"Save transcript operations since the last start marker as a macro",
-            canvasKeybinding: (event) => false,
             run: () => {
                 macroTranscriptMarkEndAndSave()
             }
@@ -2604,7 +2545,6 @@ fun registerBuiltinCommands() {
             id:'macro-transcript-run',
             label:"Macro: Run on Selection",
             detail:"Run a saved macro against the selected boxes",
-            canvasKeybinding: (event) => false,
             run: () => {
                 macroTranscriptRunOnSelection()
             }
@@ -2612,27 +2552,24 @@ fun registerBuiltinCommands() {
             id:'macro-transcript-undo',
             label:"Macro: Undo on Selection",
             detail:"Run a saved macro backwards against the selected boxes",
-            canvasKeybinding: (event) => false,
             run: () => {
                 macroTranscriptUndoOnSelection()
             }
         },{
             id:'delete-box',
             label:"Delete Box(es)",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backspace] : [],
+            keys: ['cmd+backspace', 'cmd+delete'],
             detail:"Delete the selected boxes",
-            canvasKeybinding: (event) => (event.keyCode==8 || event.keyCode==46) && (event.ctrlKey || event.metaKey),
             run: () => {
                 deleteSelectedBoxes()
             }
         },{
             id:'copy-selection',
             label:"Copy Selection",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_C] : [],
+            keys: 'cmd+c',
             detail:"Copy selected boxes (and all their code & properties)",
-            canvasKeybinding: (event) => {
-                const copyChord = (event.key=='c') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey)
-                if (!copyChord) return false
+            // Never steal the chord from an ordinary text selection — that is a plain document copy.
+            canvasGuard: (event) => {
                 const sel = (window.getSelection && window.getSelection()) || null
                 const hasDomSelection = !!(sel && sel.rangeCount > 0 && !sel.isCollapsed && (sel.toString() || "").length > 0)
                 return !hasDomSelection
@@ -2648,9 +2585,8 @@ fun registerBuiltinCommands() {
         },{
             id:'paste-selection',
             label:"Paste Selection",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_V] : [],
+            keys: 'cmd+v',
             detail:"Paste as new boxes",
-            canvasKeybinding: (event) => (event.key=='v') && !event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
                 if (window.embeddedEditors && window.embeddedEditors.getFocused && window.embeddedEditors.getFocused()) return
@@ -2660,7 +2596,6 @@ fun registerBuiltinCommands() {
             id:'export-document-edn',
             label:"Export document (.edn)",
             detail:"Download a self-contained .edn file of the whole document",
-            canvasKeybinding: (event) => false,
             run: () => {
                 exportDocumentToDownload()
             }
@@ -2668,7 +2603,6 @@ fun registerBuiltinCommands() {
             id:'export-ipynb',
             label:"Export notebook (.ipynb)",
             detail:"Download the selected python-root box column as a Jupyter notebook",
-            canvasKeybinding: (event) => false,
             run: () => {
                 exportNotebookToDownload()
             }
@@ -2683,16 +2617,14 @@ fun registerBuiltinCommands() {
             id:'show-all-layers',
             label:"Show All Layers",
             detail:"Restore visibility for every layer and reopen the layers palette",
-            canvasKeybinding: (event) => false,
             run: () => {
                 showAllLayers()
             }
         },{
             id:'insert-from-workspace',
             label:"Insert template",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_T] : [],
+            keys: 'cmd+t',
             detail:"Search for boxes that you might want to add to this document",
-            canvasKeybinding: (event) => (event.key=='t') && (event.ctrlKey || event.metaKey),
             run: () => {
                 insertFromWorkspace()
             }
@@ -2700,25 +2632,36 @@ fun registerBuiltinCommands() {
             id:'open-user-theme',
             label:"Open User Theme",
             detail:"Open ~/.afield/theme.css as an absolute file proxy",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.openUserThemeProxyBox()
             }
         },{
+            id:'open-user-keybindings',
+            label:"Open Keybindings",
+            detail:"Open ~/.afield/keybindings.yaml as an absolute file proxy",
+            run: () => {
+                window.openUserKeybindingsProxyBox()
+            }
+        },{
+            id:'reload-user-keybindings',
+            label:"Reload Keybindings",
+            detail:"Re-read ~/.afield/keybindings.yaml and re-apply every shortcut",
+            run: () => {
+                window.reloadUserKeybindings()
+            }
+        },{
             id:'search-docs-and-code',
             label:"Search Documentation & Code",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_D] : [],
+            keys: 'cmd+shift+d',
             detail:"Search Field4 documentation, code examples, and API references using AI",
-            canvasKeybinding: (event) => (event.key=='D') && (event.ctrlKey || event.metaKey) && event.shiftKey,
             run: () => {
                 window.switchToDocsIframe("/docs-search.html");
             }
         },{
             id:'edit-hashtag',
             label:"Edit hashtag",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_H] : [],
+            keys: 'cmd+h',
             detail:"Edit the metadata associated with this document",
-            canvasKeybinding: (event) => (event.key=='h') && (event.ctrlKey || event.metaKey),
             run: () => {
                 editHashtag()
             }
@@ -2726,7 +2669,6 @@ fun registerBuiltinCommands() {
             id:'save-as-template',
             label:"Save selection as template",
             detail:"Make the selected boxes a new template in your workspace for sharing later",
-            canvasKeybinding: (event) => false,
             run: () => {
                 saveAsTemplate()
             }
@@ -2734,7 +2676,6 @@ fun registerBuiltinCommands() {
             id:'provisional-accept-all',
             label:"Accept All Provisional (Everywhere)",
             detail:"If AI has proposed changes to your code (shown in orange) accept them all",
-            canvasKeybinding: (event) => false,
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-accept-all", {})})
             }
@@ -2742,7 +2683,6 @@ fun registerBuiltinCommands() {
             id:'provisional-reject-all',
             label:"Reject All Provisional (Everywhere)",
             detail:"If AI has proposed changes to your code (shown in orange) reject them all",
-            canvasKeybinding: (event) => false,
             run: () => {
                 import("./afield.mjs").then( (afield) => {afield.send("provisional-reject-all", {})})
             }
@@ -2750,7 +2690,6 @@ fun registerBuiltinCommands() {
             id:'switch-to-docs-iframe',
             label:"Switch to Documentation Iframe",
             detail:"Switch to the documentation mode",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.switchToDefaultDocs();
             }
@@ -2758,7 +2697,6 @@ fun registerBuiltinCommands() {
             id:'show-document-history',
             label:"Show Document History",
             detail:"Switch to the history view mode",
-            canvasKeybinding: (event) => false,
             run: () => {
                 showDocumentHistory()
             }
@@ -2766,16 +2704,14 @@ fun registerBuiltinCommands() {
             id:'switch-to-monaco-editor',
             label:"Switch to Monaco Editor",
             detail:"Switch back to editing code",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.switchToMonaco();
             }
         },{
             id:'toggle-notes-markdown-preview',
             label:"Toggle Notes Markdown Preview",
-            keybindings:(typeof monaco !== 'undefined') ? [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KEY_M] : [],
+            keys: 'cmd+shift+m',
             detail:"Switch the notes property between rendered Markdown and editable Markdown source",
-            canvasKeybinding: (event) => (event.key=='M' || event.key=='m') && event.shiftKey && !event.altKey && (event.ctrlKey || event.metaKey),
             run: () => {
                 if (typeof window.toggleNotesMarkdownPreview === 'function') {
                     window.toggleNotesMarkdownPreview(window.globalEditor || null);
@@ -2785,7 +2721,6 @@ fun registerBuiltinCommands() {
             id:'add-editor-to-output',
             label:"Add Editor to Output Area",
             detail:"Open an embedded text editor for a property (e.g. fragment, vertex) in the selected box's output area",
-            canvasKeybinding: (event) => false,
             run: () => {
                 if (!window.selectedList || window.selectedList.length !== 1) {
                     if (typeof window.notify === 'function') window.notify('Select exactly one box', 'command');
@@ -2839,7 +2774,6 @@ fun registerBuiltinCommands() {
             id:'record-selected-box-mp4',
             label:"Record Selected Box MP4",
             detail:"Record a short MP4 clipped to the selected box and its outputs",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.recordSelectedBoxMp4();
             }
@@ -2847,7 +2781,6 @@ fun registerBuiltinCommands() {
             id:'record-selected-editor-mp4',
             label:"Record Selected Editor MP4",
             detail:"Record a short MP4 clipped to the selected box's Monaco editor",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.recordSelectedBoxEditorMp4();
             }
@@ -2855,7 +2788,6 @@ fun registerBuiltinCommands() {
             id:'record-window-mp4',
             label:"Record Window MP4",
             detail:"Record a short MP4 of the current Field window",
-            canvasKeybinding: (event) => false,
             run: () => {
                 window.recordWindowMp4();
             }

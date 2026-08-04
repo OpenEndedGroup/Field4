@@ -1330,10 +1330,17 @@ const syncDocsIframeBoundsToMonaco = () => {
 window.addEventListener("resize", syncDocsIframeBoundsToMonaco)
 
 window.addEventListener("keydown", (e) => {
+            // Chords come from ~/.afield/keybindings.yaml (defaults Cmd+Shift+P / F1 and Cmd+P);
+            // fall back to the built-in chords if the keybinding layer has not loaded yet.
+            const kb = window.fieldKeybindings;
             const key = (e.key || "").toLowerCase();
             const isCtrlOrCmdP = (e.ctrlKey || e.metaKey) && !e.altKey && key === 'p';
-            const isCommandPaletteShortcut = e.key === "F1" || (isCtrlOrCmdP && e.shiftKey);
-            const isOpenAnythingShortcut = isCtrlOrCmdP && !e.shiftKey;
+            const isCommandPaletteShortcut = kb
+                    ? kb.matches(e, "open-command-palette")
+                    : (e.key === "F1" || (isCtrlOrCmdP && e.shiftKey));
+            const isOpenAnythingShortcut = kb
+                    ? kb.matches(e, "open-anything")
+                    : (isCtrlOrCmdP && !e.shiftKey);
 
             if (isCommandPaletteShortcut || isOpenAnythingShortcut) {
                     // If an embedded editor has focus, let it handle its own command palette shortcut
@@ -1462,8 +1469,13 @@ const wireDocsIframeKeyForwarding = () => {
 }
 
 window.addEventListener("keydown", (e) => {
-        const isCtrlOrCmdSlash = (e.ctrlKey || e.metaKey) && (e.key === "/" || e.key === "÷")
-        if (!isCtrlOrCmdSlash) return
+        // `toggle-docs` in ~/.afield/keybindings.yaml, Cmd+/ by default. The fallback also accepts the
+        // "÷" that Option+/ produces on macOS; the keybinding layer matches on `code` so it doesn't need to.
+        const kb = window.fieldKeybindings
+        const isToggleDocs = kb
+                ? kb.matches(e, "toggle-docs")
+                : ((e.ctrlKey || e.metaKey) && (e.key === "/" || e.key === "÷"))
+        if (!isToggleDocs) return
 
         e.preventDefault()
         e.stopImmediatePropagation()

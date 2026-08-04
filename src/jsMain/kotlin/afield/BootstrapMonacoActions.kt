@@ -737,22 +737,15 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
     if ((editor.afieldCoreActionsRegistered as? Boolean) == true) return
     editor.afieldCoreActionsRegistered = true
 
-    fun keycode(value: dynamic): Int {
-        return (value as Number).toInt()
-    }
-    fun keybinding(vararg values: dynamic): Int {
-        var result = 0
-        for (value in values) {
-            result = result or keycode(value)
-        }
-        return result
-    }
-
     val disposables = mutableListOf<dynamic>()
     fun addAction(action: dynamic) {
         if (editor.afieldActionMetadata == null || editor.afieldActionMetadata == undefined) {
             editor.afieldActionMetadata = js("{}")
         }
+        // These live only inside an editor, and their `keys` default is resolved against
+        // ~/.afield/keybindings.yaml here — the one place every core editor action is registered.
+        if (action.keyScope == null || action.keyScope == undefined) action.keyScope = KeyScope.editor
+        Keybindings.installOnAction(action)
         editor.afieldActionMetadata[action.id] = action
         val handle = editor.addAction(action)
         disposables.add(handle)
@@ -762,7 +755,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "send-to-preamble"
         action.label = "Move code to preamble"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.KeyP))
+        action.keys = "alt+shift+p"
         action.precondition = "editorHasSelection"
         action.run = { ed: dynamic ->
             monacoRunSendToPreamble(ed)
@@ -774,7 +767,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "ai-chat"
         action.label = "AI Chat in editor"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Digit3))
+        action.keys = "cmd+3"
         action.run = { ed: dynamic ->
             monacoRunAiChatInline(ed)
         }
@@ -785,7 +778,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "ai-chat-panel"
         action.label = "AI Chat (panel)"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Digit4))
+        action.keys = "cmd+4"
         action.run = {
             monacoRunAiChatPanel()
         }
@@ -798,7 +791,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         action.label = "Go to Paired Shader Definition"
         // Intentionally front F12 so paired shader navigation runs before Monaco's
         // ordinary same-file definition lookup, then fall back when no cross-property match exists.
-        action.keybindings = arrayOf(keybinding(monaco.KeyCode.F12))
+        action.keys = "f12"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "navigation"
@@ -832,7 +825,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "ai-assist"
         action.label = "Apply Intelligence"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.KeyO))
+        action.keys = "alt+o"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -861,7 +854,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "ai-assist-error"
         action.label = "Apply Intelligence to Error message"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.KeyO))
+        action.keys = "alt+shift+o"
         action.precondition = {
             val w = js("window")
             val lastErrorIs = w.lastErrorIs
@@ -880,7 +873,6 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "provisional-accept-current"
         action.label = "Accept All Provisional (This Editor)"
-        action.keybindings = emptyArray<Int>()
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -895,7 +887,6 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "provisional-reject-current"
         action.label = "Reject All Provisional (This Editor)"
-        action.keybindings = emptyArray<Int>()
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -910,7 +901,6 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "provisional-accept-all"
         action.label = "Accept All Provisional (Everywhere)"
-        action.keybindings = emptyArray<Int>()
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -925,7 +915,6 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "provisional-reject-all"
         action.label = "Reject All Provisional (Everywhere)"
-        action.keybindings = emptyArray<Int>()
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -936,24 +925,34 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         addAction(action)
     }
 
-    editor.addCommand(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyMod.Shift, monaco.KeyCode.KeyP)) {
-        val w = js("window")
-        val fn = w.openFieldCommandPalette ?: w.openQuickCommandPalette
-        if (fn != null && fn != undefined) {
-            val options = js("{}")
-            options.includeEditor = true
-            options.editor = editor
-            fn(options)
-        } else {
-            editor.trigger("", "editor.action.quickCommand", null)
+    run {
+        // The in-editor half of `open-command-palette`. Monaco swallows a bound chord before it can
+        // reach the window-level listener that serves the canvas, so the editor needs its own
+        // registration — an action, not addCommand, so it can be disposed and rebuilt on a reload.
+        val action = js("{}")
+        action.id = "open-command-palette"
+        action.label = "Command Palette"
+        action.keys = arrayOf("cmd+shift+p", "f1")
+        action.run = {
+            val w = js("window")
+            val fn = w.openFieldCommandPalette ?: w.openQuickCommandPalette
+            if (fn != null && fn != undefined) {
+                val options = js("{}")
+                options.includeEditor = true
+                options.editor = editor
+                fn(options)
+            } else {
+                editor.trigger("", "editor.action.quickCommand", null)
+            }
         }
+        addAction(action)
     }
 
     run {
         val action = js("{}")
         action.id = "toggle-fold-current-line"
         action.label = "Toggle Fold on Current Line"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Quote))
+        action.keys = "cmd+'"
         action.run = { ed: dynamic ->
             monacoRunToggleFold(ed)
         }
@@ -964,7 +963,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "forward-next-property"
         action.label = "Next Property"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Period))
+        action.keys = "cmd+."
         action.run = { ed: dynamic ->
             monacoRunNextProperty(ed, 1)
         }
@@ -975,7 +974,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "back-next-property"
         action.label = "Previous Property"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.CtrlCmd, monaco.KeyCode.Comma))
+        action.keys = "cmd+,"
         action.run = { ed: dynamic ->
             monacoRunNextProperty(ed, -1)
         }
@@ -986,7 +985,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "execute-fragment"
         action.label = "Run Line / Selection"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.Enter))
+        action.keys = "alt+enter"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1001,7 +1000,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "update-shader"
         action.label = "Update Shader"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.Enter))
+        action.keys = "alt+shift+enter"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1016,7 +1015,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "execute-all"
         action.label = "Run Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.Digit0))
+        action.keys = "alt+0"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1031,7 +1030,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "launch-fragment"
         action.label = "Launch Line / Selection"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.Digit1))
+        action.keys = "alt+1"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1046,7 +1045,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "launch-all"
         action.label = "Launch Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyCode.UpArrow))
+        action.keys = "alt+up"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1061,7 +1060,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "continue-all"
         action.label = "Continue Box"
-        action.keybindings = arrayOf(keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.UpArrow))
+        action.keys = "alt+shift+up"
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"
@@ -1076,10 +1075,7 @@ fun monacoRegisterActions(editor: dynamic, monaco: dynamic) {
         val action = js("{}")
         action.id = "stop-all"
         action.label = "Stop Box"
-        action.keybindings = arrayOf(
-            keybinding(monaco.KeyMod.Alt, monaco.KeyCode.DownArrow),
-            keybinding(monaco.KeyMod.Alt, monaco.KeyMod.Shift, monaco.KeyCode.DownArrow)
-        )
+        action.keys = arrayOf("alt+down", "alt+shift+down")
         action.precondition = undefined
         action.keybindingContext = undefined
         action.contextMenuGroupId = "execution"

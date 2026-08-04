@@ -14,8 +14,11 @@ const quickpickIsEditableTarget = (target) => {
         return false
 }
 
+// `show-cheatsheet` in ~/.afield/keybindings.yaml, "?" by default.
 const quickpickIsHelpShortcut = (e) =>
-        e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey
+        window.fieldKeybindings
+                ? window.fieldKeybindings.matches(e, "show-cheatsheet")
+                : (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey)
 
 const initQuickPick = (is) => {
         globalIS = is.IQuickInputService
@@ -70,7 +73,6 @@ function normalizeActionsById(actions) {
 }
 
 function updateActions() {
-        ensureBuiltinKeybindings();
         if (typeof window.refreshLayerShortcutActions === "function") {
                 window.refreshLayerShortcutActions()
         }
@@ -83,6 +85,13 @@ function updateActions() {
 
 function setActions(actions) {
         actions = normalizeActionsById(actions)
+
+        // Resolve every action's `keys` default against ~/.afield/keybindings.yaml before registering,
+        // so both the Monaco binding and the canvas predicate come from the same (possibly rebound) spec.
+        if (window.fieldKeybindings) {
+                actions.forEach(a => window.fieldKeybindings.installOnAction(a))
+                window.fieldKeybindings.scheduleInventoryReport()
+        }
 
         let add = []
         let remove = []
@@ -122,26 +131,21 @@ function setActions(actions) {
 window.updateActions = updateActions
 window.setActions = setActions
 
-// Ensure builtin actions get monaco keybindings once monaco is available
-function ensureBuiltinKeybindings() {
-        if (typeof monaco === "undefined") return
-        if (!allActions || !allActions.builtin) return
-        const key = (...names) => paletteMonacoKeyCode(...names) || 0
-        const map = {
-                "new-box": [key("KeyN", "KEY_N")],
-                "delete-box": [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backspace],
-                "copy-selection": [monaco.KeyMod.CtrlCmd | key("KeyC", "KEY_C")],
-                "paste-selection": [monaco.KeyMod.CtrlCmd | key("KeyV", "KEY_V")],
-                "insert-from-workspace": [monaco.KeyMod.CtrlCmd | key("KeyT", "KEY_T")],
-                "search-docs-and-code": [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | key("KeyD", "KEY_D")],
-                "edit-hashtag": [monaco.KeyMod.CtrlCmd | key("KeyH", "KEY_H")],
-                "toggle-notes-markdown-preview": [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | key("KeyM", "KEY_M")],
+/**
+ * Drops every Monaco registration so the next updateActions() re-adds them all. Monaco snapshots an
+ * action's keybinding when it is registered, so reloading keybindings.yaml has to tear the
+ * registrations down — re-resolving the specs in place would have no effect.
+ */
+function resetActionRegistrations() {
+        for (const disposer of monacoActionDisposers.values()) {
+                if (disposer) disposer.dispose()
         }
-        allActions.builtin.forEach(a => {
-                const kb = map[a.id]
-                if (kb) a.keybindings = kb
-        })
+        monacoActionDisposers.clear()
+        lastActions.forEach(a => { delete a.disposer })
+        lastActions = []
+        window.lastActions = lastActions
 }
+window.resetActionRegistrations = resetActionRegistrations
 
 // --- Anywhere palette support ---
 const anywhereProviders = []

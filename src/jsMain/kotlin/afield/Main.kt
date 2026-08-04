@@ -3532,6 +3532,11 @@ fun updateAllBoxVisibility(animated: Boolean = false, duration: Double = 250.0) 
 
 
 fun showCheatsheet() {
+    // Redraw the key legends from the live bindings: cheap, and it means the card can never show a
+    // shortcut the user has since rebound.
+    val render = window.asDynamic().renderCheatsheetKeys
+    if (render != null && render != undefined) render()
+
     (document.getElementById("overlaycanvas") as HTMLElement).style.unsafeCast<dynamic>().backdropFilter =
         "blur(20px) brightness(0.0)"
     select("#cheatsheet").forEach {
@@ -4258,17 +4263,20 @@ private fun createAbsoluteProxyForDrop(dropped: DroppedFileProxy, x: Double, y: 
     )
 }
 
-fun openUserThemeProxyBox() {
-    val path = (window.asDynamic().fieldUserThemePath as? String)?.trim().orEmpty()
+/**
+ * Reveals one of the live-reloaded files in `~/.afield` as an editable file-proxy box, reusing the
+ * existing box for that path if there already is one.
+ */
+private fun openUserConfigProxyBox(path: String, fileName: String, mimeType: String, what: String) {
     if (path.isBlank()) {
-        notify("Theme path is not available yet", "error")
+        notify("$what path is not available yet", "error")
         return
     }
 
     findAbsoluteFileProxyBox(path)?.let { box ->
         val uid = uidForBoxElement(box)
         if (uid != null && switchSelectionToProperty(uid, "contents", syncEditor = true)) {
-            notify("Opened user theme proxy", "file")
+            notify("Opened $what", "file")
             return
         }
     }
@@ -4285,13 +4293,27 @@ fun openUserThemeProxyBox() {
         CreateFileProxyBox(
             mode = "absolute",
             path = path,
-            fileName = "theme.css",
-            mimeType = "text/css",
+            fileName = fileName,
+            mimeType = mimeType,
             x = x,
             y = y
         )
     )
 }
+
+fun openUserThemeProxyBox() = openUserConfigProxyBox(
+    path = (window.asDynamic().fieldUserThemePath as? String)?.trim().orEmpty(),
+    fileName = "theme.css",
+    mimeType = "text/css",
+    what = "user theme"
+)
+
+fun openUserKeybindingsProxyBox() = openUserConfigProxyBox(
+    path = (window.asDynamic().fieldUserKeybindingsPath as? String)?.trim().orEmpty(),
+    fileName = "keybindings.yaml",
+    mimeType = "text/yaml",
+    what = "keybindings"
+)
 
 private fun createDocumentCopyProxyForDrop(dropped: DroppedFileProxy, x: Double, y: Double) {
     readDroppedFileBase64(dropped.file) { contentsBase64 ->
@@ -4721,6 +4743,9 @@ private fun captureCanvasHistoryNow(versionIndex: Int) {
 suspend fun main() {
     launchNumber++
     println(" -- welcome to Main.kt --")
+    // Before anything registers an action or a global key listener, so they all resolve their
+    // shortcuts through ~/.afield/keybindings.yaml from the very first registration.
+    Keybindings.install()
     val searchParams = URLSearchParams(document.location?.search)
     val filename = searchParams.get("file") ?: "default"
     val username = searchParams.get("user") ?: "everybody"

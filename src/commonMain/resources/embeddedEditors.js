@@ -366,14 +366,12 @@ function registerEmbeddedActions(editor, uid, property) {
 	const monacoApi = window.monaco;
 	if (!monacoApi) return;
 
-	function keycode(v) { return v | 0; }
-	function keybinding(...values) {
-		let r = 0;
-		for (const v of values) r |= keycode(v);
-		return r;
-	}
 	function addAction(action) {
 		editor.afieldActionMetadata = editor.afieldActionMetadata || {};
+		// Embedded editors mirror the main editor's action ids, so resolving `keys` here means one
+		// entry in keybindings.yaml rebinds the shortcut in both places.
+		if (action.keyScope === undefined) action.keyScope = "editor";
+		if (window.fieldKeybindings) window.fieldKeybindings.installOnAction(action);
 		editor.afieldActionMetadata[action.id] = action;
 		return editor.addAction(action);
 	}
@@ -382,10 +380,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "embedded-command-palette",
 		label: "Command Palette",
-		keybindings: [
-			monacoApi.KeyCode.F1,
-			keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyP),
-		],
+		keys: ["f1", "cmd+shift+p"],
 		run: (ed) => {
 			ed.focus();
 			if (typeof window.openFieldCommandPalette === "function") {
@@ -398,18 +393,23 @@ function registerEmbeddedActions(editor, uid, property) {
 		},
 	});
 
-	// ── Cmd/Ctrl+P → open anything ───────────────────────────────────
-	editor.addCommand(keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.KeyP), () => {
-		if (typeof window.openAnywherePalette === "function") {
-			window.openAnywherePalette();
-		}
+	// ── Open Anything, resolved from keybindings.yaml ────────────────
+	addAction({
+		id: "embedded-open-anything",
+		label: "Open Anything",
+		keys: "cmd+p",
+		run: () => {
+			if (typeof window.openAnywherePalette === "function") {
+				window.openAnywherePalette();
+			}
+		},
 	});
 
 	// ── Alt+Enter: execute fragment or reload shader ─────────────────
 	addAction({
 		id: "execute-fragment",
 		label: "Run Line / Selection",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Enter)],
+		keys: "alt+enter",
 			contextMenuGroupId: "execution",
 			contextMenuOrder: 1.5,
 			run: (ed) => {
@@ -432,7 +432,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "update-shader",
 		label: "Update Shader",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.Enter)],
+		keys: "alt+shift+enter",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.55,
 		run: (ed) => {
@@ -448,7 +448,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "execute-all",
 		label: "Run Box",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Digit0)],
+		keys: "alt+0",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 2.0,
 		run: (ed) => {
@@ -469,7 +469,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "launch-fragment",
 		label: "Launch Line / Selection",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.Digit1)],
+		keys: "alt+1",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.5,
 		run: (ed) => {
@@ -493,7 +493,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "launch-all",
 		label: "Launch Box",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.UpArrow)],
+		keys: "alt+up",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 2.0,
 		run: (ed) => {
@@ -515,7 +515,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "continue-all",
 		label: "Continue Box",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.UpArrow)],
+		keys: "alt+shift+up",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 2.1,
 		run: (ed) => {
@@ -530,10 +530,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "stop-all",
 		label: "Stop Box",
-		keybindings: [
-			keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.DownArrow),
-			keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.DownArrow),
-		],
+		keys: ["alt+down", "alt+shift+down"],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 2.0,
 		run: () => {
@@ -548,7 +545,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "send-to-preamble",
 		label: "Move code to preamble",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyP)],
+		keys: "alt+shift+p",
 		precondition: "editorHasSelection",
 		run: (ed) => {
 			const model = ed.getModel();
@@ -568,7 +565,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "ai-assist",
 		label: "Apply Intelligence",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyCode.KeyO)],
+		keys: "alt+o",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.5,
 		run: (ed) => {
@@ -599,7 +596,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "ai-assist-error",
 		label: "Apply Intelligence to Error message",
-		keybindings: [keybinding(monacoApi.KeyMod.Alt, monacoApi.KeyMod.Shift, monacoApi.KeyCode.KeyO)],
+		keys: "alt+shift+o",
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.5,
 		run: (ed) => {
@@ -624,7 +621,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "ai-chat",
 		label: "AI Chat in editor",
-		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Digit3)],
+		keys: "cmd+3",
 		run: (ed) => {
 			const selection = ed.getSelection();
 			const start = selection.startLineNumber - 1;
@@ -641,7 +638,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "ai-chat-panel",
 		label: "AI Chat (panel)",
-		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Digit4)],
+		keys: "cmd+4",
 		run: () => {
 			if (typeof window.openAiChatForBox === "function") {
 				window.openAiChatForBox(uid, property);
@@ -653,7 +650,6 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "provisional-accept-current",
 		label: "Accept All Provisional (This Editor)",
-		keybindings: [],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.6,
 		run: () => { send("provisional-accept", { uid, property }); },
@@ -661,7 +657,6 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "provisional-reject-current",
 		label: "Reject All Provisional (This Editor)",
-		keybindings: [],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.61,
 		run: () => { send("provisional-reject", { uid, property }); },
@@ -669,7 +664,6 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "provisional-accept-all",
 		label: "Accept All Provisional (Everywhere)",
-		keybindings: [],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.62,
 		run: () => { send("provisional-accept-all", {}); },
@@ -677,7 +671,6 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "provisional-reject-all",
 		label: "Reject All Provisional (Everywhere)",
-		keybindings: [],
 		contextMenuGroupId: "execution",
 		contextMenuOrder: 1.63,
 		run: () => { send("provisional-reject-all", {}); },
@@ -687,7 +680,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "toggle-fold-current-line",
 		label: "Toggle Fold on Current Line",
-		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Quote)],
+		keys: "cmd+'",
 		run: (ed) => { ed.trigger("keyboard", "editor.toggleFold", null); },
 	});
 
@@ -697,7 +690,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "forward-next-property",
 		label: "Next Property",
-		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Period)],
+		keys: "cmd+.",
 		run: () => {
 			// Trigger a property change on the global editor if available
 			const ge = window.globalEditor;
@@ -710,7 +703,7 @@ function registerEmbeddedActions(editor, uid, property) {
 	addAction({
 		id: "back-next-property",
 		label: "Previous Property",
-		keybindings: [keybinding(monacoApi.KeyMod.CtrlCmd, monacoApi.KeyCode.Comma)],
+		keys: "cmd+,",
 		run: () => {
 			const ge = window.globalEditor;
 			if (ge) {
