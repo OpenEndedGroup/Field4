@@ -1,0 +1,163 @@
+name: threejs_editable_fill_pixels
+description: >
+  Pixel verification for the three.js viewer's *client-side* fill — the `editable = true` path, where
+  `tessellateCoplanarGroups` in `threejs_viewer.html` triangulates in the browser rather than reading
+  the server's triangles. `ThreeJsViewerTessellationParityTest` executes that JavaScript on GraalJS and
+  compares it to `afield.graphics.PlanarTessellation`, which is a strong statement about the numbers and
+  no statement at all about the pixels; this transcript is the pixels.
+
+  Three boxes, each `editable = true` so the client does the work:
+
+    1. `fill_editable_planes` — one filled FLine holding six subpaths: three congruent unit squares in
+       three perpendicular planes, each with a square hole. Every face must be solid, every hole must be
+       a hole, and nothing may be inside out.
+    2. `fill_editable_overlap` — two congruent overlapping squares, each listing a vertex that falls
+       inside the other. Until 2026-08-04 this froze the tab: the nesting pass could pick each ring as
+       the other's parent, and the depth walk never terminated. Both squares should now fill.
+    3. `fill_static_planes` — the same line as (1) with `editable = false`, so the server's
+       triangulation is next to the client's for comparison.
+
+  Replay with the agent backdoor, then `screenshot-box` each of the three. Allow 20-25 s after a box's
+  text output before screenshotting: a `threejs` output pane reports before its geometry arrives, and
+  an immediate capture banks an empty frame.
+operations:
+  - create:
+      box: fill_editable_planes
+      name: Editable fill — three planes, three holes
+      frame: { x: 60.0, y: 40.0, w: 520.0, h: 480.0 }
+      properties:
+        code: |
+          // Client-side triangulation: `editable = true` means `threejs_viewer.html` runs
+          // `tessellateCoplanarGroups` in the browser, because a dragged point must not wait for a
+          // round-trip to re-fill. Three perpendicular faces, each with a hole, in ONE FLine.
+          val cornerOfACube = FLine()
+
+          fun quadWithAHole(
+              ox: Double, oy: Double, oz: Double,
+              ux: Double, uy: Double, uz: Double,
+              vx: Double, vy: Double, vz: Double,
+          ) {
+              fun at(a: Double, b: Double) =
+                  Triple(ox + ux * a + vx * b, oy + uy * a + vy * b, oz + uz * a + vz * b)
+              listOf(
+                  listOf(at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)),
+                  listOf(at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)),
+              ).forEach { ring ->
+                  cornerOfACube.moveTo(ring[0].first, ring[0].second, ring[0].third)
+                  ring.drop(1).forEach { cornerOfACube.lineTo(it.first, it.second, it.third) }
+                  cornerOfACube.close()
+              }
+          }
+
+          quadWithAHole(0.5, -0.5, 0.5, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)   // the +x face
+          quadWithAHole(-0.5, 0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0)   // the +y face
+          quadWithAHole(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0)   // the +z face
+
+          cornerOfACube.filled = true
+          cornerOfACube.stroked = true
+          cornerOfACube.thickness = 1.6
+          cornerOfACube.color = vec(0.42, 0.72, 0.98, 0.55)
+
+          threeLines(
+              cornerOfACube, channel = "editablePlanes",
+              // The apostrophe is deliberate. Until 2026-08-04 it closed the iframe's single-quoted
+              // `src` attribute and this pane stayed blank forever, silently; see
+              // ThreeJsViewerIframeSourceTest.
+              name = "editable true - the client's own triangulation",
+              height = 420, autoFrame = true, editable = true,
+          )
+          displayOpen("editablePlanes")
+  - execute:
+      box: fill_editable_planes
+      property: code
+      type: fragment
+
+  - create:
+      box: fill_editable_overlap
+      name: Editable fill — two overlapping rings of equal area
+      frame: { x: 640.0, y: 40.0, w: 520.0, h: 480.0 }
+      properties:
+        code: |
+          // The shape that used to hang. Two congruent overlapping squares, each *listed* from a
+          // vertex that falls inside the other, so the nesting pass could name each one the other's
+          // parent and the depth walk never returned. A container must now be strictly larger than
+          // what it contains, so neither is a hole in the other and both fill.
+          //
+          // See PlanarTessellationParentCycleTest and dev_docs/fline_fill_orientation.md.
+          val overlapping = FLine()
+          listOf(
+              listOf(0.0 to 0.0, 1.0 to 0.0, 1.0 to 1.0, 0.0 to 1.0),
+              listOf(0.5 to 0.5, -0.5 to 0.5, -0.5 to -0.5, 0.5 to -0.5),
+          ).forEach { ring ->
+              overlapping.moveTo(ring[0].first, ring[0].second, 0.0)
+              ring.drop(1).forEach { overlapping.lineTo(it.first, it.second, 0.0) }
+              overlapping.close()
+          }
+          overlapping.filled = true
+          overlapping.stroked = true
+          overlapping.thickness = 1.6
+          overlapping.color = vec(0.98, 0.62, 0.30, 0.5)
+
+          threeLines(
+              overlapping, channel = "editableOverlap",
+              name = "editable true - two overlapping rings both filled",
+              height = 420, autoFrame = true, editable = true,
+          )
+          displayOpen("editableOverlap")
+  - execute:
+      box: fill_editable_overlap
+      property: code
+      type: fragment
+
+  - create:
+      box: fill_static_planes
+      name: Server fill — the same line, editable = false
+      frame: { x: 60.0, y: 560.0, w: 520.0, h: 480.0 }
+      properties:
+        code: |
+          // The same three faces, triangulated on the server by FLine.tessellate, so the two answers
+          // are side by side. `ThreeJsViewerTessellationParityTest` asserts they agree; this is what
+          // agreeing looks like.
+          val cornerOfACube = FLine()
+
+          fun quadWithAHole(
+              ox: Double, oy: Double, oz: Double,
+              ux: Double, uy: Double, uz: Double,
+              vx: Double, vy: Double, vz: Double,
+          ) {
+              fun at(a: Double, b: Double) =
+                  Triple(ox + ux * a + vx * b, oy + uy * a + vy * b, oz + uz * a + vz * b)
+              listOf(
+                  listOf(at(0.0, 0.0), at(1.0, 0.0), at(1.0, 1.0), at(0.0, 1.0)),
+                  listOf(at(0.3, 0.3), at(0.3, 0.7), at(0.7, 0.7), at(0.7, 0.3)),
+              ).forEach { ring ->
+                  cornerOfACube.moveTo(ring[0].first, ring[0].second, ring[0].third)
+                  ring.drop(1).forEach { cornerOfACube.lineTo(it.first, it.second, it.third) }
+                  cornerOfACube.close()
+              }
+          }
+
+          quadWithAHole(0.5, -0.5, 0.5, 0.0, 0.0, -1.0, 0.0, 1.0, 0.0)
+          quadWithAHole(-0.5, 0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0)
+          quadWithAHole(-0.5, -0.5, 0.5, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+
+          cornerOfACube.filled = true
+          cornerOfACube.stroked = true
+          cornerOfACube.thickness = 1.6
+          cornerOfACube.color = vec(0.42, 0.72, 0.98, 0.55)
+
+          threeLines(
+              cornerOfACube, channel = "staticPlanes",
+              name = "editable false - the server's triangulation",
+              height = 420, autoFrame = true, editable = false,
+          )
+          displayOpen("staticPlanes")
+  - execute:
+      box: fill_static_planes
+      property: code
+      type: fragment
+
+  # A `threejs` output pane reports its text before its geometry arrives — measured at 20-25 s on this
+  # machine. Screenshot before that and the capture is an empty frame.
+  - wait:
+      millis: 45000
