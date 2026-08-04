@@ -571,3 +571,232 @@ fun patTotalVoiceMovement(voicings: List<List<Int>>): Double {
 internal fun minQ(a: PatQ, b: PatQ): PatQ = if (a < b) a else b
 
 internal fun maxQ(a: PatQ, b: PatQ): PatQ = if (a > b) a else b
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+//  Second batch: the pattern-of-patterns primitive, groove, and probability per event.
+//
+//  Three names deliberately absent because the surface already has them under other names:
+//  `inside(n, f)` is the existing `chunk(n, f)` (`slow(n).let(f).fast(n)`); `ply(n)` is the
+//  existing `stutter(n, PatQ.ZERO)`; and Tidal's per-cycle `someCyclesBy` is the existing
+//  `sometimesBy` — which is why the genuinely per-*event* version below needed a new name.
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Flattens a pattern of patterns by **compressing** each inner pattern into the arc of the outer
+ * event that carries it.
+ *
+ * The counterpart of the existing [join], which unwraps without rescaling: `join` asks each inner
+ * pattern what it is doing *at* the outer event's position, `squeezeJoin` fits the inner pattern's
+ * whole cycle *into* the outer event. It is what makes mini-notation nesting expressible from
+ * Kotlin values rather than only from a string.
+ *
+ * Because `PatEvent` has one arc rather than a whole/part pair, an outer event clipped by the query
+ * arc squeezes the inner pattern into the *clipped* arc. Every scheduling path queries whole cycles,
+ * so this matters only for hand-written partial queries — the same caveat as [appLeft].
+ */
+fun <A> squeezeJoin(patterns: PatPattern<PatPattern<A>>): PatPattern<A> = PatPattern { arc ->
+    patterns.events(arc).flatMap { outer ->
+        val span = outer.arc.dur
+        if (span <= PatQ.ZERO) return@flatMap emptyList()
+        outer.value.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { inner ->
+            PatEvent(
+                PatArc(outer.arc.start + inner.arc.start * span, outer.arc.start + inner.arc.end * span),
+                inner.value,
+                inner.sourceSpan ?: outer.sourceSpan,
+                outer.annotations + inner.annotations,
+                outer.additionalSpans + inner.additionalSpans
+            )
+        }
+    }
+}
+
+/**
+ * Replaces each event with a whole pattern, squeezed into that event's arc.
+ *
+ * ```
+ * pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }   // 1 2 3 4 5
+ * ```
+ *
+ * The expressive core of the pattern-of-patterns layer: the substitution can read the event's own
+ * value, so one line of mini-notation can drive an entire arrangement.
+ */
+fun <A, B> PatPattern<A>.squeeze(substitute: (A) -> PatPattern<B>): PatPattern<B> =
+    squeezeJoin(map(substitute))
+
+/** Indexes into [values] with this numeric pattern, wrapping — the terse way to spell a lookup. */
+fun <A> PatPattern<Double>.pick(values: List<A>): PatPattern<A> {
+    if (values.isEmpty()) return silence()
+    return map { index -> values[floorMod(Math.round(index), values.size)] }
+}
+
+/** Indexes into [values] with this numeric pattern, wrapping. */
+fun <A> PatPattern<Double>.pick(vararg values: A): PatPattern<A> = pick(values.toList())
+
+// ── groove ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Swing: delays every second subdivision of a `2n` grid by [amount] of one subdivision.
+ *
+ * `swingBy(PatQ.of(1, 3), 4)` is the classic eighth-note swing inside quarters — the off-beat lands
+ * a third of the way late, which is the triplet feel. The shift is exact rational time, so a swung
+ * pattern stays exactly quantised rather than drifting.
+ *
+ * Events pushed past the end of the cycle are clipped rather than wrapped: swing is a groove applied
+ * within the bar, and an event that leaks into the next bar is a different musical statement.
+ */
+fun <A> PatPattern<A>.swingBy(amount: PatQ, n: Int): PatPattern<A> {
+    val pairs = max(1, n)
+    val slot = PatQ.of(1, 2 * pairs)
+    val shift = slot * amount
+    if (shift <= PatQ.ZERO) return this
+    return mapEventsPerCycle { _, events ->
+        events.mapNotNull { event ->
+            val index = qFloorDiv(event.arc.start, slot)
+            if (index % 2L == 0L) return@mapNotNull event
+            val moved = PatArc(event.arc.start + shift, event.arc.end + shift)
+            val visible = moved.intersect(PatArc(PatQ.ZERO, PatQ.ONE)) ?: return@mapNotNull null
+            PatEvent(visible, event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+        }
+    }
+}
+
+/** [swingBy] a third of a subdivision — the triplet feel, and the one people mean by "swing". */
+fun <A> PatPattern<A>.swing(n: Int): PatPattern<A> = swingBy(PatQ.of(1, 3), n)
+
+/**
+ * Squeezes each event into the later `1 - amount` of its own arc, so it lands late and short.
+ *
+ * `pressBy(PatQ.of(1, 2))` — Tidal's `press` — pushes every event onto the second half of its slot,
+ * which turns a four-on-the-floor into an off-beat without touching the pattern's grid.
+ */
+fun <A> PatPattern<A>.pressBy(amount: PatQ): PatPattern<A> {
+    if (amount <= PatQ.ZERO || amount >= PatQ.ONE) return this
+    return PatPattern { arc ->
+        events(arc).mapNotNull { event ->
+            val start = event.arc.start + event.arc.dur * amount
+            if (start >= event.arc.end) return@mapNotNull null
+            PatEvent(PatArc(start, event.arc.end), event.value, event.sourceSpan, event.annotations, event.additionalSpans)
+        }
+    }
+}
+
+/** [pressBy] a half — every event onto the second half of its slot. */
+fun <A> PatPattern<A>.press(): PatPattern<A> = pressBy(PatQ.of(1, 2))
+
+/**
+ * Concatenates [weighted] patterns within each cycle, each taking a share of the cycle proportional
+ * to its weight.
+ *
+ * The weighted [cat]: `ncat(verse to 3, chorus to 1)` gives the verse three quarters of every cycle.
+ * Shares are exact rationals, so `ncat(a to 1, b to 2)` splits at exactly `1/3`.
+ */
+fun <A> ncat(vararg weighted: Pair<PatPattern<A>, Int>): PatPattern<A> {
+    val usable = weighted.filter { it.second > 0 }
+    if (usable.isEmpty()) return silence()
+    val total = usable.sumOf { it.second }
+    return fromCycleIndexed { subArc, tile ->
+        val base = PatQ.of(tile)
+        val absSub = subArc.shift(base)
+        val out = mutableListOf<PatEvent<A>>()
+        var cursor = 0
+        for ((pattern, weight) in usable) {
+            val segment = PatArc(PatQ.of(cursor, total), PatQ.of(cursor + weight, total))
+            val windowAbs = PatArc(base + segment.start, base + segment.end)
+            val interAbs = absSub.intersect(windowAbs)
+            if (interAbs != null) out += within(segment, pattern).events(interAbs).map { it.shift(-base) }
+            cursor += weight
+        }
+        out
+    }
+}
+
+// ── probability, per event ────────────────────────────────────────────────────────────────
+
+/**
+ * Keeps exactly the events [degradeBy] would have dropped — the complement, on the same hash.
+ *
+ * On its own it is a thinning tool. Its real purpose is [sometimesEventBy]: stacking a pattern's
+ * kept events with a *transformed* copy of its dropped events is how a transform gets applied to a
+ * random subset of the notes rather than to a random subset of the cycles.
+ */
+fun <A> PatPattern<A>.unDegradeBy(probability: Double, salt: Int = 0): PatPattern<A> =
+    mapEventsPerCycle { cycle, events ->
+        val p = probability.coerceIn(0.0, 1.0)
+        events.filter { event ->
+            toUnitDouble(splitmix64(eventKey(cycle, event.arc, salt))) < p
+        }
+    }
+
+/**
+ * Applies [transform] to a random subset of the *events*, leaving the rest alone.
+ *
+ * The distinction that matters, and the reason this needed a new name: the existing `sometimesBy`
+ * in `TidalPatterns.kt` chooses per **cycle** — either the whole cycle is transformed or none of it
+ * is — which is Tidal's `someCyclesBy`. This one splits the events of every cycle by the same hash
+ * [degradeBy] uses, transforms one half and stacks it back on the other, so
+ * `sometimesEventBy(0.3) { it.fast(2) }` doubles roughly three notes in ten.
+ */
+fun <A> PatPattern<A>.sometimesEventBy(
+    probability: Double,
+    salt: Int = 0,
+    transform: (PatPattern<A>) -> PatPattern<A>
+): PatPattern<A> = stack(degradeBy(probability, salt), transform(unDegradeBy(probability, salt)))
+
+/** [sometimesEventBy] with an even chance. */
+fun <A> PatPattern<A>.sometimesEvent(transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
+    sometimesEventBy(0.5, 0, transform)
+
+/**
+ * Tidal's name for what `sometimesBy` in `TidalPatterns.kt` already does: transform whole cycles at
+ * random. Provided so searching for the Tidal name finds the right function.
+ */
+fun <A> PatPattern<A>.someCyclesBy(
+    probability: Double,
+    salt: Int = 0,
+    transform: (PatPattern<A>) -> PatPattern<A>
+): PatPattern<A> = sometimesBy(probability, salt, transform)
+
+// ── Euclidean variants ────────────────────────────────────────────────────────────────────
+
+/** The inverse Euclidean rhythm: `true` exactly where [euclid] is `false`. */
+fun euclidInv(pulses: Int, steps: Int, rotation: Int = 0): PatPattern<Boolean> {
+    val stepCount = steps.coerceAtLeast(1)
+    return euclid(pulses, stepCount, rotation).let { on ->
+        fromCycle { subArc ->
+            val onset = on.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { qFloorDiv(it.arc.start, PatQ.of(1, stepCount)) }.toSet()
+            buildList {
+                for (index in 0 until stepCount) {
+                    if (index.toLong() in onset) continue
+                    val window = PatArc(PatQ.of(index, stepCount), PatQ.of(index + 1, stepCount))
+                    val inter = window.intersect(subArc) ?: continue
+                    add(PatEvent(inter, true))
+                }
+            }
+        }
+    }
+}
+
+/** [on] on the Euclidean onsets, [off] on every other step — a full bar from one figure. */
+fun <A> euclidFull(
+    pulses: Int,
+    steps: Int,
+    on: PatPattern<A>,
+    off: PatPattern<A>,
+    rotation: Int = 0
+): PatPattern<A> = stack(
+    mask(euclid(pulses, steps, rotation), on),
+    mask(euclidInv(pulses, steps, rotation), off)
+)
+
+// ── an arbitrary scale ────────────────────────────────────────────────────────────────────
+
+/**
+ * Reads this pattern's values as degrees of an arbitrary scale given as semitone offsets.
+ *
+ * `run(8).toScale(listOf(0, 2, 3, 7, 9), root = 60)` for a scale [PAT_SCALES] has never heard of.
+ * Degrees wrap into octaves exactly as in [scale].
+ */
+fun PatPattern<Double>.toScale(steps: List<Int>, root: Int = 60): PatPattern<Double> {
+    if (steps.isEmpty()) return this
+    return map { degree -> (root + patScaleDegree(steps, Math.round(degree).toInt())).toDouble() }
+}

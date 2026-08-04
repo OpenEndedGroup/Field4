@@ -1583,9 +1583,16 @@ internal fun floorMod(value: Long, modulus: Int): Int {
 
 private fun parseArpIndexToken(token: String): Int? = token.trim().toIntOrNull()
 
-private fun hashQ(q: PatQ): Int = 31 * q.n.hashCode() + q.d.hashCode()
+internal fun hashQ(q: PatQ): Int = 31 * q.n.hashCode() + q.d.hashCode()
 
-private fun eventKey(cycle: Long, arc: PatArc, salt: Int): Long {
+/**
+ * The per-event hash `degradeBy` uses to decide what to drop.
+ *
+ * Internal rather than private because `unDegradeBy` must be its exact complement: two independent
+ * implementations of "the same hash" would silently overlap or leave gaps, and `sometimesEventBy`
+ * would then double or drop notes.
+ */
+internal fun eventKey(cycle: Long, arc: PatArc, salt: Int): Long {
     var h = 1469598103934665603L
     fun mix(i: Int) {
         h = (h xor i.toLong()) * 1099511628211L

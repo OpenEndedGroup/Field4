@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 1 — continuous signals
@@ -237,9 +237,60 @@ showPatAudio(
 displayOpen("sound")
 ```
 
-## 6. 4 — hear the difference
+## 6. 7 — groove and substitution
 
-<!-- field-box id="pat_demo_gain" index="5" -->
+<!-- field-box id="pat_demo_groove" index="5" -->
+
+### Narrative
+
+From `code`
+
+swing() is exact rational time, not a nudge in milliseconds: every off-beat lands a
+third of a subdivision late and the pattern stays exactly quantised.
+
+```edn [field-box id="pat_demo_groove" role="properties"]
+{"id" "pat_demo_groove" "index" 5 "name" "7 — groove and substitution" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — groove and substitution" "_tombstone" false "frame" #afield/rect [60.0 1560.0 720.0 500.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_groove_code_.kt" "lines" 33 "characters" 1435 "sha256" "aa3d6d76090e9b58ec4ed50779e84481ca5d1beb4e139297fe4d9e8fdf2abad5"}]}
+```
+
+```kotlin [field-property box="pat_demo_groove" name="code" path="pat_demo_groove_code_.kt"]
+// swing() is exact rational time, not a nudge in milliseconds: every off-beat lands a
+// third of a subdivision late and the pattern stays exactly quantised.
+val hats = pat("hh*8")
+showPatRoll("groove")
+displayOpen("main")
+
+println("straight : " + hats.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc.start}" })
+println("swing(4) : " + hats.swing(4).events(PatArc(PatQ.ZERO, PatQ.ONE))
+    .sortedBy { it.arc.start.toDouble() }.map { "${it.arc.start}" })
+
+// squeeze replaces each event with a whole pattern, compressed into that event's arc —
+// mini-notation nesting, over Kotlin values. Compare `join`, which does not rescale.
+val nested = pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }
+println("squeeze  : " + nested.events(PatArc(PatQ.ZERO, PatQ.ONE))
+    .sortedBy { it.arc.start.toDouble() }.map { "${it.value}@${it.arc.start}" })
+
+// Two cycles straight, then two swung. This is the one to listen to.
+showPatAudio(
+    hats.whenCycle({ it >= 2 }) { hats.swing(4) },
+    cycles = 4, cps = 2.0,
+    voice = patVoice(wave = PatWave.NOISE, decay = 0.008, sustain = 0.06),
+    channel = "swing",
+)
+displayOpen("swing")
+
+// And a full bar from one Euclidean figure: bd on the onsets, hh on everything else.
+showPatAudio(
+    euclidFull(3, 8, pat("bd"), pat("hh") with gain(0.35)),
+    cycles = 4, cps = 2.0,
+    voice = patVoice(decay = 0.012, sustain = 0.1),
+    channel = "euclid",
+)
+displayOpen("euclid")
+```
+
+## 7. 4 — hear the difference
+
+<!-- field-box id="pat_demo_gain" index="6" -->
 
 ### Narrative
 
@@ -250,7 +301,7 @@ this instead", so the first half of the file is what the old surface could expre
 the second half is the identical pattern with the gain following a sine.
 
 ```edn [field-box id="pat_demo_gain" role="properties"]
-{"id" "pat_demo_gain" "index" 5 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 720.0 460.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 29 "characters" 1304 "sha256" "7e7b11b372e7a91039ca54b8687ddb425980dfdf54b22161f3162a218031912a"}]}
+{"id" "pat_demo_gain" "index" 6 "name" "4 — hear the difference" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — hear the difference" "_tombstone" false "frame" #afield/rect [820.0 520.0 720.0 460.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_gain_code_.kt" "lines" 29 "characters" 1304 "sha256" "7e7b11b372e7a91039ca54b8687ddb425980dfdf54b22161f3162a218031912a"}]}
 ```
 
 ```kotlin [field-property box="pat_demo_gain" name="code" path="pat_demo_gain_code_.kt"]

@@ -3,8 +3,8 @@ description: >
   Loadable demo of the `pat(...)` composition language — the continuous/signal family
   (afield.four.synth/PatSignals.kt), the parameter-application algebra (PatAlgebra.kt) and the
   arrangement + pitch surface (PatComposition.kt), all on top of the exact rational cycle space in
-  TidalPatterns.kt. Six pure-compute boxes; no Window, no Renderer, no GPU, no audio device.
-  Each box paints an SVG piano roll into its own output with showPatRoll / showPatRollOf, and four of
+  TidalPatterns.kt. Seven pure-compute boxes; no Window, no Renderer, no GPU, no audio device.
+  Each box paints an SVG piano roll into its own output with showPatRoll / showPatRollOf, and five of
   them also render the pattern through a small deterministic CPU voice and put an inline HTML5 audio
   player in the output — so you can SEE and HEAR every operator without leaving the document:
     1. signals        — sine/tri/saw/square/perlin/rand read through segment(16); the committed roll
@@ -20,6 +20,8 @@ description: >
                         of movement becomes 9, harmony unchanged. Rolled and played.
     6. playground     — a whole little groove built from euclid / off / jux / scale / ?degrade, rolled
                         and played. This is the box to edit.
+    7. groove         — swing() as exact rational time (two cycles straight then two swung, so you can
+                        hear it), the squeeze substitution primitive, and euclidFull filling a whole bar.
   Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
   document; then change any pattern string and re-run that box. Each `execute` op omits inline code,
   so it runs the box's stored `code` property. See dev_docs/PATTERN_LANGUAGE.md and
@@ -235,9 +237,50 @@ operations:
           println("drums: ${drums.events(PatArc(PatQ.ZERO, PatQ.ONE)).size} events/cycle")
           println("bass : ${bass.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
           println("pad  : ${pad.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value }}")
+  # 7 ── groove: swing you can hear, and the substitution primitive.
+  - create:
+      box: pat_demo_groove
+      name: 7 — groove and substitution
+      frame: { x: 60.0, y: 1560.0, w: 720.0, h: 500.0 }
+      properties:
+        code: |
+          // swing() is exact rational time, not a nudge in milliseconds: every off-beat lands a
+          // third of a subdivision late and the pattern stays exactly quantised.
+          val hats = pat("hh*8")
+          showPatRoll("groove")
+          displayOpen("main")
+
+          println("straight : " + hats.events(PatArc(PatQ.ZERO, PatQ.ONE)).map { "${it.arc.start}" })
+          println("swing(4) : " + hats.swing(4).events(PatArc(PatQ.ZERO, PatQ.ONE))
+              .sortedBy { it.arc.start.toDouble() }.map { "${it.arc.start}" })
+
+          // squeeze replaces each event with a whole pattern, compressed into that event's arc —
+          // mini-notation nesting, over Kotlin values. Compare `join`, which does not rescale.
+          val nested = pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }
+          println("squeeze  : " + nested.events(PatArc(PatQ.ZERO, PatQ.ONE))
+              .sortedBy { it.arc.start.toDouble() }.map { "${it.value}@${it.arc.start}" })
+
+          // Two cycles straight, then two swung. This is the one to listen to.
+          showPatAudio(
+              hats.whenCycle({ it >= 2 }) { hats.swing(4) },
+              cycles = 4, cps = 2.0,
+              voice = patVoice(wave = PatWave.NOISE, decay = 0.008, sustain = 0.06),
+              channel = "swing",
+          )
+          displayOpen("swing")
+
+          // And a full bar from one Euclidean figure: bd on the onsets, hh on everything else.
+          showPatAudio(
+              euclidFull(3, 8, pat("bd"), pat("hh") with gain(0.35)),
+              cycles = 4, cps = 2.0,
+              voice = patVoice(decay = 0.012, sustain = 0.1),
+              channel = "euclid",
+          )
+          displayOpen("euclid")
   - execute: { box: pat_demo_signals }
   - execute: { box: pat_demo_structure }
   - execute: { box: pat_demo_parameter }
   - execute: { box: pat_demo_gain }
   - execute: { box: pat_demo_voice_leading }
   - execute: { box: pat_demo_playground }
+  - execute: { box: pat_demo_groove }

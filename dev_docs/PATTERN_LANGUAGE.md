@@ -11,7 +11,7 @@ that were measured rather than assumed.
 | `PatAlgebra.kt` | how two patterns of different types meet, whose rhythm survives, and named parameters |
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
 
-Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest` (58 tests), the
+Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest` (67 tests), the
 `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav` renders — see
 [PAT_GALLERY.md](PAT_GALLERY.md).
 
@@ -214,7 +214,53 @@ event's `additionalSpans` so a highlighted event can show where its parameter ca
 
 ---
 
-## 6. The surface, at a glance
+## 6. The pattern-of-patterns primitive, groove, and probability per event
+
+Three additions that are worth calling out because each one is a *kind* of operator the surface did
+not have, not just another combinator.
+
+**`squeezeJoin` / `squeeze`.** The existing `join` unwraps a `PatPattern<PatPattern<A>>` without
+rescaling: it asks each inner pattern what it is doing *at* the outer event's position, so an inner
+triplet keeps its own grid and is merely cut at the outer boundary. `squeezeJoin` **compresses** each
+inner pattern's whole cycle *into* the outer event's arc. That is what mini-notation's `[a b]` nesting
+does inside a string, now available over Kotlin values:
+
+```kotlin
+pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }   // 1 2 3 4 5
+```
+
+`PatCompositionTest` asserts both — `squeeze` gives five events on a 1/6-and-1/4 grid, `join` on the
+same input gives four with a split at 1/2 — so the difference is measured rather than asserted from
+the docs.
+
+**Groove: `swingBy` / `swing` / `pressBy` / `press`.** `swingBy(amount, n)` delays every second
+subdivision of a `2n` grid by `amount` of one subdivision, in exact rational time — so a swung pattern
+is still exactly quantised, just not straight. `swing(4)` is the triplet feel (`1/3` of an eighth
+late, i.e. `1/24` of a cycle). Events pushed past the end of the cycle are clipped, not wrapped:
+swing is a groove applied within the bar. `pressBy(r)` squeezes each event into the later `1 - r` of
+its own arc, which turns four-on-the-floor into an off-beat without touching the grid.
+
+**Probability per event, and the name collision that made it necessary.** `sometimesBy` in
+`TidalPatterns.kt` chooses per **cycle** — the whole cycle is transformed or none of it is — which is
+Tidal's `someCyclesBy`, not Tidal's `sometimesBy`. Rather than change behaviour callers may depend on,
+`someCyclesBy` is added as an accurate alias and the genuinely per-event version is
+`sometimesEventBy(p) { … }`, built on a new `unDegradeBy` that keeps exactly the events `degradeBy`
+drops. That only works if the two share one hash, so `eventKey` was widened from `private` to
+`internal` rather than reimplemented — two independent copies of "the same hash" would silently
+overlap or leave gaps, and the test asserts the two halves partition the events exactly, at three
+probabilities across eight cycles.
+
+Also in this batch: `ncat` (weighted `cat`, exact rational shares), `pick` (index a list with a
+numeric pattern), `euclidInv` / `euclidFull` (the off-beats of a Euclidean figure), and `toScale` (an
+arbitrary scale from a list of semitones).
+
+Three names deliberately *not* added, because the surface already has them:
+`inside(n, f)` is the existing `chunk(n, f)`; `ply(n)` is `stutter(n, PatQ.ZERO)` (kept as an alias
+because `ply` is the name the Tidal docs use); and `someCyclesBy` is `sometimesBy`.
+
+---
+
+## 7. The surface, at a glance
 
 **Signals** (`PatSignals.kt`) — `sine cosine saw isaw tri square envL envLR rand irand perlin sig
 signalOf constant run grid` · `segment discretise struct bools quantise rounded range rangex bipolar
@@ -226,12 +272,15 @@ param paramOf with without` · `gain pan speed cutoff resonance room shape n not
 `num int`
 
 **Composition** (`PatComposition.kt`) — `off superimpose layer jux juxBy iter iterBack linger ply rot
-shuffle randcat wrandcat choose wchoose chop striateAcross` · `PAT_SCALES patScaleSteps
-patScaleDegree scale` · `PAT_CHORDS patChordSteps patNoteNumber chords chordsOf patParseChord chord
-notesOf arpeggiate` · `voiceLead patLeadVoicing patVoicingDistance patTotalVoiceMovement`
+shuffle randcat wrandcat choose wchoose chop striateAcross` · `squeezeJoin squeeze pick swingBy swing
+pressBy press ncat unDegradeBy sometimesEventBy sometimesEvent someCyclesBy euclidInv euclidFull` ·
+`PAT_SCALES patScaleSteps patScaleDegree scale toScale` · `PAT_CHORDS patChordSteps patNoteNumber
+chords chordsOf patParseChord chord notesOf arpeggiate` · `voiceLead patLeadVoicing
+patVoicingDistance patTotalVoiceMovement`
 
 **Rendering** (`PatSoundDocs.kt`) — `PatWave patVoice patRenderStereo patMidiToHz`
 
-> The public reference under `public/docs/reference/` is generated and is now stale with respect to
-> these declarations. It was deliberately not regenerated here (a different change owns those files);
-> run `./gradlew generateCodebaseReference` when the tree is quiet.
+> The generated reference under `public/docs/reference/` is **not** affected: checked, and
+> `StdlibReferenceGenerator.SOURCE_ROOTS` covers only `afield/stdlib` and `afield/visualization`, so
+> `afield/four/synth` has never been in its scope. `./gradlew --no-daemon check` — which runs
+> `checkCodebaseReference` and `checkKDocAttachment` — is green on this branch.

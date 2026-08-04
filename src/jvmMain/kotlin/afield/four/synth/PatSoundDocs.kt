@@ -321,6 +321,54 @@ object PatSoundDocs {
                 check(again.left.contentEquals(audio.left)) { "the render is not deterministic" }
             }
         ),
+
+        // 7 ── groove: the same eight hats, straight then swung.
+        Scene(
+            name = "swing-before-after",
+            title = "swing(4) — two cycles straight, then two swung",
+            blurb = "Eight hats a cycle. The first two cycles are dead straight; the last two are " +
+                "swung, every off-beat pushed exactly a third of an eighth late. It is still exactly " +
+                "quantised — the shift is rational time, not a nudge in milliseconds.",
+            cycles = 4,
+            cps = CPS,
+            render = { cycles, cps ->
+                val hats = pat("hh*8")
+                patRenderStereo(
+                    hats.whenCycle({ it >= 2 }) { hats.swing(4) },
+                    cycles = cycles, cps = cps,
+                    voice = patVoice(wave = PatWave.NOISE, decay = 0.008, sustain = 0.06)
+                )
+            },
+            verify = { audio ->
+                val onsets = onsetPeaks(audio.mono)
+                check(onsets.size == 32) { "expected 8 hats x 4 cycles, found ${onsets.size}" }
+                val gaps = onsets.zipWithNext { a, b -> (b.start - a.start).toDouble() / cycleSamples }
+                // Skip gap 0: the very first onset sits at sample 0, so it is flagged in the first
+                // analysis window while every later onset is flagged a window after its true start.
+                // That makes only the first interval short — measured 0.104 against 0.125.
+                val straight = gaps.drop(1).take(14)
+                val swung = gaps.drop(16).take(15)
+
+                // Straight: every gap an eighth. The tolerance is the detector's one-window bias.
+                check(straight.all { abs(it - 0.125) < 0.02 }) { "the straight half is not even: $straight" }
+
+                // Swung: gaps alternate long, short — 1/8 + 1/24 then 1/8 - 1/24, i.e. 1/6 and 1/12.
+                val longs = swung.filterIndexed { i, _ -> i % 2 == 0 }
+                val shorts = swung.filterIndexed { i, _ -> i % 2 == 1 }
+                println(
+                    "    straight gap = %.4f cycles; swung long = %.4f, short = %.4f, ratio = %.2f".format(
+                        straight.average(), longs.average(), shorts.average(), longs.average() / shorts.average()
+                    )
+                )
+                check(longs.all { abs(it - 1.0 / 6.0) < 0.02 }) { "the swung long gaps are wrong: $longs" }
+                check(shorts.all { abs(it - 1.0 / 12.0) < 0.02 }) { "the swung short gaps are wrong: $shorts" }
+                check(longs.average() / shorts.average() > 1.6) { "the swing is inaudible" }
+                // and the straight half really is more even than the swung half.
+                check(variation(straight) < variation(swung) / 3.0) {
+                    "the two halves are equally uneven: ${variation(straight)} vs ${variation(swung)}"
+                }
+            }
+        ),
     )
 
     private val byName: Map<String, Scene> = SCENES.associateBy { it.name }

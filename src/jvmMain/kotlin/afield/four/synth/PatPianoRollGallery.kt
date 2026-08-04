@@ -460,7 +460,80 @@ object PatPianoRollGallery {
                 }
             }
         ),
+
+        // 8 ── groove and substitution: the second operator batch.
+        Roll(
+            name = "groove",
+            blurb = "Groove and substitution. `swing(4)` pushes every off-beat exactly a third of an " +
+                "eighth late — still exactly quantised, just not straight. `press()` moves every " +
+                "event onto the second half of its own slot. `squeeze` replaces each event with a " +
+                "whole pattern compressed into that event's arc, which is mini-notation nesting from " +
+                "Kotlin values. `ncat` splits the cycle by weight. `euclidFull` fills the off-beats " +
+                "too. `sometimesEventBy` transforms a random subset of the NOTES, where the existing " +
+                "`sometimesBy` transforms whole cycles. (Eighth-note hats are a full eighth long, so " +
+                "once the off-beats move the events overlap their neighbours — that is why the swung " +
+                "lane reads as wide blocks with a bright seam rather than as separated bars. The " +
+                "figure's own check asserts each onset's exact rational position.)",
+            build = {
+                PatRollSpec(
+                    title = "Groove, substitution, and per-event probability",
+                    subtitle = "swing / press / squeeze / ncat / euclidFull / sometimesEventBy",
+                    cycles = 2,
+                    lanes = listOf(
+                        Lane("hh*8 straight", pat("hh*8")),
+                        Lane("swing(4)", pat("hh*8").swing(4)),
+                        Lane("press()", pat("a b c d").press()),
+                        Lane("squeeze", pat("a b").squeeze { if (it == "a") pat("1 2 3") else pat("4 5") }),
+                        Lane("ncat(a:1, b:2)", ncat(pat("a") to 1, pat("b") to 2)),
+                        Lane("euclidFull(3,8)", euclidFull(3, 8, pat("bd"), pat("hh"))),
+                        Lane("sometimesEventBy(0.4)", pat("x*8").sometimesEventBy(0.4) { it.fast(2) }),
+                    )
+                )
+            },
+            verify = { lanes ->
+                fun lane(label: String) = lanes.first { it.label.startsWith(label) }
+
+                // Swing is exact: the off-beats are a third of an eighth (1/24) late, no more.
+                val straight = lane("hh*8 straight").cycle(0).map { it.arc.start }
+                val swung = lane("swing(4)").cycle(0).map { it.arc.start }
+                check(straight == (0 until 8).map { PatQ.of(it, 8) }) { "the straight lane moved: $straight" }
+                check(swung.size == 8) { "swing dropped notes: ${swung.size}" }
+                swung.forEachIndexed { i, start ->
+                    val expected = if (i % 2 == 0) PatQ.of(i, 8) else PatQ.of(i, 8) + PatQ.of(1, 24)
+                    check(start == expected) { "swing note $i is at $start, not $expected" }
+                }
+
+                check(arcsOfLane(lane("press()")) == listOf(
+                    PatQ.of(1, 8) to PatQ.of(1, 4), PatQ.of(3, 8) to PatQ.of(1, 2),
+                    PatQ.of(5, 8) to PatQ.of(3, 4), PatQ.of(7, 8) to PatQ.ONE
+                )) { "press: ${arcsOfLane(lane("press()"))}" }
+
+                val squeezed = lane("squeeze").cycle(0)
+                check(squeezed.map { it.value } == listOf("1", "2", "3", "4", "5")) {
+                    "squeeze: ${squeezed.map { it.value }}"
+                }
+                check(squeezed.first().arc.end == PatQ.of(1, 6)) { "squeeze did not compress: ${squeezed.first().arc}" }
+
+                check(arcsOfLane(lane("ncat")) == listOf(PatQ.ZERO to PatQ.of(1, 3), PatQ.of(1, 3) to PatQ.ONE)) {
+                    "ncat split in the wrong place: ${arcsOfLane(lane("ncat"))}"
+                }
+
+                val full = lane("euclidFull").cycle(0)
+                check(full.size == 8) { "euclidFull drew ${full.size} of 8 steps" }
+                check(full.count { it.value == "bd" } == 3 && full.count { it.value == "hh" } == 5) {
+                    "euclidFull split wrong: ${full.map { it.value }}"
+                }
+
+                // Per-event, not per-cycle: some cycle must be partially transformed.
+                val counts = (0L until 2L).map { lane("sometimesEventBy").cycle(it).size }
+                check(counts.any { it in 9..15 }) { "sometimesEventBy looks all-or-nothing: $counts" }
+            }
+        ),
     )
+
+    /** Cycle-0 arcs of a lane, for the terse checks above. */
+    private fun arcsOfLane(lane: LaneEvents): List<Pair<PatQ, PatQ>> =
+        lane.cycle(0).map { it.arc.start to it.arc.end }
 
     private val byName: Map<String, Roll> = ROLLS.associateBy { it.name }
 

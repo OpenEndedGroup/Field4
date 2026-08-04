@@ -301,4 +301,160 @@ class PatCompositionTest {
         assertEquals(1.0, patVoicingDistance(listOf(60, 64, 67, 68), listOf(60, 64, 67)))
         assertEquals(patVoicingDistance(listOf(60, 64), listOf(62, 65)), patVoicingDistance(listOf(62, 65), listOf(60, 64)))
     }
+
+    // ── the second operator batch ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `squeezeJoin compresses each inner pattern into its outer event's arc`() {
+        val events = pat("a b").squeeze { atom ->
+            if (atom == "a") pat("1 2 3") else pat("4 5")
+        }.cycle()
+        assertEquals(listOf("1", "2", "3", "4", "5"), events.map { it.value })
+        assertEquals(
+            listOf(
+                PatQ.ZERO to PatQ.of(1, 6),
+                PatQ.of(1, 6) to PatQ.of(1, 3),
+                PatQ.of(1, 3) to PatQ.of(1, 2),
+                PatQ.of(1, 2) to PatQ.of(3, 4),
+                PatQ.of(3, 4) to PatQ.ONE
+            ),
+            arcsOf(events),
+            "the inner cycles must land exactly inside their outer halves"
+        )
+        // The distinction from the existing `join`, which does not rescale: the same outer pattern
+        // gives a different answer. `join` asks the inner pattern what it is doing *at* the outer
+        // event's position, so the inner triplet keeps its own 1/3 grid and is merely *cut* at the
+        // outer boundary — four events, with a split at 1/2 that squeezeJoin does not have.
+        val joined = join(pat("a b").map { pat("1 2 3") }).cycle()
+        assertEquals(
+            listOf(
+                PatQ.ZERO to PatQ.of(1, 3),
+                PatQ.of(1, 3) to PatQ.of(1, 2),
+                PatQ.of(1, 2) to PatQ.of(2, 3),
+                PatQ.of(2, 3) to PatQ.ONE
+            ),
+            arcsOf(joined)
+        )
+        assertEquals(listOf("1", "2", "2", "3"), joined.map { it.value })
+    }
+
+    @Test
+    fun `pick indexes a list and wraps`() {
+        assertEquals(listOf("x", "y", "z", "x"), run(4).pick("x", "y", "z").cycle().map { it.value })
+        assertEquals(listOf("y"), pat("-2").nums().pick("x", "y", "z").cycle().map { it.value })
+    }
+
+    @Test
+    fun `swingBy delays every second subdivision by an exact fraction`() {
+        // Four pairs = an eighth grid; a third of an eighth is 1/24.
+        val events = pat("a*8").swingBy(PatQ.of(1, 3), 4).cycle()
+        val starts = events.map { it.arc.start }
+        assertEquals(
+            listOf(
+                PatQ.of(0, 8), PatQ.of(1, 8) + PatQ.of(1, 24),
+                PatQ.of(2, 8), PatQ.of(3, 8) + PatQ.of(1, 24),
+                PatQ.of(4, 8), PatQ.of(5, 8) + PatQ.of(1, 24),
+                PatQ.of(6, 8), PatQ.of(7, 8) + PatQ.of(1, 24)
+            ),
+            starts,
+            "the off-beats must be exactly a third of an eighth late"
+        )
+        // On-beats untouched, and `swing(n)` is the same thing.
+        assertEquals(starts, pat("a*8").swing(4).cycle().map { it.arc.start })
+        // A zero amount is the identity.
+        assertEquals(
+            arcsOf(pat("a*8").cycle()),
+            arcsOf(pat("a*8").swingBy(PatQ.ZERO, 4).cycle())
+        )
+    }
+
+    @Test
+    fun `press moves every event onto the later part of its own slot`() {
+        val events = pat("a b").press().cycle()
+        assertEquals(
+            listOf(PatQ.of(1, 4) to PatQ.of(1, 2), PatQ.of(3, 4) to PatQ.ONE),
+            arcsOf(events)
+        )
+        assertEquals(listOf("a", "b"), events.map { it.value }, "press must not change what plays")
+        // pressBy(1/4) is a quarter of the slot late.
+        assertEquals(
+            listOf(PatQ.of(1, 8) to PatQ.of(1, 2), PatQ.of(5, 8) to PatQ.ONE),
+            arcsOf(pat("a b").pressBy(PatQ.of(1, 4)).cycle())
+        )
+    }
+
+    @Test
+    fun `ncat splits the cycle by weight, exactly`() {
+        val events = ncat(pat("a") to 1, pat("b") to 2).cycle()
+        assertEquals(listOf("a", "b"), events.map { it.value })
+        assertEquals(listOf(PatQ.ZERO to PatQ.of(1, 3), PatQ.of(1, 3) to PatQ.ONE), arcsOf(events))
+        // Equal weights degrade to `cat`.
+        assertEquals(
+            arcsOf(cat(pat("a"), pat("b"), pat("c")).cycle()),
+            arcsOf(ncat(pat("a") to 1, pat("b") to 1, pat("c") to 1).cycle())
+        )
+    }
+
+    @Test
+    fun `degradeBy and unDegradeBy partition the events exactly`() {
+        // The property `sometimesEventBy` depends on: no event is in both halves, none is lost.
+        for (probability in listOf(0.2, 0.5, 0.8)) {
+            for (cycle in 0L until 8L) {
+                val all = pat("a*16").cycle(cycle).map { it.arc }
+                val kept = pat("a*16").degradeBy(probability).cycle(cycle).map { it.arc }
+                val dropped = pat("a*16").unDegradeBy(probability).cycle(cycle).map { it.arc }
+                assertEquals(
+                    all.size, kept.size + dropped.size,
+                    "p=$probability cycle=$cycle: ${kept.size} + ${dropped.size} != ${all.size}"
+                )
+                assertTrue((kept.toSet() intersect dropped.toSet()).isEmpty(), "the halves overlap")
+                assertEquals(all.toSet(), kept.toSet() + dropped.toSet(), "an event went missing")
+            }
+        }
+    }
+
+    @Test
+    fun `sometimesEventBy transforms some notes where sometimesBy transforms whole cycles`() {
+        // The per-event version leaves the note count alone at p=0 and p=1 and, in between, produces
+        // a cycle that is neither wholly transformed nor wholly untouched.
+        assertEquals(8, pat("a*8").sometimesEventBy(0.0) { it.fast(2) }.cycle().size)
+        assertEquals(16, pat("a*8").sometimesEventBy(1.0) { it.fast(2) }.cycle().size)
+
+        val mixedCounts = (0L until 16L).map { pat("a*8").sometimesEventBy(0.5) { it.fast(2) }.cycle(it).size }
+        assertTrue(mixedCounts.any { it in 9..15 }, "no cycle was partially transformed: $mixedCounts")
+
+        // The pre-existing `sometimesBy` is all-or-nothing per cycle — which is why the per-event
+        // version needed a different name. Measured here rather than asserted from memory.
+        val cycleCounts = (0L until 16L).map { pat("a*8").sometimesBy(0.5) { it.fast(2) }.cycle(it).size }
+        assertEquals(setOf(8, 16), cycleCounts.toSet(), "sometimesBy is not per-cycle: $cycleCounts")
+        assertEquals(cycleCounts, (0L until 16L).map { pat("a*8").someCyclesBy(0.5) { it.fast(2) }.cycle(it).size })
+    }
+
+    @Test
+    fun `euclidInv is the exact complement of euclid`() {
+        val on = euclid(3, 8).cycle().map { it.arc.start }
+        val off = euclidInv(3, 8).cycle().map { it.arc.start }
+        assertEquals(3, on.size)
+        assertEquals(5, off.size)
+        assertTrue((on.toSet() intersect off.toSet()).isEmpty(), "euclidInv overlaps euclid")
+        assertEquals((0 until 8).map { PatQ.of(it, 8) }.toSet(), (on + off).toSet())
+
+        val full = euclidFull(3, 8, pat("bd"), pat("hh")).cycle()
+        assertEquals(8, full.size)
+        assertEquals(3, full.count { it.value == "bd" })
+        assertEquals(5, full.count { it.value == "hh" })
+    }
+
+    @Test
+    fun `toScale spells an arbitrary scale and wraps into octaves`() {
+        assertEquals(
+            listOf(60.0, 62.0, 63.0, 67.0, 69.0, 72.0),
+            run(6).toScale(listOf(0, 2, 3, 7, 9), root = 60).cycle().map { it.value }
+        )
+        // and it agrees with the named path for a named scale.
+        assertEquals(
+            run(8).scale("minor", root = 60).cycle().map { it.value },
+            run(8).toScale(patScaleSteps("minor"), root = 60).cycle().map { it.value }
+        )
+    }
 }

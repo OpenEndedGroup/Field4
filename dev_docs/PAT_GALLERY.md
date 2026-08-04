@@ -8,8 +8,8 @@ correctness while writing no committed assets.
 
 | harness | id | output |
 | --- | --- | --- |
-| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 7 piano rolls, **SVG** |
-| `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 6 stereo **`.wav`**s |
+| `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 8 piano rolls, **SVG** |
+| `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 7 stereo **`.wav`**s |
 
 ```
 # official pass/fail (starts a Field server, applies the JVM args):
@@ -120,6 +120,15 @@ slicing in place next to `striateAcross(2)` interleaving.
 
 ![arrangement](assets/pat_gallery/pat-arrangement.svg)
 
+**Groove, substitution, and per-event probability.** The second operator batch. `swing(4)` pushes
+every off-beat exactly a third of an eighth late — still exactly quantised, just not straight.
+`press()` moves every event onto the second half of its own slot. `squeeze` replaces each event with
+a whole pattern compressed into that event's arc — mini-notation nesting, from Kotlin values. `ncat`
+splits the cycle by weight. `euclidFull` fills the off-beats too. `sometimesEventBy` transforms a
+random subset of the *notes*, where the pre-existing `sometimesBy` transforms whole cycles.
+
+![groove](assets/pat_gallery/pat-groove.svg)
+
 ---
 
 ## The sound harness
@@ -159,6 +168,7 @@ per scene:
 | `jux-stereo` | L/R correlation **−0.006**; the reversal measured in the onset grid (left fires at 0, 1/2, 3/4; right at 0, 1/4, 3/4) |
 | `off-echo` | echo level **0.20** of the source, **0.108** cycles late against a scheduled 1/8 |
 | `degrade-shuffle` | 30–58 hats survive of 64 slots, every cycle a different count, and a second render is bit-identical |
+| `swing-before-after` | straight gap **0.1251** cycles (an eighth); swung gaps alternate **0.1651** and **0.0849** (1/6 and 1/12), ratio **1.94**, and the straight half is at least three times more even than the swung half |
 
 The onset counter is the part that took the most iteration, and it is worth not re-deriving:
 
@@ -188,7 +198,7 @@ that is a real property of the material, not a harness limitation.
 
 ### The committed audio
 
-`dev_docs/assets/pat_sound/*.wav` — six stereo 16-bit 44.1 kHz files, 2 s each (4 s for the chord
+`dev_docs/assets/pat_sound/*.wav` — seven stereo 16-bit 44.1 kHz files, 2 s each (4 s for the chord
 scene). Open them; that is the point.
 
 | file | what you hear |
@@ -199,3 +209,4 @@ scene). Open them; that is the point.
 | `pat-jux-stereo.wav` | forwards in one ear, backwards in the other |
 | `pat-off-echo.wav` | two onsets a cycle, each shadowed an exact eighth later at a fifth the level |
 | `pat-degrade-shuffle.wav` | `hh*16?0.35` over shuffled quarters — deterministic, but no two cycles alike |
+| `pat-swing-before-after.wav` | eight hats a cycle: two cycles dead straight, then two swung |
