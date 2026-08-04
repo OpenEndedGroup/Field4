@@ -11,15 +11,19 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
- * [EarcutFaceTriangulator]'s hole support, which is the thing the convention change bought.
+ * [EarcutFaceTriangulator]'s hole support, which arrived with the convention change.
  *
- * Before this branch the triangulator projected a y-dominant face onto `(x, z)` — the *mirror* of the
+ * Before 2026-08-03 the triangulator projected a y-dominant face onto `(x, z)` — the *mirror* of the
  * right-handed cycle `y -> (z, x)` — and then flipped each returned triangle back against the face's
- * 3D normal. That reached the right answer for a face with no holes, and it could not be extended to
- * one with holes: `FloatEarcut` decides which of the rings it is handed is the outer one from the
- * *sign of its projected area*, so a mirrored frame inverts the hole-versus-outer decision itself,
- * before any triangle exists to flip. `FieldAdapters.kt` said as much in a comment; this test is what
- * that comment becomes now that the frame is fixed.
+ * 3D normal, which reached the right answer for a face with no holes.
+ *
+ * *Corrected 2026-08-04.* This note used to claim the mirror could not be extended to holes, because
+ * "`FloatEarcut` decides which ring is the outer one from the sign of its projected area". It does not:
+ * it slices the flat array by **position** (`FloatEarcut.kt:19`, `:21`, `:484-492`) and uses the area
+ * sign only to pick a traversal direction (`:705`), so a mirror flips the facing of every triangle and
+ * leaves outer-versus-hole alone — `afield.graphics.FloatEarcutOuterRingTest` measures exactly that.
+ * The hole support here was a missing feature, and unifying the two triangulators is what made it worth
+ * writing once; it was not something the old convention forbade.
  *
  * Holes are not reachable from [PolyhedralObject.triangulate] — a `faceCycle` is a single cycle and
  * the topology has no notion of a hole in a face — so [HoleAwareFaceTriangulator] is the surface, and

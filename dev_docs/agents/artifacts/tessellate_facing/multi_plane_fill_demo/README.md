@@ -58,9 +58,18 @@ did that with a naive per-subpath fan.
 
 `threejs_viewer.html`'s `tessellateCoplanarGroups` is now the same rule as
 `afield.graphics.PlanarTessellation`. Written twice, deliberately — a dragged point must not wait for
-a round-trip to re-fill — and guarded from diverging by
-`src/jvmTest/kotlin/afield/graphics/ThreeJsEditableFillParityTest.kt`, which asserts that both modes
-report the same triangle count for the same line. Regenerate the pair with:
+a round-trip to re-fill.
+
+Guarded, since 2026-08-04, by a test that **runs the viewer's JavaScript**:
+`src/jvmTest/kotlin/afield/graphics/ThreeJsViewerTessellationParityTest.kt` lifts the marked region of
+`threejs_viewer.html` and evaluates it on GraalJS (`ViewerJavaScript.kt`), then compares it against
+`PlanarTessellation` triangle for triangle over roughly sixty ring sets. One of its counterfactuals
+injects the fan that produced `editable_true_before.png` and asserts the differential goes red, so the
+"before" row of that table is now an assertion as well as a picture.
+`ThreeJsEditableFillParityTest.kt` still pins `meta.triangles`, but both sides of *that* comparison are
+Kotlin, so it never executed the client at all.
+
+Regenerate the pair with:
 
 ```
 uv run --project . --group backdoor python tools/field_backdoor.py --json --scratch \
