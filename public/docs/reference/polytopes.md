@@ -505,7 +505,7 @@ expression evaluates to something combinatorially exact and geometrically drifte
 
 <code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nf">ConwaySeed</span><span class="p">(</span><span class="k">val</span> <span class="n">symbol</span><span class="p">:</span> <span class="nc">Char</span><span class="p">)</span></code>
 
-The five Platonic seeds a Conway expression can start from, with the capital letter notation names them by.
+The five Platonic seeds a Conway expression can start from, each with the capital letter the notation names it by.
 
 Constants: `TETRAHEDRON`, `CUBE`, `OCTAHEDRON`, `ICOSAHEDRON`, `DODECAHEDRON`.
 
