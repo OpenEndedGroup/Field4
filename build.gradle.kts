@@ -876,6 +876,7 @@ kotlin {
 
                 implementation("com.aallam.openai:openai-client:4.0.1")
                 implementation("com.openai:openai-java:4.29.0")
+                implementation("com.anthropic:anthropic-java:2.34.0")
                 implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
                 implementation("org.jetbrains:markdown:0.5.2")
@@ -1209,6 +1210,17 @@ tasks.register<JavaExec>("runImGuiVrPanelDemo") {
     // default Adoptium toolchain, so it must be unlocked first.
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("runDocsSearchRetrievalHarness") {
+    group = "verification"
+    description = "Eyeball the local docs-search retrieval (Lucene hybrid + GLSL includes) for a fixed or --args query set; no LLM call."
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(javaToolchainVersion))
+    })
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.DocsSearchRetrievalHarness")
+    jvmArgs(vectorizationJvmArgs)
 }
 
 tasks.named<JavaExec>("runJvm").configure {

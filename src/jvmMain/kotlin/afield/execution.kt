@@ -32,6 +32,9 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import java.time.Instant
+import java.lang.reflect.InvocationTargetException
+import java.util.concurrent.CompletionException
+import java.util.concurrent.ExecutionException
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 import kotlin.script.experimental.api.ResultValue
@@ -93,6 +96,23 @@ interface BoxExecution {
 private fun escapeForHtml(text: String?): String {
     if (text == null) return ""
     return text.replace("<", "&lt;").replace(">", "&gt;")
+}
+
+/**
+ * Futures and reflection wrap the exception users actually need to see. Keep the original
+ * throwable for source-location discovery, but use the first non-transport cause in UI text.
+ */
+internal fun userFacingThrowable(throwable: Throwable): Throwable {
+    val seen = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<Throwable, Boolean>())
+    var current = throwable
+    while (seen.add(current)) {
+        val cause = when (current) {
+            is ExecutionException, is CompletionException, is InvocationTargetException -> current.cause
+            else -> null
+        } ?: break
+        current = cause
+    }
+    return current
 }
 
 private fun simplifyTypeForOutput(type: String?): String {
@@ -1496,12 +1516,13 @@ class KotlinExecution : BoxExecution {
          * `error,execution` line; this is the always-visible summary. Cleared on the next run of the box.
          */
         private fun pinEvalException(box: Box, throwable: Throwable, stale: String? = null) {
-            val head = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.name
+            val visible = userFacingThrowable(throwable)
+            val head = visible.message?.takeIf { it.isNotBlank() } ?: visible.javaClass.name
             val frames = throwable.stackTrace.take(6).map { "at $it" }
             PinnedConsole.error(
                 box.id,
                 "exception · ${box.id.take(8)}",
-                listOfNotNull(stale) + listOf("${throwable.javaClass.simpleName}: $head") + frames
+                listOfNotNull(stale) + listOf("${visible.javaClass.simpleName}: $head") + frames
             )
         }
 
@@ -1520,12 +1541,13 @@ class KotlinExecution : BoxExecution {
 
         /** Pin a runtime exception thrown while running a setup block (see [pinSetupError]/[pinEvalException]). */
         private fun pinSetupException(box: Box, key: String, block: String, throwable: Throwable) {
-            val head = throwable.message?.takeIf { it.isNotBlank() } ?: throwable.javaClass.name
+            val visible = userFacingThrowable(throwable)
+            val head = visible.message?.takeIf { it.isNotBlank() } ?: visible.javaClass.name
             val frames = throwable.stackTrace.take(6).map { "at $it" }
             PinnedConsole.error(
                 key,
                 "$block exception · ${box.id.take(8)}",
-                listOf("${throwable.javaClass.simpleName}: $head") + frames
+                listOf("${visible.javaClass.simpleName}: $head") + frames
             )
         }
 
@@ -1592,6 +1614,7 @@ class KotlinExecution : BoxExecution {
             fallbackProperty: String = "code",
             context: String = "batch launch"
         ) {
+            val visible = userFacingThrowable(throwable)
             lprintln("error,execution", "exception thrown in $context inside box $box")
             lprintln("error,execution", throwable.stackTraceToString())
 
@@ -1614,7 +1637,7 @@ class KotlinExecution : BoxExecution {
                     kind = "error",
                     property = location?.property ?: fallbackProperty,
                     html = escapeForHtml(
-                        listOfNotNull(stale, throwable.message ?: throwable.javaClass.name).joinToString(" — ")
+                        listOfNotNull(stale, visible.message ?: visible.javaClass.name).joinToString(" — ")
                     ),
                     frame = Runloop.runLoop.frame.toInt(),
                     stack = stack
@@ -2269,6 +2292,7 @@ class KotlinExecution : BoxExecution {
                         lprintln("error,execution", evalException.stackTraceToString())
                         pinEvalException(box, evalException)
 
+                        val visible = userFacingThrowable(evalException)
                         val location = editorLocationForEvalException(box, evalException)
                         val firstLine = location?.line ?: ln
                         val stack = stackLocationsForEvalException(box, evalException, location, property)
@@ -2280,7 +2304,7 @@ class KotlinExecution : BoxExecution {
                                 line = firstLine,
                                 kind = "error",
                                 property = location?.property ?: property,
-                                html = escapeForHtml(evalException.message ?: evalException.javaClass.name),
+                                html = escapeForHtml(visible.message ?: visible.javaClass.name),
                                 frame = Runloop.runLoop.frame.toInt(),
                                 stack = stack
                             ),
@@ -2319,6 +2343,7 @@ class KotlinExecution : BoxExecution {
                         },
                         onSetupEvalException = { block, throwable ->
                             hasError = true
+                            val visible = userFacingThrowable(throwable)
                             pinSetupException(box, "${box.id}#$block", block, throwable)
                             dispatchExecutionOutput(
                                 box,
@@ -2328,7 +2353,7 @@ class KotlinExecution : BoxExecution {
                                     line = 0,
                                     kind = "error",
                                     property = block,
-                                    html = escapeForHtml(throwable.message ?: throwable.javaClass.name),
+                                    html = escapeForHtml(visible.message ?: visible.javaClass.name),
                                     frame = Runloop.runLoop.frame.toInt()
                                 ),
                                 originSession = originSession

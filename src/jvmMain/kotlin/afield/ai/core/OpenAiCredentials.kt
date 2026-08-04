@@ -77,6 +77,7 @@ private fun normalizeProvider(provider: String?): String {
     val normalized = provider?.trim()?.lowercase(Locale.US)
     return when (normalized) {
         "openrouter", "router" -> "openrouter"
+        "anthropic", "claude" -> "anthropic"
         else -> "openai"
     }
 }

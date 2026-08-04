@@ -1,9 +1,12 @@
 package afield.ai.core
 
 class IdeChatHelpers(
-    private val bridge: OpenAiIdeCodexBridge,
+    private val bridge: LlmBridge,
     private val log: LogSink = StdoutLog
 ) {
+    /** Backward-compatible constructor: existing call sites pass the concrete OpenAI bridge. */
+    constructor(bridge: OpenAiIdeCodexBridge, log: LogSink = StdoutLog) : this(OpenAiLlmBridge(bridge), log)
+
     private fun info(message: String) = log.log("info,ai.chat", message)
 
     private fun attachmentContextNote(attachments: List<ContextAttachment>): String {

@@ -1,327 +1,175 @@
 package afield.ai.core
 
-import afield.ai.KotlinSourceIndex
-import com.openai.client.OpenAIClient
-import com.openai.client.okhttp.OpenAIOkHttpClient
-import com.openai.helpers.ResponseAccumulator
-import com.openai.models.ChatModel
-import com.openai.models.Reasoning
-import com.openai.models.ReasoningEffort
-import com.openai.models.ResponseFormatText
-import com.openai.models.conversations.ConversationCreateParams
-import com.openai.models.conversations.items.ItemCreateParams
-import com.openai.models.responses.*
-import com.openai.core.JsonValue
-import java.util.*
+import afield.ai.SemanticRetrievalHit
+import afield.ai.SemanticRetrievalQueryRequest
+import afield.ai.SemanticRetrievalService
+import java.util.UUID
 
 /**
- * Stateful Responses API bridge used by the docs-search iframe.
+ * Docs-search engine for the documentation iframe.
  *
- * [startConversation] creates a remote conversation and appends the fixed system
- * instructions. [search] grounds a query with the startup-built
- * [KotlinSourceIndex] vector store and any query-selected GLSL include-library
- * stores, when present. The Kotlin store contains `src/jvmMain/kotlin`,
- * `src/personal/kotlin`, and `src/generatedLinalg/kotlin`; this bridge does not
- * index `public/docs` or `dev_docs`. With no available store it still sends an
- * ungrounded request and logs a warning.
+ * Retrieval is **local**: Field's native Lucene hybrid index (BM25 + symbol +
+ * vector via the optional ONNX embedder) over the `field-internals`, `workspace`,
+ * and `documentation` corpora ([SemanticRetrievalService]), plus the local GLSL
+ * include-library manifest ([GlslIncludeLibraryIndex]) for shader questions.
+ * Synthesis runs through the active [LlmBridge], so docs search works on whichever
+ * provider is selected on /welcome (OpenAI, OpenRouter, or Anthropic/Claude) with
+ * no per-query retrieval cost and no source upload to any hosted vector store.
  *
- * Responses stream text deltas when the SDK stream succeeds and fall back to a
- * non-streaming create on any streaming failure. A missing configured model is
- * retried once with `AFIELD_DOCS_SEARCH_FALLBACK_MODEL`; other failures are
- * returned as [SearchResult.success] false. Conversation continuation uses the
- * previous response id after the first turn.
+ * Public surface ([SearchState], [SearchResult], [startConversation], [search])
+ * is unchanged from the previous OpenAI-hosted-`file_search` implementation, so
+ * [installDocsSearch] and the panel's markdown formatting are untouched.
  */
 class DocsSearchBridge(
-    private val client: OpenAIClient = OpenAIOkHttpClient.fromEnv(),
-    model: String = Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_MODEL", Ai4ModelDefaults.FLAGSHIP_MODEL),
     private val log: LogSink = StdoutLog,
-    private val reasoningEffort: ReasoningEffort = ReasoningEffort.MEDIUM
+    model: String = Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_MODEL", Ai4ModelDefaults.flagshipModel()),
+    private val bridge: LlmBridge = createLlmBridge(model, log)
 ) {
-    private val fallbackModel: ChatModel = ChatModel.of(
-        Ai4ModelDefaults.envOrDefault("AFIELD_DOCS_SEARCH_FALLBACK_MODEL", Ai4ModelDefaults.FRONTIER_FALLBACK_MODEL)
-    )
-    @Volatile
-    private var activeModel: ChatModel = ChatModel.of(model)
     private val trace: TraceLogger? = TraceLogger.fromEnv()
-    private val textConfig: ResponseTextConfig =
-        ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build()
-    private val reasoningConfig: Reasoning =
-        Reasoning.builder()
-            .effort(reasoningEffort)
-            .summary(Reasoning.Summary.DETAILED)
-            .build()
-    
+
     private fun info(message: String) = log.log("info,docs.search", message)
     private fun warn(message: String) = log.log("warning,docs.search", message)
     private fun error(message: String) = log.log("error,docs.search", message)
-    
+
+    private val maxHits: Int =
+        (System.getenv("AFIELD_DOCS_SEARCH_MAX_HITS") ?: "12").toIntOrNull()?.coerceIn(1, 40) ?: 12
+    private val perHitChars: Int =
+        (System.getenv("AFIELD_DOCS_SEARCH_HIT_CHARS") ?: "1400").toIntOrNull()?.coerceIn(200, 8000) ?: 1400
+
     init {
-        info("Initialized DocsSearchBridge(model=$activeModel fallback=$fallbackModel)")
+        info("Initialized DocsSearchBridge(model=$model, retrieval=local-lucene)")
     }
-    
-    data class SearchState(
-        val conversationId: String,
-        val previousResponseId: String? = null
+
+    /** Opaque to the installer; carries the synthesis thread whose history the bridge maintains. */
+    data class SearchState(val thread: LlmThreadState)
+
+    data class SearchResult(
+        val success: Boolean,
+        val text: String,
+        val newState: SearchState
     )
-    
-    /**
-     * System instructions for the documentation search assistant
-     */
+
     private val systemInstructions = """
         You are a specialized Field4 documentation and code search assistant.
 
-        Grounding requirements:
-        - For Field4 API, behavior, or implementation questions, use file_search results from the vector store first.
-        - Prefer retrieved code and docs over prior knowledge.
-        - If retrieval is weak or missing, explicitly say what you could not verify.
-        - Include concrete file paths for referenced implementations.
+        You are given retrieved excerpts from Field4's own source, the current workspace,
+        its documentation, and (for shader questions) its GLSL include libraries. Ground
+        every answer in those excerpts:
+        - Prefer the retrieved code and docs over prior knowledge.
+        - If the excerpts do not support a claim, say so explicitly rather than guessing.
+        - Cite concrete file paths for anything you reference.
 
-        Response quality requirements:
-        1. Prioritize relevant real code examples from the indexed codebase
-        2. Include KDoc or inline documentation context when available
-        3. Explain practical usage and caveats
-        4. Suggest related APIs only when supported by retrieved context
-        5. Be concise but complete
+        Response quality:
+        1. Lead with the most relevant real code/doc from the excerpts.
+        2. Explain practical usage and caveats.
+        3. Suggest related APIs only when the excerpts support them.
+        4. Be concise but complete.
 
         Output format:
-        - Use markdown with clear headings
-        - Use language-tagged code blocks
-        - End with a short Sources section listing referenced file paths
+        - Markdown with clear headings and language-tagged code blocks.
+        - End with a short "Sources" section listing the referenced file paths.
     """.trimIndent()
-    
-    fun startConversation(): SearchState {
-        info("startConversation()")
-        val t0 = System.nanoTime()
-        
-        val metadata = ConversationCreateParams.Metadata.builder()
-            .putAdditionalProperty("purpose", JsonValue.from("docs_search"))
-            .putAdditionalProperty("session_id", JsonValue.from(UUID.randomUUID().toString()))
-            .build()
-        
-        val convParams = ConversationCreateParams.builder()
-            .metadata(metadata)
-            .build()
-        
-        val conversationId = client.conversations().create(convParams).id()
 
-        appendMessage(conversationId, ResponseInputItem.Message.Role.SYSTEM, systemInstructions)
-        
-        val ms = (System.nanoTime() - t0) / 1_000_000
-        info("startConversation(): conversationId=$conversationId (${ms}ms)")
-        
-        return SearchState(conversationId)
+    fun startConversation(): SearchState {
+        val thread = bridge.startThread(
+            fileKey = "docs-search:${UUID.randomUUID()}",
+            fileText = "",
+            instructions = systemInstructions
+        )
+        info("startConversation(): thread=${thread.localThreadId}")
+        return SearchState(thread)
     }
-    
-    /**
-     * Search for documentation and code with streaming support
-     */
+
     fun search(
         state: SearchState,
         query: String,
         onTextDelta: ((String) -> Unit)? = null
     ): SearchResult {
         val t0 = System.nanoTime()
-        
-        info("search(): query='$query' conversationId=${state.conversationId}")
-        
-        trace?.log(
-            "DOCS_SEARCH_QUERY",
-            buildString {
-                appendLine("conversationId=${state.conversationId}")
-                appendLine("query=$query")
-            }
-        )
+        info("search(): query='$query' thread=${state.thread.localThreadId}")
 
-        // Get vector store IDs from KotlinSourceIndex if available
-        val vectorStoreIds = mutableListOf<String>()
-        KotlinSourceIndex.latestIndex?.vectorStoreId?.let { vsId ->
-            vectorStoreIds.add(vsId)
-            info("Using vector store: $vsId")
-        }
-        GlslIncludeLibraryIndex.currentVectorStoreIdsForQuery(query).forEach { vsId ->
-            vectorStoreIds.add(vsId)
-            info("Using GLSL include vector store: $vsId")
-        }
-        if (vectorStoreIds.isEmpty()) {
-            warn("No vector store available; docs search is running ungrounded")
+        val retrieval = runCatching {
+            SemanticRetrievalService.query(
+                SemanticRetrievalQueryRequest(
+                    query = query,
+                    limit = maxHits,
+                    rebuildIfEmpty = true,
+                    includeCapsule = true,
+                    includeSource = true
+                )
+            )
+        }.onFailure { warn("semantic retrieval failed: ${it.message}") }.getOrNull()
+
+        val hits = retrieval?.results.orEmpty()
+        val glsl = runCatching { GlslIncludeLibraryIndex.contextAttachmentFor(query) }
+            .onFailure { warn("glsl include lookup failed: ${it.message}") }
+            .getOrNull()
+
+        if (hits.isEmpty() && glsl == null) {
+            warn("no local retrieval context for query; answering ungrounded")
+        } else {
+            info("retrieved ${hits.size} hit(s)${if (glsl != null) " + glsl includes" else ""}")
         }
 
-        val groundedQuery =
-            if (vectorStoreIds.isNotEmpty()) {
-                buildString {
-                    appendLine("Use file_search against the indexed Field4 codebase for this request.")
-                    appendLine("If the question is about GLSL include libraries, use file_search against indexed GLSL include libraries too.")
-                    appendLine("If retrieval does not support a claim, state that clearly.")
-                    appendLine()
-                    append(query)
-                }
+        val context = buildContext(hits, glsl?.code)
+        val prompt = buildString {
+            if (context.isNotBlank()) {
+                appendLine("Retrieved Field4 context for the question below. Ground your answer in it and cite file paths.")
+                appendLine()
+                appendLine(context)
+                appendLine()
             } else {
-                query
+                appendLine("No local retrieval context was found for this question. Answer from general Field4 knowledge and say clearly what you could not verify.")
+                appendLine()
             }
-        
-        fun buildParams(modelToUse: ChatModel): ResponseCreateParams {
-            val paramsBuilder = ResponseCreateParams.builder()
-                .model(modelToUse)
-                .maxOutputTokens(16384L)
-                .input(groundedQuery)
-
-            if (state.previousResponseId == null) {
-                paramsBuilder.conversation(state.conversationId)
-            } else {
-                paramsBuilder.previousResponseId(state.previousResponseId)
-            }
-
-            if (vectorStoreIds.isNotEmpty()) {
-                paramsBuilder.addFileSearchTool(vectorStoreIds)
-            }
-
-            paramsBuilder.text(textConfig)
-            paramsBuilder.reasoning(reasoningConfig)
-            return paramsBuilder.build()
+            append("Question: ")
+            append(query)
         }
 
-        try {
-            val streamedText = StringBuilder()
-            val response = try {
-                createResponse(buildParams(activeModel)) { delta ->
-                    streamedText.append(delta)
-                    onTextDelta?.invoke(delta)
-                }
-            } catch (e: Exception) {
-                if (isMissingModelError(e) && activeModel != fallbackModel) {
-                    warn("Model '$activeModel' unavailable; retrying with '$fallbackModel'")
-                    activeModel = fallbackModel
-                    streamedText.setLength(0)
-                    createResponse(buildParams(activeModel)) { delta ->
-                        streamedText.append(delta)
-                        onTextDelta?.invoke(delta)
-                    }
-                } else {
-                    throw e
-                }
-            }
-            val newResponseId = response.id()
-            val fullText = streamedText.toString().ifBlank {
-                extractOutputTextWithNewlines(response)
-            }
-            if (fullText.isBlank()) {
-                warn("search(): response had no output_text")
-            }
+        trace?.log("DOCS_SEARCH_QUERY", "thread=${state.thread.localThreadId} hits=${hits.size}\n$prompt")
 
+        return try {
+            val result = bridge.send(
+                state = state.thread,
+                userPrompt = prompt,
+                maxOutputTokens = 16384L,
+                onTextDelta = onTextDelta
+            )
+            val text = result.text
+            if (text.isBlank()) warn("search(): synthesis returned no text")
             val ms = (System.nanoTime() - t0) / 1_000_000
-            info("search() complete: chars=${fullText.length} time=${ms}ms")
-
-            trace?.log(
-                "DOCS_SEARCH_RESPONSE",
-                buildString {
-                    appendLine("conversationId=${state.conversationId}")
-                    appendLine("responseId=$newResponseId")
-                    appendLine("chars=${fullText.length}")
-                    appendLine()
-                    append(fullText)
-                }
-            )
-
-            return SearchResult(
-                success = true,
-                text = fullText,
-                newState = state.copy(previousResponseId = newResponseId)
-            )
-
+            info("search() complete: chars=${text.length} time=${ms}ms")
+            trace?.log("DOCS_SEARCH_RESPONSE", "thread=${state.thread.localThreadId} chars=${text.length}\n$text")
+            SearchResult(success = text.isNotBlank(), text = text, newState = state)
         } catch (e: Exception) {
             error("search() failed: ${e.message}")
-            e.printStackTrace()
-            return SearchResult(
-                success = false,
-                text = "Error: ${e.message}",
-                newState = state
-            )
+            SearchResult(success = false, text = "Error: ${e.message}", newState = state)
         }
     }
 
-    private fun appendMessage(conversationId: String, role: ResponseInputItem.Message.Role, text: String) {
-        val message = ResponseInputItem.Message.builder()
-            .role(role)
-            .addInputTextContent(text)
-            .build()
-
-        val params = ItemCreateParams.builder()
-            .conversationId(conversationId)
-            .addItem(message)
-            .build()
-
-        client.conversations().items().create(conversationId, params)
-    }
-
-    private fun createResponse(params: ResponseCreateParams, onTextDelta: (String) -> Unit): Response {
-        return try {
-            val acc = ResponseAccumulator.create()
-            client.async().responses().createStreaming(params).subscribe({ event ->
-                acc.accumulate(event)
-                event.outputTextDelta().ifPresent { delta ->
-                    val chunk = delta.delta()
-                    if (chunk.isNotEmpty()) onTextDelta(chunk)
-                }
-            }).onCompleteFuture().join()
-
-            acc.response()
-        } catch (t: Throwable) {
-            warn(
-                "streaming response failed; falling back to non-streaming create. " +
-                    "cause=${renderThrowableChain(t)}"
-            )
-            client.responses().create(params)
-        }
-    }
-
-    private fun isMissingModelError(error: Throwable): Boolean {
-        var cursor: Throwable? = error
-        while (cursor != null) {
-            val message = cursor.message?.lowercase(Locale.US) ?: ""
-            if ((message.contains("requested model") && message.contains("does not exist")) ||
-                message.contains("model_not_found")
-            ) {
-                return true
+    private fun buildContext(hits: List<SemanticRetrievalHit>, glslIncludes: String?): String {
+        val sb = StringBuilder()
+        hits.forEachIndexed { i, hit ->
+            val body = hit.sourcePreview.ifBlank { hit.capsule }.trim()
+            sb.appendLine("[${i + 1}] ${hit.path}${if (hit.line > 0) ":${hit.line}" else ""}${if (hit.symbol.isNotBlank()) "  (${hit.symbol})" else ""}")
+            if (hit.title.isNotBlank() && hit.title != hit.symbol) sb.appendLine(hit.title)
+            if (body.isNotBlank()) {
+                val lang = hit.language.ifBlank { "" }
+                sb.appendLine("```$lang")
+                sb.appendLine(truncate(body, perHitChars))
+                sb.appendLine("```")
             }
-            cursor = cursor.cause
+            sb.appendLine()
         }
-        return false
+        if (!glslIncludes.isNullOrBlank()) {
+            sb.appendLine("[GLSL include libraries]")
+            sb.appendLine("```glsl")
+            sb.appendLine(truncate(glslIncludes, perHitChars * 2))
+            sb.appendLine("```")
+        }
+        return sb.toString().trim()
     }
 
-    private fun extractOutputTextWithNewlines(response: Response): String {
-        val parts = mutableListOf<String>()
-        response.output().forEach { item ->
-            if (item.isMessage()) {
-                val msg = item.message().orElse(null)
-                msg?.content()?.forEach { content ->
-                    val outText = content.outputText().orElse(null)
-                    if (outText != null) parts += outText.text()
-                }
-            }
-        }
-        return parts.joinToString(separator = "\n").trimEnd()
-    }
-
-    private fun renderThrowableChain(error: Throwable): String {
-        val seen = linkedSetOf<String>()
-        var cursor: Throwable? = error
-        while (cursor != null) {
-            val label = buildString {
-                append(cursor::class.java.simpleName.ifBlank { cursor::class.java.name })
-                cursor.message?.takeIf { it.isNotBlank() }?.let {
-                    append(": ")
-                    append(it)
-                }
-            }
-            seen += label
-            cursor = cursor.cause
-        }
-        return seen.joinToString(" <- ")
-    }
-    
-    data class SearchResult(
-        val success: Boolean,
-        val text: String,
-        val newState: SearchState
-    )
+    private fun truncate(s: String, max: Int): String =
+        if (s.length <= max) s else s.take(max) + "\n… (truncated)"
 }

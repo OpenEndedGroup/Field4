@@ -2047,7 +2047,9 @@
                         <div class="ai-settings-provider" role="group" aria-label="AI provider">
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openai" aria-pressed="true">OpenAI</button>
                             <button class="segmented-button ai-provider-button" type="button" data-ai-provider="openrouter" aria-pressed="false">OpenRouter</button>
+                            <button class="segmented-button ai-provider-button" type="button" data-ai-provider="anthropic" aria-pressed="false">Anthropic (Claude)</button>
                         </div>
+                        <div class="ai-settings-hint" style="opacity:0.75;font-size:0.85em;margin:4px 0;">Anthropic (Claude) authenticates with your <code>ant auth login</code> credential — no API key needed. Save to switch; run <code>ant auth login</code> first if you haven't.</div>
                         <div class="ai-settings-controls">
                             <input id="openai-platform-key" type="password" autocomplete="off" placeholder="OPENAI_PLATFORM_KEY">
                             <button id="save-ai-settings" type="button">Save</button>
@@ -2944,11 +2946,11 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const button = document.getElementById("save-ai-settings");
         const settings = state.aiSettings || {};
-        const provider = settings.provider === "openrouter" ? "openrouter" : "openai";
-        const configured = provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
+        const provider = (settings.provider === "openrouter" || settings.provider === "anthropic") ? settings.provider : "openai";
+        const configured = provider === "anthropic" ? true : provider === "openrouter" ? !!settings.hasOpenRouterApiKey : !!settings.hasOpenAiPlatformKey;
 
         if (summary) summary.textContent = configured ? provider : "missing key";
-        if (stateNode) stateNode.textContent = configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
+        if (stateNode) stateNode.textContent = provider === "anthropic" ? "anthropic (ant auth login)" : configured ? `${provider} configured` : `missing ${provider === "openrouter" ? "OPENROUTER_API_KEY" : "OPENAI_PLATFORM_KEY"}`;
         document.querySelectorAll("[data-ai-provider]").forEach((providerButton) => {
             const active = providerButton.getAttribute("data-ai-provider") === provider;
             providerButton.setAttribute("aria-pressed", active ? "true" : "false");
@@ -5348,7 +5350,8 @@
     }
 
     async function saveAiSettings() {
-        const provider = state.aiSettings?.provider === "openrouter" ? "openrouter" : "openai";
+        const rawProvider = state.aiSettings?.provider;
+        const provider = (rawProvider === "openrouter" || rawProvider === "anthropic") ? rawProvider : "openai";
         const openAiInput = document.getElementById("openai-platform-key");
         const openRouterInput = document.getElementById("openrouter-api-key");
         const openRouterBaseUrl = document.getElementById("openrouter-base-url");
@@ -5357,7 +5360,7 @@
         const fallbackModel = document.getElementById("ai-fallback-model");
         const openAiKey = String(openAiInput?.value || "").trim();
         const openRouterKey = String(openRouterInput?.value || "").trim();
-        const hasSelectedKey = provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
+        const hasSelectedKey = provider === "anthropic" ? true : provider === "openrouter" ? (openRouterKey || state.aiSettings.hasOpenRouterApiKey) : (openAiKey || state.aiSettings.hasOpenAiPlatformKey);
         if (!hasSelectedKey) {
             setAiSettingsStatus(`Enter ${provider === "openrouter" ? "an OpenRouter API key" : "an OpenAI Platform key"}.`, true);
             return;

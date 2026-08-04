@@ -84,6 +84,7 @@ nav:
         - Typography as Geometry: typography_examples.md
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
+        - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md
       - Networks and Dynamics:

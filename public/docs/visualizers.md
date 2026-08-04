@@ -913,6 +913,139 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
 
+## Recorded audio: waveform, player, playhead, and navigation
+
+`AudioVisualizer` is the general-purpose recorded-sound view. It combines a waveform and native
+browser audio controls, keeps an optional vertical playhead synchronized with playback, and uses
+the waveform itself as a navigator:
+
+- click to seek;
+- drag to pan;
+- use the mouse wheel or `+` / `−` to zoom around a point;
+- shift-wheel to pan;
+- double-click or press **all** to restore the complete clip.
+
+Small arrays and documentation fixtures can be self-contained. This example starts in a zoomed
+window with the playhead parked inside it so both pieces of state remain visible in a still capture.
+
+<!--
+FIELD_TEST
+id: docs.visualizers.recorded-audio
+runner: backdoor-box
+tags: [docs, visualizers, audio, waveform, player, playhead]
+timeoutSec: 45
+waitSec: 2.5
+expect:
+  outputContains:
+    - "recorded audio visualizer ready"
+  # The inline WAV makes the set-output payload large enough that its acknowledgement can arrive
+  # after the backdoor command collector closes. The rendered box capture is the reliable signal.
+  allowMissingOutput: true
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/visualizers-recorded-audio.png" wait="2.5" capture="box" open-outputs="true" padding="12" w="1200" h="310" embed=true name="recorded-audio"}
+:::static
+import afield.stdlib.*
+
+val sampleRate = 8_000
+val seconds = 5.0
+val recording = FloatArray((sampleRate * seconds).toInt()) { i ->
+    val t = i / sampleRate.toDouble()
+    val chirp = sin(2.0 * PI * (105.0 * t + 72.0 * t * t))
+    val low = 0.34 * sin(2.0 * PI * 47.0 * t)
+    val pulse = if ((t * 2.0).toInt() % 2 == 0) 0.16 * exp(-8.0 * (t % 0.5)) else 0.0
+    (0.54 * chirp + low + pulse).toFloat()
+}
+
+displayAudioSamples(
+    samples = recording,
+    sampleRate = sampleRate,
+    options = AudioVisualizerOptions(
+        width = 1050,
+        waveformHeight = 150,
+        showPlayhead = true,
+        initialStartSeconds = 0.8,
+        initialDurationSeconds = 2.7,
+        initialPositionSeconds = 1.45,
+    ),
+    label = "five-second synthetic recording",
+)
+
+println("recorded audio visualizer ready")
+```
+
+There are three general entry points from a Field box:
+
+```kotlin
+// A browser-accessible recording. Add waveformUrl for range-aware server summaries.
+displayAudio(AudioVisualizerSource(
+    audioUrl = "/recordings/long-take.wav",
+    waveformUrl = "/analysis/long-take/waveform",
+    durationSeconds = 183.4,
+    label = "long take",
+))
+
+// Generated or transformed mono samples; encoded as a self-contained PCM16 WAV.
+displayAudioSamples(samples, sampleRate = 48_000, label = "synthesis result")
+
+// Short existing recordings. Long files should use URLs instead of inflating box output.
+displayAudioBytes(mp3Bytes, mediaType = "audio/mpeg", label = "short field recording")
+```
+
+All three return the generated HTML as well as displaying it, so it can be composed into a larger
+instrument panel. `AudioVisualizer.renderHtml(...)`, `renderSamplesHtml(...)`, and
+`renderBytesHtml(...)` are the receiver-free forms when no implicit Field box is available.
+
+For a Field Audio service representation, use the same component without transferring or decoding
+the complete recording just to draw it:
+
+```kotlin
+import afield.stdlib.*
+import afield.stdlib.noir.audioai.*
+
+val representation: AssetRepresentation = candidate.proxyRepresentation!!
+display("audio", representation.audioVisualizerHtml(
+    options = AudioVisualizerOptions(showPlayhead = true)
+))
+```
+
+That adapter asks the service for a bounded min/max envelope of only the visible interval. Each
+source frame contributes to a pixel's minimum or maximum, preserving short transients that simple
+sample decimation would miss. Zooming and panning request a new envelope with at most 4096 points;
+the audio itself continues to stream from the immutable representation. Set `showPlayhead = false`
+for a waveform-only inspection surface.
+
+### Waveform-summary endpoint contract
+
+`AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
+visualizer adds these query parameters whenever its visible interval changes:
+
+```text
+start_seconds=12.5&duration_seconds=4.0&points=960
+```
+
+The endpoint returns one min/max envelope per channel:
+
+```json
+{
+  "start_seconds": 12.5,
+  "duration_seconds": 4.0,
+  "sample_rate": 48000,
+  "channels": 2,
+  "point_count": 960,
+  "minimum": [[-0.4, -0.2], [-0.3, -0.1]],
+  "maximum": [[0.5, 0.3], [0.4, 0.2]]
+}
+```
+
+Each channel array must contain `point_count` values. The tiny two-value arrays above are only
+abbreviated for readability. Keep the response cacheable: the component aborts stale requests while
+the user pans and asks for a fresh, pixel-sized envelope after zooming or resizing.
+
+![Zoomable recorded-audio player with a vertical playhead](assets/visualizers-recorded-audio.png)
+
 ## Signal and synth visualizers
 
 Field's synth layer also comes with ready-made HTML and SVG visualizers for audio patches, scopes, envelopes, compressors, and related objects.

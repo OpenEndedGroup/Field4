@@ -278,17 +278,26 @@ internal object Ai4AutoBoxNamer {
             "AI4 auto box naming prompt for ${candidates.size} candidate(s), ${prompt.length} chars:\n$prompt"
         )
 
-        val model = ChatModel.of(Ai4ModelDefaults.envOrDefault("AFIELD_AI_AUTO_NAME_MODEL", Ai4ModelDefaults.fastModel()))
-        lprintln("info,ai.boxnames", "AI4 auto box naming sending request to model $model")
-        val params = ResponseCreateParams.builder()
-            .model(model)
-            .maxOutputTokens(1200L)
-            .input(prompt)
-            .text(ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build())
-            .build()
-
-        val response = openAiClientFromFieldConfig().responses().create(params)
-        val text = extractOutputText(response)
+        val modelName = Ai4ModelDefaults.envOrDefault("AFIELD_AI_AUTO_NAME_MODEL", Ai4ModelDefaults.fastModel())
+        lprintln("info,ai.boxnames", "AI4 auto box naming sending request to model $modelName")
+        val text = if (configuredAiProvider() == "anthropic") {
+            val msg = anthropicClientFromFieldConfig().messages().create(
+                com.anthropic.models.messages.MessageCreateParams.builder()
+                    .model(modelName)
+                    .maxTokens(1200L)
+                    .addUserMessage(prompt)
+                    .build()
+            )
+            msg.content().mapNotNull { it.text().orElse(null)?.text() }.joinToString("\n").trim()
+        } else {
+            val params = ResponseCreateParams.builder()
+                .model(ChatModel.of(modelName))
+                .maxOutputTokens(1200L)
+                .input(prompt)
+                .text(ResponseTextConfig.builder().format(ResponseFormatText.builder().build()).build())
+                .build()
+            extractOutputText(openAiClientFromFieldConfig().responses().create(params))
+        }
         lprintln("info,ai.boxnames", "AI4 auto box naming raw response text (${text.length} chars):\n$text")
         if (text.isBlank()) return emptyList()
         return mapper.readValue(jsonArrayText(text))

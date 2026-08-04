@@ -520,10 +520,14 @@ Good workflow:
 """.trimIndent()
 
 fun installAi4() {
-    var bridge: OpenAiIdeCodexBridge? = null
+    var bridge: LlmBridge? = null
     var helpers: IdeChatHelpers? = null
-    var chatBridge: OpenAiIdeCodexBridge? = null
+    var chatBridge: LlmBridge? = null
     var chatHelpers: IdeChatHelpers? = null
+
+    // Pick the agent engine by the /welcome provider setting. Both implement LlmBridge,
+    // so IdeChatHelpers and the thread caches are provider-agnostic downstream.
+    fun createIdeBridge(uiLog: LogSink): LlmBridge = createLlmBridge(Ai4ModelDefaults.flagshipModel(), uiLog)
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatHistoryByKey = ConcurrentHashMap<String, String>()
@@ -824,7 +828,7 @@ fun installAi4() {
         if (bridge == null) {
             val uiLog = NotifyLog()
             try {
-                bridge = OpenAiIdeCodexBridge(log = uiLog)
+                bridge = createIdeBridge(uiLog)
                 helpers = IdeChatHelpers(bridge!!, log = uiLog)
                 notify("Initializing AI support v4", "AI4")
             } catch (t: Throwable) {
@@ -838,7 +842,7 @@ fun installAi4() {
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
             try {
-                chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.flagshipModel(), log = uiLog)
+                chatBridge = createIdeBridge(uiLog)
                 chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
             } catch (t: Throwable) {
                 val messageText = aiSetupMessage(t)
@@ -2521,7 +2525,7 @@ fun installAi4() {
         
         if (chatBridge == null) {
             val uiLog = NotifyLog(label = "")
-            chatBridge = OpenAiIdeCodexBridge(model = Ai4ModelDefaults.flagshipModel(), log = uiLog)
+            chatBridge = createIdeBridge(uiLog)
             chatHelpers = IdeChatHelpers(chatBridge!!, log = uiLog)
         }
         
