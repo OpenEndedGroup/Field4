@@ -150,4 +150,39 @@ class UserKeybindingsManagerTest {
         assertFalse(text.contains("\n  edit-hashtag:"), "entries were indented into nothing:\n$text")
         assertEquals(listOf("cmd+alt+b"), UserKeybindingsManager.resolved.bindings["new-box"])
     }
+
+    /**
+     * Restoring the real `~/.afield/keybindings.yaml` must never *create* it.
+     *
+     * `watchFile(null)` used to generate the file when it was missing, from the JVM-global inventory —
+     * which, in a test run, is whatever fake commands the last test reported. On any machine where
+     * that file did not exist yet (CI, a fresh checkout), `./gradlew jvmTest` created `~/.afield/` and
+     * wrote five invented commands into the developer's home directory. This test drives the exact
+     * path with `user.home` pointed at a temp dir, so a regression fails here instead of in `$HOME`.
+     */
+    @Test
+    fun restoringTheDefaultNeverWritesIntoTheUsersHome() {
+        UserKeybindingsManager.watchFile(scratch)
+        UserKeybindingsManager.applyInventory(inventory())
+
+        val fakeHome = File.createTempFile("field-fake-home", "").also { it.delete(); it.mkdirs() }
+        val realHome = System.getProperty("user.home")
+        try {
+            System.setProperty("user.home", fakeHome.absolutePath)
+            UserKeybindingsManager.watchFile(null)
+
+            val wouldHaveBeenWritten = File(File(fakeHome, ".afield"), "keybindings.yaml")
+            val created = wouldHaveBeenWritten.exists()
+            assertFalse(
+                created,
+                "restoring the default created ${wouldHaveBeenWritten.absolutePath}:\n" +
+                    if (created) wouldHaveBeenWritten.readText() else ""
+            )
+            assertFalse(File(fakeHome, ".afield").exists(), "restoring the default created ~/.afield")
+        } finally {
+            System.setProperty("user.home", realHome)
+            fakeHome.deleteRecursively()
+        }
+    }
+
 }

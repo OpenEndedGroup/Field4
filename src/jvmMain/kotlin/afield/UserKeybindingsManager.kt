@@ -46,11 +46,17 @@ object UserKeybindingsManager {
      */
     fun watchFile(file: File?) {
         bindingsFile = file ?: defaultBindingsFile()
-        // Same rule as a missing `~/.afield/keybindings.yaml`: if the file is not there, write it from
-        // what Field knows about its own commands. So pointing this at a fresh path is also how you
-        // get a pristine copy of the defaults out of a running Field.
+        // Pointing this at a *fresh scratch path* is also how you get a pristine copy of the defaults
+        // out of a running Field, so generate the file when one was named and is not there yet.
+        //
+        // Deliberately NOT for `null`. Restoring the real `~/.afield/keybindings.yaml` must never
+        // create it: `inventory` is a JVM-global, so whatever the caller last reported gets written —
+        // and the caller here is usually a test's `@AfterTest` holding a handful of invented commands.
+        // On any machine where that file does not exist yet, `./gradlew jvmTest` would create
+        // `~/.afield/` and fill it with fakes. The real file is generated the real way: by a real
+        // client reporting a real inventory through `applyInventory`.
         val known = inventory
-        if (!bindingsFile.exists() && known.isNotEmpty()) applyInventory(CommandInventory(known))
+        if (file != null && !bindingsFile.exists() && known.isNotEmpty()) applyInventory(CommandInventory(known))
         else reloadNow()
     }
 
