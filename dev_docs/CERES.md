@@ -107,9 +107,33 @@ Verified against that artifact: all 42 checks that `./gradlew smokeCeres` now ru
 reporting `SPARSE_NORMAL_CHOLESKY` rather than falling back to dense, `kkC` and `kkD` still exact, and
 zero lines of stderr noise.
 
-It is macOS-arm64 only. `CeresNativeLibrary.defaultPath` names one filename with no os/arch dispatch,
-which is honest rather than lazy — there has never been a second platform's artifact to dispatch to —
-but a second platform is therefore a loader change as well as a build one.
+It now builds on all three platforms, and the pinned static build — not `find_package` — is the reason.
+Homebrew covers macOS and `libceres-dev` covers Debian, but Windows has no system Ceres worth
+depending on, so the pinned route became the primary one and `buildCeresNative` stayed a Unix-only
+convenience. `native/ken-ceres/build_redistributable.sh` moved to `tools/build_ceres_native.py`,
+which was macOS-only three times over: `curl`/`tar`/`shasum`, `otool -L`, and `sh` itself.
+
+The port needed four things beyond the script. `KEN_CERES_API` on all ten entry points, because a DLL
+exports nothing unless told to — and `ken_ceres.cpp` keeps its own copy of the opcode enums rather
+than including the header, so both files have to spell it. A `find_package(Ceres 2.1)` floor, because
+the wrapper uses `ceres::Manifold` and Ubuntu 22.04 ships 2.0.0. `$ORIGIN`, a static MSVC runtime,
+`/bigobj` and `-static-libstdc++`, so no platform's artifact carries a version floor the others do
+not. And a memory-bounded compile-job count, because Ceres and Eigen peak near 2 GB per translation
+unit and an unbounded `--parallel` gets `cc1plus` OOM-killed with an error that names neither memory
+nor the job count.
+
+`tools/check_native_selfcontained.py` replaces the `otool -L` assertion for Mach-O, ELF and PE,
+parsing the object files directly rather than shelling out — `dumpbin` only exists inside a Visual
+Studio developer shell, and a checker that skips when its tool is missing is worse than no checker.
+
+`CeresNativeLibrary.defaultPath` dispatches on os/arch, and
+`tools/ceres_abi/CeresAbiConformance.java` is the cross-platform test: one JDK file, no Field
+dependencies, run by the single-file source launcher, asserting invariants rather than coordinates
+because most of these programs leave a gauge freedom that platforms may resolve differently. It also
+asserts `SPARSE_NORMAL_CHOLESKY` was really *used*, since Ceres substitutes a dense solve silently
+when built without a sparse backend — exactly the difference a Homebrew, an apt and a pinned Ceres
+can have. `.github/workflows/ceres-abi.yml` runs it on Linux and Windows; macOS is verified locally
+on every change and bills at 10x a Linux minute in CI.
 
 ### A build bug found on the way
 
@@ -385,9 +409,11 @@ orders of magnitude better than the existing iteration, and sane where it produc
 
 ## What is still open
 
-1. **A second platform.** Settled for macOS arm64: nothing is committed, v3 is the only ABI, and
-   `buildCeresRedistributable` produces the artifact. Linux or an Intel Mac would need the loader's
-   first os/arch dispatch and a build host, and neither has been asked for. See above.
+1. **An Intel Mac, and a glibc floor for shipped Linux binaries.** macOS arm64, Linux and Windows all
+   build and pass ABI conformance; x86-64 macOS is untried only because there is no host to try it
+   on. Nothing is committed, so the glibc question is currently moot — a `.so` built on the machine
+   that runs it has no floor to violate — but the moment a Linux binary is *distributed* it acquires
+   the glibc version of its build host, and that build wants a container with an old one.
 2. **`PLANAR` should migrate to the Hesse form.** The null space above is not specific to
    realization — every caller of the original opcode, including the architectural DSL, is paying
    for two free directions per face. `PLANAR_HESSE` is left as a separate opcode only so that this
