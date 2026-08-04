@@ -529,6 +529,73 @@ object PatPianoRollGallery {
                 check(counts.any { it in 9..15 }) { "sometimesEventBy looks all-or-nothing: $counts" }
             }
         ),
+
+        // 9 ── mini-notation: the standalone step markers, each against its bracketed equivalent.
+        Roll(
+            name = "mini-notation",
+            blurb = "Mini-notation. Each of the three new markers is drawn immediately above the " +
+                "bracketed spelling it is shorthand for, so the pair must line up exactly: `.` groups " +
+                "(`bd sd . hh hh hh` is `[bd sd] [hh hh hh]`, two halves rather than five fifths), `_` " +
+                "extends the previous step (`bd _ _ sd` is `bd@3 sd`), and a bare `!` repeats it " +
+                "(`bd ! ! sd` is `bd!3 sd`). Then the forms that were already there: two polymeter " +
+                "spellings, `?` degrade, and a sample-index suffix.",
+            build = {
+                PatRollSpec(
+                    title = "Mini-notation: the step markers, against their bracketed equivalents",
+                    subtitle = "bd sd . hh hh hh  —  bd _ _ sd  —  bd ! ! sd  —  {a, b}  —  {a}%n  —  ?  —  :n",
+                    cycles = 2,
+                    lanes = listOf(
+                        Lane("bd sd . hh hh hh", pat("bd sd . hh hh hh")),
+                        Lane("[bd sd] [hh hh hh]", pat("[bd sd] [hh hh hh]")),
+                        Lane("bd _ _ sd", pat("bd _ _ sd")),
+                        Lane("bd@3 sd", pat("bd@3 sd")),
+                        Lane("bd ! ! sd", pat("bd ! ! sd")),
+                        Lane("bd!3 sd", pat("bd!3 sd")),
+                        Lane("{bd sd stab, cp arpy cr}", pat("{bd sd stab, cp arpy cr}")),
+                        Lane("{bd hh 808:4}%8", pat("{bd hh 808:4}%8")),
+                        Lane("bd*8?0.4", pat("bd*8?0.4")),
+                    )
+                )
+            },
+            verify = { lanes ->
+                fun lane(label: String) = lanes.first { it.label == label }
+                // Each shorthand must be arc-for-arc and value-for-value its bracketed equivalent.
+                val pairs = listOf(
+                    "bd sd . hh hh hh" to "[bd sd] [hh hh hh]",
+                    "bd _ _ sd" to "bd@3 sd",
+                    "bd ! ! sd" to "bd!3 sd"
+                )
+                for ((shorthand, bracketed) in pairs) {
+                    val a = lane(shorthand).cycle(0)
+                    val b = lane(bracketed).cycle(0)
+                    check(a.map { it.arc.start to it.arc.end } == b.map { it.arc.start to it.arc.end }) {
+                        "`$shorthand` does not match `$bracketed`: ${a.map { it.arc }} vs ${b.map { it.arc }}"
+                    }
+                    check(a.map { it.value } == b.map { it.value }) {
+                        "`$shorthand` plays ${a.map { it.value }}, `$bracketed` plays ${b.map { it.value }}"
+                    }
+                }
+                // The `.` grouping really is two halves: the third event starts exactly at 1/2.
+                check(lane("bd sd . hh hh hh").cycle(0)[2].arc.start == PatQ.of(1, 2)) {
+                    "the dot did not split the cycle in half"
+                }
+                // Polymeter: two layers of different length, so more events than either alone.
+                check(lane("{bd sd stab, cp arpy cr}").cycle(0).size == 6) {
+                    "polymeter layers: ${lane("{bd sd stab, cp arpy cr}").cycle(0).size}"
+                }
+                check(lane("{bd hh 808:4}%8").cycle(0).size == 8) {
+                    "explicit %8 subdivision: ${lane("{bd hh 808:4}%8").cycle(0).size}"
+                }
+                // The sample-index suffix arrives as an `n` parameter without changing the atom.
+                val indexed = lane("{bd hh 808:4}%8").cycle(0).filter { it.value == "808:4" }
+                check(indexed.isNotEmpty() && indexed.all { it.annotations["n"] == "4" }) {
+                    "the :n suffix did not become an n parameter: ${indexed.map { it.annotations }}"
+                }
+                // `?` degrades, differently per cycle, deterministically.
+                val degraded = (0L until 2L).map { lane("bd*8?0.4").cycle(it).size }
+                check(degraded.all { it in 1..7 }) { "?0.4 over eight slots left $degraded" }
+            }
+        ),
     )
 
     /** Cycle-0 arcs of a lane, for the terse checks above. */

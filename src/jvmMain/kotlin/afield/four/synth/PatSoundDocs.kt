@@ -52,6 +52,9 @@ object PatSoundDocs {
 
     const val SR = 44_100
 
+    /** The analysis-window length [onsetPeaks] uses, in milliseconds. Its timing bias, too. */
+    const val ONSET_WINDOW_MS = 12.0
+
     // ── scene model ────────────────────────────────────────────────────────────────────────
 
     /** Stereo audio: two equal-length channels in roughly [-1, 1]. */
@@ -369,6 +372,59 @@ object PatSoundDocs {
                 }
             }
         ),
+
+        // 8 ── mini-notation: hear what a `.` does to five notes.
+        Scene(
+            name = "dot-grouping",
+            title = "`.` grouping — five even notes, then two grouped halves",
+            blurb = "Five notes a cycle. The first two cycles are `bd sd hh hh hh`, five equal fifths. " +
+                "The last two are `bd sd . hh hh hh` — the same five notes, but the dot groups them " +
+                "into two halves, so the first two get a quarter each and the last three a sixth each. " +
+                "Same notes, completely different feel.",
+            cycles = 4,
+            cps = 1.0,
+            render = { cycles, cps ->
+                patRenderStereo(
+                    pat("bd sd hh hh hh").whenCycle({ it >= 2 }) { pat("bd sd . hh hh hh") },
+                    cycles = cycles, cps = cps,
+                    voice = patVoice(decay = 0.012, sustain = 0.12)
+                )
+            },
+            verify = { audio ->
+                val onsets = onsetPeaks(audio.mono)
+                check(onsets.size == 20) { "expected 5 notes x 4 cycles, found ${onsets.size}" }
+                // The detector reports the start of the window whose level crossed, so a loud onset is
+                // timestamped nearly a full window EARLY — measured 11 ms against the 12 ms window.
+                // Uncorrected, the note on a cycle boundary falls into the previous cycle's bucket.
+                val bias = ONSET_WINDOW_MS / 1000.0 * SR
+                fun positionsOfCycle(cycle: Int) = onsets
+                    .map { it.start + bias }
+                    .filter { it >= cycle * cycleSamples && it < (cycle + 1) * cycleSamples }
+                    .map { (it % cycleSamples) / cycleSamples }
+
+                // Fifths: 0, 0.2, 0.4, 0.6, 0.8. The tolerance is the detector's one-window bias
+                // (12 ms against a 1 s cycle here).
+                val even = positionsOfCycle(1)
+                check(even.size == 5) { "cycle 1 has ${even.size} notes" }
+                listOf(0.0, 0.2, 0.4, 0.6, 0.8).zip(even).forEach { (want, got) ->
+                    check(abs(got - want) < 0.03) { "even cycle: expected $want, measured $got (all: $even)" }
+                }
+
+                // Grouped: 0, 0.25, 0.5, 0.6667, 0.8333.
+                val grouped = positionsOfCycle(3)
+                check(grouped.size == 5) { "cycle 3 has ${grouped.size} notes" }
+                listOf(0.0, 0.25, 0.5, 2.0 / 3.0, 5.0 / 6.0).zip(grouped).forEach { (want, got) ->
+                    check(abs(got - want) < 0.03) { "grouped cycle: expected $want, measured $got (all: $grouped)" }
+                }
+
+                // And the two are audibly different: the third note moves by a tenth of a cycle.
+                println(
+                    "    even     = ${even.map { "%.3f".format(it) }}\n" +
+                        "    grouped  = ${grouped.map { "%.3f".format(it) }}"
+                )
+                check(abs(grouped[2] - even[2]) > 0.05) { "the dot changed nothing audible" }
+            }
+        ),
     )
 
     private val byName: Map<String, Scene> = SCENES.associateBy { it.name }
@@ -421,7 +477,7 @@ object PatSoundDocs {
         riseRatio: Double = 1.7,
         minGapMs: Double = 12.0,
         hopMs: Double = 2.0,
-        windowMs: Double = 12.0,
+        windowMs: Double = ONSET_WINDOW_MS,
         releaseFraction: Double = 0.5
     ): List<Onset> {
         val hop = (hopMs / 1000.0 * SR).toInt().coerceAtLeast(1)

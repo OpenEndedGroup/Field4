@@ -486,6 +486,43 @@ fun <A> within(window: PatArc, pattern: PatPattern<A>): PatPattern<A> =
         }
     }
 
+/**
+ * Maps cycle [cycleIndex] of [pattern] onto the **absolute** arc [window].
+ *
+ * The absolute-time counterpart of [within], which reads its window as a local arc inside a single
+ * cycle (`base + window.start`). That distinction was a real bug: `MiniPat.compilePolyLayer` builds
+ * absolute windows — repetition *r* of a three-slot layer against an eight-pulse grid sits at
+ * `[3r/8, (3r+1)/8)`, which leaves `[0, 1)` as soon as `r >= 3` — and handed them to `within`, whose
+ * tile arithmetic then found no intersection. The result was that **every polymeter went silent
+ * after cycle 0**: `pat("{bd hh 808:4}%8")` played eight events in the first bar and nothing ever
+ * again. `MiniNotationTest` pins the fix.
+ *
+ * [cycleIndex] is the child's own cycle, so per-cycle constructs inside a polymeter layer — `<a b>`,
+ * `every`, `?` — advance once per repetition rather than being frozen on cycle 0.
+ */
+internal fun <A> patFocus(window: PatArc, cycleIndex: Long, pattern: PatPattern<A>): PatPattern<A> =
+    PatPattern { arc ->
+        val visible = arc.intersect(window) ?: return@PatPattern emptyList()
+        val span = window.dur
+        if (span <= PatQ.ZERO) return@PatPattern emptyList()
+        val base = PatQ.of(cycleIndex)
+        val localStart = base + (visible.start - window.start) / span
+        val localEnd = base + (visible.end - window.start) / span
+        if (localEnd <= localStart) return@PatPattern emptyList()
+        pattern.events(PatArc(localStart, localEnd)).map { event ->
+            PatEvent(
+                PatArc(
+                    window.start + (event.arc.start - base) * span,
+                    window.start + (event.arc.end - base) * span
+                ),
+                event.value,
+                event.sourceSpan,
+                event.annotations,
+                event.additionalSpans
+            )
+        }
+    }
+
 fun <A> cat(vararg patterns: PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
@@ -867,6 +904,9 @@ object MiniPat {
         parseContext: PatParseContext = PatParseContext(source)
     ): PatPattern<String> = compile(parseToAst(source, parseContext))
 
+    /** Characters that may follow a standalone `.` / `_` / `!` step marker. */
+    private val STANDALONE_FOLLOWERS = setOf(']', '}', '>', ')', ',', '|', '.', '_', '!')
+
     private class Parser(private val src: String, private val parseContext: PatParseContext) {
         private var index = 0
         private var nextSalt = 1
@@ -904,21 +944,75 @@ object MiniPat {
             }
         }
 
+        /**
+         * A sequence of terms, with the three standalone step markers Tidal allows between them:
+         *
+         *  - `.` groups what precedes it against what follows: `bd sd . hh hh hh` is
+         *    `[bd sd] [hh hh hh]`, two equal halves rather than five equal fifths;
+         *  - `_` extends the previous step by one slot: `bd _ _ sd` is `bd@3 sd`.
+         *
+         * A bare `!` — `bd ! !` for `bd bd bd` — needs nothing here: [parseTerm]'s postfix loop
+         * already skips whitespace before an operator, so it sees each `!` itself. What it needed was
+         * for repeats to *accumulate* instead of nest; see `accumulateRepeat`.
+         *
+         * Both are only markers when they stand alone — followed by whitespace, the end of the
+         * string, or a closing/separating character. That is what keeps `0.5`, `my_atom`, `bd!2` and
+         * `g:(0,0.12)` parsing exactly as they did before: their `.`, `_` and `!` are inside a token,
+         * so `readAtom` consumes them and this loop never sees them.
+         */
         private fun parseSeq(stop: Set<Char>): Node {
-            val terms = mutableListOf<Node>()
+            val groups = mutableListOf(mutableListOf<Node>())
             while (true) {
                 skipWs()
                 if (eof() || peekIn(stop) || peek() == ',') break
-                terms += parseTerm(stop)
+                when {
+                    isStandaloneMarker('.') -> {
+                        index++
+                        groups += mutableListOf<Node>()
+                    }
+                    isStandaloneMarker('_') -> {
+                        index++
+                        groups.last().let { g -> if (g.isNotEmpty()) g[g.size - 1] = elongateOnce(g.last()) }
+                    }
+                    else -> groups.last() += parseTerm(stop)
+                }
                 skipWs()
                 if (eof() || peekIn(stop) || peek() == ',') break
             }
-            return when (terms.size) {
-                0 -> Seq(emptyList())
-                1 -> terms[0]
-                else -> Seq(terms)
+            val used = groups.filter { it.isNotEmpty() }
+            // One group is the pre-existing path, byte for byte: no `.` means no behaviour change.
+            if (used.size <= 1) {
+                val terms = used.firstOrNull() ?: emptyList<Node>()
+                return when (terms.size) {
+                    0 -> Seq(emptyList())
+                    1 -> terms[0]
+                    else -> Seq(terms)
+                }
+            }
+            return Seq(used.map { group -> if (group.size == 1) group[0] else Seq(group) })
+        }
+
+        /** True when [marker] is at the cursor *and* stands alone rather than opening a token. */
+        private fun isStandaloneMarker(marker: Char): Boolean {
+            if (eof() || src[index] != marker) return false
+            val next = src.getOrNull(index + 1) ?: return true
+            return next.isWhitespace() || next in STANDALONE_FOLLOWERS
+        }
+
+        private fun accumulateRepeat(node: Node, count: Int): Node {
+            val extra = (count.coerceAtLeast(1) - 1)
+            return when (node) {
+                is Repeat -> node.copy(times = node.times.coerceAtLeast(1) + extra)
+                else -> Repeat(node, count.coerceAtLeast(1))
             }
         }
+
+        private fun elongateOnce(node: Node): Node = when (node) {
+            is Elongate -> node.copy(steps = node.steps.coerceAtLeast(1) + 1)
+            else -> Elongate(node, 2)
+        }
+
+
 
         private fun parseTerm(stop: Set<Char>): Node {
             var node = parseFactor(stop)
@@ -945,7 +1039,11 @@ object MiniPat {
                     }
                     match('?') -> node = Degrade(node, readDouble() ?: 0.5, nextSalt++)
                     match('@') -> node = Elongate(node, readInt() ?: 2)
-                    match('!') -> node = Repeat(node, readInt() ?: 2)
+                    // Accumulate rather than nest. This loop already tolerates whitespace before a
+                    // postfix operator, so `bd ! !` reaches here as two separate `!`s — and nesting
+                    // them (`Repeat(Repeat(bd, 2), 2)`) gives FOUR copies where Tidal gives three.
+                    // Each `!n` adds n-1 more copies of what is already there.
+                    match('!') -> node = accumulateRepeat(node, readInt() ?: 2)
                     match('*') -> node = Fast(node, readInt() ?: 2)
                     match('/') -> node = Slow(node, readInt() ?: 2)
                     else -> return node
@@ -1243,7 +1341,10 @@ object MiniPat {
                         PatQ.of(globalStartSlot + width.toLong(), pulseCount.toLong())
                     )
                     val inter = absArc.intersect(window) ?: continue
-                    out += within(window, compileNode(sequenceBody(item))).events(inter)
+                    // `patFocus`, not `within`: these windows are ABSOLUTE and run off past cycle 1,
+                    // while `within` reads its window as a local, inside-one-cycle arc. That is why
+                    // polymeter used to fall silent after cycle 0 — see patFocus's KDoc.
+                    out += patFocus(window, repetition, compileNode(sequenceBody(item))).events(inter)
                 }
             }
             out

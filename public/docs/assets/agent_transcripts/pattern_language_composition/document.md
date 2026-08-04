@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 7 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 8 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 1 — continuous signals
@@ -334,5 +334,61 @@ val modulated = onsets.drop(onsets.size / 2).map { it.rms }
 println("${onsets.size} hats detected")
 println("flat half level CV      = %.4f".format(PatSoundDocs.variation(flat)))
 println("modulated half level CV = %.4f".format(PatSoundDocs.variation(modulated)))
+```
+
+## 8. 8 — mini-notation markers
+
+<!-- field-box id="pat_demo_mini_notation" index="7" -->
+
+### Narrative
+
+From `code`
+
+Three standalone step markers. Each is shorthand for a bracketed form, so each pair
+below must come out arc-for-arc identical — and the roll draws them one above the other
+so you can check by eye as well as by assertion.
+
+```edn [field-box id="pat_demo_mini_notation" role="properties"]
+{"id" "pat_demo_mini_notation" "index" 7 "name" "8 — mini-notation markers" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — mini-notation markers" "_tombstone" false "frame" #afield/rect [820.0 1560.0 720.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_demo_mini_notation_code_.kt" "lines" 37 "characters" 1811 "sha256" "910e66c79a53c38827207abde7073903730c2923962b1732ff2d4f19d8397ac1"}]}
+```
+
+```kotlin [field-property box="pat_demo_mini_notation" name="code" path="pat_demo_mini_notation_code_.kt"]
+// Three standalone step markers. Each is shorthand for a bracketed form, so each pair
+// below must come out arc-for-arc identical — and the roll draws them one above the other
+// so you can check by eye as well as by assertion.
+showPatRoll("mini-notation")
+displayOpen("main")
+
+val pairs = listOf(
+    "bd sd . hh hh hh" to "[bd sd] [hh hh hh]",   // `.` groups
+    "bd _ _ sd" to "bd@3 sd",                     // `_` extends
+    "bd ! ! sd" to "bd!3 sd",                     // bare `!` repeats
+)
+for ((shorthand, bracketed) in pairs) {
+    val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+    val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+    val same = a.map { it.arc } == b.map { it.arc } && a.map { it.value } == b.map { it.value }
+    println("%-20s == %-22s : %s   %s".format(shorthand, bracketed, same,
+        a.joinToString(" ") { "${it.value}@${it.arc.start}" }))
+}
+
+// A `.` inside a token is still part of the token — decimals and sample payloads are safe.
+println("0.5 1.25 -> " + pat("0.5 1.25").nums()
+    .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+println("my_atom  -> " + pat("my_atom b").events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+
+// A sample-index suffix becomes an `n` parameter without changing the atom.
+pat("bd:3 sd 808:12").events(PatArc(PatQ.ZERO, PatQ.ONE)).forEach {
+    println("atom ${it.value} -> n=${it.annotations["n"]}, span=\"${it.sourceSpan?.text}\"")
+}
+
+// Hear the dot: two cycles of five even notes, then the same five notes grouped.
+showPatAudio(
+    pat("bd sd hh hh hh").whenCycle({ it >= 2 }) { pat("bd sd . hh hh hh") },
+    cycles = 4, cps = 1.0,
+    voice = patVoice(decay = 0.012, sustain = 0.12),
+    channel = "dot",
+)
+displayOpen("dot")
 ```
 

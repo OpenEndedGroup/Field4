@@ -3,8 +3,8 @@ description: >
   Loadable demo of the `pat(...)` composition language — the continuous/signal family
   (afield.four.synth/PatSignals.kt), the parameter-application algebra (PatAlgebra.kt) and the
   arrangement + pitch surface (PatComposition.kt), all on top of the exact rational cycle space in
-  TidalPatterns.kt. Seven pure-compute boxes; no Window, no Renderer, no GPU, no audio device.
-  Each box paints an SVG piano roll into its own output with showPatRoll / showPatRollOf, and five of
+  TidalPatterns.kt. Eight pure-compute boxes; no Window, no Renderer, no GPU, no audio device.
+  Each box paints an SVG piano roll into its own output with showPatRoll / showPatRollOf, and six of
   them also render the pattern through a small deterministic CPU voice and put an inline HTML5 audio
   player in the output — so you can SEE and HEAR every operator without leaving the document:
     1. signals        — sine/tri/saw/square/perlin/rand read through segment(16); the committed roll
@@ -22,6 +22,10 @@ description: >
                         and played. This is the box to edit.
     7. groove         — swing() as exact rational time (two cycles straight then two swung, so you can
                         hear it), the squeeze substitution primitive, and euclidFull filling a whole bar.
+    8. mini-notation  — the three standalone step markers (`.` groups, `_` extends, bare `!` repeats),
+                        each checked against the bracketed form it is shorthand for, plus the `:n`
+                        sample-index parameter and the source spans the editor highlighting uses. Plays
+                        five even notes then the same five grouped by a dot.
   Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
   document; then change any pattern string and re-run that box. Each `execute` op omits inline code,
   so it runs the box's stored `code` property. See dev_docs/PATTERN_LANGUAGE.md and
@@ -277,6 +281,50 @@ operations:
               channel = "euclid",
           )
           displayOpen("euclid")
+  # 8 ── mini-notation: the step markers, seen and heard against their bracketed equivalents.
+  - create:
+      box: pat_demo_mini_notation
+      name: 8 — mini-notation markers
+      frame: { x: 820.0, y: 1560.0, w: 720.0, h: 520.0 }
+      properties:
+        code: |
+          // Three standalone step markers. Each is shorthand for a bracketed form, so each pair
+          // below must come out arc-for-arc identical — and the roll draws them one above the other
+          // so you can check by eye as well as by assertion.
+          showPatRoll("mini-notation")
+          displayOpen("main")
+
+          val pairs = listOf(
+              "bd sd . hh hh hh" to "[bd sd] [hh hh hh]",   // `.` groups
+              "bd _ _ sd" to "bd@3 sd",                     // `_` extends
+              "bd ! ! sd" to "bd!3 sd",                     // bare `!` repeats
+          )
+          for ((shorthand, bracketed) in pairs) {
+              val a = pat(shorthand).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+              val b = pat(bracketed).events(PatArc(PatQ.ZERO, PatQ.ONE)).sortedBy { it.arc.start.toDouble() }
+              val same = a.map { it.arc } == b.map { it.arc } && a.map { it.value } == b.map { it.value }
+              println("%-20s == %-22s : %s   %s".format(shorthand, bracketed, same,
+                  a.joinToString(" ") { "${it.value}@${it.arc.start}" }))
+          }
+
+          // A `.` inside a token is still part of the token — decimals and sample payloads are safe.
+          println("0.5 1.25 -> " + pat("0.5 1.25").nums()
+              .events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+          println("my_atom  -> " + pat("my_atom b").events(PatArc(PatQ.ZERO, PatQ.ONE)).map { it.value })
+
+          // A sample-index suffix becomes an `n` parameter without changing the atom.
+          pat("bd:3 sd 808:12").events(PatArc(PatQ.ZERO, PatQ.ONE)).forEach {
+              println("atom ${it.value} -> n=${it.annotations["n"]}, span=\"${it.sourceSpan?.text}\"")
+          }
+
+          // Hear the dot: two cycles of five even notes, then the same five notes grouped.
+          showPatAudio(
+              pat("bd sd hh hh hh").whenCycle({ it >= 2 }) { pat("bd sd . hh hh hh") },
+              cycles = 4, cps = 1.0,
+              voice = patVoice(decay = 0.012, sustain = 0.12),
+              channel = "dot",
+          )
+          displayOpen("dot")
   - execute: { box: pat_demo_signals }
   - execute: { box: pat_demo_structure }
   - execute: { box: pat_demo_parameter }
@@ -284,3 +332,4 @@ operations:
   - execute: { box: pat_demo_voice_leading }
   - execute: { box: pat_demo_playground }
   - execute: { box: pat_demo_groove }
+  - execute: { box: pat_demo_mini_notation }

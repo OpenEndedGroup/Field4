@@ -1,8 +1,8 @@
 # The `pat(...)` pattern language — design decisions
 
 `afield.four.synth`'s pattern language is four files. This document is the *why*: the decisions that
-are not obvious from the code, the two places it knowingly diverges from Tidal, and three behaviours
-that were measured rather than assumed.
+are not obvious from the code, the two places it knowingly diverges from Tidal, three behaviours that
+were measured rather than assumed, and one advertised feature that turned out to be broken.
 
 | file | what lives there |
 | --- | --- |
@@ -11,7 +11,7 @@ that were measured rather than assumed.
 | `PatAlgebra.kt` | how two patterns of different types meet, whose rhythm survives, and named parameters |
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
 
-Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest` (67 tests), the
+Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` (83 tests), the
 `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav` renders — see
 [PAT_GALLERY.md](PAT_GALLERY.md).
 
@@ -200,6 +200,12 @@ expressions, and `ply` under the name `stutter(n, gap)`.
 
 Added:
 
+- **`.` groups**: `bd sd . hh hh hh` is `[bd sd] [hh hh hh]` — two halves, not five fifths.
+- **`_` extends the previous step**: `bd _ _ sd` is `bd@3 sd`.
+- **A bare `!` repeats it**: `bd ! !` is `bd bd bd`. This one needed no parser addition — `parseTerm`'s
+  postfix loop already skips whitespace before an operator, so it saw each `!`. What it needed was for
+  repeats to *accumulate* rather than nest: `Repeat(Repeat(bd, 2), 2)` is four copies where Tidal
+  gives three.
 - **`?` degrade-with-probability**, `bd*8?` (a half) or `bd*8?0.35`. Deterministic per event and per
   cycle; the same text always gives the same groove.
 - **`:n` sample index as a parameter.** `pat("bd:3")` still has the atom value `bd:3` — nothing
@@ -207,6 +213,39 @@ Added:
   parameter algebra can see it. `dropSampleIndex()` gives the bare name. A parenthesised payload
   (`g:(0,0.12)`, which `PatFunctions.kt` relies on) is deliberately *not* a sample index.
 - **`'` is a legal atom character**, so chord roots parse: `chords("c'maj7 <a'min7 f'maj7>")`.
+
+All three markers are markers **only when they stand alone** — followed by whitespace, the end of the
+string, or a closing/separating character. That is the compatibility guarantee, and it is what keeps
+`0.5`, `1.25`, `my_atom`, `bd!2` and `g:(0,0.12)` parsing exactly as they did: their `.`, `_` and `!`
+are inside a token, so `readAtom` consumes them and `parseSeq` never sees them. `MiniNotationTest`
+asserts each shorthand is arc-for-arc and value-for-value its bracketed equivalent, and re-checks
+eleven pre-existing forms for their original event counts.
+
+### Polymeter was silent after one bar
+
+The largest single find of this work, and it was found by *looking at a figure*: the piano-roll
+gallery queries two whole cycles in one call, and both polymeter lanes were empty after the first.
+
+`MiniPat.compilePolyLayer` builds **absolute** windows — repetition *r* of a three-slot layer against
+an eight-pulse grid sits at `[3r/8, (3r+1)/8)`, which leaves `[0, 1)` as soon as `r >= 3` — and handed
+them to `within`, which reads its window as a *local* arc inside one cycle (`base + window.start`).
+Every window from cycle 1 on therefore failed to intersect, and:
+
+```
+pat("{bd hh 808:4}%8")            cycle 0: 8 events   cycle 1: 0   cycle 2: 0
+pat("{bd sd stab, cp arpy cr}")   cycle 0: 6 events   cycle 1: 0   cycle 2: 0
+```
+
+An advertised feature — it is in `TidalPatterns.kt`'s own file header — that played one bar and then
+stopped, on the cycle-by-cycle queries the scheduler makes as well as on a multi-cycle one.
+
+The fix is a new `patFocus(window, cycleIndex, pattern)`: the absolute-time counterpart of `within`.
+Cycle 0 is byte-identical (repetition 0 maps to child cycle 0, exactly what `within` did), and the
+sequence now phases against the grid as it should — `{bd hh 808:4}%8` starts on `bd`, then `808:4`,
+then `hh`, because after eight pulses a three-item sequence has advanced by `8 mod 3 = 2`. Passing the
+repetition index down as the child's own cycle also un-freezes per-cycle constructs inside a layer, so
+`{<a b> c}%4` alternates instead of playing `a` forever. Four tests pin it, including that cycle 0 is
+unchanged.
 
 `PatSourceSpan` bookkeeping is preserved throughout — the editor highlighting in `Marker.patHighlight`
 still points back into the pattern text, and `with(...)` adds the parameter pattern's spans to the
