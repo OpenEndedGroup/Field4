@@ -1160,6 +1160,83 @@ tasks.register<Exec>("checkPythonTools") {
     commandLine("python3", "tools/run_python_tests.py")
 }
 
+// Field Audio is a pinned companion service, not part of Field's build-time dependency graph.
+// These tasks are intentionally absent from `check`: a normal Field clone can compile, test and
+// build the public docs from the committed contract snapshot without initializing the private
+// submodule or installing its Python workers. Invoke one of these tasks only when changing the
+// integration boundary.
+val fieldAudioDirectory = layout.projectDirectory.dir("services/field-audio-ai")
+val fieldAudioPyproject = fieldAudioDirectory.file("pyproject.toml")
+
+fun Exec.requireFieldAudioCheckout() {
+    doFirst {
+        if (!fieldAudioPyproject.asFile.isFile) {
+            throw GradleException(
+                "Field Audio checkout is absent. Run: git submodule update --init services/field-audio-ai"
+            )
+        }
+    }
+}
+
+tasks.register<Exec>("fieldAudioCoreTest") {
+    group = "verification"
+    description = "Runs the companion service's lightweight core tests; no worker or model download."
+    workingDir = fieldAudioDirectory.asFile
+    commandLine("uv", "run", "--frozen", "--extra", "dev", "pytest")
+    environment("UV_CACHE_DIR", "/tmp/field-audio-field4-uv-cache")
+    requireFieldAudioCheckout()
+}
+
+val fieldAudioContractCheck = tasks.register<Exec>("fieldAudioContractCheck") {
+    group = "verification"
+    description = "Checks the pinned service OpenAPI/reference artifacts without loading workers."
+    workingDir = fieldAudioDirectory.asFile
+    commandLine("uv", "run", "--frozen", "python", "scripts/generate-docs.py", "--check")
+    environment("UV_CACHE_DIR", "/tmp/field-audio-field4-uv-cache")
+    requireFieldAudioCheckout()
+}
+
+tasks.register<Exec>("fieldAudioDocsCheck") {
+    group = "verification"
+    description = "Checks Field's committed Field Audio reference against the pinned submodule."
+    dependsOn(fieldAudioContractCheck)
+    workingDir = rootDir
+    commandLine("python3", "tools/sync_field_audio_docs.py", "--check")
+    requireFieldAudioCheckout()
+}
+
+tasks.register<Exec>("fieldAudioDocsRefresh") {
+    group = "documentation"
+    description = "Explicitly refreshes Field's committed reference from the pinned service checkout."
+    workingDir = rootDir
+    commandLine("python3", "tools/sync_field_audio_docs.py")
+    requireFieldAudioCheckout()
+}
+
+tasks.register<Exec>("fieldAudioAnalysisTest") {
+    group = "verification"
+    description = "Opt-in analysis-worker import test; installs librosa and Basic Pitch."
+    workingDir = fieldAudioDirectory.asFile
+    commandLine("./scripts/test-analysis-worker.sh")
+    requireFieldAudioCheckout()
+}
+
+tasks.register<Exec>("fieldAudioAudioCraftImportTest") {
+    group = "verification"
+    description = "Opt-in AudioCraft environment/import test; never downloads a model checkpoint."
+    workingDir = fieldAudioDirectory.asFile
+    commandLine("./scripts/test-audiocraft-worker.sh")
+    requireFieldAudioCheckout()
+}
+
+tasks.register<Exec>("fieldAudioModelSmoke") {
+    group = "verification"
+    description = "Explicit large-checkpoint smoke test; requires FIELD_AUDIO_ALLOW_MODEL_DOWNLOAD=1."
+    workingDir = fieldAudioDirectory.asFile
+    commandLine("./scripts/test-audiocraft-worker.sh", "--model")
+    requireFieldAudioCheckout()
+}
+
 tasks.named("check") {
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")

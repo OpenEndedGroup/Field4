@@ -29,6 +29,10 @@ fails, that is not a valid reason to skip `--with-playwright`,
 | Docs strict recapture | `FIELD_DOCS_RUNNER_MODE=strict FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py` | Runner/API changes invalidate cached captures. |
 | Full docs recapture | `FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 uv run --project . --group docs python tools/build_zensical_docs.py --clean` | Every docs screenshot/video is regenerated. |
 | Offline asset check | `uv run python tools/check_offline_assets.py` | Canonical offline viewer assets are present and generated copies are not tracked. |
+| Field Audio core | `./gradlew fieldAudioCoreTest fieldAudioDocsCheck` | Opt-in service tests and contract drift check; no worker environment or model checkpoint. |
+| Field Audio analysis | `./gradlew fieldAudioAnalysisTest` | Opt-in Python 3.10 librosa/Basic Pitch environment and import check. |
+| Field Audio AudioCraft import | `./gradlew fieldAudioAudioCraftImportTest` | Opt-in pinned PyTorch/AudioCraft environment; checkpoint access is forced offline. |
+| Field Audio model smoke | `FIELD_AUDIO_ALLOW_MODEL_DOWNLOAD=1 ./gradlew fieldAudioModelSmoke` | Explicit heavyweight MusicGen-Style checkpoint download/load. |
 
 Use custom high ports for automation. Avoid the default `9092` unless you
 explicitly want to attach to a developer-owned Field.
@@ -40,6 +44,13 @@ This is intentional: all three compile into or execute from the same Gradle/Kotl
 outputs, and concurrent builds can corrupt incremental-compiler backups and class
 directories. Raw `./gradlew ...` commands do not participate in this Python lock,
 so run compile/test tasks before or after these entrypoints, never alongside them.
+
+The Field Audio rows are deliberately not dependencies of `check` or the docs builder. Field's
+published reference is the committed `public/docs/field_audio_service_reference.md`; ordinary docs builds
+use it unchanged even when the private submodule is not initialized. Refreshing that snapshot is
+an explicit integration operation: `./gradlew fieldAudioDocsRefresh`, followed by
+`./gradlew fieldAudioDocsCheck`. The model smoke refuses to run unless
+`FIELD_AUDIO_ALLOW_MODEL_DOWNLOAD=1` is present.
 
 ## Testing Layers
 

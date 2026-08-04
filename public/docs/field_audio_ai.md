@@ -5,10 +5,15 @@ corpus exploration. Field remains the compositional environment: it owns source 
 operations, candidate sets, ratings, annotations, provenance, and arrangement. Long-lived Python
 workers perform analysis and inference behind a model-neutral HTTP and WebSocket protocol.
 
-The companion service currently lives outside the main Field repository while its architecture is
-still moving quickly. The Field-side API is in `afield.stdlib.noir.audioai` and deliberately names
+The companion service is pinned under `services/field-audio-ai` as a Git submodule while its
+architecture is still moving quickly. The Field-side API is in `afield.stdlib.noir.audioai` and deliberately names
 operations such as `generate.style`, `codec.reconstruct`, and `analysis.pitch_poly`, rather than
 depending on AudioCraft classes.
+
+Field's public docs consume a committed, model-free snapshot of the service contract. A normal
+docs build does not initialize the submodule, install analysis or AudioCraft packages, or download
+weights. See the [generated service reference](field_audio_service_reference.md) for the
+current pinned HTTP objects, states, and error vocabulary.
 
 ## What works now
 

@@ -1,0 +1,3 @@
+[submodule "services/field-audio-ai"]
+	path = services/field-audio-ai
+	url = https://github.com/OpenEndedGroup/field-audio-ai.git
