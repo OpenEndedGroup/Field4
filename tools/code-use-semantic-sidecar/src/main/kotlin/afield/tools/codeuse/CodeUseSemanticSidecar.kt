@@ -172,6 +172,9 @@ data class CompletionCandidate(
     /** Simple + qualified receiver type for dot members — drives server-side KDoc/AI-doc enrichment. */
     val receiverType: String = "",
     val receiverQualifiedName: String = "",
+    /** This candidate's type fits the type expected at the caret ([AaCandidate.fitsExpected]). The
+     *  server turns it into a ranking boost and, at an untyped caret, a filter. */
+    val expectedTypeMatch: Boolean = false,
 )
 
 @Serializable
@@ -684,7 +687,11 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 jsTarget = req.jsTarget,
             )
         }
-        val candidates = result.candidates.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
+        // Fitting values first, THEN the limit: the candidate list is sorted by name, so truncating at
+        // `limit` could drop the three enum entries that are the entire point of the request (`UD`,
+        // `SD_*` — late in the alphabet, behind every `Box` member). Stable, so nothing else reorders.
+        val candidates = result.candidates.sortedByDescending { it.fitsExpected }
+            .take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
     }
 
@@ -758,11 +765,17 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         val recvQual = if (kind == AaCandidate.Kind.MEMBER || kind == AaCandidate.Kind.EXTENSION)
             (container ?: "").replace('/', '.').substringBefore('<').removeSuffix("?") else ""
         val recvSimple = recvQual.substringAfterLast('.')
+        val fits = fitsExpected
+        // An expected-type value is DISPLAYED bare and INSERTED qualified (`SD_COLLAPSED` →
+        // `Scheme.SD_COLLAPSED`), which is the only case where the two differ for a non-method.
+        insertText?.let {
+            return CompletionCandidate(it, name, type, icon, recvSimple, recvQual, fits)
+        }
         return when {
-            icon == "class" -> CompletionCandidate(name, name, shortenType(container ?: ""), "class")
-            kind == AaCandidate.Kind.PARAM -> CompletionCandidate("$name = ", "$name = ", type, "var")
-            icon == "method" -> CompletionCandidate("$name(", "$name${params ?: "(…)"}", type, "method", recvSimple, recvQual)
-            else -> CompletionCandidate(name, name, type, icon, recvSimple, recvQual)
+            icon == "class" -> CompletionCandidate(name, name, shortenType(container ?: ""), "class", expectedTypeMatch = fits)
+            kind == AaCandidate.Kind.PARAM -> CompletionCandidate("$name = ", "$name = ", type, "var", expectedTypeMatch = fits)
+            icon == "method" -> CompletionCandidate("$name(", "$name${params ?: "(…)"}", type, "method", recvSimple, recvQual, fits)
+            else -> CompletionCandidate(name, name, type, icon, recvSimple, recvQual, fits)
         }
     }
 

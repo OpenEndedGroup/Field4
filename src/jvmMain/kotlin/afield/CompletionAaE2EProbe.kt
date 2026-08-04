@@ -114,6 +114,32 @@ object CompletionAaE2EProbe {
         check("own import → extension at a prefix", own + "fl", own.length + 2, "flines", "AA+import")
         check("own import → extension at a bare dot", own, own.length, "flines", "AA+import")
 
+        // The type EXPECTED at the caret. `d.scheme = ‸` (an enum-typed property) reported this: the
+        // answer is three entry names, and completion offered several hundred in-scope names instead,
+        // because nothing on either backend ever asked what type belonged there. AA can be asked
+        // (`KaExpressionTypeProvider.expectedType`), which K1 cannot — so, like named arguments, a hit
+        // here also proves the AA path served the request. `FabricateMaterial.alphaMode` mirrors the
+        // reported `SentenceDiagram.scheme`: a `var` of a 3-entry enum, in a package outside the REPL
+        // intro, so the box's own import is what makes the type resolve at all.
+        println("── the type expected at the caret ──")
+        val assign = "import afield.four.fabricated.*\nval m: FabricateMaterial = TODO()\nm.alphaMode = "
+        // Asserted on the INSERTION text, not the display name: an entry is shown bare but has to be
+        // inserted qualified or the box it lands in does not compile.
+        check("assignment RHS → enum entry", assign, assign.length, "FabricateAlphaMode.BLEND", "AA-only")
+        check("assignment RHS at a prefix", assign + "BL", assign.length + 2, "FabricateAlphaMode.BLEND", "AA-only")
+
+        val named = "import afield.four.fabricated.*\nFabricateMaterial(alphaMode = "
+        check("named-arg value → enum entry", named, named.length, "FabricateAlphaMode.BLEND", "AA-only")
+        // The other half of a keyword argument: in the VALUE slot, another parameter's name is not
+        // merely unranked, it is a syntax error. They were offered there until this work.
+        absent("named-arg value slot offers no sibling param", named, named.length, "alphaCutoff")
+        val boolArg = "import afield.four.fabricated.*\nFabricateMaterial(doubleSided = "
+        check("named-arg value → Boolean literal", boolArg, boolArg.length, "true", "AA-only")
+        // Positional arguments resolve through the same expected type, and the parameter NAMES must
+        // still be there — the collapse that ranking applies keeps them (see execution.kt).
+        val positional = "Vector3f("
+        check("positional arg still offers param names", positional, positional.length, "x", "AA-only")
+
         // The REPL's OWN imports (afield.Boxes.intro) — which the box never writes and a headless
         // sidecar cannot see. `afield.four.buffers` is in that intro and was missing from the sidecar's
         // hand-written copy of it, so this resolved under K1 and not under AA: the same defect one level

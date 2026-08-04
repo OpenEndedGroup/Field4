@@ -240,6 +240,15 @@ Decision already made: **out-of-process** (the AA classpath must stay out of the
 (`field_probes#0 .vec4s`/`.buffer`); wider real-world preamble coverage in `splitPreamble` (regex
 best-effort today, K1-fallback-safe); a periodic `--gate` run in CI as a regression guard.
 
+**Post-cutover (2026-08-03): expected-type completion.** The first thing built *because* the backend is
+AA rather than K1 — `d.scheme = ‸` answers with the three entries of the `Scheme` enum, and
+`f(word = ‸)` / `f(‸` / `return ‸` with whatever fits that parameter or return type. It needs
+`KaExpressionTypeProvider.expectedType`, which K1 has no equivalent of (`InfixCompletion` had to regex
+the source index to guess the analogous thing for infix operands). Architecture:
+[`completion_aa_sidecar.md`](completion_aa_sidecar.md) §2.5 "The type expected at the caret". Corpus:
+8 `expected#*` fixtures in `name-fixtures.tsv`; gate after: recall K1 33/49, AA 40/49, unexpected
+regressions 0; live E2E 16/16 checks, p50 25 ms.
+
 ## 6. Artifacts (all persisted in the repo tree, not scratchpad)
 - **Reusable module (Stage A):** `tools/code-use-semantic-sidecar/.../AaCompletion.kt` — `AaCompleter`
   (`complete(snippet,cursor,preamble,implicitReceivers,extraImports)` + `splitPreamble`),
