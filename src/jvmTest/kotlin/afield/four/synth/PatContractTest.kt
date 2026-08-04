@@ -21,15 +21,22 @@ import kotlin.test.assertTrue
  *  2. **Cycle-invariance.** A pattern with no per-cycle construct produces the same events in every
  *     cycle, up to a whole-cycle shift. Entries marked `varying()` are exempt, and the exemption
  *     list is itself asserted to be minimal.
- *  3. **Query-range additivity, up to fragmentation.** Asking for `[0, N)` in one call loses and
- *     invents nothing against asking for each `[i, i+1)`: the same onsets, and the same total
- *     sounding time per value. Exact event equality is deliberately *not* claimed — a single-arc
- *     event model necessarily returns one wide event where two narrow queries return two fragments,
- *     which is precisely what a cycle-spanning `slow(2)` does.
+ *  3. **Query-range additivity.** Asking for `[0, N)` in one call reports exactly the notes that
+ *     asking for each `[i, i+1)` reports — whole for whole. Queries still return *fragments* of
+ *     events that cross the window's edge, because a query cannot report time it was not asked
+ *     about, but a fragment knows it is one (`PatEvent.whole`), so it is never mistaken for a new
+ *     note. This property used to be weakened to "same onsets, same total sounding duration" on the
+ *     grounds that fragmentation made exactness impossible; the weakening compared onset sets in one
+ *     direction only, and the double-fire bug it was accommodating lived in the other direction.
  *  4. **Purity** and **query-order independence.** The same query twice gives the same answer, and
  *     asking for cycle 5 before cycle 0 gives the same answer as after.
- *  5. **Containment and well-formedness.** No event escapes the arc it was asked about, and no arc
- *     is empty or inverted — checked at whole-cycle, sub-cycle, straddling and negative arcs.
+ *  5. **Containment and well-formedness.** No event escapes the arc it was asked about, no part
+ *     escapes its own whole, and no arc is empty or inverted — checked at whole-cycle, sub-cycle,
+ *     straddling and negative arcs.
+ *  6. **Scheduling matches rendering.** What `eventSequence` plays is exactly what a single wide
+ *     query draws. This is the property that goes through the *production* consumer: every artifact
+ *     on this branch — the piano rolls, the `.wav`s — renders from one wide query, so none of them
+ *     could see a scheduler that struck a bar-crossing note twice.
  *
  * Adding an operator without adding a line to [corpus] is the only way to escape the sweep, and
  * `the corpus covers every operator file` guards against the corpus quietly shrinking.
@@ -71,6 +78,8 @@ class PatContractTest {
         ("silence" means silence()).mayBeSilent(),
         "patOf" means patOf("a", "b", "c"),
         "cat" means cat(pat("a b"), pat("c")),
+        ("slowcat" means slowcat(pat("a b"), pat("c"))).varying(),
+        "fastcat" means fastcat(pat("a b"), pat("c")),
         "stack" means stack(pat("a b"), pat("c d e")),
         "rev" means pat("a b c").rev(),
         "palindrome" means pat("a b c").palindrome(),
@@ -82,7 +91,13 @@ class PatContractTest {
         ("switchEvery" means pat("a b").switchEvery(2, pat("x y z"))).varying(),
         ("whenCycle" means pat("a b").whenCycle({ it % 2 == 0L }) { it.fast(2) }).varying(),
         ("whenMod" means pat("a b").whenMod(1, 3) { it.rev() }).varying(),
-        "chunk" means pat("a b c d").chunk(2) { it.rev() },
+        // chunk walks its transform through the bar, so it *must* vary per cycle — being able to
+        // leave this un-`varying()` is precisely how the old `inside`-in-disguise gave itself away.
+        ("chunk" means pat("a b c d").chunk(2) { it.rev() }).varying(),
+        "inside" means pat("a b c d").inside(2) { it.rev() },
+        "outside" means pat("a b c d").outside(2) { it.rev() },
+        "playWhen" means pat("a b c d").playWhen { it < PatQ.of(1, 2) },
+        "withinCycle" means pat("a b c d").withinCycle(PatArc(PatQ.ZERO, PatQ.of(1, 2))) { it.fast(2) },
         "subdivide" means pat("a b").subdivide(3),
         ("sometimesBy" means pat("a b c").sometimesBy(0.5) { it.fast(2) }).varying(),
         ("degradeBy" means pat("a*8").degradeBy(0.4)).varying(),
@@ -474,6 +489,32 @@ class PatContractTest {
             }
         }
         assertTrue(problems.isEmpty(), "scheduling disagrees with rendering for:\n" + problems.joinToString("\n"))
+    }
+
+    /**
+     * `chunk` walks; `inside` does not. The two used to be the same function.
+     *
+     * `chunk(4) { rev }` reverses a different quarter each cycle, so each of the four cycles reads
+     * differently and the fifth returns to the first. `inside(4) { rev }` reverses the same material
+     * every cycle and never changes. The old `chunk` was `inside` under the wrong name, and both the
+     * commit that introduced it and `PATTERN_LANGUAGE.md` claimed it had been fixed to walk.
+     */
+    @Test
+    fun `chunk walks its transform through the bar and inside does not`() {
+        fun readCycle(pattern: PatPattern<String>, cycle: Int): String =
+            pattern.events(PatArc(PatQ.of(cycle), PatQ.of(cycle + 1)))
+                .filter { it.hasOnset }
+                .sortedBy { it.extent.start.toDouble() }
+                .joinToString(" ") { it.value }
+
+        val walking = pat("a b c d").chunk(4) { it.rev() }
+        val cycles = (0 until 5).map { readCycle(walking, it) }
+        assertEquals(4, cycles.take(4).distinct().size, "chunk repeated itself instead of walking: $cycles")
+        assertEquals(cycles[0], cycles[4], "chunk should come back round after n cycles: $cycles")
+
+        val still = pat("a b c d").inside(4) { it.rev() }
+        val insideCycles = (0 until 4).map { readCycle(still, it) }
+        assertEquals(1, insideCycles.distinct().size, "inside should be cycle-invariant: $insideCycles")
     }
 
     @Test

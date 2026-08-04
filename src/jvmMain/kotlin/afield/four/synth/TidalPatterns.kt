@@ -607,6 +607,13 @@ internal fun <A> patFocus(window: PatArc, cycleIndex: Long, pattern: PatPattern<
         }
     }
 
+/**
+ * Fits every pattern into one cycle, side by side.
+ *
+ * **Note for readers coming from Tidal: this is Tidal's `fastcat`, not Tidal's `cat`.** Tidal's `cat`
+ * plays one pattern per cycle, which here is [slowcat]. [fastcat] is available as a spelling of this
+ * one that says so out loud.
+ */
 fun <A> cat(vararg patterns: PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
         val base = PatQ.of(tile)
@@ -621,6 +628,26 @@ fun <A> cat(vararg patterns: PatPattern<A>): PatPattern<A> =
         }
         out
     }
+
+/** [cat] under the name Tidal gives this behaviour, for when the distinction matters to the reader. */
+fun <A> fastcat(vararg patterns: PatPattern<A>): PatPattern<A> = cat(*patterns)
+
+/**
+ * Plays one pattern per cycle, in turn — **Tidal's `cat`** (also its `slowcat`).
+ *
+ * `slowcat(pat("a b"), pat("c"))` reads `a b` in one cycle and `c` in the next, where [cat] would
+ * fit both into every cycle. It is what mini-notation's `<a b>` alternation has always been built
+ * from; that construction was inlined in the compiler until [chunk] needed it too.
+ */
+fun <A> slowcat(vararg patterns: PatPattern<A>): PatPattern<A> {
+    if (patterns.isEmpty()) return silence()
+    return fromCycleIndexed { subArc, tile ->
+        val base = PatQ.of(tile)
+        val size = patterns.size.toLong()
+        val index = (((tile % size) + size) % size).toInt()
+        patterns[index].events(subArc.shift(base)).map { it.shift(-base) }
+    }
+}
 
 fun <A> stack(vararg patterns: PatPattern<A>): PatPattern<A> =
     fromCycleIndexed { subArc, tile ->
@@ -844,8 +871,67 @@ fun <A> PatPattern<A>.whenMod(
     transform: (PatPattern<A>) -> PatPattern<A>
 ): PatPattern<A> = whenCycle({ tile -> (tile % n) == (k % n).toLong() }, transform)
 
-fun <A> PatPattern<A>.chunk(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
-    slow(n).let(transform).fast(n)
+/**
+ * Keeps only the events whose **onset** satisfies [predicate], which is asked about cycle position.
+ *
+ * Filtering on the onset rather than on the visible part is the point: an event straddling the edge
+ * of a region either belongs to it or does not, and clipping it in half would invent a note. Tidal's
+ * `playWhen` — and only expressible here once [PatEvent.whole] could say where an event begins.
+ */
+fun <A> PatPattern<A>.playWhen(predicate: (cyclePos: PatQ) -> Boolean): PatPattern<A> =
+    PatPattern { arc ->
+        events(arc).filter { event ->
+            val start = event.extent.start
+            predicate(start - PatQ.of(qFloor(start)))
+        }
+    }
+
+/**
+ * Applies [transform] only to the events starting inside [window] of each cycle; the rest play on
+ * untouched.
+ *
+ * This is **Tidal's `within`**. Field's existing [within] is a different operator that happens to
+ * share the name: it squeezes a whole pattern *into* a window, which is Tidal's `compress`.
+ */
+fun <A> PatPattern<A>.withinCycle(window: PatArc, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> {
+    val inside = { pos: PatQ -> pos >= window.start && pos < window.end }
+    return stack(transform(this).playWhen(inside), playWhen { !inside(it) })
+}
+
+/**
+ * Applies [transform] to a different `1/n` of the cycle each cycle, walking through all [n] of them
+ * before it repeats.
+ *
+ * `pat("a b c d").chunk(4) { it.rev() }` reverses the first quarter in cycle 0, the second in cycle
+ * 1, and so on: the transform travels through the bar. That travelling is the whole point of the
+ * operator, and this is the first implementation here that does it. `chunk` used to be
+ * `slow(n).let(transform).fast(n)` — a real and useful Tidal operator, but a *different* one. That
+ * is `inside`: it is cycle-invariant and applies the transform to the same material every cycle. The
+ * two were conflated, and the commit and documentation that introduced the conflation claimed
+ * `chunk` had been fixed to walk when it never had. [inside] now carries the old behaviour under its
+ * own name.
+ */
+fun <A> PatPattern<A>.chunk(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> {
+    val parts = max(1, n)
+    // slowcat, not cat: the point is a different quarter *each cycle*. Field's `cat` fits all of
+    // its arguments into one cycle, which is what made the first draft of this walk nowhere.
+    return slowcat(*Array(parts) { index ->
+        withinCycle(PatArc(PatQ.of(index, parts), PatQ.of(index + 1, parts)), transform)
+    })
+}
+
+/**
+ * Slows by [n], applies [transform], speeds back up — so the transform sees [n] cycles' worth of
+ * material as a single cycle. Tidal's `inside`.
+ *
+ * Cycle-invariant, which is exactly how it differs from [chunk].
+ */
+fun <A> PatPattern<A>.inside(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
+    slow(max(1, n)).let(transform).fast(max(1, n))
+
+/** The mirror of [inside]: speeds up, transforms, slows back down. Tidal's `outside`. */
+fun <A> PatPattern<A>.outside(n: Int, transform: (PatPattern<A>) -> PatPattern<A>): PatPattern<A> =
+    fast(max(1, n)).let(transform).slow(max(1, n))
 
 /** Scales density by an exact ratio: `timeScale(PatQ.of(3, 2))` is half again as fast. [stretch]'s inverse. */
 fun <A> PatPattern<A>.timeScale(ratio: PatQ): PatPattern<A> = fastBy(ratio)
@@ -1307,20 +1393,8 @@ object MiniPat {
             1 -> compileNode(node.layers[0])
             else -> stack(*node.layers.map(::compileNode).toTypedArray())
         }
-        is Choice -> {
-            val compiled = node.alts.map(::compileNode)
-            fromCycleIndexed { subArc, tile ->
-                if (compiled.isEmpty()) {
-                    emptyList()
-                } else {
-                    val base = PatQ.of(tile)
-                    val absSub = subArc.shift(base)
-                    val size = compiled.size.toLong()
-                    val idx = ((tile % size) + size) % size
-                    compiled[idx.toInt()].events(absSub).map { it.shift(-base) }
-                }
-            }
-        }
+        // `<a b>` is one alternative per cycle, which is exactly [slowcat].
+        is Choice -> slowcat(*node.alts.map(::compileNode).toTypedArray())
         is RandomChoice -> {
             val compiled = node.alts.map(::compileNode)
             fromCycleIndexed { subArc, tile ->
