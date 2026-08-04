@@ -753,6 +753,45 @@ fun patRenderStereo(
     return PatSoundDocs.Stereo(left, right)
 }
 
+/**
+ * Renders [pattern] through [voice] and puts an audio player in this box's output.
+ *
+ * The one-liner behind the loadable demo: `showPatAudio(pat("bd sd hh sd") with gain(sine()))`
+ * plays it. The rendered [PatSoundDocs.Stereo] is returned so a box can also plot or measure it.
+ */
+fun afield.Box.showPatAudio(
+    pattern: PatPattern<String>,
+    cycles: Int = 4,
+    cps: Double = 2.0,
+    voice: PatVoiceSpec = patVoice(),
+    channel: String = "main"
+): PatSoundDocs.Stereo {
+    val audio = patRenderStereo(pattern, cycles = cycles, cps = cps, voice = voice)
+    display(
+        channel,
+        afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+            audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
+        )
+    )
+    return audio
+}
+
+/** Renders a named [PatSoundDocs] scene into this box's output as an audio player. */
+fun afield.Box.showPatSound(name: String, channel: String = "main"): PatSoundDocs.Stereo {
+    val scene: PatSoundDocs.Scene = PatSoundDocs.SCENES.firstOrNull { scene -> scene.name == name }
+        // `kotlin.error`, not `error`: inside a Box extension the unqualified name resolves to
+        // Box's own `error(...)`, which returns Unit, and the elvis then widens the whole thing to Any.
+        ?: kotlin.error("unknown PatSoundDocs scene '$name'; known: ${PatSoundDocs.SCENES.map { it.name }}")
+    val audio = scene.render(scene.cycles, scene.cps)
+    display(
+        channel,
+        afield.four.audio.WavFloatArrayWriter.encodeStereo16(
+            audio.left, audio.right, PatSoundDocs.SR, normalizePeak = 0.9f
+        )
+    )
+    return audio
+}
+
 /** MIDI note number to Hz, A4 = 69 = 440 Hz. */
 fun patMidiToHz(midi: Double): Double = 440.0 * Math.pow(2.0, (midi - 69.0) / 12.0)
 

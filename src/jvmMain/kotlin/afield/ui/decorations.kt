@@ -360,7 +360,12 @@ fun locationForTextStringOnStack(
             false
         }
     }
-    return found.firstNotNullOf {
+    // `firstNotNullOfOrNull`, not `firstNotNullOf`: the function is declared to return `Location?`
+    // and every caller null-checks, but `firstNotNullOf` *throws* NoSuchElementException when the
+    // anchor text is not on any frame of the box's own code. That happens whenever the call is made
+    // from a library helper rather than written literally in the box — `chords("c'maj7")` calling
+    // `pat(...)` internally hit it, and so would `Marker.toggle` invoked from a helper function.
+    return found.firstNotNullOfOrNull {
         val ln = it.lineNumber
         val lines = box?.code?.split("\n")
         val index = lines?.drop(ln - 1)?.indexOfFirst { it.contains(code) }

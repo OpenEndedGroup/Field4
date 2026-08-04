@@ -643,6 +643,23 @@ object PatPianoRollGallery {
         return renderSvg(spec, resolve(spec))
     }
 
+    /**
+     * Renders an arbitrary set of lanes — the same renderer the gallery uses, for patterns that are
+     * not in [ROLLS].
+     *
+     * This is what makes the harness usable live: a box can roll whatever it is currently editing,
+     * with the same layout, grid and value-axis rules as the committed figures.
+     */
+    fun svgForLanes(
+        lanes: List<Lane>,
+        title: String = "pattern",
+        subtitle: String = "",
+        cycles: Int = 2
+    ): String {
+        val spec = PatRollSpec(title, subtitle, cycles.coerceAtLeast(1), lanes)
+        return renderSvg(spec, resolve(spec))
+    }
+
     // ── FIELD_TEST entry point ─────────────────────────────────────────────────────────────
 
     @JvmStatic
@@ -692,3 +709,37 @@ object PatPianoRollGallery {
 /** Renders a [PatPianoRollGallery] roll into this box's output as an inline SVG. */
 fun afield.Box.showPatRoll(name: String, channel: String = "main") =
     display(channel, PatPianoRollGallery.svgFor(name))
+
+/**
+ * Rolls arbitrary patterns into this box's output — one lane per `label to pattern` pair.
+ *
+ * ```
+ * showPatRollOf(
+ *     "kick" to struct(euclid(3, 8), pat("bd")),
+ *     "hats" to (pat("hh*16") with gain(sine())),
+ *     title = "my groove", cycles = 2, paramKey = "gain",
+ * )
+ * ```
+ *
+ * A lane whose atoms all parse as numbers is drawn on a value axis; [paramKey] switches every lane
+ * to drawing that named parameter instead. [pitched] labels the value axis as MIDI.
+ */
+fun afield.Box.showPatRollOf(
+    vararg lanes: Pair<String, PatPattern<String>>,
+    title: String = "pattern",
+    subtitle: String = "",
+    cycles: Int = 2,
+    paramKey: String? = null,
+    pitched: Boolean = false,
+    channel: String = "main"
+) = display(
+    channel,
+    PatPianoRollGallery.svgForLanes(
+        lanes.map { (label, pattern) ->
+            PatPianoRollGallery.Lane(label, pattern, paramKey = paramKey, pitched = pitched)
+        },
+        title = title,
+        subtitle = subtitle,
+        cycles = cycles
+    )
+)
