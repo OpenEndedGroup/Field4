@@ -717,10 +717,14 @@ a probe shader that reports `scene(p, t)` as a 24-bit fixed-point number instead
 of drawing it, reads the framebuffer back, and compares it against
 `program.sample(t)`. The pixel→wall mapping is recovered from the shader's own
 answers — the probe reports `p.x` and `p.y` as well — so the comparison assumes
-nothing about how pixels map to the wall. Measured: **max 1.08e-06** wall units
-within a wall unit of a surface, mean 3.23e-07. That is the one unavoidable
-difference, and it is exactly what it should be: the sampler works in `double` and
-a shader in `float`, so expect about `1e-6` of a wall unit, not the ulp.
+nothing about how pixels map to the wall.
+`measureGallerySdfAgreement` then repeats it across a spread of the real gallery,
+one scene per distinct feature signature, so groups, named easings and every rect
+count get covered rather than one hand-picked shape. Measured over 51,000 points
+and eleven programs: **max 2.47e-06** wall units, mean under 1e-06. That is the one
+unavoidable difference, and it is exactly what it should be: the sampler works in
+`double` and a shader in `float`, so expect about `1e-6` of a wall unit, not the
+ulp.
 
 **What is approximated.** Three tracks cannot be lowered symbolically — the
 `->degrade` dropout gate is a 64-bit integer hash, and the two pattern queries are

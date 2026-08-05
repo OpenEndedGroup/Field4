@@ -791,20 +791,34 @@ write a single image if the two disagree.
 The pixel→wall mapping is not re-derived on the CPU, which is how this sort of
 check usually ends up agreeing with itself: the probe reports `p.x` and `p.y` as
 well, so the mapping is fitted from the shader's own answers and its residual is
-held to the encoding's own step. Measured on the scene above, and on a second
-`->degrade`-plus-pattern scene whose tracks the emitter has to *bake*:
+held to the encoding's own step. Measured on the scene above, on a second
+`->degrade`-plus-pattern scene whose tracks the emitter has to *bake*, and then on
+a spread of the real gallery — every scene that brings a new feature signature
+(groups, named easings, a forced bake, a different order of magnitude of rect
+count), because each of those is a different branch of `emitRect`:
 
 ```diffstatic {data-lang=text}
-near (±1 wall unit):  5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
-far  (±32):          14600 points, max 4.46e-06, mean 1.64e-06  (24-bit step 3.82e-06)
-baked near (±1):      2541 points, max |GPU-CPU| = 1.03e-06, mean 3.32e-07
-baked far  (±32):    10512 points, max 4.93e-06, mean 1.80e-06
+near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
+far  (±32):                14600 points, max 4.46e-06, mean 1.64e-06  (step 3.82e-06)
+baked near (±1):            2541 points, max 1.03e-06, mean 3.32e-07
+baked far  (±32):          10512 points, max 4.93e-06, mean 1.80e-06
+gallery/mirrored-orbit:     1910 points, max 1.50e-06
+gallery/rising-bars:        3025 points, max 1.66e-06
+gallery/orbit-petals:       3135 points, max 1.71e-06
+gallery/gradient-sweep:     2810 points, max 2.47e-06
+gallery/pinwheel:           4914 points, max 1.81e-06
+gallery/wave-lattice:       7688 points, max 1.92e-06
+gallery/selection-logic:    4728 points, max 1.87e-06
 ```
 
-Which is the documented claim, measured: `double` on the CPU against `float` in a
-shader agrees to about 1e-6 of a wall unit, not to the ulp. The far pass cannot
-resolve better than its own encoding step and is checked against that rather than
-against 1e-6.
+Which is the documented claim, measured across 51,000 points and eleven programs:
+`double` on the CPU against `float` in a shader agrees to about 1e-6 of a wall
+unit, not to the ulp. The far pass cannot resolve better than its own encoding step
+and is checked against that rather than against 1e-6.
+
+The report is committed alongside the images as
+`assets/rectsl/rectsl-sdf-agreement.txt`, and is regenerated every time the page
+re-captures.
 
 ### Open it
 

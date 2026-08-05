@@ -373,8 +373,18 @@ object RectSLGalleryHarness {
             "the far field disagrees by ${far.maxAbsError}, more than the coarse pass's own " +
                 "${far.quantisation} encoding step can explain:\n" + agreement.joinToString("\n")
         }
+
+        // Breadth: the two scenes above are two shapes of program, and the emitter has
+        // many more branches than that.
+        val gallery = measureGallerySdfAgreement(renderer)
+        val worstGallery = gallery.maxByOrNull { it.maxAbsError }
+        require(worstGallery == null || worstGallery.maxAbsError < 1e-5) {
+            "a gallery scene disagrees with the CPU sampler by ${worstGallery?.maxAbsError}:\n" +
+                gallery.joinToString("\n")
+        }
+
         File(outputDir, "rectsl-sdf-agreement.txt").writeText(
-            agreement.joinToString("\n", postfix = "\n") { it.toString() }
+            (agreement + gallery).joinToString("\n", postfix = "\n") { it.toString() }
         )
 
         val written = mutableListOf<File>()
@@ -568,13 +578,13 @@ object RectSLGalleryHarness {
     suspend fun measureSdfAgreement(
         renderer: Renderer,
         program: SceneProgram,
-        times: List<Double> = listOf(0.0, 0.37, 0.95, 2.05, 3.6)
+        times: List<Double> = listOf(0.0, 0.37, 0.95, 2.05, 3.6),
+        ranges: List<Pair<String, Double>> = listOf("near" to PROBE_NEAR_RANGE, "far" to PROBE_FAR_RANGE)
     ): List<SdfAgreement> {
         val field = RectSLGlsl.emitSdf(program, "scene")
         val fragment = RectSLSdfShader.probeFragment(field)
         val (width, height) = outputDims(program)
         val session = SdfSession(renderer, program, fragment, width, height, "sdf-probe")
-        val ranges = listOf("near" to PROBE_NEAR_RANGE, "far" to PROBE_FAR_RANGE)
         val comparisons = IntArray(ranges.size)
         val maxErr = DoubleArray(ranges.size)
         val sumErr = DoubleArray(ranges.size)
@@ -658,6 +668,71 @@ object RectSLGalleryHarness {
             renderer.renderList.preTargets.remove(SDF_PRE_TARGET_NAME)
             session.dispose()
         }
+    }
+
+    /**
+     * The same differential, over a **diverse subset of the real gallery** rather
+     * than the two scenes this page draws.
+     *
+     * Two hand-written scenes cover two shapes of program. The gallery covers
+     * groups, nested transforms, named easings, time warps, `->face-travel`
+     * headings, and rect counts from one to 183 — and every one of those is a
+     * distinct branch of `emitRect`, so a differential that never sees them is
+     * checking a fraction of the emitter. Rather than pick favourites, this walks
+     * the gallery in name order and keeps a scene whenever it brings a *new*
+     * feature signature (does it have groups, does it name an easing, does it force
+     * a bake, and which order of magnitude of rect count), which is a reproducible
+     * way to get breadth without rendering all 35.
+     *
+     * Near pass only: the fine encoding is where the geometric claims live, and the
+     * far pass has already been shown to sit at its own quantisation floor.
+     */
+    suspend fun measureGallerySdfAgreement(
+        renderer: Renderer,
+        maxScenes: Int = 8,
+        times: List<Double> = listOf(0.0, 0.41, 1.7)
+    ): List<SdfAgreement> {
+        val seen = mutableSetOf<String>()
+        val chosen = mutableListOf<Pair<String, SceneProgram>>()
+        for (example in loadExamples()) {
+            if (chosen.size >= maxScenes) break
+            val program = runCatching { compileForRender(example.name, example.source) }.getOrNull() ?: continue
+            // Skip the very largest: the CPU side of the comparison is O(pixels x rects)
+            // and the point here is breadth of *shape*, not of size.
+            if (program.nodes.size > 80) continue
+            val field = RectSLGlsl.emitSdf(program, "scene")
+            val signature = listOf(
+                program.nodes.any { it is afield.rectsl.GroupNode },
+                field.globals.keys.any { it.startsWith("rectslEase_") },
+                !field.ok,
+                when {
+                    field.rectCount <= 1 -> "one"
+                    field.rectCount < 10 -> "few"
+                    field.rectCount < 50 -> "many"
+                    else -> "lots"
+                }
+            ).joinToString("/")
+            if (seen.add(signature)) {
+                chosen += example.name to program
+                lprintln("info,doc", "rectsl sdf gallery differential: ${example.name} [$signature]")
+            }
+        }
+        require(chosen.size >= 4) { "expected several distinct gallery shapes, chose ${chosen.size}" }
+
+        val out = mutableListOf<SdfAgreement>()
+        for ((name, program) in chosen) {
+            val rows = measureSdfAgreement(
+                renderer, program,
+                times = times.map { it.coerceAtMost(program.duration) },
+                ranges = listOf("near" to PROBE_NEAR_RANGE)
+            )
+            rows.forEach { row ->
+                val labelled = row.copy(label = "gallery/$name ${row.label}")
+                lprintln("info,doc", "rectsl sdf $labelled")
+                out += labelled
+            }
+        }
+        return out
     }
 
     private suspend fun renderSdfStill(
