@@ -45,6 +45,14 @@ private val defaultQuantileWarpProbabilities = doubleArrayOf(
     0.001, 0.01, 0.05, 0.20, 0.50, 0.80, 0.95, 0.99
 )
 
+/**
+ * The name shader source uses to pull in the GLSL half of this file: `#include "quantileWarp"`.
+ *
+ * It resolves to a built-in include, so nothing has to be on disk. What it defines is
+ * `fieldQuantileWarp8` and `fieldQuantileWarpMix`, which evaluate the *same* PCHIP curve as
+ * [QuantileWarpState.evaluate] from the four `vec4`s that [QuantileWarpState.applyToPushConstants]
+ * pushes — that identity is the point of the whole file.
+ */
 const val FIELD_QUANTILE_WARP_INCLUDE_NAME = "quantileWarp"
 
 /**
@@ -56,6 +64,7 @@ const val FIELD_QUANTILE_WARP_INCLUDE_NAME = "quantileWarp"
  * The three ready-made ones are in [TargetDistributions].
  */
 fun interface QuantileFunction {
+    /** The value at probability [p]. Called only with `p` strictly inside `(0, 1)`. */
     fun quantile(p: Double): Double
 }
 
@@ -67,15 +76,27 @@ fun interface QuantileFunction {
  * uniform ones accept the closed `[0, 1]` and throw outside it.
  */
 object TargetDistributions {
+    /**
+     * The identity: warp a signal into a flat `[0, 1]` distribution. Accepts the closed range and throws
+     * outside it.
+     */
     val Uniform01 = QuantileFunction { p ->
         require(p in 0.0..1.0) { "p must be in [0, 1]" }
         p
     }
 
+    /**
+     * Standard normal, mean 0 and standard deviation 1 — the default target, and the one that makes a
+     * skewed signal usable with symmetric thresholds. Rejects `p` at exactly 0 or 1.
+     */
     val UnitNormal = QuantileFunction { p ->
         inverseStandardNormalCdf(p)
     }
 
+    /**
+     * A flat distribution over `[min, max]` — the target to use when a shader wants a value it can index
+     * or threshold in known bounds.
+     */
     fun uniform(min: Double, max: Double) = QuantileFunction { p ->
         require(p in 0.0..1.0) { "p must be in [0, 1]" }
         min + (max - min) * p
@@ -102,10 +123,31 @@ object TargetDistributions {
  * smoothing, which is what keeps the curve invertible when the input degenerates to a constant.
  */
 data class QuantileWarpConfig(
+    /**
+     * The eight quantiles to measure. Exactly eight, strictly increasing, strictly inside `(0, 1)`.
+     *
+     * The default spends three knots below the 5th percentile and two above the 95th, on the assumption
+     * that the interesting end of a probe signal is the quiet one.
+     */
     val probabilities: DoubleArray = defaultQuantileWarpProbabilities.copyOf(),
+    /**
+     * How many `update` batches are pooled before the quantiles are taken. At least 1; 1 means fit on the
+     * current batch alone.
+     */
     val historyFrames: Int = 8,
+    /**
+     * How far each update moves the knots towards the newly measured ones, in `[0, 1]`.
+     *
+     * The gap remaining after `k` updates is `(1 − alpha)^k`, so the default takes about a dozen updates
+     * to close 90% of a step change. 1.0 disables smoothing entirely.
+     */
     val smoothingAlpha: Double = 0.20,
+    /** Minimum gap between adjacent knots as a fraction of the knot range; keeps the curve invertible. */
     val epsilonRelative: Double = 1.0e-5,
+    /**
+     * Minimum absolute gap between adjacent knots — the floor that survives a signal collapsing to a
+     * constant, where the relative term is zero. Must be strictly positive.
+     */
     val epsilonAbsolute: Double = 1.0e-6
 ) {
     init {
@@ -148,20 +190,44 @@ class QuantileWarpState(
     probabilities: DoubleArray,
     inputKnots: DoubleArray,
     targetKnots: DoubleArray,
+    /** How many pooled samples these quantiles were measured from. */
     val historySampleCount: Int
 ) {
+    /** The eight probabilities the knots were measured at. A copy. */
     val probabilities: DoubleArray = probabilities.copyOf()
+    /** The measured value of the signal at each probability — the x axis of the curve. Strictly increasing. */
     val inputKnots: DoubleArray = inputKnots.copyOf()
+    /** The target distribution's value at each probability — the y axis of the curve. */
     val targetKnots: DoubleArray = targetKnots.copyOf()
+    /** The sixteen numbers a shader needs: eight [inputKnots] then eight [targetKnots], as `Float`. */
     val packedPushConstants: FloatArray = packQuantileWarpPushConstants(this.inputKnots, this.targetKnots)
 
+    /**
+     * The warp itself: a signal value in, its position in the target distribution out.
+     *
+     * Two limits worth knowing. Eight knots is an approximation of `Φ⁻¹(F̂(v))` — within about 0.05 over
+     * the 2nd-to-98th percentile of a log-normal, worse in the extreme tails. And outside
+     * `inputKnots.first()..inputKnots.last()` it extrapolates *linearly* with nothing clamping the result
+     * (on one fitted log-normal, `evaluate(-1.0)` returns about −21), so clamp the input if the signal can
+     * leave the range it was fitted on.
+     */
     fun evaluate(x: Double): Double = evaluateQuantileWarpPchip(x, inputKnots, targetKnots)
 
+    /** Input knots 0..3, ready for a `vec4` push constant. */
     fun xLo(): Vector4f = packedVectorAt(0)
+    /** Input knots 4..7. */
     fun xHi(): Vector4f = packedVectorAt(4)
+    /** Target knots 0..3. */
     fun yLo(): Vector4f = packedVectorAt(8)
+    /** Target knots 4..7. */
     fun yHi(): Vector4f = packedVectorAt(12)
 
+    /**
+     * Push all four `vec4`s through one `setVec4` callback, under the names the GLSL include expects.
+     *
+     * The default names match `fieldQuantileWarp8`'s parameters, so a shader that includes
+     * [FIELD_QUANTILE_WARP_INCLUDE_NAME] and a box that calls this need agree on nothing else.
+     */
     fun applyToPushConstants(
         setVec4: (name: String, value: Vector4f) -> Unit,
         xLoName: String = "warpXLo",
@@ -182,6 +248,7 @@ class QuantileWarpState(
         packedPushConstants[offset + 3]
     )
 
+    /** The sample count and both knot arrays to four decimal places — a warp you can read in a log line. */
     override fun toString(): String = buildString {
         append("QuantileWarpState(")
         append("historySampleCount=")
@@ -194,6 +261,12 @@ class QuantileWarpState(
     }
 
     companion object {
+        /**
+         * The do-nothing warp: input knots equal to the target knots, so it is the identity between them.
+         *
+         * Useful as a seed for [AdaptiveQuantileWarp.reset], and as the state to push before any samples have
+         * arrived — a shader then behaves as if unwarped rather than reading uninitialised constants.
+         */
         fun identity01(probabilities: DoubleArray = defaultQuantileWarpProbabilities): QuantileWarpState {
             require(probabilities.size == 8) { "identity01 expects 8 probabilities" }
             return QuantileWarpState(
@@ -234,14 +307,29 @@ class AdaptiveQuantileWarp(
     private val history = ArrayDeque<DoubleArray>()
     private var state: QuantileWarpState? = null
 
+    /** The last state [update] produced, or null before the first one. Does not recompute anything. */
     fun currentStateOrNull(): QuantileWarpState? = state
 
+    /**
+     * Forget the pooled history and the current state, optionally starting again from [seed].
+     *
+     * Call this when the signal's meaning changes — a different pass, a different scene — rather than
+     * waiting for the smoothing to walk the knots across.
+     */
     fun reset(seed: QuantileWarpState? = null): AdaptiveQuantileWarp {
         history.clear()
         state = seed
         return this
     }
 
+    /**
+     * Fold a batch of samples in and return the new warp.
+     *
+     * Appends the batch to the history, pools and sorts the last `historyFrames` batches, takes the eight
+     * empirical quantiles, forces them strictly increasing, lerps `smoothingAlpha` of the way from the
+     * previous knots, and forces them increasing again. So the *first* update is unsmoothed and every
+     * later one lags. Throws on an empty batch.
+     */
     fun update(samples: DoubleArray): QuantileWarpState {
         require(samples.isNotEmpty()) { "samples must not be empty" }
 
@@ -294,14 +382,38 @@ class AdaptiveQuantileWarp(
     }
 }
 
+/**
+ * How [Box.fieldProbeQuantileWarp] drives a warp off a GPU probe: when a batch is big enough to be
+ * worth fitting, what to clip, and where to draw the knots.
+ */
 data class ShaderProbeQuantileWarpConfig(
+    /**
+     * Fewest probe samples worth fitting on. A tick that cannot gather this many does nothing at all
+     * rather than fitting a worse curve.
+     */
     val minSamples: Int = 128,
+    /**
+     * Discard samples at or below this before fitting; null keeps everything. The usual reason is a
+     * background value that would otherwise own the lower knots.
+     */
     val clipLower: Double? = null,
+    /** Discard samples at or above this before fitting; null keeps everything. */
     val clipUpper: Double? = null,
+    /**
+     * Tolerance used when comparing against the clip bounds, so a sample exactly on the bound is decided
+     * consistently. Must be strictly positive.
+     */
     val clipEpsilon: Double = 1.0e-6,
+    /** Box display channel for the live knot table, or null to draw nothing. */
     val displayChannel: String? = "warp",
+    /** Close the display channel when the controller stops, rather than leaving the last table up. */
     val closeDisplayOnStop: Boolean = false,
+    /** Blank the display channel when the controller stops. */
     val clearDisplayOnStop: Boolean = false,
+    /**
+     * Suffix of the runloop hook key, which is `"<suffix>:<box id>"`. Change it only to run two warps on
+     * one box.
+     */
     val runloopKeySuffix: String = "shaderFieldQuantileWarp"
 ) {
     init {
@@ -310,12 +422,30 @@ data class ShaderProbeQuantileWarpConfig(
     }
 }
 
+/**
+ * The controller [Box.fieldProbeQuantileWarp] installed on this box, if any.
+ *
+ * Held on the box so that re-running the box stops the previous controller instead of stacking a
+ * second runloop hook on top of it — the underscore says it is plumbing, not an API.
+ */
 var Box._fieldProbeQuantileWarpController by Delegation<ShaderFieldQuantileWarpController?>()
 
+/**
+ * The running loop: drain a `ShaderFieldProbe`, refit the warp, hand it to your `apply` callback, draw
+ * the knots.
+ *
+ * Made by [Box.fieldProbeQuantileWarp] rather than directly. It is idempotent about installation and
+ * de-duplicates by probe snapshot, so a frame that produced no new probe data costs nothing and the
+ * warp is never fitted twice on the same samples.
+ */
 class ShaderFieldQuantileWarpController(
+    /** The box that owns the runloop hook and the display channel. */
     val box: Box,
+    /** Where the samples come from. Must be configured for continuous snapshot reads. */
     val probe: ShaderFieldProbe,
+    /** The fitter being driven. Its config decides the pooling and smoothing. */
     val warp: AdaptiveQuantileWarp,
+    /** How this controller reads the probe and what it draws. */
     val config: ShaderProbeQuantileWarpConfig,
     private val apply: (warp: QuantileWarpState, batch: FieldProbeScalarBatch) -> Unit
 ) {
@@ -323,15 +453,24 @@ class ShaderFieldQuantileWarpController(
     private var installed = false
     private var lastSnapshot: FieldProbeSnapshot? = null
 
+    /** How many times a *new* probe snapshot has been fitted — not how many frames have passed. */
     var tickCount: Int = 0
         private set
 
+    /** The most recent batch that was fitted, or null if none has been yet. */
     var lastBatch: FieldProbeScalarBatch? = null
         private set
 
+    /** The warp fitted from [lastBatch], or null if none has been yet. */
     var lastWarp: QuantileWarpState? = null
         private set
 
+    /**
+     * One attempt: read the probe, and if there is a new snapshot with enough samples, refit and apply.
+     *
+     * Returns null when there was nothing new to do, which is the common case at frame rate. Called for
+     * you by the runloop hook [install] adds; call it directly only in a test.
+     */
     fun tick(): QuantileWarpState? {
         val batch = probe.readLatestScalarBatch(
             minSamples = config.minSamples,
@@ -357,6 +496,7 @@ class ShaderFieldQuantileWarpController(
         return nextWarp
     }
 
+    /** Add the pre-run hook that calls [tick] every frame. Idempotent. */
     fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldQuantileWarpController {
         if (installed) return this
         runloop.preRun[hookKey] = sequence {
@@ -369,6 +509,11 @@ class ShaderFieldQuantileWarpController(
         return this
     }
 
+    /**
+     * Remove the hook, optionally tidy the display, and forget this controller on the box.
+     *
+     * Safe to call twice, and safe to call on a controller that was never installed.
+     */
     fun stop(
         runloop: Runloop = Runloop.runLoop,
         closeDisplay: Boolean = config.closeDisplayOnStop,
@@ -389,6 +534,20 @@ class ShaderFieldQuantileWarpController(
     }
 }
 
+/**
+ * Close the loop: let a shader's own output decide how that shader's values are scaled, every frame.
+ *
+ * Reads a `ShaderFieldProbe`'s samples off the GPU, refits an [AdaptiveQuantileWarp] on them, and
+ * calls [apply] with the new [QuantileWarpState] — which is where you push
+ * [QuantileWarpState.applyToPushConstants] into the pipeline that produced the data. The result is a
+ * shader whose thresholds mean the same thing whatever the scene does to its dynamic range, which is
+ * not something a fixed constant can do.
+ *
+ * Stops any controller already installed on this box before installing a new one, and requires a probe
+ * configured for continuous snapshot reads (it throws otherwise, rather than silently never firing).
+ * Pass `install = false` to build the controller and drive [ShaderFieldQuantileWarpController.tick]
+ * yourself.
+ */
 fun Box.fieldProbeQuantileWarp(
     probe: ShaderFieldProbe,
     warp: AdaptiveQuantileWarp = AdaptiveQuantileWarp(),

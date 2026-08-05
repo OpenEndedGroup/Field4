@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4186 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4233 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**135 undocumented entry points** (types, top-level functions and values) and 1701 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**130 undocumented entry points** (types, top-level functions and values) and 1660 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -15,7 +15,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
-| [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | statistics_examples | 5 | 41 | 11% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
@@ -100,8 +99,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
-| `ShaderProbeQuantileWarpConfig` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:297` |
-| `ShaderFieldQuantileWarpController` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:315` |
 | `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
 | `SupportSurface3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:499` |
 | `SupportSphere3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:503` |
@@ -128,7 +125,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `stepDynamicGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:863` |
 | `stepDynamicGraphWithLinearDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:877` |
 | `stepDynamicGraphWithExponentialDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:889` |
-| `Box.fieldProbeQuantileWarp` | fun | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:392` |
 | `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1490` |
 | `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1530` |
 | `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1533` |
@@ -136,8 +132,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `savePng` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1593` |
 | `FloatArray.sliceIntoUniqueTiles2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1691` |
 | `FloatArray.sliceIntoOverlappingPatterns2D` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1738` |
-| `FIELD_QUANTILE_WARP_INCLUDE_NAME` | val | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:48` |
-| `Box._fieldProbeQuantileWarpController` | var | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:313` |
 | `WFC_NORTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:30` |
 | `WFC_EAST` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:31` |
 | `WFC_SOUTH` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:32` |
@@ -204,5 +198,10 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ControlOutput.namedNominalParams` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:334` |
 | `main` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:569` |
 | `smileCubicSpline` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:59` |
+| `smileGaussianProcess` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:67` |
+| `Number.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:139` |
+| `Expression.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:142` |
+| `Quantity.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:145` |
+| `Any.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:148` |
 
-…and **15 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **10 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
