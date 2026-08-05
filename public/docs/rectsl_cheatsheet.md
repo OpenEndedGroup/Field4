@@ -726,16 +726,32 @@ unavoidable difference, and it is exactly what it should be: the sampler works i
 `double` and a shader in `float`, so expect about `1e-6` of a wall unit, not the
 ulp.
 
-**What is approximated.** Three tracks cannot be lowered symbolically — the
-`->degrade` dropout gate is a 64-bit integer hash, and the two pattern queries are
-rational arithmetic over a mini-notation tree — so they are baked into a
-run-length-compressed hold chain and `emitSdf` says so in `notes`. Because all
-three are piecewise constant, that bake is **exact** wherever a pattern edge lands
-on a bake sample instant, which is most of the time: the bake runs at
+**What is approximated — two tracks, not three.** `->degrade`'s dropout gate is a
+64-bit integer hash, which reads like something a shader cannot evaluate and is not.
+It lowers **exactly**: a 64-bit value is a `uvec2` lane pair, `umulExtended` gives
+the exact 32×32→64 product the multiplies need, and the final `k / 2^53 <
+probability` test is an integer comparison in disguise — so the threshold is folded
+to an exact 53-bit integer on the CPU and compared with an unsigned 64-bit `<`, with
+no float anywhere in the decision. `ordinal` and the salt are known at emit time, so
+two of the three hash inputs fold to a single literal. The only residual difference
+is which cycle `t` belongs to, since `floor(t · cps)` runs in `float` here and
+`double` there — a disagreement possible only within about an ulp of a cycle
+boundary, where the gate is discontinuous anyway.
+
+The two that remain baked are the pattern queries, which are rational arithmetic
+over a mini-notation tree — an interpreter rather than a formula, and a different
+kind of problem. They become a run-length-compressed hold chain and `emitSdf` says so
+in `notes`. Both are piecewise constant, so that bake is **exact** wherever a pattern
+edge lands on a bake sample instant, which is most of the time: the bake runs at
 `max(fps × 4, 120)` Hz and pattern edges are cycle fractions. Where an edge falls
 between two samples it moves to the nearer one, displacing it by at most one bake
-interval — 8.3 ms at 30 fps. Measured on the timeline rather than assumed:
-`pat` and `->degrade` disagreed with their own samplers on **0%** of a grid 40×
-finer than the bake; sample-and-hold `hold-pat` on **0.81%**, every one of those
-points within one bake interval of a real edge. Nothing is lost in the middle of a
-plateau.
+interval — 8.3 ms at 30 fps. Measured on the timeline rather than assumed: `pat`
+disagreed with its own sampler on **0%** of a grid 40× finer than the bake;
+sample-and-hold `hold-pat` on **0.81%**, every one of those points within one bake
+interval of a real edge. Nothing is lost in the middle of a plateau.
+
+The gate's lowering is held to a stronger standard than that, because it can be:
+6720 (ordinal, cycle, probability, salt) points agree **bit for bit** with the CPU
+track, and the pixel differential then covers a `->degrade` scene end to end — where
+a wrong hash would not be a small numeric error but a *different set of rectangles*,
+so it shows up at the scale of the wall rather than at 1e-6.

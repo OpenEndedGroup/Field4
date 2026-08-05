@@ -243,11 +243,22 @@ class RectSLSdfLookTest {
         assertEquals(blades.wall.width, carve.wall.width, "both fields must share one wall")
         assertEquals(blades.wall.height, carve.wall.height)
 
-        // The pattern scene exists to make the emitter bake, so it must.
+        // The pattern scene exercises both halves of the emitter's fidelity story at
+        // once: a pattern query, which still bakes, and a `->degrade` gate, which
+        // lowers exactly. Both must actually be present for the differential to mean
+        // what its label says.
         val emitted = RectSLGlsl.emitSdf(pattern, "scene")
         assertTrue(
-            emitted.notes.any { it.contains("pattern") } && emitted.notes.any { it.contains("degrade") },
-            "the pattern scene should force both a pattern bake and a degrade bake, got ${emitted.notes}"
+            emitted.notes.any { it.contains("pattern") },
+            "the pattern scene should force a pattern bake, got ${emitted.notes}"
+        )
+        assertTrue(
+            emitted.notes.none { it.contains("degrade") },
+            "`->degrade` lowers exactly now, so it must not appear as a caveat: ${emitted.notes}"
+        )
+        assertTrue(
+            emitted.glsl.contains("rectslLess64"),
+            "the scene's ->degrade gate should have been lowered into 64-bit lanes"
         )
     }
 

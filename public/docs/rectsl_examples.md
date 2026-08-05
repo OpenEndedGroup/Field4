@@ -791,11 +791,11 @@ write a single image if the two disagree.
 The pixel→wall mapping is not re-derived on the CPU, which is how this sort of
 check usually ends up agreeing with itself: the probe reports `p.x` and `p.y` as
 well, so the mapping is fitted from the shader's own answers and its residual is
-held to the encoding's own step. Measured on the scene above, on a second
-`->degrade`-plus-pattern scene whose tracks the emitter has to *bake*, and then on
-a spread of the real gallery — every scene that brings a new feature signature
-(groups, named easings, a forced bake, a different order of magnitude of rect
-count), because each of those is a different branch of `emitRect`:
+held to the encoding's own step. Measured on the scene above, on a second scene
+built from `->degrade` and a mini-notation pattern — the two tracks whose fidelity
+is not free — and then on a spread of the real gallery: every scene that brings a new
+feature signature (groups, named easings, a forced bake, a different order of
+magnitude of rect count), because each of those is a different branch of `emitRect`:
 
 ```diffstatic {data-lang=console}
 near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
@@ -819,6 +819,15 @@ and is checked against that rather than against 1e-6.
 The report is committed alongside the images as
 `assets/rectsl/rectsl-sdf-agreement.txt`, and is regenerated every time the page
 re-captures.
+
+The `->degrade` half of that second scene is worth a note, because it is the most
+sensitive row in the table without looking like it. `->degrade` is a 64-bit integer
+hash, and it is *lowered*, not sampled — so if the shader's hash disagreed with the
+CPU's by a single bit, a different set of rectangles would vanish and the
+disagreement would be the size of a rectangle, not 1e-6. Reading 1.03e-06 there means
+every copy that the CPU drops on that cycle is the copy the GPU drops. See
+[the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity) for how a 64-bit
+hash fits in a shader that has no 64-bit integers.
 
 ### Open it
 
