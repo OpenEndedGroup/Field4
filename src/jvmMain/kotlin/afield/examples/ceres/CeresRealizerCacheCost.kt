@@ -239,13 +239,14 @@ fun main() {
     println("%-5s %5s   %s".format("solid", "V", "distinct programs (misses)"))
     for (case in CACHE_CASES) {
         val seed = conway(case.expression).polyhedron
-        val vertexCount = seed.realization!!.size
+        val seedPoints = seed.realization!!
+        val vertexCount = seedPoints.size
 
         // A deterministic wobble, the scale a keyframed animation would move a vertex by.
         fun moved(step: Int): PolyhedralObject = seed.copy(
             realization = Realization3(
                 (0 until vertexCount).map { i ->
-                    val v = seed.realization!![i]
+                    val v = seedPoints[i]
                     val s = 1.0f + 0.001f * sin(0.7f * step + 0.3f * i)
                     Vec3(v.x * s, v.y * s, v.z * s)
                 },
