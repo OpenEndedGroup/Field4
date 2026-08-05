@@ -158,6 +158,22 @@ each discovered test one at a time. The runner prewarms one persistent Field on
 server instead). Per-test timeouts come from each test's annotation — **don't**
 pass `--timeout` to this runner.
 
+**Committed generated assets** — several things in the repo are generated from
+source and then committed, because a generated artefact is only trustworthy if a
+change to it shows up as a reviewable diff. `./gradlew check` re-derives each one
+and fails if the committed copy has drifted, so none of them can go stale without
+an ordinary build saying so:
+
+| task | guards | fix a failure with |
+| --- | --- | --- |
+| `checkCodebaseReference` | `public/docs/reference/` and `dev_docs/kdoc_worklist.md` | `./gradlew generateCodebaseReference` |
+| `checkKDocAttachment` | every KDoc block in `src/` attaching to the declaration below it | move the block — see `dev_docs/kdoc_reference_contract.md` |
+| `checkAgentTranscripts` | `public/docs/assets/agent_transcripts/`, the welcome screen's starting points | `./gradlew regenerateAgentTranscriptStartingPoints` |
+| `checkPythonTools` | the `tools/test_*.py` suites | fix the test |
+
+None of them needs a Field server, a GPU or a network, and none of them writes a
+committed asset while checking: they generate into a temp directory and compare.
+
 **Browser UI regressions** — drives Playwright-backed UI workflows and keeps
 screenshots:
 

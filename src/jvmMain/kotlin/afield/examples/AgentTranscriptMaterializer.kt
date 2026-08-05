@@ -155,7 +155,8 @@ object AgentTranscriptMaterializer {
                     if (name in EXCLUDE) {
                         if (File(committed, name).exists()) {
                             failures.add("$name: excluded from starting points but still committed at " +
-                                "$STARTING_POINTS_REL/$name — delete it (regenerate the bundle).")
+                                "$STARTING_POINTS_REL/$name — delete it (or run " +
+                                "`./gradlew regenerateAgentTranscriptStartingPoints`, which removes it).")
                         }
                         continue
                     }
@@ -163,7 +164,8 @@ object AgentTranscriptMaterializer {
                     if (drift != null) {
                         failures.add(
                             "$name: committed starting point is out of date ($drift). Regenerate with " +
-                                "`run-jvm-main afield.examples.AgentTranscriptMaterializer --arg <repo>/$STARTING_POINTS_REL`."
+                                "`./gradlew regenerateAgentTranscriptStartingPoints` (or " +
+                                "`run-jvm-main afield.examples.AgentTranscriptMaterializer --arg <repo>/$STARTING_POINTS_REL`)."
                         )
                     }
                 }
