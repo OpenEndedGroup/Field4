@@ -181,7 +181,7 @@ which is what makes a fitted gesture reproducible in live art — the same disci
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt`
 
-**Used in:** [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md)
+**Used in:** [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #functionfit-kt-functions }
 
@@ -316,7 +316,7 @@ points default it to false so each occurrence can be edited independently.
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt`
 
-**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md)
+**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #functiongraph-kt-functions }
 

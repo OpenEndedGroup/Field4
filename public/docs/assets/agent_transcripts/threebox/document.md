@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="tb_compute" index="1" -->
 
 ```edn [field-box id="tb_compute" role="properties"]
-{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [240.0 40.0 160.0 90.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 23 "characters" 964 "sha256" "07b5f1e26af78a8614bf539bc3d7f3489e0748c5601853096a27d1bf0eb7d37e"}]}
+{"id" "tb_compute" "index" 1 "name" "compute particles" "parents" ["root" "tb_renderer"] "children" ["tb_draw"] "properties" {"children" #{#afield/box "tb_draw"} "parents" #{#afield/box "root" #afield/box "tb_renderer"} "name" "compute particles" "_tombstone" false "frame" #afield/rect [240.0 40.0 160.0 90.0]} "blockProperties" [{"name" "compute" "language" "glsl" "path" "tb_compute_compute_.glsl" "lines" 19 "characters" 827 "sha256" "9c82bf06b67873abd0d572107d848171860960c70d20ff7c1bea18029da0b0b7"} {"name" "code" "language" "kotlin" "path" "tb_compute_code_.kt" "lines" 25 "characters" 1127 "sha256" "11b1082659d88972a7b42fc5a292b50be5893a3be76d7f0f73b0ce45f2ed296d"}]}
 ```
 
 ```glsl [field-property box="tb_compute" name="compute" path="tb_compute_compute_.glsl"]
@@ -71,7 +71,9 @@ m.outData = { outData }
 // The live renderer uses monotonic time; frame-synchronous docs capture replaces this
 // with frameIndex/fps, so an already-running multi-box scene still restarts at movie t=0.
 m.something = { (AnimationClock.nowSeconds() * 0.6).f }
-fieldProbeHere(samples = 4096).display("probe")
+// Full coverage makes the published probe card independent of GPU workgroup ordering;
+// summaryHtml canonicalizes the scalar display order before plotting it.
+fieldProbeHere(samples = 100000).display("probe")
 displayOpen("probe")   // mark the channel open so the card starts expanded when it arrives
 prop<FrameBufferGroup>(outputPositions) = outData
 m.x = N / 64; m.y = 1; m.z = 1

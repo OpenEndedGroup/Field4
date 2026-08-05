@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3851 of 6143 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 3855 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**184 undocumented entry points** (types, top-level functions and values) and 1950 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**188 undocumented entry points** (types, top-level functions and values) and 1979 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -13,6 +13,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | spatial_geometry_examples, typography_examples | 25 | 54 | 2% |
+| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Uncategorised | field_audio_service_reference, visualizers | 23 | 167 | 0% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
@@ -24,12 +25,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
-| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples | 0 | 38 | 44% |
+| [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples, pattern_language | 0 | 38 | 44% |
 | [Constraints.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Constraints.kt) | Polytopes | polytope_examples | 0 | 35 | 48% |
 | [alife_agents.kt](../src/jvmMain/kotlin/afield/stdlib/alife_agents.kt) | ALife | alife_examples | 0 | 32 | 40% |
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples | 0 | 28 | 63% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
-| [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples | 0 | 26 | 53% |
+| [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples, pattern_language | 0 | 26 | 53% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [alife_continuous.kt](../src/jvmMain/kotlin/afield/stdlib/alife_continuous.kt) | ALife | alife_examples | 0 | 25 | 57% |
 | [Topology.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt) | Polytopes | polytope_examples | 0 | 24 | 64% |
@@ -59,7 +60,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FunctionRewritePattern.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionRewritePattern.kt) | Function | functions_examples | 0 | 2 | 84% |
 | [Canonical.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Canonical.kt) | Polytopes | polytope_examples | 0 | 2 | 95% |
 | [Realize.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Realize.kt) | Polytopes | polytope_examples | 0 | 1 | 93% |
-| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Uncategorised | — | 19 | 138 | 0% |
 | [essentiaAnalysis.kt](../src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt) | Audio | — | 17 | 109 | 0% |
 | [modelling.kt](../src/jvmMain/kotlin/afield/stdlib/modelling.kt) | Graphics | — | 13 | 54 | 0% |
 | [units.kt](../src/jvmMain/kotlin/afield/stdlib/units.kt) | Math | — | 12 | 9 | 25% |
@@ -117,6 +117,29 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
 | `CodecVisualizationData` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt:21` |
+| `AssetRegion` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:8` |
+| `AssetRepresentation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:15` |
+| `AudioAsset` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:31` |
+| `WaveformSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:44` |
+| `ModelOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:56` |
+| `JobState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:68` |
+| `JobAccepted` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:89` |
+| `StructuredError` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:98` |
+| `JobRecord` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:106` |
+| `JobSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:123` |
+| `Candidate` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:142` |
+| `CandidateSet` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:160` |
+| `ReconstructionMetrics` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:169` |
+| `CodecReconstructionResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:176` |
+| `AnalysisResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:191` |
+| `AnalysisSeries` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:204` |
+| `AnalysisNote` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:214` |
+| `AnalysisPreview` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:222` |
+| `ProgressEvent` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:233` |
+| `ModelCapability` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:244` |
+| `CandidateJudgement` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:259` |
+| `SavedAudioOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:266` |
+| `FieldAudioProjectState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:277` |
 | `ShaderProbeQuantileWarpConfig` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:297` |
 | `ShaderFieldQuantileWarpController` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:315` |
 | `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
@@ -188,28 +211,5 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SemanticSearchResult` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:32` |
 | `SemanticSearchHit` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:39` |
 | `SemanticSearchManager` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:73` |
-| `FramesSigLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:47` |
-| `FramesSigMetadata` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:53` |
-| `FramesSigProduct` | interface | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:67` |
-| `FramesSigFloatProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:74` |
-| `FramesSigFloatVectorProduct` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:91` |
-| `FramesSigTimedSample` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:109` |
-| `FramesSigProductInfo` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:118` |
-| `FramesSigDocument` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:126` |
-| `Sound2VecLoadOptions` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:347` |
-| `Sound2VecManifest` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:352` |
-| `Sound2VecClip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:366` |
-| `Sound2VecAudioSubclip` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:416` |
-| `Sound2VecDataset` | class | `src/jvmMain/kotlin/afield/stdlib/essentiaAnalysis.kt:429` |
-| `FeatureExtractor` | interface | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:235` |
-| `UniformQuantileFeatureExtractor` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:240` |
-| `ControllerConfig` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:255` |
-| `ControllerDiagnostics` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:301` |
-| `ControlOutput` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:314` |
-| `ScalarSampleBatch` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:345` |
-| `AdaptiveDistributionController` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:356` |
-| `AdaptiveDistributionControllerBank` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:502` |
-| `AdaptiveDistributionLoop` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:517` |
-| `FieldAudioException` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt:25` |
 
-…and **64 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **68 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
