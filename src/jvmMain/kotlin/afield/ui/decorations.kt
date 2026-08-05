@@ -367,6 +367,15 @@ fun locationForTextStringOnStack(
     // `pat(...)` internally hit it, and so would `Marker.toggle` invoked from a helper function.
     return found.firstNotNullOfOrNull {
         val ln = it.lineNumber
+        // A native, synthetic or otherwise line-less frame reports a *non-positive* line number, and
+        // `drop(ln - 1)` throws IllegalArgumentException on it rather than returning null. The whole
+        // contract of this helper is "a source hint, or null", so throwing from it turns a missing
+        // hint into a failed call several layers up: `pat("0 1 2 3")` evaluated inside a box died
+        // here with "Requested element count -2 is less than zero", and RectSL's bare-string pattern
+        // coercion — which asks `pat` whether a string is a rhythm at all — swallowed that into "a
+        // String is read as mini-notation only when it contains numbers", about a string made
+        // entirely of numbers.
+        if (ln <= 0) return@firstNotNullOfOrNull null
         val lines = box?.code?.split("\n")
         val index = lines?.drop(ln - 1)?.indexOfFirst { it.contains(code) }
         if (index != null && index != -1) {
