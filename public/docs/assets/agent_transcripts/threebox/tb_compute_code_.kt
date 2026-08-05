@@ -10,7 +10,9 @@ m.outData = { outData }
 // The live renderer uses monotonic time; frame-synchronous docs capture replaces this
 // with frameIndex/fps, so an already-running multi-box scene still restarts at movie t=0.
 m.something = { (AnimationClock.nowSeconds() * 0.6).f }
-fieldProbeHere(samples = 4096).display("probe")
+// Full coverage makes the published probe card independent of GPU workgroup ordering;
+// summaryHtml canonicalizes the scalar display order before plotting it.
+fieldProbeHere(samples = 100000).display("probe")
 displayOpen("probe")   // mark the channel open so the card starts expanded when it arrives
 prop<FrameBufferGroup>(outputPositions) = outData
 m.x = N / 64; m.y = 1; m.z = 1

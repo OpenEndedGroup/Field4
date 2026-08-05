@@ -54,6 +54,16 @@ land in the global basin. On execute it plots the target and the fitted curve an
 before→after summary with a loss-trajectory sparkline.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/fn_differentiable_fit_demo/metadata.edn)
 
+**pat_fn_graph_fit** — A rhythm as a graph you can fit. `patFn(...)` turns a pattern of kernel atoms
+(`g:(value,sigma)`, `adsr:(…)`) into a `Functions.Fn`, and that `Fn` carries a real graph node whose
+leaves are the numbers written in the pattern text — so `fitGradient` tunes a *rhythm*. Box 1 prints
+the node: its op, its role-tagged knobs (`atom0.sigma`, `atom1.attack`, `cps`) and their values. Box 2
+fits a two-bump target from a seed with the right structure and the wrong numbers, plots the two on
+top of each other, and prints the fitted gesture back out as pattern text you can paste anywhere. Box
+3 is the honest limit: the same fit with the two heights *swapped* stalls, because re-assigning values
+between atoms is a permutation rather than a direction.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pat_fn_graph_fit/metadata.edn)
+
 **mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
 independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
 cylinder and prints what each one is — welded, watertight, χ = 2. *Marching cubes* takes a sphere, a

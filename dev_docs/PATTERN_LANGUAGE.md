@@ -10,6 +10,7 @@ were measured rather than assumed, and one advertised feature that turned out to
 | `PatSignals.kt` | continuous/signal patterns and the discretisers that turn them back into events |
 | `PatAlgebra.kt` | how two patterns of different types meet, whose rhythm survives, and named parameters |
 | `PatComposition.kt` | arrangement operators, scales, chords, and voice leading |
+| `PatFunctions.kt` | the bridge into `Functions.Fn`: kernel atoms, and the `pat` graph op of §7 |
 
 Verified by `PatSignalsTest`, `PatAlgebraTest`, `PatCompositionTest`, `MiniNotationTest` and
 `PatContractTest` (97 tests), the `synth.pat.gallery` piano rolls and the `synth.pat.sound` `.wav`
@@ -435,7 +436,104 @@ and `outside` now exist under their own names and `chunk` does what Tidal's `chu
 
 ---
 
-## 7. The surface, at a glance
+## 7. A rhythm as a graph node — the `pat` op
+
+`PatFunctions.kt` turns a pattern into a `Functions.Fn`: each scheduled event becomes a kernel atom
+(`g` Gaussian, `tent`, `box`, `wendland`, `spline`, `env`, `adsr`) and the value at `x` is the
+partition-of-unity blend of the atoms covering it. That bridge already existed. What it produced was
+an **opaque** `Fn` — a closure with `graph = null` — so it reached the `Functions` library as a
+number source and nothing more: `graphNode()` reported `"opaque"`, `parameterCount()` was 0, and
+`fitGradient`, `evolve` and the rewrite layer could copy it but never see inside it.
+
+It now carries a real node, `op = "pat"`, and that changes what a rhythm *is* on the Functions side:
+
+```kotlin
+val fn = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
+fn.graphNode().op                       // "pat"
+fn.graphNode().strings["source"]        // "g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)"
+fn.graphNode().children.map { it.role } // cps, atom0.value, atom0.sigma, atom1.value, atom1.attack, …
+fn.extractParameters()                 // [2.0, 0.3, 0.12, 0.8, 0.01, 0.08, 0.4, 0.2]
+```
+
+**Every numeric position of every atom is hoisted out of the text into a `param` leaf**, addressed by
+the role it plays rather than by an index, and `cps` is one too. Numeric leaves are exactly what
+`FunctionFit.kt` treats as θ, so Adam tunes kernel widths, atom values and tempo with no new
+machinery. `range`, `outside` and `strict` deliberately stay *out* of θ as scalar metadata: they
+configure the evaluator (a look-ahead bound, a no-coverage fallback, an error policy) rather than the
+gesture, and a gradient has no business wandering into a cache bound.
+
+The node's `strings["source"]` is re-spliced from the current leaves on every rebuild, so **a fitted
+gesture comes back out as pattern text you can paste into a box**. It renders at full `Double`
+precision rather than `patFormatNumber`'s nine places, because a finite-difference step can be
+smaller than that and a display which rounded it away would make a converging fit look stalled.
+
+Measured, in `PatFunctionGraphTest`:
+
+```
+target  g:(0.9,0.18) g:(0.1,0.18)
+seed    g:(0.7,0.25) g:(0.3,0.12)            RMSE 0.1879
+fitted  g:(0.8992160646216955,0.1806061536225978) g:(0.10154940031834553,0.17891325344069284)
+                                             RMSE 0.0030
+```
+
+Both atom values and both kernel widths are recovered to three decimal places. The test asserts the
+recovered *numbers*, not just the loss ratio — "it scored well" and "it found the gesture" are
+different claims and only the second one is the point.
+
+### What it cannot do, and why that is the honest boundary
+
+Seed the same fit with the target's values **swapped** (`g:(0.2,…) g:(0.8,…)`) and it does not
+converge: it stalls at about half the initial error, and `fitBest`'s jittered restarts do not rescue
+it either (16 restarts still land ~5× worse). Reaching the answer needs a *permutation* — value 0.9
+has to move from atom 1 to atom 0 — and there is no downhill path through one. What descent does
+instead is escape into wide kernels, where a normalised partition-of-unity flattens toward the mean of
+its atom values, which halves the RMSE and plateaus. Choosing which atom carries which value is a
+structure question, so it belongs to `evolve`, not to `fitGradient`. `PatFunctionGraphTest` pins this
+as a characterization test with a note saying to delete it if the fitter ever gets better at it.
+
+`pat` is registered in `OpRegistry.knownOps` but is **not** a transmutation target, the same contract
+`timeline`, `rbf` and the sequencing ops have: its identity lives in pattern text no foreign node can
+supply. `FnNonDifferentiable` files it with a reason that is worth distinguishing from the usual one —
+not that the arithmetic is non-smooth (a Gaussian atom is as differentiable as `gaussian` is), but
+that *how many* terms the blend has and where they sit is decided by the rhythm and by `cps` rather
+than fixed by the node, so there is no expression tree of a known shape to walk. Finite differences,
+which is `fitGradient`'s default, handle it fine.
+
+### Purity was the prerequisite
+
+`fitGradient` samples a fixed grid in no particular order, so the node is only worth having if the
+evaluator is a function of `x` alone. Two things stood in the way.
+
+**A `%binding` genuinely is not.** A numeric position holding `%x` resolves against live box state at
+decode time, so a fit would be chasing a moving target. Such a source keeps the old opaque `Fn` and
+says so. A binding *resolver* the text never calls on is harmless and does not cost the node — which
+matters, because inside a box the default decoder is always binding-capable.
+
+**The evaluator restarted on every backwards step.** `PatFunctionField` streams: it unrolls forwards
+and drops atoms it has passed. It used to compare `x` against the previous `x` and, on any backwards
+move, re-unroll the pattern from cycle zero — so `blur` (which reads `x ± 3σ`), `derivative`
+(`x ± step`) and `convolve` each paid a full re-decode *per output sample*. It now retains one
+look-ahead of history and resets only for an `x` older than anything it still holds. Measured on a
+101-step sweep with a ±0.005 probe at each step: **233 atom decodes before, ≤8 after.**
+
+The hoisting itself is asserted to be semantically invisible — the graph path resolves every atom
+number through a leaf instead of through `toDouble()`, and the resulting curve is compared
+*exactly*, not within a tolerance, against the literal path it replaced.
+
+Two guards stop an override landing on the wrong atom, both tested: the span must come from the very
+text that was scanned, so a `stack` of two separately-parsed strings cannot have one string's offsets
+read against the other's; and the shape must still match, so a `map` that rewrote an event's text
+falls back to that text's own literals rather than feeding an ADSR's numbers to a Gaussian. The
+scanner shares `MiniPat.readAtom`'s own token rule, which is what makes its offsets agree with
+`PatSourceSpan.start` structurally rather than hopefully — the `g` in `bdg:(0,1)` is not a Gaussian.
+
+Finally, the rebuild recipe holds the **pattern object**, never the spliced text. A caller may have
+handed us `pat("g:(0.3,0.12)").fast(2)`, whose behaviour the atom text alone does not describe;
+rebuilding from text would quietly drop the `fast(2)`.
+
+---
+
+## 8. The surface, at a glance
 
 **Time** (`TidalPatterns.kt`) — `stretch fastBy slowBy fast slow timeScale density zoom delay rev
 palindrome patFocus within withinCycle playWhen chunk inside outside cat fastcat slowcat stack`
@@ -461,6 +559,12 @@ chords chordsOf patParseChord chord notesOf arpeggiate` · `voiceLead patLeadVoi
 patVoicingDistance patTotalVoiceMovement`
 
 **Rendering** (`PatSoundDocs.kt`) — `PatWave patVoice patRenderStereo patMidiToHz`
+
+**Into `Fn`** (`PatFunctions.kt`) — `patFn` · `PatPattern<String>.asFn` / `.fn` · `gaussianAtom
+tentAtom boxAtom wendlandAtom splineAtom envAtom adsrAtom` · `PatFunctionAtom PatFunctionAtomSpec
+PatFunctionAtomScope decodePatFunctionAtom decodePatFunctionAtomWithBindings` · the `pat` graph op
+of §7, whose leaves `extractParameters` / `fitGradient` tune and whose `strings["source"]` is
+pasteable pattern text
 
 > The generated reference under `public/docs/reference/` is **not** affected: checked, and
 > `StdlibReferenceGenerator.SOURCE_ROOTS` covers only `afield/stdlib` and `afield/visualization`, so

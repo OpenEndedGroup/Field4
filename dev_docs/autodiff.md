@@ -108,8 +108,8 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-one of `OpRegistry`'s 122
-canonical ops, which `FnOpCoverageTest` prints as **25.4%** rather than asking you to trust it:
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-one of `OpRegistry`'s 123
+canonical ops, which `FnOpCoverageTest` prints as **25.2%** rather than asking you to trust it:
 
 | group | ops |
 | --- | --- |
@@ -133,6 +133,14 @@ differentiable in their parameters at all), the reflecting/quantising transforms
 `bitCrush`, `rectify`), the easings, the step functions (`sign`, `step` — see below), and everything
 built on `mapY`/`mapX` (whose node carries a lambda, not a recipe). Every name in the set is in
 `OpRegistry.knownOps`, and a test asserts it.
+
+`pat` — a `pat(...)` rhythm as an `Fn` node, see [PATTERN_LANGUAGE.md](PATTERN_LANGUAGE.md) §7 — is
+in the not-covered camp for a reason worth spelling out, because it is not the usual one. It is not
+that its arithmetic is non-smooth: a Gaussian atom is as differentiable as `gaussian` is. It is that
+*how many* terms the blend has, and where they sit, is decided by the rhythm and by `cps` rather than
+fixed by the node, so there is no expression tree of a known shape to walk. Finite differences —
+which is what `fitGradient` uses by default — fit it perfectly well, and do recover both a gesture's
+atom values and its kernel widths.
 
 ### `abs`, `flip`, `exp` — and why `sign` is refused (2026-07-31)
 

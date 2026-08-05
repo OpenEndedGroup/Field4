@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**6143 public symbols across 123 source files**, 3851 of them (62%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**6180 public symbols across 125 source files**, 3855 of them (62%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -21,7 +21,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Visualization](visualization.md) | 7 | 258 | 229 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
 | [Workspace](workspace.md) | 2 | 78 | 75 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
-| [Uncategorised](uncategorised.md) | 9 | 234 | 15 (6%) |  |
+| [Uncategorised](uncategorised.md) | 11 | 271 | 19 (7%) |  |
 
 ## Every file, at a glance
 
@@ -36,6 +36,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [alife_continuous.kt](alife.md#alife-continuous-kt) | ALife | 69 | 40 | Continuous spatial ALife: reaction–diffusion (Gray–Scott / Turing) and Lenia, all shaped as `Img -> Img` steps so they compose with the imaging family. | [Spatial artificial life](../alife_examples.md) |
 | [alife_field.kt](alife.md#alife-field-kt) | ALife | 3 | 3 | Inline `ToHTML` views for the `alife*.kt` family — what a box draws when you *evaluate* an `IntGrid` or a `GrayScottState`, with nothing to set up. |  |
 | [alife_lsystem.kt](alife.md#alife-lsystem-kt) | ALife | 57 | 34 | Structural spatial ALife: a bracketed, parametric, optionally stochastic L-system with a turtle that emits `FLine`s, plus space-colonization branching. | [Spatial artificial life](../alife_examples.md) |
+| [AnalysisOperations.kt](uncategorised.md#analysisoperations-kt) | Uncategorised | 3 | 3 |  | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [AnalysisVisualization.kt](uncategorised.md#analysisvisualization-kt) | Uncategorised | 1 | 1 |  |  |
 | [ArchitecturalGeometry.kt](solvers.md#architecturalgeometry-kt) | Solvers | 184 | 92 | A named, typed DSL over the raw constraint vocabulary in `CeresGeometry.kt`, plus the interactive machinery for solving it while a user drags. |  |
 | [Attributes.kt](polytopes.md#attributes-kt) | Polytopes | 7 | 7 | Untyped per-element data, carried alongside the topology and propagated through transforms. |  |
 | [AudioAssetVisualization.kt](uncategorised.md#audioassetvisualization-kt) | Uncategorised | 1 | 1 |  |  |
@@ -71,8 +73,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [fline_graph_connectivity.kt](graphics.md#fline-graph-connectivity-kt) | Graphics | 13 | 5 | Bridge from drawn geometry to the graph algorithms: turns one or more `FLine`s into a welded point graph. |  |
 | [FnMetric.kt](function.md#fnmetric-kt) | Function | 3 | 3 | The objective shared by both halves of the function-search family: `FnMetric`, a `fun interface` scoring a candidate signal against a target on one even sample grid (lower is better), plus a companion of ready-made metrics — `rmse`, `mae`, `lp`, `maxError`, `huber`, `logCosh`, `correlation` — and the `fromResidual` / `window` builders behind them. |  |
 | [FunctionEvolve.kt](function.md#functionevolve-kt) | Function | 39 | 20 | Search over the *structure* of `Fn` graphs — the genetic counterpart to the gradient fitting of a fixed structure's numbers in FunctionFit.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [FunctionFit.kt](function.md#functionfit-kt) | Function | 60 | 32 | Gradient-based fitting of `Fn` graphs — the differentiable counterpart to the genetic `evolve` in FunctionEvolve.kt. | [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [FunctionGraph.kt](function.md#functiongraph-kt) | Function | 68 | 30 | The data model and the copy engine underneath Field's graph-rewritable notion of a function: `FnGraphNode` / `FnGraphEdge` (an op name, role-tagged children, scalar metadata and an optional rebuild recipe) plus `Functions.Fn.deepCopy` and `Functions.Fn.rewriteGraph`, a bottom-up copy that offers every occurrence to an `FnGraphEdit`. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
+| [FunctionFit.kt](function.md#functionfit-kt) | Function | 60 | 32 | Gradient-based fitting of `Fn` graphs — the differentiable counterpart to the genetic `evolve` in FunctionEvolve.kt. | [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
+| [FunctionGraph.kt](function.md#functiongraph-kt) | Function | 68 | 30 | The data model and the copy engine underneath Field's graph-rewritable notion of a function: `FnGraphNode` / `FnGraphEdge` (an op name, role-tagged children, scalar metadata and an optional rebuild recipe) plus `Functions.Fn.deepCopy` and `Functions.Fn.rewriteGraph`, a bottom-up copy that offers every occurrence to an `FnGraphEdit`. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [FunctionGraphBrowser.kt](function.md#functiongraphbrowser-kt) | Function | 42 | 42 | The looking-at-it layer for the `Fn` graph family: sample a graph on one shared time-base, then render it as a self-contained interactive HTML browser. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionGraphRules.kt](function.md#functiongraphrules-kt) | Function | 41 | 15 | The query and rule-runner layer over the graph copier in FunctionGraph.kt. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionOps.kt](function.md#functionops-kt) | Function | 12 | 9 | The op vocabulary for the whole `Fn` graph family, held in one object, `OpRegistry`: which op names the stdlib actually emits into a graph node, which of them are aliases of each other, and which can be rebuilt from an arbitrary node's role-addressed children — those rebuildable ones each carrying a family label (oscillator, noise, transform, …). |  |
@@ -121,7 +123,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
-| [Protocol.kt](uncategorised.md#protocol-kt) | Uncategorised | 157 | 0 |  |  |
+| [Protocol.kt](uncategorised.md#protocol-kt) | Uncategorised | 190 | 0 |  | [Field Audio service reference](../field_audio_service_reference.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 6 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |

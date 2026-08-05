@@ -1,0 +1,161 @@
+name: pat_fn_graph_fit
+description: >
+  A rhythm as a graph you can fit. `patFn(...)` turns a pattern of kernel atoms into a
+  Functions.Fn, and that Fn carries a real graph node (op = "pat") whose leaves are the numbers
+  written in the pattern text — so afield.stdlib.fitGradient tunes a *rhythm*. Three boxes.
+  "inspect" prints the node: its op, its role-tagged knobs (atom0.sigma, atom1.attack, cps) and
+  their values, next to the graph text. "fit" takes a two-bump target and a seed with the right
+  structure and the wrong numbers, plots target against fitted (they should land on top of each
+  other) and prints the fitted gesture back out as pattern text you can paste anywhere. "permute"
+  is the honest limit: the same fit seeded with the two heights *swapped* stalls at about half the
+  initial error, because reaching the answer needs a permutation and there is no downhill path
+  through one — tuning numbers is fitGradient's job, choosing which atom holds which number is
+  evolve's. Open/replay this into a fresh Field4 and run the boxes top to bottom.
+operations:
+  - create:
+      box: pat_fn_inspect
+      name: 1 · the pat node
+      frame: { x: 60.0, y: 60.0, w: 520.0, h: 300.0 }
+      properties:
+        code: |
+          import afield.stdlib.extractParameters
+          import afield.stdlib.graphNode
+          import afield.stdlib.graphText
+
+          // Each atom is a kernel: g = Gaussian, adsr = a full envelope. The numbers in the
+          // text are the gesture; `cps` is how fast the pattern runs in seconds.
+          val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
+          val node = gesture.graphNode()
+
+          val report = """
+          op        ${node.op}
+          source    ${node.strings["source"]}
+          knobs     ${node.children.joinToString("  ") { it.role }}
+          values    ${gesture.extractParameters().joinToString("  ")}
+
+          ${gesture.graphText()}
+          """.trimIndent()
+
+          println(report)
+          display("<pre>" + report + "</pre>")
+  - create:
+      box: pat_fn_fit
+      name: 2 · fit the rhythm
+      frame: { x: 60.0, y: 390.0, w: 520.0, h: 520.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.fitGradient
+          import afield.stdlib.graphNode
+
+          with(Functions) {
+              val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
+              // Right structure, wrong numbers — wrong heights and wrong widths.
+              val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
+
+              val run = fitGradient(target, seed, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
+
+              // A pat Fn runs to +infinity, so the plot is told which window to sweep.
+              plot(target, 0.0..2.0, channel = "1 target", title = "target")
+              plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted")
+
+              val report = """
+              seed    ${seed.graphNode().strings["source"]}
+              fitted  ${run.fitted.graphNode().strings["source"]}
+              RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+              """.trimIndent()
+              println(report)
+              display("<pre>" + report + "</pre>")
+
+              run   // Field renders the FnFitRun: RMSE before -> after + a loss sparkline
+          }
+  - create:
+      box: pat_fn_permute
+      name: 3 · what it cannot do
+      frame: { x: 620.0, y: 390.0, w: 520.0, h: 520.0 }
+      properties:
+        code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.fitGradient
+          import afield.stdlib.graphNode
+
+          with(Functions) {
+              val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
+              // The same two heights, swapped. Getting to the target needs 0.9 to move from the
+              // second atom to the first: a permutation, not a direction.
+              val mirrored = patFn("g:(0.2,0.18) g:(0.8,0.18)", cps = 1.0, range = 0.9)
+
+              val run = fitGradient(target, mirrored, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
+
+              plot(target, 0.0..2.0, channel = "1 target", title = "target")
+              plot(run.fitted, 0.0..2.0, channel = "2 stalled", title = "stalled fit")
+
+              val report = """
+              mirrored seed  ${mirrored.graphNode().strings["source"]}
+              ended at       ${run.fitted.graphNode().strings["source"]}
+              RMSE           ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+
+              It descends, but not to the answer: it escapes into wide kernels, where a
+              normalised blend flattens toward the mean of its atom values. Structure search
+              (evolve) is the tool for re-assigning values between atoms.
+              """.trimIndent()
+              println(report)
+              display("<pre>" + report + "</pre>")
+          }
+  - execute:
+      box: pat_fn_inspect
+      property: code
+      type: fragment
+      code: |
+          import afield.stdlib.extractParameters
+          import afield.stdlib.graphNode
+          import afield.stdlib.graphText
+
+          val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
+          val node = gesture.graphNode()
+
+          val report = """
+          op        ${node.op}
+          source    ${node.strings["source"]}
+          knobs     ${node.children.joinToString("  ") { it.role }}
+          values    ${gesture.extractParameters().joinToString("  ")}
+
+          ${gesture.graphText()}
+          """.trimIndent()
+
+          println(report)
+          display("<pre>" + report + "</pre>")
+  - await:
+      wait: pending
+  - execute:
+      box: pat_fn_fit
+      property: code
+      type: fragment
+      code: |
+          import afield.stdlib.Functions
+          import afield.stdlib.fitGradient
+          import afield.stdlib.graphNode
+
+          with(Functions) {
+              val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
+              val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
+
+              val run = fitGradient(target, seed, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
+
+              plot(target, 0.0..2.0, channel = "1 target", title = "target")
+              plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted")
+
+              val report = """
+              seed    ${seed.graphNode().strings["source"]}
+              fitted  ${run.fitted.graphNode().strings["source"]}
+              RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+              """.trimIndent()
+              println(report)
+              display("<pre>" + report + "</pre>")
+
+              run
+          }
+  - await:
+      wait: pending
+  - wait:
+      millis: 400
