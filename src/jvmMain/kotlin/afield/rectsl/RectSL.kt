@@ -468,6 +468,18 @@ data class TcbKey(
     val bias: Double? = null
 )
 
+/** One cubic Hermite span of a [TcbTrack], tangents already resolved. */
+data class HermiteSegment(
+    val t0: Double,
+    val t1: Double,
+    val p0: Double,
+    val p1: Double,
+    val m0: Double,
+    val m1: Double
+) {
+    val dt: Double get() = t1 - t0
+}
+
 data class TcbTrack(
     val keys: List<TcbKey>,
     val defaultTension: Double = 0.0,
@@ -504,6 +516,26 @@ data class TcbTrack(
 
     fun withTcb(tension: Double, continuity: Double, bias: Double): TcbTrack =
         copy(defaultTension = tension, defaultContinuity = continuity, defaultBias = bias)
+
+    /**
+     * The track as plain cubic Hermite segments, with the TCB tangents already
+     * resolved. The tension/continuity/bias parameters only ever influence the
+     * two slopes at a segment's ends, so once those are computed the curve is
+     * an ordinary Hermite spline — which is what makes a TCB track emittable as
+     * a handful of constants rather than as a solver.
+     */
+    fun hermiteSegments(): List<HermiteSegment> =
+        (0 until sorted.size - 1).map { lo ->
+            val hi = lo + 1
+            HermiteSegment(
+                t0 = sorted[lo].time,
+                t1 = sorted[hi].time,
+                p0 = sorted[lo].value,
+                p1 = sorted[hi].value,
+                m0 = outgoingSlope(lo),
+                m1 = incomingSlope(hi)
+            )
+        }
 
     private fun outgoingSlope(index: Int): Double {
         val key = sorted[index]
