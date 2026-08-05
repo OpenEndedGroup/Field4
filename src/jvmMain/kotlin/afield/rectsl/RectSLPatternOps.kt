@@ -348,7 +348,7 @@ private fun RectLangVm.installSelectionVariations() {
         val selection = vm.popSelectionOrActive("->off")
         val b = vm.builder()
         val copies = (b.cloneSelection(selection.refs, deep = true) as VSelection).refs
-        copies.forEach { ref -> b.mapScalarTracks(ref) { track -> TimeWarpTrack(track) { u -> u - dt } } }
+        copies.forEach { ref -> b.mapScalarTracks(ref) { track -> TimeWarpTrack(track, TimeWarpKind.SHIFT, dt) } }
         copies.forEach { ref -> vm.withSelected(ref) { vm.evalBlock(quote.tokens) } }
         vm.push(VSelection(selection.refs + copies))
     }
@@ -394,7 +394,7 @@ private fun RectLangVm.installSelectionVariations() {
         val b = vm.builder()
         selection.refs.forEachIndexed { ordinal, ref ->
             val delayBy = step * ordinal + if (ordinal % 2 == 1) step * amount else 0.0
-            b.mapScalarTracks(ref) { track -> TimeWarpTrack(track) { u -> u - delayBy } }
+            b.mapScalarTracks(ref) { track -> TimeWarpTrack(track, TimeWarpKind.SHIFT, delayBy) }
         }
         vm.push(selection)
     }

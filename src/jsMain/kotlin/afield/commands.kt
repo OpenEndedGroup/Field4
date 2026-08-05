@@ -2397,8 +2397,8 @@ fun refreshCommandsFromSelection(boxes: List<HTMLElement>, selection: List<List<
     run {
         val e = """
             ({
-                id:'-update-check', label:'Check for updates & download', 
-                detail:'Check the shared server for updates to Field and download them',
+                id:'-update-check', label:'Check for updates',
+                detail:'Ask origin whether it has commits this checkout does not, and report them. Pulling stays yours to do',
                 run: () => { 
                     import("./afield.mjs").then( (afield) => {afield.send("perform-action", {
                                 uid_action: '-update-check',

@@ -628,42 +628,16 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                 }
             }
 
-            actionTable["-update-check"] = { boxes ->
-                var names = ""
-                notify("Checking for updates from '${defaultUpdateUrl}'", "update")
+            actionTable["-update-check"] = { _ ->
+                notify("Asking origin what it has…", "update")
                 val session = thisSession.get()
                 @OptIn(DelicateCoroutinesApi::class)
                 GlobalScope.launch(Dispatchers.IO) {
-                    val ui = fetchUpdateInfo()
+                    val status = checkUpstream()
+                    // The coroutine can resume on any IO thread, and notify() reads the session off
+                    // a thread local.
                     thisSession.set(session)
-                    if (ui == null) {
-                        notify("Update server returned nothing", "update")
-                        return@launch
-                    }
-                    val local = checkUpdateVersion()
-                    thisSession.set(session)
-                    if (local == null) {
-                        notify("Local version appears to be versionless", "update")
-                        return@launch
-                    }
-                    if (local.hash == ui.hash) {
-                        notify("Already up to date '${local.hash}'", "update")
-                        return@launch
-                    }
-                    notify("Downloading update ${local.hash} / '${local.description}'", "update")
-                    val done = downloadAndUnzip(ui.url)
-                    if (!done) {
-                        notify("Problem downloading update", "update")
-                        return@launch
-                    }
-
-                    val success = promoteStagingToLive()
-                    if (!success) {
-                        notify("Error applying update", "update")
-                    } else {
-                        writeLocalVersion(ui)
-                        notify("Applied update, please restart Field", "update")
-                    }
+                    updateCheckMessages(status).forEach { notify(it, "update") }
                 }
             }
         }

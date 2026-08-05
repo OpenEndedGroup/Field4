@@ -214,6 +214,9 @@ float rectslBounceOut(float t) {
     /** How many shapes one union helper folds together. See `unionTree`. */
     private const val UNION_FANIN = 32
 
+    /** Ceiling on samples taken when baking a track that cannot be lowered. */
+    private const val MAX_BAKE_SAMPLES = 4096
+
     private class Emitter(val program: SceneProgram) {
         private val nodeMap: Map<String, Node> = program.nodes.associateBy { it.id }
         private val parentOf: Map<String, String> = buildMap {
@@ -452,6 +455,8 @@ float rectslBounceOut(float t) {
             is EasedScalarTrack -> track.keys.singleOrNull()?.value
             is GateTrack -> null
             is HeadingTrack -> null
+            // Every pattern track is a function of the cycle, so none is constant.
+            is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack -> null
         }
 
         private fun gateExpr(track: GateTrack, timeExpr: String): String {
@@ -495,8 +500,67 @@ float rectslBounceOut(float t) {
                 is TimeWarpTrack -> wrapper(name, ref(track.source, track.warp.glsl("t", track.amount)))
                 is GateTrack -> wrapper(name, gateExpr(track, "t"))
                 is ConstantTrack<*> -> wrapper(name, (track.value as Double).glslFloat())
+
+                // --- the pattern-language tracks ---------------------------
+                // `->every k` fires on cycles 0, k, 2k, … Both of these lower
+                // exactly: GLSL's mod already floors the way Math.floorMod does,
+                // so the cycle predicate is the same predicate.
+                is CycleGateTrack -> wrapper(name, cycleGateExpr(track.k, track.cps, track.phase))
+                is CycleSwitchTrack -> wrapper(
+                    name,
+                    "mix(${ref(track.before)}, ${ref(track.after)}, " +
+                        "${cycleGateExpr(track.k, track.cps, track.phase)})"
+                )
+                // The rest are step functions no shader can evaluate: a 64-bit
+                // integer hash, and rational-arithmetic pattern queries. Bake
+                // them — being piecewise constant, they compress to a handful of
+                // steps rather than to a table.
+                is DegradeGateTrack -> bakeAsHold(name, track, "degrade gate")
+                is PatTrack -> bakeAsHold(name, track, "pattern")
+                is PatHoldTrack -> bakeAsHold(name, track, "pattern (sample-and-hold)")
             }
             return name
+        }
+
+        /** `1.0` on the cycles `->every k` fires on, `0.0` elsewhere. */
+        private fun cycleGateExpr(k: Int, cps: Double, phase: Long): String {
+            if (k <= 0) return "1.0"
+            return "(mod(floor(t * ${cps.glslFloat()}) - ${phase.toDouble().glslFloat()}, " +
+                "${k.toDouble().glslFloat()}) < 0.5 ? 1.0 : 0.0)"
+        }
+
+        /**
+         * Sample a track that cannot be lowered symbolically and re-express it as
+         * the hold chain its values already describe.
+         *
+         * Only reached for tracks that are piecewise constant in time, which is
+         * what makes this a fair trade rather than a lossy one: consecutive equal
+         * samples collapse, so a dropout gate over six seconds becomes a few
+         * steps. The costs are real and recorded in [notes] rather than hidden —
+         * the baked function is flat outside `[0, duration]`, and a step falling
+         * between two samples lands on the nearer sample instant.
+         */
+        private fun bakeAsHold(name: String, track: Track<Double>, what: String): String {
+            val duration = if (program.duration > 0.0) program.duration else 1.0
+            val rate = maxOf(program.fps * 4.0, 120.0)
+            val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
+            val steps = mutableListOf<Pair<Double, Double>>()
+            for (i in 0 until count) {
+                val t = duration * i / (count - 1).coerceAtLeast(1)
+                val v = track.sample(t)
+                if (steps.isEmpty() || steps.last().second != v) steps += t to v
+            }
+            notes += "$what baked as ${steps.size} step(s) from $count samples over " +
+                "[0, ${duration}s]; constant outside that range"
+            return buildString {
+                appendLine("float $name(float t) {")
+                appendLine("    float v = ${steps.first().second.glslFloat()};")
+                steps.drop(1).forEach { (time, value) ->
+                    appendLine("    if (t >= ${time.glslFloat()}) v = ${value.glslFloat()};")
+                }
+                appendLine("    return v;")
+                append("}")
+            }
         }
 
         private fun wrapper(name: String, expression: String): String =

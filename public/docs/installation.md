@@ -1,6 +1,12 @@
 # Installation
 
-Field is distributed via source — you can download it from [our repository](https://github.com/OpenEndedGroup/Field4). 
+Field is distributed as source, and the way you get it is the way you keep it up to date:
+
+```bash
+git clone https://github.com/OpenEndedGroup/Field4.git
+```
+
+There are no binaries and no installer. A checkout is the installation.
 
 ### Quick Start (Double-Click)
 
