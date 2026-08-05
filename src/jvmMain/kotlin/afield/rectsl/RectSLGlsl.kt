@@ -174,37 +174,69 @@ float rectslBounceOut(float t) {
     /** Every easing name this emitter can spell — the coverage guard's oracle. */
     val supportedEasings: Set<String> get() = EASING_GLSL.keys
 
+    /** The smooth minimum the emitter reaches for when [RectSLSdfOptions.blendRadius] is set. */
+    private val SMIN_HELPER: String = """
+// Polynomial smooth minimum (Quilez). At k = 0 this is exactly min(); above it
+// the two fields fuse over a band of width k instead of creasing.
+float rectslSmin(float a, float b, float k) {
+    if (k <= 0.0) return min(a, b);
+    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+""".trimIndent()
+
     /**
      * Lower a program to a `float <name>(vec2 p, float t)` distance field plus
      * everything it depends on. The result is self-contained GLSL: no uniforms,
      * no buffers, no samplers, so it can be pasted into any shader that has a
      * world-space point and a time.
+     *
+     * [options] covers the two things a *consumer* of the field cannot do for
+     * itself, because they happen inside `scene`: how the rects are combined
+     * ([RectSLSdfOptions.blendRadius]), and what the emitted symbols are called
+     * ([RectSLSdfOptions.namePrefix]) so that two scenes can live in one shader.
      */
-    fun emitSdf(program: SceneProgram, functionName: String = "rectslScene"): RectSLSdfResult {
-        val emitter = Emitter(program)
+    @JvmOverloads
+    fun emitSdf(
+        program: SceneProgram,
+        functionName: String = "rectslScene",
+        options: RectSLSdfOptions = RectSLSdfOptions()
+    ): RectSLSdfResult {
+        val emitter = Emitter(program, options)
         val body = emitter.emitSceneFunction(functionName)
-        val glsl = buildString {
-            appendLine(PRELUDE)
-            if (emitter.usesBounce) {
-                appendLine()
-                appendLine(BOUNCE_HELPER)
-            }
-            emitter.easingFunctions().forEach { appendLine(); appendLine(it) }
+        // Globals are the functions whose bodies depend on nothing in this
+        // program — the box field, the easing curves, the smooth minimum. They
+        // keep their unprefixed names so that two scenes emitted into one shader
+        // share them by definition rather than by luck; the assembler merges the
+        // maps and writes each one once. See [RectSLSdfResult.globals].
+        val globals = LinkedHashMap<String, String>()
+        globals["rectslPrelude"] = PRELUDE
+        if (emitter.usesBounce) globals["rectslBounceOut"] = BOUNCE_HELPER
+        if (options.blendRadius > 0.0) globals["rectslSmin"] = SMIN_HELPER
+        emitter.easingFunctions().forEach { (name, text) -> globals[name] = text }
+
+        val scene = buildString {
             // Tracks form a DAG and are named on first reach, so a shared child
             // can end up defined after the parent that needs it. Prototypes make
             // definition order irrelevant instead of demanding a topological sort.
             val prototypes = emitter.trackFunctionNames()
             if (prototypes.isNotEmpty()) {
-                appendLine()
                 appendLine("// forward declarations: the track graph is a DAG, not a tree")
                 prototypes.forEach { appendLine("float $it(float t);") }
+                appendLine()
             }
-            emitter.trackFunctions().forEach { appendLine(); appendLine(it) }
-            appendLine()
+            emitter.trackFunctions().forEach { appendLine(it); appendLine() }
             append(body)
+        }
+        val glsl = buildString {
+            globals.values.forEach { appendLine(it); appendLine() }
+            append(scene)
         }
         return RectSLSdfResult(
             glsl = glsl,
+            globals = globals,
+            sceneGlsl = scene,
+            sceneFunctionName = functionName,
             rectCount = emitter.rectCount,
             trackFunctionCount = emitter.trackFunctionCount,
             notes = emitter.notes
@@ -217,7 +249,9 @@ float rectslBounceOut(float t) {
     /** Ceiling on samples taken when baking a track that cannot be lowered. */
     private const val MAX_BAKE_SAMPLES = 4096
 
-    private class Emitter(val program: SceneProgram) {
+    private class Emitter(val program: SceneProgram, val options: RectSLSdfOptions = RectSLSdfOptions()) {
+        private val prefix = options.namePrefix
+
         private val nodeMap: Map<String, Node> = program.nodes.associateBy { it.id }
         private val parentOf: Map<String, String> = buildMap {
             program.nodes.filterIsInstance<GroupNode>().forEach { group ->
@@ -240,8 +274,10 @@ float rectslBounceOut(float t) {
 
         fun trackFunctionNames(): List<String> = trackBodies.keys.toList()
 
-        fun easingFunctions(): List<String> = easings.map { name ->
-            "float ${easingFunctionName(name)}(float t) {\n    ${EASING_GLSL.getValue(name)}\n}"
+        /** Easing name -> (function name, body). Global: the curve does not depend on the scene. */
+        fun easingFunctions(): List<Pair<String, String>> = easings.map { name ->
+            easingFunctionName(name) to
+                "float ${easingFunctionName(name)}(float t) {\n    ${EASING_GLSL.getValue(name)}\n}"
         }
 
         /**
@@ -253,7 +289,7 @@ float rectslBounceOut(float t) {
             val rects = program.nodes.filterIsInstance<RectNode>()
             val perRect = rects.mapIndexed { index, rect ->
                 rectCount++
-                "rectslShape$index" to emitRect(rect, index)
+                "${prefix}Shape$index" to emitRect(rect, index)
             }
             if (rects.isEmpty()) notes += "scene has no rects; the field is empty everywhere"
             val out = StringBuilder()
@@ -262,7 +298,12 @@ float rectslBounceOut(float t) {
                 out.appendLine()
             }
             val top = unionTree(perRect.map { it.first }, out)
-            out.appendLine("// $rectCount rect(s), unioned. Positive outside, negative inside.")
+            val how = if (options.blendRadius > 0.0) {
+                "smooth-unioned over ${options.blendRadius} wall unit(s)"
+            } else {
+                "unioned"
+            }
+            out.appendLine("// $rectCount rect(s), $how. Positive outside, negative inside.")
             out.appendLine("float $functionName(vec2 p, float t) {")
             out.appendLine("    return ${top?.let { "$it(p, t)" } ?: "1e9"};")
             out.append("}")
@@ -291,10 +332,23 @@ float rectslBounceOut(float t) {
                         next += chunk.single()
                         continue
                     }
-                    val name = "rectslUnion${group++}"
+                    val name = "${prefix}Union${group++}"
+                    val k = options.blendRadius
                     out.appendLine("float $name(vec2 p, float t) {")
                     out.appendLine("    float d = ${chunk.first()}(p, t);")
-                    chunk.drop(1).forEach { out.appendLine("    d = min(d, $it(p, t));") }
+                    chunk.drop(1).forEach {
+                        // A rect gated invisible returns the 1e9 sentinel, which a
+                        // smooth minimum would drag the whole neighbourhood towards.
+                        // Only blend where both operands are real distances.
+                        if (k > 0.0) {
+                            out.appendLine("    { float e = $it(p, t);")
+                            out.appendLine(
+                                "      d = (d > 1e8 || e > 1e8) ? min(d, e) : rectslSmin(d, e, ${k.glslFloat()}); }"
+                            )
+                        } else {
+                            out.appendLine("    d = min(d, $it(p, t));")
+                        }
+                    }
                     out.appendLine("    return d;")
                     out.appendLine("}")
                     out.appendLine()
@@ -364,7 +418,7 @@ float rectslBounceOut(float t) {
 
             return buildString {
                 appendLine("// ${rect.id}")
-                appendLine("float rectslShape$index(vec2 p, float t) {")
+                appendLine("float ${prefix}Shape$index(vec2 p, float t) {")
                 if (usesC) appendLine("    vec2 c = vec2(0.0);")
                 if (!rotIsZero) appendLine("    float rot = 0.0;")
                 if (!scaleIsOne) appendLine("    vec2 s = vec2(1.0);")
@@ -479,7 +533,7 @@ float rectslBounceOut(float t) {
          */
         private fun functionFor(track: Track<Double>): String {
             trackNames[track]?.let { return it }
-            val name = "rectslTrack${trackNames.size}"
+            val name = "${prefix}Track${trackNames.size}"
             // Claim the name before emitting the body: the body recurses into
             // children, and a shared child must resolve to this same map.
             trackNames[track] = name
@@ -691,9 +745,48 @@ float rectslBounceOut(float t) {
     }
 }
 
+/**
+ * How a scene is lowered — the choices a consumer of the field cannot make for
+ * itself, because they happen *inside* `scene`.
+ *
+ * [blendRadius] replaces the `min` that unions the rects with a polynomial
+ * smooth minimum of that radius, in wall units. This is the one advertised
+ * capability that is not a look: it changes the set, so copies of an `array`
+ * fuse into one body as they pass each other. Rects gated invisible are excluded
+ * from the blend rather than dragging their 1e9 sentinel into it.
+ *
+ * [namePrefix] renames every symbol this emission owns (`<prefix>Shape*`,
+ * `<prefix>Track*`, `<prefix>Union*`). The scene-independent helpers — the box
+ * field, the easing curves, the smooth minimum — keep their `rectsl…` names on
+ * purpose, so two scenes emitted into one shader *share* them; see
+ * [RectSLSdfResult.globals].
+ */
+data class RectSLSdfOptions(
+    val blendRadius: Double = 0.0,
+    val namePrefix: String = "rectsl"
+) {
+    init {
+        require(blendRadius >= 0.0) { "blendRadius cannot be negative" }
+        require(namePrefix.isNotBlank() && namePrefix.all { it.isLetterOrDigit() || it == '_' }) {
+            "namePrefix must be a GLSL identifier fragment, was '$namePrefix'"
+        }
+    }
+}
+
 /** What [RectSLGlsl.emitSdf] produced, and anything it could not carry across. */
 data class RectSLSdfResult(
+    /** [globals] then [sceneGlsl]: the whole self-contained field, ready to paste. */
     val glsl: String,
+    /**
+     * Function name -> definition, for the helpers whose bodies depend on nothing
+     * in this program. Merging the maps of two emissions and writing each entry
+     * once is what lets two scenes share one shader; see [RectSLSdfOptions].
+     */
+    val globals: Map<String, String> = emptyMap(),
+    /** Just this program's own functions — tracks, shapes, unions, and `scene`. */
+    val sceneGlsl: String = glsl,
+    /** The name the scene function was emitted under. */
+    val sceneFunctionName: String = "rectslScene",
     val rectCount: Int,
     val trackFunctionCount: Int,
     /** Fidelity caveats — empty means nothing was approximated or dropped. */
