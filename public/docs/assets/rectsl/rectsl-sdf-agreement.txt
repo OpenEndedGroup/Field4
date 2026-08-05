@@ -1,0 +1,4 @@
+near (±1.0 wall units): 5246 point(s), max |GPU-CPU| = 1.084e-06, mean = 3.230e-07 (24-bit step 1.192e-07), coordinate residual 4.473e-07
+far (±32.0 wall units): 14600 point(s), max |GPU-CPU| = 4.464e-06, mean = 1.637e-06 (24-bit step 3.815e-06), coordinate residual 4.473e-07
+baked near (±1.0 wall units): 2541 point(s), max |GPU-CPU| = 1.025e-06, mean = 3.317e-07 (24-bit step 1.192e-07), coordinate residual 3.784e-07
+baked far (±32.0 wall units): 10512 point(s), max |GPU-CPU| = 4.933e-06, mean = 1.799e-06 (24-bit step 3.815e-06), coordinate residual 3.784e-07
