@@ -797,7 +797,7 @@ a spread of the real gallery — every scene that brings a new feature signature
 (groups, named easings, a forced bake, a different order of magnitude of rect
 count), because each of those is a different branch of `emitRect`:
 
-```diffstatic {data-lang=text}
+```diffstatic {data-lang=console}
 near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
 far  (±32):                14600 points, max 4.46e-06, mean 1.64e-06  (step 3.82e-06)
 baked near (±1):            2541 points, max 1.03e-06, mean 3.32e-07

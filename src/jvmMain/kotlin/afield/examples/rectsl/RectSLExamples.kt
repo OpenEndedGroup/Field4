@@ -397,7 +397,7 @@ object RectSLExamples {
         }
         var escapeEngine: KotlinScriptEngine? = null
         try {
-            blocks.forEachIndexed { index, source ->
+            blocks.forEachIndexed { index, (fence, source) ->
                 val result = if ("{{" in source) {
                     val engine = escapeEngine
                         ?: KotlinInterface2(filePrefix = "RECTSL_DOCS_ESCAPE_").also { escapeEngine = it }
@@ -406,8 +406,15 @@ object RectSLExamples {
                     compileRectSL(source, curves = placeholderCurves)
                 }
                 check(result.ok && result.programOrNull != null) {
-                    "public RectSL example ${index + 1} failed to compile:\n" +
-                        result.diagnostics.joinToString("\n")
+                    // Name the fence and quote its first line: a block that is not meant
+                    // to be a program at all is the likeliest reason to land here, and
+                    // the diagnostics alone read as a language error.
+                    "public RectSL example ${index + 1} failed to compile.\n" +
+                        "  fence: ```$fence\n" +
+                        "  first line: ${source.lineSequence().firstOrNull { it.isNotBlank() }?.trim()}\n" +
+                        "  ${result.diagnostics.joinToString("\n  ")}\n" +
+                        "If this block is not a RectSL program, give it a data-lang other " +
+                        "than `rectsl` or `text` — those two are the ones this check compiles."
                 }
             }
         } finally {
@@ -442,7 +449,9 @@ object RectSLExamples {
 
         val corpus = buildString {
             galleryDir.listFiles { f -> f.name.endsWith("_rectsl_.rectsl") }?.forEach { append(it.readText()).append('\n') }
-            if (examples.exists()) rectslCodeBlocks(examples.readText()).forEach { append(it).append('\n') }
+            if (examples.exists()) {
+                rectslCodeBlocks(examples.readText()).forEach { (_, body) -> append(body).append('\n') }
+            }
         }
         val used = corpusTokens(corpus).map(::canonicalOperator).toSet()
 
@@ -456,7 +465,13 @@ object RectSLExamples {
 
     /** First-column backticked tokens of every operator table, phrase words expanded. */
     private fun cheatsheetOperators(text: String): List<String> {
-        val skip = setOf("Model", "Kotlin entry points")
+        // Sections whose tables are not lists of RectSL words. "The looks, rendered"
+        // tabulates `RectSLSdfLook` presets — `fill`, `relief`, `motion-blur` and the
+        // rest are Kotlin-side names for ways of *shading* an emitted distance field,
+        // not words the RectSL VM has ever heard of, so demanding a worked example for
+        // each of them is a category error. (Their evidence is a rendered still apiece
+        // on the examples page, which is a stronger guarantee than this guard gives.)
+        val skip = setOf("Model", "Kotlin entry points", "The looks, rendered")
         val phrase = mapOf(
             "->wall meters" to listOf("->wall", "meters"), "->wall pixels" to listOf("->wall", "pixels"),
             "->wall abstract" to listOf("->wall", "abstract"), "->fit contain" to listOf("->fit", "contain"),
@@ -477,11 +492,21 @@ object RectSLExamples {
         return out.toList()
     }
 
-    /** Bodies of ```… data-lang=rectsl/text …``` fenced blocks. */
-    private fun rectslCodeBlocks(text: String): List<String> =
+    /**
+     * Every fenced block on a public page that this harness will try to compile *as
+     * RectSL* — which is `data-lang=rectsl` and, by long-standing convention on
+     * these pages, `data-lang=text`.
+     *
+     * The fence header is returned alongside the body because that is what a
+     * failure usually turns out to be about. A numeric report written as
+     * `data-lang=text` is compiled as a program and fails with "Unknown word: near",
+     * which names a word rather than the fence; the fix is to choose a different
+     * `data-lang`, and nothing in the message used to say so.
+     */
+    private fun rectslCodeBlocks(text: String): List<Pair<String, String>> =
         Regex("```([^\\n]*)\\n(.*?)```", RegexOption.DOT_MATCHES_ALL).findAll(text)
             .filter { "data-lang=rectsl" in it.groupValues[1] || "data-lang=text" in it.groupValues[1] }
-            .map { it.groupValues[2] }
+            .map { it.groupValues[1].trim() to it.groupValues[2] }
             .toList()
 
     /** Whitespace-split tokens with `#`-to-end-of-line comments stripped. */
