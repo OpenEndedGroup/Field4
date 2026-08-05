@@ -327,6 +327,40 @@ class PolytopeFaceHolesTest {
     }
 
     @Test
+    fun everyRimTriangleFacesTheWayTheFaceDoes() {
+        // A hole ring is wound against its outer ring, so a tessellator that passed the winding
+        // straight through would emit rim triangles facing backwards — invisible under ordinary
+        // back-face culling, and a bug that no area or coverage test can see. Each triangle's own
+        // cross product has to agree with the face's normal.
+        val solid = cubeWithWindow(window)
+        val topology = solid.topology
+        val geometry = solid.triangulate()
+        val windowed = topology.elements(2).single { topology.faceHasHoles(it.id) }
+        val normal = solid.faceNormal(windowed.id)
+        val mesh = geometry.mesh
+
+        var checked = 0
+        for (triangle in 0 until geometry.triangleCount) {
+            if (geometry.sourceFace(triangle) != windowed.id) continue
+            val a = mesh.indices[triangle * 3]
+            val b = mesh.indices[triangle * 3 + 1]
+            val c = mesh.indices[triangle * 3 + 2]
+            val ux = mesh.x(b) - mesh.x(a)
+            val uy = mesh.y(b) - mesh.y(a)
+            val uz = mesh.z(b) - mesh.z(a)
+            val vx = mesh.x(c) - mesh.x(a)
+            val vy = mesh.y(c) - mesh.y(a)
+            val vz = mesh.z(c) - mesh.z(a)
+            val facing = (uy * vz - uz * vy) * normal.x +
+                (uz * vx - ux * vz) * normal.y +
+                (ux * vy - uy * vx) * normal.z
+            assertTrue(facing > 1e-6f, "rim triangle $triangle faces backwards (facing = $facing)")
+            checked++
+        }
+        assertEquals(8, checked)
+    }
+
+    @Test
     fun aTriangulatorThatCannotDoHolesRefusesRatherThanFillingThemIn() {
         val message = assertFailsWith<IllegalArgumentException> {
             cubeWithWindow(window).triangulate(FanFaceTriangulator)
