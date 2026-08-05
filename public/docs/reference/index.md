@@ -4,7 +4,7 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**6180 public symbols across 125 source files**, 3855 of them (62%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**6180 public symbols across 125 source files**, 4045 of them (65%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
@@ -20,7 +20,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Function](function.md) | 12 | 418 | 302 (72%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Visualization](visualization.md) | 8 | 282 | 236 (83%) | Turning a value into something you can look at, without leaving the box. |
 | [Audio](audio.md) | 2 | 153 | 9 (5%) | Sound analysis and the network protocols that carry control data alongside it. |
-| [Audio AI](audio-ai.md) | 10 | 247 | 12 (4%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
+| [Audio AI](audio-ai.md) | 10 | 247 | 202 (81%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Workspace](workspace.md) | 2 | 78 | 75 (96%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 
 ## Every file, at a glance
@@ -123,7 +123,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [Polytope4.kt](polytopes.md#polytope4-kt) | Polytopes | 43 | 36 | Rank 4: the seeds, the coordinates and the viewing policy that keep the incidence core honest about being rank-general rather than a polyhedron library with a rank field. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [PolytopeVisualizers.kt](polytopes.md#polytopevisualizers-kt) | Polytopes | 1 | 1 | The single place this package knows that Field has a screen — and it is one function long. |  |
 | [props.kt](workspace.md#props-kt) | Workspace | 4 | 4 | The `prop` / `rootProp` macro pair — the typed, inheritable box-property slot. |  |
-| [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 190 | 0 |  | [Field Audio service reference](../field_audio_service_reference.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [Protocol.kt](audio-ai.md#protocol-kt) | Audio AI | 190 | 190 | The wire vocabulary of Field Audio — one Kotlin type per JSON object in the pinned service contract, and nothing else. | [Field Audio service reference](../field_audio_service_reference.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [quantilewarp.kt](graphics.md#quantilewarp-kt) | Graphics | 53 | 6 | Reshapes a scalar signal's distribution by fitting a monotone 8-knot PCHIP curve from the measured quantiles of recent samples onto the quantiles of a chosen target distribution — `TargetDistributions.UnitNormal` by default, or any `QuantileFunction`. | [Which of these signals actually depend on each other?](../statistics_examples.md) |
 | [randoms.kt](math.md#randoms-kt) | Math | 15 | 15 | Box-scoped randomness. | [Functions to FLine examples (Field graphics)](../functions_examples.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md) |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
