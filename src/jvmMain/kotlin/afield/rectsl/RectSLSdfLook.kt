@@ -208,8 +208,11 @@ layout(push_constant) uniform Push {
         appendLine("    // The standard three-corner fullscreen triangle: 0 -> (0,0), 1 -> (2,0), 2 -> (0,2).")
         appendLine("    vec2 unit = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);")
         appendLine("    vec2 ndc = unit * 2.0 - 1.0;")
-        appendLine("    // Wall space is centred on the origin and y-up; Vulkan clip space is y-down.")
-        appendLine("    v_world = vec2(ndc.x * push.wallWidth * 0.5, -ndc.y * push.wallHeight * 0.5);")
+        appendLine("    // Exactly WallSpec.worldToClip's mapping, inverted: that is an")
+        appendLine("    // ortho(-w/2, w/2, -h/2, h/2), which sends world -h/2 to clip y = -1. Negate")
+        appendLine("    // this and an SDF render comes out upside down against the raster render of")
+        appendLine("    // the same scene — which is how the side-by-side counterfactual caught it.")
+        appendLine("    v_world = ndc * vec2(push.wallWidth, push.wallHeight) * 0.5;")
         appendLine("    gl_Position = vec4(ndc, 0.0, 1.0);")
         appendLine("}")
     }
@@ -337,13 +340,6 @@ vec2 rectslGradient(float dx0, float dx1, float dy0, float dy1, float e) {
             appendLine("    float glow = exp(-${f(look.glowFalloff)} * max(d, 0.0));")
             appendLine("    c += ${look.glowColor.glsl()} * glow;")
         }
-        if (look.contourSpacing > 0.0) {
-            appendLine()
-            appendLine("    // Iso-distance lines every ${f(look.contourSpacing)} wall units, inside and out.")
-            appendLine("    float band = abs(fract(d / ${f(look.contourSpacing)} + 0.5) - 0.5) * ${f(look.contourSpacing)};")
-            appendLine("    float line = 1.0 - smoothstep(0.6 * px, 1.6 * px, band);")
-            appendLine("    c = mix(c, ${look.contourColor.glsl()}, line * 0.85);")
-        }
         if (look.fillColor != null) {
             appendLine()
             if (look.reliefDepth > 0.0) {
@@ -367,6 +363,15 @@ vec2 rectslGradient(float dx0, float dx1, float dy0, float dy1, float e) {
             }
             appendLine("    c = mix(c, body, cov);")
         }
+        if (look.contourSpacing > 0.0) {
+            appendLine()
+            appendLine("    // Iso-distance lines every ${f(look.contourSpacing)} wall units — drawn *after*")
+            appendLine("    // the fill so the interior bands survive, which is the half that shows the")
+            appendLine("    // field is signed and not a coverage mask.")
+            appendLine("    float band = abs(fract(d / ${f(look.contourSpacing)} + 0.5) - 0.5) * ${f(look.contourSpacing)};")
+            appendLine("    float line = 1.0 - smoothstep(0.6 * px, 1.6 * px, band);")
+            appendLine("    c = mix(c, ${look.contourColor.glsl()}, line * 0.85);")
+        }
         if (look.outlineColor != null && look.outlineWidth > 0.0) {
             appendLine()
             appendLine("    // Outline: a band |d| < ${f(look.outlineWidth)}, which needs the distance and")
@@ -383,12 +388,20 @@ vec2 rectslGradient(float dx0, float dx1, float dy0, float dy1, float e) {
      * A fragment shader that does not draw the field but *reports* it.
      *
      * One of `scene(p, t)`, `p.x` or `p.y` — selected by the `probeChannel` push
-     * constant — is written into the RGB channels as a 24-bit fixed-point number
-     * over `[-probeRange, probeRange]`, with alpha pinned to 1. That is the whole
-     * differential: read the framebuffer back and you have what the *compiled
-     * shader* thinks, at world positions the shader itself reported, ready to
-     * compare against the CPU sampler. Nothing is assumed about how pixels map to
-     * the wall, which is the one thing a hand-written mapping always gets wrong.
+     * constant — is written into the RGB channels as a 24-bit fixed-point number,
+     * with alpha pinned to 1. That is the whole differential: read the framebuffer
+     * back and you have what the *compiled shader* thinks, at world positions the
+     * shader itself reported, ready to compare against the CPU sampler. Nothing is
+     * assumed about how pixels map to the wall, which is the one thing a
+     * hand-written mapping always gets wrong.
+     *
+     * The two coordinate channels are encoded over the **wall's own size**, not
+     * over `probeRange`: a caller narrowing the distance range to resolve it
+     * finely must not thereby saturate the coordinates and quietly destroy the
+     * mapping it was about to fit. The first run of this probe did exactly that —
+     * `probeRange = 1` against a 9-unit wall clamped every `p.x` outside the
+     * middle ninth, and the differential reported 1.4 wall units of disagreement
+     * that were entirely its own.
      *
      * Alpha is left at 1 deliberately: the readback goes through a PNG, and a PNG
      * with a non-opaque alpha invites a decoder to premultiply the colour.
@@ -424,10 +437,18 @@ vec2 rectslGradient(float dx0, float dx1, float dy0, float dy1, float e) {
         appendLine("void main() {")
         appendLine("    vec2 p = v_world;")
         appendLine("    float v;")
-        appendLine("    if (push.probeChannel < 0.5) v = ${scene.sceneFunctionName}(p, push.time);")
-        appendLine("    else if (push.probeChannel < 1.5) v = p.x;")
-        appendLine("    else v = p.y;")
-        appendLine("    float u = clamp(v / push.probeRange, -1.0, 1.0) * 0.5 + 0.5;")
+        appendLine("    float range;")
+        appendLine("    if (push.probeChannel < 0.5) {")
+        appendLine("        v = ${scene.sceneFunctionName}(p, push.time);")
+        appendLine("        range = push.probeRange;")
+        appendLine("    } else if (push.probeChannel < 1.5) {")
+        appendLine("        v = p.x;")
+        appendLine("        range = push.wallWidth;   // |p.x| <= wallWidth/2, so never clamped")
+        appendLine("    } else {")
+        appendLine("        v = p.y;")
+        appendLine("        range = push.wallHeight;")
+        appendLine("    }")
+        appendLine("    float u = clamp(v / range, -1.0, 1.0) * 0.5 + 0.5;")
         appendLine("    outColor = vec4(rectslPack24(u), 1.0);")
         append("}")
     }
@@ -438,6 +459,9 @@ vec2 rectslGradient(float dx0, float dx1, float dy0, float dy1, float e) {
         val u = scaled / 16777215.0
         return (u * 2.0 - 1.0) * range
     }
+
+    /** The width of one 24-bit step at [range] — the probe's own quantisation floor. */
+    fun quantisation(range: Double): Double = 2.0 * range / 16777215.0
 
     private fun f(v: Double): String {
         val s = String.format("%.6f", v)

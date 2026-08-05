@@ -100,6 +100,13 @@ FABRICATE_DOCS_SCENES: dict[str, tuple[str, str]] = {
         "renderRectSLFit",
         "rectsl fit ready",
     ),
+    # The same scenes lowered to a GLSL signed distance field and rendered on the
+    # GPU: one still per look preset, a motion-blur clip, the raster-vs-SDF
+    # counterfactual, and the CPU/GPU differential.
+    "rectsl-sdf": (
+        "renderRectSLSdf",
+        "rectsl sdf ready",
+    ),
 }
 
 HARNESS_RELATIVE_PATH = "src/jvmMain/kotlin/afield/four/fabricated/StandardRendererDocsHarness.kt"
@@ -167,6 +174,13 @@ FABRICATE_SCENE_INPUTS: dict[str, tuple[str, ...]] = {
     "rectsl-gallery": _RECTSL_GALLERY_INPUTS,
     "rectsl-animations": _RECTSL_GALLERY_INPUTS,
     "rectsl-fit": ("src/jvmMain/kotlin/afield/four/fabricated/RectSLGalleryHarness.kt",),
+    # The SDF render depends on the emitter and the look layer as much as on the
+    # harness, so editing any of the three re-renders the page.
+    "rectsl-sdf": (
+        "src/jvmMain/kotlin/afield/four/fabricated/RectSLGalleryHarness.kt",
+        "src/jvmMain/kotlin/afield/rectsl/RectSLGlsl.kt",
+        "src/jvmMain/kotlin/afield/rectsl/RectSLSdfLook.kt",
+    ),
     "stacksl-gallery": _STACKSL_GALLERY_INPUTS,
     "stacksl-animations": _STACKSL_GALLERY_INPUTS,
 }

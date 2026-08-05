@@ -209,6 +209,28 @@ object StandardRendererDocsHarness {
         return target
     }
 
+    /**
+     * Renders a RectSL scene as a *signed distance field on the GPU* (see
+     * [RectSLGalleryHarness.renderSdf]): one still per look preset, a motion-blur
+     * clip, the raster-vs-SDF counterfactual, and the GPU↔CPU differential — which
+     * throws before any image is written if the compiled shader and the CPU sampler
+     * disagree. Everything lands in `public/docs/assets/rectsl/`; the hero is copied
+     * to [outputPath] for the fence to validate.
+     */
+    suspend fun renderRectSLSdf(
+        outputPath: String,
+        renderer: Renderer = rendererFromContextOrDocument()
+    ): File {
+        val assetsDir = generatedDocsAssetsDir("rectsl")
+        val hero = RectSLGalleryHarness.renderSdf(assetsDir, renderer)
+        val target = File(outputPath)
+        target.parentFile?.mkdirs()
+        target.delete()
+        target.writeBytes(hero.readBytes())
+        require(target.length() > 0L) { "rectsl sdf hero copy wrote an empty PNG" }
+        return target
+    }
+
     suspend fun renderMetalnessComparison(
         outputPath: String,
         renderer: Renderer = rendererFromContextOrDocument(),

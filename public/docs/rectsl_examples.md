@@ -631,6 +631,27 @@ RectSL only sampled the result. Reach for `fitBest` when you have a shape in min
 and just need the numbers dialed in, and for `evolve(...)` when the *structure*
 itself (which operators) is still unknown.
 
+## The scene as a distance field, on the GPU
+
+<!--
+FIELD_TEST
+id: docs.rectsl.sdf
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, rectsl, shaders, graphics, sdf]
+timeoutSec: 900
+execution: launch
+waitSec: 240.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-rectsl-sdf-hero.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_sdf-hero.png" source-image="/tmp/docs-rectsl-sdf-hero.png" wait="240.0" timeout="900" execution="launch" embed=false graphics-context=true name="rectsl-sdf" hidden=true fabricate-scene="rectsl-sdf"}
+```
+
+(prose to follow)
+
 ## Musicality — rhythm as scene structure
 
 The array primitives above multiply a shape across *space*. This section multiplies it across
