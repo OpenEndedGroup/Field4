@@ -4260,9 +4260,14 @@ class Server {
                                 metadataFile.writeText(ednText)
 
                                 val encodedName = URLEncoder.encode(candidate, "UTF-8")
-                                val openUrl = "https://localhost:${port}/index.html?file=${encodedName}"
-                                val projectUrl =
-                                    "https://localhost:${port}/${encodedName}/${SavingContext.METADATA_EDN}"
+                                // Answer on the connector the import arrived on. An offline viewer
+                                // served over plain HTTP can only reach the loopback HTTP connector
+                                // (Field's certificate is self-signed, so a cross-origin fetch to the
+                                // HTTPS port fails), and handing it back HTTPS links would drop the
+                                // user straight into the certificate interstitial.
+                                val base = "${call.request.local.scheme}://localhost:${call.request.local.serverPort}"
+                                val openUrl = "$base/index.html?file=${encodedName}"
+                                val projectUrl = "$base/${encodedName}/${SavingContext.METADATA_EDN}"
 
                                 call.respond(OfflineImportResponse(candidate, openUrl, projectUrl))
                             } catch (ex: Exception) {

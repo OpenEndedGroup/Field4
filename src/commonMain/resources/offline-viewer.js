@@ -9,9 +9,10 @@
  *
  * `Open in Field·4` is deliberately outside that read-only boundary. A click
  * first asks an embedding Field docs frame to import the EDN, then falls back to
- * POSTing it to `https://localhost:9092/api/import-offline-doc`. That operation
- * creates a new workspace document; callers must therefore treat remotely
- * supplied EDN as untrusted even though viewing it here does not execute it.
+ * POSTing it to a local Field's `/api/import-offline-doc` (see
+ * `fieldImportBases`). That operation creates a new workspace document; callers
+ * must therefore treat remotely supplied EDN as untrusted even though viewing it
+ * here does not execute it.
  */
 
 let monacoEditor = null;
@@ -826,27 +827,83 @@ function requestFieldHost(messageType, payload, options = {}) {
     });
 }
 
+const DEFAULT_FIELD_HTTPS_PORT = 9092;
+// Server.kt `loopbackHttpPortFor`: the plain-HTTP loopback connector sits at the
+// HTTPS port + 10000 unless AFIELD_HTTP_PORT overrides it.
+const FIELD_LOOPBACK_HTTP_PORT_OFFSET = 10000;
+
+function readPortParam(params, name) {
+    const raw = params.get(name);
+    if (!raw) return null;
+    const port = Number.parseInt(raw, 10);
+    return Number.isInteger(port) && port >= 1 && port <= 65535 ? port : null;
+}
+
+/**
+ * Base URLs to try, in order, when importing into a local Field.
+ *
+ * Field's HTTPS certificate is self-signed, so a cross-origin `fetch` to
+ * https://localhost:9092 fails outright with ERR_CERT_AUTHORITY_INVALID unless
+ * that browser profile has already accepted the exception — and a fetch cannot
+ * show the interstitial that would let the user accept it. When this page is
+ * itself served over plain HTTP we can talk to Field's loopback HTTP connector
+ * instead and sidestep the certificate entirely. From an HTTPS page that is not
+ * an option (mixed content), so only the HTTPS base is offered there.
+ */
+function fieldImportBases() {
+    const params = new URLSearchParams(window.location.search);
+    const httpsPort = readPortParam(params, 'fieldPort') || DEFAULT_FIELD_HTTPS_PORT;
+    const httpPort = readPortParam(params, 'fieldHttpPort') || httpsPort + FIELD_LOOPBACK_HTTP_PORT_OFFSET;
+
+    const bases = [];
+    if (window.location.protocol !== 'https:' && httpPort <= 65535) {
+        bases.push(`http://127.0.0.1:${httpPort}`);
+    }
+    bases.push(`https://localhost:${httpsPort}`);
+    return bases;
+}
+
 async function importOfflineDocViaLocalhost(recommendedName, ednText) {
-    const localBase = 'https://localhost:9092';
-    const response = await fetch(`${localBase}/api/import-offline-doc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            recommendedName,
-            ednText,
-            sourceUrl: window.location.href
-        })
+    const bases = fieldImportBases();
+    const body = JSON.stringify({
+        recommendedName,
+        ednText,
+        sourceUrl: window.location.href
     });
 
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const unreachable = [];
+    for (const localBase of bases) {
+        let response;
+        try {
+            response = await fetch(`${localBase}/api/import-offline-doc`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body
+            });
+        } catch (networkError) {
+            // Refused connection, rejected certificate, blocked by the browser —
+            // all surface as an opaque TypeError. Try the next base.
+            unreachable.push(localBase);
+            console.info(`offline-viewer import unreachable at ${localBase}`, networkError);
+            continue;
+        }
+
+        if (!response.ok) {
+            const detail = await response.text().catch(() => '');
+            throw new Error(`${localBase} returned HTTP ${response.status} ${response.statusText}${detail ? `: ${detail}` : ''}`);
+        }
+
+        return {
+            localBase,
+            result: await response.json()
+        };
     }
 
-    const result = await response.json();
-    return {
-        localBase,
-        result
-    };
+    const httpsBase = bases.find((base) => base.startsWith('https://'));
+    throw new Error(
+        `could not reach Field·4 at ${unreachable.join(' or ')}. Is Field running? ` +
+        `If it is, open ${httpsBase}/health once and accept the self-signed certificate.`
+    );
 }
 
 function setupOpenLocalButton(fileUrl, ednText, data) {
@@ -865,7 +922,7 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
         button.textContent = 'Sending to Field·4...';
         try {
             const recommendedName = deriveRecommendedName(fileUrl);
-            let localBase = 'https://localhost:9092';
+            let localBase = fieldImportBases()[0];
             let result = null;
             let hostOpened = false;
 
