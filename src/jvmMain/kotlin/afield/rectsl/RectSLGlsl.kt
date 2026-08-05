@@ -306,14 +306,13 @@ float rectslBounceOut(float t) {
         }
 
         /**
-         * One rect, with its ancestor group transforms composed outward exactly
-         * as [Transform2d.then] does on the CPU: the child's translation is
-         * scaled and rotated by the parent before being added, rotations and
-         * alphas accumulate, scales multiply.
-         */
-        /**
          * One rect's world transform and box, with statically-identity work left
          * out.
+         *
+         * The composition is the CPU's, outward through the ancestor groups
+         * exactly as [Transform2d.then] does it: a child's translation is scaled
+         * and rotated by its parent before being added, rotations and alphas
+         * accumulate, scales multiply.
          *
          * Most rects in a real scene never rotate, never scale, and never fade,
          * and most are not in a group — so writing the general composition for

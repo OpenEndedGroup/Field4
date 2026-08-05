@@ -312,12 +312,10 @@ private fun RectLangVm.applyQuoteToPattern(
 // --- §4b Selection variations -----------------------------------------------------------------
 
 private fun RectLangVm.installSelectionVariations() {
-    /**
-     * `selection k quote -- selection` — run the quote on the selection, but let it take effect
-     * only on cycles `0, k, 2k, …`. Both versions of every track are kept and chosen between per
-     * sample, so *any* mutator becomes conditional; anything the quote creates is gated to the
-     * same cycles.
-     */
+    // `selection k quote -- selection` — run the quote on the selection, but let it take effect
+    // only on cycles `0, k, 2k, …`. Both versions of every track are kept and chosen between per
+    // sample, so *any* mutator becomes conditional; anything the quote creates is gated to the
+    // same cycles.
     mutator("every") { vm ->
         val quote = vm.popQuote()
         val k = vm.popNum().toInt().coerceAtLeast(1)
@@ -337,11 +335,9 @@ private fun RectLangVm.installSelectionVariations() {
         vm.push(selection)
     }
 
-    /**
-     * `selection seconds quote -- selection` — superimpose a delayed, transformed echo. The
-     * visual `off`. Delay is in seconds so it composes with the rest of RectSL; write
-     * `1 8 / cycles` or `1 beats` for a musical one.
-     */
+    // `selection seconds quote -- selection` — superimpose a delayed, transformed echo. The
+    // visual `off`. Delay is in seconds so it composes with the rest of RectSL; write
+    // `1 8 / cycles` or `1 beats` for a musical one.
     mutator("off") { vm ->
         val quote = vm.popQuote()
         val dt = vm.popNum()
@@ -353,12 +349,10 @@ private fun RectLangVm.installSelectionVariations() {
         vm.push(VSelection(selection.refs + copies))
     }
 
-    /**
-     * `selection quote -- selection` — the visual `jux`: a mirrored twin, transformed by the
-     * quote. Tidal's `jux` sends the transformed copy to the other stereo channel; left/right is
-     * already the spatial reading of pan, so mirroring about the wall's centre is the same idea
-     * in the same place.
-     */
+    // `selection quote -- selection` — the visual `jux`: a mirrored twin, transformed by the
+    // quote. Tidal's `jux` sends the transformed copy to the other stereo channel; left/right is
+    // already the spatial reading of pan, so mirroring about the wall's centre is the same idea
+    // in the same place.
     mutator("jux") { vm ->
         val quote = vm.popQuote()
         val selection = vm.popSelectionOrActive("->jux")
@@ -369,7 +363,7 @@ private fun RectLangVm.installSelectionVariations() {
         vm.push(VSelection(selection.refs + copies))
     }
 
-    /** `selection probability -- selection` — deterministic per-object, per-cycle dropout. */
+    // `selection probability -- selection` — deterministic per-object, per-cycle dropout.
     mutator("degrade") { vm ->
         val p = vm.popNum()
         val selection = vm.popSelectionOrActive("->degrade")
@@ -381,12 +375,10 @@ private fun RectLangVm.installSelectionVariations() {
         vm.push(selection)
     }
 
-    /**
-     * `selection stepSeconds -- selection` — `->stagger-time` in musical units is just
-     * `->stagger-time` with a converted number, but a *swung* stagger is not expressible that
-     * way, so this is the one that earns its place: copy `k` is delayed by `k` steps, and every
-     * odd copy is pushed a further `amount` of a step late.
-     */
+    // `selection stepSeconds -- selection` — `->stagger-time` in musical units is just
+    // `->stagger-time` with a converted number, but a *swung* stagger is not expressible that
+    // way, so this is the one that earns its place: copy `k` is delayed by `k` steps, and every
+    // odd copy is pushed a further `amount` of a step late.
     mutator("stagger-swing") { vm ->
         val amount = vm.popNum()
         val step = vm.popNum()
@@ -403,30 +395,26 @@ private fun RectLangVm.installSelectionVariations() {
 // --- §5 Layout: rhythm in space ------------------------------------------------------------------
 
 internal fun RectLangVm.installLayoutWordsImpl() {
-    /**
-     * `[template] pattern quote -- selection` — lay one copy per event **across the wall**
-     * instead of across time: a rhythm read as a ruler.
-     *
-     * This is the Fischinger closure, and it is the reason mini-notation is worth having on the
-     * geometry side at all. `"bd [sd sd] hh*4"` is a nested subdivision of the unit interval;
-     * so is a row of rectangles. The same string can drive when things happen and where they
-     * sit, which is what "visual music" means literally rather than metaphorically.
-     *
-     * One cycle spans the wall. Each copy is centred on its event and given that event's
-     * duration as its width, so an `@`-elongated step is a wider rect and a `[a b]` subdivision
-     * is two narrow ones. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body
-     * does, so a strip can still vary per copy.
-     */
+    // `[template] pattern quote -- selection` — lay one copy per event **across the wall**
+    // instead of across time: a rhythm read as a ruler.
+    //
+    // This is the Fischinger closure, and it is the reason mini-notation is worth having on the
+    // geometry side at all. `"bd [sd sd] hh*4"` is a nested subdivision of the unit interval;
+    // so is a row of rectangles. The same string can drive when things happen and where they
+    // sit, which is what "visual music" means literally rather than metaphorically.
+    //
+    // One cycle spans the wall. Each copy is centred on its event and given that event's
+    // duration as its width, so an `@`-elongated step is a wider rect and a `[a b]` subdivision
+    // is two narrow ones. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body
+    // does, so a strip can still vary per copy.
     word("strip") { vm -> vm.stripLayout() }
 
-    /**
-     * `selection pulses steps rotation -- selection` — keep the Euclidean onsets of a selection
-     * and hide the rest. `12 array  5 12 0 ->euclid` turns twelve evenly spaced copies into a
-     * five-against-twelve figure without rebuilding the array.
-     *
-     * The off-steps are hidden rather than deleted: they may already be referenced by a
-     * selection the caller is holding, and RectSL has no node removal.
-     */
+    // `selection pulses steps rotation -- selection` — keep the Euclidean onsets of a selection
+    // and hide the rest. `12 array  5 12 0 ->euclid` turns twelve evenly spaced copies into a
+    // five-against-twelve figure without rebuilding the array.
+    //
+    // The off-steps are hidden rather than deleted: they may already be referenced by a
+    // selection the caller is holding, and RectSL has no node removal.
     mutator("euclid") { vm ->
         val rotation = vm.popNum().toInt()
         val steps = vm.popNum().toInt().coerceAtLeast(1)
