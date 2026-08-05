@@ -1,0 +1,112 @@
+name: rectsl_glsl_sdf
+description: >
+  Loadable starting point for lowering a RectSL scene to a GLSL signed distance
+  field. One box holds a small #rectsl program, compiles it, and calls
+  RectSLGlsl.emitSdf to get a self-contained `float scene(vec2 p, float t)` —
+  then prints the emitted shader along with how many rects it unions and how
+  many distinct animation curves it had to emit. Edit the rectsl string and
+  re-run to watch the GLSL change: add a key and a curve appears, add an
+  `array` and the copies fold to literals around one shared curve. A second box
+  shows what the field is for, wrapping the same emitted source in a fragment
+  shader that draws fill, outline, and glow from one distance. Replay this file
+  into a fresh Field with the agent backdoor (field_run_transcript) to get both
+  boxes with no other setup.
+operations:
+  # 1. the lowering box — this is the one to hack on.
+  - create:
+      box: sdf_lower
+      name: rectsl -> glsl sdf
+      frame: { x: -320.0, y: -240.0, w: 320.0, h: 260.0 }
+      properties:
+        code: |
+          // Lower a RectSL scene to a GLSL signed distance field.
+          //
+          // RectSL is a staged language: the stack VM runs once at compile time, so
+          // `array`, `grid`, selections, charts and the {{ }} escapes are all spent
+          // before this point. What reaches the GPU is a flat list of rects whose
+          // channels are tracks — which is why so little of the language has to be
+          // ported. See rectsl_cheatsheet.md, "Lowering to GLSL".
+          import afield.rectsl.RectAnimationOracle
+          import afield.rectsl.RectSLGlsl
+
+          val rectsl = """
+          #rectsl
+          ->wall 8 5 abstract
+          ->duration 4
+
+          "bar" rect
+            0.9 2.6 ->wh
+            '( 0=-2.6  4=2.6 ) ->x
+            '( 0=0  2=1.1  4=0 ) tcb ->y
+            '( 0=0  4=1.5708 ) ->rot
+          ;
+          """
+
+          val program = RectAnimationOracle.compile(rectsl).program
+          val sdf = RectSLGlsl.emitSdf(program, functionName = "scene")
+
+          println("rects unioned      : ${sdf.rectCount}")
+          println("curves emitted     : ${sdf.trackFunctionCount}")
+          println("fidelity caveats   : ${if (sdf.ok) "none" else sdf.notes.joinToString("; ")}")
+          println("shader source chars: ${sdf.glsl.length}")
+          println()
+          println(sdf.glsl)
+
+          // `sdf.glsl` is self-contained: no uniforms, no buffers, no samplers.
+          // Paste it into any shader that has a world-space point and a time.
+  # 2. what the field is for — the same emitted source, used.
+  - create:
+      box: sdf_use
+      name: using the distance
+      frame: { x: 40.0, y: -240.0, w: 320.0, h: 260.0 }
+      properties:
+        code: |
+          // A distance is worth more than a coverage mask. Everything below comes
+          // from the single float that `scene` returns, and none of it is available
+          // from the rasterized-quad path that RectSL normally renders through.
+          import afield.rectsl.RectAnimationOracle
+          import afield.rectsl.RectSLGlsl
+
+          val rectsl = """
+          #rectsl
+          ->wall 8 5 abstract
+          ->duration 4
+          "c" rect  0.7 ->square
+            '( 0=0  4=6.28318 ) ->rot
+            9 '( ic 0.8 * 0 ->offset ) array
+          ;
+          """
+
+          val sdf = RectSLGlsl.emitSdf(RectAnimationOracle.compile(rectsl).program, "scene")
+
+          // Nine copies, one shared rotation curve: the per-copy offsets are constant
+          // in time, so they fold to literals instead of nine more functions.
+          println("rects=${sdf.rectCount} curves=${sdf.trackFunctionCount}")
+
+          val fragment = buildString {
+              appendLine("#version 450")
+              appendLine("layout(location = 0) in vec2 v_world;")
+              appendLine("layout(location = 0) out vec4 outColor;")
+              appendLine("layout(push_constant) uniform Push { float time; } push;")
+              appendLine()
+              appendLine(sdf.glsl)
+              appendLine()
+              appendLine("void main() {")
+              appendLine("    float d = scene(v_world, push.time);")
+              appendLine("    float fill    = 1.0 - smoothstep(0.0, 0.012, d);")
+              appendLine("    float outline = 1.0 - smoothstep(0.0, 0.012, abs(d) - 0.03);")
+              appendLine("    float glow    = exp(-6.0 * max(d, 0.0));")
+              appendLine("    vec3 c = vec3(0.06, 0.07, 0.10) * glow;")
+              appendLine("    c = mix(c, vec3(0.18, 0.62, 0.95), fill);")
+              appendLine("    c = mix(c, vec3(1.0), outline * 0.85);")
+              appendLine("    outColor = vec4(c, 1.0);")
+              appendLine("}")
+          }
+
+          println(fragment.lines().takeLast(12).joinToString("\n"))
+          println()
+          println("full fragment: ${fragment.length} chars — hand it to a shader box or Shadertoy")
+  # 3. run both. The materializer only applies structural ops, so a saved
+  #    starting point opens un-run — these are here for transcript replay.
+  - execute: { box: sdf_lower, property: code }
+  - execute: { box: sdf_use, property: code }
