@@ -2,7 +2,7 @@
 
 Field is distributed as source, and the way you get it is the way you keep it up to date:
 
-```bash
+```diffstatic {data-lang=bash}
 git clone https://github.com/OpenEndedGroup/Field4.git
 ```
 
@@ -39,12 +39,43 @@ On Mac you might find that Apple cannot abide the idea of you downloading some c
 
 ![](assets/screenshot_4.png)
 
-### Autoupdate
+### Updating
 
-The `F1` command palette includes **Check for updates & download**. It compares
-`localVersion.json` with Field's update manifest, downloads a changed archive into `staging/`,
-promotes its `field4/` contents into the checkout while moving colliding existing files aside, and
-then updates `localVersion.json`. Restart Field after a successful update. If the local version file
-is absent or invalid, the command reports the checkout as versionless instead of applying anything.
+You update Field the way you update any checkout:
+
+```diffstatic {data-lang=bash}
+git pull
+```
+
+and then start it again, which rebuilds whatever changed.
+
+The `F1` command palette includes **Check for updates**, which tells you whether that is worth
+doing. It asks `origin` what it has on your branch — one `git ls-remote`, and nothing at all is
+fetched if you are already level — and reports how many commits you are behind, along with any
+local commits of your own that `origin` does not have.
+
+It stops there. It will not pull, merge, rebase or write anything into your working tree, because
+only you know whether that checkout has work in it. If the answer is "7 new commits on
+origin/main", the `git pull` is yours to run when you are ready.
 
 ![](assets/screenshot_17.png)
+
+The command is honest about not being able to answer. If you unpacked Field from an archive instead
+of cloning it, if `HEAD` is detached, if there is no `origin`, or if the network is down, it says
+which of those happened rather than reporting that you are up to date.
+
+!!! note "For maintainers: making an update announce itself"
+
+    Most commits should pass without comment — the count is enough. When a commit needs everyone
+    who pulls it to *do* something, give it a `Field-Notice` trailer:
+
+    ```diffstatic {data-lang=text}
+    feat(repl): move to the 2.5.255 Kotlin fork
+
+    ...body...
+
+    Field-Notice: the Kotlin fork moved — run ./gradlew clean before your next build
+    ```
+
+    Anyone whose update check spans that commit sees the trailer's text verbatim, instead of the
+    subject of the newest commit. Several notices in one range are all shown, deduplicated.

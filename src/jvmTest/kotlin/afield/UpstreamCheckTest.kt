@@ -35,6 +35,30 @@ class UpstreamCheckTest {
     }
 
     @Test
+    fun findsTheShaPastGitsChatter() {
+        assertEquals("c3c6fcffd9c3ba4908c47670266478e5a06fb510", firstObjectId("c3c6fcffd9c3ba4908c47670266478e5a06fb510"))
+        // ls-remote: sha, tab, ref.
+        assertEquals(
+            "c3c6fcffd9c3ba4908c47670266478e5a06fb510",
+            firstObjectId("c3c6fcffd9c3ba4908c47670266478e5a06fb510\trefs/heads/main"),
+        )
+        // stderr is folded into the same stream, so the answer is not always first.
+        assertEquals(
+            "c3c6fcffd9c3ba4908c47670266478e5a06fb510",
+            firstObjectId("warning: redirecting to https://example.invalid/\nc3c6fcffd9c3ba4908c47670266478e5a06fb510\trefs/heads/main"),
+        )
+    }
+
+    @Test
+    fun refusesToReadAShaOutOfProse() {
+        assertNull(firstObjectId(""))
+        assertNull(firstObjectId("fatal: not a git repository"))
+        assertNull(firstObjectId("warning: redirecting to https://example.invalid/"))
+        // Too short to be an abbreviated object id, so not one.
+        assertNull(firstObjectId("abcdef"))
+    }
+
+    @Test
     fun readsShaSubjectAndNotices() {
         val raw = record("abc123", "fix(pat): a bar line is not two notes", "rebuild the REPL") +
             record("def456", "docs: a page", null)
@@ -226,6 +250,19 @@ class UpstreamCheckTest {
 
         val unavailable = assertIs<UpstreamStatus.Unavailable>(status, "got $status")
         assertTrue("no 'origin' remote" in unavailable.reason, unavailable.reason)
+    }
+
+    @Test
+    fun aBranchWithNoTrackingFallsBackToItsOwnNameOnOrigin() {
+        // No `@{upstream}` is configured here, so the remote branch name can only come from the
+        // local branch name — and origin has no such branch, which is the honest answer.
+        val (clone, _) = cloneWithOrigin()
+        git(clone, "switch", "--quiet", "--create", "a-branch-of-my-own")
+
+        val status = runBlocking { checkUpstream(clone) }
+
+        val unavailable = assertIs<UpstreamStatus.Unavailable>(status, "got $status")
+        assertTrue("no branch named 'a-branch-of-my-own'" in unavailable.reason, unavailable.reason)
     }
 
     @Test

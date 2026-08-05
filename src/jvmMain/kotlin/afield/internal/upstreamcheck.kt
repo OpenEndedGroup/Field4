@@ -81,22 +81,23 @@ suspend fun checkUpstream(
     // An explicitly configured upstream wins, so a fork tracking `upstream/main` is asked about the
     // branch it actually follows rather than one that merely shares its name.
     val configured = git.run("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
-    val remoteBranch = configured.text.substringAfter("$remote/", missingDelimiterValue = "")
-        .ifEmpty { branch.text }
+    val remoteBranch = configured.text
+        .takeIf { configured.ok }   // on failure `text` is git's error message, not a ref
+        ?.substringAfter("$remote/", missingDelimiterValue = "")
+        ?.ifEmpty { null }
+        ?: branch.text
     val remoteRef = "$remote/$remoteBranch"
 
     val lsRemote = git.run("ls-remote", remote, "refs/heads/$remoteBranch")
     if (!lsRemote.ok) {
         return@withContext UpstreamStatus.Unavailable("could not reach $remote (${lsRemote.text.oneLine()})")
     }
-    val remoteSha = lsRemote.text.substringBefore('\t', missingDelimiterValue = "")
-    if (remoteSha.isEmpty()) {
-        return@withContext UpstreamStatus.Unavailable("$remote has no branch named '$remoteBranch'")
-    }
+    val remoteSha = firstObjectId(lsRemote.text)
+        ?: return@withContext UpstreamStatus.Unavailable("$remote has no branch named '$remoteBranch'")
 
-    val localSha = git.run("rev-parse", "HEAD")
-    if (!localSha.ok) return@withContext UpstreamStatus.Unavailable("could not resolve HEAD")
-    if (localSha.text == remoteSha) return@withContext UpstreamStatus.UpToDate(remoteRef, ahead = 0)
+    val localSha = firstObjectId(git.run("rev-parse", "HEAD").text)
+        ?: return@withContext UpstreamStatus.Unavailable("could not resolve HEAD")
+    if (localSha == remoteSha) return@withContext UpstreamStatus.UpToDate(remoteRef, ahead = 0)
 
     // The shas differ, so it is worth the round trip. Fetching a branch by name writes FETCH_HEAD
     // and leaves every local ref — including refs/remotes — exactly where it was.
@@ -106,18 +107,30 @@ suspend fun checkUpstream(
     }
     // Read the target back from FETCH_HEAD rather than trusting the sha ls-remote reported: if the
     // branch moved between the two calls, this describes what we actually have.
-    val target = git.run("rev-parse", "FETCH_HEAD")
-    if (!target.ok) return@withContext UpstreamStatus.Unavailable("fetched from $remote but could not resolve FETCH_HEAD")
+    val target = firstObjectId(git.run("rev-parse", "FETCH_HEAD").text)
+        ?: return@withContext UpstreamStatus.Unavailable("fetched from $remote but could not resolve FETCH_HEAD")
 
-    val counts = git.run("rev-list", "--left-right", "--count", "HEAD...${target.text}")
+    val counts = git.run("rev-list", "--left-right", "--count", "HEAD...$target")
     val (ahead, behind) = parseAheadBehind(counts.text.takeIf { counts.ok } ?: "")
         ?: return@withContext UpstreamStatus.Unavailable("could not count the commits between HEAD and $remoteRef")
 
     if (behind == 0) return@withContext UpstreamStatus.UpToDate(remoteRef, ahead)
 
-    val log = git.run("log", "--reverse", "--format=$LOG_FORMAT", "HEAD..${target.text}")
+    val log = git.run("log", "--reverse", "--format=$LOG_FORMAT", "HEAD..$target")
     UpstreamStatus.Behind(remoteRef, behind, ahead, parseUpstreamLog(log.text.takeIf { log.ok } ?: ""))
 }
+
+private val OBJECT_ID = Regex("^([0-9a-f]{7,64})(\\s|$)")
+
+/**
+ * The first object id in [raw]. Because stderr is folded into the stream we read, git's advice and
+ * warnings — "warning: redirecting to https://…" ahead of an `ls-remote`, say — can arrive before
+ * the answer. A sha is therefore something to find, not something to assume is on the first line.
+ */
+internal fun firstObjectId(raw: String): String? =
+    raw.lineSequence()
+        .mapNotNull { OBJECT_ID.find(it.trim())?.groupValues?.get(1) }
+        .firstOrNull()
 
 /** Parses `rev-list --left-right --count A...B` output into (ahead, behind). */
 internal fun parseAheadBehind(raw: String): Pair<Int, Int>? {
@@ -187,20 +200,27 @@ private class GitRunner(private val repoDir: File, private val timeoutSeconds: L
     data class Result(val ok: Boolean, val text: String)
 
     fun run(vararg args: String): Result {
+        // Output goes to a file rather than a pipe on purpose. Reading a pipe to EOF blocks until
+        // the child exits, which would make waitFor's timeout unreachable — exactly backwards for
+        // the case it exists to cover, a `fetch` against a remote that has stopped answering.
+        var sink: File? = null
         return try {
+            sink = File.createTempFile("afield-git-", ".out")
             val process = ProcessBuilder(listOf("git") + args)
                 .directory(repoDir)
                 .redirectErrorStream(true)
+                .redirectOutput(sink)
                 .start()
             process.outputStream.close()
-            val output = process.inputStream.bufferedReader(StandardCharsets.UTF_8).readText()
             if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
                 return Result(false, "git ${args.firstOrNull()} timed out after ${timeoutSeconds}s")
             }
-            Result(process.exitValue() == 0, output.trim())
+            Result(process.exitValue() == 0, sink.readText(StandardCharsets.UTF_8).trim())
         } catch (e: Exception) {
             Result(false, e.message ?: e.javaClass.simpleName)
+        } finally {
+            sink?.delete()
         }
     }
 }

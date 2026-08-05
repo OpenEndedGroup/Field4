@@ -641,3 +641,4 @@ See `server/README.md` for usage.
   - `src/jsMain/kotlin/afield/*` (UI behavior)
 - Keep EDN compatibility: prefer additive changes, version gates, or fallbacks in loaders.
 - Avoid editing minified/vendor assets unless unavoidable; prefer changing Kotlin/JS or the unminified sources that generate them.
+- If a commit obliges everyone who pulls it to *do* something — clean the build, re-run a generator, install a tool — end its message with a `Field-Notice:` trailer stating that, in one line, in the imperative. Field's **Check for updates** command shows those trailers verbatim to anyone whose update check spans the commit (`src/jvmMain/kotlin/afield/internal/upstreamcheck.kt`). Ordinary commits should not carry one: the notice only carries weight while it stays rare.

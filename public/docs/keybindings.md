@@ -293,7 +293,7 @@ exactly what a fresh `keybindings.yaml` says.
 | Command id | Default | Where | What it does |
 | --- | --- | --- | --- |
 | `-copy` | *(none)* | both | Duplicate box(es) |
-| `-update-check` | *(none)* | both | Check for updates & download |
+| `-update-check` | *(none)* | both | Check for updates |
 | `add-editor-to-output` | *(none)* | both | Add Editor to Output Area |
 | `align` | *(none)* | both | Align boxes |
 | `connect` | `g` | canvas | Connect boxes |
