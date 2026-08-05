@@ -101,7 +101,9 @@ private data class EdgeKey(val a: Int, val b: Int) {
 internal fun realizedPolyhedron(
     coordinates: List<Vec3>,
     unorientedFaces: List<List<Int>>,
-    /** Inner rings per face, keyed by index into [unorientedFaces]; wound opposite the outer ring. */
+    // Inner rings per face, keyed by index into unorientedFaces. Each comes out wound against its own
+    // outer ring, and that is settled below rather than asked of the caller: it is a fact about
+    // coordinates, which this function has and the caller's index lists do not.
     unorientedHoles: Map<Int, List<List<Int>>> = emptyMap(),
 ): PolyhedralObject {
     require(unorientedFaces.all { it.size >= 3 }) { "every face needs at least three vertices" }

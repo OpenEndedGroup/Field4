@@ -333,8 +333,8 @@ sealed interface NormalPolicy {
         internal val cosineThreshold: Double = kotlin.math.cos(Math.toRadians(creaseDegrees))
     }
 
-    /** Fully smooth: every face at a vertex contributes, whatever the dihedral. */
     companion object {
+        /** Fully smooth: every face at a vertex contributes, whatever the dihedral. */
         val Smooth: NormalPolicy = Crease(180.0)
     }
 }
