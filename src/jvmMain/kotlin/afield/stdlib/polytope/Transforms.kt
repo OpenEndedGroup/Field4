@@ -31,16 +31,20 @@ import afield.stdlib.Vec3
  * notation cannot say either thing; [TransformDeployment] records what was selected and which
  * scalars were resolved, so such a step is still exactly replayable.
  *
+ * ## Every operator is on both receivers
+ *
+ * All thirteen are declared on [PolyhedralObject] *and* on [PolytopeTransformResult], so a chain
+ * reads the same wherever a step sits: `cube().ambo().bevel().kis()`. The composites take no
+ * realization policy in either position, which is the runtime rule from [transform] expressed in the
+ * signature instead. Until 2026-08-05 the eight composites were on [PolyhedralObject] only and
+ * `needle`, `zip` and `ortho` had no named function at all.
+ *
  * ## What this will not do
  *
  * - **Rank 3 and closed manifolds only.** Every step validates its input *and* its output with
  *   manifold checking on, so a non-manifold complex or an inconsistently oriented vertex fan throws
- *   rather than producing a plausible-looking bad mesh.
- * - **The composites are declared on [PolyhedralObject] only.** `cube().ambo()` returns a
- *   [PolytopeTransformResult], which has no `bevel()` — so `cube().ambo().bevel()` does not compile.
- *   Write `cube().ambo().transform(ConwayOperator.BEVEL)`, or let `conway("baC")` parse the whole
- *   expression. `needle`, `zip` and `ortho` have no extension function at all and are reachable only
- *   through [ConwayOperator] or Conway notation.
+ *   rather than producing a plausible-looking bad mesh. A face with a hole is refused by name: it is
+ *   a surface with boundary, and the operators are not defined on one.
  * - **Nothing here produces a canonical shape.** The default policies are cheap local constructions —
  *   a centroid, a midpoint, a fraction along an edge — so a long chain drifts away from anything
  *   symmetric. [PolyhedralObject.canonicalize] is the repair.
@@ -919,8 +923,10 @@ fun PolyhedralObject.transform(
  * A composite is expanded into its primitive word and run one primitive at a time with each
  * primitive's default policy, then recorded in [notationHistory] as the single operator you asked
  * for while [history] keeps every step. Passing a [realizationPolicy] alongside a composite throws.
- * This is also the escape hatch for the composites that have no extension function of their own:
- * `transform(ConwayOperator.NEEDLE)`, `ZIP`, `ORTHO`, and any composite mid-chain.
+ *
+ * Every operator also has a named extension on this type — [bevel], [needle], [ortho] and the rest —
+ * so this is the form to reach for when the operator is a *value*: iterating [ConwayOperator.entries],
+ * replaying a `notationHistory`, or driving a chain from a UI.
  */
 fun PolytopeTransformResult.transform(
     operation: ConwayOperator,
@@ -1215,48 +1221,116 @@ fun PolytopeTransformResult.gyro(
     attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
 ): PolytopeTransformResult = transform(ConwayOperator.GYRO, realizationPolicy, attributePolicy)
 
+// =============================================================================================
+// The eight composites. Each is declared on *both* receivers, so an expression reads the same
+// whether it is the first step or the fifth: `cube().ambo().bevel().kis()`. They take no
+// realization policy — a composite runs as several primitives and one policy cannot speak for all
+// of them — which is the same rule `transform` enforces, expressed in the signature instead of at
+// runtime. `notationHistory` records the composite you asked for; `history` records what ran.
+// =============================================================================================
+
 /**
  * Conway `j = da`: the rhombic form. Every original edge becomes one quadrilateral spanning its two
  * endpoints and the centres of its two faces; `jC` is the rhombic dodecahedron.
- *
- * Declared on [PolyhedralObject] only, like every composite here — mid-chain write
- * `transform(ConwayOperator.JOIN)`, or let `conway("jC")` parse the whole expression.
  */
-fun PolyhedralObject.join(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
-    transform(ConwayOperator.JOIN, attributePolicy = attributePolicy)
+fun PolyhedralObject.join(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.JOIN, attributePolicy = attributePolicy)
+
+/** `join` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.join(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.JOIN, attributePolicy = attributePolicy)
+
+/**
+ * Conway `n = kd`: needle. The dual, kised — so every face of the original becomes a vertex and the
+ * result is a triangulation whose long diagonals run between the old face centres. `nC` is the
+ * triakis octahedron's combinatorics.
+ */
+fun PolyhedralObject.needle(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.NEEDLE, attributePolicy = attributePolicy)
+
+/** `needle` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.needle(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.NEEDLE, attributePolicy = attributePolicy)
+
+/**
+ * Conway `z = dk`: zip, the dual of the needle. Every original face keeps its place and every vertex
+ * becomes a face, as truncation does, but the faces come out as hexagons over a triangulation rather
+ * than as doubled polygons. `zC` is the truncated octahedron's combinatorics.
+ */
+fun PolyhedralObject.zip(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.ZIP, attributePolicy = attributePolicy)
+
+/** `zip` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.zip(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.ZIP, attributePolicy = attributePolicy)
+
+/**
+ * Conway `o = jj`: ortho. Join twice, so every original face of n sides becomes n quadrilaterals and
+ * every original edge becomes a vertex of degree 4. `oC` is the tetrakis hexahedron's dual form.
+ */
+fun PolyhedralObject.ortho(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.ORTHO, attributePolicy = attributePolicy)
+
+/** `ortho` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.ortho(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.ORTHO, attributePolicy = attributePolicy)
 
 /**
  * Conway `e = aa`: pull every face away from the centre, filling the gaps with a quadrilateral per
  * original edge and an n-gon per original vertex. `eC` is the rhombicuboctahedron.
- *
- * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.EXPAND)`.
  */
-fun PolyhedralObject.expand(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
-    transform(ConwayOperator.EXPAND, attributePolicy = attributePolicy)
+fun PolyhedralObject.expand(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.EXPAND, attributePolicy = attributePolicy)
+
+/** `expand` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.expand(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.EXPAND, attributePolicy = attributePolicy)
 
 /**
  * Conway `s = dgd`: the snub. Original faces survive, separated by bands of triangles, and the
  * result is chiral. `sC` is the snub cube.
- *
- * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.SNUB)`.
  */
-fun PolyhedralObject.snub(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
-    transform(ConwayOperator.SNUB, attributePolicy = attributePolicy)
+fun PolyhedralObject.snub(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.SNUB, attributePolicy = attributePolicy)
+
+/** `snub` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.snub(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.SNUB, attributePolicy = attributePolicy)
 
 /**
  * Conway `m = kj`: triangulate completely by adding both a face centre and an edge midpoint, so
  * every output face is a triangle. `mC` has 48 of them.
- *
- * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.META)`.
  */
-fun PolyhedralObject.meta(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
-    transform(ConwayOperator.META, attributePolicy = attributePolicy)
+fun PolyhedralObject.meta(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.META, attributePolicy = attributePolicy)
+
+/** `meta` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.meta(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.META, attributePolicy = attributePolicy)
 
 /**
  * Conway `b = ta`: truncate the rectification, so each original face, vertex and edge becomes a face
  * and no two of the original faces touch. `bC` is the truncated cuboctahedron.
- *
- * Declared on [PolyhedralObject] only; mid-chain use `transform(ConwayOperator.BEVEL)`.
  */
-fun PolyhedralObject.bevel(attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes) =
-    transform(ConwayOperator.BEVEL, attributePolicy = attributePolicy)
+fun PolyhedralObject.bevel(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.BEVEL, attributePolicy = attributePolicy)
+
+/** `bevel` in the middle of a chain: same operator, carrying lineage, history and deployments forward. */
+fun PolytopeTransformResult.bevel(
+    attributePolicy: AttributePropagationPolicy = PreserveCommonAttributes,
+): PolytopeTransformResult = transform(ConwayOperator.BEVEL, attributePolicy = attributePolicy)
