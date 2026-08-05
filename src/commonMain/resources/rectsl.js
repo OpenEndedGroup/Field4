@@ -26,6 +26,9 @@
   const higherWords = new Set(["all", "roots", "selected", "children", "descendants", "rects", "groups", "tagged", "tagged?", "each", "map", "filter", "where", "times", "repeat", "range", "i", "loop-count", "n", "array", "grid", "radial", "f", "f0", "fc", "ic", "col", "row", "cols", "rows", "colc", "rowc", "ease", "gaussian", "noise", "fbm", "sample", "reflect", "tile"]);
   const operatorWords = new Set(["+", "add", "-", "sub", "*", "mul", "/", "div", "mod", "pow", "min", "max", "neg", "negate", "abs", "floor", "ceil", "fract", "sqrt", "sin", "cos", "clamp", "sat", "saturate", "mix", "lerp", "smoothstep", "<", "lt", "<=", "lte", ">", "gt", ">=", "gte", "=", "eq", "!=", "<>", "neq", "and", "or", "not"]);
   const constants = new Set(["pi", "tau"]);
+  // The musical layer's non-mutator words. The `->` ones need no entry here: they are
+  // recognised through wordDocs' "mutator" effect, one line below in classifyToken.
+  const musicWords = new Set(["beats", "cycles", "cycle-secs", "scene-cycles", "pat", "t", "dur", "cyc", "step", "atom", "atom?", "param", "param?", "mini", "sine", "cosine", "saw", "isaw", "tri", "square", "rand", "perlin", "nums", "texts", "segment", "pat-range", "quantise", "quantize", "bipolar", "euclid", "hold-pat", "fast", "slow", "rev", "palindrome", "iter", "iter-back", "ply", "stut", "linger", "pat-rot", "shuffle", "degrade-by", "swing", "swing-by", "press", "press-by", "pat-delay", "every", "off", "superimpose", "inside", "outside", "sometimes-by", "stack-pat", "cat-pat", "strip"]);
   const wordDoc = (signature, detail, insertText = null, effect = "ordinary") =>
     ({ signature, detail, insertText, effect });
   const mutatorDoc = (signature, detail, insertText = null) =>
@@ -224,6 +227,81 @@
     ["smoothstep", wordDoc("low high x -- out", "Smooth Hermite step.")],
     ["pi", wordDoc("-- number", "Push pi.")],
     ["tau", wordDoc("-- number", "Push tau.")],
+
+    // The musical layer (RectSLPattern.kt / RectSLPatternOps.kt): the Tidal pattern
+    // language as scene structure. A pattern is a track and an event is a life window.
+    ["->cps", mutatorDoc("(prefix) ->cps 2", "Cycles per second — the scene's musical clock. Default 1, so a cycle is a second.")],
+    ["->tempo", mutatorDoc("(prefix) ->tempo 120", "Beats per minute; cps = bpm / 60 / beatsPerCycle. Commutes with ->beats-per-cycle.")],
+    ["->beats-per-cycle", mutatorDoc("(prefix) ->beats-per-cycle 4", "Beats in a cycle. Four (a 4/4 bar) by default.")],
+    ["->duration-cycles", mutatorDoc("(prefix) ->duration-cycles 8", "Scene duration in cycles. Set the tempo first.")],
+    ["beats", wordDoc("n -- seconds", "Convert beats to seconds through the scene clock.")],
+    ["cycles", wordDoc("n -- seconds", "Convert cycles to seconds through the scene clock.")],
+    ["cycle-secs", wordDoc("-- seconds", "The length of one cycle.")],
+    ["scene-cycles", wordDoc("-- number", "How many cycles the scene lasts.")],
+
+    ["pat", wordDoc("[template] pattern quote -- selection", "Reproduce a template once per pattern event, each copy ->live for exactly that event's window. The quote authors the copy in local time (0 is its own birth). Polymeter, Euclid, <a b>, ? and . all arrive from the mini-notation intact.")],
+    ["t", wordDoc("-- seconds", "Inside a pat body: this event's onset in scene seconds.")],
+    ["dur", wordDoc("-- seconds", "Inside a pat body: this event's length — its whole, not a clipped fragment.")],
+    ["cyc", wordDoc("-- number", "Inside a pat body: which cycle the onset falls in.")],
+    ["step", wordDoc("-- number", "Inside a pat body: index within the cycle, restarting at each bar line.")],
+    ["atom", wordDoc("-- string", "Inside a pat body: the event's mini-notation value (bd, 808:4, c'maj7).")],
+    ["atom?", wordDoc("name -- bool", "Inside a pat body: 1 when this event's atom is name.")],
+    ["param", wordDoc("key -- number", "Inside a pat body: a named parameter carried on the event (gain, pan, n, note).")],
+    ["param?", wordDoc("key -- bool", "Inside a pat body: 1 when the event carries that parameter.")],
+
+    ["mini", wordDoc("text -- pattern", "Parse mini-notation into a rhythm.")],
+    ["sine", wordDoc("-- signal", "Continuous sine over 0..1, one cycle long. Coerces to a track anywhere one is wanted.")],
+    ["cosine", wordDoc("-- signal", "Continuous cosine over 0..1.")],
+    ["saw", wordDoc("-- signal", "Rising ramp over 0..1 each cycle.")],
+    ["isaw", wordDoc("-- signal", "Falling ramp over 0..1 each cycle.")],
+    ["tri", wordDoc("-- signal", "Triangle over 0..1 each cycle.")],
+    ["square", wordDoc("-- signal", "Square wave over 0..1 each cycle.")],
+    ["rand", wordDoc("seed -- signal", "Deterministic noise — granularity-free and identical on any machine.")],
+    ["perlin", wordDoc("seed -- signal", "Deterministic smooth noise.")],
+    ["nums", wordDoc("pattern -- signal", "Read a rhythm's atoms as numbers.")],
+    ["texts", wordDoc("signal -- pattern", "Read a signal's values as atoms.")],
+    ["segment", wordDoc("signal n -- signal", "Sample a continuous signal into n events per cycle — how a smooth curve becomes stepped.")],
+    ["pat-range", wordDoc("signal lo hi -- signal", "Remap a signal from 0..1 to lo..hi. (range is the loop word.)")],
+    ["quantise", wordDoc("signal step -- signal", "Round a signal's values to a grid.")],
+    ["quantize", wordDoc("signal step -- signal", "Alias for quantise.")],
+    ["bipolar", wordDoc("signal -- signal", "Remap a signal from 0..1 to -1..1.")],
+    ["euclid", wordDoc("pulses steps rotation -- pattern", "A Euclidean rhythm as events — the onsets only, not a mask.")],
+    ["hold-pat", wordDoc("signal -- track", "Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember.")],
+
+    ["fast", wordDoc("pattern n -- pattern", "Play n times per cycle.")],
+    ["slow", wordDoc("pattern n -- pattern", "Stretch over n cycles. Absolute-time, so it spans cycles rather than dropping material.")],
+    ["rev", wordDoc("pattern -- pattern", "Reverse each cycle.")],
+    ["palindrome", wordDoc("pattern -- pattern", "Forwards, then backwards, one cycle each.")],
+    ["iter", wordDoc("pattern n -- pattern", "Rotate the bar one 1/n further each cycle — the walking feel, with no quote needed.")],
+    ["iter-back", wordDoc("pattern n -- pattern", "iter, the other way.")],
+    ["ply", wordDoc("pattern n -- pattern", "Repeat each event n times inside its own slot.")],
+    ["stut", wordDoc("pattern n gapDen -- pattern", "n strikes per event, each a 1/gapDen of a cycle after the last.")],
+    ["linger", wordDoc("pattern num den -- pattern", "Repeat the first num/den of the cycle for the whole cycle.")],
+    ["pat-rot", wordDoc("pattern n -- pattern", "Rotate values against the rhythm, keeping the onsets where they are.")],
+    ["shuffle", wordDoc("pattern n -- pattern", "Deterministically reorder n slots per cycle.")],
+    ["degrade-by", wordDoc("pattern p -- pattern", "Drop events with probability p, deterministically.")],
+    ["swing", wordDoc("pattern n -- pattern", "Triplet swing on a 2n grid — exact rational time, so still quantised.")],
+    ["swing-by", wordDoc("pattern num den n -- pattern", "Delay every second subdivision of a 2n grid by num/den of a subdivision.")],
+    ["press", wordDoc("pattern -- pattern", "Squeeze each event into the later half of its slot — off-beat without touching the grid.")],
+    ["press-by", wordDoc("pattern num den -- pattern", "press, by an arbitrary fraction.")],
+    ["pat-delay", wordDoc("pattern num den -- pattern", "Shift by num/den of a cycle.")],
+    ["every", wordDoc("pattern k quote -- pattern", "Apply the quote only on cycles 0, k, 2k… The quote runs once, at compile time.")],
+    ["off", wordDoc("pattern num den quote -- pattern", "Superimpose a copy shifted num/den of a cycle and transformed by the quote.")],
+    ["superimpose", wordDoc("pattern quote -- pattern", "Superimpose a transformed copy, unshifted.")],
+    ["inside", wordDoc("pattern n quote -- pattern", "Apply the quote at a slower time base.")],
+    ["outside", wordDoc("pattern n quote -- pattern", "Apply the quote at a faster time base.")],
+    ["sometimes-by", wordDoc("pattern p quote -- pattern", "Transform a deterministic proportion p of events. The two halves partition exactly.")],
+    ["stack-pat", wordDoc("a b -- pattern", "Play two patterns together.")],
+    ["cat-pat", wordDoc("a b -- pattern", "Play two patterns, one per half-cycle.")],
+
+    ["->every", mutatorDoc("selection k quote -- selection", "Let the quote take effect only on cycles 0, k, 2k… Both versions of every track are kept and chosen between per sample, so any mutator becomes conditional.")],
+    ["->off", mutatorDoc("selection seconds quote -- selection", "Superimpose a delayed, transformed echo.")],
+    ["->jux", mutatorDoc("selection quote -- selection", "A mirrored twin, transformed by the quote — left/right being the spatial reading of stereo pan.")],
+    ["->degrade", mutatorDoc("selection p -- selection", "Deterministic per-object, per-cycle dropout.")],
+    ["->stagger-swing", mutatorDoc("selection step amount -- selection", "->stagger-time with every odd copy pushed a further amount of a step late.")],
+
+    ["strip", wordDoc("[template] pattern quote -- selection", "Lay one copy per event across the wall instead of across time. One cycle spans the wall; each copy is as wide as its event is long.")],
+    ["->euclid", mutatorDoc("selection pulses steps rotation -- selection", "Keep the Euclidean onsets of a selection and hide the rest.")],
   ]);
 
   const effects = new Map([
@@ -379,7 +457,7 @@
     if (expectingDefinitionName) return "afield-stacksl-token-definition";
     const word = String(token.text || "").toLowerCase();
     if (wordDocs.get(word)?.effect === "mutator") return "afield-stacksl-token-creative";
-    if (stackWords.has(word) || objectWords.has(word) || geometryWords.has(word) || higherWords.has(word)) return "afield-stacksl-token-keyword";
+    if (stackWords.has(word) || objectWords.has(word) || geometryWords.has(word) || higherWords.has(word) || musicWords.has(word)) return "afield-stacksl-token-keyword";
     if (paintWords.has(word) || transformWords.has(word)) return "afield-stacksl-token-creative";
     if (trackWords.has(word) || operatorWords.has(word)) return "afield-stacksl-token-operator";
     if (sceneWords.has(word) || constants.has(word)) return "afield-stacksl-token-constant";

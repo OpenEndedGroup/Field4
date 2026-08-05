@@ -341,6 +341,123 @@ axes
 5 "turbo" legend
 ```
 
+## Musicality — the pattern language as scene structure
+
+RectSL's array primitives distribute copies in *space*. The musical layer distributes them in
+*time*, by borrowing [Field's Tidal-inspired pattern language](pattern_language.md) whole. The two
+fit together because they are already the same shape: a RectSL track is `sample(t)` and a pattern
+is `events(arc)` — both pure functions of time, with no simulation state. So a pattern **is** a
+track, and a pattern event — which carries an onset and a real duration — **is** a `->live` window.
+
+Everything the mini-notation can say therefore arrives intact: polymeter `{a b c}%8`, Euclid
+`bd(3,8)`, per-cycle alternation `<a b>`, `?` degrade, `.` grouping, `@` elongation. RectSL does
+not parse any of it.
+
+### Clock
+
+A cycle is the pattern language's bar. `->cps` states cycles per second directly; `->tempo` states
+it as a musician would. The two spellings of tempo commute — `->tempo` remembers its bpm, so
+`->beats-per-cycle` re-derives from it whichever order they appear in.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `->cps` | *(prefix)* `->cps 2` | Cycles per second. Default `1`, so a cycle is a second and a scene that never mentions the clock is unaffected. |
+| `->tempo` | *(prefix)* `->tempo 120` | Beats per minute; `cps = bpm / 60 / beatsPerCycle`. |
+| `->beats-per-cycle` | *(prefix)* `->beats-per-cycle 3` | Beats in a cycle. Four (a 4/4 bar) by default. |
+| `->duration-cycles` | *(prefix)* `->duration-cycles 8` | Scene duration in cycles rather than seconds. Set the tempo first. |
+| `beats` | `n -- seconds` | Convert beats to seconds. |
+| `cycles` | `n -- seconds` | Convert cycles to seconds. |
+| `cycle-secs` | `-- seconds` | The length of one cycle. |
+| `scene-cycles` | `-- number` | How many cycles the scene lasts. |
+
+### `pat` — one copy per event
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `pat` | `[template] pattern quote -- selection` | Reproduce the template **once per event**, each copy `->live` for exactly that event's window. The quote authors the copy's flight in *local* time (0 is its own birth), like `->split`. Anything the quote creates is given the same window, so `pat` composes with `array`, `grid` and `->split`. An all-rests pattern shows nothing. |
+| `t` | `-- seconds` | This event's onset. |
+| `dur` | `-- seconds` | This event's length — its *whole*, not a fragment. |
+| `cyc` | `-- number` | Which cycle the onset falls in. |
+| `step` | `-- number` | Index within the cycle, restarting at each bar line. |
+| `atom` | `-- string` | The event's mini-notation value: `bd`, `808:4`, `c'maj7`. |
+| `atom?` | `name -- bool` | `1` when this event's atom is `name`. |
+| `param` | `key -- number` | A named parameter carried on the event (`gain`, `pan`, `n`, `note`, …). |
+| `param?` | `key -- bool` | `1` when the event carries that parameter. |
+
+`i`, `n`, `f`, `f0`, `fc` and `ic` work inside a `pat` body exactly as they do inside `array`.
+
+### Patterns as values
+
+`mini` turns text into a rhythm; the signal words build continuous patterns. Both coerce to a
+track wherever RectSL wants one, so `sine ->alpha` and `"0 0.25 0.5" ->rot` need no conversion
+word. A bare string is read as mini-notation **only when it contains numbers**, so a misplaced
+name still errors rather than silently becoming zero.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `mini` | `text -- pattern` | Parse mini-notation. |
+| `sine`, `cosine`, `saw`, `isaw`, `tri`, `square` | `-- signal` | Continuous signals over `[0,1]`, one cycle long. |
+| `rand`, `perlin` | `seed -- signal` | Deterministic noise — granularity-free, identical on any machine. |
+| `nums` | `pattern -- signal` | Read a rhythm's atoms as numbers. |
+| `texts` | `signal -- pattern` | The other direction. |
+| `segment` | `signal n -- signal` | Sample a continuous signal into `n` events per cycle — how a smooth curve becomes stepped. |
+| `pat-range` | `signal lo hi -- signal` | Remap `[0,1]` to `[lo,hi]`. (`range` is already the loop word.) |
+| `quantise`, `quantize` | `signal step -- signal` | Round values to a grid. |
+| `bipolar` | `signal -- signal` | `[0,1]` to `[-1,1]`. |
+| `euclid` | `pulses steps rotation -- pattern` | A Euclidean rhythm as events — the onsets only, not a mask. |
+| `hold-pat` | `signal -- track` | Sample-and-hold: a rest keeps the previous value instead of falling to zero. Pure — it looks backwards, it does not remember. |
+
+### Pattern transforms
+
+Time transforms that work on rhythms and signals alike.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `fast`, `slow` | `pattern n -- pattern` | Absolute-time, so `slow` spans cycles rather than dropping material. |
+| `rev`, `palindrome` | `pattern -- pattern` | Reverse; reverse every other cycle. |
+| `iter`, `iter-back` | `pattern n -- pattern` | Rotate the bar one `1/n` further each cycle. The walking feel, with no quote needed. |
+| `ply` | `pattern n -- pattern` | Repeat each event `n` times in its own slot. |
+| `stut` | `pattern n gapDen -- pattern` | `n` strikes per event, a `1/gapDen` of a cycle apart. |
+| `linger` | `pattern num den -- pattern` | Repeat the first `num/den` of the cycle for the whole cycle. |
+| `pat-rot` | `pattern n -- pattern` | Rotate values against the rhythm, keeping the onsets. |
+| `shuffle` | `pattern n -- pattern` | Deterministically reorder `n` slots per cycle. |
+| `degrade-by` | `pattern p -- pattern` | Drop events with probability `p`, deterministically. |
+| `swing`, `swing-by` | `pattern n -- pattern` / `pattern num den n -- pattern` | Delay every second subdivision of a `2n` grid, in exact rational time — swung but still quantised. |
+| `press`, `press-by` | `pattern -- pattern` / `pattern num den -- pattern` | Squeeze each event into the later part of its own slot: four-on-the-floor becomes off-beat without touching the grid. |
+| `pat-delay` | `pattern num den -- pattern` | Shift by `num/den` of a cycle. |
+| `every` | `pattern k quote -- pattern` | Apply the quote only on cycles `0, k, 2k, …`. |
+| `off` | `pattern num den quote -- pattern` | Superimpose a copy shifted `num/den` of a cycle, transformed by the quote. |
+| `superimpose` | `pattern quote -- pattern` | Superimpose a transformed copy, unshifted. |
+| `inside`, `outside` | `pattern n quote -- pattern` | Apply the quote at a slower / faster time base. |
+| `sometimes-by` | `pattern p quote -- pattern` | Transform a proportion `p` of events. The two halves partition exactly — nothing is both transformed and untouched, nothing is dropped. |
+| `stack-pat`, `cat-pat` | `a b -- pattern` | Play together; play one per half-cycle. |
+
+The quote in `every`/`off`/`superimpose`/`inside`/`outside`/`sometimes-by` runs **once, at compile
+time**, against a pattern the implementation names. That is why Tidal's `chunk` is absent: it
+applies its transform to a different slice of the bar on every cycle, so there is no one pattern
+to hand the quote, and a pattern holding a live interpreter would be re-entered from the render
+loop. `iter` gives the same walking feel without a quote.
+
+### Variation on a selection
+
+The same ideas applied to scene objects rather than to rhythms — useful on material that has
+nothing to do with patterns.
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `->every` | `selection k quote -- selection` | Let the quote take effect only on cycles `0, k, 2k, …`. Both versions of every track are kept and chosen between per sample, so *any* mutator becomes conditional. |
+| `->off` | `selection seconds quote -- selection` | Superimpose a delayed, transformed echo. |
+| `->jux` | `selection quote -- selection` | A mirrored twin, transformed by the quote — left/right being the spatial reading of stereo pan. |
+| `->degrade` | `selection p -- selection` | Deterministic per-object, per-cycle dropout. |
+| `->stagger-swing` | `selection step amount -- selection` | `->stagger-time`, with every odd copy pushed a further `amount` of a step late. |
+
+### Rhythm in space
+
+| Word | Stack | Notes |
+| --- | --- | --- |
+| `strip` | `[template] pattern quote -- selection` | Lay one copy per event **across the wall** instead of across time. One cycle spans the wall; each copy is centred on its event and as wide as the event is long. The body sees the same `t`/`dur`/`step`/`atom` context a `pat` body does. |
+| `->euclid` | `selection pulses steps rotation -- selection` | Keep the Euclidean onsets of a selection and hide the rest. The off-steps are hidden rather than deleted — RectSL has no node removal. |
+
 ## Distribution curves (Functions bridge)
 
 Linear `mix` is rarely the shape you want across an array. RectSL borrows [`afield.stdlib.Functions`](functions_examples.md) — a tested library of easings, distributions, and noise defined over `[0, 1]`, exactly the range of the array fraction `f`. `ease` shapes a scalar/track through the full Penner family; the curve words push a reusable `Fn` value you `sample` at `f` (or any x). The curves are graph-backed, so the Functions rewrite/evolve tooling can optimise an array's distribution toward a target.

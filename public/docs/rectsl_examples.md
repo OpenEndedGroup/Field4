@@ -631,6 +631,284 @@ RectSL only sampled the result. Reach for `fitBest` when you have a shape in min
 and just need the numbers dialed in, and for `evolve(...)` when the *structure*
 itself (which operators) is still unknown.
 
+## Musicality — rhythm as scene structure
+
+The array primitives above multiply a shape across *space*. This section multiplies it across
+*time*, by borrowing [Field's Tidal-inspired pattern language](pattern_language.md) whole.
+
+The reason this is a thin bridge rather than a translation is that both languages are already the
+same shape underneath. A RectSL track is a pure function of time; so is a pattern:
+
+```
+RectSL   interface Track<out T> { fun sample(t: Double): T }
+Pattern  class PatPattern<A>    { fun events(arc: PatArc): List<PatEvent<A>> }
+```
+
+Neither simulates, and both answer any time in any order with the same value. Two consequences do
+all the work:
+
+- **A pattern is a track.** `sine ->alpha` needs no conversion word, because the coercion happens
+  at RectSL's single `Value → Track` site — so *every* track-taking mutator (`->x`, `->rot`,
+  `->w`, `->layer`, …) and every scalar operator accepts a pattern for free.
+- **An event is a life window.** A pattern event carries an onset and a real duration; `->live`
+  wants exactly an onset and a duration. So `pat` is `array` indexed by rhythm instead of by
+  ordinal, and the mapping is exact rather than approximate.
+
+Which means the whole mini-notation arrives intact — polymeter, Euclid, `<a b>` alternation, `?`
+degrade, `.` grouping, `@` elongation — without RectSL parsing a character of it. See the
+[cheatsheet](rectsl_cheatsheet.md#musicality--the-pattern-language-as-scene-structure) for the
+full table.
+
+### Four to the floor
+
+Every element below is driven by the same clock, and no time in the program is written in seconds.
+`->tempo 120` makes a cycle a 4/4 bar at two seconds; `->duration-cycles 4` says the piece is four
+bars long.
+
+The kick is `pat` at its plainest: `"bd*4"` makes four copies a bar, each one `->live` for exactly
+its own quarter, each dropping in from above on a curve authored in *local* time — so one template
+becomes sixteen strikes that are not a synchronised chorus. `step` places each strike across the
+wall, restarting at every bar line.
+
+The hats are the other half of the idea: sixteen copies laid out in space by `array`, then thinned
+to a five-against-sixteen figure by `->euclid`, with the whole ring turned by `saw` — a pattern
+read as a rotation track. The accent is `->every 4`: one white flash that only fires on the fourth
+bar, which is the thing a loop cannot do and a groove must.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 16 9 abstract
+->tempo 120
+->beats-per-cycle 4
+->duration-cycles 4
+->fps 30
+->background 0x0a0a12
+
+# The accent: a full-wall flash, behind everything, on every fourth bar only.
+"accent" rect
+  16 9 ->wh
+  0 0 ->xy
+  0xffffff solid ->fill
+  0 ->alpha
+  ->back
+  selected 4 '( 0.14 ->alpha ) ->every
+;
+
+# The ring: sixteen slots, five of them sounding, the whole figure turning once a bar.
+"ring" group
+  "hat" rect
+    0.26 1.0 ->wh
+    0x7cf5d0 solid ->fill
+    16 '( f0 tau * ->rot  f0 tau * 3.2 ->polar ) array
+    5 16 0 ->euclid
+  ;
+end
+"ring" ->select
+  saw tau * ->rotate
+;
+
+# The kick: one copy per event, each authored in its own local time.
+"kick" rect
+  1.3 ->square
+  0xff5a3c solid ->fill
+  "bd*4" '(
+      step 1.5 - 4.2 *  ->x
+      '( 0=5.5  0.34=0 ) ease-out ->y
+      '( 0=0  0.10=1  0.5=0 ) linear ->alpha
+  ) pat
+;
+
+# The score: the same kind of string, read as a ruler instead of as a rhythm.
+"tick" rect
+  0.34 ->square
+  0x3c8cff solid ->fill
+  "bd [sd sd] hh*4" '( -3.9 ->y  0.55 ->alpha ) strip
+;
+```
+
+Read the last two blocks together: `"bd*4"` and `"bd [sd sd] hh*4"` are the same notation, and
+`pat` and `strip` are the same reproduction. One spends the subdivision on *when*, the other on
+*where*. That is what "visual music" means literally rather than metaphorically, and it is the
+reason mini-notation is worth having on the geometry side at all.
+
+### Variation — the part a loop cannot do
+
+Repetition is cheap; repetition that *differs* is what reads as alive. These are the operators
+that make bar `n+1` unlike bar `n`, and they are worth reaching for even on material that has
+nothing to do with rhythm.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 18 10 abstract
+->cps 1
+->duration-cycles 8
+->fps 30
+
+# Pattern-level variation: each row is the same three-hit figure, varied differently.
+# `every` fires on cycles 0, 3, 6…; `iter` walks the bar one quarter further each cycle;
+# `off` superimposes a shifted echo; `sometimes-by` transforms a deterministic half.
+"plain" rect  0.7 ->square  0xff5a3c solid ->fill
+  "bd*3" '( f0 14 * 7 -  4.2  ->xy ) pat ;
+
+"faster" rect  0.7 ->square  0xffd23c solid ->fill
+  "bd*3" mini 3 '( 2 fast ) every '( f0 14 * 7 -  2.4  ->xy ) pat ;
+
+"walking" rect  0.7 ->square  0xa6e22e solid ->fill
+  "bd sd hh cp" mini 4 iter '( f0 14 * 7 -  0.6  ->xy ) pat ;
+
+"echoed" rect  0.7 ->square  0x38e1b0 solid ->fill
+  "bd*3" mini 1 8 '( 2 ply ) off '( f0 14 * 7 -  -1.2  ->xy ) pat ;
+
+"swung" rect  0.7 ->square  0x3c8cff solid ->fill
+  "bd*8" mini 4 swing '( f0 14 * 7 -  -3.0  ->xy ) pat ;
+
+"sometimes" rect  0.7 ->square  0xc678dd solid ->fill
+  "bd*4" mini 0.5 '( press ) sometimes-by '( f0 14 * 7 -  -4.6  ->xy ) pat ;
+```
+
+`swing` is worth singling out. It delays every second subdivision of a `2n` grid in **exact
+rational time**, so a swung figure is still perfectly quantised — just not straight. That is the
+difference between swing and jitter, and it is why it lives in the pattern language rather than in
+a random offset.
+
+### Signals, stepped and smooth
+
+A signal is a pattern with exactly one event per query, so everything above applies to it too.
+`segment` is the interesting one: it samples a smooth curve into `n` events a cycle, which turns
+continuous motion into the *held-then-snapped* quality that reads as musical. Alongside it,
+`->stagger-swing`, `->jux`, `->degrade` and the rest of the surface:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 18 10 abstract
+->tempo 90
+->duration-cycles 4
+->fps 30
+
+# Smooth: sine straight into a rotation track, and into x through the scalar operators.
+"smooth" rect  1.0 ->square  0xff5a3c solid ->fill
+  sine 12 * 6 -  ->x   3.4 ->y   sine tau * ->rot ;
+
+# Stepped: the same sine, sampled eight times a cycle. It holds, then snaps.
+"stepped" rect  1.0 ->square  0xffd23c solid ->fill
+  sine 8 segment  12 *  6 -  ->x   1.6 ->y ;
+
+# A numeric rhythm read directly as a track, and a rest held rather than zeroed.
+"steps" rect  0.9 ->square  0xa6e22e solid ->fill
+  "0 3 -3 6" ->x   -0.2 ->y ;
+"held" rect  0.9 ->square  0x38e1b0 solid ->fill
+  "-6 ~ 6" mini nums hold-pat ->x   -2.0 ->y ;
+
+# Remapped, quantised, bipolar, and seeded noise — all the same kind of value.
+"remapped" rect  0.8 ->square  0x3c8cff solid ->fill
+  tri -5 5 pat-range ->x   -3.6 ->y ;
+"quantised" rect  0.8 ->square  0xc678dd solid ->fill
+  saw 0.25 quantise 16 * 8 -  ->x   -4.6 ->y ;
+"noisy" rect  0.8 ->square  0x56b6c2 solid ->fill
+  7 perlin bipolar 6 *  ->x   4.4 ->y ;
+
+# Selection variation: a mirrored twin, a delayed echo, a swung stagger, a dropout.
+"twin" rect  0.7 ->square  0xe06c75 solid ->fill
+  5 0 ->xy  2.6 ->y
+  selected '( 0.45 ->alpha ) ->jux
+;
+"echo" rect  0.6 ->square  0xd19a66 solid ->fill
+  '( 0=-8  4=8 ) linear ->x   0.4 ->y
+  selected 0.5 '( 0.4 ->alpha ) ->off
+;
+"row" rect  0.5 ->square  0x98c379 solid ->fill
+  -7 -5.4 ->xy
+  8 '( ic 1.6 * 0 ->offset ) array
+  0.12 0.6 ->stagger-swing
+  0.25 ->degrade
+;
+```
+
+### The rest of the surface
+
+Everything the sections above did not reach, in one program — the clock conversions, the remaining
+pattern transforms, and the per-event context words.
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 20 12 abstract
+->tempo 120
+->beats-per-cycle 4
+->duration-cycles 4
+->fps 30
+
+# Clock conversions: seconds computed from musical units rather than typed.
+"beat" rect  0.6 ->square  0xff5a3c solid ->fill
+  1 beats 8 *  2 cycles 4 * ->xy ;
+"cyc" rect  0.6 ->square  0xffd23c solid ->fill
+  cycle-secs 4 *  scene-cycles 1 -  ->xy ;
+
+# The per-event context: onset, length, cycle, step, atom, and named parameters.
+"ctx" rect  0.5 ->square  0xa6e22e solid ->fill
+  "bd:2 sd cp*2" '(
+      t 2 *  9 -  ->x
+      cyc 2 *  step 0.4 *  +  3 -  ->y
+      "n" param 0.1 *  0.4 +  ->alpha
+      "n" param? 0.2 *  0.5 +  ->square
+      "bd:2" atom? 0.4 *  ->rotate
+      dur 3 *  0.3 +  ->scale
+      atom ->tag
+  ) pat
+;
+
+# The remaining pattern transforms.
+"rev" rect  0.4 ->square  0x38e1b0 solid ->fill
+  "0 1 2" mini rev '( f 16 * 8 -  -1 ->xy ) pat ;
+"pal" rect  0.4 ->square  0x3c8cff solid ->fill
+  "bd sd" mini palindrome '( f 16 * 8 -  -2 ->xy ) pat ;
+"back" rect  0.4 ->square  0xc678dd solid ->fill
+  "bd sd hh cp" mini 4 iter-back '( f 16 * 8 -  -3 ->xy ) pat ;
+"slowed" rect  0.4 ->square  0x56b6c2 solid ->fill
+  "bd sd hh" mini 2 slow '( f 16 * 8 -  -4 ->xy ) pat ;
+"lingered" rect  0.4 ->square  0xe06c75 solid ->fill
+  "bd sd hh cp" mini 1 2 linger '( f 16 * 8 -  -5 ->xy ) pat ;
+"rotated" rect  0.4 ->square  0xd19a66 solid ->fill
+  "0 1 2 3" mini 1 pat-rot '( f 16 * 8 -  1 ->xy ) pat ;
+"shuffled" rect  0.4 ->square  0x98c379 solid ->fill
+  "bd sd hh cp" mini 4 shuffle '( f 16 * 8 -  2 ->xy ) pat ;
+"thinned" rect  0.4 ->square  0x61afef solid ->fill
+  "bd*8" mini 0.4 degrade-by '( f 16 * 8 -  3 ->xy ) pat ;
+"swungby" rect  0.4 ->square  0xbe5046 solid ->fill
+  "bd*8" mini 1 4 4 swing-by '( f 16 * 8 -  4 ->xy ) pat ;
+"pressed" rect  0.4 ->square  0x7cf5d0 solid ->fill
+  "bd*4" mini 1 3 press-by '( f 16 * 8 -  5 ->xy ) pat ;
+"shifted" rect  0.4 ->square  0xffffff solid ->fill
+  "bd*4" mini 1 8 pat-delay '( f 16 * 8 -  4.6 ->xy ) pat ;
+"stuttered" rect  0.4 ->square  0xff9e64 solid ->fill
+  "bd sd" mini 3 16 stut '( f 16 * 8 -  -5.6 ->xy ) pat ;
+"over" rect  0.4 ->square  0x9ece6a solid ->fill
+  "bd*2" mini '( 2 fast ) superimpose '( f 16 * 8 -  0 ->xy ) pat ;
+"in" rect  0.4 ->square  0x7aa2f7 solid ->fill
+  "bd sd hh cp" mini 2 '( rev ) inside '( f 16 * 8 -  -0.5 ->xy ) pat ;
+"out" rect  0.4 ->square  0xbb9af7 solid ->fill
+  "bd sd" mini 2 '( rev ) outside '( f 16 * 8 -  0.5 ->xy ) pat ;
+
+# Building patterns from other patterns, and a Euclidean figure as events.
+"together" rect  0.4 ->square  0xf7768e solid ->fill
+  "bd*2" mini "sd*3" mini stack-pat '( f 16 * 8 -  -1.5 ->xy ) pat ;
+"sequenced" rect  0.4 ->square  0x2ac3de solid ->fill
+  "bd*2" mini "sd*4" mini cat-pat '( f 16 * 8 -  1.5 ->xy ) pat ;
+"euc" rect  0.4 ->square  0xe0af68 solid ->fill
+  3 8 0 euclid '( f 16 * 8 -  5.5 ->xy ) pat ;
+
+# Signals not otherwise shown, and the alternate spelling of quantise.
+"cos" rect  0.4 ->square  0x41a6b5 solid ->fill
+  cosine 10 * 5 -  -6.4 ->xy ;
+"isaw" rect  0.4 ->square  0x73daca solid ->fill
+  isaw 10 * 5 -  -6.9 ->xy ;
+"sq" rect  0.4 ->square  0xff007c solid ->fill
+  square 8 * 4 -  6.4 ->xy ;
+"rnd" rect  0.4 ->square  0xb4f9f8 solid ->fill
+  3 rand 0.2 quantize 10 * 5 -  6.9 ->xy ;
+"asText" rect  0.4 ->square  0xcfc9c2 solid ->fill
+  "0 1" mini nums texts '( f 16 * 8 -  -6 ->xy ) pat ;
+```
+
 ## Data visualization
 
 Dense data is an explicit target for RectSL. Three pieces compose it: a **colormap**
