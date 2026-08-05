@@ -215,6 +215,11 @@ history.csv
 history2.py
 two_timescale_bandit_toy*.txt
 
+# Dear ImGui window state. Field never writes this — ImGuiRenderToTexture.kt sets
+# io.iniFilename to null — but tools that render their own ImGui overlay into our process
+# (NVIDIA Nsight) do, at the working directory. Root-anchored: it is only ever litter here.
+/imgui.ini
+
 ### Field template backup snapshots
 templates/*/backup/
 
