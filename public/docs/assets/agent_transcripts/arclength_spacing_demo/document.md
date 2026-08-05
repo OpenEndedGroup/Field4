@@ -18,7 +18,7 @@ Same two curves, ticked instead of dashed, so you can see the spacing itself rat
 than its effect on a dash.
 
 ```edn [field-box id="arclength_ticks" role="properties"]
-{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 940.0 500.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3910 "sha256" "4e182240b5102ea9a2146bac1f0bede14bade71600189d9bcc7ff1a2278037bf"}]}
+{"id" "arclength_ticks" "index" 0 "name" "where the mechanism actually is" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "where the mechanism actually is" "_tombstone" false "frame" #afield/rect [80.0 720.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_ticks_code_.kt" "lines" 96 "characters" 3910 "sha256" "4e182240b5102ea9a2146bac1f0bede14bade71600189d9bcc7ff1a2278037bf"}]}
 ```
 
 ```kotlin [field-property box="arclength_ticks" name="code" path="arclength_ticks_code_.kt"]
@@ -135,7 +135,7 @@ end: geometrically a straight line, parameterised so that t = 0.5 is 82% of the 
 along. Its flatness is exactly 0.0, so no tolerance could ever force a subdivision.
 
 ```edn [field-box id="arclength_dashes" role="properties"]
-{"id" "arclength_dashes" "index" 1 "name" "dashes, spaced by parameter and by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dashes, spaced by parameter and by arc length" "_tombstone" false "frame" #afield/rect [80.0 80.0 940.0 500.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_dashes_code_.kt" "lines" 76 "characters" 2744 "sha256" "09f355be91be728410e3c7fa896877934cf5093278b86d09ece7acc6635da634"}]}
+{"id" "arclength_dashes" "index" 1 "name" "dashes, spaced by parameter and by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "dashes, spaced by parameter and by arc length" "_tombstone" false "frame" #afield/rect [80.0 80.0 310.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "arclength_dashes_code_.kt" "lines" 76 "characters" 2744 "sha256" "09f355be91be728410e3c7fa896877934cf5093278b86d09ece7acc6635da634"}]}
 ```
 
 ```kotlin [field-property box="arclength_dashes" name="code" path="arclength_dashes_code_.kt"]

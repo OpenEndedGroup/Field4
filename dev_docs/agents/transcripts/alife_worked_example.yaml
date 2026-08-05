@@ -24,8 +24,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 320.0
-        h: 170.0
+        w: 270.0
+        h: 50.0
       properties:
         code: |
           // Conway's Life. Every claim here is about an object that predates this code, stated as an
@@ -74,7 +74,7 @@ operations:
         x: 60.0
         y: 260.0
         w: 320.0
-        h: 170.0
+        h: 50.0
       properties:
         code: |
           // Wolfram's elementary rules, and the sharpest evidence in the family: rule 90 from a single seed
@@ -122,8 +122,8 @@ operations:
       frame:
         x: 60.0
         y: 460.0
-        w: 320.0
-        h: 170.0
+        w: 290.0
+        h: 50.0
       properties:
         code: |
           // A cyclic cellular automaton: a cell in state s advances to s+1 as soon as any neighbour is
@@ -167,8 +167,8 @@ operations:
       frame:
         x: 420.0
         y: 60.0
-        w: 320.0
-        h: 170.0
+        w: 330.0
+        h: 50.0
       properties:
         code: |
           // Gray-Scott reaction-diffusion. Two coupled fields, two parameters, and the whole zoo of
@@ -210,8 +210,8 @@ operations:
       frame:
         x: 420.0
         y: 260.0
-        w: 320.0
-        h: 170.0
+        w: 270.0
+        h: 50.0
       properties:
         code: |
           // Lenia is a CONTINUOUS cellular automaton: one field in 0..1, one convolution kernel, one growth
@@ -268,8 +268,8 @@ operations:
       frame:
         x: 420.0
         y: 460.0
-        w: 320.0
-        h: 170.0
+        w: 290.0
+        h: 50.0
       properties:
         code: |
           // Reynolds' boids on a torus. A flock is not "dots that move together"; it is a population whose
@@ -310,7 +310,7 @@ operations:
         x: 780.0
         y: 60.0
         w: 320.0
-        h: 170.0
+        h: 50.0
       properties:
         code: |
           // Jones' Physarum model: agents deposit into a trail field, sense it three ways ahead, turn toward
@@ -347,8 +347,8 @@ operations:
       frame:
         x: 780.0
         y: 260.0
-        w: 320.0
-        h: 170.0
+        w: 350.0
+        h: 50.0
       properties:
         code: |
           // Diffusion-limited aggregation: a seed, then particles released far away that random-walk until
@@ -388,8 +388,8 @@ operations:
       frame:
         x: 780.0
         y: 460.0
-        w: 320.0
-        h: 170.0
+        w: 310.0
+        h: 50.0
       properties:
         code: |
           // L-systems are the one generative system in this family whose output can be checked exactly and
@@ -439,8 +439,8 @@ operations:
       frame:
         x: 1140.0
         y: 60.0
-        w: 340.0
-        h: 190.0
+        w: 370.0
+        h: 50.0
       properties:
         code: |
           // What makes this family Field's rather than a generic ALife library: the bridges out into the
@@ -490,8 +490,8 @@ operations:
       frame:
         x: 60.0
         y: 760.0
-        w: 340.0
-        h: 190.0
+        w: 260.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -526,8 +526,8 @@ operations:
       frame:
         x: 60.0
         y: 960.0
-        w: 340.0
-        h: 190.0
+        w: 330.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -565,7 +565,7 @@ operations:
         x: 60.0
         y: 1160.0
         w: 340.0
-        h: 190.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -603,8 +603,8 @@ operations:
       frame:
         x: 420.0
         y: 760.0
-        w: 340.0
-        h: 190.0
+        w: 320.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -637,7 +637,7 @@ operations:
         x: 420.0
         y: 960.0
         w: 340.0
-        h: 190.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -674,8 +674,8 @@ operations:
       frame:
         x: 420.0
         y: 1160.0
-        w: 340.0
-        h: 190.0
+        w: 320.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -711,8 +711,8 @@ operations:
       frame:
         x: 780.0
         y: 760.0
-        w: 340.0
-        h: 190.0
+        w: 350.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -752,8 +752,8 @@ operations:
       frame:
         x: 780.0
         y: 960.0
-        w: 340.0
-        h: 190.0
+        w: 370.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -805,8 +805,8 @@ operations:
       frame:
         x: 780.0
         y: 1160.0
-        w: 340.0
-        h: 190.0
+        w: 320.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a
@@ -845,8 +845,8 @@ operations:
       frame:
         x: 1140.0
         y: 760.0
-        w: 340.0
-        h: 190.0
+        w: 320.0
+        h: 50.0
       properties:
         code: |
           // LAUNCH this box rather than merely running it (undo stops it). The last expression is a

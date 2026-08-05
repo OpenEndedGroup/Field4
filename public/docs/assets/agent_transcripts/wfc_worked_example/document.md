@@ -19,7 +19,7 @@ sliceIntoOverlappingPatterns2D learn from a row-major FloatArray, so the same ma
 synthesises numbers -- and numbers in Field are geometry waiting to happen.
 
 ```edn [field-box id="wfc_scalar_field" role="properties"]
-{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [860.0 60.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 92 "characters" 4513 "sha256" "f566135146d9cea93d3c447d3c72329a89a7c3531c8223f4fe8363cd4eba607d"}]}
+{"id" "wfc_scalar_field" "index" 0 "name" "7 — Not pixels: WFC on a scalar field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Not pixels: WFC on a scalar field" "_tombstone" false "frame" #afield/rect [860.0 60.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_scalar_field_code_.kt" "lines" 92 "characters" 4513 "sha256" "f566135146d9cea93d3c447d3c72329a89a7c3531c8223f4fe8363cd4eba607d"}]}
 ```
 
 ```kotlin [field-property box="wfc_scalar_field" name="code" path="wfc_scalar_field_code_.kt"]
@@ -131,7 +131,7 @@ solvers at once. Nothing here arranges a view: no colormap call, no montage, no 
 plumbing beyond display().
 
 ```edn [field-box id="wfc_inline_view" role="properties"]
-{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [860.0 260.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 62 "characters" 2852 "sha256" "8bfe43dbd948f9a225ec02d67d4c3093631a6f8dec8eb6ac421de57b36d33c51"}]}
+{"id" "wfc_inline_view" "index" 1 "name" "8 — The solver's own inline view" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — The solver's own inline view" "_tombstone" false "frame" #afield/rect [860.0 260.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_inline_view_code_.kt" "lines" 62 "characters" 2852 "sha256" "8bfe43dbd948f9a225ec02d67d4c3093631a6f8dec8eb6ac421de57b36d33c51"}]}
 ```
 
 ```kotlin [field-property box="wfc_inline_view" name="code" path="wfc_inline_view_code_.kt"]
@@ -212,7 +212,7 @@ weights do NOT capture. Tile size 1x1, so a "tile" is just a colour and "learnin
 rules" is literally "note which colours were seen touching".
 
 ```edn [field-box id="wfc_simple_tiled" role="properties"]
-{"id" "wfc_simple_tiled" "index" 2 "name" "2 — Simple-tiled, learned from an image" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Simple-tiled, learned from an image" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_simple_tiled_code_.kt" "lines" 84 "characters" 3379 "sha256" "080d5d2d9ea2b92fc9d510bb116ab3a243c7c6fa47f44a8669ea04a4550a0e19"}]}
+{"id" "wfc_simple_tiled" "index" 2 "name" "2 — Simple-tiled, learned from an image" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Simple-tiled, learned from an image" "_tombstone" false "frame" #afield/rect [60.0 260.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_simple_tiled_code_.kt" "lines" 84 "characters" 3379 "sha256" "080d5d2d9ea2b92fc9d510bb116ab3a243c7c6fa47f44a8669ea04a4550a0e19"}]}
 ```
 
 ```kotlin [field-property box="wfc_simple_tiled" name="code" path="wfc_simple_tiled_code_.kt"]
@@ -315,7 +315,7 @@ Diagonal stripes two cells wide: colour depends on (x + y) mod 4, so along the a
 offset (1, -1) the colour never changes, while east and south change only half the time.
 
 ```edn [field-box id="wfc_neighborhoods" role="properties"]
-{"id" "wfc_neighborhoods" "index" 3 "name" "5 — Neighborhoods: von Neumann vs Moore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Neighborhoods: von Neumann vs Moore" "_tombstone" false "frame" #afield/rect [460.0 260.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_neighborhoods_code_.kt" "lines" 33 "characters" 1559 "sha256" "988cd00507085ce7e66d542dadef315f2a1dd0f3fcbd2fc4aaf3d7e52981ef0b"}]}
+{"id" "wfc_neighborhoods" "index" 3 "name" "5 — Neighborhoods: von Neumann vs Moore" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Neighborhoods: von Neumann vs Moore" "_tombstone" false "frame" #afield/rect [460.0 260.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_neighborhoods_code_.kt" "lines" 33 "characters" 1559 "sha256" "988cd00507085ce7e66d542dadef315f2a1dd0f3fcbd2fc4aaf3d7e52981ef0b"}]}
 ```
 
 ```kotlin [field-property box="wfc_neighborhoods" name="code" path="wfc_neighborhoods_code_.kt"]
@@ -367,7 +367,7 @@ waveToImg averages each cell's remaining possibilities -- undecided cells are a 
 they might become. possibilityCountImg is the remaining option count as a scalar field.
 
 ```edn [field-box id="wfc_collapse" role="properties"]
-{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [460.0 460.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 63 "characters" 2571 "sha256" "b79c1afae17662ecb3af7eabf5c13e2628faad90fa02fe51b8009f1588e63d0b"}]}
+{"id" "wfc_collapse" "index" 4 "name" "6 — Watching the collapse" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Watching the collapse" "_tombstone" false "frame" #afield/rect [460.0 460.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_collapse_code_.kt" "lines" 63 "characters" 2571 "sha256" "b79c1afae17662ecb3af7eabf5c13e2628faad90fa02fe51b8009f1588e63d0b"}]}
 ```
 
 ```kotlin [field-property box="wfc_collapse" name="code" path="wfc_collapse_code_.kt"]
@@ -449,7 +449,7 @@ Sand is the only tile allowed to touch both sea and grass, so a coastline is not
 something the solver is told to draw -- it is what is left once a sea-grass edge is illegal.
 
 ```edn [field-box id="wfc_by_hand" role="properties"]
-{"id" "wfc_by_hand" "index" 5 "name" "1 — The model, by hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — The model, by hand" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_by_hand_code_.kt" "lines" 57 "characters" 2117 "sha256" "94be24146dfa61e9352d0c0f8affe914605958bcfc717725b1c63bcf456c46ad"}]}
+{"id" "wfc_by_hand" "index" 5 "name" "1 — The model, by hand" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — The model, by hand" "_tombstone" false "frame" #afield/rect [60.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_by_hand_code_.kt" "lines" 57 "characters" 2117 "sha256" "94be24146dfa61e9352d0c0f8affe914605958bcfc717725b1c63bcf456c46ad"}]}
 ```
 
 ```kotlin [field-property box="wfc_by_hand" name="code" path="wfc_by_hand_code_.kt"]
@@ -525,7 +525,7 @@ Rules come from edge sockets rather than from a sample: b may sit east of a exac
 a's east socket matches b's west socket. Every trace in the output therefore connects.
 
 ```edn [field-box id="wfc_circuit" role="properties"]
-{"id" "wfc_circuit" "index" 6 "name" "3 — Edge sockets: a tile set that connects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Edge sockets: a tile set that connects" "_tombstone" false "frame" #afield/rect [60.0 460.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_circuit_code_.kt" "lines" 53 "characters" 2607 "sha256" "cbb180801254378e591da21f1682bf177fef4d7b9b223584630c3262630df74b"}]}
+{"id" "wfc_circuit" "index" 6 "name" "3 — Edge sockets: a tile set that connects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Edge sockets: a tile set that connects" "_tombstone" false "frame" #afield/rect [60.0 460.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_circuit_code_.kt" "lines" 53 "characters" 2607 "sha256" "cbb180801254378e591da21f1682bf177fef4d7b9b223584630c3262630df74b"}]}
 ```
 
 ```kotlin [field-property box="wfc_circuit" name="code" path="wfc_circuit_code_.kt"]
@@ -597,7 +597,7 @@ windows may be neighbours only if they agree on their overlap -- so each cell ca
 not just colour. Also the classic "ground" constraint, because WFC has no absolute position.
 
 ```edn [field-box id="wfc_overlapping" role="properties"]
-{"id" "wfc_overlapping" "index" 7 "name" "4 — Overlapping patterns + ground constraint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Overlapping patterns + ground constraint" "_tombstone" false "frame" #afield/rect [460.0 60.0 320.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_overlapping_code_.kt" "lines" 69 "characters" 2915 "sha256" "acabd1d2ab354a5cae7f5fd5fde85d4e5d858ed313cf64ff8d9bf6a97a4882ad"}]}
+{"id" "wfc_overlapping" "index" 7 "name" "4 — Overlapping patterns + ground constraint" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Overlapping patterns + ground constraint" "_tombstone" false "frame" #afield/rect [460.0 60.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "wfc_overlapping_code_.kt" "lines" 69 "characters" 2915 "sha256" "acabd1d2ab354a5cae7f5fd5fde85d4e5d858ed313cf64ff8d9bf6a97a4882ad"}]}
 ```
 
 ```kotlin [field-property box="wfc_overlapping" name="code" path="wfc_overlapping_code_.kt"]

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_visionos_start_root" index="0" -->
 
 ```edn [field-box id="agent_visionos_start_root" role="properties"]
-{"id" "agent_visionos_start_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_visionos_start"] "properties" {"children" #{#afield/box "agent_visionos_start"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 440.0 310.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
+{"id" "agent_visionos_start_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_visionos_start"] "properties" {"children" #{#afield/box "agent_visionos_start"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 200.0 50.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
 ```
 
 ## 2. visionOS Starter
@@ -33,7 +33,7 @@ Uniforms are read by name: the head generates `#define u_phase frame.user[0]`
 and so on from the `uniforms=` list on the marker in the code property.
 
 ```edn [field-box id="agent_visionos_start" role="properties"]
-{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 100.0 360.0 220.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 24 "characters" 716 "sha256" "a5cf1e01a68741218dcd077df16bf1b11f381c75238440479c240c703f95dd1e"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
+{"id" "agent_visionos_start" "index" 1 "name" "visionOS Starter" "parents" ["root" "agent_visionos_start_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_visionos_start_root"} "name" "visionOS Starter" "_tombstone" false "frame" #afield/rect [90.0 100.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_visionos_start_code_.kt" "lines" 24 "characters" 716 "sha256" "a5cf1e01a68741218dcd077df16bf1b11f381c75238440479c240c703f95dd1e"} {"name" "msl" "language" "msl" "path" "agent_visionos_start_msl_.metal" "lines" 38 "characters" 1349 "sha256" "88d0efd7d55751118876a2806e3bd79ac51c05cc4ba67a2326b5b60fecb58747"}]}
 ```
 
 ```kotlin [field-property box="agent_visionos_start" name="code" path="agent_visionos_start_code_.kt"]

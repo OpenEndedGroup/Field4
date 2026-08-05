@@ -16,7 +16,7 @@ operations:
   - create:
       box: agent_tone_head
       name: RemoteAR Head (open me — then click to enable audio)
-      frame: { x: 80.0, y: 80.0, w: 700.0, h: 470.0 }
+      frame: { x: 80.0, y: 80.0, w: 350.0, h: 50.0 }
       properties:
         code: |
           // The head that plays the sound. It loads Tone.js and connects over the RemoteJS
@@ -34,7 +34,7 @@ operations:
   - create:
       box: agent_tone_synth_sequence_root
       name: KotlinJS → Tone
-      frame: { x: 80.0, y: 580.0, w: 420.0, h: 110.0 }
+      frame: { x: 80.0, y: 580.0, w: 200.0, h: 50.0 }
       properties:
         mainLanguage: kotlinjs
         isKotlinJsRoot: true
@@ -42,7 +42,7 @@ operations:
   - create:
       box: agent_tone_synth_sequence
       name: Tone Synth Sequence
-      frame: { x: 120.0, y: 640.0, w: 360.0, h: 260.0 }
+      frame: { x: 120.0, y: 640.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // {{ tone }}

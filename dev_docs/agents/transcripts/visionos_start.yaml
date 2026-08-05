@@ -9,14 +9,14 @@ operations:
   - create:
       box: agent_visionos_start_root
       name: KotlinJS → visionOS
-      frame: { x: 50.0, y: 50.0, w: 440.0, h: 310.0 }
+      frame: { x: 50.0, y: 50.0, w: 200.0, h: 50.0 }
       properties:
         mainLanguage: kotlinjs
         isKotlinJsRoot: true
   - create:
       box: agent_visionos_start
       name: visionOS Starter
-      frame: { x: 90.0, y: 100.0, w: 360.0, h: 220.0 }
+      frame: { x: 90.0, y: 100.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // {{ visionmetal uniforms=phase,amount,tint }}

@@ -15,7 +15,7 @@ operations:
   - create:
       box: pat_fn_inspect
       name: 1 · the pat node
-      frame: { x: 60.0, y: 60.0, w: 520.0, h: 300.0 }
+      frame: { x: 60.0, y: 60.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.extractParameters
@@ -41,7 +41,7 @@ operations:
   - create:
       box: pat_fn_fit
       name: 2 · fit the rhythm
-      frame: { x: 60.0, y: 390.0, w: 520.0, h: 520.0 }
+      frame: { x: 60.0, y: 390.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.Functions
@@ -72,7 +72,7 @@ operations:
   - create:
       box: pat_fn_permute
       name: 3 · what it cannot do
-      frame: { x: 620.0, y: 390.0, w: 520.0, h: 520.0 }
+      frame: { x: 620.0, y: 390.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.Functions

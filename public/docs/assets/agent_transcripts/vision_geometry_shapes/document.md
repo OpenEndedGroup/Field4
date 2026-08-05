@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_geometry_shapes_root" index="0" -->
 
 ```edn [field-box id="agent_vision_geometry_shapes_root" role="properties"]
-{"id" "agent_vision_geometry_shapes_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_shapes"] "properties" {"children" #{#afield/box "agent_vision_geometry_shapes"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 480.0 340.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
+{"id" "agent_vision_geometry_shapes_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_shapes"] "properties" {"children" #{#afield/box "agent_vision_geometry_shapes"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 200.0 50.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
 ```
 
 ## 2. Geometry — shapes
@@ -30,7 +30,7 @@ Spins the whole mesh about the group centre, then shades it. The plane picks up 
 checker from the uv its builder wrote; everything else has uv (0,0)..(1,1) per face.
 
 ```edn [field-box id="agent_vision_geometry_shapes" role="properties"]
-{"id" "agent_vision_geometry_shapes" "index" 1 "name" "Geometry — shapes" "parents" ["root" "agent_vision_geometry_shapes_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_shapes_root"} "name" "Geometry — shapes" "_tombstone" false "frame" #afield/rect [90.0 100.0 400.0 250.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_shapes_code_.kt" "lines" 41 "characters" 1454 "sha256" "33573a6ddf1583b8c8dd07bbd19622ed2e43518fc866b18bd5002b5f4692f765"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_shapes_msl_.metal" "lines" 41 "characters" 1492 "sha256" "4f3d9944de2bf342811b64ddac6ecaf4e981fe7ea1a541ce03eca984d074d81d"}]}
+{"id" "agent_vision_geometry_shapes" "index" 1 "name" "Geometry — shapes" "parents" ["root" "agent_vision_geometry_shapes_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_shapes_root"} "name" "Geometry — shapes" "_tombstone" false "frame" #afield/rect [90.0 100.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_shapes_code_.kt" "lines" 41 "characters" 1454 "sha256" "33573a6ddf1583b8c8dd07bbd19622ed2e43518fc866b18bd5002b5f4692f765"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_shapes_msl_.metal" "lines" 41 "characters" 1492 "sha256" "4f3d9944de2bf342811b64ddac6ecaf4e981fe7ea1a541ce03eca984d074d81d"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_shapes" name="code" path="agent_vision_geometry_shapes_code_.kt"]

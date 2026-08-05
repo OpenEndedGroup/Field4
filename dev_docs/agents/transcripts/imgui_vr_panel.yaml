@@ -12,7 +12,7 @@ operations:
   - create:
       box: imgui_vr_renderer
       name: window + renderer
-      frame: { x: -640.0, y: -360.0, w: 240.0, h: 90.0 }
+      frame: { x: -640.0, y: -360.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -34,7 +34,7 @@ operations:
   - create:
       box: imgui_vr_panel
       name: imgui vr panel
-      frame: { x: -300.0, y: -220.0, w: 300.0, h: 160.0 }
+      frame: { x: -300.0, y: -220.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // ImGui as a VR panel.

@@ -13,7 +13,7 @@ operations:
   - create:
       box: polytope_face_with_a_hole
       name: "1 — a face with a hole, end to end"
-      frame: { x: 80.0, y: 80.0, w: 460.0, h: 84.0 }
+      frame: { x: 80.0, y: 80.0, w: 240.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*
@@ -91,7 +91,7 @@ operations:
   - create:
       box: polytope_plate_with_and_without
       name: "2 — the same plate, with the ring and without it"
-      frame: { x: 80.0, y: 220.0, w: 460.0, h: 84.0 }
+      frame: { x: 80.0, y: 220.0, w: 330.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*
@@ -176,7 +176,7 @@ operations:
   - create:
       box: polytope_chained_vocabulary
       name: "3 — every composite chains now"
-      frame: { x: 80.0, y: 360.0, w: 460.0, h: 84.0 }
+      frame: { x: 80.0, y: 360.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*

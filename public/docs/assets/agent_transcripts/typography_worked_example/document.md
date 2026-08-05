@@ -18,7 +18,7 @@ Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n,
 spacing, alignment, and a mutable transform handle per glyph.
 
 ```edn [field-box id="typo_layout" role="properties"]
-{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 48 "characters" 2821 "sha256" "d25e69fc55bb0d6cc8e8a8f3e3a6d9452ec9d7c623a59412673b74ff5264a537"}]}
+{"id" "typo_layout" "index" 0 "name" "3 — advances, kerning, tracking, alignment" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — advances, kerning, tracking, alignment" "_tombstone" false "frame" #afield/rect [1000.0 60.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_layout_code_.kt" "lines" 48 "characters" 2821 "sha256" "d25e69fc55bb0d6cc8e8a8f3e3a6d9452ec9d7c623a59412673b74ff5264a537"}]}
 ```
 
 ```kotlin [field-property box="typo_layout" name="code" path="typo_layout_code_.kt"]
@@ -86,7 +86,7 @@ letter about itself. These handles are the API rather than an afterthought: this
 is one layout, computed once, and a function of elapsed seconds written into it.
 
 ```edn [field-box id="typo_kinetic" role="properties"]
-{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 36 "characters" 1581 "sha256" "5f93e06fd943c126f9faa2b8a5d56da08444ccd4b53798283cddaeb0df1222b9"}]}
+{"id" "typo_kinetic" "index" 1 "name" "5 — the handles, animated (LAUNCH this one)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — the handles, animated (LAUNCH this one)" "_tombstone" false "frame" #afield/rect [60.0 780.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_kinetic_code_.kt" "lines" 36 "characters" 1581 "sha256" "5f93e06fd943c126f9faa2b8a5d56da08444ccd4b53798283cddaeb0df1222b9"}]}
 ```
 
 ```kotlin [field-property box="typo_kinetic" name="code" path="typo_kinetic_code_.kt"]
@@ -141,7 +141,7 @@ it in z with the exact prism formula. Negative inside the ink, per mesh_sdf.kt's
 convention. From there letters are just another ScalarField3D, which is the point.
 
 ```edn [field-box id="typo_sdf" role="properties"]
-{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 28 "characters" 1583 "sha256" "f86ae6820ec5717aadd6ea5a249b529f50b337974d8a5bdf361f6750981b5bfa"}]}
+{"id" "typo_sdf" "index" 2 "name" "7 — letters in the SDF family" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — letters in the SDF family" "_tombstone" false "frame" #afield/rect [60.0 1140.0 210.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_sdf_code_.kt" "lines" 28 "characters" 1583 "sha256" "f86ae6820ec5717aadd6ea5a249b529f50b337974d8a5bdf361f6750981b5bfa"}]}
 ```
 
 ```kotlin [field-property box="typo_sdf" name="code" path="typo_sdf_code_.kt"]
@@ -188,7 +188,7 @@ what every point-consuming family in the stdlib eats. Once a word is points, the
 clusterers, the triangulators and the alife agents all work on letters.
 
 ```edn [field-box id="typo_points" role="properties"]
-{"id" "typo_points" "index" 3 "name" "8 — letters as point clouds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — letters as point clouds" "_tombstone" false "frame" #afield/rect [1000.0 1140.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_points_code_.kt" "lines" 30 "characters" 1837 "sha256" "dd4ad9278522653fbe02bfc5ed782f5f13c7c5ec7bdf21af279b0ffb1b32335d"}]}
+{"id" "typo_points" "index" 3 "name" "8 — letters as point clouds" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — letters as point clouds" "_tombstone" false "frame" #afield/rect [1000.0 1140.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_points_code_.kt" "lines" 30 "characters" 1837 "sha256" "dd4ad9278522653fbe02bfc5ed782f5f13c7c5ec7bdf21af279b0ffb1b32335d"}]}
 ```
 
 ```kotlin [field-property box="typo_points" name="code" path="typo_points_code_.kt"]
@@ -238,7 +238,7 @@ sampleByDistance and byDashing use — and then sets that glyph's rotation and p
 letters stay letters, and the spacing is even in DISTANCE rather than in curve parameter.
 
 ```edn [field-box id="typo_curve" role="properties"]
-{"id" "typo_curve" "index" 4 "name" "4 — text on a curve, by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — text on a curve, by arc length" "_tombstone" false "frame" #afield/rect [1000.0 420.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_curve_code_.kt" "lines" 33 "characters" 1771 "sha256" "3d7aa9dfb00f9c05162d9603298c0573bc69c0e8505a015e6d6f4e494fc04028"}]}
+{"id" "typo_curve" "index" 4 "name" "4 — text on a curve, by arc length" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — text on a curve, by arc length" "_tombstone" false "frame" #afield/rect [1000.0 420.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_curve_code_.kt" "lines" 33 "characters" 1771 "sha256" "3d7aa9dfb00f9c05162d9603298c0573bc69c0e8505a015e6d6f4e494fc04028"}]}
 ```
 
 ```kotlin [field-property box="typo_curve" name="code" path="typo_curve_code_.kt"]
@@ -292,7 +292,7 @@ is what makes the result watertight, and what makes genus a meaningful question 
 letter.
 
 ```edn [field-box id="typo_mesh" role="properties"]
-{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 880.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 47 "characters" 2725 "sha256" "2e20b8b5370d325fa7cf44e8313e73a7f7c5d3b15f550d8d35d9b660002c8ad9"}]}
+{"id" "typo_mesh" "index" 5 "name" "6 — extrusion, counters and all" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — extrusion, counters and all" "_tombstone" false "frame" #afield/rect [1000.0 780.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_mesh_code_.kt" "lines" 47 "characters" 2725 "sha256" "2e20b8b5370d325fa7cf44e8313e73a7f7c5d3b15f550d8d35d9b660002c8ad9"}]}
 ```
 
 ```kotlin [field-property box="typo_mesh" name="code" path="typo_mesh_code_.kt"]
@@ -359,7 +359,7 @@ which is what Skia and Java2D both do — cancels a +1 outer against a -1 hole a
 counter; give it two rings wound the same way and it fills them solid.
 
 ```edn [field-box id="typo_winding" role="properties"]
-{"id" "typo_winding" "index" 6 "name" "2 — the winding convention, and what happens without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the winding convention, and what happens without it" "_tombstone" false "frame" #afield/rect [60.0 420.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_winding_code_.kt" "lines" 36 "characters" 1923 "sha256" "b7767091cf1dad340b8619d8432cc48198b63b55cb3e188b5c372051a24d843f"}]}
+{"id" "typo_winding" "index" 6 "name" "2 — the winding convention, and what happens without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the winding convention, and what happens without it" "_tombstone" false "frame" #afield/rect [60.0 420.0 370.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_winding_code_.kt" "lines" 36 "characters" 1923 "sha256" "b7767091cf1dad340b8619d8432cc48198b63b55cb3e188b5c372051a24d843f"}]}
 ```
 
 ```kotlin [field-property box="typo_winding" name="code" path="typo_winding_code_.kt"]
@@ -414,7 +414,7 @@ resolve; Typefaces.fromFile("...ttf") loads one off disk through Font.createFont
 Typefaces.firstAvailable("Futura", "Avenir") picks the first face you actually have.
 
 ```edn [field-box id="typo_values" role="properties"]
-{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 900.0 330.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 38 "characters" 2323 "sha256" "9c0862e9a811f7eab545a17f4bab6d997d88de752b08bce7d2d2ba783b852315"}]}
+{"id" "typo_values" "index" 7 "name" "1 — a string becomes contours" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a string becomes contours" "_tombstone" false "frame" #afield/rect [60.0 60.0 210.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "typo_values_code_.kt" "lines" 38 "characters" 2323 "sha256" "9c0862e9a811f7eab545a17f4bab6d997d88de752b08bce7d2d2ba783b852315"}]}
 ```
 
 ```kotlin [field-property box="typo_values" name="code" path="typo_values_code_.kt"]

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="fn_fit_demo" index="0" -->
 
 ```edn [field-box id="fn_fit_demo" role="properties"]
-{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 520.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 16 "characters" 672 "sha256" "8c3e34d757dfd6ad1ffbc19d05a7599217c38894383ea808c6fc441505fa2a45"}]}
+{"id" "fn_fit_demo" "index" 0 "name" "differentiable Fn fit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "differentiable Fn fit" "_tombstone" false "frame" #afield/rect [80.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "fn_fit_demo_code_.kt" "lines" 16 "characters" 672 "sha256" "8c3e34d757dfd6ad1ffbc19d05a7599217c38894383ea808c6fc441505fa2a45"}]}
 ```
 
 ```kotlin [field-property box="fn_fit_demo" name="code" path="fn_fit_demo_code_.kt"]

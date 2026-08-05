@@ -45,7 +45,7 @@ operations:
   - create:
       box: keyframe_targets
       name: What a scope watches — capture, edit, apply
-      frame: { x: 80.0, y: 80.0, w: 880.0, h: 420.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // A KeyframeScope holds no values of its own. It holds *targets*: places to read from and
@@ -132,7 +132,7 @@ operations:
   - create:
       box: keyframe_camera
       name: A camera move is a screw motion
-      frame: { x: 80.0, y: 540.0, w: 980.0, h: 460.0 }
+      frame: { x: 80.0, y: 540.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           // KeyframeScope.camera stores a CameraPose — a rigid transform as a dual quaternion, plus
@@ -242,7 +242,7 @@ operations:
   - create:
       box: keyframe_persist
       name: Saving is always additive history
-      frame: { x: 1100.0, y: 80.0, w: 900.0, h: 520.0 }
+      frame: { x: 1100.0, y: 80.0, w: 240.0, h: 50.0 }
       properties:
         code: |
           // saveKey writes pretty JSON — and, every single time, ALSO appends a numbered copy to a
@@ -328,7 +328,7 @@ operations:
   - create:
       box: keyframe_updatecode
       name: A captured look becomes source
-      frame: { x: 1100.0, y: 640.0, w: 900.0, h: 360.0 }
+      frame: { x: 1100.0, y: 640.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           // The last step of the loop closes it: Key.updateCode() emits the snapshot as pasteable

@@ -40,7 +40,7 @@ operations:
   - create:
       box: spatial_delaunay
       name: Delaunay, and the Voronoi dual
-      frame: { x: 80.0, y: 80.0, w: 900.0, h: 380.0 }
+      frame: { x: 80.0, y: 80.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           // Voronoi and Delaunay are the same object seen twice: the diagram cuts the plane into one
@@ -118,7 +118,7 @@ operations:
   - create:
       box: spatial_apollonius
       name: When the bisector is a circle
-      frame: { x: 80.0, y: 500.0, w: 900.0, h: 380.0 }
+      frame: { x: 80.0, y: 500.0, w: 210.0, h: 50.0 }
       properties:
         code: |
           // CircularDirichlet minimises |x - p|^2 / w^2 — the multiplicatively weighted, or
@@ -187,7 +187,7 @@ operations:
   - create:
       box: spatial_contours
       name: A field, and the seam through it
-      frame: { x: 1020.0, y: 80.0, w: 900.0, h: 380.0 }
+      frame: { x: 1020.0, y: 80.0, w: 230.0, h: 50.0 }
       properties:
         code: |
           // A Voronoi diagram IS the set of ties in argmin |x - p_i|, so contouring the gap between
@@ -263,7 +263,7 @@ operations:
   - create:
       box: spatial_marching
       name: The two decisions inside marching squares
-      frame: { x: 1020.0, y: 500.0, w: 900.0, h: 380.0 }
+      frame: { x: 1020.0, y: 500.0, w: 290.0, h: 50.0 }
       properties:
         code: |
           // Marching squares has exactly two decisions in it, and both are places where a plausible
@@ -342,7 +342,7 @@ operations:
   - create:
       box: spatial_clustering
       name: Partitioning the cloud instead of the plane
-      frame: { x: 550.0, y: 920.0, w: 900.0, h: 380.0 }
+      frame: { x: 550.0, y: 920.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // There is no k-means in Field, on purpose. Every algorithm here returns either a hierarchy
@@ -424,7 +424,7 @@ operations:
   - create:
       box: spatial_apollonius_sweep
       name: Sweep the weight, and watch the bisector bow
-      frame: { x: 1020.0, y: 500.0, w: 620.0, h: 700.0 }
+      frame: { x: 1020.0, y: 500.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // The animated twin of "When the bisector is a circle". Three stills at three weights argue
@@ -481,7 +481,7 @@ operations:
   - create:
       box: spatial_iso_sweep
       name: Sweep the iso level through the saddle
-      frame: { x: 1020.0, y: 1240.0, w: 620.0, h: 520.0 }
+      frame: { x: 1020.0, y: 1240.0, w: 270.0, h: 50.0 }
       properties:
         code: |
           // The animated twin of "The two decisions inside marching squares". That box argues about a

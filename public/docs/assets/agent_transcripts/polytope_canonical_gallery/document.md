@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_canonical_gallery" index="0" -->
 
 ```edn [field-box id="polytope_canonical_gallery" role="properties"]
-{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 440.0 72.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 87 "characters" 3737 "sha256" "21c6cfe6f0010bb30a53ed281d5bddb5b72dac8b6257450556805b146e0bc12c"}]}
+{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 350.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 87 "characters" 3737 "sha256" "21c6cfe6f0010bb30a53ed281d5bddb5b72dac8b6257450556805b146e0bc12c"}]}
 ```
 
 ```kotlin [field-property box="polytope_canonical_gallery" name="code" path="polytope_canonical_gallery_code_.kt"]

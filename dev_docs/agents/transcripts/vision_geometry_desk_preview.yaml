@@ -10,7 +10,7 @@ operations:
   - create:
       box: agent_vision_geometry_desk_preview
       name: Vision geometry — desk preview
-      frame: { x: 60.0, y: 60.0, w: 460.0, h: 300.0 }
+      frame: { x: 60.0, y: 60.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           import afield.graphics.VisionGeometryPreview
@@ -86,7 +86,7 @@ operations:
   - create:
       box: agent_vision_geometry_desk_preview_inverted
       name: … and the same mesh wound backwards
-      frame: { x: 60.0, y: 400.0, w: 460.0, h: 260.0 }
+      frame: { x: 60.0, y: 400.0, w: 250.0, h: 50.0 }
       properties:
         code: |
           import afield.graphics.VisionGeometryPreview

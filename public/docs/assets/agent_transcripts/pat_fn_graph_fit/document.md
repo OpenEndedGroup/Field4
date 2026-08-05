@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="pat_fn_fit" index="0" -->
 
 ```edn [field-box id="pat_fn_fit" role="properties"]
-{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 520.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 25 "characters" 1033 "sha256" "8ac27f8c72d165cedcf4dc9aa643f257ab0560f1d501712c8b872bbf8fcaf9f6"}]}
+{"id" "pat_fn_fit" "index" 0 "name" "2 · fit the rhythm" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · fit the rhythm" "_tombstone" false "frame" #afield/rect [60.0 390.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_fit_code_.kt" "lines" 25 "characters" 1033 "sha256" "8ac27f8c72d165cedcf4dc9aa643f257ab0560f1d501712c8b872bbf8fcaf9f6"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_fit" name="code" path="pat_fn_fit_code_.kt"]
@@ -47,7 +47,7 @@ with(Functions) {
 <!-- field-box id="pat_fn_inspect" index="1" -->
 
 ```edn [field-box id="pat_fn_inspect" role="properties"]
-{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 520.0 300.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 20 "characters" 665 "sha256" "b451f485a2efb9a2da862275ca6600be2011b291f37c54589ddbc5c6d7b3c3a4"}]}
+{"id" "pat_fn_inspect" "index" 1 "name" "1 · the pat node" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · the pat node" "_tombstone" false "frame" #afield/rect [60.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_inspect_code_.kt" "lines" 20 "characters" 665 "sha256" "b451f485a2efb9a2da862275ca6600be2011b291f37c54589ddbc5c6d7b3c3a4"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_inspect" name="code" path="pat_fn_inspect_code_.kt"]
@@ -78,7 +78,7 @@ display("<pre>" + report + "</pre>")
 <!-- field-box id="pat_fn_permute" index="2" -->
 
 ```edn [field-box id="pat_fn_permute" role="properties"]
-{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 520.0 520.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 27 "characters" 1218 "sha256" "e1338ee0f31a67428ed2cb8d487fcee11112715ffe6a8511ac875868b1684324"}]}
+{"id" "pat_fn_permute" "index" 2 "name" "3 · what it cannot do" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · what it cannot do" "_tombstone" false "frame" #afield/rect [620.0 390.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "pat_fn_permute_code_.kt" "lines" 27 "characters" 1218 "sha256" "e1338ee0f31a67428ed2cb8d487fcee11112715ffe6a8511ac875868b1684324"}]}
 ```
 
 ```kotlin [field-property box="pat_fn_permute" name="code" path="pat_fn_permute_code_.kt"]

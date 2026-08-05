@@ -45,7 +45,7 @@ operations:
   - create:
       box: stats_summary
       name: Summary stats, and exactly how boring they are
-      frame: { x: 80.0, y: 80.0, w: 820.0, h: 360.0 }
+      frame: { x: 80.0, y: 80.0, w: 320.0, h: 50.0 }
       properties:
         code: |
           // buildSummaryStats hands back seventeen numbers. Three of them are routinely misread, so
@@ -96,7 +96,7 @@ operations:
   - create:
       box: stats_histogram
       name: Histograms, and the rule that picks the bins
-      frame: { x: 80.0, y: 470.0, w: 820.0, h: 360.0 }
+      frame: { x: 80.0, y: 470.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // buildHistogram takes no bin-count argument. It picks the SMALLEST of the
@@ -154,7 +154,7 @@ operations:
   - create:
       box: stats_dependence
       name: Six questions, six answers — and is the answer big?
-      frame: { x: 960.0, y: 80.0, w: 860.0, h: 470.0 }
+      frame: { x: 960.0, y: 80.0, w: 350.0, h: 50.0 }
       properties:
         code: |
           // The whole reason StatsDependence has six coefficients instead of one. Six shapes, every
@@ -245,7 +245,7 @@ operations:
   - create:
       box: stats_rolling
       name: Rolling dependence across a regime change
-      frame: { x: 960.0, y: 580.0, w: 860.0, h: 400.0 }
+      frame: { x: 960.0, y: 580.0, w: 290.0, h: 50.0 }
       properties:
         code: |
           // A single coefficient over a whole recording answers the wrong question when the
@@ -325,7 +325,7 @@ operations:
   - create:
       box: stats_warp
       name: Reshaping a distribution with an 8-knot warp
-      frame: { x: 80.0, y: 860.0, w: 820.0, h: 400.0 }
+      frame: { x: 80.0, y: 860.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // quantilewarp.kt does not measure anything. It fits a monotone 8-knot PCHIP curve from

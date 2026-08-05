@@ -7,8 +7,8 @@ operations:
       frame:
         x: 40.0
         y: 40.0
-        w: 160.0
-        h: 90.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           import afield.four.util.Options

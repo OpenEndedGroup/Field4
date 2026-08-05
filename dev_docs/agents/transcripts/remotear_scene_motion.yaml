@@ -12,7 +12,7 @@ operations:
   - create:
       box: agent_remotear_scene_motion
       name: RemoteAR Scene + Motion
-      frame: { x: 80.0, y: 80.0, w: 360.0, h: 260.0 }
+      frame: { x: 80.0, y: 80.0, w: 200.0, h: 50.0 }
       properties:
         mainLanguage: kotlinjs
         code: |

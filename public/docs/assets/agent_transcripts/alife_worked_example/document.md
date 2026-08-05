@@ -21,7 +21,7 @@ the box's output every displayed frame, then holds the final frame forever.
 Compute the four space-time diagrams once, in full: 257 cells wide, 128 generations tall.
 
 ```edn [field-box id="alife_elementary_moving" role="properties"]
-{"id" "alife_elementary_moving" "index" 0 "name" "2 — Four elementary rules, filling in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Four elementary rules, filling in — launch me" "_tombstone" false "frame" #afield/rect [60.0 960.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_elementary_moving_code_.kt" "lines" 28 "characters" 1405 "sha256" "57192c89735d69ae704ff68e40b725024c9031431c9c97c9d27361075f33eab5"}]}
+{"id" "alife_elementary_moving" "index" 0 "name" "2 — Four elementary rules, filling in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Four elementary rules, filling in — launch me" "_tombstone" false "frame" #afield/rect [60.0 960.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_elementary_moving_code_.kt" "lines" 28 "characters" 1405 "sha256" "57192c89735d69ae704ff68e40b725024c9031431c9c97c9d27361075f33eab5"}]}
 ```
 
 ```kotlin [field-property box="alife_elementary_moving" name="code" path="alife_elementary_moving_code_.kt"]
@@ -69,7 +69,7 @@ without running a cellular automaton at all. The equality is a cross-check betwe
 unrelated computations rather than a stepper agreeing with itself.
 
 ```edn [field-box id="alife_elementary" role="properties"]
-{"id" "alife_elementary" "index" 1 "name" "2 — Elementary CA against an independent oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Elementary CA against an independent oracle" "_tombstone" false "frame" #afield/rect [60.0 260.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_elementary_code_.kt" "lines" 39 "characters" 2095 "sha256" "71e40cc7b9c2917891c508227f48815a5c406adffcf58c4e12421be25fafe9f0"}]}
+{"id" "alife_elementary" "index" 1 "name" "2 — Elementary CA against an independent oracle" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — Elementary CA against an independent oracle" "_tombstone" false "frame" #afield/rect [60.0 260.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_elementary_code_.kt" "lines" 39 "characters" 2095 "sha256" "71e40cc7b9c2917891c508227f48815a5c406adffcf58c4e12421be25fafe9f0"}]}
 ```
 
 ```kotlin [field-property box="alife_elementary" name="code" path="alife_elementary_code_.kt"]
@@ -131,7 +131,7 @@ them is the SHAPE of their features (isoperimetric ratio P^2/4piA, ~1 for a disc
 one connected structure dominates.
 
 ```edn [field-box id="alife_gray_scott" role="properties"]
-{"id" "alife_gray_scott" "index" 2 "name" "4 — Gray-Scott: regimes told apart by measurement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Gray-Scott: regimes told apart by measurement" "_tombstone" false "frame" #afield/rect [420.0 60.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_gray_scott_code_.kt" "lines" 33 "characters" 1805 "sha256" "cee694ffab41fe31996efa2a68f6b6906e2c8aca34e2db14c0710fa5fba93a30"}]}
+{"id" "alife_gray_scott" "index" 2 "name" "4 — Gray-Scott: regimes told apart by measurement" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Gray-Scott: regimes told apart by measurement" "_tombstone" false "frame" #afield/rect [420.0 60.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_gray_scott_code_.kt" "lines" 33 "characters" 1805 "sha256" "cee694ffab41fe31996efa2a68f6b6906e2c8aca34e2db14c0710fa5fba93a30"}]}
 ```
 
 ```kotlin [field-property box="alife_gray_scott" name="code" path="alife_gray_scott_code_.kt"]
@@ -187,7 +187,7 @@ up at nine units of travel per frame. `order()` reads the velocity array, so nei
 touches what is measured; the number in each caption is computed fresh every frame.
 
 ```edn [field-box id="alife_boids_moving" role="properties"]
-{"id" "alife_boids_moving" "index" 3 "name" "6 — Boids: the control arm, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: the control arm, running — launch me" "_tombstone" false "frame" #afield/rect [420.0 1160.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_moving_code_.kt" "lines" 27 "characters" 1566 "sha256" "be7015c3896bc0d69db245db6f0af5730115a33b3bcdf86a8575d68ed1e17d11"}]}
+{"id" "alife_boids_moving" "index" 3 "name" "6 — Boids: the control arm, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: the control arm, running — launch me" "_tombstone" false "frame" #afield/rect [420.0 1160.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_moving_code_.kt" "lines" 27 "characters" 1566 "sha256" "be7015c3896bc0d69db245db6f0af5730115a33b3bcdf86a8575d68ed1e17d11"}]}
 ```
 
 ```kotlin [field-property box="alife_boids_moving" name="code" path="alife_boids_moving_code_.kt"]
@@ -237,7 +237,7 @@ is 1 - (1 - 1/states)^8 -- a closed form. Once the field has organised, every ce
 a neighbour and the advance fraction pins at 1.0, which no uncorrelated field does.
 
 ```edn [field-box id="alife_cyclic" role="properties"]
-{"id" "alife_cyclic" "index" 4 "name" "3 — Cyclic CA: self-organisation, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: self-organisation, measured" "_tombstone" false "frame" #afield/rect [60.0 460.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_code_.kt" "lines" 35 "characters" 1972 "sha256" "5b7789d919dd23ff9af71184d0cadf952302087c00ffa9d6155fd509be087060"}]}
+{"id" "alife_cyclic" "index" 4 "name" "3 — Cyclic CA: self-organisation, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: self-organisation, measured" "_tombstone" false "frame" #afield/rect [60.0 460.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_code_.kt" "lines" 35 "characters" 1972 "sha256" "5b7789d919dd23ff9af71184d0cadf952302087c00ffa9d6155fd509be087060"}]}
 ```
 
 ```kotlin [field-property box="alife_cyclic" name="code" path="alife_cyclic_code_.kt"]
@@ -295,7 +295,7 @@ outer-totalistic B/S rule -- so this float convolution and the integer Life step
 `alife_ca.kt` must agree bit for bit. `leniaFromLifeRule` builds that limit.
 
 ```edn [field-box id="alife_lenia" role="properties"]
-{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit" "_tombstone" false "frame" #afield/rect [420.0 260.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 48 "characters" 2604 "sha256" "e84ca164d0a2605b33047b01401ebbd0674d33b33581b5bb426038e3eb367788"}]}
+{"id" "alife_lenia" "index" 5 "name" "5 — Lenia: exact in its discrete limit" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: exact in its discrete limit" "_tombstone" false "frame" #afield/rect [420.0 260.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_code_.kt" "lines" 48 "characters" 2604 "sha256" "e84ca164d0a2605b33047b01401ebbd0674d33b33581b5bb426038e3eb367788"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia" name="code" path="alife_lenia_code_.kt"]
@@ -361,7 +361,7 @@ L-systems are the one generative system in this family whose output can be check
 combinatorially rather than statistically -- so they carry the sharpest evidence here.
 
 ```edn [field-box id="alife_lsystem" role="properties"]
-{"id" "alife_lsystem" "index" 6 "name" "9 — L-systems: exact combinatorial identities" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: exact combinatorial identities" "_tombstone" false "frame" #afield/rect [780.0 460.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_code_.kt" "lines" 41 "characters" 2754 "sha256" "b7165575f2c874c473adb6ceaa0aa045b6056278dbba28b7c7da9732913aff29"}]}
+{"id" "alife_lsystem" "index" 6 "name" "9 — L-systems: exact combinatorial identities" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: exact combinatorial identities" "_tombstone" false "frame" #afield/rect [780.0 460.0 310.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_code_.kt" "lines" 41 "characters" 2754 "sha256" "b7165575f2c874c473adb6ceaa0aa045b6056278dbba28b7c7da9732913aff29"}]}
 ```
 
 ```kotlin [field-property box="alife_lsystem" name="code" path="alife_lsystem_code_.kt"]
@@ -426,7 +426,7 @@ deposit / (1 - decay) = 62.5. The first cut of this clip guessed 30 and clipped 
 flat cream. The caption's number is `topShare(0.05)`, recomputed every frame.
 
 ```edn [field-box id="alife_physarum_moving" role="properties"]
-{"id" "alife_physarum_moving" "index" 7 "name" "7 — Physarum: the network finding itself — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: the network finding itself — launch me" "_tombstone" false "frame" #afield/rect [780.0 760.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_moving_code_.kt" "lines" 31 "characters" 1870 "sha256" "c026f2bc6bd6f25f5dbc61d249afc2e695e9859f31e0d7d0e62bfcb3a481003f"}]}
+{"id" "alife_physarum_moving" "index" 7 "name" "7 — Physarum: the network finding itself — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: the network finding itself — launch me" "_tombstone" false "frame" #afield/rect [780.0 760.0 350.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_moving_code_.kt" "lines" 31 "characters" 1870 "sha256" "c026f2bc6bd6f25f5dbc61d249afc2e695e9859f31e0d7d0e62bfcb3a481003f"}]}
 ```
 
 ```kotlin [field-property box="alife_physarum_moving" name="code" path="alife_physarum_moving_code_.kt"]
@@ -479,7 +479,7 @@ Grow the cluster once, then replay `Aggregate.points` -- which IS the order the 
 in -- at a uniform rate over seven seconds.
 
 ```edn [field-box id="alife_dla_moving" role="properties"]
-{"id" "alife_dla_moving" "index" 8 "name" "8 — DLA: the order the branches arrived in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: the order the branches arrived in — launch me" "_tombstone" false "frame" #afield/rect [780.0 960.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_moving_code_.kt" "lines" 43 "characters" 2523 "sha256" "7add1dd9e916a109ade4d104bcb73851d85877c810bfd30760e4ca6c720745af"}]}
+{"id" "alife_dla_moving" "index" 8 "name" "8 — DLA: the order the branches arrived in — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: the order the branches arrived in — launch me" "_tombstone" false "frame" #afield/rect [780.0 960.0 370.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_moving_code_.kt" "lines" 43 "characters" 2523 "sha256" "7add1dd9e916a109ade4d104bcb73851d85877c810bfd30760e4ca6c720745af"}]}
 ```
 
 ```kotlin [field-property box="alife_dla_moving" name="code" path="alife_dla_moving_code_.kt"]
@@ -540,7 +540,7 @@ Conway's Life. Every claim here is about an object that predates this code, stat
 integer-grid equality rather than as an observation about a picture.
 
 ```edn [field-box id="alife_life" role="properties"]
-{"id" "alife_life" "index" 9 "name" "1 — Conway's Life against known objects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway's Life against known objects" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_life_code_.kt" "lines" 39 "characters" 2092 "sha256" "4fead2903de276187c0176416a5a4fa3ac460afb355930e1068df2fc09306924"}]}
+{"id" "alife_life" "index" 9 "name" "1 — Conway's Life against known objects" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway's Life against known objects" "_tombstone" false "frame" #afield/rect [60.0 60.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_life_code_.kt" "lines" 39 "characters" 2092 "sha256" "4fead2903de276187c0176416a5a4fa3ac460afb355930e1068df2fc09306924"}]}
 ```
 
 ```kotlin [field-property box="alife_life" name="code" path="alife_life_code_.kt"]
@@ -603,7 +603,7 @@ more. The control is the identical population with sensing switched off -- same 
 seed, same deposit, same decay, random turns.
 
 ```edn [field-box id="alife_physarum" role="properties"]
-{"id" "alife_physarum" "index" 10 "name" "7 — Physarum: a network the code never mentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: a network the code never mentions" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_code_.kt" "lines" 28 "characters" 1398 "sha256" "bef69a82693e988cb9ffa290624d0d8dad485825076a394723d41b4ced3d83e4"}]}
+{"id" "alife_physarum" "index" 10 "name" "7 — Physarum: a network the code never mentions" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "7 — Physarum: a network the code never mentions" "_tombstone" false "frame" #afield/rect [780.0 60.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_physarum_code_.kt" "lines" 28 "characters" 1398 "sha256" "bef69a82693e988cb9ffa290624d0d8dad485825076a394723d41b4ced3d83e4"}]}
 ```
 
 ```kotlin [field-property box="alife_physarum" name="code" path="alife_physarum_code_.kt"]
@@ -654,7 +654,7 @@ which is what makes generation 0 and generation 400 the same picture of the same
 pixels to a cell, nearest-neighbour, so the bands are countable and the encoder sees flat blocks.
 
 ```edn [field-box id="alife_cyclic_moving" role="properties"]
-{"id" "alife_cyclic_moving" "index" 11 "name" "3 — Cyclic CA: the two phases, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: the two phases, running — launch me" "_tombstone" false "frame" #afield/rect [60.0 1160.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_moving_code_.kt" "lines" 29 "characters" 1529 "sha256" "3c545ca081c4ad22ee4025c60c721766f4f9134edbdfea7216130a1d287be431"}]}
+{"id" "alife_cyclic_moving" "index" 11 "name" "3 — Cyclic CA: the two phases, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — Cyclic CA: the two phases, running — launch me" "_tombstone" false "frame" #afield/rect [60.0 1160.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_cyclic_moving_code_.kt" "lines" 29 "characters" 1529 "sha256" "3c545ca081c4ad22ee4025c60c721766f4f9134edbdfea7216130a1d287be431"}]}
 ```
 
 ```kotlin [field-property box="alife_cyclic_moving" name="code" path="alife_cyclic_moving_code_.kt"]
@@ -706,7 +706,7 @@ the raster to whatever it is handed, so a growing prefix rescales every frame: t
 to stay the same size while the world shrinks around it, and the growth becomes invisible.
 
 ```edn [field-box id="alife_lsystem_moving" role="properties"]
-{"id" "alife_lsystem_moving" "index" 12 "name" "9 — L-systems: the turtle, walking — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: the turtle, walking — launch me" "_tombstone" false "frame" #afield/rect [780.0 1160.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_moving_code_.kt" "lines" 30 "characters" 1721 "sha256" "c74e0db99cc656b0368b79780e98ac2b3edf8a694bf99ba306d8a84685cda6ed"}]}
+{"id" "alife_lsystem_moving" "index" 12 "name" "9 — L-systems: the turtle, walking — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "9 — L-systems: the turtle, walking — launch me" "_tombstone" false "frame" #afield/rect [780.0 1160.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lsystem_moving_code_.kt" "lines" 30 "characters" 1721 "sha256" "c74e0db99cc656b0368b79780e98ac2b3edf8a694bf99ba306d8a84685cda6ed"}]}
 ```
 
 ```kotlin [field-property box="alife_lsystem_moving" name="code" path="alife_lsystem_moving_code_.kt"]
@@ -757,7 +757,7 @@ things Field already draws, meshes and exports.
 `contours.kt` that was already here.
 
 ```edn [field-box id="alife_bridges" role="properties"]
-{"id" "alife_bridges" "index" 13 "name" "10 — Bridges out: FLines, trees, and a watertight mesh" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — Bridges out: FLines, trees, and a watertight mesh" "_tombstone" false "frame" #afield/rect [1140.0 60.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_bridges_code_.kt" "lines" 41 "characters" 2407 "sha256" "fd6e32ebdac388818a69e627ae4657f678145cecbacb73331432f5cb44eb5629"}]}
+{"id" "alife_bridges" "index" 13 "name" "10 — Bridges out: FLines, trees, and a watertight mesh" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — Bridges out: FLines, trees, and a watertight mesh" "_tombstone" false "frame" #afield/rect [1140.0 60.0 370.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_bridges_code_.kt" "lines" 41 "characters" 2407 "sha256" "fd6e32ebdac388818a69e627ae4657f678145cecbacb73331432f5cb44eb5629"}]}
 ```
 
 ```kotlin [field-property box="alife_bridges" name="code" path="alife_bridges_code_.kt"]
@@ -821,7 +821,7 @@ is measured while you watch. See the note below this clip: an auto-ranged SATURA
 renders black and becomes indistinguishable from death, which cost this family a figure once.
 
 ```edn [field-box id="alife_lenia_moving" role="properties"]
-{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: two growth windows, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: two growth windows, running — launch me" "_tombstone" false "frame" #afield/rect [420.0 960.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 28 "characters" 1743 "sha256" "da02a62390a11505ff053db07fff940539950b292d6c169761c48a48d5ff4edb"}]}
+{"id" "alife_lenia_moving" "index" 14 "name" "5 — Lenia: two growth windows, running — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — Lenia: two growth windows, running — launch me" "_tombstone" false "frame" #afield/rect [420.0 960.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_lenia_moving_code_.kt" "lines" 28 "characters" 1743 "sha256" "da02a62390a11505ff053db07fff940539950b292d6c169761c48a48d5ff4edb"}]}
 ```
 
 ```kotlin [field-property box="alife_lenia_moving" name="code" path="alife_lenia_moving_code_.kt"]
@@ -872,7 +872,7 @@ instead of by a diffusing walker) and a uniform sprinkle both have dimension 2, 
 controls show the estimator is reading the diffusion-limited part and not merely "growth".
 
 ```edn [field-box id="alife_dla" role="properties"]
-{"id" "alife_dla" "index" 15 "name" "8 — DLA: a fractal dimension, and two controls at 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: a fractal dimension, and two controls at 2" "_tombstone" false "frame" #afield/rect [780.0 260.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_code_.kt" "lines" 31 "characters" 1755 "sha256" "124b7434eaf85f0b1aed60127605c180463eca9d9b3e8e7c9b0890bc3690c05c"}]}
+{"id" "alife_dla" "index" 15 "name" "8 — DLA: a fractal dimension, and two controls at 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "8 — DLA: a fractal dimension, and two controls at 2" "_tombstone" false "frame" #afield/rect [780.0 260.0 350.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_dla_code_.kt" "lines" 31 "characters" 1755 "sha256" "124b7434eaf85f0b1aed60127605c180463eca9d9b3e8e7c9b0890bc3690c05c"}]}
 ```
 
 ```kotlin [field-property box="alife_dla" name="code" path="alife_dla_code_.kt"]
@@ -926,7 +926,7 @@ twenty-four pixels for the glider's 16-cell torus, six for the R-pentomino's 64-
 board. Small boards on purpose -- see the note above this clip, which measures why.
 
 ```edn [field-box id="alife_life_moving" role="properties"]
-{"id" "alife_life_moving" "index" 16 "name" "1 — Conway's Life, moving — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway's Life, moving — launch me" "_tombstone" false "frame" #afield/rect [60.0 760.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_life_moving_code_.kt" "lines" 26 "characters" 1445 "sha256" "4b2df78382ad77f412c2dd6f3c8cbe70d5daa43f43edc42d7d8c49449263ea70"}]}
+{"id" "alife_life_moving" "index" 16 "name" "1 — Conway's Life, moving — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — Conway's Life, moving — launch me" "_tombstone" false "frame" #afield/rect [60.0 760.0 260.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_life_moving_code_.kt" "lines" 26 "characters" 1445 "sha256" "4b2df78382ad77f412c2dd6f3c8cbe70d5daa43f43edc42d7d8c49449263ea70"}]}
 ```
 
 ```kotlin [field-property box="alife_life_moving" name="code" path="alife_life_moving_code_.kt"]
@@ -975,7 +975,7 @@ animation of a growing pattern appear to stand still, and it is the single easie
 a reaction-diffusion clip into a lie.
 
 ```edn [field-box id="alife_gray_scott_moving" role="properties"]
-{"id" "alife_gray_scott_moving" "index" 17 "name" "4 — Gray-Scott: 6000 steps, ramped — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Gray-Scott: 6000 steps, ramped — launch me" "_tombstone" false "frame" #afield/rect [420.0 760.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_gray_scott_moving_code_.kt" "lines" 23 "characters" 1370 "sha256" "9bb3476cc581806dd1761e5ba37cb73862f5448807490d59b59a75ce5c14dca4"}]}
+{"id" "alife_gray_scott_moving" "index" 17 "name" "4 — Gray-Scott: 6000 steps, ramped — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — Gray-Scott: 6000 steps, ramped — launch me" "_tombstone" false "frame" #afield/rect [420.0 760.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_gray_scott_moving_code_.kt" "lines" 23 "characters" 1370 "sha256" "9bb3476cc581806dd1761e5ba37cb73862f5448807490d59b59a75ce5c14dca4"}]}
 ```
 
 ```kotlin [field-property box="alife_gray_scott_moving" name="code" path="alife_gray_scott_moving_code_.kt"]
@@ -1018,7 +1018,7 @@ nearest-neighbour distribution has a floor. Both are measured against the same i
 with one weight zeroed -- so the difference is attributable to that weight and nothing else.
 
 ```edn [field-box id="alife_boids" role="properties"]
-{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [420.0 460.0 320.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 31 "characters" 1763 "sha256" "4b35a2b651255fecf3edb6650edce36da6b94ab7e24c52ee27368351b2fea90c"}]}
+{"id" "alife_boids" "index" 18 "name" "6 — Boids: order above the random baseline" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — Boids: order above the random baseline" "_tombstone" false "frame" #afield/rect [420.0 460.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_boids_code_.kt" "lines" 31 "characters" 1763 "sha256" "4b35a2b651255fecf3edb6650edce36da6b94ab7e24c52ee27368351b2fea90c"}]}
 ```
 
 ```kotlin [field-property box="alife_boids" name="code" path="alife_boids_code_.kt"]
@@ -1073,7 +1073,7 @@ the contours' own bounds instead, the early frames (two loops in one corner) wou
 zoomed right in and the whole figure would zoom out as the pattern spread.
 
 ```edn [field-box id="alife_bridges_moving" role="properties"]
-{"id" "alife_bridges_moving" "index" 19 "name" "10 — A field and its contours, live — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — A field and its contours, live — launch me" "_tombstone" false "frame" #afield/rect [1140.0 760.0 340.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_bridges_moving_code_.kt" "lines" 29 "characters" 1659 "sha256" "a53634536a4c4bc4750ad69cb4dcf995a8780d8c04a949182f79b29a210e9de5"}]}
+{"id" "alife_bridges_moving" "index" 19 "name" "10 — A field and its contours, live — launch me" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "10 — A field and its contours, live — launch me" "_tombstone" false "frame" #afield/rect [1140.0 760.0 320.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "alife_bridges_moving_code_.kt" "lines" 29 "characters" 1659 "sha256" "a53634536a4c4bc4750ad69cb4dcf995a8780d8c04a949182f79b29a210e9de5"}]}
 ```
 
 ```kotlin [field-property box="alife_bridges_moving" name="code" path="alife_bridges_moving_code_.kt"]

@@ -5,7 +5,7 @@ operations:
   - create:
       box: tb_renderer
       name: renderer
-      frame: { x: 40.0, y: 40.0, w: 160.0, h: 90.0 }
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -23,7 +23,7 @@ operations:
   - create:
       box: tb_compute
       name: compute particles
-      frame: { x: 240.0, y: 40.0, w: 160.0, h: 90.0 }
+      frame: { x: 240.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         compute: |
           #version 450
@@ -75,7 +75,7 @@ operations:
   - create:
       box: tb_draw
       name: draw particles
-      frame: { x: 440.0, y: 40.0, w: 160.0, h: 90.0 }
+      frame: { x: 440.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         vertex: |
           #version 450

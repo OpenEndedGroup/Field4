@@ -41,7 +41,7 @@ operations:
   - create:
       box: imaging_perf_pyrdown
       name: pyrDown — fused decimation vs blur-then-throw-away
-      frame: { x: 80.0, y: 80.0, w: 900.0, h: 420.0 }
+      frame: { x: 80.0, y: 80.0, w: 340.0, h: 50.0 }
       properties:
         code: |
           // 1280x720 rather than the benchmark's 1920x1080, so a replay of this file is quick.
@@ -115,7 +115,7 @@ operations:
   - create:
       box: imaging_perf_boxblur
       name: boxBlur — running sum vs the box kernel, two independent definitions
-      frame: { x: 80.0, y: 540.0, w: 900.0, h: 420.0 }
+      frame: { x: 80.0, y: 540.0, w: 450.0, h: 50.0 }
       properties:
         code: |
           val src = Img.generate(1280, 720) { x, y ->
@@ -187,7 +187,7 @@ operations:
   - create:
       box: imaging_perf_bilateral
       name: bilateral — a tabulated range weight instead of 169 exp() per pixel
-      frame: { x: 80.0, y: 1000.0, w: 900.0, h: 420.0 }
+      frame: { x: 80.0, y: 1000.0, w: 450.0, h: 50.0 }
       properties:
         code: |
           // Smaller again: bilateral is O(r^2) per pixel and this is the expensive box.

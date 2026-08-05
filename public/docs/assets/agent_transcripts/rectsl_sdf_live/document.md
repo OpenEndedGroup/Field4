@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rectsl_sdf_renderer" index="0" -->
 
 ```edn [field-box id="rectsl_sdf_renderer" role="properties"]
-{"id" "rectsl_sdf_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["rectsl_sdf_live"] "properties" {"children" #{#afield/box "rectsl_sdf_live"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-520.0 -300.0 220.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_renderer_code_.kt" "lines" 15 "characters" 265 "sha256" "32da6471a66e7ad90d960f58a6b1d0ff82f0555a696130e9b59d909d50953d1c"}]}
+{"id" "rectsl_sdf_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["rectsl_sdf_live"] "properties" {"children" #{#afield/box "rectsl_sdf_live"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-520.0 -300.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_renderer_code_.kt" "lines" 15 "characters" 265 "sha256" "32da6471a66e7ad90d960f58a6b1d0ff82f0555a696130e9b59d909d50953d1c"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_renderer" name="code" path="rectsl_sdf_renderer_code_.kt"]
@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [-260.0 -300.0 420.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 100 "characters" 4285 "sha256" "1702ef1894debe88f4fd0ffcbd520c9db4470ae3ae0f33507819b6ddec234fc5"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [-260.0 -300.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 100 "characters" 4285 "sha256" "1702ef1894debe88f4fd0ffcbd520c9db4470ae3ae0f33507819b6ddec234fc5"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]

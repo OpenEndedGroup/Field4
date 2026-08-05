@@ -35,7 +35,7 @@ operations:
   - create:
       box: arclength_dashes
       name: dashes, spaced by parameter and by arc length
-      frame: { x: 80.0, y: 80.0, w: 940.0, h: 500.0 }
+      frame: { x: 80.0, y: 80.0, w: 310.0, h: 50.0 }
       properties:
         code: |
           // Two curves. `bent` is an ordinary S-shaped cubic — its control points are far off the
@@ -117,7 +117,7 @@ operations:
   - create:
       box: arclength_ticks
       name: where the mechanism actually is
-      frame: { x: 80.0, y: 720.0, w: 940.0, h: 500.0 }
+      frame: { x: 80.0, y: 720.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           // Same two curves, ticked instead of dashed, so you can see the spacing itself rather

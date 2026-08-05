@@ -7,8 +7,8 @@ operations:
       frame:
         x: 80.0
         y: 260.0
-        w: 220.0
-        h: 100.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           thisBox.setPropertyRaw("agent_context_value", "value from parent")
@@ -19,8 +19,8 @@ operations:
       frame:
         x: 360.0
         y: 260.0
-        w: 240.0
-        h: 100.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           val inherited = fromContextWithNameOrNull<String>("agent_context_value")

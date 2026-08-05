@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="agent_vision_geometry_heightfield_root" index="0" -->
 
 ```edn [field-box id="agent_vision_geometry_heightfield_root" role="properties"]
-{"id" "agent_vision_geometry_heightfield_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_heightfield"] "properties" {"children" #{#afield/box "agent_vision_geometry_heightfield"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 500.0 360.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
+{"id" "agent_vision_geometry_heightfield_root" "index" 0 "name" "KotlinJS → visionOS" "parents" ["root"] "children" ["agent_vision_geometry_heightfield"] "properties" {"children" #{#afield/box "agent_vision_geometry_heightfield"} "parents" #{#afield/box "root"} "name" "KotlinJS → visionOS" "_tombstone" false "frame" #afield/rect [50.0 50.0 200.0 50.0] "mainLanguage" "kotlinjs" "isKotlinJsRoot" true} "blockProperties" []}
 ```
 
 ## 2. Geometry — height field
@@ -25,7 +25,7 @@ From `code`
 {{ visionmetal uniforms=spin,light }}
 
 ```edn [field-box id="agent_vision_geometry_heightfield" role="properties"]
-{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 100.0 420.0 270.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 68 "characters" 2721 "sha256" "6b9c18101e3d822d3ee40369424a0a23f53f33ee553303a708d1980398a150f4"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
+{"id" "agent_vision_geometry_heightfield" "index" 1 "name" "Geometry — height field" "parents" ["root" "agent_vision_geometry_heightfield_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "agent_vision_geometry_heightfield_root"} "name" "Geometry — height field" "_tombstone" false "frame" #afield/rect [90.0 100.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "agent_vision_geometry_heightfield_code_.kt" "lines" 68 "characters" 2721 "sha256" "6b9c18101e3d822d3ee40369424a0a23f53f33ee553303a708d1980398a150f4"} {"name" "msl" "language" "msl" "path" "agent_vision_geometry_heightfield_msl_.metal" "lines" 44 "characters" 1534 "sha256" "c860f820d188ff0de4d05ab1c18ba06697728514e5e8da308d16ca5ba14183dc"}]}
 ```
 
 ```kotlin [field-property box="agent_vision_geometry_heightfield" name="code" path="agent_vision_geometry_heightfield_code_.kt"]

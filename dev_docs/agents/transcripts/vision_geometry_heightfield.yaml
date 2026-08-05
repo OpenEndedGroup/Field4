@@ -8,14 +8,14 @@ operations:
   - create:
       box: agent_vision_geometry_heightfield_root
       name: KotlinJS → visionOS
-      frame: { x: 50.0, y: 50.0, w: 500.0, h: 360.0 }
+      frame: { x: 50.0, y: 50.0, w: 200.0, h: 50.0 }
       properties:
         mainLanguage: kotlinjs
         isKotlinJsRoot: true
   - create:
       box: agent_vision_geometry_heightfield
       name: Geometry — height field
-      frame: { x: 90.0, y: 100.0, w: 420.0, h: 270.0 }
+      frame: { x: 90.0, y: 100.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // {{ visionmetal uniforms=spin,light }}

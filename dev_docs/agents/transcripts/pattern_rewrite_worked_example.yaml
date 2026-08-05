@@ -10,7 +10,7 @@ operations:
   - create:
       box: rw_negation
       name: Negation
-      frame: { x: 60.0, y: 60.0, w: 220.0, h: 110.0 }
+      frame: { x: 60.0, y: 60.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -29,7 +29,7 @@ operations:
   - create:
       box: rw_precedence
       name: Precedence Guard
-      frame: { x: 60.0, y: 200.0, w: 220.0, h: 110.0 }
+      frame: { x: 60.0, y: 200.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -48,7 +48,7 @@ operations:
   - create:
       box: rw_terminate
       name: isCallTo Termination
-      frame: { x: 60.0, y: 340.0, w: 220.0, h: 110.0 }
+      frame: { x: 60.0, y: 340.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -79,7 +79,7 @@ operations:
   - create:
       box: rw_variadic
       name: Variadic Hole
-      frame: { x: 60.0, y: 480.0, w: 220.0, h: 110.0 }
+      frame: { x: 60.0, y: 480.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -106,7 +106,7 @@ operations:
   - create:
       box: rw_unquote
       name: Procedural unquote
-      frame: { x: 60.0, y: 620.0, w: 220.0, h: 110.0 }
+      frame: { x: 60.0, y: 620.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -126,7 +126,7 @@ operations:
   - create:
       box: rw_ambient_parent
       name: Ambient Parent (holds the rule)
-      frame: { x: 360.0, y: 60.0, w: 260.0, h: 110.0 }
+      frame: { x: 360.0, y: 60.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           import afield.macros.*
@@ -134,7 +134,7 @@ operations:
   - create:
       box: rw_ambient_child
       name: Ambient Child (inherits it)
-      frame: { x: 360.0, y: 200.0, w: 260.0, h: 110.0 }
+      frame: { x: 360.0, y: 200.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           println("boom(5) = " + boom(5))

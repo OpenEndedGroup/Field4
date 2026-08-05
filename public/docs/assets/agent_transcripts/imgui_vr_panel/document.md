@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="imgui_vr_renderer" index="0" -->
 
 ```edn [field-box id="imgui_vr_renderer" role="properties"]
-{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-640.0 -360.0 240.0 90.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 241 "sha256" "d2064d03c2114a4503c04ef314fc55ee0014752e13806df525cdf028c8489067"}]}
+{"id" "imgui_vr_renderer" "index" 0 "name" "window + renderer" "parents" ["root"] "children" ["imgui_vr_panel"] "properties" {"children" #{#afield/box "imgui_vr_panel"} "parents" #{#afield/box "root"} "name" "window + renderer" "_tombstone" false "frame" #afield/rect [-640.0 -360.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_renderer_code_.kt" "lines" 14 "characters" 241 "sha256" "d2064d03c2114a4503c04ef314fc55ee0014752e13806df525cdf028c8489067"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_renderer" name="code" path="imgui_vr_renderer_code_.kt"]
@@ -51,7 +51,7 @@ Move the mouse to aim the ray; left-click to press. To bind the panel to a hand 
 of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
 
 ```edn [field-box id="imgui_vr_panel" role="properties"]
-{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 300.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 24 "characters" 1147 "sha256" "816154c0fb6fec6aeed652154673cc5813035ee8ec23127668c794a448ce9b3d"}]}
+{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [-300.0 -220.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 24 "characters" 1147 "sha256" "816154c0fb6fec6aeed652154673cc5813035ee8ec23127668c794a448ce9b3d"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_panel" name="code" path="imgui_vr_panel_code_.kt"]

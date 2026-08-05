@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_chained_vocabulary" index="0" -->
 
 ```edn [field-box id="polytope_chained_vocabulary" role="properties"]
-{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 460.0 84.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 59 "characters" 2802 "sha256" "d3c77c19d51bb79121324b8b0e4d19f9d5fa4ba39786cce3b641fe1a4734b3aa"}]}
+{"id" "polytope_chained_vocabulary" "index" 0 "name" "3 — every composite chains now" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — every composite chains now" "_tombstone" false "frame" #afield/rect [80.0 360.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_chained_vocabulary_code_.kt" "lines" 59 "characters" 2802 "sha256" "d3c77c19d51bb79121324b8b0e4d19f9d5fa4ba39786cce3b641fe1a4734b3aa"}]}
 ```
 
 ```kotlin [field-property box="polytope_chained_vocabulary" name="code" path="polytope_chained_vocabulary_code_.kt"]
@@ -81,7 +81,7 @@ viz("chain", long.summary())
 <!-- field-box id="polytope_plate_with_and_without" index="1" -->
 
 ```edn [field-box id="polytope_plate_with_and_without" role="properties"]
-{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 460.0 84.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 79 "characters" 3866 "sha256" "aef479086a572d89e331e9240e5bed071b2e5adce363388c6725aa5f6d3e0421"}]}
+{"id" "polytope_plate_with_and_without" "index" 1 "name" "2 — the same plate, with the ring and without it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — the same plate, with the ring and without it" "_tombstone" false "frame" #afield/rect [80.0 220.0 330.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_plate_with_and_without_code_.kt" "lines" 79 "characters" 3866 "sha256" "aef479086a572d89e331e9240e5bed071b2e5adce363388c6725aa5f6d3e0421"}]}
 ```
 
 ```kotlin [field-property box="polytope_plate_with_and_without" name="code" path="polytope_plate_with_and_without_code_.kt"]
@@ -171,7 +171,7 @@ println(
 <!-- field-box id="polytope_face_with_a_hole" index="2" -->
 
 ```edn [field-box id="polytope_face_with_a_hole" role="properties"]
-{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 460.0 84.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 72 "characters" 3170 "sha256" "321e87ddece3cc28cb27deb19fa7c09c2d6a2fdedaee46687de8a42ec0739fc9"}]}
+{"id" "polytope_face_with_a_hole" "index" 2 "name" "1 — a face with a hole, end to end" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — a face with a hole, end to end" "_tombstone" false "frame" #afield/rect [80.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_face_with_a_hole_code_.kt" "lines" 72 "characters" 3170 "sha256" "321e87ddece3cc28cb27deb19fa7c09c2d6a2fdedaee46687de8a42ec0739fc9"}]}
 ```
 
 ```kotlin [field-property box="polytope_face_with_a_hole" name="code" path="polytope_face_with_a_hole_code_.kt"]

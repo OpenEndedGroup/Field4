@@ -21,7 +21,7 @@ values, so the two cubes either side of the face always agree. That agreement is
 the output is closed; plain marching cubes leaks exactly there.
 
 ```edn [field-box id="mesh_marching" role="properties"]
-{"id" "mesh_marching" "index" 0 "name" "Marching cubes — a watertight surface from a field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Marching cubes — a watertight surface from a field" "_tombstone" false "frame" #afield/rect [80.0 520.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_marching_code_.kt" "lines" 42 "characters" 1992 "sha256" "071b72347a0660e739959b124221b741558c2b9e428c785de66b4584878526fb"}]}
+{"id" "mesh_marching" "index" 0 "name" "Marching cubes — a watertight surface from a field" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Marching cubes — a watertight surface from a field" "_tombstone" false "frame" #afield/rect [80.0 520.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_marching_code_.kt" "lines" 42 "characters" 1992 "sha256" "071b72347a0660e739959b124221b741558c2b9e428c785de66b4584878526fb"}]}
 ```
 
 ```kotlin [field-property box="mesh_marching" name="code" path="mesh_marching_code_.kt"]
@@ -84,7 +84,7 @@ cell volumes must sum to the box's own volume. That is the strongest single chec
 the bridge, and it is one line.
 
 ```edn [field-box id="mesh_bridges" role="properties"]
-{"id" "mesh_bridges" "index" 1 "name" "Bridges — Voronoi, FLines, OBJ and STL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bridges — Voronoi, FLines, OBJ and STL" "_tombstone" false "frame" #afield/rect [1020.0 960.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_bridges_code_.kt" "lines" 78 "characters" 3967 "sha256" "b9eeb3de1b120d232a170855a52592af215093976c6440cb518d4e75b323b567"}]}
+{"id" "mesh_bridges" "index" 1 "name" "Bridges — Voronoi, FLines, OBJ and STL" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Bridges — Voronoi, FLines, OBJ and STL" "_tombstone" false "frame" #afield/rect [1020.0 960.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_bridges_code_.kt" "lines" 78 "characters" 3967 "sha256" "b9eeb3de1b120d232a170855a52592af215093976c6440cb518d4e75b323b567"}]}
 ```
 
 ```kotlin [field-property box="mesh_bridges" name="code" path="mesh_bridges_code_.kt"]
@@ -181,7 +181,7 @@ smooth versions fillet where the surfaces meet, which is what makes this feel li
 rather than CSG. Change a k, re-run this box, look again.
 
 ```edn [field-box id="mesh_modelling" role="properties"]
-{"id" "mesh_modelling" "index" 2 "name" "SDF modelling — a shape as an expression" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SDF modelling — a shape as an expression" "_tombstone" false "frame" #afield/rect [1020.0 80.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_modelling_code_.kt" "lines" 44 "characters" 2126 "sha256" "4efa4b502e4e346c4cde02e078d7e5f4de6777bbc8b8e2eeafe034148759b33f"}]}
+{"id" "mesh_modelling" "index" 2 "name" "SDF modelling — a shape as an expression" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "SDF modelling — a shape as an expression" "_tombstone" false "frame" #afield/rect [1020.0 80.0 280.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_modelling_code_.kt" "lines" 44 "characters" 2126 "sha256" "4efa4b502e4e346c4cde02e078d7e5f4de6777bbc8b8e2eeafe034148759b33f"}]}
 ```
 
 ```kotlin [field-property box="mesh_modelling" name="code" path="mesh_modelling_code_.kt"]
@@ -245,7 +245,7 @@ monotonically toward the Loop limit surface — it converges on that, NOT on the
 its control vertices sit on — in geometrically shrinking steps.
 
 ```edn [field-box id="mesh_process" role="properties"]
-{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 64 "characters" 2945 "sha256" "1a929b0aeb6fb4ae6af46281cb235205b8b5a3ca1d82062f05e1d248e9f46ae1"}]}
+{"id" "mesh_process" "index" 3 "name" "Subdivide, smooth, decimate" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Subdivide, smooth, decimate" "_tombstone" false "frame" #afield/rect [1020.0 520.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_process_code_.kt" "lines" 64 "characters" 2945 "sha256" "1a929b0aeb6fb4ae6af46281cb235205b8b5a3ca1d82062f05e1d248e9f46ae1"}]}
 ```
 
 ```kotlin [field-property box="mesh_process" name="code" path="mesh_process_code_.kt"]
@@ -329,7 +329,7 @@ for mean, both divided by the mixed Voronoi area. On a sphere of radius r they a
 outside and negative in the hole, which is why a torus is the shape to look at.
 
 ```edn [field-box id="mesh_measure" role="properties"]
-{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 59 "characters" 2856 "sha256" "9f00b9d7aaa7557c1437bf2b65b28aa2d5f0dfe72076e02623d5f9448d013ce2"}]}
+{"id" "mesh_measure" "index" 4 "name" "Curvature, rays, closest points, inside" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Curvature, rays, closest points, inside" "_tombstone" false "frame" #afield/rect [80.0 960.0 270.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_measure_code_.kt" "lines" 59 "characters" 2856 "sha256" "9f00b9d7aaa7557c1437bf2b65b28aa2d5f0dfe72076e02623d5f9448d013ce2"}]}
 ```
 
 ```kotlin [field-property box="mesh_measure" name="code" path="mesh_measure_code_.kt"]
@@ -420,7 +420,7 @@ Build something worth looking at: a sphere with a hole drilled through it, so th
 genus to report, then smooth it so the drill rim is not a hard edge.
 
 ```edn [field-box id="mesh_inline_view" role="properties"]
-{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 900.0 420.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 30 "characters" 1683 "sha256" "c9bda1edd25fbb2d4f227966fa5fb5d08c772c15e4fca90b13e22a41609518c4"}]}
+{"id" "mesh_inline_view" "index" 5 "name" "The inline view — evaluate a mesh, look at it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "The inline view — evaluate a mesh, look at it" "_tombstone" false "frame" #afield/rect [80.0 1400.0 310.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_inline_view_code_.kt" "lines" 30 "characters" 1683 "sha256" "c9bda1edd25fbb2d4f227966fa5fb5d08c772c15e4fca90b13e22a41609518c4"}]}
 ```
 
 ```kotlin [field-property box="mesh_inline_view" name="code" path="mesh_inline_view_code_.kt"]
@@ -471,7 +471,7 @@ closed genus-0 solid and 0 for a torus, and that single integer catches a duplic
 seam, a missing cap or an unwelded weld — all of which still look plausible in a render.
 
 ```edn [field-box id="mesh_primitives" role="properties"]
-{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 900.0 400.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 49 "characters" 2462 "sha256" "d252b0b419eed842632297130bc565e066441c26f8f895680f1a2a555c85bf99"}]}
+{"id" "mesh_primitives" "index" 6 "name" "Primitives — welded, watertight, and χ = 2" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Primitives — welded, watertight, and χ = 2" "_tombstone" false "frame" #afield/rect [80.0 80.0 290.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "mesh_primitives_code_.kt" "lines" 49 "characters" 2462 "sha256" "d252b0b419eed842632297130bc565e066441c26f8f895680f1a2a555c85bf99"}]}
 ```
 
 ```kotlin [field-property box="mesh_primitives" name="code" path="mesh_primitives_code_.kt"]

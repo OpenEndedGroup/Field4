@@ -53,7 +53,7 @@ operations:
   - create:
       box: hello
       name: Hello
-      frame: { x: 40.0, y: 40.0, w: 200.0, h: 120.0 }
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           println("hello from a transcript")
@@ -63,6 +63,24 @@ operations:
   - await:
       wait: pending
 ```
+
+### Keep frames small: `200 x 50`, widened only to fit the name
+
+A box's frame is a **labelled rectangle**, nothing more. The code lives in the shared
+Monaco pane, not inside the box, and output is drawn in a panel anchored *below* the box
+whose width is a fixed 520px and whose height comes from its content. So a tall box buys
+no extra code and no extra output — it only spends canvas.
+
+Start at `w: 200.0, h: 50.0`. Widen `w` only enough for the box's `name` to fit
+(~6.2px per character at the title's 10px monospace, plus ~26px of padding and slack,
+rounded up to 10) and cap it at `520.0` to match the output panel beneath. Never grow `h`.
+
+Leave real vertical room between boxes: an *expanded* output panel is often 150–350px
+tall, so boxes stacked 140px apart will have their outputs land on the next box's title.
+Space a column by what its boxes actually render, not by `frame.h`.
+
+Omitting `frame` entirely is **not** a shortcut for "default size" — the box keeps
+`Rect(0,0,0,0)` and is invisible on the canvas.
 
 ---
 
@@ -151,7 +169,7 @@ quick-stubs. (Base and AI completions both render without the other blocking the
 - create:
     box: particles              # stable id — reuse it in later ops
     name: Particle Sim          # display name (also `title`)
-    frame: { x: 240.0, y: 40.0, w: 160.0, h: 90.0 }
+    frame: { x: 300.0, y: 40.0, w: 200.0, h: 50.0 }
     properties:                 # any box property, incl. sidecar-backed text
       code: |
         println("built")
@@ -350,7 +368,7 @@ operations:
   - create:
       box: sv_box
       name: save probe
-      frame: { x: 40.0, y: 40.0, w: 160.0, h: 90.0 }
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           prop<Int>(savemarker) = 12321

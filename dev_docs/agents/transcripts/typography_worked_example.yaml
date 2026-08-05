@@ -44,7 +44,7 @@ operations:
   - create:
       box: typo_values
       name: 1 — a string becomes contours
-      frame: { x: 60.0, y: 60.0, w: 900.0, h: 330.0 }
+      frame: { x: 60.0, y: 60.0, w: 210.0, h: 50.0 }
       properties:
         code: |
           // A Typeface is a font at a size. Logical families (SansSerif, Serif, Monospaced) always
@@ -88,7 +88,7 @@ operations:
   - create:
       box: typo_winding
       name: 2 — the winding convention, and what happens without it
-      frame: { x: 60.0, y: 420.0, w: 900.0, h: 330.0 }
+      frame: { x: 60.0, y: 420.0, w: 370.0, h: 50.0 }
       properties:
         code: |
           // Both cells below go through the identical filler at the identical fill rule. The only
@@ -130,7 +130,7 @@ operations:
   - create:
       box: typo_layout
       name: 3 — advances, kerning, tracking, alignment
-      frame: { x: 1000.0, y: 60.0, w: 880.0, h: 330.0 }
+      frame: { x: 1000.0, y: 60.0, w: 290.0, h: 50.0 }
       properties:
         code: |
           // Layout is AWT's advances and kerning pairs, plus the things AWT does not do: \n, letter
@@ -184,7 +184,7 @@ operations:
   - create:
       box: typo_curve
       name: 4 — text on a curve, by arc length
-      frame: { x: 1000.0, y: 420.0, w: 880.0, h: 330.0 }
+      frame: { x: 1000.0, y: 420.0, w: 240.0, h: 50.0 }
       properties:
         code: |
           // onCurve does not distort a glyph. It looks its advance-box centre up at that distance
@@ -223,7 +223,7 @@ operations:
   - create:
       box: typo_kinetic
       name: 5 — the handles, animated (LAUNCH this one)
-      frame: { x: 60.0, y: 780.0, w: 900.0, h: 330.0 }
+      frame: { x: 60.0, y: 780.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           // Every PlacedGlyph carries mutable handles — offset, rotation, scale, pivot — and the
@@ -265,7 +265,7 @@ operations:
   - create:
       box: typo_mesh
       name: 6 — extrusion, counters and all
-      frame: { x: 1000.0, y: 780.0, w: 880.0, h: 330.0 }
+      frame: { x: 1000.0, y: 780.0, w: 220.0, h: 50.0 }
       properties:
         code: |
           // extrudeMesh and triangulatePolygon in mesh_generate.kt say outright that they cannot do
@@ -318,7 +318,7 @@ operations:
   - create:
       box: typo_sdf
       name: 7 — letters in the SDF family
-      frame: { x: 60.0, y: 1140.0, w: 900.0, h: 330.0 }
+      frame: { x: 60.0, y: 1140.0, w: 210.0, h: 50.0 }
       properties:
         code: |
           // toSdf builds a 2D signed-distance grid over the layout, samples it bilinearly and extrudes
@@ -352,7 +352,7 @@ operations:
   - create:
       box: typo_points
       name: 8 — letters as point clouds
-      frame: { x: 1000.0, y: 1140.0, w: 880.0, h: 330.0 }
+      frame: { x: 1000.0, y: 1140.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           // The last bridge is the plainest: even-by-arc-length samples along the outlines, which is

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="encodec_reconstruction_microscope" index="0" -->
 
 ```edn [field-box id="encodec_reconstruction_microscope" role="properties"]
-{"id" "encodec_reconstruction_microscope" "index" 0 "name" "EnCodec reconstruction microscope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "EnCodec reconstruction microscope" "_tombstone" false "frame" #afield/rect [80.0 80.0 1180.0 820.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "encodec_reconstruction_microscope_code_.kt" "lines" 27 "characters" 1108 "sha256" "0f3f086fa9d4daf6bee1ba994ed4f42f3922857474ae4caf54612747e7229956"}]}
+{"id" "encodec_reconstruction_microscope" "index" 0 "name" "EnCodec reconstruction microscope" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "EnCodec reconstruction microscope" "_tombstone" false "frame" #afield/rect [80.0 80.0 240.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "encodec_reconstruction_microscope_code_.kt" "lines" 27 "characters" 1108 "sha256" "0f3f086fa9d4daf6bee1ba994ed4f42f3922857474ae4caf54612747e7229956"}]}
 ```
 
 ```kotlin [field-property box="encodec_reconstruction_microscope" name="code" path="encodec_reconstruction_microscope_code_.kt"]

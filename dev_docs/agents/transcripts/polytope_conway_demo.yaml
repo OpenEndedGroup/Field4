@@ -10,7 +10,7 @@ operations:
   - create:
       box: polytope_selective_kis
       name: "Polytope — selective kis, topology to FLine"
-      frame: { x: 80.0, y: 80.0, w: 440.0, h: 72.0 }
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 50.0 }
       properties:
         code: |
           import afield.stdlib.polytope.*

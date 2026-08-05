@@ -19,7 +19,7 @@ time on x and frequency on y; flipY keeps low frequency at the bottom; logScale 
 dB-like view. This is exactly the shape the spectral docs hand-rolled by hand before.
 
 ```edn [field-box id="heatmap_spectrogram" role="properties"]
-{"id" "heatmap_spectrogram" "index" 0 "name" "spectrogram (magma)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram (magma)" "_tombstone" false "frame" #afield/rect [820.0 80.0 900.0 420.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_spectrogram_code_.kt" "lines" 12 "characters" 644 "sha256" "eedd4a482c96c7b5ce20a6a76fc575b6cc2a7352ddee910f7b2fa5afea970e95"}]}
+{"id" "heatmap_spectrogram" "index" 0 "name" "spectrogram (magma)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "spectrogram (magma)" "_tombstone" false "frame" #afield/rect [820.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_spectrogram_code_.kt" "lines" 12 "characters" 644 "sha256" "eedd4a482c96c7b5ce20a6a76fc575b6cc2a7352ddee910f7b2fa5afea970e95"}]}
 ```
 
 ```kotlin [field-property box="heatmap_spectrogram" name="code" path="heatmap_spectrogram_code_.kt"]
@@ -49,7 +49,7 @@ A sin*sin field in [-1,1]. A fixed vmin/vmax with normalize=false anchors the co
 white midpoint at zero, so blue = negative, red = positive.
 
 ```edn [field-box id="heatmap_diverging" role="properties"]
-{"id" "heatmap_diverging" "index" 1 "name" "diverging (coolwarm)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "diverging (coolwarm)" "_tombstone" false "frame" #afield/rect [80.0 500.0 700.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_diverging_code_.kt" "lines" 6 "characters" 350 "sha256" "b11500108209d4f9f49dba4e08daf5ab83e89b2a026715cf7064e5f827317c8a"}]}
+{"id" "heatmap_diverging" "index" 1 "name" "diverging (coolwarm)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "diverging (coolwarm)" "_tombstone" false "frame" #afield/rect [80.0 500.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_diverging_code_.kt" "lines" 6 "characters" 350 "sha256" "b11500108209d4f9f49dba4e08daf5ab83e89b2a026715cf7064e5f827317c8a"}]}
 ```
 
 ```kotlin [field-property box="heatmap_diverging" name="code" path="heatmap_diverging_code_.kt"]
@@ -73,7 +73,7 @@ A smooth 2-D Gaussian bump -> viridis heatmap. showHeatmap min-max normalizes,
 bilinear-upsamples the coarse grid, and displays the PNG inline in one call.
 
 ```edn [field-box id="heatmap_gaussian" role="properties"]
-{"id" "heatmap_gaussian" "index" 2 "name" "gaussian (viridis)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gaussian (viridis)" "_tombstone" false "frame" #afield/rect [80.0 80.0 700.0 380.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_gaussian_code_.kt" "lines" 10 "characters" 386 "sha256" "8caa802a4a38308a63d0a8e4186c531175f5aee854882804c2723aabe7c60c6e"}]}
+{"id" "heatmap_gaussian" "index" 2 "name" "gaussian (viridis)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "gaussian (viridis)" "_tombstone" false "frame" #afield/rect [80.0 80.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_gaussian_code_.kt" "lines" 10 "characters" 386 "sha256" "8caa802a4a38308a63d0a8e4186c531175f5aee854882804c2723aabe7c60c6e"}]}
 ```
 
 ```kotlin [field-property box="heatmap_gaussian" name="code" path="heatmap_gaussian_code_.kt"]
@@ -101,7 +101,7 @@ showImage displays a ready-made ARGB IntArray directly (encode + display), for w
 already have a pixel buffer rather than a scalar field.
 
 ```edn [field-box id="heatmap_image" role="properties"]
-{"id" "heatmap_image" "index" 3 "name" "image (showImage)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "image (showImage)" "_tombstone" false "frame" #afield/rect [820.0 540.0 700.0 340.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_image_code_.kt" "lines" 10 "characters" 395 "sha256" "6cf96f51c7886360561bc186c659e9e6a6e30dcbd42df803fd6402da2c0f936c"}]}
+{"id" "heatmap_image" "index" 3 "name" "image (showImage)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "image (showImage)" "_tombstone" false "frame" #afield/rect [820.0 540.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "heatmap_image_code_.kt" "lines" 10 "characters" 395 "sha256" "6cf96f51c7886360561bc186c659e9e6a6e30dcbd42df803fd6402da2c0f936c"}]}
 ```
 
 ```kotlin [field-property box="heatmap_image" name="code" path="heatmap_image_code_.kt"]

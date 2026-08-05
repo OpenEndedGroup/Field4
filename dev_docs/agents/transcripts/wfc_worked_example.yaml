@@ -15,8 +15,8 @@ operations:
       frame:
         x: 60.0
         y: 60.0
-        w: 300.0
-        h: 150.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           // Section 1: the model, by hand. Three tile IDs and a table; nothing is learned.
@@ -82,8 +82,8 @@ operations:
       frame:
         x: 60.0
         y: 260.0
-        w: 300.0
-        h: 150.0
+        w: 270.0
+        h: 50.0
       properties:
         code: |
           // Section 2: learn tiles and adjacency from a source image -- and see what the learned
@@ -176,8 +176,8 @@ operations:
       frame:
         x: 60.0
         y: 460.0
-        w: 300.0
-        h: 150.0
+        w: 290.0
+        h: 50.0
       properties:
         code: |
           // Section 2b: the same simple-tiled solver, but the tiles carry art whose EDGES must line up.
@@ -239,8 +239,8 @@ operations:
       frame:
         x: 460.0
         y: 60.0
-        w: 320.0
-        h: 150.0
+        w: 300.0
+        h: 50.0
       properties:
         code: |
           // Section 3: the overlapping model. Every 3x3 window of the source becomes a "tile", and two
@@ -318,8 +318,8 @@ operations:
       frame:
         x: 460.0
         y: 260.0
-        w: 320.0
-        h: 150.0
+        w: 270.0
+        h: 50.0
       properties:
         code: |
           // Section 4: the neighborhood is a modelling decision, not a performance knob.
@@ -361,8 +361,8 @@ operations:
       frame:
         x: 460.0
         y: 460.0
-        w: 320.0
-        h: 150.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           // Section 5: step() is public and does exactly one WFC iteration, so the collapse is drawable.
@@ -434,8 +434,8 @@ operations:
       frame:
         x: 860.0
         y: 60.0
-        w: 320.0
-        h: 150.0
+        w: 260.0
+        h: 50.0
       properties:
         code: |
           // Section 6: the solver never sees a pixel. sliceIntoUniqueTiles2D and
@@ -536,8 +536,8 @@ operations:
       frame:
         x: 860.0
         y: 260.0
-        w: 320.0
-        h: 150.0
+        w: 230.0
+        h: 50.0
       properties:
         code: |
           // Section 5b: WfcSolver implements ToHTML, so evaluating a solver in a box draws its state

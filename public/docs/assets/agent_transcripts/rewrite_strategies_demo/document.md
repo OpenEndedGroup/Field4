@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="rw_baseline" index="0" -->
 
 ```edn [field-box id="rw_baseline" role="properties"]
-{"id" "rw_baseline" "index" 0 "name" "Baseline (global fixpoint)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Baseline (global fixpoint)" "_tombstone" false "frame" #afield/rect [60.0 60.0 300.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_baseline_code_.kt" "lines" 6 "characters" 247 "sha256" "ff4378329971eefb62525fba4bb9995e0bba7c19f13b61db20e939b0b0e60f99"}]}
+{"id" "rw_baseline" "index" 0 "name" "Baseline (global fixpoint)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Baseline (global fixpoint)" "_tombstone" false "frame" #afield/rect [60.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_baseline_code_.kt" "lines" 6 "characters" 247 "sha256" "ff4378329971eefb62525fba4bb9995e0bba7c19f13b61db20e939b0b0e60f99"}]}
 ```
 
 ```kotlin [field-property box="rw_baseline" name="code" path="rw_baseline_code_.kt"]
@@ -28,7 +28,7 @@ check(r == 30) { "baseline expected 30, got $r" }
 <!-- field-box id="rw_bottomup" index="1" -->
 
 ```edn [field-box id="rw_bottomup" role="properties"]
-{"id" "rw_bottomup" "index" 1 "name" "bottomup (inner)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bottomup (inner)" "_tombstone" false "frame" #afield/rect [400.0 260.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_bottomup_code_.kt" "lines" 7 "characters" 269 "sha256" "bf5f22c37b957dcc6404871e79a7f3e7d9efc6e7595196f5c4e186c39481e641"}]}
+{"id" "rw_bottomup" "index" 1 "name" "bottomup (inner)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "bottomup (inner)" "_tombstone" false "frame" #afield/rect [400.0 260.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_bottomup_code_.kt" "lines" 7 "characters" 269 "sha256" "bf5f22c37b957dcc6404871e79a7f3e7d9efc6e7595196f5c4e186c39481e641"}]}
 ```
 
 ```kotlin [field-property box="rw_bottomup" name="code" path="rw_bottomup_code_.kt"]
@@ -46,7 +46,7 @@ check(r == 202) { "bottomup expected 202, got $r" }
 <!-- field-box id="rw_topdown" index="2" -->
 
 ```edn [field-box id="rw_topdown" role="properties"]
-{"id" "rw_topdown" "index" 2 "name" "topdown (outer)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "topdown (outer)" "_tombstone" false "frame" #afield/rect [60.0 260.0 300.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_topdown_code_.kt" "lines" 7 "characters" 264 "sha256" "50c5329fa6458442f3580d5ad6db5ca5151d8de9b61480ad634d2ce4f865292b"}]}
+{"id" "rw_topdown" "index" 2 "name" "topdown (outer)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "topdown (outer)" "_tombstone" false "frame" #afield/rect [60.0 260.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_topdown_code_.kt" "lines" 7 "characters" 264 "sha256" "50c5329fa6458442f3580d5ad6db5ca5151d8de9b61480ad634d2ce4f865292b"}]}
 ```
 
 ```kotlin [field-property box="rw_topdown" name="code" path="rw_topdown_code_.kt"]
@@ -64,7 +64,7 @@ check(r == 102) { "topdown expected 102, got $r" }
 <!-- field-box id="rw_repeat" index="3" -->
 
 ```edn [field-box id="rw_repeat" role="properties"]
-{"id" "rw_repeat" "index" 3 "name" "repeat (bounded)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeat (bounded)" "_tombstone" false "frame" #afield/rect [400.0 470.0 320.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_repeat_code_.kt" "lines" 7 "characters" 307 "sha256" "f63bde9b42245fcbccababf5ac5747aaca9023d7cfcc0c5b75d59986edf826fe"}]}
+{"id" "rw_repeat" "index" 3 "name" "repeat (bounded)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "repeat (bounded)" "_tombstone" false "frame" #afield/rect [400.0 470.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_repeat_code_.kt" "lines" 7 "characters" 307 "sha256" "f63bde9b42245fcbccababf5ac5747aaca9023d7cfcc0c5b75d59986edf826fe"}]}
 ```
 
 ```kotlin [field-property box="rw_repeat" name="code" path="rw_repeat_code_.kt"]
@@ -82,7 +82,7 @@ check(r == 202) { "repeat bounded expected 202, got $r" }
 <!-- field-box id="rw_seq" index="4" -->
 
 ```edn [field-box id="rw_seq" role="properties"]
-{"id" "rw_seq" "index" 4 "name" "then (sequence)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "then (sequence)" "_tombstone" false "frame" #afield/rect [740.0 260.0 300.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_seq_code_.kt" "lines" 9 "characters" 325 "sha256" "4b38200fe78747a673207eefd300ce321a25719e7f193bf33b759a78b81cfdd6"}]}
+{"id" "rw_seq" "index" 4 "name" "then (sequence)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "then (sequence)" "_tombstone" false "frame" #afield/rect [740.0 260.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_seq_code_.kt" "lines" 9 "characters" 325 "sha256" "4b38200fe78747a673207eefd300ce321a25719e7f193bf33b759a78b81cfdd6"}]}
 ```
 
 ```kotlin [field-property box="rw_seq" name="code" path="rw_seq_code_.kt"]
@@ -102,7 +102,7 @@ check(out == 5000) { "then expected 5000, got $out" }
 <!-- field-box id="rw_choice" index="5" -->
 
 ```edn [field-box id="rw_choice" role="properties"]
-{"id" "rw_choice" "index" 5 "name" "choice (first applicable)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "choice (first applicable)" "_tombstone" false "frame" #afield/rect [60.0 470.0 300.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_choice_code_.kt" "lines" 9 "characters" 361 "sha256" "c05d877dc3bb3be6ab388f896c1a5586adf2d6a31ddd5f442d14d1c94fe8cfef"}]}
+{"id" "rw_choice" "index" 5 "name" "choice (first applicable)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "choice (first applicable)" "_tombstone" false "frame" #afield/rect [60.0 470.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_choice_code_.kt" "lines" 9 "characters" 361 "sha256" "c05d877dc3bb3be6ab388f896c1a5586adf2d6a31ddd5f442d14d1c94fe8cfef"}]}
 ```
 
 ```kotlin [field-property box="rw_choice" name="code" path="rw_choice_code_.kt"]
@@ -122,7 +122,7 @@ check(r == 12) { "choice expected 12, got $r" }
 <!-- field-box id="rw_subset" index="6" -->
 
 ```edn [field-box id="rw_subset" role="properties"]
-{"id" "rw_subset" "index" 6 "name" "subset (name one rule)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "subset (name one rule)" "_tombstone" false "frame" #afield/rect [740.0 60.0 300.0 160.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_subset_code_.kt" "lines" 10 "characters" 352 "sha256" "d79ea08eb15fd7a3900a681d5605f938c60f9809853e135d49a3005e218d7a43"}]}
+{"id" "rw_subset" "index" 6 "name" "subset (name one rule)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "subset (name one rule)" "_tombstone" false "frame" #afield/rect [740.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_subset_code_.kt" "lines" 10 "characters" 352 "sha256" "d79ea08eb15fd7a3900a681d5605f938c60f9809853e135d49a3005e218d7a43"}]}
 ```
 
 ```kotlin [field-property box="rw_subset" name="code" path="rw_subset_code_.kt"]
@@ -143,7 +143,7 @@ check(r == 12) { "subset expected 12, got $r" }
 <!-- field-box id="rw_once" index="7" -->
 
 ```edn [field-box id="rw_once" role="properties"]
-{"id" "rw_once" "index" 7 "name" "once (single site)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "once (single site)" "_tombstone" false "frame" #afield/rect [400.0 60.0 300.0 140.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_once_code_.kt" "lines" 7 "characters" 256 "sha256" "a556f67fbdf54aa1b31aaec84306ff218e51be00ed855edb6293ea5990bc1142"}]}
+{"id" "rw_once" "index" 7 "name" "once (single site)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "once (single site)" "_tombstone" false "frame" #afield/rect [400.0 60.0 200.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_once_code_.kt" "lines" 7 "characters" 256 "sha256" "a556f67fbdf54aa1b31aaec84306ff218e51be00ed855edb6293ea5990bc1142"}]}
 ```
 
 ```kotlin [field-property box="rw_once" name="code" path="rw_once_code_.kt"]
@@ -161,7 +161,7 @@ check(r == 12) { "once expected 12, got $r" }
 <!-- field-box id="rw_nested" index="8" -->
 
 ```edn [field-box id="rw_nested" role="properties"]
-{"id" "rw_nested" "index" 8 "name" "nested pattern (two levels deep)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "nested pattern (two levels deep)" "_tombstone" false "frame" #afield/rect [740.0 470.0 340.0 170.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_nested_code_.kt" "lines" 8 "characters" 307 "sha256" "155a5e7223ffbc6b3e897ae57b0db994387108f7ea91ee86c5dc5c3911174fde"}]}
+{"id" "rw_nested" "index" 8 "name" "nested pattern (two levels deep)" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "nested pattern (two levels deep)" "_tombstone" false "frame" #afield/rect [740.0 470.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rw_nested_code_.kt" "lines" 8 "characters" 307 "sha256" "155a5e7223ffbc6b3e897ae57b0db994387108f7ea91ee86c5dc5c3911174fde"}]}
 ```
 
 ```kotlin [field-property box="rw_nested" name="code" path="rw_nested_code_.kt"]

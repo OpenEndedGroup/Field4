@@ -21,7 +21,7 @@ operations:
   - create:
       box: sg_renderer
       name: renderer
-      frame: { x: 40.0, y: 40.0, w: 170.0, h: 90.0 }
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           import afield.four.util.Options
@@ -40,7 +40,7 @@ operations:
   - create:
       box: sg_update
       name: metropolis update
-      frame: { x: 240.0, y: 40.0, w: 200.0, h: 120.0 }
+      frame: { x: 240.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         compute: |
           #version 450
@@ -196,7 +196,7 @@ operations:
   - create:
       box: sg_measure
       name: measure (energy / magnetization)
-      frame: { x: 470.0, y: 40.0, w: 220.0, h: 140.0 }
+      frame: { x: 470.0, y: 40.0, w: 230.0, h: 50.0 }
       properties:
         compute: |
           #version 450
@@ -263,7 +263,7 @@ operations:
   - create:
       box: sg_draw
       name: lattice view
-      frame: { x: 720.0, y: 40.0, w: 220.0, h: 140.0 }
+      frame: { x: 720.0, y: 40.0, w: 200.0, h: 50.0 }
       properties:
         vertex: |
           #version 450

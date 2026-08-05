@@ -9,7 +9,7 @@ operations:
   - create:
       box: linalg_vec2
       name: vec2 arrow
-      frame: { x: 80.0, y: 60.0, w: 220.0, h: 150.0 }
+      frame: { x: 80.0, y: 60.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           vec(1, 2)
@@ -23,7 +23,7 @@ operations:
   - create:
       box: linalg_vec3
       name: vec3 isometric arrow
-      frame: { x: 320.0, y: 60.0, w: 220.0, h: 150.0 }
+      frame: { x: 320.0, y: 60.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           vec(1, 2, 3)
@@ -37,7 +37,7 @@ operations:
   - create:
       box: linalg_mat3
       name: mat3 heatmap
-      frame: { x: 80.0, y: 240.0, w: 220.0, h: 170.0 }
+      frame: { x: 80.0, y: 240.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           afield.stdlib.linalg.Matrix3f().set(1f, 0.5f, -0.5f, 0.25f, -1f, 0.75f, 0f, 0.1f, 2f)
@@ -51,7 +51,7 @@ operations:
   - create:
       box: linalg_mat4
       name: mat4 translation heatmap
-      frame: { x: 320.0, y: 240.0, w: 220.0, h: 170.0 }
+      frame: { x: 320.0, y: 240.0, w: 200.0, h: 50.0 }
       properties:
         code: |
           afield.stdlib.linalg.Matrix4f().translation(3f, 4f, 5f)

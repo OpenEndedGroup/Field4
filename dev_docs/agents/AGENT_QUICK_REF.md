@@ -44,7 +44,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 
 ```yaml
 operations:
-  - create: { box: a, name: A, frame: {x: 40.0, y: 40.0, w: 180.0, h: 100.0},
+  - create: { box: a, name: A, frame: {x: 40.0, y: 40.0, w: 200.0, h: 50.0},
               properties: { code: 'println("built")' } }
   - connect: { parent: a, child: b }     # graph topology (parent → child)
   - launch:  { box: a, property: code }   # runs stored code; fails loud if missing/empty

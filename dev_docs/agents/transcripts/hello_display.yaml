@@ -7,8 +7,8 @@ operations:
       frame:
         x: 80.0
         y: 80.0
-        w: 260.0
-        h: 120.0
+        w: 200.0
+        h: 50.0
       properties:
         code: |
           display("main", "<div style=\"padding:16px;border:1px solid #6b8fb3;background:#eef7ff;color:#1b2a38\">hello from OperationTranscript</div>")

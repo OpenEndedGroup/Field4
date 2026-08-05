@@ -20,7 +20,7 @@ weight / 4.0 -- the shared ceiling -- so it is a FIXED scale and a dim panel is 
 whose weights genuinely stayed low.
 
 ```edn [field-box id="dgs_six_systems" role="properties"]
-{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 62 "characters" 3515 "sha256" "6860da5bfddfb932c8760b734fd725b4134aad4ea2bb244c2ba3da1204331ddb"}]}
+{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 62 "characters" 3515 "sha256" "6860da5bfddfb932c8760b734fd725b4134aad4ea2bb244c2ba3da1204331ddb"}]}
 ```
 
 ```kotlin [field-property box="dgs_six_systems" name="code" path="dgs_six_systems_code_.kt"]
@@ -101,7 +101,7 @@ step size it is reached by; decayLinear describes a different curve, which is th
 that stops this being a statement about the harness.
 
 ```edn [field-box id="dgs_decay" role="properties"]
-{"id" "dgs_decay" "index" 1 "name" "2 — reinforcement and forgetting" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — reinforcement and forgetting" "_tombstone" false "frame" #afield/rect [430.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_decay_code_.kt" "lines" 49 "characters" 2310 "sha256" "ef868041bb19cc011d4cdbc6164db8f593eae0d02d0baa0dc94e59d64ce2668f"}]}
+{"id" "dgs_decay" "index" 1 "name" "2 — reinforcement and forgetting" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 — reinforcement and forgetting" "_tombstone" false "frame" #afield/rect [430.0 60.0 230.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_decay_code_.kt" "lines" 49 "characters" 2310 "sha256" "ef868041bb19cc011d4cdbc6164db8f593eae0d02d0baa0dc94e59d64ce2668f"}]}
 ```
 
 ```kotlin [field-property box="dgs_decay" name="code" path="dgs_decay_code_.kt"]
@@ -169,7 +169,7 @@ within rExit. The control arm is rExit == rEnter -- the identical system with th
 removed and nothing else changed.
 
 ```edn [field-box id="dgs_hysteresis" role="properties"]
-{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [800.0 60.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 70 "characters" 3686 "sha256" "b41885c96d0a7a75336fdd9d8c394dbd1a54f89b7eb0753d4073526ce7050aa7"}]}
+{"id" "dgs_hysteresis" "index" 2 "name" "3 — hysteresis, against a memoryless control" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — hysteresis, against a memoryless control" "_tombstone" false "frame" #afield/rect [800.0 60.0 300.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_hysteresis_code_.kt" "lines" 70 "characters" 3686 "sha256" "b41885c96d0a7a75336fdd9d8c394dbd1a54f89b7eb0753d4073526ce7050aa7"}]}
 ```
 
 ```kotlin [field-property box="dgs_hysteresis" name="code" path="dgs_hysteresis_code_.kt"]
@@ -261,7 +261,7 @@ smooth, jitter. The right-hand panel is the same pipeline with ONE stage removed
 growth -- so the difference between the panels is that stage and nothing else.
 
 ```edn [field-box id="dgs_morphogenesis" role="properties"]
-{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [800.0 300.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 79 "characters" 3684 "sha256" "2589f72a905639ecaa319a49d77ff30616cc9364e53da343032287933936e9e5"}]}
+{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [800.0 300.0 380.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 79 "characters" 3684 "sha256" "2589f72a905639ecaa319a49d77ff30616cc9364e53da343032287933936e9e5"}]}
 ```
 
 ```kotlin [field-property box="dgs_morphogenesis" name="code" path="dgs_morphogenesis_code_.kt"]
@@ -360,7 +360,7 @@ pairs only in passing. The minWeight cut has to tell those apart using nothing b
 accumulated weight -- and it recovers the groups exactly.
 
 ```edn [field-box id="dgs_threshold" role="properties"]
-{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 72 "characters" 3352 "sha256" "a6d045efeb3f39fbc214c42c7f87781f9ab24d6107deac592781138fd3a0befe"}]}
+{"id" "dgs_threshold" "index" 4 "name" "4 — the weight threshold recovers the co-moving groups" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — the weight threshold recovers the co-moving groups" "_tombstone" false "frame" #afield/rect [60.0 300.0 370.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_threshold_code_.kt" "lines" 72 "characters" 3352 "sha256" "a6d045efeb3f39fbc214c42c7f87781f9ab24d6107deac592781138fd3a0befe"}]}
 ```
 
 ```kotlin [field-property box="dgs_threshold" name="code" path="dgs_threshold_code_.kt"]
@@ -455,7 +455,7 @@ breathing -- an axis that rotates with the clock and a stretch along it between 
 pinned at zero, so it holds exactly 590 edges for all 420 steps.
 
 ```edn [field-box id="dgs_breathing" role="properties"]
-{"id" "dgs_breathing" "index" 5 "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "_tombstone" false "frame" #afield/rect [430.0 300.0 330.0 190.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_breathing_code_.kt" "lines" 62 "characters" 2541 "sha256" "835aedb16e88d744b2f6d36ebe2bc88529e953e4e2d01153227fa80bfe9d0eb6"}]}
+{"id" "dgs_breathing" "index" 5 "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "5 — LAUNCH ME: the graph rewiring while nothing moves" "_tombstone" false "frame" #afield/rect [430.0 300.0 360.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_breathing_code_.kt" "lines" 62 "characters" 2541 "sha256" "835aedb16e88d744b2f6d36ebe2bc88529e953e4e2d01153227fa80bfe9d0eb6"}]}
 ```
 
 ```kotlin [field-property box="dgs_breathing" name="code" path="dgs_breathing_code_.kt"]
