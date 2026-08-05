@@ -31,10 +31,25 @@ import kotlin.math.sqrt
  * ## What these will not do
  *
  * Every entry point requires a realization and validates the topology first, so an abstract polytope
- * throws rather than drawing nothing. Faces with holes are out of reach: the topology stores one
- * boundary cycle per face, and while [FloatEarcut] itself understands hole indices there is nowhere
- * to put them. A face with zero area throws [DegenerateFaceGeometryException] rather than emitting a
- * triangle with a garbage normal.
+ * throws rather than drawing nothing. A face with zero area throws [DegenerateFaceGeometryException]
+ * rather than emitting a triangle with a garbage normal.
+ *
+ * ## Faces with holes
+ *
+ * A face's inner rings (`topology.faceHoles`) travel the whole way through both adapters.
+ * [PolyhedralObject.triangulate] hands them to a [HoleAwareFaceTriangulator] — the default
+ * [EarcutFaceTriangulator] is one — and a face with holes given a triangulator that is *not*
+ * hole-aware throws rather than filling the hole in. [PolyhedralObject.toFaceFLines] emits each hole
+ * as a further closed contour on the same `FLine`, which is exactly what `FLine.tessellate` and
+ * [PlanarTessellation] already understand, so a filled holed face fills with a hole in it and a
+ * stroked one is drawn with its inner outline.
+ *
+ * A face with no holes takes the identical path it took before holes existed — same calls, same
+ * order, same buffers. `PolytopeFaceHolesTest` asserts that mesh-for-mesh rather than asserting it
+ * in a comment.
+ *
+ * [PolyhedralObject.faceNormal] reads the outer ring only: a hole does not contribute area, and its
+ * opposite winding would cancel some of the outline's if it did.
  */
 
 /**
@@ -69,6 +84,10 @@ class DegenerateFaceGeometryException(val face: ElementId) : IllegalArgumentExce
  * [POLYTOPE_FACE_RANK_PROPERTY] by the time [configure] runs, so [configure] can read them and can
  * also overwrite them.
  *
+ * A face's holes become further closed contours on that same line — one line is still one face, and
+ * one hole is not a face. `FLine.tessellate` groups a line's contours into outer rings and holes
+ * geometrically, so a filled holed face comes out with a hole in it and nothing extra to say.
+ *
  * Requires a realization and validates the topology first (without the manifold check), so a broken
  * complex throws rather than drawing a subset.
  */
@@ -79,12 +98,15 @@ fun PolyhedralObject.toFaceFLines(
     topology.validate().throwIfInvalid()
     return topology.elements(2).map { face ->
         val line = FLine()
-        topology.faceCycle(face.id).forEachIndexed { i, vertexValue ->
-            val coordinate = realizationIndex(ElementId(vertexValue))
-            if (i == 0) line.moveTo(realization.x(coordinate), realization.y(coordinate), realization.z(coordinate))
-            else line.lineTo(realization.x(coordinate), realization.y(coordinate), realization.z(coordinate))
+        topology.faceRings(face.id).forEach { ring ->
+            ring.forEachIndexed { i, vertexValue ->
+                val coordinate = realizationIndex(ElementId(vertexValue))
+                if (i == 0) line.moveTo(realization.x(coordinate), realization.y(coordinate), realization.z(coordinate))
+                else line.lineTo(realization.x(coordinate), realization.y(coordinate), realization.z(coordinate))
+            }
+            line.close()
         }
-        line.close().also {
+        line.also {
             line.properties.putAll(attributes[face.id])
             line.properties[POLYTOPE_FACE_ID_PROPERTY] = face.id.value
             line.properties[POLYTOPE_FACE_RANK_PROPERTY] = face.rank
@@ -93,7 +115,11 @@ fun PolyhedralObject.toFaceFLines(
     }
 }
 
-/** Unit normal selected by the face's explicit winding. */
+/**
+ * Unit normal selected by the face's explicit winding — of its **outer** ring. A hole encloses no
+ * area of the face and is wound the other way, so including it would subtract from the outline's own
+ * Newell sum for no reason.
+ */
 fun PolyhedralObject.faceNormal(face: ElementId): Vec3 {
     require(realization != null) { "normal calculation requires a 3D realization" }
     require(topology.element(face)?.rank == 2) { "element ${face.value} is not a rank-2 face" }
@@ -140,11 +166,12 @@ object FanFaceTriangulator : FaceTriangulator {
 /**
  * A [FaceTriangulator] that can subtract hole rings from the face it fills.
  *
- * Holes are not reachable from [PolyhedralObject.triangulate], because a `faceCycle` is a single
- * cycle and the topology has no notion of a hole in a face. This is the surface for callers that do
- * know their boundary rings — face-with-hole geometry assembled outside the polytope topology — and
- * it is what makes the hole support in [EarcutFaceTriangulator] usable and testable rather than
- * merely present.
+ * This is the interface [PolyhedralObject.triangulate] reaches for as soon as a face has holes, and
+ * the reason a face's inner rings are not a private arrangement between a caller and Earcut. It is
+ * also still usable directly, for face-with-hole geometry assembled outside a `PolytopeTopology`.
+ *
+ * A plain [FaceTriangulator] handed a holed face is an error rather than a fallback — filling a
+ * window in is a wrong picture, not a degraded one.
  */
 interface HoleAwareFaceTriangulator : FaceTriangulator {
     /**
@@ -257,7 +284,14 @@ class TriangulatedGeometry internal constructor(
     fun sourceVertex(renderVertex: Int): ElementId = ElementId(storedVertexElementIds[renderVertex])
 }
 
-/** Triangulate every ordered face and produce a flat-normal [TriMesh] with provenance. */
+/**
+ * Triangulate every ordered face and produce a flat-normal [TriMesh] with provenance.
+ *
+ * A face with inner rings goes to [HoleAwareFaceTriangulator.triangulate] with its holes; a face
+ * without takes the single-cycle call it always took, and its output is identical vertex for vertex
+ * and index for index. Passing a [triangulator] that is not hole-aware is fine right up until a face
+ * that has holes, which throws and names both the face and the triangulator.
+ */
 fun PolyhedralObject.triangulate(
     triangulator: FaceTriangulator = EarcutFaceTriangulator,
 ): TriangulatedGeometry {
@@ -271,24 +305,43 @@ fun PolyhedralObject.triangulate(
     val realizationIndex = topology.elements(0).mapIndexed { index, vertex -> vertex.id.value to index }.toMap()
 
     for (face in topology.elements(2)) {
-        val elementCycle = topology.faceCycle(face.id)
-        val cycle = elementCycle.map { realizationIndex.getValue(it) }.toIntArray()
+        // One entry for an ordinary face, so the loop below is the one that was always here; the
+        // outer ring is always rings[0], which is what makes the hole-free output byte-identical.
+        val elementRings = topology.faceRings(face.id)
         val normal = faceNormal(face.id)
         val localRenderIndex = mutableMapOf<Int, Int>()
-        for (i in cycle.indices) {
-            val coordinateIndex = cycle[i]
-            val elementId = elementCycle[i]
-            localRenderIndex[coordinateIndex] = mesh.vertex(
-                realization.x(coordinateIndex),
-                realization.y(coordinateIndex),
-                realization.z(coordinateIndex),
-                normal = normal,
-            )
-            renderVertices += elementId
-            vertexAttributes += attributes[ElementId(elementId)]
+        val coordinateRings = elementRings.map { elementCycle ->
+            val cycle = elementCycle.map { realizationIndex.getValue(it) }.toIntArray()
+            for (i in cycle.indices) {
+                val coordinateIndex = cycle[i]
+                val elementId = elementCycle[i]
+                localRenderIndex[coordinateIndex] = mesh.vertex(
+                    realization.x(coordinateIndex),
+                    realization.y(coordinateIndex),
+                    realization.z(coordinateIndex),
+                    normal = normal,
+                )
+                renderVertices += elementId
+                vertexAttributes += attributes[ElementId(elementId)]
+            }
+            cycle
         }
+        val cycle = coordinateRings.first()
 
-        val indices = triangulator.triangulate(cycle.copyOf(), realization)
+        val indices = if (coordinateRings.size == 1) {
+            triangulator.triangulate(cycle.copyOf(), realization)
+        } else {
+            val holeAware = triangulator as? HoleAwareFaceTriangulator
+                ?: throw IllegalArgumentException(
+                    "face ${face.id.value} has ${coordinateRings.size - 1} hole(s) and " +
+                        "${triangulator.javaClass.simpleName} is not a HoleAwareFaceTriangulator",
+                )
+            holeAware.triangulate(
+                cycle.copyOf(),
+                coordinateRings.drop(1).map { it.copyOf() },
+                realization,
+            )
+        }
         require(indices.size % 3 == 0) {
             "triangulator returned ${indices.size} indices for face ${face.id.value}; expected complete triples"
         }

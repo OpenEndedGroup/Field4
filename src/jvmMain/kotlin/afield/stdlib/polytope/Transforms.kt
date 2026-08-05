@@ -370,6 +370,13 @@ private class SurfaceContext(val topology: PolytopeTopology) {
 
     init {
         require(topology.rank == 3) { "Conway surface transforms currently require rank 3, got ${topology.rank}" }
+        // Checked before validation, because a holed face fails the manifold pass as a fistful of
+        // NonManifoldEdge issues and that is a diagnosis of the symptom rather than the cause.
+        val holed = topology.elements(2).firstOrNull { topology.faceHasHoles(it.id) }
+        if (holed != null) throw IllegalArgumentException(
+            "face ${holed.id.value} has ${topology.faceHoles(holed.id).size} hole(s); Conway operators are " +
+                "defined here for closed manifolds, and a holed face is a surface with boundary",
+        )
         topology.validate(checkManifold = true).throwIfInvalid()
     }
 

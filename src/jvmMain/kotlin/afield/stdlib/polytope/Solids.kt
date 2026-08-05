@@ -16,6 +16,10 @@ import kotlin.math.sqrt
  * realized, outward-wound, manifold-validated object, and each is the starting point of a Conway
  * expression such as `conway("tI")`.
  *
+ * [cubeWithWindow] is the sixth and the odd one out: a cube whose top face has a hole in it, which
+ * makes it a surface *with boundary* rather than a closed manifold. It exists so that the parts of
+ * the library that handle holes have something honest to be tested and demonstrated against.
+ *
  * ## Scale is not uniform across the seeds
  *
  * [tetrahedron], [octahedron], [icosahedron] and [dodecahedron] all put their vertices on the unit
@@ -94,15 +98,30 @@ private data class EdgeKey(val a: Int, val b: Int) {
     }
 }
 
-internal fun realizedPolyhedron(coordinates: List<Vec3>, unorientedFaces: List<List<Int>>): PolyhedralObject {
+internal fun realizedPolyhedron(
+    coordinates: List<Vec3>,
+    unorientedFaces: List<List<Int>>,
+    /** Inner rings per face, keyed by index into [unorientedFaces]; wound opposite the outer ring. */
+    unorientedHoles: Map<Int, List<List<Int>>> = emptyMap(),
+): PolyhedralObject {
     require(unorientedFaces.all { it.size >= 3 }) { "every face needs at least three vertices" }
     require(unorientedFaces.flatten().all { it in coordinates.indices }) { "face vertex index outside coordinate list" }
+    require(unorientedHoles.keys.all { it in unorientedFaces.indices }) { "hole names a face that is not there" }
+    require(unorientedHoles.values.flatten().all { it.size >= 3 }) { "every hole ring needs at least three vertices" }
     val faces = orientOutward(coordinates, unorientedFaces)
+    val holes = unorientedHoles.mapValues { (face, rings) ->
+        // The convention is that an inner ring runs against its outer one. That is a statement about
+        // geometry, so it is settled here, with coordinates in hand, rather than asked of the caller.
+        val outward = newellNormal(coordinates, faces[face])
+        rings.map { ring -> if (newellNormal(coordinates, ring).dot(outward) > 0f) ring.reversed() else ring }
+    }
     val builder = PolytopeTopologyBuilder(rank = 3)
     val vertices = coordinates.map { builder.addElement(0) }
 
+    fun ringsOf(face: Int): List<List<Int>> = listOf(faces[face]) + holes[face].orEmpty()
+
     val edgeKeys = linkedSetOf<EdgeKey>()
-    for (cycle in faces) for (i in cycle.indices) {
+    for (face in faces.indices) for (cycle in ringsOf(face)) for (i in cycle.indices) {
         edgeKeys += EdgeKey.of(cycle[i], cycle[(i + 1) % cycle.size])
     }
     val edges = linkedMapOf<EdgeKey, ElementId>()
@@ -113,20 +132,33 @@ internal fun realizedPolyhedron(coordinates: List<Vec3>, unorientedFaces: List<L
         builder.addIncidence(vertices[key.b], edge)
     }
 
-    val faceElements = faces.map { cycle ->
+    val faceElements = faces.indices.map { at ->
         val face = builder.addElement(2)
-        for (i in cycle.indices) {
+        for (cycle in ringsOf(at)) for (i in cycle.indices) {
             val key = EdgeKey.of(cycle[i], cycle[(i + 1) % cycle.size])
             builder.addIncidence(edges.getValue(key), face)
         }
-        builder.setFaceCycle(face, cycle.map { vertices[it] })
+        builder.setFaceCycle(face, faces[at].map { vertices[it] })
+        holes[at].orEmpty().forEach { ring -> builder.addFaceHole(face, ring.map { vertices[it] }) }
         face
     }
     val whole = builder.addElement(3)
     faceElements.forEach { builder.addIncidence(it, whole) }
 
-    val topology = builder.buildValidated(checkManifold = true)
+    // A face with a hole is a surface with boundary — its inner edges bound one face, not two — so
+    // the manifold pass is exactly the check that must not run on it.
+    val topology = builder.buildValidated(checkManifold = unorientedHoles.isEmpty())
     return PolyhedralObject(topology, Realization3(coordinates))
+}
+
+private fun newellNormal(coordinates: List<Vec3>, cycle: List<Int>): Vec3 {
+    val normal = Vec3()
+    for (i in cycle.indices) {
+        val p = coordinates[cycle[i]]
+        val q = coordinates[cycle[(i + 1) % cycle.size]]
+        normal.add(Vec3((p.y - q.y) * (p.z + q.z), (p.z - q.z) * (p.x + q.x), (p.x - q.x) * (p.y + q.y)))
+    }
+    return normal
 }
 
 private fun orientOutward(coordinates: List<Vec3>, faces: List<List<Int>>): List<List<Int>> {
@@ -190,6 +222,50 @@ fun cube(): PolyhedralObject = realizedPolyhedron(
         listOf(3, 7, 4, 0),
     ),
 )
+
+/**
+ * The ±1 [cube] with a square window cut through the middle of its `+z` face: the package's one seed
+ * whose face boundaries are not all simple.
+ *
+ * Twelve vertices — the cube's eight, plus the window's four at `(±side, ±side, 1)` — six faces, and
+ * one inner ring on the top face. Everything else about it is an ordinary cube.
+ *
+ * It is deliberately **not a closed manifold**, and that is the point of it rather than a defect: the
+ * window's four edges bound one face each, so `validate(checkManifold = true)` rejects it and the
+ * Conway operators refuse it, both with messages that say so. `validate()` on its own passes. Use it
+ * to exercise the parts of the library that do handle a hole — [PolyhedralObject.triangulate],
+ * [PolyhedralObject.toFaceFLines], `cellularEulerCharacteristic` (which is 1 here, not 2).
+ *
+ * @param side half the window's width, in the cube's own coordinates, so it must be inside `(0, 1)`.
+ */
+fun cubeWithWindow(side: Float = 0.5f): PolyhedralObject {
+    require(side > 0f && side < 1f) { "window half-width must be inside (0, 1), got $side" }
+    return realizedPolyhedron(
+        listOf(
+            Vec3(-1f, -1f, -1f),
+            Vec3(1f, -1f, -1f),
+            Vec3(1f, 1f, -1f),
+            Vec3(-1f, 1f, -1f),
+            Vec3(-1f, -1f, 1f),
+            Vec3(1f, -1f, 1f),
+            Vec3(1f, 1f, 1f),
+            Vec3(-1f, 1f, 1f),
+            Vec3(-side, -side, 1f),
+            Vec3(side, -side, 1f),
+            Vec3(side, side, 1f),
+            Vec3(-side, side, 1f),
+        ),
+        listOf(
+            listOf(0, 1, 2, 3),
+            listOf(4, 5, 6, 7),
+            listOf(0, 4, 5, 1),
+            listOf(1, 5, 6, 2),
+            listOf(2, 6, 7, 3),
+            listOf(3, 7, 4, 0),
+        ),
+        mapOf(1 to listOf(listOf(8, 9, 10, 11))),
+    )
+}
 
 /** A regular octahedron centred at the origin, with vertices on the unit sphere. */
 fun octahedron(): PolyhedralObject = realizedPolyhedron(

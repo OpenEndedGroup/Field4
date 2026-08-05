@@ -7,7 +7,7 @@ package afield.stdlib.polytope
  * layer that knows nothing about coordinates.
  *
  * A [PolytopeTopology] is a set of ranked [Element]s with identity, incidences between *adjacent*
- * ranks only, and one explicitly ordered vertex cycle per rank-2 face. Nothing in this file holds a
+ * ranks only, and an explicitly ordered vertex boundary per rank-2 face. Nothing in this file holds a
  * position, an `FLine`, a triangle, a normal or a renderer; a `Realization3` sits above it and can
  * be replaced or thrown away without disturbing the combinatorics. That separation is what lets a
  * Conway operator discard every coordinate, make new ones, and still answer "which face is this,
@@ -45,13 +45,36 @@ package afield.stdlib.polytope
  * b.build().validate().issues.forEach { println(it.message) }   // three edges never recorded
  * ```
  *
+ * ## Faces with holes
+ *
+ * A face's boundary is an outer cycle plus zero or more *inner* cycles — see [FaceBoundary]. With no
+ * inner cycles nothing about a face is different from what it was before holes existed:
+ * [faceCycle] still returns the outer ring, and every stored byte and every code path is the one
+ * that was there. The alternatives were a flat list of cycles with index 0 privileged, and a "hole"
+ * relation between two rank-2 elements; both were rejected, and `dev_docs/POLYTOPE_ALGEBRA.md` says
+ * why at length. The short version: the twenty-odd callers of [faceCycle] in this package all mean
+ * *the outline* when they say it, and a hole that is its own rank-2 element acquires attributes, a
+ * picking id and a vote in [eulerCharacteristic] that it has no business having.
+ *
+ * **Winding is a convention here, not a check.** Outer rings run counter-clockwise about the face
+ * normal and inner rings run clockwise. There are no coordinates at this layer, so that cannot be
+ * verified here — and it is deliberately not load-bearing downstream either, because
+ * `afield.graphics.PlanarTessellation` normalises each ring's winding and decides which ring is the
+ * outer one geometrically. What [validate] does check is combinatorial: rings vertex-disjoint, each
+ * ring closed over the face's own edges, every incident edge used by exactly one ring, and one
+ * boundary component per ring.
+ *
+ * A holed face is a surface *with boundary* — its hole edges bound one face, not two — so
+ * `validate(checkManifold = true)` rejects it, correctly. [dual] and the Conway operators require a
+ * closed manifold and therefore refuse it explicitly, rather than quietly dropping the hole.
+ *
  * ## What is deliberately absent
  *
- * One cycle per face, so no holes and no annuli. No orientation of the complex as a whole, and no
- * assumption that it is a closed manifold: `validate(checkManifold = true)` is an opt-in stricter
- * pass, and a 4-polytope legitimately fails it because an edge there bounds three or more polygons.
- * No incidence between non-adjacent ranks. And no general incidence-poset isomorphism —
- * [isCombinatoriallyIsomorphicTo] is a rank-3 helper and says so.
+ * No orientation of the complex as a whole, and no assumption that it is a closed manifold:
+ * `validate(checkManifold = true)` is an opt-in stricter pass, and a 4-polytope legitimately fails
+ * it because an edge there bounds three or more polygons. No incidence between non-adjacent ranks.
+ * And no general incidence-poset isomorphism — [isCombinatoriallyIsomorphicTo] is a rank-3 helper
+ * and says so.
  */
 
 /**
@@ -157,6 +180,26 @@ data class DuplicateFaceCycleVertex(val face: ElementId, val vertex: ElementId) 
     override val message = "face ${face.value} cycle repeats vertex ${vertex.value}"
 }
 
+/**
+ * Two of a face's boundary rings meet at a vertex, or one inner ring visits a vertex twice. A hole
+ * that touches its outer ring is not a hole: the face is pinched there and its interior is not a
+ * disk with a disk removed. Split it into two faces instead.
+ */
+data class FaceRingsShareVertex(val face: ElementId, val vertex: ElementId) : ValidationIssue {
+    override val message = "face ${face.value} boundary rings repeat vertex ${vertex.value}"
+}
+
+/** An inner boundary ring with fewer than three vertices; [hole] indexes [PolytopeTopology.faceHoles]. */
+data class FaceHoleTooSmall(val face: ElementId, val hole: Int, val vertexCount: Int) : ValidationIssue {
+    override val message = "face ${face.value} hole $hole has $vertexCount vertices; expected at least 3"
+}
+
+/** Inner rings were recorded for a face that has no outer boundary to subtract them from. */
+data class FaceHolesWithoutOuterBoundary(val face: ElementId, val holeCount: Int) : ValidationIssue {
+    override val message =
+        "face ${face.value} has $holeCount inner boundary ring(s) but no outer cycle"
+}
+
 /** The ordered boundary and the recorded edge incidences disagree about which vertices are on the face. */
 data class FaceCycleVertexNotIncident(val face: ElementId, val vertex: ElementId) : ValidationIssue {
     override val message = "face ${face.value} cycle vertex ${vertex.value} is absent from the face's edge incidences"
@@ -174,11 +217,18 @@ data class FaceIncidenceAbsentFromCycle(val face: ElementId, val edge: ElementId
 }
 
 /**
- * The face's edges do not form one closed ring in which every vertex has degree two: two separate
- * polygons recorded as a single face, a figure-of-eight, or a boundary with a gap in it.
+ * The face's edges do not form the closed rings — every vertex of degree two, one component per
+ * recorded ring — that its boundary claims: two separate polygons recorded as a single face, a
+ * figure-of-eight, a boundary with a gap in it, or a hole ring whose edges are not there.
+ *
+ * [expectedRings] is `1 + holes`, so it is 1 for every face that has no hole and the message reads
+ * as it always did.
  */
-data class DisconnectedFaceBoundary(val face: ElementId) : ValidationIssue {
-    override val message = "face ${face.value} incident edges do not form one connected degree-2 boundary"
+data class DisconnectedFaceBoundary(val face: ElementId, val expectedRings: Int = 1) : ValidationIssue {
+    override val message = when (expectedRings) {
+        1 -> "face ${face.value} incident edges do not form one connected degree-2 boundary"
+        else -> "face ${face.value} incident edges do not form $expectedRings connected degree-2 boundary rings"
+    }
 }
 
 /**
@@ -223,6 +273,42 @@ class TopologyValidationException(val result: ValidationResult) : IllegalArgumen
 private data class Incidence(val lower: ElementId, val higher: ElementId)
 
 /**
+ * One rank-2 face's complete oriented boundary: an outer cycle and the inner cycles cut out of it.
+ *
+ * Every array is raw [ElementId] values in traversal order, and every accessor returns a fresh copy —
+ * this is a value, and a caller that mutates what it is handed changes nothing here.
+ *
+ * By convention [outer] runs counter-clockwise about the face normal and each ring of [holes] runs
+ * clockwise. The topology has no coordinates and so cannot enforce that; see the note on
+ * [PolytopeTopology] for why nothing downstream depends on it either.
+ *
+ * A face with no holes is the ordinary case and stays cheap: [holes] is empty, [rings] is one ring,
+ * and [PolytopeTopology.faceCycle] returns exactly what it always returned.
+ */
+class FaceBoundary internal constructor(outer: IntArray, holes: List<IntArray>) {
+    private val storedOuter = outer.copyOf()
+    private val storedHoles = holes.map { it.copyOf() }
+
+    /** The outward boundary, counter-clockwise about the face normal by convention. */
+    val outer: IntArray get() = storedOuter.copyOf()
+
+    /** The inner boundaries, in the order they were recorded; empty for an ordinary face. */
+    val holes: List<IntArray> get() = storedHoles.map { it.copyOf() }
+
+    /** How many inner rings this face has. Zero for every face of every seed in this package. */
+    val holeCount: Int get() = storedHoles.size
+
+    /** [outer] first, then each ring of [holes] — the order a tessellator wants them in. */
+    val rings: List<IntArray> get() = buildList {
+        add(storedOuter.copyOf())
+        storedHoles.forEach { add(it.copyOf()) }
+    }
+
+    override fun toString(): String =
+        "FaceBoundary(outer=${storedOuter.size} vertices, holes=${storedHoles.map { it.size }})"
+}
+
+/**
  * Immutable, rank-aware incidence topology.
  *
  * Only incidences between adjacent ranks are represented. For an ordinary polyhedron rank 3 is
@@ -243,6 +329,7 @@ class PolytopeTopology internal constructor(
     elementsByRank: List<List<Element>>,
     incidences: List<Pair<ElementId, ElementId>>,
     faceCycles: Map<ElementId, IntArray>,
+    faceHoles: Map<ElementId, List<IntArray>> = emptyMap(),
 ) {
     /**
      * Every element, indexed by rank: an outer list of length `rank + 1`, each inner list in the
@@ -256,6 +343,9 @@ class PolytopeTopology internal constructor(
     private val elementById = this.elementsByRank.flatten().associateBy { it.id }
     private val rawIncidences = incidences.map { Incidence(it.first, it.second) }
     private val storedFaceCycles = faceCycles.mapValues { (_, cycle) -> cycle.copyOf() }
+    private val storedFaceHoles = faceHoles
+        .filterValues { it.isNotEmpty() }
+        .mapValues { (_, rings) -> rings.map { it.copyOf() } }
     private val up: Map<ElementId, IntArray>
     private val down: Map<ElementId, IntArray>
 
@@ -292,8 +382,12 @@ class PolytopeTopology internal constructor(
     fun incidentDown(element: ElementId): IntArray = down[element]?.copyOf() ?: intArrayOf()
 
     /**
-     * The explicitly stored ordered vertex boundary of a rank-2 face, as a fresh array of raw
-     * [ElementId] values in traversal order.
+     * The explicitly stored **outer** ordered vertex boundary of a rank-2 face, as a fresh array of
+     * raw [ElementId] values in traversal order.
+     *
+     * This is the outline, holes or no holes — which is what every caller of it in this package
+     * means, and why adding holes did not have to change any of them. [faceHoles] is the other half;
+     * [faceBoundary] is both at once.
      *
      * Throws when the element has no cycle — which a legally built, merely un-validated topology can
      * be, and which [dual] output routinely is where a dual boundary was not one ring. Use
@@ -306,21 +400,67 @@ class PolytopeTopology internal constructor(
     fun faceCycleOrNull(face: ElementId): IntArray? = storedFaceCycles[face]?.copyOf()
 
     /**
-     * All vertices of [face], in boundary order. Throws if the cycle names an id this topology does
-     * not hold — a state [validate] would have reported as [FaceCycleWrongElement].
+     * The inner boundary rings cut out of [face], in the order they were recorded, or an empty list.
+     *
+     * Total by design and cheap for the ordinary case: a face with no holes stores nothing and this
+     * allocates nothing.
+     */
+    fun faceHoles(face: ElementId): List<IntArray> =
+        storedFaceHoles[face]?.map { it.copyOf() } ?: emptyList()
+
+    /** Whether [face] has any inner boundary ring. The one predicate the render path branches on. */
+    fun faceHasHoles(face: ElementId): Boolean = storedFaceHoles.containsKey(face)
+
+    /**
+     * Every ring of [face]'s boundary, outer first — the form a tessellator wants. One entry for an
+     * ordinary face, so a caller that wants to handle both cases uniformly can.
+     */
+    fun faceRings(face: ElementId): List<IntArray> = buildList {
+        add(faceCycle(face))
+        storedFaceHoles[face]?.forEach { add(it.copyOf()) }
+    }
+
+    /** [face]'s complete oriented boundary as one value. Throws exactly when [faceCycle] would. */
+    fun faceBoundary(face: ElementId): FaceBoundary =
+        FaceBoundary(faceCycle(face), storedFaceHoles[face].orEmpty())
+
+    /** [faceBoundary] without the throw: null for any element that has no stored outer cycle. */
+    fun faceBoundaryOrNull(face: ElementId): FaceBoundary? =
+        faceCycleOrNull(face)?.let { FaceBoundary(it, storedFaceHoles[face].orEmpty()) }
+
+    /**
+     * All vertices of [face]'s **outer** boundary, in order. Throws if the cycle names an id this
+     * topology does not hold — a state [validate] would have reported as [FaceCycleWrongElement].
+     * Hole vertices are not included; ask [faceHoles] for those.
      */
     fun verticesOfFace(face: ElementId): List<Element> = faceCycle(face).map { id ->
         elementById[ElementId(id)] ?: throw IllegalStateException("face ${face.value} references missing vertex $id")
     }
 
+    /** Inner rings summed over every face — zero for everything this package constructs by default. */
+    fun totalFaceHoleCount(): Int = storedFaceHoles.values.sumOf { it.size }
+
     /**
      * Alternating count of all proper ranks; the whole-polytope rank is deliberately excluded. So it
      * is 2 for a closed polyhedral surface and 0 for a convex 4-polytope, and either number is a
      * cheap check that a transform did not lose or duplicate elements.
+     *
+     * This counts *elements*, and it kept that meaning when holes arrived: it does not know that a
+     * holed face is not a disk. [cellularEulerCharacteristic] is the number that does.
      */
     fun eulerCharacteristic(): Int = (0 until rank).sumOf { r ->
         if (r % 2 == 0) elements(r).size else -elements(r).size
     }
+
+    /**
+     * [eulerCharacteristic] corrected for holes: a face with `h` inner rings is a disk with `h` disks
+     * removed and contributes `1 - h`, not 1.
+     *
+     * Identical to [eulerCharacteristic] whenever nothing has holes, which is every seed and every
+     * Conway output. For a cube with one square window it is 1, not 2 — the honest χ of a sphere with
+     * a disk removed.
+     */
+    fun cellularEulerCharacteristic(): Int = eulerCharacteristic() - totalFaceHoleCount()
 
     /**
      * Validate basic incidence and explicit polygon boundaries. Set [checkManifold] to additionally
@@ -345,7 +485,7 @@ class PolytopeTopology internal constructor(
             }
             if (!seenIncidences.add(lower to higher)) issues += DuplicateIncidence(lower, higher)
         }
-        for (face in storedFaceCycles.keys) {
+        for (face in storedFaceCycles.keys + storedFaceHoles.keys) {
             val owner = elementById[face]
             if (owner == null) issues += InvalidElementReference("ordered face cycle owner", face)
             else if (owner.rank != 2) issues += FaceCycleOwnerWrongRank(face, owner.rank)
@@ -376,19 +516,35 @@ class PolytopeTopology internal constructor(
     private fun validateFace(face: ElementId, issues: MutableList<ValidationIssue>) {
         val faceEdges = down.getValue(face).distinct().map(::ElementId)
         val cycle = storedFaceCycles[face]
+        val holes = storedFaceHoles[face].orEmpty()
         if (cycle == null) {
             issues += MissingFaceCycle(face)
+            if (holes.isNotEmpty()) issues += FaceHolesWithoutOuterBoundary(face, holes.size)
             if (faceEdges.size < 3) issues += FaceTooSmall(face, faceEdges.size, 0)
             return
         }
 
         val cycleIds = cycle.map(::ElementId)
         if (cycleIds.size < 3 || faceEdges.size < 3) issues += FaceTooSmall(face, faceEdges.size, cycleIds.size)
+        holes.forEachIndexed { at, ring -> if (ring.size < 3) issues += FaceHoleTooSmall(face, at, ring.size) }
+
+        // The outer ring first, then each hole. Everything below is per-ring, and for a face with no
+        // holes `rings` is one entry and the walk is exactly the one that was here before.
+        val rings = buildList {
+            add(cycleIds)
+            holes.forEach { add(it.map(::ElementId)) }
+        }
+
         val seenVertices = mutableSetOf<ElementId>()
-        for (vertex in cycleIds) {
-            val element = elementById[vertex]
-            if (element?.rank != 0) issues += FaceCycleWrongElement(face, vertex, element?.rank)
-            if (!seenVertices.add(vertex)) issues += DuplicateFaceCycleVertex(face, vertex)
+        rings.forEachIndexed { ringIndex, ring ->
+            for (vertex in ring) {
+                val element = elementById[vertex]
+                if (element?.rank != 0) issues += FaceCycleWrongElement(face, vertex, element?.rank)
+                if (!seenVertices.add(vertex)) {
+                    if (ringIndex == 0) issues += DuplicateFaceCycleVertex(face, vertex)
+                    else issues += FaceRingsShareVertex(face, vertex)
+                }
+            }
         }
 
         val endpointPairs = mutableMapOf<Set<ElementId>, MutableList<ElementId>>()
@@ -398,27 +554,31 @@ class PolytopeTopology internal constructor(
             incidentVertices += endpoints
             if (endpoints.size == 2) endpointPairs.getOrPut(endpoints.toSet()) { mutableListOf() }.add(edge)
         }
-        for (vertex in cycleIds) {
+        for (ring in rings) for (vertex in ring) {
             if (elementById[vertex]?.rank == 0 && vertex !in incidentVertices) {
                 issues += FaceCycleVertexNotIncident(face, vertex)
             }
         }
 
         val usedEdges = mutableSetOf<ElementId>()
-        if (cycleIds.size >= 2) for (i in cycleIds.indices) {
-            val a = cycleIds[i]
-            val b = cycleIds[(i + 1) % cycleIds.size]
+        for (ring in rings) if (ring.size >= 2) for (i in ring.indices) {
+            val a = ring[i]
+            val b = ring[(i + 1) % ring.size]
             val candidates = endpointPairs[setOf(a, b)].orEmpty()
             if (candidates.isEmpty()) issues += FaceCycleEdgeMismatch(face, a, b)
             else usedEdges += candidates.first()
         }
         for (edge in faceEdges) if (edge !in usedEdges) issues += FaceIncidenceAbsentFromCycle(face, edge)
 
-        if (!formsSingleBoundary(faceEdges)) issues += DisconnectedFaceBoundary(face)
+        if (!formsBoundaryRings(faceEdges, rings.size)) issues += DisconnectedFaceBoundary(face, rings.size)
     }
 
-    private fun formsSingleBoundary(edges: List<ElementId>): Boolean {
-        if (edges.size < 3) return false
+    /**
+     * Every vertex of degree two, and exactly [expected] connected components — one per recorded
+     * boundary ring. With `expected = 1` this is the single-ring test it grew out of.
+     */
+    private fun formsBoundaryRings(edges: List<ElementId>, expected: Int): Boolean {
+        if (expected < 1 || edges.size < 3 * expected) return false
         val neighbors = mutableMapOf<ElementId, MutableSet<ElementId>>()
         for (edge in edges) {
             val endpoints = (down[edge] ?: intArrayOf()).distinct().map(::ElementId)
@@ -426,15 +586,21 @@ class PolytopeTopology internal constructor(
             neighbors.getOrPut(endpoints[0]) { mutableSetOf() }.add(endpoints[1])
             neighbors.getOrPut(endpoints[1]) { mutableSetOf() }.add(endpoints[0])
         }
-        if (neighbors.values.any { it.size != 2 }) return false
+        if (neighbors.isEmpty() || neighbors.values.any { it.size != 2 }) return false
         val reached = mutableSetOf<ElementId>()
-        val pending = ArrayDeque<ElementId>()
-        pending += neighbors.keys.firstOrNull() ?: return false
-        while (pending.isNotEmpty()) {
-            val at = pending.removeFirst()
-            if (reached.add(at)) neighbors[at].orEmpty().forEach { pending += it }
+        var components = 0
+        for (seed in neighbors.keys) {
+            if (seed in reached) continue
+            components++
+            if (components > expected) return false
+            val pending = ArrayDeque<ElementId>()
+            pending += seed
+            while (pending.isNotEmpty()) {
+                val at = pending.removeFirst()
+                if (reached.add(at)) neighbors[at].orEmpty().forEach { pending += it }
+            }
         }
-        return reached.size == neighbors.size
+        return components == expected
     }
 
     /**
@@ -446,9 +612,18 @@ class PolytopeTopology internal constructor(
      * *recovered* from incidence, and only where a boundary is a single ring; anywhere it is not, the
      * dual face is left without a cycle and [validate] will say so even though the primal passed.
      * Requires rank at least 1.
+     *
+     * A face with holes is refused outright. The dual of a face is a vertex, and a hole in that face
+     * is a boundary of the surface rather than a cell of it — there is nothing for it to become, and
+     * dropping it silently would make `dd` claim to be an involution on an object it had changed.
      */
     fun dual(): PolytopeTopology {
         require(rank >= 1) { "rank-0 topology has no represented proper-rank dual" }
+        val holed = storedFaceHoles.keys.firstOrNull()
+        if (holed != null) throw IllegalArgumentException(
+            "face ${holed.value} has ${storedFaceHoles.getValue(holed).size} hole(s); " +
+                "dualization is defined here for closed manifolds only",
+        )
         val properMax = rank - 1
         val builder = PolytopeTopologyBuilder(rank)
         val mapped = mutableMapOf<ElementId, ElementId>()
@@ -524,6 +699,7 @@ class PolytopeTopologyBuilder(
     private val elements = MutableList(rank + 1) { mutableListOf<Element>() }
     private val incidences = mutableListOf<Pair<ElementId, ElementId>>()
     private val faceCycles = mutableMapOf<ElementId, IntArray>()
+    private val faceHoles = mutableMapOf<ElementId, MutableList<IntArray>>()
     private var nextId = 0
 
     init {
@@ -569,11 +745,34 @@ class PolytopeTopologyBuilder(
         setFaceCycle(face, vertices.map { it.value }.toIntArray())
 
     /**
+     * Cut one more hole out of a rank-2 face: an ordered inner boundary, clockwise about the face
+     * normal by convention, wound opposite to the cycle [setFaceCycle] recorded.
+     *
+     * Rings accumulate in call order, and the array is copied. The hole's edges must be recorded as
+     * incidences of this same face just as the outer ring's are — a hole is part of the face's
+     * boundary, not a separate thing near it — and [PolytopeTopology.validate] is where you find out
+     * if they are not.
+     */
+    fun addFaceHole(face: ElementId, vertices: IntArray): PolytopeTopologyBuilder = apply {
+        faceHoles.getOrPut(face) { mutableListOf() }.add(vertices.copyOf())
+    }
+
+    /** The same, spelt in [ElementId]s. */
+    fun addFaceHole(face: ElementId, vertices: List<ElementId>): PolytopeTopologyBuilder =
+        addFaceHole(face, vertices.map { it.value }.toIntArray())
+
+    /** Replace every inner ring of [face] at once; an empty list removes them all. */
+    fun setFaceHoles(face: ElementId, rings: List<IntArray>): PolytopeTopologyBuilder = apply {
+        if (rings.isEmpty()) faceHoles.remove(face)
+        else faceHoles[face] = rings.mapTo(mutableListOf()) { it.copyOf() }
+    }
+
+    /**
      * Materialise an immutable [PolytopeTopology] from whatever has been recorded so far. Always
      * succeeds: a malformed topology is a buildable one, and inspecting it is how you learn what is
      * wrong. The builder stays usable afterwards.
      */
-    fun build(): PolytopeTopology = PolytopeTopology(rank, elements, incidences, faceCycles)
+    fun build(): PolytopeTopology = PolytopeTopology(rank, elements, incidences, faceCycles, faceHoles)
 
     /**
      * [build] followed by [ValidationResult.throwIfInvalid], so a bad assembly fails here rather than
@@ -591,9 +790,10 @@ class PolytopeTopologyBuilder(
  * unrestricted incidence-poset graph-isomorphism solver.
  *
  * Because cycles are compared up to *reversal* the test is blind to orientation: a solid and its
- * mirror image compare equal. Anything not rank 3 on both sides, and any pair whose element counts
- * differ, answers `false` rather than complaining — but a face with no stored cycle throws, through
- * [PolytopeTopology.faceCycle], so validate before asking.
+ * mirror image compare equal. It is not blind to holes — a face's inner rings are part of what is
+ * compared, so a windowed cube is not isomorphic to a cube. Anything not rank 3 on both sides, and
+ * any pair whose element counts differ, answers `false` rather than complaining — but a face with no
+ * stored cycle throws, through [PolytopeTopology.faceCycle], so validate before asking.
  *
  * The search is pruned by a per-vertex signature — edge degree, plus the sorted sizes of the faces
  * around that vertex — which is enough to make the Platonic and Conway solids it was written for
@@ -638,9 +838,13 @@ fun PolytopeTopology.isCombinatoriallyIsomorphicTo(other: PolytopeTopology): Boo
         return variants.reduce { best, candidate -> if (less(candidate, best)) candidate else best }
     }
 
-    fun faceMultiset(topology: PolytopeTopology, map: Map<ElementId, ElementId>?): Map<List<Int>, Int> =
+    // A face is its outer ring plus its holes, so a windowed face can never compare equal to a solid
+    // one. Holes are sorted because their recorded order is a construction detail, not structure.
+    fun faceMultiset(topology: PolytopeTopology, map: Map<ElementId, ElementId>?): Map<List<List<Int>>, Int> =
         topology.elements(2).map { face ->
-            canonicalCycle(topology.faceCycle(face.id).map { id -> map?.get(ElementId(id))?.value ?: id })
+            val mapped = { ring: IntArray -> canonicalCycle(ring.map { id -> map?.get(ElementId(id))?.value ?: id }) }
+            listOf(mapped(topology.faceCycle(face.id))) +
+                topology.faceHoles(face.id).map(mapped).sortedWith(compareBy({ it.size }, { it.joinToString(",") }))
         }.groupingBy { it }.eachCount()
 
     val targetEdges = edgeMultiset(other, null)
