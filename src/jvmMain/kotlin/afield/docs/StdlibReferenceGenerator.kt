@@ -175,6 +175,20 @@ object StdlibReferenceGenerator {
             "their graphs with user-authored patterns.",
         "Visualization" to "Turning a value into something you can look at, without leaving the box.",
         "Audio" to "Sound analysis and the network protocols that carry control data alongside it.",
+        "Audio AI" to "The client half of Field Audio: a separate HTTP/WebSocket service that runs " +
+            "generative and analysis models over audio, and the typed vocabulary a box talks to it " +
+            "in. Nothing here loads a model or does inference in the JVM — a box builds a " +
+            "`ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can " +
+            "poll or watch; the results are immutable server-side *assets* referenced by id, which " +
+            "is why the protocol types carry representation ids rather than samples. Every call is " +
+            "asynchronous and completes off Field's runloop and off the audio callback, so nothing " +
+            "here may be `.get()`-ed from a box's frame. The rest of the category is what you do " +
+            "with a result inside a box: the candidate browser, the EnCodec reconstruction " +
+            "microscope, the beat/pitch analysis viewer and the job monitor, each of them one " +
+            "function returning a self-contained HTML fragment for `display(…)`. Start from " +
+            "`Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; " +
+            "[Field Audio service reference](../field_audio_service_reference.md) is the " +
+            "service-side contract the types mirror.",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
     )

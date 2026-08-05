@@ -13,15 +13,15 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
 | [clustering.kt](../src/jvmMain/kotlin/afield/stdlib/clustering.kt) | Data | spatial_geometry_examples, typography_examples | 25 | 54 | 2% |
-| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Uncategorised | field_audio_service_reference, visualizers | 23 | 167 | 0% |
+| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, visualizers | 23 | 167 | 0% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
 | [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | statistics_examples | 5 | 41 | 11% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
-| [AudioVisualizer.kt](../src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt) | Uncategorised | visualizers | 2 | 15 | 29% |
+| [AudioVisualizer.kt](../src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt) | Visualization | visualizers | 2 | 15 | 29% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
-| [CodecVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt) | Uncategorised | audio_ai_codec | 1 | 15 | 11% |
+| [CodecVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt) | Audio AI | audio_ai_codec | 1 | 15 | 11% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
@@ -69,7 +69,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SemanticSearchManager.kt](../src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt) | Data | — | 3 | 34 | 0% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
 | [CeresExpression.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt) | Solvers | — | 3 | 25 | 57% |
-| [FieldAudioClient.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt) | Uncategorised | — | 2 | 18 | 4% |
+| [FieldAudioClient.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt) | Audio AI | — | 2 | 18 | 4% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
@@ -82,8 +82,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
-| [NpyIntTensor.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/NpyIntTensor.kt) | Uncategorised | — | 0 | 5 | 16% |
-| [FieldPersistence.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldPersistence.kt) | Uncategorised | — | 0 | 4 | 20% |
+| [NpyIntTensor.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/NpyIntTensor.kt) | Audio AI | — | 0 | 5 | 16% |
+| [FieldPersistence.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldPersistence.kt) | Audio AI | — | 0 | 4 | 20% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
 
@@ -91,8 +91,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `AudioVisualizerSource` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:8` |
-| `AudioVisualizerOptions` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:18` |
+| `AudioVisualizerSource` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:10` |
+| `AudioVisualizerOptions` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:20` |
 | `AgglomerativeLinkage` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:42` |
 | `MedoidDistance` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:52` |
 | `KMediansOptions` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:74` |
@@ -116,30 +116,30 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
-| `CodecVisualizationData` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt:21` |
-| `AssetRegion` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:8` |
-| `AssetRepresentation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:15` |
-| `AudioAsset` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:31` |
-| `WaveformSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:44` |
-| `ModelOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:56` |
-| `JobState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:68` |
-| `JobAccepted` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:89` |
-| `StructuredError` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:98` |
-| `JobRecord` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:106` |
-| `JobSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:123` |
-| `Candidate` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:142` |
-| `CandidateSet` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:160` |
-| `ReconstructionMetrics` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:169` |
-| `CodecReconstructionResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:176` |
-| `AnalysisResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:191` |
-| `AnalysisSeries` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:204` |
-| `AnalysisNote` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:214` |
-| `AnalysisPreview` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:222` |
-| `ProgressEvent` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:233` |
-| `ModelCapability` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:244` |
-| `CandidateJudgement` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:259` |
-| `SavedAudioOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:266` |
-| `FieldAudioProjectState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:277` |
+| `CodecVisualizationData` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt:23` |
+| `AssetRegion` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:10` |
+| `AssetRepresentation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:17` |
+| `AudioAsset` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:33` |
+| `WaveformSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:46` |
+| `ModelOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:58` |
+| `JobState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:70` |
+| `JobAccepted` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:91` |
+| `StructuredError` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:100` |
+| `JobRecord` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:108` |
+| `JobSummary` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:125` |
+| `Candidate` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:144` |
+| `CandidateSet` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:162` |
+| `ReconstructionMetrics` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:171` |
+| `CodecReconstructionResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:178` |
+| `AnalysisResult` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:193` |
+| `AnalysisSeries` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:206` |
+| `AnalysisNote` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:216` |
+| `AnalysisPreview` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:224` |
+| `ProgressEvent` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:235` |
+| `ModelCapability` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:246` |
+| `CandidateJudgement` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:261` |
+| `SavedAudioOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:268` |
+| `FieldAudioProjectState` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:279` |
 | `ShaderProbeQuantileWarpConfig` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:297` |
 | `ShaderFieldQuantileWarpController` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:315` |
 | `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |

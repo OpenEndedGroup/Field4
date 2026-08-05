@@ -35,6 +35,7 @@ nav:
       - Function: reference/function.md
       - Visualization: reference/visualization.md
       - Audio: reference/audio.md
+      - Audio AI: reference/audio-ai.md
       - Workspace: reference/workspace.md
     - Linear Algebra: linear_algebra.md
     - Generated Vector API: linear_algebra_api.md

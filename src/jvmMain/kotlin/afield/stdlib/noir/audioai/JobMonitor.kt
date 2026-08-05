@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Audio AI")
+
 package afield.stdlib.noir.audioai
 
 /** An embeddable, same-origin view of all durable Field Audio jobs. */
