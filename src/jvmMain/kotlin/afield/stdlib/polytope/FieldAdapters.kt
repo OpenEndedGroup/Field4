@@ -50,6 +50,14 @@ import kotlin.math.sqrt
  *
  * [PolyhedralObject.faceNormal] reads the outer ring only: a hole does not contribute area, and its
  * opposite winding would cancel some of the outline's if it did.
+ *
+ * ## Flat, smooth, or creased
+ *
+ * [NormalPolicy] decides what normal each duplicated corner carries. The default is [NormalPolicy.Flat]
+ * — one face normal per face, which is what a Conway solid wants, every edge of one being a real
+ * crease. [NormalPolicy.Crease] averages the faces at a vertex that are within an angle of this one,
+ * so a subdivided sphere reads as curved and a cube still reads as a cube. Nothing else about the
+ * output changes: same vertices, same triangles, same provenance arrays.
  */
 
 /**
@@ -285,15 +293,67 @@ class TriangulatedGeometry internal constructor(
 }
 
 /**
- * Triangulate every ordered face and produce a flat-normal [TriMesh] with provenance.
+ * How a render vertex gets its normal — and therefore whether an edge of the solid reads as a crease
+ * or as curvature.
+ *
+ * The corners are duplicated per face either way ([TriangulatedGeometry] says why), so this changes
+ * only what is written into those duplicates, never the buffer layout, the triangle count or the
+ * provenance arrays. `POLYTOPE_ALGEBRA.md` item 4 asked for exactly that: smooth and crease-aware
+ * normals *while preserving abstract vertex provenance*.
+ */
+sealed interface NormalPolicy {
+    /**
+     * One flat face normal on every corner of that face. The default, and what a Platonic or Conway
+     * solid wants — every edge of one is a real crease.
+     */
+    object Flat : NormalPolicy
+
+    /**
+     * Average the face normals meeting at a topology vertex, but only the ones within [creaseDegrees]
+     * of *this* face's own normal; a sharper join keeps this face's flat normal on this corner. So
+     * `180.0` is fully smooth and `0.0` is [Flat].
+     *
+     * This is the per-corner smoothing-group approximation rather than a walk of the vertex fan: each
+     * corner asks which of its vertex's faces it is nearly parallel to, and averages those. It is
+     * order-independent and needs no manifold fan, which matters here because a hole rim has no fan at
+     * all — a hole's edges bound one face, so a rim corner averages over that one face and keeps the
+     * flat normal, which is the right answer and comes out of the same rule rather than a special case.
+     *
+     * The average is unweighted. Area or angle weighting is a better approximation of curvature on an
+     * irregular mesh and is not what this is for; say so rather than implying otherwise.
+     */
+    data class Crease(val creaseDegrees: Double = 30.0) : NormalPolicy {
+        init {
+            require(creaseDegrees.isFinite() && creaseDegrees >= 0.0 && creaseDegrees <= 180.0) {
+                "crease angle must be a finite 0..180 degrees, got $creaseDegrees"
+            }
+        }
+
+        /** Every face normal counts as parallel to itself, so a threshold of 0 still keeps the face's own. */
+        internal val cosineThreshold: Double = kotlin.math.cos(Math.toRadians(creaseDegrees))
+    }
+
+    /** Fully smooth: every face at a vertex contributes, whatever the dihedral. */
+    companion object {
+        val Smooth: NormalPolicy = Crease(180.0)
+    }
+}
+
+/**
+ * Triangulate every ordered face and produce a [TriMesh] with provenance.
  *
  * A face with inner rings goes to [HoleAwareFaceTriangulator.triangulate] with its holes; a face
  * without takes the single-cycle call it always took, and its output is identical vertex for vertex
  * and index for index. Passing a [triangulator] that is not hole-aware is fine right up until a face
  * that has holes, which throws and names both the face and the triangulator.
+ *
+ * [normals] decides what goes on each duplicated corner and nothing else — with the default
+ * [NormalPolicy.Flat] the result is byte-identical to what this function returned before the policy
+ * existed, which `PolytopeVertexNormalsTest` measures rather than assumes.
  */
 fun PolyhedralObject.triangulate(
     triangulator: FaceTriangulator = EarcutFaceTriangulator,
+    normals: NormalPolicy = NormalPolicy.Flat,
 ): TriangulatedGeometry {
     val realization = realization ?: throw IllegalStateException("triangulation requires a 3D realization")
     topology.validate().throwIfInvalid()
@@ -304,11 +364,54 @@ fun PolyhedralObject.triangulate(
     val vertexAttributes = mutableListOf<Map<String, Any?>>()
     val realizationIndex = topology.elements(0).mapIndexed { index, vertex -> vertex.id.value to index }.toMap()
 
+    // Face normals once, up front, because a smoothed corner needs its neighbours' before it can be
+    // written. Flat asks for none of this and pays for none of it.
+    val faceNormals: Map<ElementId, Vec3> = when (normals) {
+        NormalPolicy.Flat -> emptyMap()
+        is NormalPolicy.Crease -> topology.elements(2).associate { it.id to faceNormal(it.id) }
+    }
+    val facesAtVertex: Map<ElementId, List<ElementId>> = when (normals) {
+        NormalPolicy.Flat -> emptyMap()
+        is NormalPolicy.Crease -> topology.elements(0).associate { vertex ->
+            vertex.id to topology.incidentUp(vertex.id)
+                .flatMap { edge -> topology.incidentUp(ElementId(edge)).toList() }
+                .distinct()
+                .map(::ElementId)
+                .filter { topology.element(it)?.rank == 2 }
+        }
+    }
+
+    fun normalFor(face: ElementId, faceNormal: Vec3, vertex: ElementId): Vec3 = when (normals) {
+        NormalPolicy.Flat -> faceNormal
+        is NormalPolicy.Crease -> {
+            val sum = Vec3(faceNormal)
+            var blended = 0
+            for (other in facesAtVertex[vertex].orEmpty()) {
+                if (other == face) continue
+                val candidate = faceNormals[other] ?: continue
+                if (candidate.dot(faceNormal) >= normals.cosineThreshold) {
+                    sum.add(candidate)
+                    blended++
+                }
+            }
+            when {
+                // Nothing to smooth against — a crease all round, or a hole rim, or a zero threshold —
+                // keeps the face normal *exactly*, rather than a renormalized copy of it that differs
+                // in the last bit. That is what makes `Crease(0)` byte-identical to `Flat`.
+                blended == 0 -> faceNormal
+                // A fan that cancels itself out — two faces exactly back to back — has no average
+                // worth having, so keep the corner's own flat normal rather than a zero vector.
+                sum.lengthSquared() <= 1e-12f -> faceNormal
+                else -> sum.normalize()
+            }
+        }
+    }
+
     for (face in topology.elements(2)) {
         // One entry for an ordinary face, so the loop below is the one that was always here; the
         // outer ring is always rings[0], which is what makes the hole-free output byte-identical.
         val elementRings = topology.faceRings(face.id)
-        val normal = faceNormal(face.id)
+        val normal = faceNormals[face.id] ?: faceNormal(face.id)
         val localRenderIndex = mutableMapOf<Int, Int>()
         val coordinateRings = elementRings.map { elementCycle ->
             val cycle = elementCycle.map { realizationIndex.getValue(it) }.toIntArray()
@@ -319,7 +422,7 @@ fun PolyhedralObject.triangulate(
                     realization.x(coordinateIndex),
                     realization.y(coordinateIndex),
                     realization.z(coordinateIndex),
-                    normal = normal,
+                    normal = normalFor(face.id, normal, ElementId(elementId)),
                 )
                 renderVertices += elementId
                 vertexAttributes += attributes[ElementId(elementId)]
@@ -367,8 +470,10 @@ fun PolyhedralObject.triangulate(
 }
 
 /** Convenience when only Field's renderable mesh is needed and provenance can be discarded. */
-fun PolyhedralObject.toTriMesh(triangulator: FaceTriangulator = EarcutFaceTriangulator): TriMesh =
-    triangulate(triangulator).mesh
+fun PolyhedralObject.toTriMesh(
+    triangulator: FaceTriangulator = EarcutFaceTriangulator,
+    normals: NormalPolicy = NormalPolicy.Flat,
+): TriMesh = triangulate(triangulator, normals).mesh
 
 /**
  * The [FLine] property `Polytope4.toCellEdgeFLines` stamps with the cell it was asked about.

@@ -406,7 +406,23 @@ not machine precision, and Möbius-normalized reciprocation is still the untried
 
 ### 4. Complete the rendering bridge
 
-- Add smooth and crease-aware normal generation while preserving abstract vertex provenance.
+- ~~Add smooth and crease-aware normal generation while preserving abstract vertex provenance.~~ Done
+  2026-08-05. `triangulate(normals = …)` takes a `NormalPolicy`: `Flat` (the default, and what a
+  Conway solid wants — every edge of one is a real crease), or `Crease(degrees)`, of which
+  `NormalPolicy.Smooth` is the 180° case. It is the per-corner smoothing-group rule — each corner
+  averages the faces at its vertex that are within the angle of *its own* face — not a walk of the
+  vertex fan, which matters because a hole rim has no fan at all: a hole's edges bound one face, so a
+  rim corner averages over one face and keeps the flat normal, out of the ordinary rule rather than a
+  special case. The average is unweighted; area or angle weighting is a better curvature
+  approximation and is not what this is.
+
+  Nothing else about the output changes — same vertices, same triangles, same `vertexElementIds` and
+  `triangleFaceIds` — which is the whole point of the "while preserving abstract vertex provenance"
+  clause and is asserted, not assumed. A corner with nothing to smooth against keeps the face normal
+  *exactly*, so `Crease(0)` is byte-identical to `Flat`. `PolytopeVertexNormalsTest` measures the
+  icosahedron coming out radial (worst dot > 0.999 smoothed, < 0.9955 flat), the cube staying
+  axis-aligned at 30°, and the window rim keeping its face normal while the same face's outer corners
+  smooth.
 - Provide a direct upload/emission helper for Field graphics buffers when repeated rendering makes
   the library-local `TriangulatedGeometry` intermediate unnecessarily expensive.
 - Preserve stable face/edge/vertex picking ids through the triangle path, as the FLine demo already
