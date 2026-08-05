@@ -1406,7 +1406,7 @@ Two operation transcripts build a working document you can open, edit and re-run
 
 Replay any of them from the repository root:
 
-```bash
+```diffstatic {data-lang=bash}
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
   --command 'macro write polytope_conway_gallery --file dev_docs/agents/transcripts/polytope_conway_gallery.yaml' \
   --command 'macro run polytope_conway_gallery'

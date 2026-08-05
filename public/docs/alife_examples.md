@@ -620,7 +620,7 @@ animateEvolution(
 
 Lenia is one field `A` in `0..1`, one convolution kernel `K`, one growth mapping `G`, and
 
-```
+```diffstatic {data-lang=text}
 A  <-  clamp(A + dt * G(K * A), 0, 1)
 ```
 
@@ -1513,7 +1513,7 @@ Every box above is one box of a shipped agent transcript,
 [`alife_worked_example`](agent_transcripts.md), so you can open the whole page as a document and edit
 it rather than retyping it:
 
-```
+```diffstatic {data-lang=bash}
 python3 tools/field_backdoor.py run-transcript dev_docs/agents/transcripts/alife_worked_example.yaml
 ```
 

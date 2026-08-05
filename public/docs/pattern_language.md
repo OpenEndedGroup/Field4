@@ -295,7 +295,7 @@ Three names to know if you are coming from Tidal:
 `eventSequence` gives you the events in playing order. `scheduled(cps)` turns them into
 wall-clock times. `respond {}` calls you back as each one arrives.
 
-```
+```diffstatic {data-lang=kotlin}
 pat("bd sd hh hh").respond(cps = 2.0) { event ->
     println("${event.start}s  ${event.value}  gain=${event.num("gain")}")
 }

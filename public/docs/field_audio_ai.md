@@ -25,7 +25,7 @@ current pinned HTTP objects, states, and error vocabulary.
 - monophonic pYIN and polyphonic Basic Pitch analysis;
 - zoomable waveform, pitch, beat and token views, plus the embedded job monitor.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
 
 val client = FieldAudioClient()

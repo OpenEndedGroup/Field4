@@ -978,7 +978,7 @@ println("recorded audio visualizer ready")
 
 There are three general entry points from a Field box:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 // A browser-accessible recording. Add waveformUrl for range-aware server summaries.
 displayAudio(AudioVisualizerSource(
     audioUrl = "/recordings/long-take.wav",
@@ -1001,7 +1001,7 @@ instrument panel. `AudioVisualizer.renderHtml(...)`, `renderSamplesHtml(...)`, a
 For a Field Audio service representation, use the same component without transferring or decoding
 the complete recording just to draw it:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.stdlib.*
 import afield.stdlib.noir.audioai.*
 
@@ -1027,7 +1027,7 @@ different operations in the same zoomable, pannable timeline:
 - monophonic pYIN pitch and voicing confidence;
 - Basic Pitch polyphonic note rectangles and activity summaries.
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
 
 val client = FieldAudioClient()
@@ -1050,13 +1050,13 @@ tensor into a large JSON response.
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
 visualizer adds these query parameters whenever its visible interval changes:
 
-```text
+```diffstatic {data-lang=text}
 start_seconds=12.5&duration_seconds=4.0&points=960
 ```
 
 The endpoint returns one min/max envelope per channel:
 
-```json
+```diffstatic {data-lang=json}
 {
   "start_seconds": 12.5,
   "duration_seconds": 4.0,

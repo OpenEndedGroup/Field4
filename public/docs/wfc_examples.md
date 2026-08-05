@@ -403,7 +403,7 @@ thin, and is under no obligation to also put a shoreline in any particular place
 
 The figure is deliberately unpinned, and the readout in the box says why:
 
-```
+```diffstatic {data-lang=text}
 the all-deep window may be followed by: dir 0 4  dir 1 2  dir 2 1  dir 3 1
 ```
 
@@ -1186,7 +1186,7 @@ three rotations, each with its mirror, deduplicated, with each pattern's observe
 across its orbit so the expansion does not change how likely any arrangement is. One line, applied to
 the pattern set rather than the solver:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val symmetric = patterns.expandSymmetry(WfcSymmetry.All)
 ```
 

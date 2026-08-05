@@ -127,6 +127,63 @@ FENCE_OPEN_RE = re.compile(
 GENERIC_FENCE_OPEN_RE = re.compile(r"^(?P<indent>[ ]{0,3})(?P<fence>`{3,}|~{3,}).*(?:\r?\n)?$")
 MARKER_PREFIXES = (":::static", ":::before", ":::after", ":::")
 
+# Workspace guides (`AGENTS.md` / `README.md`) are copied verbatim into every workspace by
+# ensureAgentGuides, including the transcript workspaces under docs/assets that the site also
+# renders as pages. They must stay ordinary markdown on disk -- agent tooling reads the workspace
+# copy -- so the plain fences are rewritten to `diffstatic` here, on the way into the generated
+# site only. The files in the repo and in a user's workspace are left untouched.
+GUIDE_FILENAMES = frozenset({"AGENTS.md", "README.md"})
+GUIDE_FENCE_RE = re.compile(
+    r"^(?P<indent>[ ]{0,3})(?P<fence>`{3,})(?P<lang>[A-Za-z0-9_+#-]*)[ \t]*(?P<newline>\r?\n)?$"
+)
+GUIDE_LANG_ALIASES = {
+    "": "text",
+    "txt": "text",
+    "plaintext": "text",
+    "sh": "bash",
+    "shell": "bash",
+    "console": "bash",
+}
+
+
+def is_workspace_guide(page_path: Path) -> bool:
+    """True for a workspace guide copy living inside the docs asset tree."""
+    return page_path.name in GUIDE_FILENAMES and "assets" in page_path.parts
+
+
+def rewrite_guide_fences(markdown: str) -> str:
+    """Give a workspace guide's plain fences the same treatment as a hand-written docs page.
+
+    Only fences whose info string is a bare language word (or empty) are rewritten -- a fence
+    carrying attributes is either already a runner fence or part of Field's document format
+    (`kotlin [field-property ...]`), and rewriting either would break it.
+    """
+    out: list[str] = []
+    closing: re.Pattern[str] | None = None
+    for line in markdown.splitlines(keepends=True):
+        if closing is not None:
+            out.append(line)
+            if closing.match(line):
+                closing = None
+            continue
+        generic = GENERIC_FENCE_OPEN_RE.match(line)
+        if generic is None:
+            out.append(line)
+            continue
+        # Every fence toggles the state, including one left as-is: otherwise its closing
+        # fence reads as the next opener and gets rewritten.
+        fence = generic.group("fence")
+        closing = re.compile(rf"^[ ]{{0,3}}{re.escape(fence)}\s*(?:\r?\n)?$")
+        match = GUIDE_FENCE_RE.match(line)
+        if match is None:
+            out.append(line)
+            continue
+        lang = match.group("lang").lower()
+        lang = GUIDE_LANG_ALIASES.get(lang, lang)
+        newline = match.group("newline") or "\n"
+        out.append(f"{match.group('indent')}{fence}diffstatic {{data-lang={lang}}}{newline}")
+    return "".join(out)
+
 
 def is_marker_line(stripped: str) -> bool:
     """True for any `:::` section/fold marker line. Fold markers (`:::fold [label]` /
@@ -1763,6 +1820,8 @@ def ensure_state(config: Any) -> RunnerState:
 
 
 def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, files: Any) -> str:
+    if is_workspace_guide(page_path):
+        markdown = rewrite_guide_fences(markdown)
     lines = markdown.splitlines(keepends=True)
     out: list[str] = []
     block_index = 0
