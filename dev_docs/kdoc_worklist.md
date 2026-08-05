@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4233 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4290 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**130 undocumented entry points** (types, top-level functions and values) and 1660 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**119 undocumented entry points** (types, top-level functions and values) and 1614 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,7 +14,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
-| [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
@@ -99,23 +98,12 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
-| `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
-| `SupportSurface3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:499` |
-| `SupportSphere3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:503` |
-| `SupportPlane3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:510` |
-| `CircularDirichletPatch3` | interface | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:517` |
-| `SpherePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:524` |
-| `PlanePatch3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:532` |
-| `CircularDirichletCell3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:540` |
-| `CircularDirichletDiagram3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:545` |
 | `WfcOffset` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:35` |
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
 | `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:862` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
-| `Voronoi3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:123` |
-| `CircularDirichlet3d` | object | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:552` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
 | `pointEdgeScalarField2D` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:334` |
 | `pointEdgeScalarField2D` | fun | `src/jvmMain/kotlin/afield/stdlib/contours.kt:368` |
@@ -203,5 +191,15 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `Expression.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:142` |
 | `Quantity.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:145` |
 | `Any.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:148` |
+| `Number.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:161` |
+| `Number.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:164` |
+| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:167` |
+| `Number.div` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:170` |
+| `Expression.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:175` |
+| `Expression.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:178` |
+| `Expression.times` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:181` |
+| `Expression.div` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:184` |
+| `registerH2Value` | fun | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:730` |
+| `Any.h2` | val | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:727` |
 
-…and **10 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+That is all of them.

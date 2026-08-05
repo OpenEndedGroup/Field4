@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-22 source file(s), 973 public symbol(s), 761 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 973 public symbol(s), 818 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2392,8 +2392,8 @@ An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clippe
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">min</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The low corner, componentwise. |
+| <code class="highlight"><span class="k">val</span> <span class="n">max</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The high corner, componentwise. |
 
 ### Plane3 { #voronoi-kt-plane3 }
 
@@ -2403,8 +2403,8 @@ The plane `normal · x = d`.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The plane's normal, **not** normalized — for a bisector it is the raw difference of two sites. |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> | The offset: the plane is the points `x` with `dot(normal, x) == d`. Scaled by `normal`'s length. |
 
 ### VoronoiFace { #voronoi-kt-voronoiface }
 
@@ -2414,11 +2414,11 @@ One face of a [`VoronoiCell3`](graphics.md#voronoi-kt-voronoicell3): the plane i
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code> | The site across this face, or `null` when this is a clip-box face rather than a real bisector. |
+| <code class="highlight"><span class="k">val</span> <span class="n">plane</span><span class="p">:</span> <span class="nc">Plane3</span></code> | The plane this face lies in: the perpendicular bisector of the two sites, or a clip-box side. |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> | The face outline, wound counter-clockwise as seen from the `+plane.normal` side — its signed area along `Plane3.normal` is non-negative. |
+| <code class="highlight"><span class="k">val</span> <span class="n">isClip</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` if this face is a side of the clip box rather than a bisector between two sites. |
+| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` if any of this face's corners touches the clip box, so the face is cut by the window rather than closed by the sites. |
 
 ### VoronoiCell3 { #voronoi-kt-voronoicell3 }
 
@@ -2428,10 +2428,10 @@ The convex polyhedron of points nearer to `site` than to any other site, interse
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Which input site this is the cell of, as an index into the list that was clustered. |
+| <code class="highlight"><span class="k">val</span> <span class="n">site</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The site itself. |
+| <code class="highlight"><span class="k">val</span> <span class="n">faces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiFace</span><span class="p">&gt;</span></code> | The bounding faces, in no particular order. See [`VoronoiFace`](graphics.md#voronoi-kt-voronoiface). |
+| <code class="highlight"><span class="k">val</span> <span class="n">bounded</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` only if no face is a clip face and no face is `VoronoiFace.truncated` — that is, the cell is closed by its neighbours alone and the clip box did not participate. |
 
 ### VoronoiLattice { #voronoi-kt-voronoilattice }
 
@@ -2441,115 +2441,137 @@ One cell per input site, in input order, plus the box they were all clipped agai
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> |  |
-| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiCell3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">VoronoiCell3</span><span class="p">&gt;</span></code> | One cell per input site, in input order — so `cells`i`` is the cell of site `i`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> | The box every cell was clipped against. Its volume is what the cell volumes must sum to. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiCell3</span></code> | The cell of site `siteIndex` — the same thing as `cells`siteIndex``, and as loud when out of range. |
 
 ### Voronoi3d { #voronoi-kt-voronoi3d }
 
 <code class="highlight"><span class="k">object</span> <span class="nc">Voronoi3d</span></code>
 
+The unweighted 3-D clipper, with its knobs exposed — `voronoi3d` is this with the defaults.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">)</span><span class="p">:</span> <span class="nc">VoronoiLattice</span></code> | Build the Voronoi diagram of `points`, clipped to a box. |
 
 ### WeightedSite3 { #voronoi-kt-weightedsite3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WeightedSite3</span><span class="p">(</span><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span></code>
 
+A site with an influence radius: distance to it is measured as `|x − position| / weight`.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Where the site is. |
+| <code class="highlight"><span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Float</span></code> | The divisor on distance: larger claims more space. Must be strictly positive — `CircularDirichlet3d.build` rejects zero and negative weights by index rather than producing nonsense. |
 
 ### SupportSurface3 { #voronoi-kt-supportsurface3 }
 
 <code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">SupportSurface3</span></code>
 
+The surface a weighted bisector lives on: a sphere when the two weights differ, a plane when they are equal.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Any one point known to lie on the surface — the seed a contour walk starts from. |
 
 ### SupportSphere3 { #voronoi-kt-supportsphere3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SupportSphere3</span><span class="p">(</span><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SupportSurface3</span></code>
 
+An Apollonius sphere: the locus where two differently-weighted sites are equidistant.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">center</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Centre of the sphere. Not either site's position. |
+| <code class="highlight"><span class="k">val</span> <span class="n">radius</span><span class="p">:</span> <span class="nc">Float</span></code> | Radius of the sphere, strictly positive — a degenerate solution is discarded rather than emitted. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> | A point on the sphere, taken along `+x` from the centre. Arbitrary but deterministic. |
 
 ### SupportPlane3 { #voronoi-kt-supportplane3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SupportPlane3</span><span class="p">(</span><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SupportSurface3</span></code>
 
+The ordinary perpendicular bisector plane, which is what a weighted bisector degenerates to when the two weights are equal (within the build tolerance).
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">normal</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The plane's normal, not normalized. |
+| <code class="highlight"><span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">Float</span></code> | The offset: the plane is the points `x` with `dot(normal, x) == d`. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">samplePoint</span><span class="p">:</span> <span class="nc">Vec3</span></code> | The point on the plane closest to the origin. |
 
 ### CircularDirichletPatch3 { #voronoi-kt-circulardirichletpatch3 }
 
 <code class="highlight"><span class="k">sealed</span> <span class="k">interface</span> <span class="nc">CircularDirichletPatch3</span></code>
 
+One piece of one cell's boundary in the weighted diagram: the part of a bisector surface that is actually on the boundary once every *other* site has had its say.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSurface3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | The cell this patch bounds. |
+| <code class="highlight"><span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> | The site on the other side of it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSurface3</span></code> | The unbounded surface this patch was cut out of. |
+| <code class="highlight"><span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` when the clip box cut this patch, so its extent is the window's and not the sites'. |
 
 ### SpherePatch3 { #voronoi-kt-spherepatch3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SpherePatch3</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSphere3</span><span class="p">,</span> <span class="k">val</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CircularDirichletPatch3</span></code>
 
+A patch of an Apollonius sphere.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSphere3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | The cell this patch bounds. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> | The site on the other side of it. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportSphere3</span></code> | The sphere this patch lies on. |
+| <code class="highlight"><span class="k">val</span> <span class="n">boundary</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> | The patch outline as a wound loop of points on the sphere, or **empty to mean the entire sphere** rather than an empty patch (an empty patch is not emitted at all). |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` when the clip box cut this patch, so its extent is the window's and not the sites'. |
 
 ### PlanePatch3 { #voronoi-kt-planepatch3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PlanePatch3</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportPlane3</span><span class="p">,</span> <span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span> <span class="p">:</span> <span class="nc">CircularDirichletPatch3</span></code>
 
+A patch of an ordinary bisector plane, between two equally-weighted sites.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportPlane3</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | The cell this patch bounds. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">neighborSite</span><span class="p">:</span> <span class="nc">Int</span></code> | The site on the other side of it. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">support</span><span class="p">:</span> <span class="nc">SupportPlane3</span></code> | The plane this patch lies on. |
+| <code class="highlight"><span class="k">val</span> <span class="n">polygon</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec3</span><span class="p">&gt;</span></code> | The patch outline as a wound loop of points on the plane. Never empty. |
+| <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">truncated</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `true` when the clip box cut this patch, so its extent is the window's and not the sites'. |
 
 ### CircularDirichletCell3 { #voronoi-kt-circulardirichletcell3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CircularDirichletCell3</span><span class="p">(</span><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">patches</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletPatch3</span><span class="p">&gt;</span><span class="p">)</span></code>
 
+One weighted cell, as the collection of boundary patches that fence it in.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">patches</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletPatch3</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Which weighted site this is the cell of. |
+| <code class="highlight"><span class="k">val</span> <span class="n">patches</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletPatch3</span><span class="p">&gt;</span></code> | The boundary pieces, sorted by `CircularDirichletPatch3.neighborSite` then by support size. |
 
 ### CircularDirichletDiagram3 { #voronoi-kt-circulardirichletdiagram3 }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CircularDirichletDiagram3</span><span class="p">(</span><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletCell3</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span><span class="p">)</span></code>
 
+One weighted cell per input site, in input order, plus the box they were all clipped against.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletCell3</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> |  |
-| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletCell3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">cells</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CircularDirichletCell3</span><span class="p">&gt;</span></code> | One cell per input site, in input order. |
+| <code class="highlight"><span class="k">val</span> <span class="n">clipBounds</span><span class="p">:</span> <span class="nc">Aabb3</span></code> | The box the patches were clipped against, built the same way as `VoronoiLattice.clipBounds`. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">siteIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletCell3</span></code> | The cell of site `siteIndex`. |
 
 ### CircularDirichlet3d { #voronoi-kt-circulardirichlet3d }
 
 <code class="highlight"><span class="k">object</span> <span class="nc">CircularDirichlet3d</span></code>
 
+The multiplicatively weighted diagram, by sampling and contouring rather than by exact construction.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">sites</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WeightedSite3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">,</span> <span class="n">sphereSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">planeSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">56</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletDiagram3</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">build</span><span class="p">(</span><span class="n">sites</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">WeightedSite3</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">4f</span><span class="p">,</span> <span class="n">clipPadding</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">8f</span><span class="p">,</span> <span class="n">sphereSubdivisions</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">planeSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">56</span><span class="p">)</span><span class="p">:</span> <span class="nc">CircularDirichletDiagram3</span></code> | Build the weighted diagram of `sites`. |
 
 </div>
