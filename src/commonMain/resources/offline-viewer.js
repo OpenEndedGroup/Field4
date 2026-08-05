@@ -920,17 +920,28 @@ function setupOpenLocalButton(fileUrl, ednText, data) {
     });
 }
 
+// Field stores each document as `<name>/metadata.edn` (SavingContext.METADATA_EDN),
+// so the last path segment of a document URL is a constant and the directory above
+// it carries the name. Fall back to the file stem only for standalone .edn files.
+function nameFromPathSegments(segments) {
+    if (segments.length === 0) return null;
+    const last = segments[segments.length - 1];
+    if (last.toLowerCase() === 'metadata.edn' && segments.length > 1) {
+        const parent = segments[segments.length - 2];
+        if (parent) return parent;
+    }
+    return last.replace(/\.edn$/i, '') || null;
+}
+
 function deriveRecommendedName(fileUrl) {
     try {
         const url = new URL(fileUrl, window.location.href);
         const parts = url.pathname.split('/').filter(Boolean);
-        if (parts.length === 0) return 'offline-document';
-        const last = parts[parts.length - 1];
-        return last.replace(/\.edn$/i, '') || 'offline-document';
+        return nameFromPathSegments(parts) || 'offline-document';
     } catch (_e) {
         // Fallback for plain file names
-        const simple = fileUrl.split('/').pop() || 'offline-document';
-        return simple.replace(/\.edn$/i, '') || 'offline-document';
+        const parts = fileUrl.split('/').filter(Boolean);
+        return nameFromPathSegments(parts) || 'offline-document';
     }
 }
 
