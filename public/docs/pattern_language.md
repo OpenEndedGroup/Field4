@@ -275,6 +275,103 @@ movement becomes 9, and the pitch-class sets are identical.
 
 ---
 
+## A rhythm as a curve — and as a graph you can fit
+
+A pattern schedules *events*. Sometimes what you want from those events is not a note but a
+**continuous curve** — an envelope to drive a parameter, a gesture to animate something with.
+`patFn` does that: each event becomes a little kernel, and the value at any time is the
+blend of the kernels around it. The kernel is chosen per atom, and its numbers are written
+in the atom itself:
+
+| atom | shape |
+| --- | --- |
+| `g:(value,sigma)` | a Gaussian bump |
+| `tent:(value,radius)` | a linear tent |
+| `box:(value,radius)` | a rectangle |
+| `wendland:(value,radius)` `spline:(value,radius)` | compactly-supported smooth bumps |
+| `env:(value,attack,release)` | an attack/release envelope |
+| `adsr:(value,attack,decay,sustain,release)` | a full ADSR |
+
+So `patFn("g:(0.9,0.18) g:(0.1,0.18)")` is a two-bump gesture that repeats every cycle — a
+`Functions.Fn` like any other, which means the whole `Functions` library applies to it.
+
+The interesting part is what it looks like from the *inside*. It is not an opaque closure
+that happens to produce numbers: it is a graph node, `op = "pat"`, and every number in the
+pattern text is one of its leaves.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-graph.png" wait="2" capture="box" open-outputs="true" name="pat-doc-fn-graph"}
+import afield.stdlib.extractParameters
+import afield.stdlib.graphNode
+import afield.stdlib.graphText
+
+val gesture = patFn("g:(0.3,0.12) adsr:(0.8,0.01,0.08,0.4,0.2)", cps = 2.0, range = 0.9)
+val node = gesture.graphNode()
+
+val report = """
+op        ${node.op}
+source    ${node.strings["source"]}
+knobs     ${node.children.joinToString("  ") { it.role }}
+values    ${gesture.extractParameters().joinToString("  ")}
+
+${gesture.graphText()}
+""".trimIndent()
+
+println(report)
+display("<pre>" + report + "</pre>")
+```
+
+![The pat node: its op, its spliced source text, its role-tagged knobs and their values](assets/pattern_language/fn-graph.png)
+
+Each atom's numbers are addressed by the role they play — `atom0.sigma`, `atom1.attack` —
+not by position, and `cps` is a knob too. That matters because Field's numeric leaves are
+exactly what the differentiable fitter tunes. **You can hand a rhythm to `fitGradient` and
+have it recover the gesture's own numbers.**
+
+Below, the target is a two-bump gesture and the seed has the right *structure* with the
+wrong numbers — wrong heights, wrong widths. Adam moves the leaves until the curves
+coincide, and the fitted result comes back out as **pattern text you can paste into a box**:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pattern_language/fn-fit.png" wait="5" capture="box" open-outputs="true" name="pat-doc-fn-fit"}
+import afield.stdlib.Functions
+import afield.stdlib.fitGradient
+import afield.stdlib.graphNode
+
+with(Functions) {
+    val target = patFn("g:(0.9,0.18) g:(0.1,0.18)", cps = 1.0, range = 0.9)
+    val seed = patFn("g:(0.7,0.25) g:(0.3,0.12)", cps = 1.0, range = 0.9)
+
+    val run = fitGradient(target, seed, domain = 0.0..2.0, iterations = 200, lr = 0.02, samples = 96)
+
+    // A pat Fn runs to +infinity, so the plot is told which window to sweep.
+    plot(target, 0.0..2.0, channel = "1 target", title = "target  g:(0.9,0.18) g:(0.1,0.18)")
+    plot(run.fitted, 0.0..2.0, channel = "2 fitted", title = "fitted from a wrong-numbered seed")
+
+    val report = """
+    seed    ${seed.graphNode().strings["source"]}
+    fitted  ${run.fitted.graphNode().strings["source"]}
+    RMSE    ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}
+    """.trimIndent()
+    println(report)
+    display("<pre>" + report + "</pre>")
+}
+```
+
+![Two plots, target and fitted, lying on top of each other, above the fitted pattern text and the RMSE before and after](assets/pattern_language/fn-fit.png)
+
+Both heights and both widths come back to three decimal places. What the fit *cannot* do is
+re-assign values between atoms: seed it with the two heights swapped and it stalls at about
+half the initial error, because getting to the answer needs a permutation and there is no
+downhill path through one. Tuning numbers is `fitGradient`'s job; choosing which atom holds
+which number is `evolve`'s.
+
+Two smaller things worth knowing. A number can be a `%binding` instead of a literal
+(`g:(%loudness,0.2)`), resolved from the box's variables each cycle — live, but for that
+reason not fittable, so such a pattern stays an ordinary opaque function. And because the
+knobs are graph children, you can graft a *signal* into one instead of a constant, which
+gives you a kernel width that drifts across the piece.
+
+---
+
 ## Where Field differs from Tidal
 
 Three names to know if you are coming from Tidal:

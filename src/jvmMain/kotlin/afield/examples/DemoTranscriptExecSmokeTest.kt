@@ -81,6 +81,9 @@ object DemoTranscriptExecSmokeTest {
         "vision_geometry_desk_preview",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
+        // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real
+        // fitGradient over a rhythm's numeric leaves and plot the result. No Window, no Renderer.
+        "pat_fn_graph_fit",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
