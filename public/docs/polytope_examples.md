@@ -490,9 +490,49 @@ gallery("composites", columns = 4, cell = 290, panels = listOf(
 ![Eight shaded polyhedra in two rows of four: join, needle, zip, ortho, expand, snub, meta and bevel applied to the cube, each captioned with its element counts, face-degree histogram and Euler characteristic 2](assets/polytope_examples/composites_gallery.png)
 
 Composites are *rewritten*, not reimplemented — `conway("bC")` runs `ambo` and then `truncate`, and
-the result reports exactly that. Three of the thirteen (`n` needle, `z` zip, `o` ortho) currently
-have no named Kotlin extension function; they are reachable through the parser and through
-`transform(ConwayOperator.NEEDLE)`, which is why every panel above uses the notation form.
+the result reports exactly that.
+
+All thirteen are declared on both receivers, so a chain reads the same wherever a step sits in it and
+a composite can follow a primitive without a detour through the parser:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/operator_chaining.png" wait="2.0" capture="box" open-outputs="true" w="900" h="360" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+
+// Each of these is a composite applied to the result of a primitive. Before the thirteen were
+// named on both receivers, none of them compiled.
+val chains = listOf(
+    "cube().ambo().bevel()" to cube().ambo().bevel(),
+    "cube().kis().needle()" to cube().kis().needle(),
+    "cube().truncate().ortho()" to cube().truncate().ortho(),
+    "cube().dual().zip()" to cube().dual().zip(),
+)
+
+:::fold one row per chain: what was asked for, and what actually ran
+markdown("chains", """
+| chain | result | asked for | actually ran | &chi; |
+|---|---|---|---|---|
+${chains.joinToString("\n") { (source, r) ->
+    val t = r.polyhedron.topology
+    "| `$source` | ${t.elements(0).size}v ${t.elements(1).size}e ${t.elements(2).size}f " +
+        "| `${r.notationHistory.joinToString(" ") { it.displayName }}` " +
+        "| `${r.history.joinToString(" ") { it.displayName }}` " +
+        "| ${t.eulerCharacteristic()} |"
+}}
+
+`notationHistory` keeps the operators you named; `history` is the primitive trace that ran. A
+composite is rewritten before anything executes, so the two columns differ exactly where a chain
+used one — `bevel` is `ta`.
+""", width = 900)
+:::endfold
+```
+
+![A four-row table with an asked-for column and an actually-ran column. cube().ambo().bevel() gives 96 vertices, 144 edges and 50 faces, asked for as ambo bevel and run as ambo ambo truncate. cube().kis().needle() gives 38v 108e 72f, asked for as kis needle and run as kis dual kis. cube().truncate().ortho() gives 74v 144e 72f, run as truncate ambo dual ambo dual. cube().dual().zip() gives 24v 36e 14f, run as dual kis dual. Every row has Euler characteristic 2](assets/polytope_examples/operator_chaining.png)
+
+The two history columns are worth reading twice. You asked for `bevel` and the object recorded that
+you asked for it *and* that `ambo truncate` is what ran. The notation is a receipt for the
+computation, not an echo of the call — which is what lets a composite sit anywhere in a chain
+without the lineage becoming a lie.
 
 ## Prefix notation, and what it refuses
 
@@ -1343,9 +1383,160 @@ If you only ever had the mesh you would have to conclude the truncated cube was 
 polygons with a boundary. The topology is not a lossy summary of the triangles; the triangles are a
 lossy projection of the topology, and `sourceFace` / `sourceVertex` are the receipt.
 
-`FanFaceTriangulator` remains available as an explicitly convex-only strategy. `EarcutFaceTriangulator`
-is the default and handles simple concave faces; faces with holes need a richer boundary model than
-the current single face cycle, and that is named as future work rather than quietly half-supported.
+`FanFaceTriangulator` remains available as an explicitly convex-only strategy.
+`EarcutFaceTriangulator` is the default, handles simple concave faces, and — as of the boundary model
+in the next section — cuts holes out of them too.
+
+## A face can have holes
+
+A rank-2 element used to be one closed cycle of vertices. It is now an **outer cycle plus zero or
+more inner rings**: `faceCycle` still returns the outer one, `faceHoles` returns the inner rings, and
+`faceRings` returns all of them. Nothing about a hole-free face changed — its `faceRings` is a list
+of one, and it takes the identical path through both adapters.
+
+The consequence is not only a rendering one. A face with a hole is a **surface with boundary**, so an
+object containing one stops being a closed manifold, and every operation that is only defined for a
+closed manifold has to say so rather than quietly produce nonsense.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_with_a_hole.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="620" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+
+val solid = cubeWithWindow(side = 0.45f)
+val topology = solid.topology
+val windowed = topology.elements(2).single { topology.faceHasHoles(it.id) }
+val geometry = solid.triangulate()
+val rimTriangles = (0 until geometry.triangleCount).count { geometry.sourceFace(it) == windowed.id }
+val manifold = topology.validate(checkManifold = true)
+
+// Everything a holed face refuses, and the message it refuses with. Caught, not described.
+val refusals = listOf<Pair<String, () -> Any>>(
+    "topology.dual()" to { topology.dual() },
+    "solid.bevel()" to { solid.bevel() },
+    "solid.toOff()" to { solid.toOff() },
+    "solid.triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+).map { (name, call) ->
+    name to (runCatching { call() }.exceptionOrNull()?.message ?: "no exception — unexpected")
+}
+
+:::fold the boundary, the two characteristics, and the refusals
+markdown("window", """
+#### One face, two boundary rings
+
+| | value |
+|---|---|
+| outer cycle (`faceCycle`) | ${topology.faceCycle(windowed.id).size} vertices |
+| inner rings (`faceHoles`) | ${topology.faceHoles(windowed.id).map { it.size }} |
+| all rings (`faceRings`) | ${topology.faceRings(windowed.id).size} |
+| &chi; counting elements | ${topology.eulerCharacteristic()} |
+| &chi; counting cells | ${topology.cellularEulerCharacteristic()} |
+| closed manifold | ${manifold.isValid}, with ${manifold.issues.size} one-sided window edges |
+| triangles cut from that face | $rimTriangles — a solid square is 2 |
+
+#### What a holed face refuses, by name
+
+| call | message |
+|---|---|
+${refusals.joinToString("\n") { (call, message) -> "| `$call` | $message |" }}
+""", width = 940)
+:::endfold
+```
+
+![A two-part table. The first lists the windowed face's outer cycle of four vertices, one inner ring of four, two rings total, Euler characteristic 2 counting elements and 1 counting cells, closed manifold false with four one-sided window edges, and eight triangles cut from that face against two for a solid square. The second lists four refused calls — dual, bevel, toOff and triangulate with FanFaceTriangulator — each with the exception message naming the face and its hole count](assets/polytope_examples/face_with_a_hole.png)
+
+The two characteristics are the crux. Counting *elements* still gives 2, because the incidence poset
+of a cube with a window still has a cube's elements. Counting *cells* gives 1, because a disk with
+one hole contributes `1 - 1`: a sphere with a window punched in it is a disk, and χ of a disk is 1.
+Both numbers are correct and they answer different questions, which is exactly why the API offers
+both instead of picking one and being subtly wrong half the time.
+
+The four refusals come from two chokepoints, not from four hand-written guards — one at the entry to
+the transform machinery and one in `dual()` — so a fourteenth operator inherits the refusal for free
+rather than being remembered about.
+
+### The hole, in pixels, beside the same face without one
+
+The claim that a hole is really a hole is a claim about triangles, so the honest way to make it is to
+build the identical face twice — once with the inner ring declared, once with it dropped — and render
+both. Back-face culling is deliberately **on**: a rim triangle wound the wrong way would be *missing*
+here exactly as it would be missing on a GPU, so this is a winding test as well as a hole test.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/face_hole_counterfactual.png" wait="3.0" capture="box" open-outputs="true" w="880" h="480" padding="14"}
+:::static
+import afield.stdlib.polytope.*
+import afield.stdlib.MeshView
+import afield.stdlib.Vec3
+import afield.stdlib.renderPng
+import java.util.Base64
+
+val hole = 0.45f
+
+:::fold one square face, built by hand, optionally with one inner ring
+// This is the whole of the hole API from a caller's side: record the ring's edges as
+// incidences of the same face, then declare the ring with addFaceHole. Winding is a
+// convention — outer counter-clockwise about the normal, inner clockwise — and nothing
+// downstream leans on it, because the tessellator decides which ring is outer geometrically.
+fun plate(withRing: Boolean): PolyhedralObject {
+    val outer = listOf(Vec3(-1f, -1f, 0f), Vec3(1f, -1f, 0f), Vec3(1f, 1f, 0f), Vec3(-1f, 1f, 0f))
+    val inner = listOf(
+        Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
+    )
+    // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+    // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points.
+    val points = buildList { addAll(outer); if (withRing) addAll(inner) }
+    val rings = if (withRing) listOf(listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)) else listOf(listOf(0, 1, 2, 3))
+
+    val builder = PolytopeTopologyBuilder(rank = 3)
+    val vertices = points.map { builder.addElement(0) }
+    val face = builder.addElement(2)
+    for (ring in rings) for (i in ring.indices) {
+        val edge = builder.addElement(1)
+        builder.addIncidence(vertices[ring[i]], edge)
+        builder.addIncidence(vertices[ring[(i + 1) % ring.size]], edge)
+        builder.addIncidence(edge, face)
+    }
+    builder.setFaceCycle(face, rings.first().map { vertices[it] })
+    rings.drop(1).forEach { ring -> builder.addFaceHole(face, ring.map { vertices[it] }) }
+    builder.addIncidence(face, builder.addElement(3))
+    return PolyhedralObject(builder.buildValidated(), Realization3(points))
+}
+:::endfold
+
+val view = MeshView(
+    yawDegrees = 0.0, pitchDegrees = 0.0, distance = 2.2,
+    width = 300, height = 260, wireframe = true, cullBackFaces = true,
+)
+val cells = listOf(true, false).map { withRing ->
+    val panel = plate(withRing)
+    val png = Base64.getEncoder().encodeToString(panel.toTriMesh().renderPng(view, caption = "", title = null))
+    val t = panel.topology
+    val face = t.elements(2).single()
+    """
+    <div>
+      <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>
+        ${if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring"}</div>
+      <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
+      <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
+        ${t.elements(0).size}v ${t.elements(1).size}e &middot; ${t.faceRings(face.id).size} ring(s)
+        &middot; ${panel.triangulate().triangleCount} triangles</div>
+    </div>
+    """
+}
+display("plates", "<div style='display:grid;grid-template-columns:1fr 1fr;gap:12px'>${cells.joinToString("")}</div>")
+```
+
+![Two wireframe renders side by side. The left plate, built with addFaceHole, is a square annulus — a square frame with an empty square window at its centre, triangulated into eight triangles around the rim, reported as 8 vertices, 8 edges and 2 rings. The right plate is the identical outline with the ring dropped: a solid filled square of 2 triangles, 4 vertices, 4 edges and 1 ring](assets/polytope_examples/face_hole_counterfactual.png)
+
+Eight triangles against two, from the same outer outline. Neither picture is a description of the
+other: both came out of `triangulate()` on an object built by the code above it, and the window in
+the left one is empty because no triangle was generated there, not because something was drawn over
+it.
+
+What is deliberately *not* here: a hole ring that touches its outer boundary, a face with two nested
+rings, and star polygons. Those are named as remaining work rather than quietly half-supported. The
+realization verbs are the other honest gap — `relax` and `canonicalize` build their problem from
+outer rings only, so hole vertices are unconstrained. No shipped path reaches that today, because the
+Conway operators refuse a holed face before a realizer ever sees one.
 
 ## The registered value printers
 
@@ -1366,7 +1557,7 @@ val result = seed.kis(ElementSelectors.attributeEquals("lift", 0.4), ElementPara
 viz("inspection", listOf(result, result.polyhedron.triangulate()))
 ```
 
-![Field's reflective value visualizer showing a PolytopeTransformSummary — a TransformDeploymentSummary naming the kis operation and a selected count of two, then the output PolyhedralObjectSummary with the lift attribute key, a Realization3Summary of ten vertices, and a PolytopeTopologySummary reporting closedManifold true, element counts 10, 20, 12, 1, Euler characteristic 2, face degree counts of eight triangles and four squares, and valid true — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
+![Field's reflective value visualizer showing a PolytopeTransformSummary — a TransformDeploymentSummary naming the kis operation and a selected count of two, then the output PolyhedralObjectSummary with the lift attribute key, a Realization3Summary of ten vertices, and a PolytopeTopologySummary reporting cellularEulerCharacteristic 2, closedManifold true, element counts 10, 20, 12, 1, Euler characteristic 2, face degree counts of eight triangles and four squares, faceHoleCount 0, and valid true — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
 
 The `…` links are the visualizer's ordinary lazy expansion for nested values, not a rendering
 failure — click one in a live box and it fetches the rest.
