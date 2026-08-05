@@ -39,6 +39,19 @@ import kotlin.random.Random
  * [ClusterLayerVizOptions] controls spacing, sizes and which of those layers are emitted.
  */
 
+/**
+ * How the distance between two *clusters* is defined, which is the whole content of a hierarchical
+ * clustering — the point distances are the same either way.
+ *
+ * `WARD` is the default because it minimises the increase in within-cluster variance at each merge
+ * and so tends to produce compact, comparably-sized clusters, which is what a reader of a
+ * dendrogram usually means by "cluster". `SINGLE` merges on the nearest pair and famously chains
+ * along dense filaments; `COMPLETE` merges on the farthest pair and is compact but sensitive to one
+ * far-out sample; `AVERAGE` (UPGMA) and `WEIGHTED_AVERAGE` (WPGMA) average all pairs, unweighted and
+ * weighted by cluster size. `CENTROID` (UPGMC) and `MEDIAN` (WPGMC) measure between cluster centres,
+ * and are the two that can produce *inversions* — a merge lower than one it contains — which makes
+ * `AgglomerativeClustering.partitionByHeight` hard to interpret with them; cut by `k` instead.
+ */
 enum class AgglomerativeLinkage {
     SINGLE,
     COMPLETE,
@@ -49,6 +62,13 @@ enum class AgglomerativeLinkage {
     WARD
 }
 
+/**
+ * The metric the `…KMedoids` family assigns and re-medoids with.
+ *
+ * `MANHATTAN` (L1) is the default: it is the metric a medoid is a natural centre for, and it is less
+ * moved by one wild coordinate than L2. `EUCLIDEAN` is there for when the distances have to agree
+ * with a geometric picture. A [KMedoidsResult.distortion] is not comparable across the two.
+ */
 enum class MedoidDistance {
     EUCLIDEAN,
     MANHATTAN
@@ -57,31 +77,70 @@ enum class MedoidDistance {
 /**
  * How the `…KMedoids` functions run.
  *
- * @param maxIterations most assign/re-medoid rounds per restart. The loop stops early the first time
- *   the medoid set does not move, which is usually well inside ten rounds.
- * @param runs independent restarts from different D²-weighted seeds; the lowest-distortion one wins.
- * @param distance the metric, used both for assignment and for choosing each cluster's medoid.
- * @param randomSeed fixes the seeding, so the whole thing is reproducible. `null` uses
- *   [Random.Default] and successive calls may differ.
+ * The per-property text below is what the reference and the completion panel show; the defaults are
+ * chosen so that a call with no options is reproducible in shape (six restarts) but not in outcome
+ * (no fixed seed) — set [randomSeed] the moment a picture has to be the same twice.
  */
 data class KMedoidsOptions(
+    /**
+     * Most assign/re-medoid rounds per restart. The loop stops early the first time the medoid set
+     * does not move, which is usually well inside ten rounds, so this is a safety bound rather than
+     * a setting to tune.
+     */
     val maxIterations: Int = 100,
+    /**
+     * Independent restarts from different D²-weighted seeds; the lowest-distortion one wins.
+     *
+     * Restarts are how this escapes a local optimum, because the exact re-medoid step never swaps a
+     * medoid for a non-member. More restarts cost linearly and help most when `k` is large.
+     */
     val runs: Int = 6,
+    /** The metric, used both for assignment and for choosing each cluster's medoid. */
     val distance: MedoidDistance = MedoidDistance.MANHATTAN,
+    /**
+     * Fixes the seeding, so the whole thing is reproducible. `null` uses [Random.Default] and
+     * successive calls may differ.
+     */
     val randomSeed: Long? = null
 )
 
+/**
+ * How the `…KMedians` functions run.
+ *
+ * Lloyd's algorithm on the L1 metric: assign, take each cluster's coordinate-wise median, repeat.
+ * Unlike k-medoids the loop needs a numeric stopping rule, which is what [tolerance] is.
+ */
 data class KMediansOptions(
+    /** Most assign/re-centre rounds per restart, as a safety bound. */
     val maxIterations: Int = 100,
+    /**
+     * Convergence threshold, applied to *both* the change in objective and the total L1 movement of
+     * the centres — the round has to be quiet on both counts to stop. Must be finite and
+     * non-negative.
+     */
     val tolerance: Double = 1e-4,
+    /** Independent restarts from different D²-weighted seeds; the lowest-objective one wins. */
     val runs: Int = 6,
+    /** Fixes the seeding for reproducibility; `null` uses [Random.Default]. */
     val randomSeed: Long? = null
 )
 
+/**
+ * One clustering of one dataset: a label per sample, and a name to draw it under.
+ *
+ * This is the common currency of the file — every result type converts to one, and the
+ * `visualize…ClusterLayers3D` functions take a *list* of them so that several cuts of the same data
+ * can be stacked and compared in one picture. Immutable: the labels are copied in.
+ *
+ * Labels must be non-empty and non-negative, and are conventionally dense and renumbered by first
+ * appearance (which is what [AgglomerativeClustering.partition] hands you).
+ */
 class ClusterLayer(
+    /** What this cut is called — `"k=4"`, `"h=0.3"`, `"kmedoids(k=3)"` by default. */
     val name: String,
     labels: IntArray
 ) {
+    /** One cluster index per sample, in input order. A defensive copy: mutating it changes nothing. */
     val labels: IntArray = labels.copyOf()
 
     init {
@@ -91,12 +150,21 @@ class ClusterLayer(
         }
     }
 
+    /** How many samples were labelled. */
     val sampleCount: Int
         get() = labels.size
 
+    /**
+     * Highest label plus one — so an unused index in the middle still counts, and this is the length a
+     * palette needs rather than the number of non-empty clusters.
+     */
     val clusterCount: Int
         get() = (labels.maxOrNull() ?: -1) + 1
 
+    /**
+     * Which samples landed in [cluster], as indices into the original list. Empty for a cluster nothing
+     * was assigned to.
+     */
     fun indices(cluster: Int): IntArray {
         require(cluster >= 0) { "cluster must be >= 0, found $cluster" }
         val out = ArrayList<Int>()
@@ -105,7 +173,19 @@ class ClusterLayer(
     }
 }
 
+/**
+ * A whole merge hierarchy, not one clustering — the answer the `…Agglomerative` functions return.
+ *
+ * Hierarchical clustering does not need to be told `k`, which is its advantage: it merges until
+ * everything is one cluster and records the order and the heights, and *then* you choose where to
+ * cut. Cut by count with [partition], by dissimilarity with [partitionByHeight], or take several
+ * cuts at once with [layers] / [defaultLayers] and stack them into one picture.
+ *
+ * The Smile model is copied on construction and every accessor copies again, so nothing a caller
+ * does can invalidate the tree.
+ */
 class AgglomerativeClustering internal constructor(
+    /** Which cluster-distance rule built this hierarchy. See [AgglomerativeLinkage]. */
     val linkage: AgglomerativeLinkage,
     rawModel: HierarchicalClustering
 ) {
@@ -114,15 +194,35 @@ class AgglomerativeClustering internal constructor(
         rawModel.height().copyOf()
     )
 
+    /**
+     * How many samples were clustered — one more than the number of merges, since each merge removes a
+     * cluster.
+     */
     val sampleCount: Int
         get() = model.tree().size + 1
 
+    /**
+     * The merge tree, one `[left, right]` pair per merge in merge order.
+     *
+     * Indices below [sampleCount] are original samples; `sampleCount + i` is the cluster formed by merge
+     * `i`. This is Smile's own encoding, handed back as a fresh copy.
+     */
     val tree: Array<IntArray>
         get() = model.tree().map { it.copyOf() }.toTypedArray()
 
+    /**
+     * The dissimilarity at which each merge happened, parallel to [tree] — the y-axis of a dendrogram
+     * and the scale [partitionByHeight] cuts on.
+     */
     val heights: DoubleArray
         get() = model.height().copyOf()
 
+    /**
+     * Cut the hierarchy into exactly [k] clusters. [k] must be within `1..sampleCount`.
+     *
+     * Labels come back renumbered by first appearance, so cutting the same tree at different `k` gives
+     * comparable colouring rather than Smile's arbitrary internal ids.
+     */
     fun partition(k: Int, name: String = "k=$k"): ClusterLayer {
         require(k in 1..sampleCount) {
             "AgglomerativeClustering.partition: k must be in [1, $sampleCount], found $k"
@@ -135,6 +235,13 @@ class AgglomerativeClustering internal constructor(
         return ClusterLayer(name, canonicalizeLabels(labels))
     }
 
+    /**
+     * Cut every branch taller than [height], letting the data decide how many clusters that is.
+     *
+     * The scale is [heights], which is in the linkage's own units and is *not* comparable across
+     * linkages or across datasets. Use [partition] when you want a known number of clusters, and avoid
+     * this with `CENTROID` or `MEDIAN` linkage, whose heights can be non-monotone.
+     */
     fun partitionByHeight(height: Double, name: String = "h=$height"): ClusterLayer {
         require(height.isFinite()) {
             "AgglomerativeClustering.partitionByHeight: height must be finite, found $height"
@@ -143,6 +250,12 @@ class AgglomerativeClustering internal constructor(
         return ClusterLayer(name, canonicalizeLabels(labels))
     }
 
+    /**
+     * One [ClusterLayer] per requested `k`, ready to stack in a `visualize…` call.
+     *
+     * Forgiving on purpose: a `k` outside `1..sampleCount` is skipped rather than throwing, and repeats
+     * are dropped, so a generous range like `2..20` is safe on a small point cloud.
+     */
     fun layers(kValues: Iterable<Int>): List<ClusterLayer> {
         val used = LinkedHashSet<Int>()
         val out = ArrayList<ClusterLayer>()
@@ -153,6 +266,7 @@ class AgglomerativeClustering internal constructor(
         return out
     }
 
+    /** Cuts at `2..maxK`, clamped to what the data can support — a sensible stack with no arguments. */
     fun defaultLayers(maxK: Int = 6): List<ClusterLayer> {
         val capped = max(2, min(maxK, sampleCount))
         return layers(2..capped)
@@ -160,26 +274,42 @@ class AgglomerativeClustering internal constructor(
 }
 
 /**
- * What a `…KMedoids` call found.
+ * What a `…KMedoids` call found: the labels, the medoids themselves, and enough to judge whether to
+ * believe them.
  *
- * @param labels one cluster index per input sample, in `0 until k`.
- * @param medoids the chosen medoids themselves — always **actual input samples**, which is the whole
- *   point of k-medoids over k-means: `medoids[c]` is `input[medoidIndices[c]]`.
- * @param distortion the **sum** over samples of the distance to the assigned medoid, in
- *   [KMedoidsOptions.distance]'s metric. Lower is better; it is the quantity the restarts minimise.
- *   It is not comparable across different `k` (more clusters always cost less) or across metrics.
- * @param iterations assign/re-medoid rounds taken by the winning restart.
- * @param converged `true` if that restart stopped because the medoid set repeated rather than
- *   because it hit [KMedoidsOptions.maxIterations].
+ * Read [converged] and [distortion] before reading anything into the clusters. `T` is the caller's
+ * own point type, so the medoids come back as `Float`, `Vec2`, `Vec3` or `Vec4` rather than as rows.
  */
 data class KMedoidsResult<T>(
+    /** One cluster index per input sample, in input order, each in `0 until k`. */
     val labels: IntArray,
+    /**
+     * The chosen medoids themselves — always **actual input samples**, which is the whole point of
+     * k-medoids over k-means: `medoids[c]` is `input[medoidIndices[c]]`.
+     */
     val medoids: List<T>,
+    /** Where each medoid sits in the input list, parallel to [medoids]. */
     val medoidIndices: IntArray,
+    /**
+     * The **sum** over samples of the distance to the assigned medoid, in
+     * [KMedoidsOptions.distance]'s metric.
+     *
+     * Lower is better, and it is the quantity the restarts minimise. It is not comparable across
+     * different `k` (more clusters always cost less) or across metrics, so it cannot be used to
+     * choose `k`.
+     */
     val distortion: Double,
+    /** Assign/re-medoid rounds taken by the winning restart. */
     val iterations: Int,
+    /**
+     * `true` if the winning restart stopped because the medoid set repeated, rather than because it
+     * hit [KMedoidsOptions.maxIterations]. A `false` here means the numbers below are a snapshot of
+     * an unfinished run.
+     */
     val converged: Boolean,
+    /** How many samples each cluster holds. A zero is possible: an empty cluster keeps its medoid. */
     val clusterSizes: IntArray,
+    /** The options this run used, carried along so a result is self-describing. */
     val options: KMedoidsOptions
 ) {
     init {
@@ -190,20 +320,43 @@ data class KMedoidsResult<T>(
         }
     }
 
+    /** How many clusters this result actually has. */
     val k: Int
         get() = medoids.size
 
+    /** This result as a [ClusterLayer], so it can be stacked and drawn beside other cuts. */
     fun asLayer(name: String = "kmedoids(k=$k)"): ClusterLayer =
         ClusterLayer(name, labels)
 }
 
+/**
+ * What a `…KMedians` call found.
+ *
+ * The difference from [KMedoidsResult] that matters: [centers] are *computed* coordinate-wise
+ * medians and need not be any of your samples, so there is no index to look them up by. They are
+ * still robust — a median moves with the ranks, not with the outliers — which is the reason to reach
+ * for this over a mean-based centroid.
+ */
 data class KMediansResult<T>(
+    /** One cluster index per input sample, in input order, each in `0 until k`. */
     val labels: IntArray,
+    /** The coordinate-wise median of each cluster. Not necessarily an input sample. */
     val centers: List<T>,
+    /**
+     * Sum of L1 distances from every sample to its assigned centre. Lower is better, and it is what
+     * the restarts minimise; as with [KMedoidsResult.distortion] it cannot be used to choose `k`.
+     */
     val objective: Double,
+    /** Assign/re-centre rounds taken by the winning restart. */
     val iterations: Int,
+    /**
+     * `true` if the winning restart stopped because both the objective and the centres went quiet
+     * within [KMediansOptions.tolerance], rather than on [KMediansOptions.maxIterations].
+     */
     val converged: Boolean,
+    /** How many samples each cluster holds. An emptied cluster is re-seeded from the worst-fit sample. */
     val clusterSizes: IntArray,
+    /** The options this run used. */
     val options: KMediansOptions
 ) {
     init {
@@ -211,30 +364,66 @@ data class KMediansResult<T>(
         require(centers.isNotEmpty()) { "KMediansResult.centers must not be empty" }
     }
 
+    /** How many clusters this result actually has. */
     val k: Int
         get() = centers.size
 
+    /** This result as a [ClusterLayer], so it can be stacked and drawn beside other cuts. */
     fun asLayer(name: String = "kmedians(k=$k)"): ClusterLayer =
         ClusterLayer(name, labels)
 }
 
+/**
+ * How a stack of [ClusterLayer]s is laid out and drawn.
+ *
+ * Sizes are in the units the `FLine` renderer uses for point size and thickness, alphas are 0..1, and
+ * the three `draw…` flags decide which keys appear in the returned map at all — turning one off is
+ * cheaper than drawing it and hiding it.
+ */
 data class ClusterLayerVizOptions(
+    /** Distance between consecutive layers along the stacking axis. Zero superimposes them. */
     val layerSpacing: Float = 0.7f,
+    /**
+     * Extra separation between clusters *within* a layer — a fan-out that makes membership visible when
+     * colour alone is not enough. Zero keeps every point at its own coordinates.
+     */
     val clusterOffset: Float = 0.0f,
+    /** Size of a sample's core dot. */
     val pointSize: Double = 0.1,
+    /** Size of the soft halo drawn behind each sample, which is what makes dense regions read as bright. */
     val pointHaloSize: Double = 0.3,
+    /** Size of a cluster centre's core dot — slightly larger than a sample's, so centres read as centres. */
     val centerPointSize: Double = 0.14,
+    /** Size of the glow behind a cluster centre. Much larger than the others on purpose. */
     val centerHaloSize: Double = 22.0,
+    /** Stroke thickness of the sample-to-centre links. */
     val linkThickness: Double = 0.85,
+    /** Opacity of a sample's core dot. */
     val pointAlpha: Float = 0.92f,
+    /** Opacity of the halos. Low, because they accumulate: overlap is the signal. */
     val haloAlpha: Float = 0.14f,
+    /** Opacity of a cluster centre's core dot. */
     val centerAlpha: Float = 0.98f,
+    /** Opacity of the links, low enough that a thousand of them still show shape rather than ink. */
     val linkAlpha: Float = 0.16f,
+    /** Emit `cluster-links`: one segment from every sample to its cluster centre. */
     val drawLinks: Boolean = true,
+    /** Emit `cluster-centers` and `cluster-centers-halo`. */
     val drawCenters: Boolean = true,
+    /**
+     * Emit `cluster-guides`: a rectangle around each layer, so the stacking is legible. Ignored by the
+     * `Vec3` visualization, which has no plane to draw one on.
+     */
     val drawGuides: Boolean = true
 )
 
+/**
+ * Hierarchical clustering of one-dimensional values: build the whole merge tree now, choose where to cut later.
+ *
+ * Needs at least two samples, and every coordinate must be finite. Returns an
+ * [AgglomerativeClustering], not a labelling — call `partition`, `partitionByHeight` or `layers`
+ * on it. See [AgglomerativeLinkage] for what the default `WARD` assumes.
+ */
 fun floatAgglomerative(
     values: List<Float>,
     linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD
@@ -243,6 +432,13 @@ fun floatAgglomerative(
     return agglomerative(rows, linkage, "floatAgglomerative")
 }
 
+/**
+ * Hierarchical clustering of 2-D points: build the whole merge tree now, choose where to cut later.
+ *
+ * Needs at least two samples, and every coordinate must be finite. Returns an
+ * [AgglomerativeClustering], not a labelling — call `partition`, `partitionByHeight` or `layers`
+ * on it. See [AgglomerativeLinkage] for what the default `WARD` assumes.
+ */
 fun vec2Agglomerative(
     points: List<Vec2>,
     linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD
@@ -251,6 +447,13 @@ fun vec2Agglomerative(
     return agglomerative(rows, linkage, "vec2Agglomerative")
 }
 
+/**
+ * Hierarchical clustering of 3-D points: build the whole merge tree now, choose where to cut later.
+ *
+ * Needs at least two samples, and every coordinate must be finite. Returns an
+ * [AgglomerativeClustering], not a labelling — call `partition`, `partitionByHeight` or `layers`
+ * on it. See [AgglomerativeLinkage] for what the default `WARD` assumes.
+ */
 fun vec3Agglomerative(
     points: List<Vec3>,
     linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD
@@ -259,6 +462,13 @@ fun vec3Agglomerative(
     return agglomerative(rows, linkage, "vec3Agglomerative")
 }
 
+/**
+ * Hierarchical clustering of 4-D points: build the whole merge tree now, choose where to cut later.
+ *
+ * Needs at least two samples, and every coordinate must be finite. Returns an
+ * [AgglomerativeClustering], not a labelling — call `partition`, `partitionByHeight` or `layers`
+ * on it. See [AgglomerativeLinkage] for what the default `WARD` assumes.
+ */
 fun vec4Agglomerative(
     points: List<Vec4>,
     linkage: AgglomerativeLinkage = AgglomerativeLinkage.WARD
@@ -267,6 +477,17 @@ fun vec4Agglomerative(
     return agglomerative(rows, linkage, "vec4Agglomerative")
 }
 
+/**
+ * Partition one-dimensional values into [k] clusters, each summarised by one of your own samples.
+ *
+ * Reach for this over `…KMedians` when the centre has to *be* a real datum — a representative
+ * frame, an exemplar colour, a point you can go and look at. [k] must be strictly less than the
+ * sample count (the algorithm needs a non-medoid to assign), which is one more restriction than
+ * `…KMedians` has.
+ *
+ * Cost is quadratic in the sample count: it builds and holds one full distance matrix, shared
+ * across the restarts. Fine for thousands of points, not for a million.
+ */
 fun floatKMedoids(
     values: List<Float>,
     k: Int,
@@ -287,6 +508,17 @@ fun floatKMedoids(
     )
 }
 
+/**
+ * Partition 2-D points into [k] clusters, each summarised by one of your own samples.
+ *
+ * Reach for this over `…KMedians` when the centre has to *be* a real datum — a representative
+ * frame, an exemplar colour, a point you can go and look at. [k] must be strictly less than the
+ * sample count (the algorithm needs a non-medoid to assign), which is one more restriction than
+ * `…KMedians` has.
+ *
+ * Cost is quadratic in the sample count: it builds and holds one full distance matrix, shared
+ * across the restarts. Fine for thousands of points, not for a million.
+ */
 fun vec2KMedoids(
     points: List<Vec2>,
     k: Int,
@@ -307,6 +539,17 @@ fun vec2KMedoids(
     )
 }
 
+/**
+ * Partition 3-D points into [k] clusters, each summarised by one of your own samples.
+ *
+ * Reach for this over `…KMedians` when the centre has to *be* a real datum — a representative
+ * frame, an exemplar colour, a point you can go and look at. [k] must be strictly less than the
+ * sample count (the algorithm needs a non-medoid to assign), which is one more restriction than
+ * `…KMedians` has.
+ *
+ * Cost is quadratic in the sample count: it builds and holds one full distance matrix, shared
+ * across the restarts. Fine for thousands of points, not for a million.
+ */
 fun vec3KMedoids(
     points: List<Vec3>,
     k: Int,
@@ -327,6 +570,17 @@ fun vec3KMedoids(
     )
 }
 
+/**
+ * Partition 4-D points into [k] clusters, each summarised by one of your own samples.
+ *
+ * Reach for this over `…KMedians` when the centre has to *be* a real datum — a representative
+ * frame, an exemplar colour, a point you can go and look at. [k] must be strictly less than the
+ * sample count (the algorithm needs a non-medoid to assign), which is one more restriction than
+ * `…KMedians` has.
+ *
+ * Cost is quadratic in the sample count: it builds and holds one full distance matrix, shared
+ * across the restarts. Fine for thousands of points, not for a million.
+ */
 fun vec4KMedoids(
     points: List<Vec4>,
     k: Int,
@@ -347,6 +601,15 @@ fun vec4KMedoids(
     )
 }
 
+/**
+ * Partition one-dimensional values into [k] clusters around coordinate-wise medians (Lloyd's algorithm on L1).
+ *
+ * The robust alternative to a mean-based centroid, and the cheaper alternative to `…KMedoids`:
+ * linear in the sample count per round rather than quadratic, and [k] may go all the way up to
+ * the sample count. The price is that a centre is a computed point rather than one of your
+ * samples. An emptied cluster is re-seeded from the worst-fit sample, so `k` clusters are always
+ * reported.
+ */
 fun floatKMedians(
     values: List<Float>,
     k: Int,
@@ -366,6 +629,15 @@ fun floatKMedians(
     )
 }
 
+/**
+ * Partition 2-D points into [k] clusters around coordinate-wise medians (Lloyd's algorithm on L1).
+ *
+ * The robust alternative to a mean-based centroid, and the cheaper alternative to `…KMedoids`:
+ * linear in the sample count per round rather than quadratic, and [k] may go all the way up to
+ * the sample count. The price is that a centre is a computed point rather than one of your
+ * samples. An emptied cluster is re-seeded from the worst-fit sample, so `k` clusters are always
+ * reported.
+ */
 fun vec2KMedians(
     points: List<Vec2>,
     k: Int,
@@ -385,6 +657,15 @@ fun vec2KMedians(
     )
 }
 
+/**
+ * Partition 3-D points into [k] clusters around coordinate-wise medians (Lloyd's algorithm on L1).
+ *
+ * The robust alternative to a mean-based centroid, and the cheaper alternative to `…KMedoids`:
+ * linear in the sample count per round rather than quadratic, and [k] may go all the way up to
+ * the sample count. The price is that a centre is a computed point rather than one of your
+ * samples. An emptied cluster is re-seeded from the worst-fit sample, so `k` clusters are always
+ * reported.
+ */
 fun vec3KMedians(
     points: List<Vec3>,
     k: Int,
@@ -404,6 +685,15 @@ fun vec3KMedians(
     )
 }
 
+/**
+ * Partition 4-D points into [k] clusters around coordinate-wise medians (Lloyd's algorithm on L1).
+ *
+ * The robust alternative to a mean-based centroid, and the cheaper alternative to `…KMedoids`:
+ * linear in the sample count per round rather than quadratic, and [k] may go all the way up to
+ * the sample count. The price is that a centre is a computed point rather than one of your
+ * samples. An emptied cluster is re-seeded from the worst-fit sample, so `k` clusters are always
+ * reported.
+ */
 fun vec4KMedians(
     points: List<Vec4>,
     k: Int,
@@ -423,6 +713,21 @@ fun vec4KMedians(
     )
 }
 
+/**
+ * Draw a stack of clusterings of the same 3-D point cloud as `FLine`s.
+ *
+ * Layers are separated *radially* — each layer pushes its points a little further out from the
+ * cloud's own centre — rather than along an axis, because a 3-D cloud has no free axis left. Point
+ * colour blends the sample's position in the bounding box with its cluster's colour, and the blend
+ * moves towards cluster colour in later layers, so structure emerging as `k` grows is visible as a
+ * shift from rainbow to blocks.
+ *
+ * Returns a map keyed `"cluster-points"`, `"cluster-points-halo"`, `"cluster-centers"`,
+ * `"cluster-centers-halo"` and `"cluster-links"` — one entry per non-empty layer, ready to assign
+ * into a box's `lines`. No guides here; see [ClusterLayerVizOptions.drawGuides].
+ *
+ * Every layer must label exactly as many samples as there are points.
+ */
 fun visualizeVec3ClusterLayers3D(
     points: List<Vec3>,
     layers: List<ClusterLayer>,
@@ -497,6 +802,16 @@ fun visualizeVec3ClusterLayers3D(
     )
 }
 
+/**
+ * Draw a stack of clusterings of the same 2-D point cloud, one layer per z-plane.
+ *
+ * This is the arrangement to reach for when comparing cuts: the data keeps its own x and y, and z
+ * carries "which clustering", so a point's movement between layers is only ever its cluster
+ * changing. [ClusterLayerVizOptions.clusterOffset] additionally spreads clusters in z within a
+ * layer, and a faint rectangle per layer (`"cluster-guides"`) marks the shared plane.
+ *
+ * Same map keys as [visualizeVec3ClusterLayers3D], plus `"cluster-guides"`.
+ */
 fun visualizeVec2ClusterLayers3D(
     points: List<Vec2>,
     layers: List<ClusterLayer>,
@@ -577,6 +892,16 @@ fun visualizeVec2ClusterLayers3D(
     )
 }
 
+/**
+ * Draw a stack of clusterings of the same one-dimensional data.
+ *
+ * The value itself is x, cluster membership becomes a band in y, and the layer is z — so a
+ * one-dimensional dataset gets a picture at all, and the bands make it obvious when a cut splits a
+ * run of near-equal values. Points are jittered in y by their rank so coincident values do not hide
+ * each other. Every value must be finite.
+ *
+ * Same map keys as [visualizeVec2ClusterLayers3D].
+ */
 fun visualizeFloatClusterLayers3D(
     values: List<Float>,
     layers: List<ClusterLayer>,
@@ -656,6 +981,10 @@ fun visualizeFloatClusterLayers3D(
     )
 }
 
+/**
+ * Cut this hierarchy at each of [kValues] and draw the stack in one call — the two-step
+ * [layers] + [visualizeVec3ClusterLayers3D] with the range filtered to what the data supports.
+ */
 fun AgglomerativeClustering.visualizeVec3(
     points: List<Vec3>,
     kValues: IntProgression = 2..6,
@@ -665,6 +994,7 @@ fun AgglomerativeClustering.visualizeVec3(
     return visualizeVec3ClusterLayers3D(points, layers(ks), options)
 }
 
+/** Cut this hierarchy at each of [kValues] and draw the stack of 2-D layers in one call. */
 fun AgglomerativeClustering.visualizeVec2(
     points: List<Vec2>,
     kValues: IntProgression = 2..6,
@@ -674,6 +1004,7 @@ fun AgglomerativeClustering.visualizeVec2(
     return visualizeVec2ClusterLayers3D(points, layers(ks), options)
 }
 
+/** Cut this hierarchy at each of [kValues] and draw the stack of 1-D layers in one call. */
 fun AgglomerativeClustering.visualizeFloat(
     values: List<Float>,
     kValues: IntProgression = 2..6,

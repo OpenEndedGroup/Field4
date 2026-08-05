@@ -44,7 +44,9 @@ import afield.stdlib.linalg.Vector3f as Vec3
 
 /** An axis-aligned box; by convention `min` is componentwise `<=` `max`. The clipper's own window. */
 data class Aabb3(
+    /** The low corner, componentwise. */
     val min: Vec3,
+    /** The high corner, componentwise. */
     val max: Vec3,
 )
 
@@ -55,42 +57,62 @@ data class Aabb3(
  * signed distance from this plane is `(dot(normal, x) - d) / length(normal)`.
  */
 data class Plane3(
+    /** The plane's normal, **not** normalized — for a bisector it is the raw difference of two sites. */
     val normal: Vec3,
+    /** The offset: the plane is the points `x` with `dot(normal, x) == d`. Scaled by [normal]'s length. */
     val d: Float,
 )
 
 /**
  * One face of a [VoronoiCell3]: the plane it lies in, and the cell's corners that lie on it.
  *
- * @param neighborSite the site across this face, or `null` when this is a clip-box face rather than a
- *   real bisector.
- * @param polygon wound counter-clockwise as seen from the `+plane.normal` side — i.e. its signed area
- *   along [Plane3.normal] is non-negative. Always at least 3 corners; a face with fewer, or with a
- *   numerically zero area, is dropped rather than emitted degenerate.
- * @param truncated `true` if any of this face's corners touches the clip box, so the face is cut by
- *   the window rather than closed by the sites. Uses a deliberately looser tolerance than the cell's
- *   combinatorics, because "does this come near the box" is a question about the box.
+ * Two of the five fields are about *provenance* rather than geometry — [isClip] and [truncated] —
+ * and they are what separates a face the sites decided from a face the clip box decided. Ignore them
+ * and you will measure the box.
  */
 data class VoronoiFace(
+    /** The site across this face, or `null` when this is a clip-box face rather than a real bisector. */
     val neighborSite: Int?,
+    /** The plane this face lies in: the perpendicular bisector of the two sites, or a clip-box side. */
     val plane: Plane3,
+    /**
+     * The face outline, wound counter-clockwise as seen from the `+plane.normal` side — its signed
+     * area along [Plane3.normal] is non-negative.
+     *
+     * Always at least 3 corners: a face with fewer, or with a numerically zero area, is dropped rather
+     * than emitted degenerate, so a polygon here is safe to triangulate.
+     */
     val polygon: List<Vec3>,
+    /** `true` if this face is a side of the clip box rather than a bisector between two sites. */
     val isClip: Boolean,
+    /**
+     * `true` if any of this face's corners touches the clip box, so the face is cut by the window
+     * rather than closed by the sites.
+     *
+     * Deliberately measured with a looser tolerance than the cell's combinatorics, because "does this
+     * come near the box" is a question about the box.
+     */
     val truncated: Boolean,
 )
 
 /**
  * The convex polyhedron of points nearer to [site] than to any other site, intersected with the
  * lattice's clip box.
- *
- * @param bounded `true` only if no face is a clip face and no face is [VoronoiFace.truncated] — that
- *   is, the cell is closed by its neighbours alone and the clip box did not participate. An unbounded
- *   cell's faces are real geometry, but its volume is an artefact of the box.
  */
 data class VoronoiCell3(
+    /** Which input site this is the cell of, as an index into the list that was clustered. */
     val siteIndex: Int,
+    /** The site itself. */
     val site: Vec3,
+    /** The bounding faces, in no particular order. See [VoronoiFace]. */
     val faces: List<VoronoiFace>,
+    /**
+     * `true` only if no face is a clip face and no face is [VoronoiFace.truncated] — that is, the cell
+     * is closed by its neighbours alone and the clip box did not participate.
+     *
+     * An unbounded cell's faces are real geometry, but its volume is an artefact of the box, so this
+     * is the flag to test before believing any measurement of a cell.
+     */
     val bounded: Boolean,
 )
 
@@ -101,9 +123,12 @@ data class VoronoiCell3(
  * result: the cell volumes must sum to the box's own volume. Measured, they do to 1e-4 relative.
  */
 data class VoronoiLattice(
+    /** One cell per input site, in input order — so `cells[i]` is the cell of site `i`. */
     val cells: List<VoronoiCell3>,
+    /** The box every cell was clipped against. Its volume is what the cell volumes must sum to. */
     val clipBounds: Aabb3,
 ) {
+    /** The cell of site [siteIndex] — the same thing as `cells[siteIndex]`, and as loud when out of range. */
     operator fun get(siteIndex: Int): VoronoiCell3 = cells[siteIndex]
 }
 
@@ -120,6 +145,7 @@ fun voronoi3d(l: List<Vec3>): VoronoiLattice = Voronoi3d.build(l)
 /** `Float`'s relative precision, `2^-23`. The unit every error bound in the clipper is expressed in. */
 private const val FLOAT_ULP = 1.1920929e-7f
 
+/** The unweighted 3-D clipper, with its knobs exposed — [voronoi3d] is this with the defaults. */
 object Voronoi3d {
     private data class PlaneSpec(
         val plane: Plane3,
@@ -127,6 +153,17 @@ object Voronoi3d {
         val isClip: Boolean,
     )
 
+    /**
+     * Build the Voronoi diagram of [points], clipped to a box.
+     *
+     * [tolerance] is *relative*: it is multiplied by the cloud's own diagonal (floored at 1) to get the
+     * geometric epsilon, so the same value behaves the same way on a millimetre cloud and a kilometre one.
+     * It must be strictly positive. [clipPadding] grows the sites' bounding box by `clipPadding * scale + 1`
+     * on every side; the generous default keeps the box out of the way, and shrinking it is how you make
+     * the box do work on purpose.
+     *
+     * An empty input returns an empty lattice with a degenerate box rather than throwing.
+     */
     fun build(
         points: List<Vec3>,
         tolerance: Float = 1e-4f,
@@ -491,64 +528,152 @@ object Voronoi3d {
 // Approximate 3D multiplicatively weighted Voronoi (CircularDirichlet analogue)
 // -----------------------------------------------------------------------------
 
+/**
+ * A site with an influence radius: distance to it is measured as `|x − position| / weight`.
+ *
+ * That is *multiplicative* weighting, and it is what makes the bisector between two sites a sphere
+ * instead of a plane — a heavier site claims a bubble around a lighter neighbour rather than a
+ * half-space. Weights must be strictly positive; equal weights reduce exactly to ordinary Voronoi.
+ */
 data class WeightedSite3(
+    /** Where the site is. */
     val position: Vec3,
+    /**
+     * The divisor on distance: larger claims more space. Must be strictly positive — [CircularDirichlet3d.build]
+     * rejects zero and negative weights by index rather than producing nonsense.
+     */
     val weight: Float,
 )
 
+/**
+ * The surface a weighted bisector lives on: a sphere when the two weights differ, a plane when they
+ * are equal.
+ *
+ * Sealed, so the two cases are the whole story, and both are *unbounded* surfaces — the actual patch
+ * of one that belongs to a cell is a [CircularDirichletPatch3] clipped out of it.
+ */
 sealed interface SupportSurface3 {
+    /** Any one point known to lie on the surface — the seed a contour walk starts from. */
     val samplePoint: Vec3
 }
 
+/**
+ * An Apollonius sphere: the locus where two differently-weighted sites are equidistant.
+ *
+ * The lighter of the two sites is the one inside it.
+ */
 data class SupportSphere3(
+    /** Centre of the sphere. Not either site's position. */
     val center: Vec3,
+    /** Radius of the sphere, strictly positive — a degenerate solution is discarded rather than emitted. */
     val radius: Float,
 ) : SupportSurface3 {
+    /** A point on the sphere, taken along `+x` from the centre. Arbitrary but deterministic. */
     override val samplePoint: Vec3 = add(center, Vec3(radius, 0f, 0f))
 }
 
+/**
+ * The ordinary perpendicular bisector plane, which is what a weighted bisector degenerates to when
+ * the two weights are equal (within the build tolerance).
+ */
 data class SupportPlane3(
+    /** The plane's normal, not normalized. */
     val normal: Vec3,
+    /** The offset: the plane is the points `x` with `dot(normal, x) == d`. */
     val d: Float, // plane: normal · x = d
 ) : SupportSurface3 {
+    /** The point on the plane closest to the origin. */
     override val samplePoint: Vec3 = mul(normal, d / max(1e-20f, dot(normal, normal)))
 }
 
+/**
+ * One piece of one cell's boundary in the weighted diagram: the part of a bisector surface that is
+ * actually on the boundary once every *other* site has had its say.
+ *
+ * A weighted cell is not convex and need not even be connected, so it is described by a bag of these
+ * rather than by a polyhedron. Sealed into the two support cases, [SpherePatch3] and [PlanePatch3].
+ */
 sealed interface CircularDirichletPatch3 {
+    /** The cell this patch bounds. */
     val siteIndex: Int
+    /** The site on the other side of it. */
     val neighborSite: Int
+    /** The unbounded surface this patch was cut out of. */
     val support: SupportSurface3
+    /** `true` when the clip box cut this patch, so its extent is the window's and not the sites'. */
     val truncated: Boolean
 }
 
+/**
+ * A patch of an Apollonius sphere.
+ *
+ * The case to watch is [boundary] being empty, which means the *whole* sphere survived — a lighter
+ * site completely enclosed by a heavier neighbour's claim.
+ */
 data class SpherePatch3(
+    /** The cell this patch bounds. */
     override val siteIndex: Int,
+    /** The site on the other side of it. */
     override val neighborSite: Int,
+    /** The sphere this patch lies on. */
     override val support: SupportSphere3,
+    /**
+     * The patch outline as a wound loop of points on the sphere, or **empty to mean the entire
+     * sphere** rather than an empty patch (an empty patch is not emitted at all).
+     */
     val boundary: List<Vec3>, // empty => full sphere
+    /** `true` when the clip box cut this patch, so its extent is the window's and not the sites'. */
     override val truncated: Boolean,
 ) : CircularDirichletPatch3
 
+/** A patch of an ordinary bisector plane, between two equally-weighted sites. */
 data class PlanePatch3(
+    /** The cell this patch bounds. */
     override val siteIndex: Int,
+    /** The site on the other side of it. */
     override val neighborSite: Int,
+    /** The plane this patch lies on. */
     override val support: SupportPlane3,
+    /** The patch outline as a wound loop of points on the plane. Never empty. */
     val polygon: List<Vec3>,
+    /** `true` when the clip box cut this patch, so its extent is the window's and not the sites'. */
     override val truncated: Boolean,
 ) : CircularDirichletPatch3
 
+/**
+ * One weighted cell, as the collection of boundary patches that fence it in.
+ *
+ * There is no volume and no closure guarantee here — see [CircularDirichlet3d] for why. Patches come
+ * sorted by neighbour, then by support radius, so two runs of the same input list them in the same
+ * order.
+ */
 data class CircularDirichletCell3(
+    /** Which weighted site this is the cell of. */
     val siteIndex: Int,
+    /** The boundary pieces, sorted by [CircularDirichletPatch3.neighborSite] then by support size. */
     val patches: List<CircularDirichletPatch3>,
 )
 
+/** One weighted cell per input site, in input order, plus the box they were all clipped against. */
 data class CircularDirichletDiagram3(
+    /** One cell per input site, in input order. */
     val cells: List<CircularDirichletCell3>,
+    /** The box the patches were clipped against, built the same way as [VoronoiLattice.clipBounds]. */
     val clipBounds: Aabb3,
 ) {
+    /** The cell of site [siteIndex]. */
     operator fun get(siteIndex: Int): CircularDirichletCell3 = cells[siteIndex]
 }
 
+/**
+ * The multiplicatively weighted diagram, by sampling and contouring rather than by exact construction.
+ *
+ * Each pair of sites gives a bisector surface — an Apollonius sphere, or a plane when the weights
+ * match — which is tessellated and then cut down to the part where no *third* site is closer. That is
+ * the honest description of what you get: **approximate patches**, accurate to the sampling density,
+ * wound for a renderer rather than stitched into exact topology. There are no cell volumes here and
+ * no closure guarantee, unlike [Voronoi3d].
+ */
 object CircularDirichlet3d {
     private data class ScalarVertex(
         val point: Vec3,
@@ -579,6 +704,18 @@ object CircularDirichlet3d {
         val b: Vec3,
     )
 
+    /**
+     * Build the weighted diagram of [sites].
+     *
+     * Every weight must be strictly positive (the failure names the offending index). [tolerance] is
+     * relative to the cloud's diagonal, as in [Voronoi3d.build], and additionally scales the score
+     * tolerance by the smallest weight, since a tiny weight makes the score field steep.
+     *
+     * The two sampling knobs are the accuracy/cost dial, and they cost more than they look: work is
+     * quadratic in the site count *before* either is applied. [sphereSubdivisions] refines the
+     * octahedron-based sphere mesh — each step roughly quadruples its triangles — and [planeSteps] is the
+     * grid resolution on a plane patch, at least 2. An empty input returns an empty diagram.
+     */
     fun build(
         sites: List<WeightedSite3>,
         tolerance: Float = 1e-4f,

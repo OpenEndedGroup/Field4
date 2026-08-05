@@ -175,6 +175,20 @@ object StdlibReferenceGenerator {
             "their graphs with user-authored patterns.",
         "Visualization" to "Turning a value into something you can look at, without leaving the box.",
         "Audio" to "Sound analysis and the network protocols that carry control data alongside it.",
+        "Audio AI" to "The client half of Field Audio: a separate HTTP/WebSocket service that runs " +
+            "generative and analysis models over audio, and the typed vocabulary a box talks to it " +
+            "in. Nothing here loads a model or does inference in the JVM — a box builds a " +
+            "`ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can " +
+            "poll or watch; the results are immutable server-side *assets* referenced by id, which " +
+            "is why the protocol types carry representation ids rather than samples. Every call is " +
+            "asynchronous and completes off Field's runloop and off the audio callback, so nothing " +
+            "here may be `.get()`-ed from a box's frame. The rest of the category is what you do " +
+            "with a result inside a box: the candidate browser, the EnCodec reconstruction " +
+            "microscope, the beat/pitch analysis viewer and the job monitor, each of them one " +
+            "function returning a self-contained HTML fragment for `display(…)`. Start from " +
+            "`Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; " +
+            "[Field Audio service reference](../field_audio_service_reference.md) is the " +
+            "service-side contract the types mirror.",
         "Workspace" to "The box's own surroundings: properties, persistence, and the handful of " +
             "names every box already has in scope.",
     )
@@ -522,6 +536,12 @@ object StdlibReferenceGenerator {
      * The index stores where a declaration is, not what it looks like, so the header is recovered
      * here by accumulating source until the brackets balance and a body marker (`{`, `=`) or the
      * end of the header is reached. Leading annotations are dropped; whitespace is collapsed.
+     *
+     * **Comments inside the header are skipped, and do not count against
+     * [MAX_SIGNATURE_LINES].** A data class that documents each of its primary-constructor
+     * properties — the natural place to put "seconds, not samples" — otherwise publishes its own
+     * KDoc *inside* its rendered signature, and a long one is then truncated mid-comment with no
+     * closing bracket. `AudioVisualizerSource` shipped in exactly that state.
      */
     private fun signatureAt(lines: List<String>, line: Int, kind: String): String {
         if (line - 1 !in lines.indices) return ""
@@ -532,27 +552,46 @@ object StdlibReferenceGenerator {
         var depth = 0
         var index = line - 1
         var done = false
-        while (index < lines.size && !done && index < line - 1 + MAX_SIGNATURE_LINES) {
+        var codeLines = 0
+        var inBlockComment = false
+        while (index < lines.size && !done && codeLines < MAX_SIGNATURE_LINES) {
             val raw = lines[index]
             var i = 0
+            var contributed = false
             while (i < raw.length) {
                 val ch = raw[i]
                 val previous = raw.getOrNull(i - 1)
+                if (inBlockComment) {
+                    if (ch == '*' && raw.getOrNull(i + 1) == '/') {
+                        inBlockComment = false
+                        i += 2
+                    } else {
+                        i++
+                    }
+                    continue
+                }
                 when {
                     ch == '/' && raw.getOrNull(i + 1) == '/' -> { i = raw.length; continue }
-                    ch == '(' || ch == '[' -> { depth++; builder.append(ch) }
-                    ch == ')' || ch == ']' -> { depth--; builder.append(ch) }
+                    // Kotlin block comments nest, but a nested one inside a *signature* is not a
+                    // thing that happens; the flat scan is enough and cannot run away.
+                    ch == '/' && raw.getOrNull(i + 1) == '*' -> { inBlockComment = true; i += 2; continue }
+                    ch == '(' || ch == '[' -> { depth++; builder.append(ch); contributed = true }
+                    ch == ')' || ch == ']' -> { depth--; builder.append(ch); contributed = true }
                     ch == '{' && depth <= 0 -> done = true
                     ch == '=' && depth <= 0 && stopAtAssign &&
                         raw.getOrNull(i + 1) != '=' &&
                         previous != '=' && previous != '!' && previous != '<' && previous != '>' -> done = true
-                    else -> builder.append(ch)
+                    else -> {
+                        builder.append(ch)
+                        if (!ch.isWhitespace()) contributed = true
+                    }
                 }
                 if (done) break
                 i++
             }
             if (done) break
             builder.append(' ')
+            if (contributed) codeLines++
             index++
             // A complete header at bracket depth zero ends the scan; a continuation line is only
             // consumed while a bracket is still open or the next line clearly continues the header.

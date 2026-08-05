@@ -1,4 +1,16 @@
+@file:afield.CompletionCategory("Audio AI")
+
 package afield.stdlib.noir.audioai
+
+/**
+ * The analysis viewer: one function that turns an [AnalysisResult] into a zoomable beat, pitch or
+ * note display for a box output.
+ *
+ * It draws whichever of the three analyses the result came from, deciding in the browser from
+ * [AnalysisPreview.operation]. What crosses the wire is the downsampled preview and never the
+ * `.npz`, which is what keeps this cheap on a long recording — and the reason it is a display and
+ * not a measurement.
+ */
 
 /**
  * A compact, range-aware beat/pitch viewer. The browser fetches a carefully

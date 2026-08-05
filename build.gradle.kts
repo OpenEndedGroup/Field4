@@ -1155,6 +1155,43 @@ tasks.register<JavaExec>("checkKDocAttachment") {
     mainClass.set("afield.docs.KDocAttachmentGuard")
 }
 
+// `public/docs/assets/agent_transcripts/` is generated from the transcript yaml in
+// `dev_docs/agents/transcripts/` and is *committed*: the welcome screen's starting points, the docs
+// gallery and the search index all read it. AgentTranscriptMaterializer already drift-checks it —
+// materialize to a temp dir, compare against the committed bundle — but until now that guard ran
+// only inside the FIELD_TEST catalog, which means only when somebody chose to run
+// `tools/run_field_tests.py`. The result was the same failure three nights running: a transcript
+// edited, the bundle not regenerated, and nothing in the build anyone actually runs to say so. The
+// symptom got fixed each time; this is the structural half. Fix a failure by regenerating:
+//   python3 tools/run_field_tests.py --id examples.agent-transcripts.materialize   # to verify
+//   ./gradlew regenerateAgentTranscriptStartingPoints                              # to fix
+// It materializes into a temp directory, so a `check` run never writes a committed asset — the
+// "tests: no committed writes" invariant. Measured at ~25s on this machine.
+tasks.register<JavaExec>("checkAgentTranscripts") {
+    group = "verification"
+    description = "Fails if public/docs/assets/agent_transcripts/ is not what the transcript yaml produces. Same drift guard as the examples.agent-transcripts.materialize FIELD_TEST, wired into check."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.AgentTranscriptMaterializer")
+    // As in runPersonalLayerSmokeTest: -XX:+EnableJVMCI, which arrives inside requiredRunJvmArgs,
+    // is experimental on the default toolchain and has to be unlocked first. The rest of those args
+    // matter because materializing a transcript builds real boxes: the add-opens are what let a
+    // KotlinInterface2 be constructed at all.
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
+    group = "documentation"
+    description = "Rewrites the committed public/docs/assets/agent_transcripts/ bundle from dev_docs/agents/transcripts/*.yaml — the fix for a checkAgentTranscripts failure."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.AgentTranscriptMaterializer")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+    args(file("public/docs/assets/agent_transcripts").absolutePath)
+}
+
 // Field's automation substrate has Python tests, and until 2026-07-30 nothing ran them. The three
 // tools/test_*.py suites pin the shared run_field_tests.py backdoor argument emitter, the
 // docs-capture freshness classifier and the smoke runner's worktree-scoped JVM reaper — all of it
@@ -1252,6 +1289,7 @@ tasks.named("check") {
     dependsOn("checkCodebaseReference")
     dependsOn("checkKDocAttachment")
     dependsOn("checkPythonTools")
+    dependsOn("checkAgentTranscripts")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {

@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Visualization")
+
 package afield.stdlib
 
 import afield.Box
@@ -5,25 +7,81 @@ import afield.four.audio.WavFloatArrayWriter
 import java.util.Base64
 import java.util.Locale
 
+/**
+ * The recorded-audio waveform player: a zoomable, seekable view of a recording, as one
+ * self-contained HTML fragment for a box output.
+ *
+ * It is *not* a spectrum analyser or a live meter — it shows audio that already exists, with the
+ * interaction an editor expects (wheel to zoom, drag to pan, click to seek, a playhead that tracks
+ * playback) and the browser's own transport underneath.
+ *
+ * The one design decision worth knowing: what it draws is a min/max envelope of the *visible*
+ * window, not the whole file decimated. Where a server can summarise a window
+ * ([AudioVisualizerSource.waveformUrl] — Field Audio's waveform endpoint, for instance) the
+ * component asks for one envelope per view, so an hour-long recording costs the same as a bar of
+ * it; where there is no server it decodes the clip in the browser and does the same arithmetic
+ * locally. Either way a single-sample click survives being drawn at 1000 points, which is the whole
+ * point of a min/max envelope over an average.
+ *
+ * Start from `Box.displayAudio` for a URL, `Box.displayAudioSamples` for a `FloatArray` you
+ * generated, or `Box.displayAudioBytes` for an encoded clip you have in memory.
+ */
+
+/**
+ * Where a waveform player gets its audio, and how it gets the envelope it draws.
+ *
+ * Exactly one of three strategies applies, in this order: [waveformUrl] (the server summarises
+ * each visible window — the only workable choice for anything long or remote),
+ * [inlineWaveformWavBase64] (a PCM16 copy the browser analyses locally while playing something
+ * else), or neither, in which case the component decodes [audioUrl] itself.
+ */
 data class AudioVisualizerSource(
+    /** What the `<audio>` element plays: an ordinary URL or a `data:` URI. Always required. */
     val audioUrl: String,
     /** A GET endpoint accepting start_seconds, duration_seconds, and points. */
     val waveformUrl: String? = null,
     /** Browser-compatible PCM16 WAV used only for local waveform analysis, without replacing playback audio. */
     val inlineWaveformWavBase64: String? = null,
+    /**
+     * Total length in seconds, if it is known up front.
+     *
+     * Supplying it lets the player draw its ruler before any audio has loaded; without it the
+     * component waits for the browser's `loadedmetadata`, which for a remote file is a round trip.
+     */
     val durationSeconds: Double? = null,
+    /** A caption above the waveform, HTML-escaped. Null draws no caption. */
     val label: String? = null,
 )
 
+/**
+ * How a waveform player looks and what it lets the user do.
+ *
+ * The defaults are the ones the docs pages use: 960 px wide, a 150 px waveform, a playhead, full
+ * interaction and the browser's own transport controls underneath.
+ */
 data class AudioVisualizerOptions(
+    /** Maximum width in CSS pixels; the component is fluid below it. Must be positive. */
     val width: Int = 960,
+    /** Height of the waveform canvas in CSS pixels. At least 48, and channels share it as lanes. */
     val waveformHeight: Int = 150,
+    /** Draw the moving playhead while the audio plays. */
     val showPlayhead: Boolean = true,
+    /**
+     * Allow wheel-zoom, drag-pan, click-to-seek and the keyboard shortcuts.
+     *
+     * False also hides the zoom buttons, which is what you want for a figure in a page rather than an
+     * instrument in a box.
+     */
     val interactive: Boolean = true,
+    /** Show the browser's own `<audio>` transport. The element is always present; this only hides it. */
     val showNativeControls: Boolean = true,
+    /** Left edge of the initial view, in seconds. Must be non-negative. */
     val initialStartSeconds: Double = 0.0,
+    /** Width of the initial view in seconds; null shows the whole clip. */
     val initialDurationSeconds: Double? = null,
+    /** Where to place the playhead once metadata has loaded, in seconds; null leaves it at zero. */
     val initialPositionSeconds: Double? = null,
+    /** CSS colour for the first channel's trace and the focus highlights. The second channel is amber. */
     val accent: String = "#63c7dc",
 )
 
@@ -35,6 +93,13 @@ data class AudioVisualizerOptions(
  * it; the component decodes the clip locally and uses the same interaction model.
  */
 object AudioVisualizer {
+    /**
+     * The player as one self-contained HTML fragment — markup, styles and script together.
+     *
+     * This is the entry point for audio that already has a URL. Validates the options in the JVM
+     * (width, height, non-negative times) so a bad value is a Kotlin error rather than a silently
+     * broken widget.
+     */
     fun renderHtml(
         source: AudioVisualizerSource,
         options: AudioVisualizerOptions = AudioVisualizerOptions(),
@@ -92,6 +157,14 @@ object AudioVisualizer {
         """.trimIndent()
     }
 
+    /**
+     * A player for samples you have in memory: mono `FloatArray` in, self-contained player out.
+     *
+     * The samples are encoded as a PCM16 WAV and inlined as a data URI, so the whole clip travels
+     * inside the fragment — fine for a few seconds of audio, wasteful for minutes. Pass [wavBytes] to
+     * play a *different* encoding of the same audio (the original file, say) while still drawing the
+     * envelope from [samples].
+     */
     fun renderSamplesHtml(
         samples: FloatArray,
         sampleRate: Int,
@@ -141,6 +214,12 @@ object AudioVisualizer {
         )
     }
 
+    /**
+     * The Field Audio waveform endpoint for one representation id, ready for
+     * [AudioVisualizerSource.waveformUrl].
+     *
+     * The id is URL-encoded, so a content address with its `sha256:` colon survives.
+     */
     fun fieldAudioWaveformUrl(representationId: String, serviceBaseUrl: String = "/field-audio"): String =
         "${serviceBaseUrl.trimEnd('/')}/v1/representations/${representationId.audioUrlSegment()}/waveform"
 

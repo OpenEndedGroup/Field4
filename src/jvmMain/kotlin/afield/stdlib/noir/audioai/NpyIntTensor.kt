@@ -1,3 +1,5 @@
+@file:afield.CompletionCategory("Audio AI")
+
 package afield.stdlib.noir.audioai
 
 import java.nio.ByteBuffer
@@ -5,12 +7,27 @@ import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.Path
 
+/**
+ * A dependency-free reader for the integer NPY tensors the audio service emits — the codec token
+ * grids, in practice.
+ *
+ * `numpy.kt` already reads `.npy` and `.npz` generally; this is the narrow, self-checking version
+ * for the one shape that matters here (codebooks × frames of small integers), so the codec views
+ * can index tokens by codebook and frame without a general tensor type in between. It refuses what
+ * it cannot represent honestly rather than guessing: Fortran order, an unsupported dtype and a
+ * multi-item batch are all errors with a message.
+ */
+
 /** Small, dependency-free reader for the C-order integer NPY tensors emitted by the audio service. */
 data class NpyIntTensor(
+    /** Array dimensions as the NPY header gave them; the last two are codebooks and time. */
     val shape: IntArray,
+    /** All codes, C-order (row-major), widened to `Long` whatever the on-disk integer width was. */
     val values: LongArray,
 ) {
+    /** Size of the second-to-last axis: how many codebooks the encoder used. */
     val codebooks: Int get() = shape[shape.size - 2]
+    /** Size of the last axis: how many token frames, and so the time extent. */
     val frames: Int get() = shape.last()
 
     init {
@@ -21,11 +38,21 @@ data class NpyIntTensor(
         require(values.size == shape.fold(1) { a, b -> a * b }) { "NPY shape/data size mismatch" }
     }
 
+    /** One code, by codebook and frame. Unchecked: an out-of-range index is an array error, not null. */
     operator fun get(codebook: Int, frame: Int): Long = values[codebook * frames + frame]
 
     companion object {
+        /** Read and decode a `.npy` file whole. See [decode] for what is accepted. */
         fun read(path: Path): NpyIntTensor = decode(Files.readAllBytes(path))
 
+        /**
+         * Decode NPY bytes, or fail with a message saying what was wrong.
+         *
+         * Deliberately narrow: C-order only (Fortran order is rejected rather than silently transposed),
+         * `i8`, `i4` and `u2` integer dtypes only, and a single batch only — the constructor rejects a
+         * shape whose leading axes multiply to anything but 1, because a batch of token grids has no one
+         * picture. Both NPY header versions are handled, and the dtype's byte order is honoured.
+         */
         fun decode(bytes: ByteArray): NpyIntTensor {
             require(bytes.size >= 10 && bytes.copyOfRange(0, 6).contentEquals(
                 byteArrayOf(0x93.toByte(), 'N'.code.toByte(), 'U'.code.toByte(), 'M'.code.toByte(),
