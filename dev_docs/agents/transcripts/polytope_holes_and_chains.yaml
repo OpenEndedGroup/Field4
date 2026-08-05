@@ -1,0 +1,252 @@
+name: polytope_holes_and_chains
+description: >
+  Three small boxes for the two things afield.stdlib.polytope gained on 2026-08-05: a face may have
+  holes, and the whole Conway vocabulary chains. Box 1 takes the cubeWithWindow seed end to end —
+  boundary rings, the two Euler characteristics, the triangles the window is cut out of, the four
+  operations that refuse a holed face by name, and the polygonal FLines in the on-canvas viewer, where
+  the window is a window. Box 2 builds a plate by hand with PolytopeTopologyBuilder.addFaceHole and
+  renders it beside the identical plate without the ring, back-face culled, so the counterfactual is
+  computed rather than described. Box 3 chains every named composite off one ambo — cube().ambo().bevel()
+  and its seven siblings, which did not compile before today. Companion to
+  dev_docs/agents/transcripts/polytope_conway_gallery.yaml and to dev_docs/POLYTOPE_ALGEBRA.md.
+operations:
+  - create:
+      box: polytope_face_with_a_hole
+      name: "1 — a face with a hole, end to end"
+      frame: { x: 80.0, y: 80.0, w: 460.0, h: 84.0 }
+      properties:
+        code: |
+          import afield.stdlib.polytope.*
+
+          // ***** CHANGE THIS LINE ***** the window's half-width, anywhere inside (0, 1).
+          val solid = cubeWithWindow(side = 0.45f)
+
+          val topology = solid.topology
+          val windowed = topology.elements(2).single { topology.faceHasHoles(it.id) }
+          val geometry = solid.triangulate()
+          val rimTriangles = (0 until geometry.triangleCount).count { geometry.sourceFace(it) == windowed.id }
+
+          // Everything a holed face refuses, and the message it refuses with. These are values, not
+          // accidents: a Conway operator, a dualization and an OFF export are all defined for closed
+          // manifolds, and a face with a hole is a surface with boundary.
+          val refusals = listOf<Pair<String, () -> Any>>(
+              "topology.dual()" to { topology.dual() },
+              "solid.bevel()" to { solid.bevel() },
+              "solid.toOff()" to { solid.toOff() },
+              "triangulate(FanFaceTriangulator)" to { solid.triangulate(FanFaceTriangulator) },
+          ).map { (name, call) ->
+              name to (runCatching { call() }.exceptionOrNull()?.message ?: "DID NOT THROW")
+          }
+
+          println(
+              """
+              face ${windowed.id.value} boundary: outer ${topology.faceCycle(windowed.id).size} vertices,
+                  holes ${topology.faceHoles(windowed.id).map { it.size }}, rings ${topology.faceRings(windowed.id).size}
+              chi counting elements = ${topology.eulerCharacteristic()}, counting cells = ${topology.cellularEulerCharacteristic()}
+                  (a disk with one hole is 1 - 1, so a sphere with a window is 1)
+              closed manifold = ${topology.validate(checkManifold = true).isValid}, and the only complaints are
+                  ${topology.validate(checkManifold = true).issues.size} one-sided window edges
+              triangles cut from the windowed face = $rimTriangles (a solid square would be 2)
+              """.trimIndent(),
+          )
+          println("\nrefused, by name:")
+          refusals.forEach { (call, message) -> println("  $call -> $message") }
+          println("\norbit the view below; the window is a window, and the far wall is behind it")
+
+          // One FLine per face. A face's holes are further closed contours on that same line — one
+          // line is still one face, and a hole is not a face — which is what the viewer's own
+          // outer-ring-plus-holes grouping then subtracts.
+          val faceLines = solid.toFaceFLines { face, line ->
+              val holes = topology.faceHoles(face.id)
+              line.filled = true
+              line.stroked = true
+              line.thickness = if (holes.isEmpty()) 1.1 else 2.0
+              line.color = if (holes.isEmpty()) vec(0.26, 0.42, 0.58, 0.70) else vec(1.00, 0.62, 0.24, 0.88)
+              line.hoverColor = vec(0.96, 0.98, 1.00, 0.98)
+              line.onClick = { hit ->
+                  markdown(
+                      "face detail",
+                      """
+                      **face ${face.id.value}**
+
+                      - outer ring: `${topology.faceCycle(face.id).size}` vertices
+                      - holes: `${holes.map { it.size }}`
+                      - triangles: `${(0 until geometry.triangleCount).count { geometry.sourceFace(it) == face.id }}`
+                      - clicked at: `${hit.position}`
+                      """.trimIndent(),
+                  )
+              }
+          }
+
+          threeLines(
+              faceLines,
+              channel = "polytope-holes",
+              name = "cube-with-window",
+              height = 520,
+              autoFrame = true,
+              editable = false,
+          )
+          displayOpen("polytope-holes")
+          viz("topology", topology.summary())
+  - create:
+      box: polytope_plate_with_and_without
+      name: "2 — the same plate, with the ring and without it"
+      frame: { x: 80.0, y: 220.0, w: 460.0, h: 84.0 }
+      properties:
+        code: |
+          import afield.stdlib.polytope.*
+          import afield.stdlib.MeshView
+          import afield.stdlib.Vec3
+          import afield.stdlib.renderPng
+          import java.util.Base64
+
+          // ***** CHANGE THIS LINE ***** the hole's half-width; 0 or more, less than 1.
+          val hole = 0.45f
+
+          // A single square face, built by hand, optionally with one inner ring. This is the whole of
+          // the hole API from a caller's side: record the ring's edges as incidences of the same face,
+          // then declare the ring with addFaceHole. Winding is a convention — outer counter-clockwise
+          // about the normal, inner clockwise — and nothing downstream leans on it, because the
+          // tessellator decides which ring is the outer one geometrically.
+          fun plate(withRing: Boolean): PolyhedralObject {
+              val outer = listOf(Vec3(-1f, -1f, 0f), Vec3(1f, -1f, 0f), Vec3(1f, 1f, 0f), Vec3(-1f, 1f, 0f))
+              val inner = listOf(
+                  Vec3(-hole, -hole, 0f), Vec3(-hole, hole, 0f), Vec3(hole, hole, 0f), Vec3(hole, -hole, 0f),
+              )
+              // buildList, not `outer + inner`: a box has afield.graphics in scope, where
+              // `List<Vec3> + List<Vec3>` is element-wise vector addition and returns four points,
+              // not eight.
+              val points = buildList { addAll(outer); if (withRing) addAll(inner) }
+              val rings = if (withRing) listOf(listOf(0, 1, 2, 3), listOf(4, 5, 6, 7)) else listOf(listOf(0, 1, 2, 3))
+
+              val builder = PolytopeTopologyBuilder(rank = 3)
+              val vertices = points.map { builder.addElement(0) }
+              val face = builder.addElement(2)
+              for (ring in rings) for (i in ring.indices) {
+                  val edge = builder.addElement(1)
+                  builder.addIncidence(vertices[ring[i]], edge)
+                  builder.addIncidence(vertices[ring[(i + 1) % ring.size]], edge)
+                  builder.addIncidence(edge, face)
+              }
+              builder.setFaceCycle(face, rings.first().map { vertices[it] })
+              rings.drop(1).forEach { ring -> builder.addFaceHole(face, ring.map { vertices[it] }) }
+              builder.addIncidence(face, builder.addElement(3))
+              return PolyhedralObject(builder.buildValidated(), Realization3(points))
+          }
+
+          // cullBackFaces, deliberately: a rim triangle wound the wrong way would be *missing* here
+          // exactly as it would be missing on a GPU, so this picture is a winding test as well as a
+          // hole test. The wireframe is on so the eight rim triangles can be counted.
+          val view = MeshView(
+              yawDegrees = 0.0, pitchDegrees = 0.0, distance = 2.2,
+              width = 300, height = 260, wireframe = true, cullBackFaces = true,
+          )
+          val cells = listOf(true, false).map { withRing ->
+              val object3 = plate(withRing)
+              val mesh = object3.toTriMesh()
+              val png = Base64.getEncoder().encodeToString(mesh.renderPng(view, caption = "", title = null))
+              val face = object3.topology.elements(2).single()
+              """
+              <div>
+                <div style='color:#e6ecf4;font:600 13px monospace;padding-bottom:3px'>
+                  ${if (withRing) "addFaceHole(face, ring)" else "the same plate, no ring"}
+                </div>
+                <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
+                <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
+                  ${object3.topology.elements(0).size}v ${object3.topology.elements(1).size}e
+                  &middot; holes ${object3.topology.faceHoles(face.id).size}
+                  &middot; ${mesh.triangleCount} triangles
+                  &middot; area ${"%.3f".format(4.0 - if (withRing) 4.0 * hole * hole else 0.0)}
+                </div>
+              </div>
+              """.trimIndent()
+          }
+          display(
+              "plates",
+              "<div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px'>" +
+                  cells.joinToString("") + "</div>",
+          )
+          println(
+              """
+              left: one face, two boundary rings, ${plate(true).toTriMesh().triangleCount} triangles
+              right: the identical outline with the ring dropped, ${plate(false).toTriMesh().triangleCount} triangles
+              the filled area differs by exactly the ring: ${4.0 * hole * hole}
+              """.trimIndent(),
+          )
+  - create:
+      box: polytope_chained_vocabulary
+      name: "3 — every composite chains now"
+      frame: { x: 80.0, y: 360.0, w: 460.0, h: 84.0 }
+      properties:
+        code: |
+          import afield.stdlib.polytope.*
+          import afield.stdlib.MeshView
+          import afield.stdlib.renderPng
+          import java.util.Base64
+
+          // Until 2026-08-05 none of these compiled: the eight composites were declared on
+          // PolyhedralObject only, so cube().ambo() had no .bevel(), and needle, zip and ortho had no
+          // named function at all. Every operator is now on both receivers, so a chain reads the same
+          // wherever a step sits.
+          val chains: List<Pair<String, PolytopeTransformResult>> = listOf(
+              "cube().ambo().join()" to cube().ambo().join(),
+              "cube().ambo().needle()" to cube().ambo().needle(),
+              "cube().ambo().zip()" to cube().ambo().zip(),
+              "cube().ambo().ortho()" to cube().ambo().ortho(),
+              "cube().ambo().expand()" to cube().ambo().expand(),
+              "cube().ambo().snub()" to cube().ambo().snub(),
+              "cube().ambo().meta()" to cube().ambo().meta(),
+              "cube().ambo().bevel()" to cube().ambo().bevel(),
+          )
+
+          val view = MeshView(width = 260, height = 220, wireframe = false, distance = 2.4)
+          val cells = chains.map { (source, result) ->
+              val topology = result.polyhedron.topology
+              val png = Base64.getEncoder().encodeToString(
+                  result.polyhedron.canonicalize().polyhedron.toTriMesh().renderPng(view, caption = "", title = null),
+              )
+              """
+              <div>
+                <div style='color:#e6ecf4;font:600 12px monospace;padding-bottom:3px'>$source</div>
+                <img src='data:image/png;base64,$png' style='width:100%;border-radius:5px;display:block'/>
+                <div style='color:#93a4ba;font:11px monospace;padding-top:4px'>
+                  asked ${result.notationHistory.joinToString("") { it.symbol.toString() }}
+                  &middot; ran ${result.history.joinToString("") { it.symbol.toString() }}
+                  &middot; ${topology.elements(0).size}v ${topology.elements(1).size}e ${topology.elements(2).size}f
+                  &middot; &chi;=${topology.eulerCharacteristic()}
+                </div>
+              </div>
+              """.trimIndent()
+          }
+          display(
+              "chains",
+              "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px'>" +
+                  cells.joinToString("") + "</div>",
+          )
+
+          // The composite is recorded as what you asked for; the history is what actually ran. And a
+          // longer chain is just more of the same.
+          val long = cube().ambo().bevel().kis().dual()
+          println(
+              """
+              asked for: ${long.notationHistory.joinToString(" ") { it.displayName }}
+              actually ran: ${long.history.joinToString(" ") { it.displayName }}
+              result: ${long.polyhedron.topology.elements(0).size}v ${long.polyhedron.topology.elements(2).size}f,
+                  chi = ${long.polyhedron.topology.eulerCharacteristic()}
+              a composite still refuses a single realization policy:
+                  ${runCatching { cube().ambo().transform(ConwayOperator.BEVEL, DualCentroidRealization) }.exceptionOrNull()?.message}
+              """.trimIndent(),
+          )
+          viz("chain", long.summary())
+  - execute:
+      box: polytope_face_with_a_hole
+  - wait:
+      millis: 750
+  - execute:
+      box: polytope_plate_with_and_without
+  - wait:
+      millis: 750
+  - execute:
+      box: polytope_chained_vocabulary
+  - wait:
+      millis: 750

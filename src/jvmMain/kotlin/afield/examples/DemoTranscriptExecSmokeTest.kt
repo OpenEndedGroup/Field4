@@ -136,6 +136,11 @@ object DemoTranscriptExecSmokeTest {
         // A second pure-CPU polytope box on the same path: evaluate one Conway expression,
         // canonicalize it, and draw the realized and canonical forms side by side.
         "polytope_canonical_gallery",
+        // Three pure-CPU polytope boxes for faces with holes and for the chained Conway vocabulary.
+        // Box 1 ends in threeLines() as above; boxes 2 and 3 rasterise with TriMesh.renderPng. Box 1
+        // also *catches* four exceptions on purpose — the operations a holed face refuses — which are
+        // caught inside the box body and so are not error-kind output lines.
+        "polytope_holes_and_chains",
         // Eight pure-CPU typography boxes. The letters are filled from their own contours by the
         // family's own scanline filler and shown through showImgGrid / showPlaneGrid / showMeshGrid,
         // all of which are PngEncoder or Skia-SVG into `display` — no AWT rasteriser, no GPU. Box 5
