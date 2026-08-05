@@ -862,7 +862,7 @@ all the work:
 
 Which means the whole mini-notation arrives intact — polymeter, Euclid, `<a b>` alternation, `?`
 degrade, `.` grouping, `@` elongation — without RectSL parsing a character of it. See the
-[cheatsheet](rectsl_cheatsheet.md#musicality--the-pattern-language-as-scene-structure) for the
+[cheatsheet](rectsl_cheatsheet.md#musicality-the-pattern-language-as-scene-structure) for the
 full table.
 
 ### Four to the floor

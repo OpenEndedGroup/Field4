@@ -149,6 +149,8 @@ const titleForCategory = (category) => {
   if (!key) return "Other";
   const known = {
     ai: "AI",
+    // the fallback title-cases each word, which would render this one "Audio Ai"
+    "audio ai": "Audio AI",
     import: "Imports",
     imports: "Imports",
     type: "Types",
