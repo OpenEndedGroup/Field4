@@ -220,6 +220,7 @@ object OpRegistry {
         "piecewise", "piecewiseLinear", "catmullRom", "monotoneCubic", "hermite",
         "bSplineQuadratic", "cosineInterp", "smoothStepInterp", "smootherStepInterp",
         "stepHold", "nearestValue", "rbf", "granular",
+        "pat",
         "timeline", "timelineTap", "spliceWindow", "sequence", "sequenceLoop",
         "randomSequence", "weightedSequence", "randomPermute", "randomPermuteLoop",
         "palindrome", "roundRobin", "stack", "average", "select", "morph",

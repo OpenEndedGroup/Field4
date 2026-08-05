@@ -586,6 +586,14 @@ object FnNonDifferentiable {
             "sampleHold", "gateHold"
         )
         group(
+            "blends however many scheduled pattern atoms happen to cover x, so both the number of terms " +
+                "and where they sit are decided by the rhythm and by cps rather than fixed by the node — " +
+                "there is no expression tree of a known shape to differentiate. Finite differences fit it " +
+                "perfectly well, and that is the default",
+            closable = false, missing = "",
+            "pat"
+        )
+        group(
             "blends or selects among an arbitrary number of item children",
             closable = true,
             missing = "an n-ary FnExpr kind addressing item0..itemN, which the current Child(role) " +
