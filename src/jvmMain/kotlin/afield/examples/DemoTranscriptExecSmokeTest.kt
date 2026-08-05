@@ -148,6 +148,11 @@ object DemoTranscriptExecSmokeTest {
         // detect a wrapper older than ABI v3 — which is exactly what the *committed* dylib is, so that
         // is the branch CI takes — and draw the unsolved seed with an explanation rather than failing.
         "ceres_free_variables",
+        // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
+        // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
+        // no Renderer — so both run to completion, which is also the cheapest check that the
+        // emitter's own starting point still compiles against it.
+        "rectsl_glsl_sdf",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
@@ -158,6 +163,12 @@ object DemoTranscriptExecSmokeTest {
         "threebox",
         "rectsl_dataviz",
         "rectsl_plot_axes",
+        // Opens its own Window + Renderer to run a RectSL scene on a musical clock.
+        "rectsl_musicality",
+        // Lowers a RectSL scene to a GLSL distance field and draws it through a generated
+        // fullscreen-triangle pipeline. Opens its own Window + Renderer, so compile-only here;
+        // its pixels are checked by the `rectsl-sdf` docs capture instead.
+        "rectsl_sdf_live",
         "spin_glass",
         "imgui_vr_panel",
     )

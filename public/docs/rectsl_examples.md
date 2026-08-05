@@ -631,6 +631,212 @@ RectSL only sampled the result. Reach for `fitBest` when you have a shape in min
 and just need the numbers dialed in, and for `evolve(...)` when the *structure*
 itself (which operators) is still unknown.
 
+## The scene as a distance field, on the GPU
+
+<!--
+FIELD_TEST
+id: docs.rectsl.sdf
+runner: backdoor-box
+graphicsContext: true
+tags: [docs, rectsl, shaders, graphics, sdf]
+timeoutSec: 900
+execution: launch
+waitSec: 240.0
+expect:
+  allowMissingOutput: true
+  image:
+    path: /tmp/docs-rectsl-sdf-hero.png
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/_sdf-hero.png" source-image="/tmp/docs-rectsl-sdf-hero.png" wait="240.0" timeout="900" execution="launch" embed=false graphics-context=true name="rectsl-sdf" hidden=true fabricate-scene="rectsl-sdf"}
+```
+
+Everything above draws the way RectSL normally draws: sample the program at a
+time, lower the sampled rects to a triangle mesh, upload it, composite it back to
+front. This section does something else with the *same* language. A scene lowers
+once to a closed-form `float scene(vec2 p, float t)` — [the cheatsheet has the
+details](rectsl_cheatsheet.md#lowering-to-glsl-a-scene-as-a-signed-distance-field)
+— and then every fragment asks that one function how far away the nearest visible
+rectangle is. Nothing is uploaded per frame; between frames exactly one float
+changes.
+
+The scene is deliberately ordinary. One animated template, six copies from
+`array`, close enough together to overlap:
+
+```diffstatic {data-lang=rectsl}
+#rectsl
+->wall 9 5 abstract
+->duration 4
+->fps 30
+
+"blade" rect  0.85 ->square  0x2f9fe8 solid ->fill
+  '( 0=0  4=6.28318 ) ->rot
+  '( 0=-2.4  2=2.4  4=-2.4 ) tcb ->x
+  '( 0=-0.7  1=0.7  2=-0.7  3=0.7  4=-0.7 ) tcb ->y
+  6 '( ic 0.8 * 0 ->offset ) array
+;
+```
+
+Six rects, ten emitted curves, a 7.8KB fragment shader. Nothing in the scene text
+knows about any of what follows.
+
+### What a distance buys that a coverage mask does not
+
+A `RectSLSdfLook` is data — fill, outline width, glow falloff, contour spacing,
+bevel depth and light, motion-blur samples and shutter, blend radius, carve — and
+`RectSLSdfShader.fragment(field, look)` turns it into a complete fragment shader.
+There is one preset per capability, and each image below is that preset rendered
+through `RectSLGalleryHarness.renderSdf`.
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-fill.png" alt="antialiased fill from the distance field"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>fill</code> — one pixel of edge at any resolution. Note that it is
+the <em>union</em> silhouette: no seams where the copies overlap.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-outline.png" alt="outline at an arbitrary width"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>outline</code> — the band <code>|d| &lt; 0.035</code>. No stroke
+geometry was generated, and no width is too large.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-glow.png" alt="glow falling off outside the shape"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>glow</code> — <code>exp(-k·max(d,0))</code>, falling off with
+distance <em>outside</em> the shape, which coverage cannot express at all.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-contours.png" alt="iso-distance contour lines"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>contours</code> — iso-distance lines: rounded at convex corners,
+creased at concave ones, and continuing <em>inside</em> the shape. The clearest
+evidence that this is a signed distance and not a mask.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-relief.png" alt="per-pixel normals, lit"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>relief</code> — the gradient of the field is the normal of a
+rounded extrusion of it, so a flat 2D scene picks up a light. The hard creases are
+where the copies meet under <code>min</code>.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-blend.png" alt="smin fusing the copies of an array"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>blend</code> — the same scene with <code>min</code> replaced by
+<code>smin(·,·,0.55)</code>, so the six copies fuse into one body. Compare the
+creases in <code>relief</code>: RectSL itself has no vocabulary for this.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-carve.png" alt="a second scene subtracted from the first"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>carve</code> — <code>max(d, -c)</code>, where <code>c</code> is a
+<em>second</em> RectSL scene emitted into the same shader. A rotating square is
+subtracted straight out of the band.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="../assets/rectsl/rectsl-sdf-motion-blur.png" alt="sub-frame motion blur"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>motion-blur</code> — 24 instants across a 0.14s shutter. Those
+instants were never rendered; the tracks are closed-form, so the field simply
+answers for them.</figcaption>
+</figure>
+</div>
+
+The motion blur is worth seeing move, because the streak is not a fixed smear — it
+tracks the velocity, and the velocity comes from a TCB spline the CPU solved once:
+
+<video src="../assets/rectsl/rectsl-sdf-motion-blur.mp4" poster="../assets/rectsl/rectsl-sdf-motion-blur.png"
+       autoplay loop muted playsinline
+       style="width:100%;max-width:640px;border-radius:8px;">
+</video>
+
+### At any zoom, from the same source
+
+Both halves show the same region of the same wall at the same output size. The left
+is rendered at the gallery's ordinary resolution and then magnified 4× with
+nearest-neighbour; the right is rendered at 4× and cropped. Nothing about the
+scene, the shader or the look changed between them — only how many fragments asked
+the question:
+
+<img src="../assets/rectsl/rectsl-sdf-zoom.png" alt="a 1x render magnified beside a 4x render"
+     style="width:100%;max-width:820px;border-radius:8px;">
+
+### What it costs — the same scene, both ways
+
+Left: the ordinary raster path (`RectSLRenderRunner`). Right: the distance field.
+Same program, same instant, same wall, composited side by side in one pass of the
+harness:
+
+<img src="../assets/rectsl/rectsl-sdf-counterfactual.png" alt="raster path beside the SDF path"
+     style="width:100%;max-width:820px;border-radius:8px;">
+
+The left half has per-rect fill, StackSL materials and z order — the individual
+quads and their overlaps are visible. The right half has none of them, because
+`min` is union and a union has no layers: fill, material and draw order are gone.
+In exchange it has an outline and a glow the left half cannot express at any
+resolution, and it could have blending, boolean ops, normals and motion blur too.
+
+Visibility is *not* dropped. A rect gated to zero by `->appear`, `->vanish` or
+`->live` contributes no silhouette, exactly as it draws nothing on the CPU.
+
+### Whether to believe any of it
+
+The pictures are the easy part. The harness also renders a *probe* shader — the
+same field, reporting `scene(p, t)` as a 24-bit fixed-point number instead of
+drawing it — reads the framebuffer back, and compares it against
+`program.sample(t)`, the CPU sampler the raster path draws from. It refuses to
+write a single image if the two disagree.
+
+The pixel→wall mapping is not re-derived on the CPU, which is how this sort of
+check usually ends up agreeing with itself: the probe reports `p.x` and `p.y` as
+well, so the mapping is fitted from the shader's own answers and its residual is
+held to the encoding's own step. Measured on the scene above, on a second scene
+built from `->degrade` and a mini-notation pattern — the two tracks whose fidelity
+is not free — and then on a spread of the real gallery: every scene that brings a new
+feature signature (groups, named easings, a forced bake, a different order of
+magnitude of rect count), because each of those is a different branch of `emitRect`:
+
+```diffstatic {data-lang=console}
+near (±1 wall unit):        5246 points, max |GPU-CPU| = 1.08e-06, mean 3.23e-07
+far  (±32):                14600 points, max 4.46e-06, mean 1.64e-06  (step 3.82e-06)
+baked near (±1):            2541 points, max 1.03e-06, mean 3.32e-07
+baked far  (±32):          10512 points, max 4.93e-06, mean 1.80e-06
+gallery/mirrored-orbit:     1910 points, max 1.50e-06
+gallery/rising-bars:        3025 points, max 1.66e-06
+gallery/orbit-petals:       3135 points, max 1.71e-06
+gallery/gradient-sweep:     2810 points, max 2.47e-06
+gallery/pinwheel:           4914 points, max 1.81e-06
+gallery/wave-lattice:       7688 points, max 1.92e-06
+gallery/selection-logic:    4728 points, max 1.87e-06
+```
+
+Which is the documented claim, measured across 51,000 points and eleven programs:
+`double` on the CPU against `float` in a shader agrees to about 1e-6 of a wall
+unit, not to the ulp. The far pass cannot resolve better than its own encoding step
+and is checked against that rather than against 1e-6.
+
+The report is committed alongside the images as
+`assets/rectsl/rectsl-sdf-agreement.txt`, and is regenerated every time the page
+re-captures.
+
+The `->degrade` half of that second scene is worth a note, because it is the most
+sensitive row in the table without looking like it. `->degrade` is a 64-bit integer
+hash, and it is *lowered*, not sampled — so if the shader's hash disagreed with the
+CPU's by a single bit, a different set of rectangles would vanish and the
+disagreement would be the size of a rectangle, not 1e-6. Reading 1.03e-06 there means
+every copy that the CPU drops on that cycle is the copy the GPU drops. See
+[the cheatsheet's Fidelity section](rectsl_cheatsheet.md#fidelity) for how a 64-bit
+hash fits in a shader that has no 64-bit integers.
+
+### Open it
+
+`dev_docs/agents/transcripts/rectsl_sdf_live.yaml` replays into a fresh document
+and puts this on screen, moving, in two boxes — a Window + Renderer, and one box
+that compiles the scene, emits the field, wraps it in a look and draws it with a
+fullscreen triangle. Change `preset("relief")` to `"contours"` or `"blend"` and
+re-run; edit the `#rectsl` string and re-run.
+
 ## Musicality — rhythm as scene structure
 
 The array primitives above multiply a shape across *space*. This section multiplies it across

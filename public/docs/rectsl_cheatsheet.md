@@ -626,7 +626,7 @@ Visibility is not dropped: a rect gated to zero by `->appear`, `->vanish`, or
 
 ### What you get for the trade
 
-Things a rasterized quad cannot do, all of which are now one line:
+Things a rasterized quad cannot do, all of which are one line over the same float:
 
 ```diffstatic {data-lang=glsl}
 float d = scene(p, t);
@@ -648,22 +648,110 @@ for (int i = 0; i < 8; ++i) {
 }
 ```
 
-And rects can now *combine*, which RectSL itself has no vocabulary for. Swap the
-union in the emitted `scene` for a smooth minimum and the copies of an `array`
-fuse into one blobby body as they pass each other:
+And rects can now *combine*, which RectSL itself has no vocabulary for. This one
+is not a look: it changes the set, so it happens in the emitter. Pass
+`RectSLSdfOptions(blendRadius = k)` and the `min` inside the union tree becomes a
+polynomial smooth minimum, and the copies of an `array` fuse into one body as they
+pass each other. (Rects gated invisible are excluded from the blend — their `1e9`
+sentinel would otherwise smear across the neighbourhood.)
 
-```diffstatic {data-lang=glsl}
-float smin(float a, float b, float k) {
-    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-    return mix(b, a, h) - k * h * (1.0 - h);
-}
-```
+### The looks, rendered
+
+You do not have to write any of the above. `RectSLSdfLook` is that vocabulary as
+data, `RectSLSdfShader.fragment(field, look)` assembles a whole fragment shader
+from it, and `RectSLSdfLook.PRESETS` carries one worked example per capability:
+
+| Preset | What it demonstrates |
+| --- | --- |
+| `fill` | Antialiased interior, one pixel of edge at any resolution. |
+| `outline` | A band `\|d\| < w` at any `w`. No stroke geometry. |
+| `glow` | `exp(-k·max(d,0))` — falloff with *distance*, outside the shape. |
+| `contours` | Iso-distance lines, inside and out. The proof it is a distance. |
+| `relief` | Per-pixel normals from the gradient, lit. |
+| `blend` | `smin` between rects (via `blendRadius`), so copies fuse. |
+| `carve` | `max(d, -c)` against a *second* emitted scene. |
+| `motion-blur` | 24 instants inside one frame, from the closed-form tracks. |
+
+The rendered evidence, the raster-vs-SDF counterfactual and the resolution pair
+are on [the examples page](rectsl_examples.md#the-scene-as-a-distance-field-on-the-gpu).
+Two of them in one image, because they are the two that a description does not
+convey — the same scene under `min` and under `smin`:
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;">
+<figure style="margin:0;">
+<img src="assets/rectsl/rectsl-sdf-relief.png" alt="per-pixel normals over a plain union"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>relief</code> — hard creases where the copies meet under
+<code>min</code>.</figcaption>
+</figure>
+<figure style="margin:0;">
+<img src="assets/rectsl/rectsl-sdf-blend.png" alt="the same scene under a smooth union"
+     style="width:100%;border-radius:6px;">
+<figcaption><code>blend</code> — the same scene, <code>blendRadius = 0.55</code>.</figcaption>
+</figure>
+</div>
+
+And the one that shows what the field actually is, rather than what it draws —
+iso-distance lines every 0.22 wall units, continuing inside the shape because the
+distance is signed:
+
+<img src="assets/rectsl/rectsl-sdf-contours.png" alt="iso-distance contour lines"
+     style="width:100%;max-width:520px;border-radius:8px;">
+
+To put it on screen and moving, replay
+`dev_docs/agents/transcripts/rectsl_sdf_live.yaml` into a fresh document: two
+boxes, a Window + Renderer and one box that compiles a scene, emits the field,
+wraps it in a look, and draws it with a fullscreen triangle and a clock.
 
 ### Fidelity
 
-The emitted geometry is checked against the CPU sampler to `1e-9` across the
-whole gallery, and every gallery scene is compiled through shaderc as part of
+Three checks, in increasing order of how much they prove.
+
+The emitted **geometry** is checked against the CPU sampler to `1e-9` across the
+whole gallery, and every gallery scene is **compiled through shaderc** as part of
 the build, so a shader that will not compile fails the build rather than the
-pipeline. The one unavoidable difference is precision: the sampler works in
-`double` and a shader in `float`, so expect agreement to about `1e-6` of a wall
-unit, not to the ulp.
+pipeline.
+
+The **pixels** are checked too. `RectSLGalleryHarness.measureSdfAgreement` renders
+a probe shader that reports `scene(p, t)` as a 24-bit fixed-point number instead
+of drawing it, reads the framebuffer back, and compares it against
+`program.sample(t)`. The pixel→wall mapping is recovered from the shader's own
+answers — the probe reports `p.x` and `p.y` as well — so the comparison assumes
+nothing about how pixels map to the wall.
+`measureGallerySdfAgreement` then repeats it across a spread of the real gallery,
+one scene per distinct feature signature, so groups, named easings and every rect
+count get covered rather than one hand-picked shape. Measured over 51,000 points
+and eleven programs: **max 2.47e-06** wall units, mean under 1e-06. That is the one
+unavoidable difference, and it is exactly what it should be: the sampler works in
+`double` and a shader in `float`, so expect about `1e-6` of a wall unit, not the
+ulp.
+
+**What is approximated — two tracks, not three.** `->degrade`'s dropout gate is a
+64-bit integer hash, which reads like something a shader cannot evaluate and is not.
+It lowers **exactly**: a 64-bit value is a `uvec2` lane pair, `umulExtended` gives
+the exact 32×32→64 product the multiplies need, and the final `k / 2^53 <
+probability` test is an integer comparison in disguise — so the threshold is folded
+to an exact 53-bit integer on the CPU and compared with an unsigned 64-bit `<`, with
+no float anywhere in the decision. `ordinal` and the salt are known at emit time, so
+two of the three hash inputs fold to a single literal. The only residual difference
+is which cycle `t` belongs to, since `floor(t · cps)` runs in `float` here and
+`double` there — a disagreement possible only within about an ulp of a cycle
+boundary, where the gate is discontinuous anyway.
+
+The two that remain baked are the pattern queries, which are rational arithmetic
+over a mini-notation tree — an interpreter rather than a formula, and a different
+kind of problem. They become a run-length-compressed hold chain and `emitSdf` says so
+in `notes`. Both are piecewise constant, so that bake is **exact** wherever a pattern
+edge lands on a bake sample instant, which is most of the time: the bake runs at
+`max(fps × 4, 120)` Hz and pattern edges are cycle fractions. Where an edge falls
+between two samples it moves to the nearer one, displacing it by at most one bake
+interval — 8.3 ms at 30 fps. Measured on the timeline rather than assumed: `pat`
+disagreed with its own sampler on **0%** of a grid 40× finer than the bake;
+sample-and-hold `hold-pat` on **0.81%**, every one of those points within one bake
+interval of a real edge. Nothing is lost in the middle of a plateau.
+
+The gate's lowering is held to a stronger standard than that, because it can be:
+6720 (ordinal, cycle, probability, salt) points agree **bit for bit** with the CPU
+track, and the pixel differential then covers a `->degrade` scene end to end — where
+a wrong hash would not be a small numeric error but a *different set of rectangles*,
+so it shows up at the scale of the wall rather than at 1e-6.

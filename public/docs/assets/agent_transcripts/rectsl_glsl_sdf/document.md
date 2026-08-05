@@ -77,7 +77,7 @@ from the single float that `scene` returns, and none of it is available
 from the rasterized-quad path that RectSL normally renders through.
 
 ```edn [field-box id="sdf_use" role="properties"]
-{"id" "sdf_use" "index" 1 "name" "using the distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "using the distance" "_tombstone" false "frame" #afield/rect [40.0 -240.0 320.0 260.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_use_code_.kt" "lines" 45 "characters" 1773 "sha256" "be4e558024178e041976ef4b0f56c123401cb03e3ca1e2a4074e3295d3b840a1"}]}
+{"id" "sdf_use" "index" 1 "name" "using the distance" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "using the distance" "_tombstone" false "frame" #afield/rect [40.0 -240.0 320.0 260.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "sdf_use_code_.kt" "lines" 52 "characters" 2196 "sha256" "9384bd2c099a1f1feaf6e8c45fce0abd95130f10b818bee3ef45e5783c94e7ea"}]}
 ```
 
 ```kotlin [field-property box="sdf_use" name="code" path="sdf_use_code_.kt"]
@@ -86,6 +86,7 @@ from the rasterized-quad path that RectSL normally renders through.
 // from the rasterized-quad path that RectSL normally renders through.
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.RectSLGlsl
+import afield.rectsl.RectSLSdfLook
 
 val rectsl = """
 #rectsl
@@ -125,6 +126,12 @@ val fragment = buildString {
 
 println(fragment.lines().takeLast(12).joinToString("\n"))
 println()
-println("full fragment: ${fragment.length} chars — hand it to a shader box or Shadertoy")
+println("full fragment: ${fragment.length} chars")
+println()
+// This box assembles the shader by hand to show what the pieces are. You do not
+// have to: RectSLSdfLook is that vocabulary as data, RectSLSdfShader assembles the
+// whole thing, and there is one preset per capability the field is good for.
+println("presets that do this for you: " + RectSLSdfLook.PRESETS.joinToString(", ") { it.name })
+println("to see it drawn and moving, replay the rectsl_sdf_live transcript")
 ```
 

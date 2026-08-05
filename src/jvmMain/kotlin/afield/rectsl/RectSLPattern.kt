@@ -167,14 +167,33 @@ internal fun VSig.asTrack(cps: Double): Track<Double> = PatTrack(signal, cps)
  * would turn `"viridis" ->x` (a colormap name in the wrong place) from a clear error into a
  * silent zero. So the text has to actually contain a number before it counts as a pattern, and
  * anything else falls through to the error message it has always produced.
+ *
+ * The *order* of that guard matters, and used not to. Asking [pat] first and treating any
+ * failure as "not a pattern" hides bugs in the mini-notation machinery behind a message about
+ * the caller's string: a crash in `pat`'s source-location helper made `"0 1 2 3" ->x` inside a
+ * live Field box report "a String is read as mini-notation only when it contains numbers".
+ * So the cheap textual question is asked first, and once the text looks like a rhythm any
+ * failure to read it is reported as itself. The semantic decision is unchanged — a numeric
+ * *atom* is still what makes it a pattern, so `"magma256"` is still not one.
  */
 internal fun numericPatternTrackOrNull(text: String, cps: Double): Track<Double>? {
-    val pattern = runCatching { pat(text) }.getOrNull() ?: return null
-    val hasNumericAtom = runCatching {
-        pattern.events(PatArc(PatQ.ZERO, PatQ.ONE)).any { it.value.trim().toDoubleOrNull() != null }
-    }.getOrDefault(false)
+    if (!DIGIT.containsMatchIn(text)) return null
+    val pattern: PatPattern<String>
+    val hasNumericAtom: Boolean
+    try {
+        pattern = pat(text)
+        hasNumericAtom = pattern.events(PatArc(PatQ.ZERO, PatQ.ONE))
+            .any { it.value.trim().toDoubleOrNull() != null }
+    } catch (t: Throwable) {
+        throw RectLangException(
+            "\"$text\" has digits in it, so it was read as a numeric rhythm, but mini-notation " +
+                "could not parse it: ${t.message ?: t.toString()}"
+        )
+    }
     return if (hasNumericAtom) PatTrack(pattern.nums(), cps) else null
 }
+
+private val DIGIT = Regex("""\d""")
 
 /**
  * A rhythm read as a track: its atoms are read as numbers, so `"0 0.5 1"` is a stepped ramp and

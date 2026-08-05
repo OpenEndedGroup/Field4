@@ -32,6 +32,16 @@ import kotlin.math.abs
  * `->appear` / `->vanish` / `->live` must not contribute a silhouette, so each
  * rect's alpha track is evaluated and tested before its distance is unioned in.
  *
+ * None of that list is aspirational, and it is more useful to say where the
+ * evidence is than to restate the claim. [RectSLSdfLook] is that vocabulary as
+ * data with one preset per capability, [RectSLSdfShader] assembles a whole
+ * fragment shader from it, and `RectSLGalleryHarness.renderSdf` renders each
+ * preset — plus a side-by-side against the raster path — into
+ * `public/docs/assets/rectsl/rectsl-sdf-*.png`. Two of them need the emitter's
+ * cooperation rather than the look layer's, because they change the *set*: see
+ * [RectSLSdfOptions]. To get it on screen and moving, replay
+ * `dev_docs/agents/transcripts/rectsl_sdf_live.yaml`.
+ *
  * # Fidelity
  *
  * Tracks are emitted symbolically, never sampled into tables: keyed tracks
@@ -43,7 +53,21 @@ import kotlin.math.abs
  *
  * The one unavoidable difference is precision: the CPU samples in `double` and
  * a shader runs in `float`. Expect agreement to about 1e-6 of a wall unit, not
- * to the ulp.
+ * to the ulp — which is now measured rather than assumed:
+ * `RectSLGalleryHarness.measureSdfAgreement` reads the *compiled shader's* own
+ * answers back out of a framebuffer and compares them against [SceneProgram.sample]
+ * across eleven programs, and the worst disagreement is 2.5e-06 wall units.
+ *
+ * What *is* approximated is now two tracks, not three. `->degrade`'s 64-bit
+ * integer hash reads like something a shader cannot do and is not: it lowers
+ * **exactly**, in `uvec2` lanes, with the threshold comparison done in integers so
+ * no float enters the decision (see `emitDegradeGate` and [INT64_HELPER]). The two
+ * that remain baked are the pattern queries, which are rational arithmetic over a
+ * mini-notation tree — an interpreter, not a formula, and a different kind of
+ * problem. They go through [bakeHoldChain] and are recorded in
+ * [RectSLSdfResult.notes]; being piecewise constant, that bake is exact wherever an
+ * edge lands on a bake sample instant and displaces an edge by at most one bake
+ * interval where it does not. `RectSLSdfBakeTest` measures both halves of that.
  */
 object RectSLGlsl {
 
@@ -175,36 +199,110 @@ float rectslBounceOut(float t) {
     val supportedEasings: Set<String> get() = EASING_GLSL.keys
 
     /**
+     * 64-bit integer arithmetic in a shader that has none.
+     *
+     * GLSL 450 gets `uint64_t` only with `GL_ARB_gpu_shader_int64`, which needs the
+     * `shaderInt64` device feature, so relying on it would make an emitted scene
+     * refuse to run on hardware that draws every other scene fine. A 64-bit value
+     * is therefore a `uvec2`: `x` the low 32 bits, `y` the high 32. Exactly the four
+     * operations [DegradeGateTrack]'s hash performs are implemented, and no more.
+     *
+     * The multiply is the only interesting one. `umulExtended` (GLSL 4.00) returns
+     * the exact 32x32 -> 64 product, and the two cross terms contribute only to the
+     * high lane, so the low 64 bits of a 64x64 product are exact — GLSL specifies
+     * `uint` arithmetic as wrapping mod 2^32, which is the same wrap Kotlin's `Long`
+     * multiply performs on each lane. Nothing here is an approximation of the CPU;
+     * it is the same arithmetic written out by hand.
+     */
+    private val INT64_HELPER: String = """
+uvec2 rectslShr64(uvec2 a, int n) {
+    if (n == 0) return a;
+    if (n < 32) return uvec2((a.x >> uint(n)) | (a.y << uint(32 - n)), a.y >> uint(n));
+    return uvec2(a.y >> uint(n - 32), 0u);
+}
+
+uvec2 rectslMul64(uvec2 a, uvec2 b) {
+    uint hi;
+    uint lo;
+    umulExtended(a.x, b.x, hi, lo);
+    return uvec2(lo, hi + a.y * b.x + a.x * b.y);
+}
+
+bool rectslLess64(uvec2 a, uvec2 b) {
+    return (a.y < b.y) || (a.y == b.y && a.x < b.x);
+}
+
+// A cycle index as a two's-complement 64-bit value, sign-extended like Kotlin's
+// Int-to-Long widening in `cycleOf(t, cps).toLong()`.
+uvec2 rectslCycle64(int c) {
+    return uvec2(uint(c), c < 0 ? 0xFFFFFFFFu : 0u);
+}
+""".trimIndent()
+
+    /** The smooth minimum the emitter reaches for when [RectSLSdfOptions.blendRadius] is set. */
+    private val SMIN_HELPER: String = """
+// Polynomial smooth minimum (Quilez). At k = 0 this is exactly min(); above it
+// the two fields fuse over a band of width k instead of creasing.
+float rectslSmin(float a, float b, float k) {
+    if (k <= 0.0) return min(a, b);
+    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+""".trimIndent()
+
+    /**
      * Lower a program to a `float <name>(vec2 p, float t)` distance field plus
      * everything it depends on. The result is self-contained GLSL: no uniforms,
      * no buffers, no samplers, so it can be pasted into any shader that has a
      * world-space point and a time.
+     *
+     * [options] covers the two things a *consumer* of the field cannot do for
+     * itself, because they happen inside `scene`: how the rects are combined
+     * ([RectSLSdfOptions.blendRadius]), and what the emitted symbols are called
+     * ([RectSLSdfOptions.namePrefix]) so that two scenes can live in one shader.
      */
-    fun emitSdf(program: SceneProgram, functionName: String = "rectslScene"): RectSLSdfResult {
-        val emitter = Emitter(program)
+    @JvmOverloads
+    fun emitSdf(
+        program: SceneProgram,
+        functionName: String = "rectslScene",
+        options: RectSLSdfOptions = RectSLSdfOptions()
+    ): RectSLSdfResult {
+        val emitter = Emitter(program, options)
         val body = emitter.emitSceneFunction(functionName)
-        val glsl = buildString {
-            appendLine(PRELUDE)
-            if (emitter.usesBounce) {
-                appendLine()
-                appendLine(BOUNCE_HELPER)
-            }
-            emitter.easingFunctions().forEach { appendLine(); appendLine(it) }
+        // Globals are the functions whose bodies depend on nothing in this
+        // program — the box field, the easing curves, the smooth minimum. They
+        // keep their unprefixed names so that two scenes emitted into one shader
+        // share them by definition rather than by luck; the assembler merges the
+        // maps and writes each one once. See [RectSLSdfResult.globals].
+        val globals = LinkedHashMap<String, String>()
+        globals["rectslPrelude"] = PRELUDE
+        if (emitter.usesBounce) globals["rectslBounceOut"] = BOUNCE_HELPER
+        if (emitter.usesInt64) globals["rectslInt64"] = INT64_HELPER
+        if (options.blendRadius > 0.0) globals["rectslSmin"] = SMIN_HELPER
+        emitter.easingFunctions().forEach { (name, text) -> globals[name] = text }
+
+        val scene = buildString {
             // Tracks form a DAG and are named on first reach, so a shared child
             // can end up defined after the parent that needs it. Prototypes make
             // definition order irrelevant instead of demanding a topological sort.
             val prototypes = emitter.trackFunctionNames()
             if (prototypes.isNotEmpty()) {
-                appendLine()
                 appendLine("// forward declarations: the track graph is a DAG, not a tree")
                 prototypes.forEach { appendLine("float $it(float t);") }
+                appendLine()
             }
-            emitter.trackFunctions().forEach { appendLine(); appendLine(it) }
-            appendLine()
+            emitter.trackFunctions().forEach { appendLine(it); appendLine() }
             append(body)
+        }
+        val glsl = buildString {
+            globals.values.forEach { appendLine(it); appendLine() }
+            append(scene)
         }
         return RectSLSdfResult(
             glsl = glsl,
+            globals = globals,
+            sceneGlsl = scene,
+            sceneFunctionName = functionName,
             rectCount = emitter.rectCount,
             trackFunctionCount = emitter.trackFunctionCount,
             notes = emitter.notes
@@ -217,7 +315,58 @@ float rectslBounceOut(float t) {
     /** Ceiling on samples taken when baking a track that cannot be lowered. */
     private const val MAX_BAKE_SAMPLES = 4096
 
-    private class Emitter(val program: SceneProgram) {
+    /**
+     * The run-length-compressed hold chain a non-lowerable track becomes, exactly
+     * as [bakeHoldChain] wrote it into the shader.
+     *
+     * Held separately from the emitted text so the loss can be *measured* rather
+     * than described: `RectSLSdfBakeTest` evaluates [valueAt] against the track's
+     * own `sample` on a grid far finer than [sampleCount] and reports where and by
+     * how much they part company.
+     */
+    internal class BakedHold(
+        val steps: List<Pair<Double, Double>>,
+        val sampleCount: Int,
+        val duration: Double
+    ) {
+        /** Gap between bake samples — the most an edge can be displaced by. */
+        val sampleInterval: Double get() = duration / (sampleCount - 1).coerceAtLeast(1)
+
+        /** What the emitted GLSL returns: the last step whose time is `<= t`. */
+        fun valueAt(t: Double): Double {
+            var v = steps.first().second
+            for ((time, value) in steps) if (t >= time) v = value else break
+            return v
+        }
+    }
+
+    /**
+     * Sample a track that cannot be lowered symbolically and re-express it as the
+     * hold chain its values already describe.
+     *
+     * Only reached for tracks that are piecewise constant in time, which is what
+     * makes this a fair trade rather than a lossy one: consecutive equal samples
+     * collapse, so a dropout gate over six seconds becomes a few steps. The costs
+     * are real — the baked function is flat outside `[0, duration]`, and a step
+     * falling between two samples lands on the nearer sample instant, which puts
+     * an edge up to half a sample interval out of place.
+     */
+    internal fun bakeHoldChain(track: Track<Double>, programDuration: Double, fps: Double): BakedHold {
+        val duration = if (programDuration > 0.0) programDuration else 1.0
+        val rate = maxOf(fps * 4.0, 120.0)
+        val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
+        val steps = mutableListOf<Pair<Double, Double>>()
+        for (i in 0 until count) {
+            val t = duration * i / (count - 1).coerceAtLeast(1)
+            val v = track.sample(t)
+            if (steps.isEmpty() || steps.last().second != v) steps += t to v
+        }
+        return BakedHold(steps, count, duration)
+    }
+
+    private class Emitter(val program: SceneProgram, val options: RectSLSdfOptions = RectSLSdfOptions()) {
+        private val prefix = options.namePrefix
+
         private val nodeMap: Map<String, Node> = program.nodes.associateBy { it.id }
         private val parentOf: Map<String, String> = buildMap {
             program.nodes.filterIsInstance<GroupNode>().forEach { group ->
@@ -231,6 +380,10 @@ float rectslBounceOut(float t) {
         val notes = mutableListOf<String>()
         var usesBounce = false
             private set
+
+        /** True once a `->degrade` gate has been lowered and needs the uvec2 lane helpers. */
+        var usesInt64 = false
+            private set
         var rectCount = 0
             private set
 
@@ -240,8 +393,10 @@ float rectslBounceOut(float t) {
 
         fun trackFunctionNames(): List<String> = trackBodies.keys.toList()
 
-        fun easingFunctions(): List<String> = easings.map { name ->
-            "float ${easingFunctionName(name)}(float t) {\n    ${EASING_GLSL.getValue(name)}\n}"
+        /** Easing name -> (function name, body). Global: the curve does not depend on the scene. */
+        fun easingFunctions(): List<Pair<String, String>> = easings.map { name ->
+            easingFunctionName(name) to
+                "float ${easingFunctionName(name)}(float t) {\n    ${EASING_GLSL.getValue(name)}\n}"
         }
 
         /**
@@ -253,7 +408,7 @@ float rectslBounceOut(float t) {
             val rects = program.nodes.filterIsInstance<RectNode>()
             val perRect = rects.mapIndexed { index, rect ->
                 rectCount++
-                "rectslShape$index" to emitRect(rect, index)
+                "${prefix}Shape$index" to emitRect(rect, index)
             }
             if (rects.isEmpty()) notes += "scene has no rects; the field is empty everywhere"
             val out = StringBuilder()
@@ -262,7 +417,12 @@ float rectslBounceOut(float t) {
                 out.appendLine()
             }
             val top = unionTree(perRect.map { it.first }, out)
-            out.appendLine("// $rectCount rect(s), unioned. Positive outside, negative inside.")
+            val how = if (options.blendRadius > 0.0) {
+                "smooth-unioned over ${options.blendRadius} wall unit(s)"
+            } else {
+                "unioned"
+            }
+            out.appendLine("// $rectCount rect(s), $how. Positive outside, negative inside.")
             out.appendLine("float $functionName(vec2 p, float t) {")
             out.appendLine("    return ${top?.let { "$it(p, t)" } ?: "1e9"};")
             out.append("}")
@@ -291,10 +451,23 @@ float rectslBounceOut(float t) {
                         next += chunk.single()
                         continue
                     }
-                    val name = "rectslUnion${group++}"
+                    val name = "${prefix}Union${group++}"
+                    val k = options.blendRadius
                     out.appendLine("float $name(vec2 p, float t) {")
                     out.appendLine("    float d = ${chunk.first()}(p, t);")
-                    chunk.drop(1).forEach { out.appendLine("    d = min(d, $it(p, t));") }
+                    chunk.drop(1).forEach {
+                        // A rect gated invisible returns the 1e9 sentinel, which a
+                        // smooth minimum would drag the whole neighbourhood towards.
+                        // Only blend where both operands are real distances.
+                        if (k > 0.0) {
+                            out.appendLine("    { float e = $it(p, t);")
+                            out.appendLine(
+                                "      d = (d > 1e8 || e > 1e8) ? min(d, e) : rectslSmin(d, e, ${k.glslFloat()}); }"
+                            )
+                        } else {
+                            out.appendLine("    d = min(d, $it(p, t));")
+                        }
+                    }
                     out.appendLine("    return d;")
                     out.appendLine("}")
                     out.appendLine()
@@ -306,14 +479,13 @@ float rectslBounceOut(float t) {
         }
 
         /**
-         * One rect, with its ancestor group transforms composed outward exactly
-         * as [Transform2d.then] does on the CPU: the child's translation is
-         * scaled and rotated by the parent before being added, rotations and
-         * alphas accumulate, scales multiply.
-         */
-        /**
          * One rect's world transform and box, with statically-identity work left
          * out.
+         *
+         * The composition is the CPU's, outward through the ancestor groups
+         * exactly as [Transform2d.then] does it: a child's translation is scaled
+         * and rotated by its parent before being added, rotations and alphas
+         * accumulate, scales multiply.
          *
          * Most rects in a real scene never rotate, never scale, and never fade,
          * and most are not in a group — so writing the general composition for
@@ -365,7 +537,7 @@ float rectslBounceOut(float t) {
 
             return buildString {
                 appendLine("// ${rect.id}")
-                appendLine("float rectslShape$index(vec2 p, float t) {")
+                appendLine("float ${prefix}Shape$index(vec2 p, float t) {")
                 if (usesC) appendLine("    vec2 c = vec2(0.0);")
                 if (!rotIsZero) appendLine("    float rot = 0.0;")
                 if (!scaleIsOne) appendLine("    vec2 s = vec2(1.0);")
@@ -480,7 +652,7 @@ float rectslBounceOut(float t) {
          */
         private fun functionFor(track: Track<Double>): String {
             trackNames[track]?.let { return it }
-            val name = "rectslTrack${trackNames.size}"
+            val name = "${prefix}Track${trackNames.size}"
             // Claim the name before emitting the body: the body recurses into
             // children, and a shared child must resolve to this same map.
             trackNames[track] = name
@@ -511,15 +683,70 @@ float rectslBounceOut(float t) {
                     "mix(${ref(track.before)}, ${ref(track.after)}, " +
                         "${cycleGateExpr(track.k, track.cps, track.phase)})"
                 )
-                // The rest are step functions no shader can evaluate: a 64-bit
-                // integer hash, and rational-arithmetic pattern queries. Bake
-                // them — being piecewise constant, they compress to a handful of
-                // steps rather than to a table.
-                is DegradeGateTrack -> bakeAsHold(name, track, "degrade gate")
+                // `->degrade` used to be baked with the two pattern queries, on the
+                // grounds that a 64-bit integer hash is not something a shader can
+                // evaluate. It is: see [emitDegradeGate]. What remains baked is the
+                // pair that really cannot be lowered — rational-arithmetic queries
+                // over a mini-notation tree, which is an interpreter, not a formula.
+                // Being piecewise constant they compress to a handful of steps.
+                is DegradeGateTrack -> emitDegradeGate(name, track)
                 is PatTrack -> bakeAsHold(name, track, "pattern")
                 is PatHoldTrack -> bakeAsHold(name, track, "pattern (sample-and-hold)")
             }
             return name
+        }
+
+        /**
+         * `->degrade`, lowered **exactly** rather than baked.
+         *
+         * The gate is a splitmix64-style finaliser over
+         * `(ordinal, cycle, salt)` compared against `probability`, and every part of
+         * that survives the trip:
+         *
+         * - `ordinal` and `salt` are known at emit time, so
+         *   `(ordinal * 0x9E3779B1) xor (salt * 0xC2B2AE3D)` folds to **one** 64-bit
+         *   literal on the CPU. Only the cycle term varies with `t`.
+         * - the finaliser's xors, logical right shifts and 64-bit multiplies are
+         *   written out in `uvec2` lanes ([INT64_HELPER]), which is the same
+         *   arithmetic rather than a model of it.
+         * - the comparison is the part that would otherwise quietly reintroduce
+         *   `float`. The CPU asks `k / 2^53 < probability` where `k` is a 53-bit
+         *   integer and the division is exact, so the condition is exactly
+         *   `k < probability * 2^53`. That threshold is computed once, on the CPU, as
+         *   an exact `Long` — `ceil` because `k` is an integer and the bound is not —
+         *   and compared with an unsigned 64-bit `<`. No float is involved in the
+         *   decision at all, so there is no near-threshold ulp to lose.
+         *
+         * The one residual difference is the cycle index itself: `floor(t * cps)` is
+         * evaluated in `float` here and `double` on the CPU, so the two can disagree
+         * about which cycle `t` belongs to within about an ulp of a cycle boundary.
+         * That is a discontinuity of the gate either way, and it is roughly five
+         * orders of magnitude tighter than the 8.3ms edge displacement the bake had.
+         */
+        private fun emitDegradeGate(name: String, track: DegradeGateTrack): String {
+            usesInt64 = true
+            // Fold everything that does not depend on t. `ordinal` and `salt` are Ints
+            // widened to Long exactly as the CPU widens them.
+            val keyed = (track.ordinal * 0x9E3779B1L) xor (track.salt * 0xC2B2AE3DL)
+            // `u < probability` with u = k / 2^53 exactly  <=>  k < probability * 2^53.
+            // p in [0,1] so p * 2^53 <= 2^53 and the product is exact in double; ceil
+            // turns "k < a real" into "k < an integer" without changing the predicate.
+            val threshold = kotlin.math.ceil(track.probability.coerceIn(0.0, 1.0) * 9007199254740992.0).toLong()
+            return buildString {
+                appendLine("float $name(float t) {")
+                appendLine("    // ->degrade ordinal=${track.ordinal} p=${track.probability} salt=${track.salt}")
+                appendLine("    int cyc = int(floor(t * ${track.cps.glslFloat()}));")
+                appendLine(
+                    "    uvec2 h = ${keyed.glslUvec2()} ^ rectslMul64(rectslCycle64(cyc), ${0x85EBCA77L.glslUvec2()});"
+                )
+                appendLine("    h ^= rectslShr64(h, 33);")
+                appendLine("    h = rectslMul64(h, ${(-0xAE502812AA7333L).glslUvec2()});")
+                appendLine("    h ^= rectslShr64(h, 29);")
+                appendLine("    h = rectslMul64(h, ${(-0x3B314601E57A13ADL).glslUvec2()});")
+                appendLine("    h ^= rectslShr64(h, 32);")
+                appendLine("    return rectslLess64(rectslShr64(h, 11), ${threshold.glslUvec2()}) ? 0.0 : 1.0;")
+                append("}")
+            }
         }
 
         /** `1.0` on the cycles `->every k` fires on, `0.0` elsewhere. */
@@ -541,21 +768,14 @@ float rectslBounceOut(float t) {
          * between two samples lands on the nearer sample instant.
          */
         private fun bakeAsHold(name: String, track: Track<Double>, what: String): String {
-            val duration = if (program.duration > 0.0) program.duration else 1.0
-            val rate = maxOf(program.fps * 4.0, 120.0)
-            val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
-            val steps = mutableListOf<Pair<Double, Double>>()
-            for (i in 0 until count) {
-                val t = duration * i / (count - 1).coerceAtLeast(1)
-                val v = track.sample(t)
-                if (steps.isEmpty() || steps.last().second != v) steps += t to v
-            }
-            notes += "$what baked as ${steps.size} step(s) from $count samples over " +
-                "[0, ${duration}s]; constant outside that range"
+            val bake = bakeHoldChain(track, program.duration, program.fps)
+            notes += "$what baked as ${bake.steps.size} step(s) from ${bake.sampleCount} samples " +
+                "over [0, ${bake.duration}s]; constant outside that range, and an edge that falls " +
+                "between two samples is displaced by up to ${"%.5f".format(bake.sampleInterval)}s"
             return buildString {
                 appendLine("float $name(float t) {")
-                appendLine("    float v = ${steps.first().second.glslFloat()};")
-                steps.drop(1).forEach { (time, value) ->
+                appendLine("    float v = ${bake.steps.first().second.glslFloat()};")
+                bake.steps.drop(1).forEach { (time, value) ->
                     appendLine("    if (t >= ${time.glslFloat()}) v = ${value.glslFloat()};")
                 }
                 appendLine("    return v;")
@@ -692,9 +912,59 @@ float rectslBounceOut(float t) {
     }
 }
 
+/**
+ * A `Long` as the `uvec2` lane pair [RectSLGlsl.INT64_HELPER] operates on: `x` the
+ * low 32 bits, `y` the high 32, both written as unsigned hex so no sign ever has to
+ * survive a round trip through GLSL's `int` literal parsing.
+ */
+internal fun Long.glslUvec2(): String {
+    val lo = (this and 0xFFFFFFFFL).toString(16)
+    val hi = ((this ushr 32) and 0xFFFFFFFFL).toString(16)
+    return "uvec2(0x${lo}u, 0x${hi}u)"
+}
+
+/**
+ * How a scene is lowered — the choices a consumer of the field cannot make for
+ * itself, because they happen *inside* `scene`.
+ *
+ * [blendRadius] replaces the `min` that unions the rects with a polynomial
+ * smooth minimum of that radius, in wall units. This is the one advertised
+ * capability that is not a look: it changes the set, so copies of an `array`
+ * fuse into one body as they pass each other. Rects gated invisible are excluded
+ * from the blend rather than dragging their 1e9 sentinel into it.
+ *
+ * [namePrefix] renames every symbol this emission owns (`<prefix>Shape*`,
+ * `<prefix>Track*`, `<prefix>Union*`). The scene-independent helpers — the box
+ * field, the easing curves, the smooth minimum — keep their `rectsl…` names on
+ * purpose, so two scenes emitted into one shader *share* them; see
+ * [RectSLSdfResult.globals].
+ */
+data class RectSLSdfOptions(
+    val blendRadius: Double = 0.0,
+    val namePrefix: String = "rectsl"
+) {
+    init {
+        require(blendRadius >= 0.0) { "blendRadius cannot be negative" }
+        require(namePrefix.isNotBlank() && namePrefix.all { it.isLetterOrDigit() || it == '_' }) {
+            "namePrefix must be a GLSL identifier fragment, was '$namePrefix'"
+        }
+    }
+}
+
 /** What [RectSLGlsl.emitSdf] produced, and anything it could not carry across. */
 data class RectSLSdfResult(
+    /** [globals] then [sceneGlsl]: the whole self-contained field, ready to paste. */
     val glsl: String,
+    /**
+     * Function name -> definition, for the helpers whose bodies depend on nothing
+     * in this program. Merging the maps of two emissions and writing each entry
+     * once is what lets two scenes share one shader; see [RectSLSdfOptions].
+     */
+    val globals: Map<String, String> = emptyMap(),
+    /** Just this program's own functions — tracks, shapes, unions, and `scene`. */
+    val sceneGlsl: String = glsl,
+    /** The name the scene function was emitted under. */
+    val sceneFunctionName: String = "rectslScene",
     val rectCount: Int,
     val trackFunctionCount: Int,
     /** Fidelity caveats — empty means nothing was approximated or dropped. */

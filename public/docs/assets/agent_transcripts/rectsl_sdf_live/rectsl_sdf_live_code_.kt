@@ -1,0 +1,100 @@
+// A RectSL scene as a signed distance field, on the GPU, moving.
+//
+// RectSL normally draws by lowering each sampled frame to a triangle mesh —
+// painter's-algorithm 2D, one quad per rect. This does something else: it lowers
+// the whole *program* once, to a closed-form `float scene(vec2 p, float t)`, and
+// then every pixel asks that function how far away the nearest visible rectangle
+// is. Time is a uniform, so nothing is re-uploaded per frame; the only thing that
+// changes between frames is one float.
+//
+// What that buys, and what it costs, is in rectsl_cheatsheet.md under
+// "Lowering to GLSL". The short version: outlines and glows at any width, `smin`
+// blending *between* rectangles, boolean ops, per-pixel normals and sub-frame
+// motion blur — in exchange for fill, material and z order, because `min` is
+// union and a union has no layers.
+import afield.four.Renderer
+import afield.four.modules.Mesh
+import afield.four.modules.Module
+import afield.four.modules.fromContext
+import afield.four.modules.parameters
+import afield.four.modules.pointer
+import afield.rectsl.RectAnimationOracle
+import afield.rectsl.RectSLGlsl
+import afield.rectsl.RectSLSdfLook
+import afield.rectsl.RectSLSdfShader
+
+val renderer: Renderer = fromContext()
+
+// 1. An ordinary RectSL scene. Nothing here is SDF-specific: one animated
+//    template, six copies from `array`. Edit it and re-run.
+val rectsl = """
+#rectsl
+->wall 9 5 abstract
+->duration 4
+->fps 30
+
+"blade" rect  0.85 ->square
+  '( 0=0  4=6.28318 ) ->rot
+  '( 0=-2.4  2=2.4  4=-2.4 ) tcb ->x
+  '( 0=-0.7  1=0.7  2=-0.7  3=0.7  4=-0.7 ) tcb ->y
+  6 '( ic 0.8 * 0 ->offset ) array
+;
+"""
+val program = RectAnimationOracle.compile(rectsl).program
+
+// 2. Pick a look. One of: fill, outline, glow, contours, relief, blend,
+//    carve (needs a second scene), motion-blur. Change it and re-run.
+//      contours    — iso-distance lines, the clearest proof this is a distance
+//      blend       — smin, so the six copies fuse into one body
+//      motion-blur — 24 instants inside one frame, from closed-form tracks
+val look = RectSLSdfLook.preset("relief")
+
+// 3. Lower the scene and wrap it in the look. Both shader stages are generated:
+//    there is no hand-written GLSL in this box.
+//
+//    Note the name: `fragmentSource`, not `fragment`. Inside `parameters { … }` the
+//    implicit receiver has its own `fragment` property, and in a *box* your top-level
+//    `val`s are properties of the script rather than locals — so the receiver's one
+//    wins, `fragment = fragment` assigns the empty string to itself, and shaderc is
+//    handed a 0-character shader. It fails with "Desktop shaders for Vulkan SPIR-V
+//    require version 140 or higher", which is not a hint about anything.
+val field = RectSLGlsl.emitSdf(program, "scene", look.emitOptions())
+val fragmentSource = RectSLSdfShader.fragment(field, look)
+println(
+    "look=${look.name}  rects=${field.rectCount}  curves=${field.trackFunctionCount}  " +
+        "fragment=${fragmentSource.length} chars"
+)
+if (!field.ok) println("fidelity caveats: ${field.notes.joinToString("; ")}")
+
+// 4. One fullscreen triangle, no vertex attributes, and a clock. `time` is the
+//    only thing that changes per frame — the geometry never moves on the CPU.
+val module = Module(parameters(renderer) {
+    name = "rectsl-sdf-live"
+    vertex = RectSLSdfShader.VERTEX
+    fragment = fragmentSource
+    blend = false
+    depthTest = false
+    primitiveType = triangles
+}).pointer()
+
+val mesh = Mesh(renderer, module)
+mesh.resize(3, 0, module)
+
+val startedAt = System.nanoTime()
+mesh.push.bind("time") {
+    (((System.nanoTime() - startedAt) / 1e9) % program.duration).toFloat()
+}
+// Keep the wall's height fixed and let its width follow the window, so resizing
+// shows more of the world instead of stretching it.
+mesh.push.bind("wallWidth") {
+    (program.wall.height * renderer.window.width / renderer.window.height.toDouble()).toFloat()
+}
+mesh.push["wallHeight"] = program.wall.height.toFloat()
+// Declared in the shared push block for the probe shader; unused by a look.
+mesh.push["probeChannel"] = 0f
+mesh.push["probeRange"] = 1f
+
+module.current.meshes["blades"] = mesh
+renderer += "rectsl-sdf-live" to module
+
+println("rectsl sdf live — edit the scene or the look and re-run")
