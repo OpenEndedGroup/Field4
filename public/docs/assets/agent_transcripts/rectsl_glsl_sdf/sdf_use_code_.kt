@@ -3,6 +3,7 @@
 // from the rasterized-quad path that RectSL normally renders through.
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.RectSLGlsl
+import afield.rectsl.RectSLSdfLook
 
 val rectsl = """
 #rectsl
@@ -42,4 +43,10 @@ val fragment = buildString {
 
 println(fragment.lines().takeLast(12).joinToString("\n"))
 println()
-println("full fragment: ${fragment.length} chars — hand it to a shader box or Shadertoy")
+println("full fragment: ${fragment.length} chars")
+println()
+// This box assembles the shader by hand to show what the pieces are. You do not
+// have to: RectSLSdfLook is that vocabulary as data, RectSLSdfShader assembles the
+// whole thing, and there is one preset per capability the field is good for.
+println("presets that do this for you: " + RectSLSdfLook.PRESETS.joinToString(", ") { it.name })
+println("to see it drawn and moving, replay the rectsl_sdf_live transcript")

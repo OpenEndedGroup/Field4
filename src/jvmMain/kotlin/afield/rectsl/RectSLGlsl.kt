@@ -32,6 +32,16 @@ import kotlin.math.abs
  * `->appear` / `->vanish` / `->live` must not contribute a silhouette, so each
  * rect's alpha track is evaluated and tested before its distance is unioned in.
  *
+ * None of that list is aspirational, and it is more useful to say where the
+ * evidence is than to restate the claim. [RectSLSdfLook] is that vocabulary as
+ * data with one preset per capability, [RectSLSdfShader] assembles a whole
+ * fragment shader from it, and `RectSLGalleryHarness.renderSdf` renders each
+ * preset — plus a side-by-side against the raster path — into
+ * `public/docs/assets/rectsl/rectsl-sdf-*.png`. Two of them need the emitter's
+ * cooperation rather than the look layer's, because they change the *set*: see
+ * [RectSLSdfOptions]. To get it on screen and moving, replay
+ * `dev_docs/agents/transcripts/rectsl_sdf_live.yaml`.
+ *
  * # Fidelity
  *
  * Tracks are emitted symbolically, never sampled into tables: keyed tracks
@@ -43,7 +53,17 @@ import kotlin.math.abs
  *
  * The one unavoidable difference is precision: the CPU samples in `double` and
  * a shader runs in `float`. Expect agreement to about 1e-6 of a wall unit, not
- * to the ulp.
+ * to the ulp — which is now measured rather than assumed:
+ * `RectSLGalleryHarness.measureSdfAgreement` reads the *compiled shader's* own
+ * answers back out of a framebuffer and compares them against [SceneProgram.sample]
+ * across eleven programs, and the worst disagreement is 2.5e-06 wall units.
+ *
+ * What *is* approximated is the three tracks this emitter cannot lower — the
+ * `->degrade` hash and both pattern queries, which are baked to a hold chain by
+ * [bakeHoldChain] and recorded in [RectSLSdfResult.notes]. Because all three are
+ * piecewise constant that bake is exact wherever an edge lands on a bake sample
+ * instant, and displaces an edge by at most one bake interval where it does not;
+ * `RectSLSdfBakeTest` measures both halves of that.
  */
 object RectSLGlsl {
 
