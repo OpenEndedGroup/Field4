@@ -45,6 +45,16 @@ data class PolytopeTopologySummary(
     val faceDegreeCounts: Map<Int, Int>,
     /** Alternating sum over the *proper* ranks; the whole-polytope rank is deliberately excluded. */
     val eulerCharacteristic: Int,
+    /**
+     * Inner boundary rings summed over every face — 0 for everything the seeds and the Conway
+     * operators produce, so a non-zero number here is why [closedManifold] is false.
+     */
+    val faceHoleCount: Int,
+    /**
+     * [eulerCharacteristic] with one subtracted per hole: a face with `h` holes is a disk with `h`
+     * disks removed. Equal to [eulerCharacteristic] whenever [faceHoleCount] is 0.
+     */
+    val cellularEulerCharacteristic: Int,
     /** Basic incidence and boundary validation only. */
     val valid: Boolean,
     /** Null when the stricter every-edge-has-two-faces check was not run, not when it failed. */
@@ -153,6 +163,8 @@ fun PolytopeTopology.summary(): PolytopeTopologySummary {
             .eachCount()
             .toSortedMap(),
         eulerCharacteristic = eulerCharacteristic(),
+        faceHoleCount = totalFaceHoleCount(),
+        cellularEulerCharacteristic = cellularEulerCharacteristic(),
         valid = basic.isValid,
         closedManifold = if (rank >= 3 && basic.isValid) validate(checkManifold = true).isValid else null,
     )

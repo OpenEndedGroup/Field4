@@ -26,10 +26,19 @@ package afield.stdlib.polytope
  *
  * Written with `Float.toString`, so the output does not depend on the ambient locale, and at
  * `Realization3`'s single precision rather than any wider format.
+ *
+ * A face with holes throws. OFF has no way to say "and this ring is subtracted", so the alternatives
+ * were a file whose face is solid where the object's is not, or a refusal; a diagnostic that quietly
+ * disagrees with the object it is diagnosing is worse than no diagnostic. Triangulate first and write
+ * the mesh if you need the geometry out.
  */
 fun PolyhedralObject.toOff(): String {
     val realization = realization ?: throw IllegalStateException("OFF export requires a 3D realization")
     topology.validate().throwIfInvalid()
+    val holed = topology.elements(2).firstOrNull { topology.faceHasHoles(it.id) }
+    if (holed != null) throw IllegalArgumentException(
+        "face ${holed.id.value} has ${topology.faceHoles(holed.id).size} hole(s), which OFF cannot express",
+    )
     val vertices = topology.elements(0)
     val vertexIndices = vertices.mapIndexed { index, vertex -> vertex.id to index }.toMap()
     val faces = topology.elements(2)
