@@ -116,7 +116,7 @@ use the same uniform name.
 Panel 4 is the round trip closing: re-applying the original snapshot and re-capturing gives
 `No key differences.`, so a `Key` really is a complete description of what the scope watches.
 
-!!! info "The module-pointer targets are not exercised on this page"
+??? aside "The module-pointer targets are not exercised on this page"
 
     Besides a `Structure`, a scope can target a live module's uniform structures —
     `target(module: ModulePointer, name)` and its `ComputeModulePointer` / `MeshModulePointer`
@@ -557,7 +557,7 @@ distance, the constant height and the aim are each checked at **eleven** sample 
 move, and the midpoint figures — 8/√2 on each axis for the sclerp, 6.0000 and 27.24% for the
 straight line — once each, where they are defined.
 
-!!! note "The camera target itself needs a renderer"
+??? aside "The camera target itself needs a renderer"
 
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16`) — it resolves a renderer from
@@ -718,7 +718,7 @@ manifest can go wrong: `aCorruptManifestNeitherLosesHistoryNorReusesAVersionInde
 `aVersionFileTheManifestNeverRecordedIsNotOverwritten` and
 `aDeletedManifestStillLeavesTheFilesAsTheHistory`.
 
-!!! note "Until 2026-08-01 this was a data-loss bug"
+??? aside "Until 2026-08-01 this was a data-loss bug"
 
     `keyVersions` used to read the manifest inside a `runCatching` that swallowed the failure and
     returned an empty list, and `saveKey` numbered itself from that — so a manifest that could not be

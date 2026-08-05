@@ -1406,3 +1406,185 @@ button.md-search__icon[aria-label="Clear"] {
         background-color: #000 !important;
     }
 } */
+
+/* ── `??? aside` — production commentary, out of the reader's way ──────────────
+
+   A lot of what our admonitions carry is not advice to a reader: it is an
+   account of how a page came to be — what an earlier cut of a clip got wrong,
+   what the docs build cannot capture, which claim a test now pins. That is
+   worth keeping (it is how the next agent avoids re-making the mistake) and
+   worth not putting in a reader's path. `??? aside "Title"` is the marker for
+   it: collapsed everywhere, and at wide viewports lifted clean out of the text
+   column into the right margin.
+
+   The margin placement is the classic Tufte float trick rather than absolute
+   positioning or JS: `float: right` with a `margin-right` of −(width + gap)
+   leaves the box with a negative outer width, so it paints in the gutter and
+   displaces no body text at all. `clear: right` is what keeps two neighbouring
+   asides off each other — the browser stacks them, which means opening one
+   (and changing its height) reflows the rest for free, with nothing to
+   recompute on toggle or resize.
+
+   Everything below is an override of Material's admonition chrome, which
+   `<details>` inherits in full: a coloured border, a tinted summary bar, the
+   note mask-icon in `summary::before` and the rotating chevron in
+   `::after`. An aside wants none of it. */
+
+:root {
+    --field-aside-gap: 1.4rem;
+    --field-aside-width: auto;
+}
+
+.md-typeset details.aside {
+    background: transparent;
+    border: 0;
+    border-left: 1px solid var(--mono-border);
+    border-radius: 0;
+    box-shadow: none;
+    margin: 1.4em 0;
+    padding: 0 0 0 0.75rem;
+    font-size: 0.6rem;
+    line-height: 1.5;
+    color: var(--mono-text-faint);
+}
+
+.md-typeset details.aside:focus-within {
+    box-shadow: none;
+}
+
+.md-typeset details.aside > summary {
+    position: relative;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    padding: 0 0 0 0.75rem;
+    font-size: inherit;
+    font-weight: 400;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+}
+
+.md-typeset details.aside > summary:hover {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.md-typeset details.aside > summary code {
+    box-shadow: none;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+
+/* Material's right-hand chevron goes; its type icon is re-cut as the one small
+   leading triangle, so the title reads as a marginal note rather than a callout. */
+.md-typeset details.aside > summary::after {
+    display: none;
+}
+
+.md-typeset details.aside > summary::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.45em;
+    width: 0;
+    height: 0;
+    background: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+    border-left: 0.28rem solid currentColor;
+    border-top: 0.19rem solid transparent;
+    border-bottom: 0.19rem solid transparent;
+    transform-origin: 0.09rem 50%;
+    transition: transform 120ms ease;
+}
+
+.md-typeset details.aside[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.md-typeset details.aside > summary + * {
+    margin-top: 0.7em;
+}
+
+html .md-typeset details.aside > :last-child {
+    margin-bottom: 0;
+}
+
+/* `p` is styled by a bare element selector near the top of this file, which
+   sets both a size and justification; neither is inherited away, so an aside
+   has to name the element to get its own smaller measure back. */
+.md-typeset details.aside p,
+.md-typeset details.aside li {
+    font-size: inherit;
+    margin: 0.6em 0;
+}
+
+.md-typeset details.aside table {
+    font-size: 0.92em;
+}
+
+.md-typeset details.aside > summary,
+.md-typeset details.aside a {
+    text-underline-offset: 0.14em;
+}
+
+/* ── the margin proper ──────────────────────────────────────────────────────
+   82em (1312px) is where the gutter either side of the 34rem measure is finally
+   wide enough to hold a readable column: (1312 − 680)/2 = 316px, of which the
+   gap takes 28 and a little slack is left against the viewport edge. Below it
+   the aside stays in the flow, collapsed — the disclosure is doing the work on
+   its own. */
+@media screen and (min-width: 82em) {
+    .md-typeset details.aside {
+        --field-aside-width: clamp(
+            10.5rem,
+            calc((100vw - var(--field-reading-width)) / 2 - var(--field-aside-gap) - 1.2rem),
+            15rem
+        );
+
+        float: right;
+        clear: right;
+        width: var(--field-aside-width);
+        margin: 0 calc(-1 * (var(--field-aside-width) + var(--field-aside-gap))) 1.4em 0;
+        border-left: 0;
+        padding-left: 0;
+        font-size: 0.58rem;
+    }
+
+    /* Justification needs more measure than a margin column has; in one it just
+       opens rivers. */
+    .md-typeset details.aside,
+    .md-typeset details.aside p,
+    .md-typeset details.aside li {
+        text-align: left;
+    }
+
+    /* The wide-table bleed above spends `(52rem − reading)/2` per side on any
+       table with four or more columns. In the margin there is no such slack to
+       spend, and a table that took it would be thrown clear off the page — so
+       the override has to repeat the `:has()` to outrank it, not merely name
+       the class. */
+    .md-typeset details.aside .md-typeset__scrollwrap:has(table:not(.highlighttable) td:nth-child(4)),
+    .md-typeset details.aside .md-typeset__table:has(table:not(.highlighttable) td:nth-child(4)) {
+        width: auto;
+        min-width: 0;
+        margin-inline: 0;
+        display: block;
+        overflow-x: auto;
+    }
+}
+
+/* Printed, an aside comes back into the flow — a margin float against a paper
+   width nobody chose is worse than a block. Whether its body prints is the
+   browser's call, as for any `<details>`; the title always does. */
+@media print {
+    .md-typeset details.aside {
+        float: none;
+        width: auto;
+        margin: 1.4em 0;
+        border-left: 1px solid var(--mono-border);
+        padding-left: 0.75rem;
+    }
+}

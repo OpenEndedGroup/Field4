@@ -459,7 +459,7 @@ second. That is deliberate: with a long ttl the union of every metric the warp p
 accumulates, and the picture saturates into a mesh that never changes again. The forgetting is what
 makes the motion visible.
 
-!!! note "This clip and the next are the only two figures here that are pixels"
+??? aside "This clip and the next are the only two figures here that are pixels"
     Every still on this page is vector — `dynamicGraphFLines` into `showPlaneGrid`. The two clips are
     not, and cannot be: `animateEvolution`'s `panels` lambda is typed
     `List<Pair<String, Img>>`, and the docs runner records a box's PNG output channel, so a clip is a

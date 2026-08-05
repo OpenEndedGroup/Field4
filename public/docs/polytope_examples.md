@@ -1258,7 +1258,7 @@ That view is the live `threeLines(...)` viewer, so in a real box you can orbit i
 if you set `onClick` — pick one and read its provenance back. The
 [loadable demo](#a-loadable-demo) at the foot of this page does exactly that.
 
-!!! note "The one thing on this page that is not captured"
+??? aside "The one thing on this page that is not captured"
 
     The figure above is a real capture of the real viewer, but it is a *still*. Hover highlighting
     and the click-to-inspect provenance card need a mouse, and the docs build does not have one, so

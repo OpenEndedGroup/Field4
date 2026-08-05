@@ -14,7 +14,7 @@ by a source rewrite.
 If Kotlin itself is new to you, read the [Kotlin Syntax Overview](kotlin_overview.md) first — this
 page assumes you can read a `data class` and a lambda.
 
-!!! note "What this page proves, and what it can't"
+??? aside "What this page proves, and what it can't"
     The *payoff* of a remote head — pixels moving in WebXR, audio actually playing — needs a real
     browser or Vision Pro and, for audio, a user gesture. None of that is capturable in a headless
     docs build, so there are **no fake screenshots here**. What we *can* show reproducibly is the

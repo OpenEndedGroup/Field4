@@ -590,6 +590,17 @@ The default mapping is in `Box.ioSeparateProperties` (`src/jvmMain/kotlin/afield
   - Serve built site (matches Field’s default docs iframe URL): `cd public && python3 -m http.server 8000`
   - Browse: `http://localhost:8000/field4/`
 
+### `!!! note` vs `??? aside` — who a callout is written for
+
+Two different things had been sharing one syntax, and only one of them is for a reader.
+
+- **`!!! note` / `!!! warning` / `!!! info` / `!!! tip`** — something a reader needs in order to use the thing on the page. An API that does not behave as its name suggests, a statistic whose floor is not zero, a security caveat, the guarantee a solver does and does not give. Stays in the text column, open, styled as a callout.
+- **`??? aside "Title"`** — commentary about how the page (or the code behind a figure) came to be, written for us and for the next agent: what an earlier cut of a clip got wrong and what measurement proved it, what the docs build cannot capture, which declaration no test reaches, which claim CI now pins. Renders collapsed everywhere, and at ≥ 82em it leaves the text column entirely and sits in the right margin, Tufte-style, at about a third of the measure.
+
+The test that separates them: **would this still be worth reading by someone who does not care how the page was made?** If no, it is an aside. Keep writing them — the record of a mistake is how the mistake stops recurring — just do not spend a reader's attention on them.
+
+Mechanics: `pymdownx.details` supplies `???` (see `public/zensical.yml`), and `aside` is a custom admonition type styled in `public/docs/stylesheets/extra.css` (search `??? aside`). The margin placement is a float with a negative right margin, so the browser stacks neighbouring asides and re-flows them when one is opened; there is no JS. Body indentation is the usual four spaces.
+
 ### Docs inside Field (documentation iframe)
 
 - Field can show documentation in an iframe overlay (resizable, switchable from the command palette).

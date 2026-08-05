@@ -167,7 +167,7 @@ four pixels wide. So this is the walled question instead — same rule, same see
 it shows is the shape of the thing: five cells, a violent expansion, and then a long quieting-down toward
 something stationary. Nothing is claimed here beyond the number in the caption, which is measured live.
 
-!!! note "Why the boards are so small, measured"
+??? aside "Why the boards are so small, measured"
     The first cut of this clip used a 48-cell torus and a 96-cell walled board, and it was the weakest clip
     on this page: the mean absolute luma difference between its first and last frames was **1.47** of 255,
     against 42 for Gray–Scott. The reason is arithmetic rather than aesthetic. A glider is five live cells,
@@ -284,7 +284,7 @@ identically, from a single cell, and never repeats. Rule 110 — the universal o
 background of periodic structure with localised gliders travelling through it, which is what a proof of
 universality has to be built out of. Rule 184 just shifts, forever, conserving its 86 live cells exactly.
 
-!!! note "This one is a reveal, not a re-simulation, and that is a real distinction"
+??? aside "This one is a reveal, not a re-simulation, and that is a real distinction"
     [`elementaryCa`](reference/alife.md#alife-ca-kt) computes the whole diagram, and
     [`rowsRevealed`](reference/alife.md#alife-animate-kt) uncovers it a row at a time. That is legitimate
     here for a specific reason and not in general: row `g` of a space-time diagram depends only on rows
@@ -546,7 +546,7 @@ What to watch, with the step counter in the caption as your clock:
 Those five events are not spread evenly through the 6000 steps, and that is the whole reason this clip is
 paced the way it is.
 
-!!! note "The step schedule is geometric here, and the reason is a measurement"
+??? aside "The step schedule is geometric here, and the reason is a measurement"
     The first cut of this clip divided 6000 steps evenly across seven seconds — 43 steps per displayed
     frame. Measured as the mean absolute luma difference between the extracted frames, it went **42.09**
     from the first frame to the middle and **3.98** from the middle to the last: the reader watched
@@ -776,7 +776,7 @@ animateEvolution(
 )
 ```
 
-!!! note "One rendering trap, since it produced a wrong figure once"
+??? aside "One rendering trap, since it produced a wrong figure once"
     A saturated field is *constant* at 1, so an auto-ranged colour map draws it at the dark end of the
     ramp — and a `SATURATION` panel renders as black, indistinguishable from `DEATH`. The panels above
     use a fixed `0..1` range for exactly that reason.
@@ -802,7 +802,7 @@ A flock is two things at once, and both are measured here:
 several separate flocks with different headings (visible in the figure), and the global order parameter
 of `k` independent flocks tops out near `1/√k`.
 
-!!! warning "A stalled flock can still score well on alignment"
+??? aside "A stalled flock can still score well on alignment"
     The three steering terms are written as *desired-minus-current* velocities, so in a settled flock
     they largely cancel and — with a force cap — the speed drifts downward. The first version of this
     code measured a mean speed of **0.46** against a cap of 1.4: a flock that had mostly stopped while
@@ -909,7 +909,7 @@ the brightest 5 % of pixels. A flat field gives 0.05 by definition. The sensing 
 same decay, random turns — gives **0.185**. And the shapes differ as sharply: median isoperimetric ratio
 17.2 against 1.2, filaments against blobs.
 
-!!! warning "Mutual exclusion is the whole model, not an optimisation"
+??? aside "Mutual exclusion is the whole model, not an optimisation"
     Without Jones' one-agent-per-cell rule there is nothing to stop every agent within sensing range of
     the brightest trail converging on it — and they do. The first version of this code collapsed 6000
     agents onto a 191-cell streak and measured a top-5 % share of **1.000**, which reads as perfect
@@ -974,7 +974,7 @@ Three things to watch, and the third is the one worth waiting for:
 The blind panel is the same 6000 agents with `sensing = false`, so it expands and then just sits there,
 uniform, at a share that stays near a fifth of the sensing run's.
 
-!!! warning "The colour range is `deposit / (1 − decay)`, and the first cut of this clip got it wrong"
+??? aside "The colour range is `deposit / (1 − decay)`, and the first cut of this clip got it wrong"
     The still above uses `normalized()`, which is right for one figure and wrong for a clip in two ways at
     once: a per-frame maximum makes an *empty* early field look exactly as bright as a settled network, and
     it normalises the two panels **separately**, so the control arm is stretched to fill the same range as
@@ -1043,7 +1043,7 @@ sprinkle** over the same disc has dimension exactly 2 by construction and measur
 estimator is reading the diffusion-limited part of DLA and not merely "a growth process happened", and
 it is not simply reading the bounded support.
 
-!!! note "Stated as a range, not as a match"
+??? aside "Stated as a range, not as a match"
     1.597 is below 1.71, and it is honest to say why rather than to round toward the literature: lattice
     DLA clusters of this size are known to read low, and the asymptote needs far larger clusters. The
     assertion in CI is therefore "clearly between 1.5 and 1.8, and clearly not 2".
@@ -1115,7 +1115,7 @@ inside. So the cluster is not a blob that grows outward uniformly — it is a sm
 racing outward while everything behind them is frozen. That is why a mass–radius fit gives 1.6 and not 2:
 the interior is *empty*, permanently, and it was made empty by the arrival process rather than by the rule.
 
-!!! note "Cropped, for the same reason section 1's boards shrank — and *not* zoomed"
+??? aside "Cropped, for the same reason section 1's boards shrank — and *not* zoomed"
     This clip was the second-weakest on the page (a first-to-last mean absolute luma difference of **2.78**)
     and the cause is the same arithmetic: a cluster that only ever grows can never differ from its first
     frame by more than the ink it lays down, and on a 300 × 300 domain this cluster lays down **2.7 %** of
@@ -1315,7 +1315,7 @@ animateEvolution(
 )
 ```
 
-!!! note "`drawSymbols` exists because of a blank panel"
+??? aside "`drawSymbols` exists because of a blank panel"
     The Sierpiński arrowhead curve is written `A → B−A−B`, `B → A+B+A`, where `A` and `B` are *both*
     drawing symbols. Interpreted with the default `F`/`G` alphabet it draws nothing at all, which is
     exactly what the first version of this figure rendered.
@@ -1348,7 +1348,7 @@ bridges, all into machinery that was already here:
     promised a winding convention — this is undocumented behaviour, now asserted in CI so it cannot
     change silently.
 
-!!! warning "An empty mesh is vacuously watertight"
+??? aside "An empty mesh is vacuously watertight"
     The first version of this figure passed its watertight check with a dead volume and **zero
     triangles**. The triangle count is part of the claim now.
 

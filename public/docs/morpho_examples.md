@@ -98,7 +98,7 @@ Everything Field wrote is in `src/jvmMain/kotlin/afield/morpho/` (five files) pl
 scripts and a Monaco grammar. The vendored tree is under `src/jvmMain/resources/morpho/` with a
 `PROVENANCE.md` recording exactly what it is and what was left out.
 
-!!! note "The one place a bridge always leaks"
+??? aside "The one place a bridge always leaks"
     `grower.js` is the exception, and it is worth being precise about why, because "we reimplemented
     a bit of it" is the sentence that turns a bridge into a fork.
 
@@ -202,7 +202,7 @@ downstream reads the pruned port as 0. Adopting upstream's own convention rather
 plausible one — a don't-care, which is what it looks like — made all six exhaustive multiplier
 checks pass.
 
-!!! warning "Read the optimizer, not just the data structure"
+??? aside "Read the optimizer, not just the data structure"
     The netlist's field names are a description of the representation. They are not a description
     of the *invariants*, and the invariants live in whatever last mutated the graph. Both wrong
     answers here came from reading the schema and guessing; both fixes came from reading the pass
@@ -331,7 +331,7 @@ twelve, because they have very different budgets — 157 expansions against 993 
 would either finish the adder in three seconds or leave the triangle half-built at the end of the
 clip.
 
-!!! note "This clip is vector, and that is not the usual case"
+??? aside "This clip is vector, and that is not the usual case"
     Field's other animated figures are rasters by construction: `animateEvolution`'s `panels` lambda
     is typed `List<Pair<String, Img>>`, so a clip built that way is pixels before it is ever
     recorded. This one is not. The docs runner's `record-box` is a Playwright recording of the box's
