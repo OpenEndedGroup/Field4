@@ -328,6 +328,128 @@ enum class TrackValueKind {
     Paint
 }
 
+/**
+ * A Double as a GLSL `float` literal: always with a decimal point, so `2` does
+ * not silently become an int and drag an expression into integer arithmetic.
+ * Non-finite values cannot be spelled in GLSL at all, so they are pinned to the
+ * float range rather than emitted as something that will not compile.
+ */
+internal fun Double.glslFloat(): String = when {
+    isNaN() -> "0.0"
+    this == Double.POSITIVE_INFINITY -> "3.402823466e38"
+    this == Double.NEGATIVE_INFINITY -> "-3.402823466e38"
+    else -> {
+        val text = toString()
+        if (text.contains('.') || text.contains('e') || text.contains('E')) text else "$text.0"
+    }
+}
+
+/**
+ * The closed vocabulary of scalar operations that can appear inside a track.
+ *
+ * Tracks used to carry bare `(Double) -> Double` closures. That is perfectly
+ * good on the JVM and completely opaque to everything else: you cannot print a
+ * closure, serialize it, rewrite it, or emit it as GLSL. Naming the ops keeps
+ * the CPU behaviour identical while turning the track IR into a symbolic graph,
+ * so each op owns both halves — how it evaluates, and how it spells itself in a
+ * shader.
+ *
+ * The GLSL is written to match the Kotlin exactly rather than to be idiomatic:
+ * the divide-by-zero guards are reproduced, and [MOD] spells out Kotlin's
+ * truncated `%` instead of reaching for GLSL's `mod()`, which floors and so
+ * disagrees for negative operands.
+ */
+enum class TrackOp1(val eval: (Double) -> Double, val glsl: (String) -> String) {
+    NEG({ -it }, { "-($it)" }),
+    ABS({ abs(it) }, { "abs($it)" }),
+    FLOOR({ floor(it) }, { "floor($it)" }),
+    CEIL({ ceil(it) }, { "ceil($it)" }),
+    FRACT({ it - floor(it) }, { "fract($it)" }),
+    SQRT({ sqrt(max(it, 0.0)) }, { "sqrt(max($it, 0.0))" }),
+    SIN({ sin(it) }, { "sin($it)" }),
+    COS({ cos(it) }, { "cos($it)" }),
+    SATURATE({ it.coerceIn(0.0, 1.0) }, { "clamp($it, 0.0, 1.0)" })
+}
+
+enum class TrackOp2(
+    val eval: (Double, Double) -> Double,
+    val glsl: (String, String) -> String
+) {
+    ADD({ a, b -> a + b }, { a, b -> "($a + $b)" }),
+    SUB({ a, b -> a - b }, { a, b -> "($a - $b)" }),
+    MUL({ a, b -> a * b }, { a, b -> "($a * $b)" }),
+    DIV(
+        { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b },
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" }
+    ),
+    MOD(
+        { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b },
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" }
+    ),
+    POW({ a, b -> a.pow(b) }, { a, b -> "pow($a, $b)" }),
+    MIN({ a, b -> min(a, b) }, { a, b -> "min($a, $b)" }),
+    MAX({ a, b -> max(a, b) }, { a, b -> "max($a, $b)" })
+}
+
+enum class TrackOp3(
+    val eval: (Double, Double, Double) -> Double,
+    val glsl: (String, String, String) -> String
+) {
+    /** Order-insensitive bounds, matching `coerceIn(min(lo, hi), max(lo, hi))`. */
+    CLAMP(
+        { x, lo, hi -> x.coerceIn(min(lo, hi), max(lo, hi)) },
+        { x, lo, hi -> "clamp($x, min($lo, $hi), max($lo, $hi))" }
+    ),
+    MIX({ a, b, t -> a + (b - a) * t }, { a, b, t -> "mix($a, $b, $t)" }),
+    SMOOTHSTEP(
+        { low, high, x ->
+            val denom = high - low
+            val u = if (abs(denom) <= 1e-12) 0.0 else ((x - low) / denom).coerceIn(0.0, 1.0)
+            u * u * (3.0 - 2.0 * u)
+        },
+        { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" }
+    )
+}
+
+/**
+ * How a [TimeWarpTrack] rewrites the time it hands to its source. Each kind
+ * takes one scalar parameter, fixed when the warp is built, so the whole warp is
+ * `(kind, amount)` rather than a closure over that amount.
+ */
+enum class TimeWarpKind(
+    val eval: (Double, Double) -> Double,
+    val glsl: (String, Double) -> String
+) {
+    /** `delay-time` / `time+` / `->live`: play the source `amount` seconds later. */
+    SHIFT({ t, amount -> t - amount }, { t, amount -> "($t - ${amount.glslFloat()})" }),
+
+    /** `scale-time` / `time*`: stretch the source's clock by `amount`. */
+    SCALE({ t, amount -> t / amount }, { t, amount -> "($t / ${amount.glslFloat()})" }),
+
+    /** `reverse-time`: `amount` is the scene duration, not a factor. */
+    REVERSE({ t, amount -> amount - t }, { t, amount -> "(${amount.glslFloat()} - $t)" }),
+
+    /** `loop-time`: wrap into `[0, amount)`. */
+    LOOP(
+        { t, amount -> positiveModulo(t, amount) },
+        { t, amount ->
+            if (amount <= 1e-12) "($t)" else "mod($t, ${amount.glslFloat()})"
+        }
+    ),
+
+    /** `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends. */
+    PINGPONG(
+        { t, amount ->
+            val p = positiveModulo(t, amount * 2.0)
+            if (p <= amount) p else amount * 2.0 - p
+        },
+        { t, amount ->
+            if (amount * 2.0 <= 1e-12) "($t)"
+            else "(${amount.glslFloat()} - abs(mod($t, ${(amount * 2.0).glslFloat()}) - ${amount.glslFloat()}))"
+        }
+    )
+}
+
 sealed interface Track<out T> {
     val kind: TrackValueKind
     fun sample(t: Double): T
@@ -347,6 +469,18 @@ data class TcbKey(
     val continuity: Double? = null,
     val bias: Double? = null
 )
+
+/** One cubic Hermite span of a [TcbTrack], tangents already resolved. */
+data class HermiteSegment(
+    val t0: Double,
+    val t1: Double,
+    val p0: Double,
+    val p1: Double,
+    val m0: Double,
+    val m1: Double
+) {
+    val dt: Double get() = t1 - t0
+}
 
 data class TcbTrack(
     val keys: List<TcbKey>,
@@ -384,6 +518,26 @@ data class TcbTrack(
 
     fun withTcb(tension: Double, continuity: Double, bias: Double): TcbTrack =
         copy(defaultTension = tension, defaultContinuity = continuity, defaultBias = bias)
+
+    /**
+     * The track as plain cubic Hermite segments, with the TCB tangents already
+     * resolved. The tension/continuity/bias parameters only ever influence the
+     * two slopes at a segment's ends, so once those are computed the curve is
+     * an ordinary Hermite spline — which is what makes a TCB track emittable as
+     * a handful of constants rather than as a solver.
+     */
+    fun hermiteSegments(): List<HermiteSegment> =
+        (0 until sorted.size - 1).map { lo ->
+            val hi = lo + 1
+            HermiteSegment(
+                t0 = sorted[lo].time,
+                t1 = sorted[hi].time,
+                p0 = sorted[lo].value,
+                p1 = sorted[hi].value,
+                m0 = outgoingSlope(lo),
+                m1 = incomingSlope(hi)
+            )
+        }
 
     private fun outgoingSlope(index: Int): Double {
         val key = sorted[index]
@@ -449,13 +603,21 @@ data class HoldScalarTrack(val keys: List<TcbKey>) : Track<Double> {
         sorted.lastOrNull { it.time <= t }?.value ?: sorted.first().value
 }
 
+/**
+ * A keyed track whose segment parameter is shaped by a named easing.
+ *
+ * The curve is looked up from [easeName] rather than carried as a closure, so
+ * two tracks with the same keys and the same easing compare equal, and a
+ * backend can ask *which* curve this is instead of only being able to call it.
+ */
 data class EasedScalarTrack(
     val keys: List<TcbKey>,
-    val easeName: String,
-    val ease: (Double) -> Double
+    val easeName: String
 ) : Track<Double> {
     override val kind: TrackValueKind = TrackValueKind.Double
     private val sorted = keys.sortedBy { it.time }
+    val ease: (Double) -> Double = RECTSL_EASINGS[easeName]
+        ?: throw RectLangException("unknown easing '$easeName'")
 
     init {
         require(sorted.isNotEmpty()) { "$easeName track needs at least one key" }
@@ -515,21 +677,30 @@ private fun Track<Double>.filterKeys(
         else -> throw RectLangException("$word needs a direct keyed scalar track")
     }
 
+/**
+ * Fold a value transform into a directly-keyed track's key values, or — when the
+ * track is a computed node with no keys to reach — wrap it in the equivalent
+ * symbolic op. Callers supply both spellings because the keyed path wants a
+ * plain arithmetic transform and the wrapped path wants an IR node; they must
+ * agree, and each caller states the pair on one line so it is obvious when they
+ * do not.
+ */
 private fun Track<Double>.mapKeysOrSamples(
     word: String,
-    transform: (Double) -> Double
+    transform: (Double) -> Double,
+    wrap: (Track<Double>) -> Track<Double>
 ): Track<Double> =
     when (this) {
         is TcbTrack, is LinearScalarTrack, is HoldScalarTrack, is EasedScalarTrack ->
             mapKeys(word) { it.copy(value = transform(it.value)) }
-        else -> MappedDoubleTrack(this, transform)
+        else -> wrap(this)
     }
 
 private fun shiftTrackKeysOrWarp(track: Track<Double>, amount: Double): Track<Double> =
     when (track) {
         is TcbTrack, is LinearScalarTrack, is HoldScalarTrack, is EasedScalarTrack ->
             track.mapKeys("time+") { it.copy(time = it.time + amount) }
-        else -> TimeWarpTrack(track) { t -> t - amount }
+        else -> TimeWarpTrack(track, TimeWarpKind.SHIFT, amount)
     }
 
 private fun scaleTrackKeysOrWarp(track: Track<Double>, factor: Double): Track<Double> {
@@ -537,7 +708,7 @@ private fun scaleTrackKeysOrWarp(track: Track<Double>, factor: Double): Track<Do
     return when (track) {
         is TcbTrack, is LinearScalarTrack, is HoldScalarTrack, is EasedScalarTrack ->
             track.mapKeys("time*") { it.copy(time = it.time * factor) }
-        else -> TimeWarpTrack(track) { t -> t / factor }
+        else -> TimeWarpTrack(track, TimeWarpKind.SCALE, factor)
     }
 }
 
@@ -558,8 +729,8 @@ private fun easeInOut(u: Double): Double {
 }
 private fun smoothstep(u: Double): Double = u * u * (3.0 - 2.0 * u)
 
-private fun easedTrack(word: String, track: Track<Double>, ease: (Double) -> Double): Track<Double> =
-    EasedScalarTrack(track.keyedValues(word), word, ease)
+private fun easedTrack(word: String, track: Track<Double>, name: String = word): Track<Double> =
+    EasedScalarTrack(track.keyedValues(word), name)
 
 /**
  * The full Penner easing family, keyed by kebab-case name (e.g. "back-out",
@@ -576,39 +747,55 @@ private val PENNER_EASINGS: Map<String, (Double) -> Double> = buildMap {
     }
 }
 
+/**
+ * Every easing an [EasedScalarTrack] can name: the Penner family plus the four
+ * shorthand words (`ease-in`, `ease-out`, `ease-in-out`, `ease-smoothstep` /
+ * `smooth`) that predate it. One registry means an easing track is always
+ * reconstructible from its name alone.
+ */
+internal val RECTSL_EASINGS: Map<String, (Double) -> Double> = buildMap {
+    putAll(PENNER_EASINGS)
+    put("ease-in", ::easeIn)
+    put("ease-out", ::easeOut)
+    put("ease-in-out", ::easeInOut)
+    put("ease-smoothstep", ::smoothstep)
+    put("smooth", ::smoothstep)
+}
+
 data class MappedDoubleTrack(
     val source: Track<Double>,
-    val transform: (Double) -> Double
+    val op: TrackOp1
 ) : Track<Double> {
     override val kind: TrackValueKind = TrackValueKind.Double
-    override fun sample(t: Double): Double = transform(source.sample(t))
+    override fun sample(t: Double): Double = op.eval(source.sample(t))
 }
 
 data class BinaryDoubleTrack(
     val a: Track<Double>,
     val b: Track<Double>,
-    val combine: (Double, Double) -> Double
+    val op: TrackOp2
 ) : Track<Double> {
     override val kind: TrackValueKind = TrackValueKind.Double
-    override fun sample(t: Double): Double = combine(a.sample(t), b.sample(t))
+    override fun sample(t: Double): Double = op.eval(a.sample(t), b.sample(t))
 }
 
 data class TernaryDoubleTrack(
     val a: Track<Double>,
     val b: Track<Double>,
     val c: Track<Double>,
-    val combine: (Double, Double, Double) -> Double
+    val op: TrackOp3
 ) : Track<Double> {
     override val kind: TrackValueKind = TrackValueKind.Double
-    override fun sample(t: Double): Double = combine(a.sample(t), b.sample(t), c.sample(t))
+    override fun sample(t: Double): Double = op.eval(a.sample(t), b.sample(t), c.sample(t))
 }
 
 data class TimeWarpTrack(
     val source: Track<Double>,
-    val warp: (Double) -> Double
+    val warp: TimeWarpKind,
+    val amount: Double
 ) : Track<Double> {
     override val kind: TrackValueKind = TrackValueKind.Double
-    override fun sample(t: Double): Double = source.sample(warp(t))
+    override fun sample(t: Double): Double = source.sample(warp.eval(t, amount))
 }
 
 /**
@@ -1510,35 +1697,35 @@ class RectLangVm(
             else -> throw RectLangException("$word expected Number or Track<Double>, found ${value.describe()}")
         }
 
-    fun pushUnaryScalar(word: String, transform: (Double) -> Double) {
+    fun pushUnaryScalar(word: String, op: TrackOp1) {
         when (val value = pop()) {
-            is VNum -> push(VNum(transform(value.x)))
-            is VQuote, is VTrack<*> -> push(VTrack(MappedDoubleTrack(scalarTrackFrom(value, word), transform)))
+            is VNum -> push(VNum(op.eval(value.x)))
+            is VQuote, is VTrack<*> -> push(VTrack(MappedDoubleTrack(scalarTrackFrom(value, word), op)))
             else -> throw RectLangException("$word expected Number or Track<Double>, found ${value.describe()}")
         }
     }
 
-    fun pushBinaryScalar(word: String, combine: (Double, Double) -> Double) {
+    fun pushBinaryScalar(word: String, op: TrackOp2) {
         val b = pop()
         val a = pop()
         if (a is VNum && b is VNum) {
-            push(VNum(combine(a.x, b.x)))
+            push(VNum(op.eval(a.x, b.x)))
         } else {
-            push(VTrack(BinaryDoubleTrack(scalarTrackFrom(a, word), scalarTrackFrom(b, word), combine)))
+            push(VTrack(BinaryDoubleTrack(scalarTrackFrom(a, word), scalarTrackFrom(b, word), op)))
         }
     }
 
-    fun pushTernaryScalar(word: String, combine: (Double, Double, Double) -> Double) {
+    fun pushTernaryScalar(word: String, op: TrackOp3) {
         val c = pop()
         val b = pop()
         val a = pop()
         if (a is VNum && b is VNum && c is VNum) {
-            push(VNum(combine(a.x, b.x, c.x)))
+            push(VNum(op.eval(a.x, b.x, c.x)))
         } else {
             val at = scalarTrackFrom(a, word)
             val bt = scalarTrackFrom(b, word)
             val ct = scalarTrackFrom(c, word)
-            push(VTrack(TernaryDoubleTrack(at, bt, ct, combine)))
+            push(VTrack(TernaryDoubleTrack(at, bt, ct, op)))
         }
     }
 
@@ -1746,37 +1933,33 @@ class RectLangVm(
         }
         word("pi") { it.push(VNum(PI)) }
         word("tau") { it.push(VNum(PI * 2.0)) }
-        word("+") { it.pushBinaryScalar("+") { a, b -> a + b } }
-        word("add") { it.pushBinaryScalar("add") { a, b -> a + b } }
-        word("-") { it.pushBinaryScalar("-") { a, b -> a - b } }
-        word("sub") { it.pushBinaryScalar("sub") { a, b -> a - b } }
-        word("*") { it.pushBinaryScalar("*") { a, b -> a * b } }
-        word("mul") { it.pushBinaryScalar("mul") { a, b -> a * b } }
-        word("/") { it.pushBinaryScalar("/") { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b } }
-        word("div") { it.pushBinaryScalar("div") { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b } }
-        word("mod") { it.pushBinaryScalar("mod") { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b } }
-        word("pow") { it.pushBinaryScalar("pow") { a, b -> a.pow(b) } }
-        word("min") { it.pushBinaryScalar("min") { a, b -> min(a, b) } }
-        word("max") { it.pushBinaryScalar("max") { a, b -> max(a, b) } }
-        word("neg") { it.pushUnaryScalar("neg") { a -> -a } }
-        word("negate") { it.pushUnaryScalar("negate") { a -> -a } }
-        word("abs") { it.pushUnaryScalar("abs") { a -> abs(a) } }
-        word("floor") { it.pushUnaryScalar("floor") { a -> floor(a) } }
-        word("ceil") { it.pushUnaryScalar("ceil") { a -> ceil(a) } }
-        word("fract") { it.pushUnaryScalar("fract") { a -> a - floor(a) } }
-        word("sqrt") { it.pushUnaryScalar("sqrt") { a -> sqrt(max(a, 0.0)) } }
-        word("sin") { it.pushUnaryScalar("sin") { a -> sin(a) } }
-        word("cos") { it.pushUnaryScalar("cos") { a -> cos(a) } }
-        word("clamp") { it.pushTernaryScalar("clamp") { value, low, high -> value.coerceIn(min(low, high), max(low, high)) } }
-        word("sat") { it.pushUnaryScalar("sat") { a -> a.coerceIn(0.0, 1.0) } }
-        word("saturate") { it.pushUnaryScalar("saturate") { a -> a.coerceIn(0.0, 1.0) } }
-        word("mix") { it.pushTernaryScalar("mix") { a, b, t -> a + (b - a) * t } }
-        word("lerp") { it.pushTernaryScalar("lerp") { a, b, t -> a + (b - a) * t } }
-        word("smoothstep") { it.pushTernaryScalar("smoothstep") { low, high, x ->
-            val denom = high - low
-            val u = if (abs(denom) <= 1e-12) 0.0 else ((x - low) / denom).coerceIn(0.0, 1.0)
-            u * u * (3.0 - 2.0 * u)
-        } }
+        word("+") { it.pushBinaryScalar("+", TrackOp2.ADD) }
+        word("add") { it.pushBinaryScalar("add", TrackOp2.ADD) }
+        word("-") { it.pushBinaryScalar("-", TrackOp2.SUB) }
+        word("sub") { it.pushBinaryScalar("sub", TrackOp2.SUB) }
+        word("*") { it.pushBinaryScalar("*", TrackOp2.MUL) }
+        word("mul") { it.pushBinaryScalar("mul", TrackOp2.MUL) }
+        word("/") { it.pushBinaryScalar("/", TrackOp2.DIV) }
+        word("div") { it.pushBinaryScalar("div", TrackOp2.DIV) }
+        word("mod") { it.pushBinaryScalar("mod", TrackOp2.MOD) }
+        word("pow") { it.pushBinaryScalar("pow", TrackOp2.POW) }
+        word("min") { it.pushBinaryScalar("min", TrackOp2.MIN) }
+        word("max") { it.pushBinaryScalar("max", TrackOp2.MAX) }
+        word("neg") { it.pushUnaryScalar("neg", TrackOp1.NEG) }
+        word("negate") { it.pushUnaryScalar("negate", TrackOp1.NEG) }
+        word("abs") { it.pushUnaryScalar("abs", TrackOp1.ABS) }
+        word("floor") { it.pushUnaryScalar("floor", TrackOp1.FLOOR) }
+        word("ceil") { it.pushUnaryScalar("ceil", TrackOp1.CEIL) }
+        word("fract") { it.pushUnaryScalar("fract", TrackOp1.FRACT) }
+        word("sqrt") { it.pushUnaryScalar("sqrt", TrackOp1.SQRT) }
+        word("sin") { it.pushUnaryScalar("sin", TrackOp1.SIN) }
+        word("cos") { it.pushUnaryScalar("cos", TrackOp1.COS) }
+        word("clamp") { it.pushTernaryScalar("clamp", TrackOp3.CLAMP) }
+        word("sat") { it.pushUnaryScalar("sat", TrackOp1.SATURATE) }
+        word("saturate") { it.pushUnaryScalar("saturate", TrackOp1.SATURATE) }
+        word("mix") { it.pushTernaryScalar("mix", TrackOp3.MIX) }
+        word("lerp") { it.pushTernaryScalar("lerp", TrackOp3.MIX) }
+        word("smoothstep") { it.pushTernaryScalar("smoothstep", TrackOp3.SMOOTHSTEP) }
         word("<") { it.pushCompare("<", { a, b -> a < b }) }
         word("lt") { it.pushCompare("lt", { a, b -> a < b }) }
         word("<=") { it.pushCompare("<=", { a, b -> a <= b }) }
@@ -1900,8 +2083,22 @@ class RectLangVm(
             val ny = vm.popScalarTrackOrConstant("nxy")
             val nx = vm.popScalarTrackOrConstant("nxy")
             val wall = vm.builder().wall
-            vm.builder().setX(MappedDoubleTrack(nx) { (it - 0.5) * wall.width })
-            vm.builder().setY(MappedDoubleTrack(ny) { (it - 0.5) * wall.height })
+            // (n - 0.5) * extent, spelled with the same association as the scalar
+            // form so the symbolic node is bit-identical to the old closure.
+            vm.builder().setX(
+                BinaryDoubleTrack(
+                    BinaryDoubleTrack(nx, constantTrack(0.5), TrackOp2.SUB),
+                    constantTrack(wall.width),
+                    TrackOp2.MUL
+                )
+            )
+            vm.builder().setY(
+                BinaryDoubleTrack(
+                    BinaryDoubleTrack(ny, constantTrack(0.5), TrackOp2.SUB),
+                    constantTrack(wall.height),
+                    TrackOp2.MUL
+                )
+            )
         }
         mutator("x") { vm -> vm.builder().setX(vm.popScalarTrackOrConstant("->x")) }
         mutator("y") { vm -> vm.builder().setY(vm.popScalarTrackOrConstant("->y")) }
@@ -1915,8 +2112,8 @@ class RectLangVm(
             val nh = vm.popScalarTrackOrConstant("nwh")
             val nw = vm.popScalarTrackOrConstant("nwh")
             val wall = vm.builder().wall
-            vm.builder().setW(MappedDoubleTrack(nw) { it * wall.width })
-            vm.builder().setH(MappedDoubleTrack(nh) { it * wall.height })
+            vm.builder().setW(BinaryDoubleTrack(nw, constantTrack(wall.width), TrackOp2.MUL))
+            vm.builder().setH(BinaryDoubleTrack(nh, constantTrack(wall.height), TrackOp2.MUL))
         }
         mutator("w") { vm -> vm.builder().setW(vm.popScalarTrackOrConstant("->w")) }
         mutator("h") { vm -> vm.builder().setH(vm.popScalarTrackOrConstant("->h")) }
@@ -2041,30 +2238,27 @@ class RectLangVm(
         word("delay-time") { vm ->
             val delay = vm.popNum()
             val track = vm.popScalarTrackOrConstant("delay-time")
-            vm.push(VTrack(TimeWarpTrack(track) { t -> t - delay }))
+            vm.push(VTrack(TimeWarpTrack(track, TimeWarpKind.SHIFT, delay)))
         }
         word("scale-time") { vm ->
             val factor = vm.popNum()
             val track = vm.popScalarTrackOrConstant("scale-time")
-            vm.push(VTrack(TimeWarpTrack(track) { t -> t / factor }))
+            vm.push(VTrack(TimeWarpTrack(track, TimeWarpKind.SCALE, factor)))
         }
         word("reverse-time") { vm ->
             val track = vm.popScalarTrackOrConstant("reverse-time")
             val end = vm.builder().duration
-            vm.push(VTrack(TimeWarpTrack(track) { t -> end - t }))
+            vm.push(VTrack(TimeWarpTrack(track, TimeWarpKind.REVERSE, end)))
         }
         word("loop-time") { vm ->
             val period = vm.popNum()
             val track = vm.popScalarTrackOrConstant("loop-time")
-            vm.push(VTrack(TimeWarpTrack(track) { t -> positiveModulo(t, period) }))
+            vm.push(VTrack(TimeWarpTrack(track, TimeWarpKind.LOOP, period)))
         }
         word("pingpong-time") { vm ->
             val period = vm.popNum()
             val track = vm.popScalarTrackOrConstant("pingpong-time")
-            vm.push(VTrack(TimeWarpTrack(track) { t ->
-                val p = positiveModulo(t, period * 2.0)
-                if (p <= period) p else period * 2.0 - p
-            }))
+            vm.push(VTrack(TimeWarpTrack(track, TimeWarpKind.PINGPONG, period)))
         }
         word("time+") { vm ->
             val amount = vm.popNum()
@@ -2079,18 +2273,36 @@ class RectLangVm(
         word("value+") { vm ->
             val amount = vm.popNum()
             val track = vm.popScalarTrackOrConstant("value+")
-            vm.push(VTrack(track.mapKeysOrSamples("value+") { it + amount }))
+            vm.push(
+                VTrack(
+                    track.mapKeysOrSamples("value+", { it + amount }) {
+                        BinaryDoubleTrack(it, constantTrack(amount), TrackOp2.ADD)
+                    }
+                )
+            )
         }
         word("value*") { vm ->
             val factor = vm.popNum()
             val track = vm.popScalarTrackOrConstant("value*")
-            vm.push(VTrack(track.mapKeysOrSamples("value*") { it * factor }))
+            vm.push(
+                VTrack(
+                    track.mapKeysOrSamples("value*", { it * factor }) {
+                        BinaryDoubleTrack(it, constantTrack(factor), TrackOp2.MUL)
+                    }
+                )
+            )
         }
         word("clamp-values") { vm ->
             val high = vm.popNum()
             val low = vm.popNum()
             val track = vm.popScalarTrackOrConstant("clamp-values")
-            vm.push(VTrack(track.mapKeysOrSamples("clamp-values") { it.coerceIn(min(low, high), max(low, high)) }))
+            vm.push(
+                VTrack(
+                    track.mapKeysOrSamples("clamp-values", { it.coerceIn(min(low, high), max(low, high)) }) {
+                        TernaryDoubleTrack(it, constantTrack(low), constantTrack(high), TrackOp3.CLAMP)
+                    }
+                )
+            )
         }
         word("snap-time") { vm ->
             val grid = vm.popNum()
@@ -2116,35 +2328,30 @@ class RectLangVm(
             val track = vm.popScalarTrackOrConstant("keys-after")
             vm.push(VTrack(track.filterKeys("keys-after") { it.time >= time }))
         }
-        word("ease-in") { vm -> vm.push(VTrack(easedTrack("ease-in", vm.popScalarTrackOrConstant("ease-in"), ::easeIn))) }
-        word("ease-out") { vm -> vm.push(VTrack(easedTrack("ease-out", vm.popScalarTrackOrConstant("ease-out"), ::easeOut))) }
-        word("ease-in-out") { vm -> vm.push(VTrack(easedTrack("ease-in-out", vm.popScalarTrackOrConstant("ease-in-out"), ::easeInOut))) }
-        word("ease-smoothstep") { vm -> vm.push(VTrack(easedTrack("ease-smoothstep", vm.popScalarTrackOrConstant("ease-smoothstep"), ::smoothstep))) }
-        word("smooth") { vm -> vm.push(VTrack(easedTrack("smooth", vm.popScalarTrackOrConstant("smooth"), ::smoothstep))) }
+        word("ease-in") { vm -> vm.push(VTrack(easedTrack("ease-in", vm.popScalarTrackOrConstant("ease-in")))) }
+        word("ease-out") { vm -> vm.push(VTrack(easedTrack("ease-out", vm.popScalarTrackOrConstant("ease-out")))) }
+        word("ease-in-out") { vm -> vm.push(VTrack(easedTrack("ease-in-out", vm.popScalarTrackOrConstant("ease-in-out")))) }
+        word("ease-smoothstep") { vm -> vm.push(VTrack(easedTrack("ease-smoothstep", vm.popScalarTrackOrConstant("ease-smoothstep")))) }
+        word("smooth") { vm -> vm.push(VTrack(easedTrack("smooth", vm.popScalarTrackOrConstant("smooth")))) }
         mutator("delay-all-time") { vm ->
             val delay = vm.popNum()
-            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> t - delay } }
+            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.SHIFT, delay) }
         }
         mutator("scale-all-time") { vm ->
             val factor = vm.popNum()
-            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> t / factor } }
+            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.SCALE, factor) }
         }
         mutator("reverse-all-time") { vm ->
             val end = vm.builder().duration
-            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> end - t } }
+            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.REVERSE, end) }
         }
         mutator("loop-all-time") { vm ->
             val period = vm.popNum()
-            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it) { t -> positiveModulo(t, period) } }
+            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.LOOP, period) }
         }
         mutator("pingpong-all-time") { vm ->
             val period = vm.popNum()
-            vm.builder().mapActiveScalarTracks {
-                TimeWarpTrack(it) { t ->
-                    val p = positiveModulo(t, period * 2.0)
-                    if (p <= period) p else period * 2.0 - p
-                }
-            }
+            vm.builder().mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.PINGPONG, period) }
         }
         mutator("stagger-time") { vm ->
             val step = vm.popNum()
@@ -2411,7 +2618,9 @@ class RectLangVm(
             // keyed track eases its interpolation like the ease-in/ease-out words.
             when (val v = vm.pop()) {
                 is VNum -> vm.push(VNum(ease(v.x)))
-                else -> vm.push(VTrack(easedTrack("ease", vm.scalarTrackFrom(v, "ease"), ease)))
+                // Name the track with the curve that was actually asked for, not
+                // with the word: "ease" alone would not say which curve it is.
+                else -> vm.push(VTrack(easedTrack("ease", vm.scalarTrackFrom(v, "ease"), name)))
             }
         }
         // Distribution curves over [0,1] — sample at the array fraction f.
@@ -3439,7 +3648,7 @@ class SceneBuilder {
      * it at `birth` is how one template becomes a staggered stream of bullets.
      */
     fun live(birth: Double, life: Double) {
-        mapActiveScalarTracks { TimeWarpTrack(it) { u -> u - birth } }
+        mapActiveScalarTracks { TimeWarpTrack(it, TimeWarpKind.SHIFT, birth) }
         multiplyAlpha(GateTrack(birth, birth + life))
     }
 
@@ -3517,12 +3726,12 @@ class SceneBuilder {
     fun mirrorX(axis: Double) {
         when (val t = target()) {
             is RectDraft -> {
-                t.x = MappedDoubleTrack(t.x) { 2.0 * axis - it }
-                t.rotation = MappedDoubleTrack(t.rotation) { -it }
+                t.x = reflectAbout(t.x, axis)
+                t.rotation = MappedDoubleTrack(t.rotation, TrackOp1.NEG)
             }
             is GroupDraft -> {
-                t.x = MappedDoubleTrack(t.x) { 2.0 * axis - it }
-                t.rotation = MappedDoubleTrack(t.rotation) { -it }
+                t.x = reflectAbout(t.x, axis)
+                t.rotation = MappedDoubleTrack(t.rotation, TrackOp1.NEG)
             }
         }
     }
@@ -3530,12 +3739,12 @@ class SceneBuilder {
     fun mirrorY(axis: Double) {
         when (val t = target()) {
             is RectDraft -> {
-                t.y = MappedDoubleTrack(t.y) { 2.0 * axis - it }
-                t.rotation = MappedDoubleTrack(t.rotation) { -it }
+                t.y = reflectAbout(t.y, axis)
+                t.rotation = MappedDoubleTrack(t.rotation, TrackOp1.NEG)
             }
             is GroupDraft -> {
-                t.y = MappedDoubleTrack(t.y) { 2.0 * axis - it }
-                t.rotation = MappedDoubleTrack(t.rotation) { -it }
+                t.y = reflectAbout(t.y, axis)
+                t.rotation = MappedDoubleTrack(t.rotation, TrackOp1.NEG)
             }
         }
     }
@@ -3560,7 +3769,7 @@ class SceneBuilder {
     fun staggerTime(refs: List<NodeRef>, step: Double) {
         refs.forEachIndexed { index, ref ->
             val delay = step * index
-            mapScalarTracks(ref) { TimeWarpTrack(it) { t -> t - delay } }
+            mapScalarTracks(ref) { TimeWarpTrack(it, TimeWarpKind.SHIFT, delay) }
         }
     }
 
@@ -3793,8 +4002,12 @@ private data class MutableMaterialSpec(
         }
 }
 
-private operator fun Track<Double>.plus(other: Track<Double>): Track<Double> = BinaryDoubleTrack(this, other) { a, b -> a + b }
-private operator fun Track<Double>.times(other: Track<Double>): Track<Double> = BinaryDoubleTrack(this, other) { a, b -> a * b }
+private operator fun Track<Double>.plus(other: Track<Double>): Track<Double> = BinaryDoubleTrack(this, other, TrackOp2.ADD)
+private operator fun Track<Double>.times(other: Track<Double>): Track<Double> = BinaryDoubleTrack(this, other, TrackOp2.MUL)
+
+/** `2 * axis - track` — a reflection of a coordinate track about a fixed axis. */
+private fun reflectAbout(track: Track<Double>, axis: Double): Track<Double> =
+    BinaryDoubleTrack(constantTrack(2.0 * axis), track, TrackOp2.SUB)
 
 fun rectCornersWorld(r: SampledRect): Array<Vec2d> {
     val hw = 0.5 * r.size.x * r.scale.x

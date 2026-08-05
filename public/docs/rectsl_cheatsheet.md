@@ -520,3 +520,150 @@ Cost: each unique escape is compiled to a lambda **once** (~76 ms K2 compile + ~
 | `<`, `lt`, `<=`, `lte`, `>`, `gt`, `>=`, `gte`, `=`, `eq`, `!=`, `<>`, `neq` | `a b -- bool` | Numeric/string comparisons where supported. |
 | `and`, `or`, `not` | `bool... -- bool` | Boolean operators using nonzero truth. |
 | `pi`, `tau` | `-- number` | Constants. |
+
+## Lowering to GLSL: a scene as a signed distance field
+
+A RectSL scene can be lowered to a self-contained GLSL function — no uniforms,
+no buffers, no samplers — that answers *how far is this point from the nearest
+visible rectangle, at this instant*:
+
+```diffstatic {data-lang=kotlin}
+import afield.rectsl.*
+
+val program = RectAnimationOracle.compile(source).program
+val sdf = RectSLGlsl.emitSdf(program, functionName = "scene")
+
+sdf.glsl                 // float scene(vec2 p, float t) { … }, plus its helpers
+sdf.rectCount            // how many rects the field unions
+sdf.trackFunctionCount   // distinct animation curves it had to emit
+sdf.notes                // fidelity caveats; empty means nothing was approximated
+```
+
+### Why so little of the language has to come along
+
+RectSL is a *staged* language, and that is what makes this small. The stack VM
+runs once, at compile time, and everything expressive about the language is
+spent there: `array`, `grid`, `radial`, `sunflower`, every selection word,
+`each` / `filter` / `map`, the chart and plotting layers, the `{{ … }}` Kotlin
+escapes. What survives into the `SceneProgram` is a flat list of rects whose
+channels are tracks — and *that* is what reaches the GPU. A hundred-copy
+`phyllotaxis` does not need a GPU implementation of `phyllotaxis`; by the time
+the emitter sees it, it is a hundred rects.
+
+So the answer to "how much of RectSL ports to GLSL" is: the part you never
+write by hand.
+
+### What comes out
+
+This scene —
+
+```diffstatic {data-lang=text}
+#rectsl
+->wall 8 5 abstract
+->duration 4
+
+"bar" rect
+  0.9 2.6 ->wh
+  '( 0=-2.6  4=2.6 ) ->x
+  '( 0=0  2=1.1  4=0 ) tcb ->y
+  '( 0=0  4=1.5708 ) ->rot
+;
+```
+
+— lowers to three curve functions, one shape, and a union. Here is the real
+output, with the two curves that look like the one shown elided:
+
+```diffstatic {data-lang=glsl}
+float rectslTrack1(float t) {
+    if (t <= 0.0) return 0.0;
+    if (t >= 4.0) return 0.0;
+    if (t < 2.0) {
+        float u = clamp((t - 0.0) / 2.0, 0.0, 1.0);
+        float u2 = u * u;
+        float u3 = u2 * u;
+        return (2.0 * u3 - 3.0 * u2 + 1.0) * 0.0 + (u3 - 2.0 * u2 + u) * 0.55
+             + (-2.0 * u3 + 3.0 * u2) * 1.1 + (u3 - u2) * 0.0;
+    }
+    // ... the 2..4 span, same shape, different constants
+    return 0.0;
+}
+
+// bar
+float rectslShape0(vec2 p, float t) {
+    vec2 c = vec2(0.0);
+    float rot = 0.0;
+    c += vec2(rectslTrack0(t), rectslTrack1(t));
+    rot += rectslTrack2(t);
+    return rectslRect(p, c, abs(0.5 * vec2(0.9, 2.6)), rot);
+}
+
+// 1 rect(s), unioned. Positive outside, negative inside.
+float scene(vec2 p, float t) {
+    return rectslShape0(p, t);
+}
+```
+
+Nothing is sampled into a table. The TCB track came out as cubic Hermite spans
+with its tangents already solved on the CPU, which is why a curve that needs a
+tension/continuity/bias solver in Kotlin is four multiply-adds in the shader.
+Easings are emitted as the Penner closed forms, time warps as arithmetic on `t`,
+and RectSL's guards travel with them — a `/` still returns `0` on a zero
+divisor, and `mod` still truncates where GLSL's `mod()` would floor.
+
+Constants fold, and equal tracks share a function. A twelve-copy `array` driven
+by one animated template emits **one** curve and twelve literals, not twelve
+copies of the curve.
+
+### What the field is, and is not
+
+It is shape, not picture. A RectSL scene is painter's-algorithm 2D — z-sorted
+rects composited with per-rect alpha, fill, and material — and a distance field
+is a set, where `min` is union and layering has no meaning. Fill, material, and
+draw order are dropped.
+
+Visibility is not dropped: a rect gated to zero by `->appear`, `->vanish`, or
+`->live` contributes no silhouette, exactly as it draws nothing on the CPU.
+
+### What you get for the trade
+
+Things a rasterized quad cannot do, all of which are now one line:
+
+```diffstatic {data-lang=glsl}
+float d = scene(p, t);
+
+float fill    = 1.0 - smoothstep(0.0, 0.01, d);     // antialiased at any zoom
+float outline = 1.0 - smoothstep(0.0, 0.01, abs(d) - 0.03);
+float glow    = exp(-8.0 * max(d, 0.0));            // falls off outside the shape
+vec2  normal  = normalize(vec2(dFdx(d), dFdy(d)));  // for beveling or lighting
+```
+
+Because `t` is an argument rather than a frame index, and every track is
+closed-form, a fragment can ask the scene about instants that were never
+rendered — true motion blur, from the shape itself:
+
+```diffstatic {data-lang=glsl}
+float blurred = 1e9;
+for (int i = 0; i < 8; ++i) {
+    blurred = min(blurred, scene(p, t + float(i) * (1.0 / 480.0)));
+}
+```
+
+And rects can now *combine*, which RectSL itself has no vocabulary for. Swap the
+union in the emitted `scene` for a smooth minimum and the copies of an `array`
+fuse into one blobby body as they pass each other:
+
+```diffstatic {data-lang=glsl}
+float smin(float a, float b, float k) {
+    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+    return mix(b, a, h) - k * h * (1.0 - h);
+}
+```
+
+### Fidelity
+
+The emitted geometry is checked against the CPU sampler to `1e-9` across the
+whole gallery, and every gallery scene is compiled through shaderc as part of
+the build, so a shader that will not compile fails the build rather than the
+pipeline. The one unavoidable difference is precision: the sampler works in
+`double` and a shader in `float`, so expect agreement to about `1e-6` of a wall
+unit, not to the ulp.

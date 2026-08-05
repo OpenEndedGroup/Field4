@@ -163,17 +163,32 @@ object ShaderSPIRVUtils {
             )
         }
 
+        // Encode onto the heap, not LWJGL's MemoryStack. The CharSequence
+        // overloads of shaderc_compile_into_spv stack-allocate their arguments,
+        // and that stack defaults to 64KB — so a large *generated* shader (a
+        // RectSL scene lowered to an SDF, say) fails with a bare "Out of stack
+        // space." that reads like a compiler bug rather than a buffer limit.
+        var sourceBuffer: ByteBuffer? = null
+        var nameBuffer: ByteBuffer? = null
+        var entryBuffer: ByteBuffer? = null
         try {
             if (Options.logShadercSource) {
                 logShadercSource(source, shaderKind)
             }
 
+            // The source is passed with an explicit length, so a NUL terminator
+            // would be read as part of the program; the two names are ordinary C
+            // strings and do need one.
+            sourceBuffer = MemoryUtil.memUTF8(source.sourceText, false)
+            nameBuffer = MemoryUtil.memUTF8(source.sourceName, true)
+            entryBuffer = MemoryUtil.memUTF8("main", true)
+
             val result = Shaderc.shaderc_compile_into_spv(
                 compiler,
-                source.sourceText,
+                sourceBuffer,
                 shaderKind.kind,
-                source.sourceName,
-                "main",
+                nameBuffer,
+                entryBuffer,
                 opts
             )
 
@@ -191,6 +206,9 @@ object ShaderSPIRVUtils {
             lprintln("info,graphics", "compiled, got results $res ${res.bytecode()}")
             return res
         } finally {
+            sourceBuffer?.let(MemoryUtil::memFree)
+            nameBuffer?.let(MemoryUtil::memFree)
+            entryBuffer?.let(MemoryUtil::memFree)
             includeBridge?.free()
             Shaderc.shaderc_compile_options_release(opts)
             Shaderc.shaderc_compiler_release(compiler)
