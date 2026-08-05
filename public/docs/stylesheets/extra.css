@@ -174,9 +174,12 @@ h3 {
         background-color: var(--mono-bg) !important;
     }
 
-    .md-sidebar--primary > .md-sidebar__scrollwrap > .md-sidebar__inner > .md-nav > .md-nav__list > .md-nav__item:first-child > .md-nav__link .md-ellipsis {
-        display: inline-block;
-        padding-top: 50px;
+    /* Clear the fixed header at the top of the drawer. The offset has to sit on
+       the list, not inside the first link: the active link paints an inverse-video
+       white pill (see .md-nav--primary .md-nav__item .md-nav__link--active), so
+       padding inside it inflates that pill by the full offset. */
+    .md-sidebar--primary > .md-sidebar__scrollwrap > .md-sidebar__inner > .md-nav > .md-nav__list {
+        margin-top: 50px;
     }
 }
 
