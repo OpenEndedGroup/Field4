@@ -6,6 +6,16 @@ import afield.stdlib.AudioVisualizer
 import afield.stdlib.AudioVisualizerOptions
 import afield.stdlib.AudioVisualizerSource
 
+/**
+ * The candidate board: the instrument for choosing between the alternatives a generation produced.
+ *
+ * One function, one HTML fragment, three things a listener actually needs — a player per candidate,
+ * the source-into-candidate splice preview beside it so a take can be judged *in place* rather than
+ * in isolation, and a rating, selection flag and note that are written straight back to the service.
+ * The provenance line under each player states the sample rates and the conversion, because whether
+ * you are hearing the model or a resampler is not a detail.
+ */
+
 private fun String.htmlEscaped(): String = buildString(length) {
     for (character in this@htmlEscaped) append(
         when (character) {

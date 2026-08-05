@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4045 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4107 of 6180 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**165 undocumented entry points** (types, top-level functions and values) and 1812 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**160 undocumented entry points** (types, top-level functions and values) and 1755 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -18,9 +18,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [voronoi.kt](../src/jvmMain/kotlin/afield/stdlib/voronoi.kt) | Graphics | spatial_geometry_examples, mesh_examples | 11 | 46 | 9% |
 | [quantilewarp.kt](../src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt) | Graphics | statistics_examples | 5 | 41 | 11% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
-| [AudioVisualizer.kt](../src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt) | Visualization | visualizers | 2 | 15 | 29% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
-| [CodecVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt) | Audio AI | audio_ai_codec | 1 | 15 | 11% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | visualizers, agent_transcripts | 1 | 1 | 77% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
@@ -68,7 +66,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SemanticSearchManager.kt](../src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt) | Data | — | 3 | 34 | 0% |
 | [JSONLineServer.kt](../src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt) | Data | — | 3 | 27 | 3% |
 | [CeresExpression.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt) | Solvers | — | 3 | 25 | 57% |
-| [FieldAudioClient.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt) | Audio AI | — | 2 | 18 | 4% |
 | [LeastSquares.kt](../src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt) | Math | — | 2 | 15 | 10% |
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
@@ -81,8 +78,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 7 | 63% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
-| [NpyIntTensor.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/NpyIntTensor.kt) | Audio AI | — | 0 | 5 | 16% |
-| [FieldPersistence.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldPersistence.kt) | Audio AI | — | 0 | 4 | 20% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [FunctionOps.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionOps.kt) | Function | — | 0 | 3 | 75% |
 
@@ -90,8 +85,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 
 | Declaration | Kind | Where |
 | --- | --- | --- |
-| `AudioVisualizerSource` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:10` |
-| `AudioVisualizerOptions` | class | `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt:20` |
 | `AgglomerativeLinkage` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:42` |
 | `MedoidDistance` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:52` |
 | `KMediansOptions` | class | `src/jvmMain/kotlin/afield/stdlib/clustering.kt:74` |
@@ -115,7 +108,6 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
-| `CodecVisualizationData` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt:23` |
 | `ShaderProbeQuantileWarpConfig` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:297` |
 | `ShaderFieldQuantileWarpController` | class | `src/jvmMain/kotlin/afield/stdlib/quantilewarp.kt:315` |
 | `WeightedSite3` | class | `src/jvmMain/kotlin/afield/stdlib/voronoi.kt:494` |
@@ -209,6 +201,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `AdaptiveDistributionController` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:356` |
 | `AdaptiveDistributionControllerBank` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:502` |
 | `AdaptiveDistributionLoop` | class | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:517` |
-| `FieldAudioException` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt:27` |
+| `SmileGpOptions` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:24` |
+| `SmileCubicSpline1D` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:32` |
+| `SmileGaussianProcess1D` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:45` |
+| `TuioListener` | interface | `src/jvmMain/kotlin/afield/stdlib/tuio.kt:29` |
 
-…and **45 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **40 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

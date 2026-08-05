@@ -4,11 +4,29 @@
 
 The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. Nothing here loads a model or does inference in the JVM — a box builds a `ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can poll or watch; the results are immutable server-side *assets* referenced by id, which is why the protocol types carry representation ids rather than samples. Every call is asynchronous and completes off Field's runloop and off the audio callback, so nothing here may be `.get()`-ed from a box's frame. The rest of the category is what you do with a result inside a box: the candidate browser, the EnCodec reconstruction microscope, the beat/pitch analysis viewer and the job monitor, each of them one function returning a self-contained HTML fragment for `display(…)`. Start from `Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; [Field Audio service reference](../field_audio_service_reference.md) is the service-side contract the types mirror.
 
-10 source file(s), 247 public symbol(s), 202 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 247 public symbol(s), 247 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## AnalysisOperations.kt { #analysisoperations-kt }
+
+The three analysis operations, as typed constructors: beats and tempo, monophonic pitch, and
+polyphonic transcription.
+
+Each one is a [`ModelOperation`](audio-ai.md#protocol-kt-modeloperation) factory and nothing more — it validates its arguments here in the
+JVM, names the backend that serves it, and packs the parameters into the snake_case keys that
+backend expects. Submitting it, waiting for it and drawing it are `FieldAudioClient`'s job.
+
+All three ask for a single candidate, because an analysis of a fixed window with fixed parameters
+has one answer; the seed family in `styleCandidates` has no counterpart here. All three also
+produce an `.npz` of full-resolution arrays plus, for a drawing, a downsampled
+[`AnalysisPreview`](audio-ai.md#protocol-kt-analysispreview) — see `analysisVisualizationHtml`.
+
+Which to reach for: `multiScaleBeatAnalysis` when you want *when*, and at several time scales at
+once, because a tempo estimate is only meaningful relative to a window length;
+`monophonicPitchAnalysis` when you know there is one voice and want a continuous F0 with a voiced
+probability; `polyphonicPitchAnalysis` when there are chords and you want discrete note events
+(and MIDI) rather than a curve.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisOperations.kt`
 
@@ -24,6 +42,14 @@ The client half of Field Audio: a separate HTTP/WebSocket service that runs gene
 
 ## AnalysisVisualization.kt { #analysisvisualization-kt }
 
+The analysis viewer: one function that turns an [`AnalysisResult`](audio-ai.md#protocol-kt-analysisresult) into a zoomable beat, pitch or
+note display for a box output.
+
+It draws whichever of the three analyses the result came from, deciding in the browser from
+`AnalysisPreview.operation`. What crosses the wire is the downsampled preview and never the
+`.npz`, which is what keeps this cheap on a long recording — and the reason it is a display and
+not a measurement.
+
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisVisualization.kt`
 
 ### Top-level functions { #analysisvisualization-kt-functions }
@@ -33,6 +59,14 @@ The client half of Field Audio: a separate HTTP/WebSocket service that runs gene
 | <code class="highlight"><span class="k">fun</span> <span class="nf">analysisVisualizationHtml</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nc">AnalysisResult</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1600</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A compact, range-aware beat/pitch viewer. The browser fetches a carefully downsampled JSON preview; full NPZ tensors and MIDI remain immutable assets. |
 
 ## AudioAssetVisualization.kt { #audioassetvisualization-kt }
+
+The one-line bridge from a Field Audio [`AssetRepresentation`](audio-ai.md#protocol-kt-assetrepresentation) to Field's general-purpose waveform
+player.
+
+It exists so that playing a service asset needs no URL arithmetic: the extension resolves the
+binary path and the server-side waveform endpoint against the same-origin `/field-audio` prefix
+and hands both to `AudioVisualizer`, which then fetches only the envelope of whatever window the
+user is looking at.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AudioAssetVisualization.kt`
 
@@ -44,6 +78,14 @@ The client half of Field Audio: a separate HTTP/WebSocket service that runs gene
 
 ## CandidateBoard.kt { #candidateboard-kt }
 
+The candidate board: the instrument for choosing between the alternatives a generation produced.
+
+One function, one HTML fragment, three things a listener actually needs — a player per candidate,
+the source-into-candidate splice preview beside it so a take can be judged *in place* rather than
+in isolation, and a rating, selection flag and note that are written straight back to the service.
+The provenance line under each player states the sample rates and the conversion, because whether
+you are hearing the model or a resampler is not a detail.
+
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CandidateBoard.kt`
 
 ### Top-level functions { #candidateboard-kt-functions }
@@ -53,6 +95,18 @@ The client half of Field Audio: a separate HTTP/WebSocket service that runs gene
 | <code class="highlight"><span class="k">fun</span> <span class="nf">candidateBoardHtml</span><span class="p">(</span><span class="n">candidateSet</span><span class="p">:</span> <span class="nc">CandidateSet</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A self-contained Field output-area candidate browser. |
 
 ## CodecVisualization.kt { #codecvisualization-kt }
+
+The EnCodec reconstruction microscope: what a neural codec kept, what it threw away, and what it
+wrote down in between.
+
+A codec round trip is three things that have to be looked at together — the audio in, the discrete
+tokens, the audio out — and this file is the rendering half of that view. It is deliberately
+browser-free below the top layer: the spectrograms, the waveform and the token map are drawn into
+PNG bytes on the JVM, so the same code produces a live box output, a test assertion and the
+committed picture on [the EnCodec microscope page](../audio_ai_codec.md).
+
+Everything here needs the bytes locally, which is what `FieldAudioClient.codecVisualizationHtml`
+is for — it downloads the three representations off Field's runloop and then renders.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CodecVisualization.kt`
 
@@ -68,18 +122,20 @@ The client half of Field Audio: a separate HTTP/WebSocket service that runs gene
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CodecVisualizationData</span><span class="p">(</span><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">reconstruction</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">NpyIntTensor</span><span class="p">,</span> <span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">ReconstructionMetrics</span><span class="p">,</span> <span class="k">val</span> <span class="n">frameRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">cardinality</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">codecLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">sourceWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">reconstructionWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
+Everything the EnCodec microscope draws, already decoded into the JVM.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">NpyIntTensor</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">ReconstructionMetrics</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">frameRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">cardinality</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">codecLabel</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">sourceWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">reconstructionWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">FloatArray</span></code> | The model input: the windowed, resampled audio the codec was given, as mono float samples. |
+| <code class="highlight"><span class="k">val</span> <span class="n">reconstruction</span><span class="p">:</span> <span class="nc">FloatArray</span></code> | The decoded output at the same rate and length, so the two can be compared sample for sample. |
+| <code class="highlight"><span class="k">val</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span></code> | Sample rate shared by `source` and `reconstruction`; `load` refuses inputs that disagree. |
+| <code class="highlight"><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">NpyIntTensor</span></code> | The discrete codes the encoder produced, indexed codebook then frame. |
+| <code class="highlight"><span class="k">val</span> <span class="n">metrics</span><span class="p">:</span> <span class="nc">ReconstructionMetrics</span></code> | How far `reconstruction` is from `source`, as the backend measured it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">frameRate</span><span class="p">:</span> <span class="nc">Double</span></code> | Token frames per second, from the codec metadata; 50.0 when the backend did not say. |
+| <code class="highlight"><span class="k">val</span> <span class="n">cardinality</span><span class="p">:</span> <span class="nc">Int</span></code> | Codebook size, from the codec metadata; 2048 when the backend did not say. Sets the token colour scale. |
+| <code class="highlight"><span class="k">val</span> <span class="n">codecLabel</span><span class="p">:</span> <span class="nc">String</span></code> | Model name for the heading, from the codec metadata; "EnCodec" when the backend did not say. |
+| <code class="highlight"><span class="k">val</span> <span class="n">sourceWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code> | The original WAV bytes of `source`, kept for browser playback. |
+| <code class="highlight"><span class="k">val</span> <span class="n">reconstructionWav</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span></code> | The original WAV bytes of `reconstruction`, with the same purpose as `sourceWav`. |
 
 ### CodecVisualization { #codecvisualization-kt-codecvisualization }
 
@@ -89,13 +145,29 @@ Rendering shared by live Field output, tests, and the public executable document
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nc">CodecReconstructionResult</span><span class="p">,</span> <span class="n">modelInputWav</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">reconstructionWav</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">tokenNpy</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">CodecVisualizationData</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderHtml</span><span class="p">(</span><span class="k">data</span><span class="p">:</span> <span class="nc">CodecVisualizationData</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1200</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderWaveform</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderLogSpectrogram</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderTokens</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="nc">NpyIntTensor</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nc">CodecReconstructionResult</span><span class="p">,</span> <span class="n">modelInputWav</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">reconstructionWav</span><span class="p">:</span> <span class="nc">Path</span><span class="p">,</span> <span class="n">tokenNpy</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">CodecVisualizationData</span></code> | Read the three downloaded files into one [`CodecVisualizationData`](audio-ai.md#codecvisualization-kt-codecvisualizationdata). |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderHtml</span><span class="p">(</span><span class="k">data</span><span class="p">:</span> <span class="nc">CodecVisualizationData</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1200</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The whole microscope as one self-contained HTML fragment: two players, two log-frequency spectrograms, and the token map with a hover readout. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderWaveform</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | A min/max waveform as PNG bytes, one column per pixel. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderLogSpectrogram</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | A log-frequency STFT as PNG bytes: 1024-point Hann windows, 256-sample hop, 35 Hz to Nyquist, 90 dB of range below the clip's own peak. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderTokens</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="nc">NpyIntTensor</span><span class="p">,</span> <span class="n">cardinality</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code> | The token tensor as PNG bytes: time across, codebooks down, coarse to fine, one hue per code. |
 
 ## FieldAudioClient.kt { #fieldaudioclient-kt }
+
+The verbs of Field Audio: one client object whose every method is a request to the model
+service, plus the typed constructors for the two operations that ship with real controls.
+
+The protocol types — [`AssetRegion`](audio-ai.md#protocol-kt-assetregion), [`ModelOperation`](audio-ai.md#protocol-kt-modeloperation), [`JobRecord`](audio-ai.md#protocol-kt-jobrecord) and the rest — are the
+vocabulary; this is what you can *do* with it. The shape to hold on to is that nothing here
+blocks and nothing here runs a model in the JVM: a call returns
+a `CompletableFuture` that completes on the client's own executor, and the model work happens in
+a Python worker that may take minutes. Composing futures (`thenCompose`, `thenAccept`) is
+therefore the only correct way to use this from a box — a `.get()` on Field's runloop freezes
+the editor for as long as the model takes.
+
+Argument validation happens here, in the JVM, before anything is sent: `require` failures name
+the constraint. Everything the service rejects instead arrives as a [`FieldAudioException`](audio-ai.md#fieldaudioclient-kt-fieldaudioexception)
+carrying the service's own [`StructuredError`](audio-ai.md#protocol-kt-structurederror), and a job that fails after being accepted arrives
+as a [`FieldAudioJobException`](audio-ai.md#fieldaudioclient-kt-fieldaudiojobexception) from one of the `await…` helpers.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt`
 
@@ -103,21 +175,25 @@ Rendering shared by live Field output, tests, and the public executable document
 
 <code class="highlight"><span class="k">class</span> <span class="nf">FieldAudioException</span><span class="p">(</span><span class="k">val</span> <span class="n">statusCode</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">responseBody</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">error</span><span class="o">?</span><span class="p">.</span><span class="n">let</span> <span class="p">{</span> <span class="s">&quot;${it.code}: ${it.message}&quot;</span> <span class="p">}</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;Field Audio HTTP $statusCode: ${responseBody.take(500)}&quot;</span><span class="p">)</span></code>
 
+The service said no, and said why.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">statusCode</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">responseBody</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">statusCode</span><span class="p">:</span> <span class="nc">Int</span></code> | HTTP status of the response that failed. |
+| <code class="highlight"><span class="k">val</span> <span class="n">responseBody</span><span class="p">:</span> <span class="nc">String</span></code> | The response body verbatim, for the cases `error` could not be decoded from it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span></code> | The service's structured error, when the body contained one. See `StructuredError.code`. |
 
 ### FieldAudioJobException { #fieldaudioclient-kt-fieldaudiojobexception }
 
 <code class="highlight"><span class="k">class</span> <span class="nf">FieldAudioJobException</span><span class="p">(</span><span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span><span class="p">,</span> <span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">error</span><span class="o">?</span><span class="p">.</span><span class="n">let</span> <span class="p">{</span> <span class="s">&quot;${it.code}: ${it.message}&quot;</span> <span class="p">}</span> <span class="o">?</span><span class="p">:</span> <span class="s">&quot;audio job $jobId ended as $state&quot;</span><span class="p">)</span></code>
 
+A job was accepted and then did not finish successfully.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span></code> | The job that ended badly; still fetchable with `FieldAudioClient.inspect`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span></code> | The terminal state it ended in — anything but `COMPLETE`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span></code> | Why, when the job recorded a structured error. Null for a plain cancellation. |
 
 ### FieldAudioClient { #fieldaudioclient-kt-fieldaudioclient }
 
@@ -127,20 +203,28 @@ Non-blocking, backend-neutral client for Field's audio model service.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">baseUri</span><span class="p">:</span> <span class="nc">URI</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">json</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">health</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">models</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ModelCapability</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">importWav</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="n">assetId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">assetByFilename</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preferredRole</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;canonical&#95;project&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">assetsByFilename</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preferredRole</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;canonical&#95;project&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">waveform</span><span class="p">(</span><span class="n">representationId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1200</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">WaveformSummary</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">submit</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="nc">ModelOperation</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JobAccepted</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JobRecord</span><span class="p">&gt;</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">jobs</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">JobSummary</span><span class="p">&gt;</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">baseUri</span><span class="p">:</span> <span class="nc">URI</span></code> | Where this client points, with any trailing slash removed so relative paths resolve cleanly. |
+| <code class="highlight"><span class="k">val</span> <span class="n">json</span></code> | The exact JSON configuration this client speaks, exposed so a caller can decode a payload the same way. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">health</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> | Liveness only: the raw body of `GET /health`. It starts nothing and loads no model. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">models</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">ModelCapability</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Every backend the service knows about, including the ones it cannot currently run. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">importWav</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nc">Path</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> | Upload a WAV file and get the asset it became. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">describe</span><span class="p">(</span><span class="n">assetId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> | Fetch one asset and all its representations by content address. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">assetByFilename</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preferredRole</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;canonical&#95;project&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span></code> | The one asset whose original filename matches `pattern` — and an error if that is not exactly one. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">assetsByFilename</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">preferredRole</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="s">&quot;canonical&#95;project&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">AudioAsset</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Every asset whose original filename matches `pattern`, preferring `preferredRole` representations. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">waveform</span><span class="p">(</span><span class="n">representationId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1200</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">WaveformSummary</span><span class="p">&gt;</span></code> | A min/max envelope of one representation's window, for drawing. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">submit</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="nc">ModelOperation</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JobAccepted</span><span class="p">&gt;</span></code> | Submit an operation and get the job it created — the start of every piece of model work. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">JobRecord</span><span class="p">&gt;</span></code> | The durable state of one job right now. This is the authority, not the progress stream. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">jobs</span><span class="p">(</span><span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">)</span><span class="p">:</span> <span class="nc">CompletableFuture</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">JobSummary</span><span class="p">&gt;</span><span class="p">&gt;</span></code> | Recent jobs, newest first, optionally filtered to one `state`. `limit` must be within 1..500. |
 
 ## FieldPersistence.kt { #fieldpersistence-kt }
+
+How a Field document remembers audio work: ids and judgements in a box property, and not one
+sample of audio.
+
+The rule this file enforces is that Python is a worker and Field is the authority. The service
+owns immutable, content-addressed assets; the document owns which of them it refers to and what
+you thought of them. That is why saved state is a [`FieldAudioProjectState`](audio-ai.md#protocol-kt-fieldaudioprojectstate) of ids rather than
+audio, and why reopening a document and re-fetching those ids gets the same bytes back.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldPersistence.kt`
 
@@ -152,12 +236,19 @@ Persist only protocol data and asset IDs; Python remains a worker, never project
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;PROPERTY</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">save</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;PROPERTY</span></code> | The box property the project state lives in unless you name another one. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> | Register `property` as persistent and JSON-sidecar-separated on this document. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span></code> | Read the saved state out of `box`, or an empty [`FieldAudioProjectState`](audio-ai.md#protocol-kt-fieldaudioprojectstate) if there is none yet. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">save</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> | Write `state` into `box` as pretty-printed JSON, replacing whatever was there. |
 
 ## JobMonitor.kt { #jobmonitor-kt }
+
+The job monitor: the service's own live view of every durable job, embedded in a box output.
+
+It is an `<iframe>` rather than a Kotlin-rendered table on purpose — the page is served by the
+same service that owns the jobs, so it cannot disagree with them, and it needs no polling code on
+the Field side. Same-origin through the `/field-audio` prefix, so nothing here reaches across
+origins.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/JobMonitor.kt`
 
@@ -169,6 +260,15 @@ Persist only protocol data and asset IDs; Python remains a worker, never project
 
 ## NpyIntTensor.kt { #npyinttensor-kt }
 
+A dependency-free reader for the integer NPY tensors the audio service emits — the codec token
+grids, in practice.
+
+`numpy.kt` already reads `.npy` and `.npz` generally; this is the narrow, self-checking version
+for the one shape that matters here (codebooks × frames of small integers), so the codec views
+can index tokens by codebook and frame without a general tensor type in between. It refuses what
+it cannot represent honestly rather than guessing: Fortran order, an unsupported dtype and a
+multi-item batch are all errors with a message.
+
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/NpyIntTensor.kt`
 
 ### NpyIntTensor { #npyinttensor-kt-npyinttensor }
@@ -179,11 +279,11 @@ Small, dependency-free reader for the C-order integer NPY tensors emitted by the
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">IntArray</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">LongArray</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">codebooks</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">codebook</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">IntArray</span></code> | Array dimensions as the NPY header gave them; the last two are codebooks and time. |
+| <code class="highlight"><span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">LongArray</span></code> | All codes, C-order (row-major), widened to `Long` whatever the on-disk integer width was. |
+| <code class="highlight"><span class="k">val</span> <span class="n">codebooks</span><span class="p">:</span> <span class="nc">Int</span></code> | Size of the second-to-last axis: how many codebooks the encoder used. |
+| <code class="highlight"><span class="k">val</span> <span class="n">frames</span><span class="p">:</span> <span class="nc">Int</span></code> | Size of the last axis: how many token frames, and so the time extent. |
+| <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">codebook</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Long</span></code> | One code, by codebook and frame. Unchecked: an out-of-range index is an array error, not null. |
 
 ## Protocol.kt { #protocol-kt }
 

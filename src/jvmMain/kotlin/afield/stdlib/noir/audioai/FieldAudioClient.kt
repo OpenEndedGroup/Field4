@@ -24,18 +24,59 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/**
+ * The verbs of Field Audio: one client object whose every method is a request to the model
+ * service, plus the typed constructors for the two operations that ship with real controls.
+ *
+ * The protocol types — [AssetRegion], [ModelOperation], [JobRecord] and the rest — are the
+ * vocabulary; this is what you can *do* with it. The shape to hold on to is that nothing here
+ * blocks and nothing here runs a model in the JVM: a call returns
+ * a `CompletableFuture` that completes on the client's own executor, and the model work happens in
+ * a Python worker that may take minutes. Composing futures (`thenCompose`, `thenAccept`) is
+ * therefore the only correct way to use this from a box — a `.get()` on Field's runloop freezes
+ * the editor for as long as the model takes.
+ *
+ * Argument validation happens here, in the JVM, before anything is sent: `require` failures name
+ * the constraint. Everything the service rejects instead arrives as a [FieldAudioException]
+ * carrying the service's own [StructuredError], and a job that fails after being accepted arrives
+ * as a [FieldAudioJobException] from one of the `await…` helpers.
+ */
+
+/**
+ * The service said no, and said why.
+ *
+ * Every non-2xx response becomes one of these. When the body carried the service's own error
+ * envelope, [error] holds it and the exception message is `CODE: message`; when it did not —
+ * a proxy error page, a crash before the handler — [error] is null and the message falls back
+ * to the status plus the first 500 characters of the body. Check `error?.code` before matching
+ * on message text, and `error?.retryable` before retrying.
+ */
 class FieldAudioException(
+    /** HTTP status of the response that failed. */
     val statusCode: Int,
+    /** The response body verbatim, for the cases [error] could not be decoded from it. */
     val responseBody: String,
+    /** The service's structured error, when the body contained one. See [StructuredError.code]. */
     val error: StructuredError? = null,
 ) : RuntimeException(
     error?.let { "${it.code}: ${it.message}" }
         ?: "Field Audio HTTP $statusCode: ${responseBody.take(500)}"
 )
 
+/**
+ * A job was accepted and then did not finish successfully.
+ *
+ * Raised by `await`-composing helpers ([awaitCandidates], [awaitCodec], [awaitAnalysis]) when a
+ * job reaches a terminal state other than `COMPLETE` — so cancelled, failed, or
+ * `CANCEL_UNSUPPORTED` — because there is no result to hand back. [state] says which, and
+ * [error] carries the service's explanation when the job recorded one.
+ */
 class FieldAudioJobException(
+    /** The job that ended badly; still fetchable with [FieldAudioClient.inspect]. */
     val jobId: String,
+    /** The terminal state it ended in — anything but `COMPLETE`. */
     val state: JobState,
+    /** Why, when the job recorded a structured error. Null for a plain cancellation. */
     val error: StructuredError?,
 ) : RuntimeException(
     error?.let { "${it.code}: ${it.message}" }
@@ -62,6 +103,7 @@ class FieldAudioClient(
     baseUrl: String = "http://127.0.0.1:8765",
     private val callbackExecutor: Executor = DEFAULT_EXECUTOR,
 ) {
+    /** Where this client points, with any trailing slash removed so relative paths resolve cleanly. */
     val baseUri: URI = URI.create(baseUrl.trimEnd('/'))
     private val http = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(5))
@@ -72,6 +114,14 @@ class FieldAudioClient(
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
+    /**
+     * The exact JSON configuration this client speaks, exposed so a caller can decode a payload the
+     * same way.
+     *
+     * `ignoreUnknownKeys` is what lets an older Field talk to a newer service; `explicitNulls =
+     * false` omits nulls on the way out, which matters because the service *forbids* unknown fields
+     * and treats an explicit null differently from an absent one.
+     */
     val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -79,15 +129,29 @@ class FieldAudioClient(
         prettyPrint = false
     }
 
+    /** Liveness only: the raw body of `GET /health`. It starts nothing and loads no model. */
     fun health(): CompletableFuture<String> =
         send(HttpRequest.newBuilder(resolve("/health")).GET().build(), null)
 
+    /**
+     * Every backend the service knows about, including the ones it cannot currently run.
+     *
+     * Check [ModelCapability.available] before submitting: an unavailable model is still listed, with
+     * [ModelCapability.unavailableReason] saying what is missing.
+     */
     fun models(): CompletableFuture<List<ModelCapability>> =
         send(
             HttpRequest.newBuilder(resolve("/v1/models")).GET().build(),
             ListSerializer(ModelCapability.serializer()),
         )
 
+    /**
+     * Upload a WAV file and get the asset it became.
+     *
+     * Importing is idempotent because assets are content-addressed: the same bytes yield the same
+     * [AudioAsset.id], so re-importing a file you already have costs one upload and creates nothing.
+     * The file is streamed from disk rather than read into the JVM.
+     */
     fun importWav(path: Path): CompletableFuture<AudioAsset> {
         val filename = URLEncoder.encode(path.fileName.toString(), Charsets.UTF_8)
         val request = HttpRequest.newBuilder(
@@ -99,12 +163,20 @@ class FieldAudioClient(
         return send(request, AudioAsset.serializer())
     }
 
+    /** Fetch one asset and all its representations by content address. */
     fun describe(assetId: String): CompletableFuture<AudioAsset> =
         send(
             HttpRequest.newBuilder(resolve("/v1/assets/$assetId")).GET().build(),
             AudioAsset.serializer(),
         )
 
+    /**
+     * The one asset whose original filename matches [pattern] — and an error if that is not exactly one.
+     *
+     * This is the ergonomic entry point for live coding (`assetByFilename("*Nancy*")`): it fails loudly
+     * on both zero matches and several, naming the ids it found, rather than silently picking one. Use
+     * [assetsByFilename] when several matches are a legitimate answer.
+     */
     fun assetByFilename(
         pattern: String,
         preferredRole: String? = "canonical_project",
@@ -119,6 +191,12 @@ class FieldAudioClient(
         matches.single()
     }
 
+    /**
+     * Every asset whose original filename matches [pattern], preferring [preferredRole] representations.
+     *
+     * [pattern] must not be blank. The default role, `canonical_project`, is the 48 kHz project copy
+     * the service makes at import — the one you almost always want to work from rather than the raw file.
+     */
     fun assetsByFilename(
         pattern: String,
         preferredRole: String? = "canonical_project",
@@ -135,6 +213,15 @@ class FieldAudioClient(
         )
     }
 
+    /**
+     * A min/max envelope of one representation's window, for drawing.
+     *
+     * [startSeconds] must be non-negative, [durationSeconds] positive or null for "to the end", and
+     * [points] within 16..4096. Every source frame in the window contributes, so this is safe to ask
+     * for over a long recording and honest about single-sample transients. `AudioVisualizer` calls
+     * this endpoint itself as the user zooms; call it directly only when you are drawing the waveform
+     * yourself.
+     */
     fun waveform(
         representationId: String,
         startSeconds: Double = 0.0,
@@ -156,15 +243,25 @@ class FieldAudioClient(
         )
     }
 
+    /**
+     * Submit an operation and get the job it created — the start of every piece of model work.
+     *
+     * Returns as soon as the service has accepted it, which is long before the work is done; follow
+     * the job with [await], [watch], or one of the `await…` helpers that goes straight to the result.
+     * An identical request that has been served before comes back with [JobAccepted.cacheHit] true
+     * and already complete.
+     */
     fun submit(operation: ModelOperation): CompletableFuture<JobAccepted> =
         postJson("/v1/operations", json.encodeToString(operation), JobAccepted.serializer())
 
+    /** The durable state of one job right now. This is the authority, not the progress stream. */
     fun inspect(jobId: String): CompletableFuture<JobRecord> =
         send(
             HttpRequest.newBuilder(resolve("/v1/jobs/$jobId")).GET().build(),
             JobRecord.serializer(),
         )
 
+    /** Recent jobs, newest first, optionally filtered to one [state]. [limit] must be within 1..500. */
     fun jobs(state: JobState? = null, limit: Int = 100): CompletableFuture<List<JobSummary>> {
         require(limit in 1..500) { "job list limit must be between 1 and 500" }
         val stateQuery = state?.let {
@@ -176,27 +273,43 @@ class FieldAudioClient(
         )
     }
 
+    /**
+     * Ask for a job to stop, and get its state back.
+     *
+     * A request, not a guarantee — see [JobState]. A backend that cannot be interrupted ends as
+     * `CANCEL_UNSUPPORTED` and one that finished first ends as `COMPLETED_BEFORE_CANCELLATION`, which
+     * still has results.
+     */
     fun cancel(jobId: String): CompletableFuture<JobRecord> =
         postJson("/v1/jobs/$jobId/cancel", "{}", JobRecord.serializer())
 
+    /** Fetch a stored candidate family by id — as taken from [JobRecord.candidateSetId]. */
     fun candidateSet(id: String): CompletableFuture<CandidateSet> =
         send(
             HttpRequest.newBuilder(resolve("/v1/candidate-sets/$id")).GET().build(),
             CandidateSet.serializer(),
         )
 
+    /** Fetch a stored codec round trip by id — as taken from [JobRecord.codecResultId]. */
     fun codecResult(id: String): CompletableFuture<CodecReconstructionResult> =
         send(
             HttpRequest.newBuilder(resolve("/v1/codec-results/$id")).GET().build(),
             CodecReconstructionResult.serializer(),
         )
 
+    /** Fetch a stored analysis by id — as taken from [JobRecord.analysisResultId]. */
     fun analysisResult(id: String): CompletableFuture<AnalysisResult> =
         send(
             HttpRequest.newBuilder(resolve("/v1/analysis-results/$id")).GET().build(),
             AnalysisResult.serializer(),
         )
 
+    /**
+     * The plot-sized view of an analysis: at most [points] samples per series, 16..4096.
+     *
+     * Ask for this to draw something; download [AnalysisResult.data] to measure something. The curves
+     * are downsampled server-side, so this never transfers the full `.npz`.
+     */
     fun analysisPreview(id: String, points: Int = 1200): CompletableFuture<AnalysisPreview> {
         require(points in 16..4096) { "analysis preview points must be between 16 and 4096" }
         return send(
@@ -206,12 +319,25 @@ class FieldAudioClient(
         )
     }
 
+    /**
+     * Write a rating, selection flag and note back onto one candidate.
+     *
+     * The judgement replaces whatever was there — it is a PUT, not a merge, so send the fields you
+     * want to keep. This is the one call that changes server state other than by creating assets.
+     */
     fun judge(candidateSetId: String, candidateIndex: Int, judgement: CandidateJudgement): CompletableFuture<String> =
         putJson(
             "/v1/candidate-sets/$candidateSetId/candidates/$candidateIndex",
             json.encodeToString(judgement),
         )
 
+    /**
+     * Fetch a representation's bytes to [destination], creating parent directories, and return the path.
+     *
+     * The whole body is held in memory before it is written, so this is for clips and tensors rather
+     * than for hour-long recordings. It resolves [AssetRepresentation.binaryUrl] against this client's
+     * base URI, so pass the representation rather than a URL you built yourself.
+     */
     fun download(representation: AssetRepresentation, destination: Path): CompletableFuture<Path> {
         val request = HttpRequest.newBuilder(resolve(representation.binaryUrl)).GET().build()
         return http.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
@@ -241,6 +367,12 @@ class FieldAudioClient(
         return result
     }
 
+    /**
+     * Poll a `generate.*` job to the end and hand back its candidate family.
+     *
+     * The short way from [submit] to something you can audition. Fails with [FieldAudioJobException]
+     * if the job ends as anything but `COMPLETE`.
+     */
     fun awaitCandidates(accepted: JobAccepted): CompletableFuture<CandidateSet> =
         await(accepted.jobId).thenCompose { job ->
             if (job.state != JobState.COMPLETE) {
@@ -252,6 +384,11 @@ class FieldAudioClient(
             }
         }
 
+    /**
+     * Poll a `codec.*` job to the end and hand back its reconstruction result.
+     *
+     * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
+     */
     fun awaitCodec(accepted: JobAccepted): CompletableFuture<CodecReconstructionResult> =
         await(accepted.jobId).thenCompose { job ->
             if (job.state != JobState.COMPLETE) {
@@ -263,6 +400,11 @@ class FieldAudioClient(
             }
         }
 
+    /**
+     * Poll an `analysis.*` job to the end and hand back its analysis result.
+     *
+     * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
+     */
     fun awaitAnalysis(accepted: JobAccepted): CompletableFuture<AnalysisResult> =
         await(accepted.jobId).thenCompose { job ->
             if (job.state != JobState.COMPLETE) {
@@ -352,16 +494,39 @@ class FieldAudioClient(
 
 /** Global controls exposed by the pinned MusicGen-Style checkpoint. */
 data class MusicGenStyleControls(
+    /** Sample from the distribution rather than taking the argmax. Off makes output deterministic and dull. */
     val useSampling: Boolean = true,
+    /** Keep only the k most likely tokens at each step; 0 disables the cut. Must be non-negative. */
     val topK: Int = 250,
+    /** Nucleus sampling threshold within 0..1; 0 disables it. Use one of [topK] and [topP], not both. */
     val topP: Double = 0.0,
+    /** Softmax temperature, strictly positive. Above 1 wanders, below 1 commits. */
     val temperature: Double = 1.0,
+    /** Classifier-free guidance strength, non-negative. Higher follows the conditioning harder and varies less. */
     val cfg: Double = 3.0,
+    /**
+     * Balance between the text prompt and the style excerpt, non-negative.
+     *
+     * Only sent when a prompt is non-blank — with no text there is nothing to balance against.
+     */
     val cfgBeta: Double? = 5.0,
+    /** Run guidance as two forward passes instead of one batched pass: slower, occasionally different. */
     val twoStepCfg: Boolean = false,
+    /**
+     * Size of the style bottleneck, strictly positive. Larger keeps more of the source's identity;
+     * smaller abstracts it into gesture.
+     */
     val styleQuantization: Int = 1,
+    /**
+     * How much of the source window the style encoder actually reads, in seconds.
+     *
+     * Positive, and never longer than the window itself — `styleCandidates` checks both. Null means
+     * the whole window.
+     */
     val styleExcerptSeconds: Double? = null,
+    /** Temporal downsampling of the style representation, strictly positive. Null leaves the model's default. */
     val styleDownsampleFactor: Int? = null,
+    /** How many EnCodec codebooks the style path uses, strictly positive. Fewer is a coarser style. */
     val styleEncodecCodebooks: Int? = null,
 ) {
     init {

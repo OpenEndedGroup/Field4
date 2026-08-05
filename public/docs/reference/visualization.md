@@ -4,11 +4,29 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-8 source file(s), 282 public symbol(s), 236 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+8 source file(s), 282 public symbol(s), 253 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
 ## AudioVisualizer.kt { #audiovisualizer-kt }
+
+The recorded-audio waveform player: a zoomable, seekable view of a recording, as one
+self-contained HTML fragment for a box output.
+
+It is *not* a spectrum analyser or a live meter — it shows audio that already exists, with the
+interaction an editor expects (wheel to zoom, drag to pan, click to seek, a playhead that tracks
+playback) and the browser's own transport underneath.
+
+The one design decision worth knowing: what it draws is a min/max envelope of the *visible*
+window, not the whole file decimated. Where a server can summarise a window
+(`AudioVisualizerSource.waveformUrl` — Field Audio's waveform endpoint, for instance) the
+component asks for one envelope per view, so an hour-long recording costs the same as a bar of
+it; where there is no server it decodes the clip in the browser and does the same arithmetic
+locally. Either way a single-sample click survives being drawn at 1000 points, which is the whole
+point of a min/max envelope over an average.
+
+Start from `Box.displayAudio` for a URL, `Box.displayAudioSamples` for a `FloatArray` you
+generated, or `Box.displayAudioBytes` for an encoded clip you have in memory.
 
 `src/jvmMain/kotlin/afield/stdlib/AudioVisualizer.kt`
 
@@ -26,29 +44,33 @@ Turning a value into something you can look at, without leaving the box.
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AudioVisualizerSource</span><span class="p">(</span><span class="k">val</span> <span class="n">audioUrl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">waveformUrl</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">inlineWaveformWavBase64</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
+Where a waveform player gets its audio, and how it gets the envelope it draws.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">audioUrl</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">audioUrl</span><span class="p">:</span> <span class="nc">String</span></code> | What the `<audio>` element plays: an ordinary URL or a `data:` URI. Always required. |
 | <code class="highlight"><span class="k">val</span> <span class="n">waveformUrl</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | A GET endpoint accepting start_seconds, duration_seconds, and points. |
 | <code class="highlight"><span class="k">val</span> <span class="n">inlineWaveformWavBase64</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | Browser-compatible PCM16 WAV used only for local waveform analysis, without replacing playback audio. |
-| <code class="highlight"><span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | Total length in seconds, if it is known up front. |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | A caption above the waveform, HTML-escaped. Null draws no caption. |
 
 ### AudioVisualizerOptions { #audiovisualizer-kt-audiovisualizeroptions }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AudioVisualizerOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">960</span><span class="p">,</span> <span class="k">val</span> <span class="n">waveformHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">150</span><span class="p">,</span> <span class="k">val</span> <span class="n">showPlayhead</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">interactive</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">showNativeControls</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialStartSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialDurationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">initialPositionSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">accent</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;#63c7dc&quot;</span><span class="p">)</span></code>
 
+How a waveform player looks and what it lets the user do.
+
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">waveformHeight</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">showPlayhead</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">interactive</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">showNativeControls</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">initialStartSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">initialDurationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">initialPositionSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">accent</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span></code> | Maximum width in CSS pixels; the component is fluid below it. Must be positive. |
+| <code class="highlight"><span class="k">val</span> <span class="n">waveformHeight</span><span class="p">:</span> <span class="nc">Int</span></code> | Height of the waveform canvas in CSS pixels. At least 48, and channels share it as lanes. |
+| <code class="highlight"><span class="k">val</span> <span class="n">showPlayhead</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Draw the moving playhead while the audio plays. |
+| <code class="highlight"><span class="k">val</span> <span class="n">interactive</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Allow wheel-zoom, drag-pan, click-to-seek and the keyboard shortcuts. |
+| <code class="highlight"><span class="k">val</span> <span class="n">showNativeControls</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Show the browser's own `<audio>` transport. The element is always present; this only hides it. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialStartSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> | Left edge of the initial view, in seconds. Must be non-negative. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialDurationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | Width of the initial view in seconds; null shows the whole clip. |
+| <code class="highlight"><span class="k">val</span> <span class="n">initialPositionSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | Where to place the playhead once metadata has loaded, in seconds; null leaves it at zero. |
+| <code class="highlight"><span class="k">val</span> <span class="n">accent</span><span class="p">:</span> <span class="nc">String</span></code> | CSS colour for the first channel's trace and the focus highlights. The second channel is amber. |
 
 ### AudioVisualizer { #audiovisualizer-kt-audiovisualizer }
 
@@ -58,10 +80,10 @@ General-purpose waveform player for Field output areas.
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderHtml</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">AudioVisualizerSource</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">renderSamplesHtml</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">wavBytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderHtml</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">AudioVisualizerSource</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The player as one self-contained HTML fragment — markup, styles and script together. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderSamplesHtml</span><span class="p">(</span><span class="n">samples</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">wavBytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A player for samples you have in memory: mono `FloatArray` in, self-contained player out. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">renderBytesHtml</span><span class="p">(</span><span class="n">bytes</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">mediaType</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;audio/wav&quot;</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Embed a short browser-decodable recording (WAV, MP3, Ogg, and so on) in a self-contained player. Prefer `renderHtml` with ordinary audio and waveform URLs for long recordings. |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">fieldAudioWaveformUrl</span><span class="p">(</span><span class="n">representationId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fieldAudioWaveformUrl</span><span class="p">(</span><span class="n">representationId</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The Field Audio waveform endpoint for one representation id, ready for `AudioVisualizerSource.waveformUrl`. |
 
 ## interactionnets.kt { #interactionnets-kt }
 

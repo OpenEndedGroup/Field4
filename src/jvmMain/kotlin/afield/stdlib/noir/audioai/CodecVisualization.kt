@@ -20,21 +20,66 @@ import kotlin.math.log10
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+/**
+ * The EnCodec reconstruction microscope: what a neural codec kept, what it threw away, and what it
+ * wrote down in between.
+ *
+ * A codec round trip is three things that have to be looked at together — the audio in, the discrete
+ * tokens, the audio out — and this file is the rendering half of that view. It is deliberately
+ * browser-free below the top layer: the spectrograms, the waveform and the token map are drawn into
+ * PNG bytes on the JVM, so the same code produces a live box output, a test assertion and the
+ * committed picture on [the EnCodec microscope page](../audio_ai_codec.md).
+ *
+ * Everything here needs the bytes locally, which is what `FieldAudioClient.codecVisualizationHtml`
+ * is for — it downloads the three representations off Field's runloop and then renders.
+ */
+
+/**
+ * Everything the EnCodec microscope draws, already decoded into the JVM.
+ *
+ * The point of gathering it into one value is that the same data renders three ways — a live box
+ * output, a test assertion, and the executable documentation page — from one code path. Build it
+ * with [CodecVisualization.load] rather than by hand: that is where the two sample rates are
+ * checked for agreement and the codec metadata is read.
+ */
 data class CodecVisualizationData(
+    /** The model input: the windowed, resampled audio the codec was given, as mono float samples. */
     val source: FloatArray,
+    /** The decoded output at the same rate and length, so the two can be compared sample for sample. */
     val reconstruction: FloatArray,
+    /** Sample rate shared by [source] and [reconstruction]; `load` refuses inputs that disagree. */
     val sampleRate: Int,
+    /** The discrete codes the encoder produced, indexed codebook then frame. */
     val tokens: NpyIntTensor,
+    /** How far [reconstruction] is from [source], as the backend measured it. */
     val metrics: ReconstructionMetrics,
+    /** Token frames per second, from the codec metadata; 50.0 when the backend did not say. */
     val frameRate: Double,
+    /** Codebook size, from the codec metadata; 2048 when the backend did not say. Sets the token colour scale. */
     val cardinality: Int,
+    /** Model name for the heading, from the codec metadata; "EnCodec" when the backend did not say. */
     val codecLabel: String,
+    /**
+     * The original WAV bytes of [source], kept for browser playback.
+     *
+     * Without it the player still works — it re-encodes the samples as PCM16 — but you hear the
+     * re-encode rather than the file.
+     */
     val sourceWav: ByteArray? = null,
+    /** The original WAV bytes of [reconstruction], with the same purpose as [sourceWav]. */
     val reconstructionWav: ByteArray? = null,
 )
 
 /** Rendering shared by live Field output, tests, and the public executable documentation. */
 object CodecVisualization {
+    /**
+     * Read the three downloaded files into one [CodecVisualizationData].
+     *
+     * Requires the model input and the reconstruction to share a sample rate — a misaligned pair
+     * would draw two spectrograms on different frequency axes and invite a false conclusion.
+     * `frame_rate`, `cardinality` and `model_name` come from [CodecReconstructionResult.codec] when
+     * present, and fall back to EnCodec's values otherwise.
+     */
     fun load(
         result: CodecReconstructionResult,
         modelInputWav: Path,
@@ -54,6 +99,14 @@ object CodecVisualization {
         )
     }
 
+    /**
+     * The whole microscope as one self-contained HTML fragment: two players, two log-frequency
+     * spectrograms, and the token map with a hover readout.
+     *
+     * Everything is inlined — the spectrograms and token map as base64 PNGs, the audio as data URIs —
+     * so the fragment survives being written into a docs page or a box output with no server behind
+     * it. Pass it to `display(…)`.
+     */
     fun renderHtml(data: CodecVisualizationData, width: Int = 1200): String {
         val sourceSpectrum = pngDataUri(renderLogSpectrogram(data.source, data.sampleRate, width, 280))
         val reconstructionSpectrum = pngDataUri(
@@ -138,6 +191,12 @@ object CodecVisualization {
         """.trimIndent()
     }
 
+    /**
+     * A min/max waveform as PNG bytes, one column per pixel.
+     *
+     * The still-image counterpart to `AudioVisualizer`: no interaction and no zooming, but no browser
+     * either, so it works in a test or a generated page.
+     */
     fun renderWaveform(samples: FloatArray, width: Int, height: Int): ByteArray {
         val pixels = IntArray(width * height) { 0xff080c11.toInt() }
         val middle = height / 2
@@ -160,6 +219,14 @@ object CodecVisualization {
         return PngEncoder.encode(pixels, width, height)
     }
 
+    /**
+     * A log-frequency STFT as PNG bytes: 1024-point Hann windows, 256-sample hop, 35 Hz to Nyquist,
+     * 90 dB of range below the clip's own peak.
+     *
+     * Normalising to each clip's own peak is what makes two of these comparable at a glance — a quiet
+     * reconstruction and a loud source get the same colour scale — and it is also why the colours are
+     * relative, so do not read an absolute level off one.
+     */
     fun renderLogSpectrogram(samples: FloatArray, sampleRate: Int, width: Int, height: Int): ByteArray {
         val fftSize = 1024
         val spec = stft(samples, fftSize, 256, WindowType.HANN, sampleRate.toDouble())
@@ -183,6 +250,13 @@ object CodecVisualization {
         return PngEncoder.encode(pixels, width, height)
     }
 
+    /**
+     * The token tensor as PNG bytes: time across, codebooks down, coarse to fine, one hue per code.
+     *
+     * Colour is a cyclic function of the code index, so neighbouring codes look unrelated on purpose:
+     * a codebook index is a label, not a magnitude, and a continuous ramp would invent a similarity
+     * the codes do not have. Thin lines separate the codebook lanes.
+     */
     fun renderTokens(tensor: NpyIntTensor, cardinality: Int, width: Int, height: Int): ByteArray {
         val pixels = IntArray(width * height)
         for (y in 0 until height) {

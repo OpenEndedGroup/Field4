@@ -7,6 +7,26 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 
+/**
+ * The three analysis operations, as typed constructors: beats and tempo, monophonic pitch, and
+ * polyphonic transcription.
+ *
+ * Each one is a [ModelOperation] factory and nothing more — it validates its arguments here in the
+ * JVM, names the backend that serves it, and packs the parameters into the snake_case keys that
+ * backend expects. Submitting it, waiting for it and drawing it are `FieldAudioClient`'s job.
+ *
+ * All three ask for a single candidate, because an analysis of a fixed window with fixed parameters
+ * has one answer; the seed family in `styleCandidates` has no counterpart here. All three also
+ * produce an `.npz` of full-resolution arrays plus, for a drawing, a downsampled
+ * [AnalysisPreview] — see `analysisVisualizationHtml`.
+ *
+ * Which to reach for: `multiScaleBeatAnalysis` when you want *when*, and at several time scales at
+ * once, because a tempo estimate is only meaningful relative to a window length;
+ * `monophonicPitchAnalysis` when you know there is one voice and want a continuous F0 with a voiced
+ * probability; `polyphonicPitchAnalysis` when there are chords and you want discrete note events
+ * (and MIDI) rather than a curve.
+ */
+
 /** Multi-scale local tempo trajectories plus a discrete beat grid. */
 fun multiScaleBeatAnalysis(
     source: AssetRegion,
