@@ -1,11 +1,13 @@
 package afield.rectsl
 
+import afield.four.fabricated.RectSLGalleryHarness
 import afield.four.modules.ShaderKind
 import afield.four.modules.ShaderSPIRVUtils
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.readText
+import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -198,7 +200,80 @@ class RectSLSdfLookTest {
         }
     }
 
+    /**
+     * The three scenes the docs render are literals in the harness, so a typo in
+     * one of them fails a GPU capture minutes into a docs build with a message
+     * about a missing PNG. Compile them here instead, and check the properties each
+     * one exists to demonstrate — that the blades really overlap (so `smin` has a
+     * seam to smooth), that the carve field really intersects them (so subtraction
+     * is visible), and that the pattern scene really produces the baked tracks the
+     * differential is there to cover.
+     */
+    @Test
+    fun `the harness demo scenes compile and demonstrate what they claim`() {
+        val blades = compileOrFail(RectSLGalleryHarness.SDF_SCENE_SOURCE)
+        val carve = compileOrFail(RectSLGalleryHarness.SDF_CARVE_SOURCE)
+        val pattern = compileOrFail(RectSLGalleryHarness.SDF_PATTERN_SOURCE)
+
+        assertEquals(6, blades.nodes.filterIsInstance<RectNode>().size, "expected six blades")
+        val stillTime = 0.95
+        val bladeRects = blades.sample(stillTime).rects
+        assertEquals(6, bladeRects.size)
+        // Adjacent blades must actually overlap at the still time, or `blend` and the
+        // union outline have nothing to say.
+        val spacing = bladeRects.map { it.center.x }.sorted().zipWithNext { a, b -> b - a }
+        assertTrue(
+            spacing.all { it < 0.85 },
+            "blades must overlap for smin to fuse them; centre spacing was $spacing against a 0.85 side"
+        )
+        // ... and stay on the wall.
+        bladeRects.forEach {
+            assertTrue(
+                abs(it.center.x) < blades.wall.width * 0.5 && abs(it.center.y) < blades.wall.height * 0.5,
+                "blade ${it.id} left the wall at t=$stillTime: ${it.center}"
+            )
+        }
+
+        val hole = carve.sample(stillTime).rects.single()
+        assertTrue(
+            bladeRects.any { abs(it.center.x - hole.center.x) < 1.2 && abs(it.center.y - hole.center.y) < 1.2 },
+            "the carving hole must overlap a blade at t=$stillTime or subtraction is invisible; " +
+                "hole at ${hole.center}, blades at ${bladeRects.map { it.center }}"
+        )
+        assertEquals(blades.wall.width, carve.wall.width, "both fields must share one wall")
+        assertEquals(blades.wall.height, carve.wall.height)
+
+        // The pattern scene exists to make the emitter bake, so it must.
+        val emitted = RectSLGlsl.emitSdf(pattern, "scene")
+        assertTrue(
+            emitted.notes.any { it.contains("pattern") } && emitted.notes.any { it.contains("degrade") },
+            "the pattern scene should force both a pattern bake and a degrade bake, got ${emitted.notes}"
+        )
+    }
+
     // --- plumbing -----------------------------------------------------------
+
+    /**
+     * Compiles through `compileRectSL` — the entry point the harness itself uses —
+     * and checks the oracle agrees. They are the same VM behind two signatures, and
+     * a test that used only the oracle would not have covered the path the docs
+     * render actually takes.
+     */
+    private fun compileOrFail(source: String): SceneProgram {
+        val viaHarnessPath = compileRectSL(source)
+        assertTrue(
+            viaHarnessPath.ok && viaHarnessPath.programOrNull != null,
+            "harness demo scene did not compile via compileRectSL:\n" +
+                viaHarnessPath.diagnostics.joinToString("\n")
+        )
+        val viaOracle = RectAnimationOracle.compile(source)
+        assertTrue(
+            viaOracle.ok,
+            "compileRectSL and RectAnimationOracle.compile disagree about this scene:\n" +
+                viaOracle.diagnostics.joinToString("\n")
+        )
+        return viaHarnessPath.program
+    }
 
     /** A small, deliberately overlapping scene used as the thing being subtracted. */
     private fun carvingProgram(): SceneProgram = RectAnimationOracle.compile(

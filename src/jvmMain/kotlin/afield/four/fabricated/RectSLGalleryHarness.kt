@@ -249,6 +249,36 @@ object RectSLGalleryHarness {
     """.trimIndent()
 
     /**
+     * A scene whose motion comes from the *pattern* language, so the differential
+     * covers the three tracks `emitSdf` cannot lower symbolically and bakes to a
+     * hold chain instead (`->degrade`'s 64-bit hash, and both pattern queries).
+     *
+     * `RectSLSdfBakeTest` measures what the bake costs on the CPU — nothing, where
+     * a pattern edge lands on a bake sample instant, and up to one bake interval of
+     * edge displacement where it does not. This scene checks the other half: that
+     * the *shader* faithfully evaluates the chain that was baked. It is therefore
+     * probed only at instants well away from any pattern edge, where the bake is
+     * exact, so that anything the differential finds is the shader's.
+     */
+    val SDF_PATTERN_SOURCE: String = """
+        #rectsl
+        ->wall 12 6 abstract
+        ->duration 4
+        ->fps 30
+        ->cps 1
+
+        "step" rect  0.8 ->square
+          "1 2.5 4 5.5" ->x
+          '( 0=-1.2  4=1.2 ) ->y
+          12 '( ic 0.42 * 3.25 - 0 ->offset ) array
+          0.45 ->degrade
+        ;
+    """.trimIndent()
+
+    /** Instants at least two bake intervals away from any quarter-cycle pattern edge. */
+    private val SDF_PATTERN_TIMES: List<Double> = listOf(0.125, 0.375, 1.625, 2.875)
+
+    /**
      * The field that gets subtracted by the `carve` look.
      *
      * It rides the blades' own `->y` track so the hole is actually *in* the band
@@ -317,7 +347,20 @@ object RectSLGalleryHarness {
         val program = compileForRender("sdf-scene", SDF_SCENE_SOURCE)
         val carveProgram = compileForRender("sdf-carve", SDF_CARVE_SOURCE)
 
-        val agreement = measureSdfAgreement(renderer, program)
+        // The pattern scene first: it is the one whose tracks the emitter admits it
+        // approximated, so it is the one most likely to be wrong.
+        val patternProgram = compileForRender("sdf-pattern", SDF_PATTERN_SOURCE)
+        val patternAgreement = measureSdfAgreement(renderer, patternProgram, SDF_PATTERN_TIMES)
+            .map { it.copy(label = "baked ${it.label}") }
+        patternAgreement.forEach { lprintln("info,doc", "rectsl sdf $it") }
+        val bakedNear = patternAgreement.first { it.label.contains("near") }
+        require(bakedNear.maxAbsError < 1e-5) {
+            "on a pattern-driven scene the shader disagrees with the CPU sampler by " +
+                "${bakedNear.maxAbsError} wall units away from any pattern edge, so the baked hold " +
+                "chain is not what the shader evaluates:\n" + patternAgreement.joinToString("\n")
+        }
+
+        val agreement = measureSdfAgreement(renderer, program) + patternAgreement
         agreement.forEach { lprintln("info,doc", "rectsl sdf ${it}") }
         val near = agreement.first { it.label.startsWith("near") }
         require(near.maxAbsError < 1e-5) {

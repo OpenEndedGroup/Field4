@@ -249,6 +249,55 @@ float rectslSmin(float a, float b, float k) {
     /** Ceiling on samples taken when baking a track that cannot be lowered. */
     private const val MAX_BAKE_SAMPLES = 4096
 
+    /**
+     * The run-length-compressed hold chain a non-lowerable track becomes, exactly
+     * as [bakeHoldChain] wrote it into the shader.
+     *
+     * Held separately from the emitted text so the loss can be *measured* rather
+     * than described: `RectSLSdfBakeTest` evaluates [valueAt] against the track's
+     * own `sample` on a grid far finer than [sampleCount] and reports where and by
+     * how much they part company.
+     */
+    internal class BakedHold(
+        val steps: List<Pair<Double, Double>>,
+        val sampleCount: Int,
+        val duration: Double
+    ) {
+        /** Gap between bake samples — the most an edge can be displaced by. */
+        val sampleInterval: Double get() = duration / (sampleCount - 1).coerceAtLeast(1)
+
+        /** What the emitted GLSL returns: the last step whose time is `<= t`. */
+        fun valueAt(t: Double): Double {
+            var v = steps.first().second
+            for ((time, value) in steps) if (t >= time) v = value else break
+            return v
+        }
+    }
+
+    /**
+     * Sample a track that cannot be lowered symbolically and re-express it as the
+     * hold chain its values already describe.
+     *
+     * Only reached for tracks that are piecewise constant in time, which is what
+     * makes this a fair trade rather than a lossy one: consecutive equal samples
+     * collapse, so a dropout gate over six seconds becomes a few steps. The costs
+     * are real — the baked function is flat outside `[0, duration]`, and a step
+     * falling between two samples lands on the nearer sample instant, which puts
+     * an edge up to half a sample interval out of place.
+     */
+    internal fun bakeHoldChain(track: Track<Double>, programDuration: Double, fps: Double): BakedHold {
+        val duration = if (programDuration > 0.0) programDuration else 1.0
+        val rate = maxOf(fps * 4.0, 120.0)
+        val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
+        val steps = mutableListOf<Pair<Double, Double>>()
+        for (i in 0 until count) {
+            val t = duration * i / (count - 1).coerceAtLeast(1)
+            val v = track.sample(t)
+            if (steps.isEmpty() || steps.last().second != v) steps += t to v
+        }
+        return BakedHold(steps, count, duration)
+    }
+
     private class Emitter(val program: SceneProgram, val options: RectSLSdfOptions = RectSLSdfOptions()) {
         private val prefix = options.namePrefix
 
@@ -594,21 +643,14 @@ float rectslSmin(float a, float b, float k) {
          * between two samples lands on the nearer sample instant.
          */
         private fun bakeAsHold(name: String, track: Track<Double>, what: String): String {
-            val duration = if (program.duration > 0.0) program.duration else 1.0
-            val rate = maxOf(program.fps * 4.0, 120.0)
-            val count = minOf((duration * rate).toInt() + 1, MAX_BAKE_SAMPLES)
-            val steps = mutableListOf<Pair<Double, Double>>()
-            for (i in 0 until count) {
-                val t = duration * i / (count - 1).coerceAtLeast(1)
-                val v = track.sample(t)
-                if (steps.isEmpty() || steps.last().second != v) steps += t to v
-            }
-            notes += "$what baked as ${steps.size} step(s) from $count samples over " +
-                "[0, ${duration}s]; constant outside that range"
+            val bake = bakeHoldChain(track, program.duration, program.fps)
+            notes += "$what baked as ${bake.steps.size} step(s) from ${bake.sampleCount} samples " +
+                "over [0, ${bake.duration}s]; constant outside that range, and an edge that falls " +
+                "between two samples is displaced by up to ${"%.5f".format(bake.sampleInterval)}s"
             return buildString {
                 appendLine("float $name(float t) {")
-                appendLine("    float v = ${steps.first().second.glslFloat()};")
-                steps.drop(1).forEach { (time, value) ->
+                appendLine("    float v = ${bake.steps.first().second.glslFloat()};")
+                bake.steps.drop(1).forEach { (time, value) ->
                     appendLine("    if (t >= ${time.glslFloat()}) v = ${value.glslFloat()};")
                 }
                 appendLine("    return v;")
