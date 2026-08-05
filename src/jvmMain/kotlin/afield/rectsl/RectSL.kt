@@ -139,6 +139,8 @@ private fun Value.describe(): String = when (this) {
     is VQuote -> "Quote"
     is VMaterialRef -> "Material"
     is VFn -> "Fn"
+    is VPat -> "Pattern"
+    is VSig -> "Signal"
 }
 
 class RectLangTokenizer(private val source: String) {
@@ -1185,7 +1187,14 @@ data class LoopFrame(
     val col: Int = -1,
     val row: Int = -1,
     val cols: Int = -1,
-    val rows: Int = -1
+    val rows: Int = -1,
+    /**
+     * Set only by `pat`: the musical identity of the event this copy came from, which is
+     * what `t` / `dur` / `cyc` / `step` / `atom` / `param` read. It rides on `LoopFrame`
+     * rather than a parallel stack so that `i`, `n`, `f`, `f0`, `fc` and `ic` keep working
+     * inside a `pat` body exactly as they do inside `array`.
+     */
+    val pat: PatEventContext? = null
 )
 
 class RectLangVm(
@@ -1199,7 +1208,7 @@ class RectLangVm(
     private val definitions = linkedMapOf<String, List<Token>>()
     private val namedTracks = linkedMapOf<String, Track<Double>>()
     private val escapeLambdas = linkedMapOf<String, (RectEscapeContext) -> Any?>().apply { putAll(precompiledEscapes) }
-    private val loopStack = ArrayDeque<LoopFrame>()
+    internal val loopStack = ArrayDeque<LoopFrame>()
     private var tokens: List<Token> = emptyList()
     private var pc: Int = 0
 
@@ -1487,6 +1496,17 @@ class RectLangVm(
                 }
                 value.track as Track<Double>
             }
+            // The single coercion point in the language, which is why the musical layer only has
+            // to touch it once: every track-taking mutator (->x ->y ->rot ->alpha ->w ->h ->scale
+            // ->z ->layer …) and every scalar operator routes through here, so `sine ->alpha` and
+            // `"0 0.25 0.5" mini nums ->rot` work without any of them knowing patterns exist.
+            is VSig -> value.asTrack(scene.cps)
+            is VPat -> value.asTrack(scene.cps)
+            is VStr -> numericPatternTrackOrNull(value.x, scene.cps)
+                ?: throw RectLangException(
+                    "$word expected Number or Track<Double>, found String — a String is read as " +
+                        "mini-notation only when it contains numbers, e.g. \"0 1 2 3\""
+                )
             else -> throw RectLangException("$word expected Number or Track<Double>, found ${value.describe()}")
         }
 
@@ -2574,6 +2594,11 @@ class RectLangVm(
         word("points") { vm -> vm.pointsSeries() }
         word("colorbar") { vm -> vm.drawColorbar() }
         word("legend") { vm -> vm.drawLegend() }
+
+        // The musical layer — clock, `pat`, pattern-backed tracks, and the variation
+        // combinators — lives in RectSLPattern.kt. See its file header for why it is a
+        // separate file and what it borrows from afield.four.synth.
+        installPatternWords()
     }
 
     /**
@@ -2959,7 +2984,9 @@ class RectLangVm(
         push(VSelection(refs))
     }
 
-    private fun word(
+    // `internal`, not `private`, so RectSLPattern.kt can register the musical words
+    // through the same one registration path rather than a parallel mechanism.
+    internal fun word(
         spelling: String,
         effect: RectWordEffect = RectWordEffect.Ordinary,
         apply: (RectLangVm) -> Unit
@@ -2967,7 +2994,7 @@ class RectLangVm(
         words[spelling] = Word(RectWordMetadata(spelling, effect), apply)
     }
 
-    private fun mutator(name: String, apply: (RectLangVm) -> Unit) {
+    internal fun mutator(name: String, apply: (RectLangVm) -> Unit) {
         require(!name.startsWith("->")) { "Mutator names are registered without their -> prefix: $name" }
         word("->$name", RectWordEffect.Mutator, apply)
     }
@@ -3112,6 +3139,24 @@ class SceneBuilder {
     var wall: WallSpec = WallSpec(30.0, 4.0, UnitKind.Meters)
     var duration: Double = 10.0
     var fps: Double = 60.0
+
+    /**
+     * Cycles per second — the scene's musical clock, and the one number that converts
+     * between the pattern language's cycles and RectSL's seconds. `1.0` (one cycle per
+     * second) is Tidal's own default and is deliberately chosen so that a scene which
+     * never says `->tempo` behaves as if a cycle were a second: every existing scene is
+     * unaffected because nothing outside the musical words reads it.
+     */
+    var cps: Double = 1.0
+
+    /** Beats per cycle — the denominator `->tempo` divides a bpm by. Four is a 4/4 bar. */
+    var beatsPerCycle: Double = 4.0
+
+    /**
+     * The last bpm `->tempo` was given, remembered so that `->tempo` and `->beats-per-cycle`
+     * commute. Null when [cps] was set directly, which is not a tempo divided by anything.
+     */
+    var bpm: Double? = null
     var fit: FitPolicy = FitPolicy.Contain
     var background: Color4 = Color4.BLACK
 
@@ -3587,7 +3632,50 @@ class SceneBuilder {
         setY(constantTrack(radius * sin(angle)))
     }
 
-    private fun mapScalarTracks(ref: NodeRef, transform: (Track<Double>) -> Track<Double>) {
+    /**
+     * Snapshot a node's scalar tracks, run [body] (which may rewrite any of them), then replace
+     * each with `combine(before, after)`.
+     *
+     * This is what makes a *conditional* transform expressible at all. RectSL has no way to say
+     * "do this only sometimes" — a mutator rewrites a track and the old one is gone. Holding both
+     * versions and choosing between them per sample turns any existing mutator into a variation
+     * operator, which is how `->every` works without every mutator knowing about cycles.
+     */
+    internal fun combineScalarTracks(
+        ref: NodeRef,
+        body: () -> Unit,
+        combine: (before: Track<Double>, after: Track<Double>) -> Track<Double>
+    ) {
+        val node = requireNode(ref.id)
+        val before: List<Track<Double>> = when (node) {
+            is RectDraft -> listOf(node.x, node.y, node.w, node.h, node.rotation, node.scaleX, node.scaleY, node.alpha, node.z)
+            is GroupDraft -> listOf(node.x, node.y, node.rotation, node.scaleX, node.scaleY, node.alpha)
+        }
+        body()
+        when (val after = requireNode(ref.id)) {
+            is RectDraft -> {
+                after.x = combine(before[0], after.x)
+                after.y = combine(before[1], after.y)
+                after.w = combine(before[2], after.w)
+                after.h = combine(before[3], after.h)
+                after.rotation = combine(before[4], after.rotation)
+                after.scaleX = combine(before[5], after.scaleX)
+                after.scaleY = combine(before[6], after.scaleY)
+                after.alpha = combine(before[7], after.alpha)
+                after.z = combine(before[8], after.z)
+            }
+            is GroupDraft -> {
+                after.x = combine(before[0], after.x)
+                after.y = combine(before[1], after.y)
+                after.rotation = combine(before[2], after.rotation)
+                after.scaleX = combine(before[3], after.scaleX)
+                after.scaleY = combine(before[4], after.scaleY)
+                after.alpha = combine(before[5], after.alpha)
+            }
+        }
+    }
+
+    internal fun mapScalarTracks(ref: NodeRef, transform: (Track<Double>) -> Track<Double>) {
         when (val node = requireNode(ref.id)) {
             is RectDraft -> {
                 node.x = transform(node.x)
