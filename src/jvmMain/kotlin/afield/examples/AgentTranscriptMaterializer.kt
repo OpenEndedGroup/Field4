@@ -69,8 +69,12 @@ object AgentTranscriptMaterializer {
      * opening it as a generic welcome starting point cannot make sound without that extra interaction.
      * `remotear_scene_motion` demonstrates the richer asset API but deliberately refers to an external
      * `/abs/assets/robot.glb`, so the smaller asset-free RemoteAR starter is the loadable starting point.
+     *
+     * `internal` rather than private because [afield.docs.AgentTranscriptIndexGuard] reads it: the
+     * public index page must carry an `Open ↗` starting-point link for a transcript exactly when that
+     * transcript is materialized, so this set is also the list of entries that must *not* offer one.
      */
-    private val EXCLUDE = setOf(
+    internal val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
         "graphics_renderer_launch",
         "remotear_scene_motion",
@@ -170,7 +174,16 @@ object AgentTranscriptMaterializer {
                     }
                 }
             } else {
-                println("AgentTranscriptMaterializer: no committed bundle at ${committed.absolutePath} — skipping drift check")
+                // Not "nothing to compare against" — the bundle is committed on purpose (the welcome
+                // screen's starting points, the docs gallery and the search index all read it), so its
+                // absence in check mode is the largest possible drift, not a reason to pass. Skipping
+                // here meant `rm -rf public/docs/assets/agent_transcripts` made checkAgentTranscripts
+                // GREEN, which is the one outcome a drift guard must never have.
+                failures.add(
+                    "no committed starting-point bundle at ${committed.absolutePath} — " +
+                        "$STARTING_POINTS_REL is generated but committed, and every transcript's document is " +
+                        "missing. Regenerate with `./gradlew regenerateAgentTranscriptStartingPoints`."
+                )
             }
         }
 

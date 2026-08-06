@@ -122,14 +122,15 @@ shipped with two compile errors in its box body (`Domain(...)` unresolved; an am
 and merged — nothing in CI ran the box Kotlin. (`OperationTranscriptMacroSmokeTest` only *applies*
 ops and diffs the `code` string.)
 
-The harness classifies each transcript into exactly one bucket:
+The harness classifies each transcript into exactly one of three buckets. The sets in
+`DemoTranscriptExecSmokeTest.kt` are the only enumeration — this file used to list their members and
+went stale, so read them there:
 
 - **EXECUTE** (pure-compute; no `Window`/`Renderer`): replayed in full through the real
   `OperationTranscript.runMacro` path — the same path an agent uses — and asserted to emit **zero
   error-kind output** and `run.success`. A box compile error does not throw and does not clear
   `run.success`; it surfaces only as an output line with `kind == "error"`, which the harness scans
-  for. Current EXECUTE demos: `fn_differentiable_fit_demo`, `linalg_thumbnails_demo`,
-  `hello_display`, `hello_display_capture`, `two_box_context`, `vision_metal_cube`.
+  for.
 - **COMPILE-ONLY** (open a GLFW `Window`/`Renderer`, or a box that depends on a running renderer's
   published context — unsafe to spin a render loop headless in unattended CI): the box graph is built
   with the real create/connect apply path, then each box's Kotlin `code` is run through the real
@@ -137,14 +138,22 @@ The harness classifies each transcript into exactly one bucket:
   evaluates property-delegate declarations, never a `Window`) and the real K2 compiler
   (`compileSnippetAndWait`) **with evaluation skipped**. This still catches the fn-fit class of error
   (unresolved refs, ambiguous overloads). GLSL shader properties (`vertex`/`fragment`/`compute`) are
-  not Kotlin and are not compiled here — they are exercised by the graphics render smokes. Current
-  COMPILE-ONLY demos: `graphics_renderer_launch`, `afield_four_traditional_triangle`,
-  `recstl_playground`, `threebox`, `imgui_vr_panel`.
+  not Kotlin and are not compiled here — they are exercised by the graphics render smokes.
+- **KOTLINJS** (the box body is Kotlin for a browser or visionOS head, not JVM Kotlin): compiled
+  through the real `KotlinToJsCompiler` via the head profile the box's `// {{ marker }}` selects — the
+  identical path a live box takes — and asserted to carry no error diagnostics.
 
 **Adding a demo:** drop the `*.yaml` here, then add its `name` (the file's stem) to exactly one of
-`EXECUTE` or `COMPILE_ONLY` in `DemoTranscriptExecSmokeTest.kt`. An unclassified transcript fails the
-test on purpose. Choose EXECUTE when the boxes are pure compute and safe to run to completion
-headless; choose COMPILE-ONLY when a box constructs a `Window`/`Renderer` or launches a render loop.
+`EXECUTE`, `COMPILE_ONLY` or `KOTLINJS` in `DemoTranscriptExecSmokeTest.kt`. An unclassified
+transcript fails the test on purpose. Choose EXECUTE when the boxes are pure compute and safe to run
+to completion headless; choose COMPILE-ONLY when a box constructs a `Window`/`Renderer` or launches a
+render loop; choose KOTLINJS when the body is shipped to a head.
+
+Then **write its entry on the public index**, `public/docs/agent_transcripts.md`, under the section
+whose `verified-by` marker matches the bucket you chose. `checkAgentTranscriptIndex` fails the build
+until you do, and the classification you pick here is what it checks the page against — see
+`dev_docs/agent_transcript_index.md` for the contract and for why that page is hand-written rather
+than generated.
 
 ## Starting points and the docs gallery
 
@@ -166,7 +175,13 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json \
 ```
 
 The FIELD_TEST `examples.agent-transcripts.materialize` re-materializes to a temp dir and **fails if
-the committed bundle is out of date**, so a transcript edit without a regenerate is caught in CI.
+the committed bundle is out of date** — or absent entirely — so a transcript edit without a regenerate
+is caught in CI. `./gradlew checkAgentTranscripts` is the same guard inside `check`.
+
+A transcript that is *not* a self-contained scene makes a broken starting point, so it is listed in
+`AgentTranscriptMaterializer.EXCLUDE` and no document is generated for it. Its index entry then must
+not offer an `Open ↗` link, and should say in prose why it is agent-only; the index guard checks both
+directions.
 
 ## Growth Rules
 
