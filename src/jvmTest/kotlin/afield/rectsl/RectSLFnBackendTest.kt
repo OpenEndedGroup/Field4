@@ -214,43 +214,103 @@ class RectSLFnBackendTest {
     }
 
     @Test
-    fun everyRefusalSaysWhy() {
+    fun everyRefusalSaysWhyAndWhetherItIsPermanent() {
+        // The op-level refusals that remain. Everything else in the four enums lowers.
         val refusals = listOf<RectSLFnLowering<*>>(
-            TrackOp1.FLOOR.fn, TrackOp1.CEIL.fn, TrackOp1.FRACT.fn,
-            TrackOp2.DIV.fn, TrackOp2.MOD.fn, TrackOp3.SMOOTHSTEP.fn,
-            TimeWarpKind.LOOP.fn, TimeWarpKind.PINGPONG.fn
+            TrackOp2.DIV.fn, TrackOp2.MOD.fn, TrackOp3.SMOOTHSTEP.fn
         )
         for (refusal in refusals) {
-            val why = assertNotNull(refusal.refusalOrNull(), "expected a refusal, got $refusal")
-            assertTrue(why.length > 40, "a refusal should explain itself: '$why'")
+            val r = refusal as RectSLFnLowering.Refused
+            assertTrue(r.why.length > 40, "a refusal should explain itself: '${r.why}'")
+            // The closable/permanent split is only worth having if the closable ones say what they
+            // need — otherwise it is a label rather than a plan.
+            if (r.closable) {
+                assertTrue(r.missing.length > 30, "declared closable but vague: '${r.missing}'")
+            } else {
+                assertEquals("", r.missing, "declared permanent but names something missing")
+            }
         }
-        for (op in TrackOp1.entries - setOf(TrackOp1.FLOOR, TrackOp1.CEIL, TrackOp1.FRACT)) {
+
+        // Everything that is not one of those three lowers. Stated as a whole-enum sweep rather than
+        // as a list, so adding an op to any of them forces a decision here.
+        for (op in TrackOp1.entries) {
             assertTrue(op.fn.valueOrNull() != null, "$op should lower")
         }
-        // A refused op refuses the whole track, and the message names the op.
-        val refused = MappedDoubleTrack(
+        for (op in TrackOp2.entries - setOf(TrackOp2.DIV, TrackOp2.MOD)) {
+            assertTrue(op.fn.valueOrNull() != null, "$op should lower")
+        }
+        for (op in TrackOp3.entries - setOf(TrackOp3.SMOOTHSTEP)) {
+            assertTrue(op.fn.valueOrNull() != null, "$op should lower")
+        }
+        for (warp in TimeWarpKind.entries) {
+            assertTrue(warp.fn.valueOrNull() != null, "$warp should lower")
+        }
+
+        // A refused op still refuses the whole track, and the message still names the op.
+        val refused = BinaryDoubleTrack(
             LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(1.0, 4.0))),
-            TrackOp1.FLOOR
+            LinearScalarTrack(listOf(TcbKey(0.0, 1.0), TcbKey(1.0, 2.0))),
+            TrackOp2.DIV
         )
         val why = refused.toFn(Functions.Domain(0.0, 1.0)).refusalOrNull()
-        assertTrue(why != null && "FLOOR" in why, "the refusal should name FLOOR: $why")
+        assertTrue(why != null && "DIV" in why, "the refusal should name DIV: $why")
+    }
+
+    /**
+     * `fnStepFrom` is the primitive three lowerings now rest on (a gate, a hold, a folded clock), and
+     * the only thing that makes it correct rather than approximate is that its boundary falls on the
+     * right side. Checked at the boundary itself and at every tread either side, not merely nearby.
+     */
+    @Test
+    fun theExactStepIsExactIncludingAtItsOwnBoundary() = with(Functions) {
+        val step = fnStepFrom(fnTime())
+        for (x in listOf(-3.0, -2.5, -1.0, -0.5, -1e-15, 0.0, 1e-15, 0.5, 1.0, 2.5, 3.0, 1e9)) {
+            val expected = if (x >= 0.0) 1.0 else 0.0
+            assertEquals(expected, step.eval(x), 0.0, "step at x=$x")
+        }
+        // And -0.0, which is >= 0 and must therefore read as 1.
+        assertEquals(1.0, step.eval(-0.0), 0.0, "step at -0.0")
     }
 
     @Test
-    fun aWrappingWarpLowersInsideOnePeriodAndRefusesOutside() {
+    fun aWrappingWarpNowLowersAcrossTheWrap() {
         val source = LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(2.0, 10.0)))
-        val looped = TimeWarpTrack(source, TimeWarpKind.LOOP, 2.0)
-        val inside = assertNotNull(
-            looped.toFn(Functions.Domain(0.0, 1.999)).valueOrNull(),
-            "a loop over less than one period should lower"
-        )
-        for (t in listOf(0.0, 0.5, 1.0, 1.5, 1.9)) {
-            assertEquals(looped.sample(t), inside.eval(t), 1e-12, "at t=$t")
+        for (warp in listOf(TimeWarpKind.LOOP, TimeWarpKind.PINGPONG)) {
+            val warped = TimeWarpTrack(source, warp, 2.0)
+            val fn = assertNotNull(
+                warped.toFn(Functions.Domain(0.0, 9.0)).valueOrNull(),
+                "$warp should lower now that Fn has a floor"
+            )
+            var worst = 0.0
+            // Nine seconds is four and a half periods, so every wrap and every fold is crossed.
+            for (i in 0..900) {
+                val t = i / 100.0
+                worst = maxOf(worst, abs(warped.sample(t) - fn.eval(t)))
+            }
+            println("$warp across 4.5 periods: worst absolute disagreement $worst")
+            assertTrue(worst < 1e-12, "$warp disagreed by $worst")
         }
-        assertTrue(
-            looped.toFn(Functions.Domain(0.0, 4.0)).refusalOrNull() != null,
-            "a loop across the wrap should be refused"
+    }
+
+    @Test
+    fun aGateAndAHoldLowerExactly() {
+        val gate = GateTrack(1.25, 3.75)
+        val gateFn = assertNotNull(gate.toFn(Functions.Domain(0.0, 5.0)).valueOrNull())
+        // Includes both edges exactly: a gate is `[lo, hi)`, closed below and open above.
+        for (t in listOf(0.0, 1.24999, 1.25, 2.0, 3.74999, 3.75, 4.0)) {
+            assertEquals(gate.sample(t), gateFn.eval(t), 0.0, "gate at t=$t")
+        }
+        val hold = HoldScalarTrack(
+            listOf(TcbKey(0.0, 0.2), TcbKey(2.0, 1.0), TcbKey(4.0, 0.45))
         )
+        val holdFn = assertNotNull(hold.toFn(Functions.Domain(0.0, 6.0)).valueOrNull())
+        var worst = 0.0
+        for (i in -100..600) {
+            val t = i / 100.0
+            worst = maxOf(worst, abs(hold.sample(t) - holdFn.eval(t)))
+        }
+        println("hold track: worst absolute disagreement $worst")
+        assertTrue(worst < 1e-15, "hold disagreed by $worst")
     }
 
     @Test

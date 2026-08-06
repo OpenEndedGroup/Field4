@@ -94,7 +94,9 @@ data class TrackFitResult(
  *        themselves cover, widened to include 0, which is what a scene's clock looks like.
  * @param iterations Adam steps. Bounded, like every other fitter here.
  * @param lr Adam learning rate. The default is `fitGradient`'s.
- * @throws RectLangException when the track does not lower, or has nothing to solve for.
+ * @throws RectLangException when the track does not lower, has nothing to solve for, or has only
+ *         parameters whose exact derivative is zero at every target — see the refusal in the body,
+ *         which is the one a `floor`, a gate or a hold track will trip.
  */
 fun Track<Double>.fitParameters(
     targets: List<TrackFitTarget>,
@@ -134,6 +136,38 @@ fun Track<Double>.fitParameters(
         return if (weight <= 0.0) 0.0 else sqrt(sum / weight)
     }
 
+    /** d(mean squared weighted error)/dθ, one backward sweep per target, masked to [movable]. */
+    fun gradient(at: DoubleArray): DoubleArray {
+        val current = seed.applyParameters(at)
+        val grad = DoubleArray(at.size)
+        var weight = 0.0
+        for (target in targets) {
+            val g = current.gradientAt(target.time)
+            val delta = g.value - target.value
+            weight += target.weight
+            for (i in movable) grad[i] += 2.0 * target.weight * delta * g.gradient[i]
+        }
+        if (weight > 0.0) for (i in movable) grad[i] /= weight
+        return grad
+    }
+
+    // A parameter can be *present* in the graph and still have no differentiable path to the value:
+    // put one under a `floor`, a gate or a hold and its exact derivative is zero, which is the truth
+    // about a staircase rather than a bug. Descending on that would report convergence without ever
+    // having moved — the precise failure `FnNonDifferentiable` refuses `sign` to avoid — so it is
+    // refused here too, loudly, and per parameter so the message says which one is stuck.
+    val startGradient = gradient(theta)
+    val stuck = mask.filter { (_, index) -> startGradient[index] == 0.0 }.keys
+    if (stuck.size == mask.size) {
+        throw RectLangException(
+            "every free parameter of this track has an exactly zero derivative at every target " +
+                "($stuck), so a descent would report convergence without moving. The usual cause is " +
+                "a parameter sitting under a step: a floor, a gate, or a hold track. Those lower " +
+                "faithfully — their derivative really is zero almost everywhere — but nothing " +
+                "downstream of one can be solved for."
+        )
+    }
+
     val startResidual = residual(seed.applyParameters(theta))
     val residuals = mutableListOf(startResidual)
     val steps = mutableListOf<TrackFitStep>()
@@ -142,19 +176,10 @@ fun Track<Double>.fitParameters(
     val v = DoubleArray(theta.size)
 
     for (iteration in 1..iterations) {
-        val current = seed.applyParameters(theta)
-        // d/dtheta of the *squared* weighted mean; the sqrt is a positive monotone wrapper, so
-        // descending the mean square descends the RMS and avoids a division by zero at a perfect
-        // fit. Each target contributes one backward sweep.
-        val grad = DoubleArray(theta.size)
-        var weight = 0.0
-        for (target in targets) {
-            val at = current.gradientAt(target.time)
-            val delta = at.value - target.value
-            weight += target.weight
-            for (i in movable) grad[i] += 2.0 * target.weight * delta * at.gradient[i]
-        }
-        if (weight > 0.0) for (i in movable) grad[i] /= weight
+        // The *squared* weighted mean is what is descended; the sqrt in `residual` is a positive
+        // monotone wrapper, so the two have the same minimiser and this avoids a division by zero at
+        // a perfect fit.
+        val grad = if (iteration == 1) startGradient else gradient(theta)
 
         for (i in movable) {
             val g = grad[i]

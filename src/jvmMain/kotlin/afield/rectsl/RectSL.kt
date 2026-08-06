@@ -372,9 +372,23 @@ enum class TrackOp1(
 ) {
     NEG({ -it }, { "-($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.flip() } })),
     ABS({ abs(it) }, { "abs($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.abs() } })),
-    FLOOR({ floor(it) }, { "floor($it)" }, LATTICE_REFUSAL),
-    CEIL({ ceil(it) }, { "ceil($it)" }, LATTICE_REFUSAL),
-    FRACT({ it - floor(it) }, { "fract($it)" }, LATTICE_REFUSAL),
+    FLOOR(
+        { floor(it) },
+        { "floor($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a.floor() } })
+    ),
+    // `ceil(x)` is `-floor(-x)`, which IEEE makes exact rather than approximate: both negations are
+    // exact operations, so the round trip cannot lose a bit.
+    CEIL(
+        { ceil(it) },
+        { "ceil($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a.flip().floor().flip() } })
+    ),
+    FRACT(
+        { it - floor(it) },
+        { "fract($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a - a.floor() } })
+    ),
     SQRT(
         { sqrt(max(it, 0.0)) },
         { "sqrt(max($it, 0.0))" },
@@ -392,21 +406,6 @@ enum class TrackOp1(
         RectSLFnLowering.Lowered({ a -> fnClamp01(a) })
     )
 }
-
-/**
- * The shared `fn:` refusal for the integer-lattice ops (`floor`, `ceil`, `fract`, `mod`).
- *
- * A top-level val rather than a companion-object one because an enum entry's constructor arguments
- * are evaluated before the enum's companion object is initialised.
- *
- * Their derivative is zero on every open interval and undefined on each jump, so a gradient
- * threaded through one is not merely imprecise — it carries no information about the parameter at
- * all. That is precisely the argument `FnNonDifferentiable` makes for refusing `sign`.
- */
-internal val LATTICE_REFUSAL: RectSLFnLowering.Refused = RectSLFnLowering.Refused(
-    "an integer lattice: the derivative is zero on every open interval and undefined on each " +
-        "jump, so a gradient through it says nothing about the parameter"
-)
 
 enum class TrackOp2(
     val eval: (Double, Double) -> Double,
@@ -433,13 +432,23 @@ enum class TrackOp2(
         { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" },
         RectSLFnLowering.Refused(
             "the near-zero guard (0 rather than an infinity) is a discontinuity no Fn op can " +
-                "express, so only a statically constant divisor lowers"
+                "express, so only a statically constant divisor lowers",
+            closable = true,
+            missing = "the guard is `[|b| > 1e-12]`, and fnStepFrom can now build an exact " +
+                "indicator; what stops it is that the false branch still evaluates a/b, so the " +
+                "product is 0*inf = NaN rather than 0"
         )
     ),
     MOD(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b },
         { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" },
-        LATTICE_REFUSAL
+        RectSLFnLowering.Refused(
+            "Kotlin's `%` truncates toward zero, and `trunc` is not `floor` — rebuilding it needs a " +
+                "sign primitive, which Fn does not have. A statically constant pair still folds",
+            closable = true,
+            missing = "either an FnExpr.Trunc, or a sign built from two exact steps: " +
+                "`2*step(x) - 1` is +/-1 with the wrong answer only at x = 0, where trunc is 0 anyway"
+        )
     ),
     POW(
         { a, b -> a.pow(b) },
@@ -485,23 +494,13 @@ enum class TrackOp3(
         { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" },
         RectSLFnLowering.Refused(
             "the coincident-edge guard (0 rather than dividing by zero) is a discontinuity no Fn " +
-                "op can express, so only statically constant edges lower"
+                "op can express, so only statically constant edges lower",
+            closable = true,
+            missing = "the same 0*inf problem TrackOp2.DIV has: an exact indicator exists, but the " +
+                "branch it is meant to suppress still evaluates and returns a NaN"
         )
     )
 }
-
-/**
- * The shared `fn:` refusal for the two time warps that fold the clock.
- *
- * Both are piecewise in time with a period's worth of pieces, so they lower only over a window
- * that stays inside one period — which the lowering in `RectSLFn.kt` checks for, because
- * `loop-time` with the scene's own duration is the common spelling and does nothing at all over
- * `[0, duration)`.
- */
-internal val WRAPPING_WARP_REFUSAL: RectSLFnLowering.Refused = RectSLFnLowering.Refused(
-    "folding the clock is piecewise in time, so it lowers only over a window that stays inside " +
-        "one period"
-)
 
 /**
  * How a [TimeWarpTrack] rewrites the time it hands to its source. Each kind
@@ -509,8 +508,11 @@ internal val WRAPPING_WARP_REFUSAL: RectSLFnLowering.Refused = RectSLFnLowering.
  * `(kind, amount)` rather than a closure over that amount.
  *
  * The `fn:` column is a *lookup* transform rather than a value one, which `Fn`
- * spells `shift` and `scaleX`. The three affine warps lower exactly; the two
- * wrapping ones carry [WRAPPING_WARP_REFUSAL].
+ * spells `shift`, `scaleX` and `warp`. All five lower. The two wrapping ones did
+ * not until [afield.stdlib.Functions.Fn.floor] existed, which is what it was
+ * added for — a folded clock is `x - p·floor(x / p)`, and that is the same
+ * period arithmetic `FnNonDifferentiable` had been naming as the one missing
+ * piece for the piecewise oscillators.
  */
 enum class TimeWarpKind(
     val eval: (Double, Double) -> Double,
@@ -549,16 +551,39 @@ enum class TimeWarpKind(
         })
     ),
 
-    /** `loop-time`: wrap into `[0, amount)`. */
+    /**
+     * `loop-time`: wrap into `[0, amount)`.
+     *
+     * Lowers as `x - p·floor(x / p)`, which is `positiveModulo` with its sign branch turned into
+     * arithmetic. The whole reason [afield.stdlib.Functions.Fn.floor] exists is this line.
+     */
     LOOP(
         { t, amount -> positiveModulo(t, amount) },
         { t, amount ->
             if (amount <= 1e-12) "($t)" else "mod($t, ${amount.glslFloat()})"
         },
-        WRAPPING_WARP_REFUSAL
+        RectSLFnLowering.Lowered({ src, amount ->
+            if (amount <= 1e-12) {
+                src
+            } else {
+                // A direct warp rather than fnLookupAt: `x + (-p)·floor(x/p)` is the floored modulo
+                // in exactly one multiply and one add, with no `- x` round trip to lose bits on.
+                with(Functions) {
+                    src.warp(
+                        mod = (fnTime() / fnLeaf(amount)).floor(),
+                        depth = fnLeaf(-amount)
+                    )
+                }
+            }
+        })
     ),
 
-    /** `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends. */
+    /**
+     * `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends.
+     *
+     * `a - |mod(x, 2a) - a|` — the same closed form the GLSL column already emits, which the SDF
+     * agreement test has been exercising against the CPU sampler all along.
+     */
     PINGPONG(
         { t, amount ->
             val p = positiveModulo(t, amount * 2.0)
@@ -568,7 +593,17 @@ enum class TimeWarpKind(
             if (amount * 2.0 <= 1e-12) "($t)"
             else "(${amount.glslFloat()} - abs(mod($t, ${(amount * 2.0).glslFloat()}) - ${amount.glslFloat()}))"
         },
-        WRAPPING_WARP_REFUSAL
+        RectSLFnLowering.Lowered({ src, amount ->
+            if (amount * 2.0 <= 1e-12) {
+                src
+            } else {
+                with(Functions) {
+                    val folded = fnLeaf(amount) -
+                        (fnFlooredModulo(fnTime(), amount * 2.0) - fnLeaf(amount)).abs()
+                    fnLookupAt(src, folded)
+                }
+            }
+        })
     )
 }
 

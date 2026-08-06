@@ -112,8 +112,21 @@ sealed interface RectSLFnLowering<out T> {
     /** The lowering exists: [value] is the builder (or, at track level, the `Fn` itself). */
     data class Lowered<out T>(val value: T) : RectSLFnLowering<T>
 
-    /** There is no faithful differentiable form, and [why] is the reason in one sentence. */
-    data class Refused(val why: String) : RectSLFnLowering<Nothing>
+    /**
+     * There is no faithful differentiable form, [why] is the reason in one sentence, and [closable]
+     * says whether that is permanent.
+     *
+     * The distinction is borrowed wholesale from [afield.stdlib.FnOpStatus], because it is the one
+     * that matters to a reader: `closable = true` means the lowering could be written and has not
+     * been, with [missing] naming what it would take; `false` means there is no honest lowering to
+     * write. Both are gaps in coverage. Only one is a gap in ambition, and a reader deserves to be
+     * able to tell them apart without reading the code.
+     */
+    data class Refused(
+        val why: String,
+        val closable: Boolean = false,
+        val missing: String = ""
+    ) : RectSLFnLowering<Nothing>
 }
 
 /** The lowered value, or null for a refusal. */
@@ -175,6 +188,45 @@ internal fun fnMaxOf(a: Functions.Fn, b: Functions.Fn): Functions.Fn =
 internal fun fnClamp01(x: Functions.Fn): Functions.Fn =
     with(Functions) { x.clamp(fnLeaf(0.0), fnLeaf(1.0)) }
 
+/** The lowering's own spelling of time — `Fn`'s sample position, unbounded. */
+internal fun fnTime(): Functions.Fn = with(Functions) { identity(Functions.Domain.ALL) }
+
+/**
+ * `1.0` where `x >= 0` and `0.0` below it, **exactly**, for every finite or infinite x.
+ *
+ * `clamp01(floor(x) + 1)` is the whole trick. On `[0, 1)` the floor is 0 and the sum is 1; on
+ * `[1, 2)` it is 2 and the clamp brings it back to 1; on `[-1, 0)` the floor is -1 and the sum is 0;
+ * below that the sum is negative and the clamp brings it to 0. The half-open boundary lands the right
+ * way round — `x = 0` gives 1 — which is what `GateTrack` and `HoldScalarTrack` mean by `>=`.
+ *
+ * This is why [Functions.Fn.floor] was worth adding to the stdlib rather than worked around: a step
+ * is not just a step, it is every hard-edged thing in an animation language, and RectSL has three of
+ * them (a gate, a hold, the wrap of a looped clock).
+ */
+internal fun fnStepFrom(x: Functions.Fn): Functions.Fn =
+    with(Functions) { fnClamp01(x.floor() + 1.0) }
+
+/**
+ * The floored modulo `x - period·floor(x / period)` — `positiveModulo`'s closed form.
+ *
+ * `positiveModulo` computes a truncated `%` and then adds the period back when the result came out
+ * negative; that is the same function as this, written as a branch instead of as arithmetic. The
+ * branch is what could not be lowered; the arithmetic can.
+ */
+internal fun fnFlooredModulo(x: Functions.Fn, period: Double): Functions.Fn =
+    with(Functions) { x - fnLeaf(period) * (x / fnLeaf(period)).floor() }
+
+/**
+ * [source] looked up at [at] rather than at x — the general x-domain substitution.
+ *
+ * `Fn`'s only general lookup transform is `warp`, which reads at `x + depth·mod(x)`. Any target
+ * position `g(x)` is `x + 1·(g(x) - x)`, so one `warp` expresses all of them. Two extra roundings
+ * against the direct form, which is why [TimeWarpKind.SHIFT] and friends use `shift`/`scaleX`
+ * instead and only the wrapping warps come through here.
+ */
+internal fun fnLookupAt(source: Functions.Fn, at: Functions.Fn): Functions.Fn =
+    with(Functions) { source.warp(mod = at - fnTime(), depth = fnLeaf(1.0)) }
+
 /**
  * The value a track takes when it does not vary with time, else null.
  *
@@ -221,21 +273,23 @@ internal fun trackConstantValue(
  * Every named easing that has a differentiable form, as a transform of the already-normalised
  * segment parameter `u`.
  *
- * Keyed identically to [RECTSL_EASINGS], and a strict subset of it: `RectSLFnEasingTest` asserts
- * both halves of that — every key here names a real easing, and the lowering agrees with that
- * easing's own closure across a dense grid. Two families are missing on purpose:
+ * Keyed identically to [RECTSL_EASINGS], and a subset of it: `RectSLFnBackendTest` asserts both
+ * halves of that — every key here names a real easing, and the lowering agrees with that easing's own
+ * closure across a 1001-point grid. What is here rests on three tricks, each of which was the reason
+ * a family had looked impossible:
  *
- * - `expo-*` and `elastic-*` have exact-endpoint special cases (`if (t == 0.0) 0.0`) that the
- *   closed form does not reach on its own. `u` hits exactly 0 and exactly 1 constantly in a keyed
- *   track — everywhere outside the active span — so those branches are not corner cases here, they
- *   are the common path, and a lowering without them would be wrong by 1e-3 rather than by an ulp.
- * - `bounce-*` is four parabolic arcs; each join would need its own clamped ramp. Expressible, not
- *   yet expressed.
+ * - The `*-in-out` curves are piecewise but *continuous at the halfway point*, so the same
+ *   clamped-ramp fold that lowers a keyed track lowers them:
+ *   `f(u) = A(clamp01(2u)) + [B(0) - B(clamp01(2u-1))]`, arranged so the second bracket is
+ *   identically zero on the first half.
+ * - The trigonometric curves go through the oscillator-phase identity (see this file's KDoc).
+ * - `expo-*` and `elastic-*` have exact-endpoint special cases the closed form does not reach —
+ *   expo-in is 2^-10 at u = 0, not 0 — and in a keyed track `u` is exactly 0 or exactly 1 everywhere
+ *   outside the active span, so those branches are the common path. [Functions.Fn.floor] turns them
+ *   into arithmetic: see `withExactEndpoints` below.
  *
- * The `*-in-out` curves *are* here, which is the small surprise. They are piecewise, but they are
- * also continuous at the halfway point, so the same clamped-ramp trick that lowers a keyed track
- * lowers them: `f(u) = A(clamp01(2u)) + [B(0) - B(clamp01(2u-1))]` with the two halves arranged so
- * the second bracket is identically zero on the first half.
+ * What is left out is `bounce-*`: four parabolic arcs, each join needing its own ramp. Expressible
+ * with the same machinery, not yet expressed.
  */
 internal val RECTSL_EASING_FNS: Map<String, TrackFnUnary> = buildMap {
 
@@ -314,6 +368,80 @@ internal val RECTSL_EASING_FNS: Map<String, TrackFnUnary> = buildMap {
             first + second
         }
     }
+
+    // ---- the exact-endpoint family --------------------------------------------------------------
+    // `Functions.shapeAlpha` special-cases `if (t == 0.0) 0.0` / `if (t == 1.0) 1.0` for the expo and
+    // elastic curves, because their closed forms do not reach their own endpoints: expo-in is 2^-10 at
+    // t = 0, not 0. In a keyed track `u` is *exactly* 0 or exactly 1 everywhere outside the active
+    // span, so those branches are the common path rather than a corner case, and a lowering without
+    // them would be wrong by 1e-3 instead of by an ulp. That is why they were refused.
+    //
+    // `floor` closes them. `floor(u)` is 1 exactly when u = 1 and 0 on [0, 1); `floor(1 - u)` is 1
+    // exactly when u = 0. So
+    //
+    //     E(u) = closed(u) * (1 - floor(u)) * (1 - floor(1 - u)) + floor(u)
+    //
+    // is the closed form strictly inside, exactly 0 at 0, and exactly 1 at 1 — the branch structure
+    // of the original, as arithmetic.
+    fun withExactEndpoints(closed: (Functions.Fn) -> Functions.Fn): TrackFnUnary = { u ->
+        with(Functions) {
+            val atOne = u.floor()
+            val atZero = (1.0 - u).floor()
+            closed(u) * (1.0 - atOne) * (1.0 - atZero) + atOne
+        }
+    }
+
+    // 2^y is spelled exp(y * ln 2): Fn has a natural exponential and no other base.
+    fun twoTo(y: Functions.Fn): Functions.Fn =
+        with(Functions) { (y * kotlin.math.ln(2.0)).exp() }
+
+    put("expo-in", withExactEndpoints { u -> with(Functions) { twoTo(u * 10.0 - 10.0) } })
+    put("expo-out", withExactEndpoints { u -> with(Functions) { 1.0 - twoTo(u * -10.0) } })
+    put(
+        "expo-in-out",
+        withExactEndpoints { u ->
+            with(Functions) {
+                // `if (t < 0.5) 2^(20t-10)/2 else (2 - 2^(-20t+10))/2`, continuous at the halfway
+                // point (both give 0.5), so the clamped-ramp fold applies exactly as it does to the
+                // polynomial in-outs: the second bracket is identically zero on the first half.
+                val a = lower(u)
+                val s = upper(u)
+                twoTo(a * 10.0 - 10.0) * 0.5 + (0.5 - twoTo(s * -10.0) * 0.5)
+            }
+        }
+    )
+
+    // Penner's elastic constants, transcribed from Functions.shapeAlpha.
+    val c4 = (Math.PI * 2.0) / 3.0
+    val c5 = (Math.PI * 2.0) / 4.5
+
+    put(
+        "elastic-in",
+        withExactEndpoints { u ->
+            with(Functions) { (twoTo(u * 10.0 - 10.0) * fnSinOf((u * 10.0 - 10.75) * c4)).flip() }
+        }
+    )
+    put(
+        "elastic-out",
+        withExactEndpoints { u ->
+            with(Functions) { twoTo(u * -10.0) * fnSinOf((u * 10.0 - 0.75) * c4) + 1.0 }
+        }
+    )
+    put(
+        "elastic-in-out",
+        withExactEndpoints { u ->
+            with(Functions) {
+                // Unlike the other in-outs this one is *not* continuous through a shared value at
+                // u = 0.5 in a form the ramp fold likes, so the halves are selected with the same
+                // exact step the gates use rather than blended.
+                val below = 1.0 - fnStepFrom(u - 0.5)
+                val above = fnStepFrom(u - 0.5)
+                val first = (twoTo(u * 20.0 - 10.0) * fnSinOf((u * 20.0 - 11.125) * c5)).flip() * 0.5
+                val second = twoTo(u * -20.0 + 10.0) * fnSinOf((u * 20.0 - 11.125) * c5) * 0.5 + 1.0
+                first * below + second * above
+            }
+        }
+    )
 
     put("smoothstep") { u -> with(Functions) { u * u * (3.0 - u * 2.0) } }
     put("smootherstep") { u -> with(Functions) { u * u * u * (u * (u * 6.0 - 15.0) + 10.0) } }
@@ -407,26 +535,68 @@ private fun lowerTrackToFn(
 
         is TcbTrack -> lowerTcb(track)
 
-        is HoldScalarTrack -> refused(
-            "a hold track steps between its keys, and a step has no derivative at the step and " +
-                "zero everywhere else"
-        )
+        // `v0 + sum_i (v_i - v_(i-1)) * [t >= t_i]` — the sampler's `lastOrNull { it.time <= t }`
+        // written as arithmetic. Before its keys the sampler falls back to the first value, which is
+        // what the bare `v0` is. The derivative is zero almost everywhere and that is the truth
+        // about a staircase, not an approximation of it.
+        is HoldScalarTrack -> {
+            val sorted = track.keys.sortedBy { it.time }
+            if (sorted.isEmpty()) {
+                refused("a hold track with no keys cannot be sampled at all")
+            } else {
+                with(Functions) {
+                    var acc = fnLeaf(sorted.first().value)
+                    for (i in 1 until sorted.size) {
+                        val rise = sorted[i].value - sorted[i - 1].value
+                        acc += fnStepFrom(fnTime() - fnLeaf(sorted[i].time)) * fnLeaf(rise)
+                    }
+                    lowered(acc)
+                }
+            }
+        }
 
+        // `[t >= lo] * (1 - [t >= hi])`, which is exactly the sampler's `t >= lo && t < hi`,
+        // including which way round the half-open boundary falls. The window checks stay in front
+        // because a gate the window never crosses folds to a literal 1 or 0, which is a smaller
+        // graph and one fewer place for a step to sit under a fitted parameter.
         is GateTrack -> when {
             windowInside(window, track.lo, track.hi) -> lowered(fnLeaf(1.0))
             windowOutside(window, track.lo, track.hi) -> lowered(fnLeaf(0.0))
-            else -> refused(
-                "a gate is a hard 0/1 window and this one has an edge inside the requested time " +
-                    "range [${window.start}, ${window.endInclusive}]"
-            )
+            else -> with(Functions) {
+                // An infinite edge is dropped rather than lowered: `floor(+inf) + 1` does clamp to
+                // the right answer, but leaving an infinity in a theta vector is asking for a NaN
+                // the first time anything perturbs it.
+                val fromLo = if (track.lo == Double.NEGATIVE_INFINITY) {
+                    null
+                } else {
+                    fnStepFrom(fnTime() - fnLeaf(track.lo))
+                }
+                val beforeHi = if (track.hi == Double.POSITIVE_INFINITY) {
+                    null
+                } else {
+                    1.0 - fnStepFrom(fnTime() - fnLeaf(track.hi))
+                }
+                lowered(
+                    when {
+                        fromLo != null && beforeHi != null -> fromLo * beforeHi
+                        fromLo != null -> fromLo
+                        beforeHi != null -> beforeHi
+                        else -> fnLeaf(1.0)
+                    }
+                )
+            }
         }
 
-        is HeadingTrack -> refused(
-            "a heading is atan2 of a finite difference, and Fn has no atan2 op"
+        is HeadingTrack -> RectSLFnLowering.Refused(
+            "a heading is atan2 of a finite difference, and Fn has no atan2 op",
+            closable = true,
+            missing = "an FnExpr.Atan (derivative 1/(1+x^2)) plus the quadrant fix-up atan2 needs, " +
+                "which the exact step from fnStepFrom can now supply; the finite difference itself " +
+                "is already just two lookups of the same lowered track"
         )
 
         is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack ->
-            refused(
+            RectSLFnLowering.Refused(
                 "a pattern track is an interpreter over a mini-notation tree, not an expression of " +
                     "fixed shape — the same reason FnNonDifferentiable refuses `pat` itself"
             )

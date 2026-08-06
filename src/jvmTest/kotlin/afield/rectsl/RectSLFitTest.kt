@@ -105,6 +105,35 @@ class RectSLFitTest {
         "saturate(gain * ramp)" to MappedDoubleTrack(
             binary(ramp(), param("gain", 0.31), TrackOp2.MUL),
             TrackOp1.SATURATE
+        ),
+        // The shapes Fn.floor opened up on 2026-08-06. Their derivatives are genuinely zero almost
+        // everywhere, so what the oracle checks here is that the exact path reports the *same* zero a
+        // central difference does rather than something plausible-looking — a wrong non-zero
+        // derivative through a staircase is exactly the failure that would be hardest to notice.
+        "floor(gain * ramp)" to MappedDoubleTrack(
+            binary(ramp(), param("gain", 1.7), TrackOp2.MUL),
+            TrackOp1.FLOOR
+        ),
+        "fract(gain * ramp)" to MappedDoubleTrack(
+            binary(ramp(), param("gain", 1.3), TrackOp2.MUL),
+            TrackOp1.FRACT
+        ),
+        // And a looped clock, which is the case the floor was really added for: the wrapped time is a
+        // perfectly good differentiable function of the gain on either side of a wrap.
+        "loop-time(gain * ramp)" to TimeWarpTrack(
+            binary(ramp(4.0), param("gain", 1.2), TrackOp2.MUL),
+            TimeWarpKind.LOOP,
+            0.7
+        ),
+        "pingpong-time(gain * ramp)" to TimeWarpTrack(
+            binary(ramp(4.0), param("gain", 0.9), TrackOp2.MUL),
+            TimeWarpKind.PINGPONG,
+            0.6
+        ),
+        "gate * gain * ramp" to binary(
+            GateTrack(0.4, 1.6),
+            binary(ramp(), param("gain", 1.5), TrackOp2.MUL),
+            TrackOp2.MUL
         )
     )
 
@@ -204,19 +233,54 @@ class RectSLFitTest {
 
     @Test
     fun aFitRefusesATrackThatDoesNotLower() {
-        val looped = TimeWarpTrack(
+        // Division by a track rather than by a constant: the near-zero guard is a discontinuity, and
+        // only a statically constant divisor folds it.
+        val divided = BinaryDoubleTrack(
             BinaryDoubleTrack(ramp(), FreeParamTrack("gain", 1.0), TrackOp2.MUL),
-            TimeWarpKind.LOOP,
-            0.25
+            LinearScalarTrack(listOf(TcbKey(0.0, 1.0), TcbKey(2.0, 3.0))),
+            TrackOp2.DIV
         )
         val failure = runCatching {
-            looped.fitParameters(listOf(TrackFitTarget(0.5, 1.0), TrackFitTarget(1.5, 2.0)))
+            divided.fitParameters(listOf(TrackFitTarget(0.5, 1.0), TrackFitTarget(1.5, 2.0)))
         }.exceptionOrNull()
         assertNotNull(failure, "a fit on a non-lowering track must refuse")
         assertTrue(
-            "period" in (failure.message ?: ""),
+            "guard" in (failure.message ?: ""),
             "the refusal should carry the lowering's own reason: ${failure.message}"
         )
+    }
+
+    /**
+     * The honesty follow-through for having lowered the staircases.
+     *
+     * `floor`, a gate and a hold track all lower faithfully now, and their derivative really is zero
+     * almost everywhere. A parameter reachable only through one is therefore present in the graph and
+     * unsolvable, and a descent on it would print a residual that never moved and call it
+     * convergence. That has to be an error, not a result.
+     */
+    @Test
+    fun aFitRefusesAParameterWithNothingButAStaircaseAboveIt() {
+        val stuck = MappedDoubleTrack(
+            BinaryDoubleTrack(ramp(4.0), FreeParamTrack("gain", 1.0), TrackOp2.MUL),
+            TrackOp1.FLOOR
+        )
+        val failure = runCatching {
+            stuck.fitParameters(listOf(TrackFitTarget(1.0, 7.0), TrackFitTarget(3.0, 9.0)))
+        }.exceptionOrNull()
+        assertNotNull(failure, "a fit whose only parameter is under a floor must refuse")
+        println("staircase refusal: ${failure.message}")
+        assertTrue("zero derivative" in (failure.message ?: ""), "${failure.message}")
+        assertTrue("gain" in (failure.message ?: ""), "should name the stuck parameter")
+        // But a parameter *beside* a staircase is still solvable: the gate multiplies in, and the
+        // gain underneath it keeps a live gradient wherever the gate is open.
+        val beside = BinaryDoubleTrack(
+            GateTrack(0.0, 3.0),
+            BinaryDoubleTrack(ramp(4.0), FreeParamTrack("gain", 1.0), TrackOp2.MUL),
+            TrackOp2.MUL
+        )
+        val fit = beside.fitParameters(listOf(TrackFitTarget(2.0, 5.0)), iterations = 600)
+        println("beside a gate: residual ${fit.initialResidual} -> ${fit.finalResidual}")
+        assertTrue(fit.finalResidual < 1e-6, "residual ${fit.finalResidual}")
     }
 
     @Test
