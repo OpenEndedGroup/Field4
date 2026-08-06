@@ -1,0 +1,270 @@
+name: rectsl_inverse_animation
+description: >
+  Self-contained demo of RectSL's third, differentiable backend: inverse animation. A RectSL track
+  now lowers to an afield.stdlib.Functions.Fn, which autodiff_fn.kt differentiates exactly, so a
+  track marked with free parameters can be *solved* instead of authored. Box one declares a rect
+  whose position is `amp * trig(rate*t + phase) + centre` in both axes with all six numbers unknown,
+  says where the rect must be at three instants, and solves — then renders target / seed / fitted as
+  three stacked bands in one image so the miss and its closing are visible side by side (seed misses
+  by 7.7 wall metres, the fit by ~5e-15). Box two does the same from RectSL source, using the
+  `free-param` word, and prints the track IR as its own algebra. Open or replay this into a fresh
+  Field4 and look at box one: the top band is where the rect was asked to go, the middle band is a
+  seed that misses every waypoint, and the bottom band is a solved arc threading all three.
+operations:
+  - create:
+      box: rectsl_inverse_fit
+      name: RectSL inverse animation
+      frame: { x: 80.0, y: 60.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import java.util.Base64
+
+          // A clamped identity in time — RectSL's own spelling of "follow the clock".
+          fun clock(d: Double): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+
+          val duration = 4.0
+
+          // amp * trig(rate*t + phase) + centre, with amp / phase / centre all unknown.
+          fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
+              BinaryDoubleTrack(
+                  BinaryDoubleTrack(
+                      MappedDoubleTrack(
+                          BinaryDoubleTrack(
+                              BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
+                              FreeParamTrack("$axis-phase", 0.0),
+                              TrackOp2.ADD
+                          ),
+                          op
+                      ),
+                      FreeParamTrack("$axis-amp", 1.0),
+                      TrackOp2.MUL
+                  ),
+                  FreeParamTrack("$axis-centre", 0.0),
+                  TrackOp2.ADD
+              )
+
+          val seedX = channel("x", 1.1, TrackOp1.COS)
+          val seedY = channel("y", 1.1, TrackOp1.SIN)
+
+          // Where the rect must be, and when.
+          val waypoints = listOf(
+              RectSLFitFigure.Marker(0.4, -6.5, 2.6),
+              RectSLFitFigure.Marker(1.8, 0.5, -2.4),
+              RectSLFitFigure.Marker(3.4, 6.2, 1.8)
+          )
+          val window = Functions.Domain(0.0, duration)
+          val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
+          val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
+
+          fun miss(x: Track<Double>, y: Track<Double>): Double =
+              waypoints.maxOf { kotlin.math.hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
+          val seedMiss = miss(seedX, seedY)
+          val fittedMiss = miss(fitX.fitted, fitY.fitted)
+
+          val png = RectSLFitFigure.render(
+              bands = listOf(
+                  RectSLFitFigure.Band(
+                      "target", constantTrack(0.0), constantTrack(0.0),
+                      afield.Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
+                  ),
+                  RectSLFitFigure.Band(
+                      "seed", seedX, seedY, afield.Color4(1.0, 0.42, 0.28),
+                      note = "worst miss %.2fm".format(seedMiss)
+                  ),
+                  RectSLFitFigure.Band(
+                      "fitted", fitX.fitted, fitY.fitted, afield.Color4(0.29, 0.83, 0.7),
+                      note = "worst miss %.1em".format(fittedMiss)
+                  )
+              ),
+              markers = waypoints,
+              wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+              rectSize = Vec2d(1.5, 1.5),
+              times = (0..32).map { it * duration / 32.0 }
+          )
+          display(
+              "figure",
+              "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+                  "style='width:100%;border-radius:5px;display:block'/>"
+          )
+
+          """x: ${fitX.initialParameters} -> ${fitX.parameters}
+          |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
+          |y: ${fitY.initialParameters} -> ${fitY.parameters}
+          |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}
+          |worst waypoint miss: seed $seedMiss m -> fitted $fittedMiss m""".trimMargin()
+  - execute:
+      box: rectsl_inverse_fit
+      property: code
+      type: fragment
+      code: |
+          import afield.rectsl.*
+          import afield.stdlib.Functions
+          import java.util.Base64
+
+          fun clock(d: Double): Track<Double> =
+              LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+
+          val duration = 4.0
+
+          fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
+              BinaryDoubleTrack(
+                  BinaryDoubleTrack(
+                      MappedDoubleTrack(
+                          BinaryDoubleTrack(
+                              BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
+                              FreeParamTrack("$axis-phase", 0.0),
+                              TrackOp2.ADD
+                          ),
+                          op
+                      ),
+                      FreeParamTrack("$axis-amp", 1.0),
+                      TrackOp2.MUL
+                  ),
+                  FreeParamTrack("$axis-centre", 0.0),
+                  TrackOp2.ADD
+              )
+
+          val seedX = channel("x", 1.1, TrackOp1.COS)
+          val seedY = channel("y", 1.1, TrackOp1.SIN)
+
+          val waypoints = listOf(
+              RectSLFitFigure.Marker(0.4, -6.5, 2.6),
+              RectSLFitFigure.Marker(1.8, 0.5, -2.4),
+              RectSLFitFigure.Marker(3.4, 6.2, 1.8)
+          )
+          val window = Functions.Domain(0.0, duration)
+          val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
+          val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
+
+          fun miss(x: Track<Double>, y: Track<Double>): Double =
+              waypoints.maxOf { kotlin.math.hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
+          val seedMiss = miss(seedX, seedY)
+          val fittedMiss = miss(fitX.fitted, fitY.fitted)
+
+          val png = RectSLFitFigure.render(
+              bands = listOf(
+                  RectSLFitFigure.Band(
+                      "target", constantTrack(0.0), constantTrack(0.0),
+                      afield.Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
+                  ),
+                  RectSLFitFigure.Band(
+                      "seed", seedX, seedY, afield.Color4(1.0, 0.42, 0.28),
+                      note = "worst miss %.2fm".format(seedMiss)
+                  ),
+                  RectSLFitFigure.Band(
+                      "fitted", fitX.fitted, fitY.fitted, afield.Color4(0.29, 0.83, 0.7),
+                      note = "worst miss %.1em".format(fittedMiss)
+                  )
+              ),
+              markers = waypoints,
+              wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+              rectSize = Vec2d(1.5, 1.5),
+              times = (0..32).map { it * duration / 32.0 }
+          )
+          display(
+              "figure",
+              "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+                  "style='width:100%;border-radius:5px;display:block'/>"
+          )
+
+          """x: ${fitX.initialParameters} -> ${fitX.parameters}
+          |   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
+          |y: ${fitY.initialParameters} -> ${fitY.parameters}
+          |   residual ${fitY.initialResidual} -> ${fitY.finalResidual}
+          |worst waypoint miss: seed $seedMiss m -> fitted $fittedMiss m""".trimMargin()
+  - await:
+      wait: pending
+  - wait:
+      millis: 600
+
+  # Spaced by the height of what box one RENDERS (a ~980x800 figure), not by its 50px frame.
+  - create:
+      box: rectsl_free_param_word
+      name: the free-param word
+      frame: { x: 80.0, y: 960.0, w: 260.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.rectsl.*
+
+          // `free-param` is the RectSL word for a number you would rather have solved for. Every
+          // backend still reads it as the constant it presently is, so the scene plays as authored.
+          val program = RectAnimationOracle.compile(
+              """
+              #rectsl
+              ->wall 18 8 meters
+              ->duration 4
+              ->fps 30
+
+              linear-track "sweep" '( 0=0   4=4 )
+
+              "marker" rect
+                0 0 ->xy
+                1.4 1.4 ->wh
+                "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
+                0x44d4b4 solid ->fill
+              ;
+              """.trimIndent()
+          ).programOrNull!!
+
+          val x = program.nodes.filterIsInstance<RectNode>().single().x
+
+          // The IR prints as its own algebra now, not as nested constructors.
+          val before = x.describe()
+
+          // Two waypoints, two unknowns: solve exactly.
+          val fit = x.fitParameters(
+              listOf(TrackFitTarget(1.0, -6.0), TrackFitTarget(3.0, 6.0)),
+              iterations = 1200
+          )
+
+          """IR before:  $before
+          |free params: ${x.freeParameters()}
+          |solved:      ${fit.parameters}
+          |IR after:    ${fit.fitted.describe()}
+          |residual:    ${fit.initialResidual} -> ${fit.finalResidual}
+          |x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}""".trimMargin()
+  - execute:
+      box: rectsl_free_param_word
+      property: code
+      type: fragment
+      code: |
+          import afield.rectsl.*
+
+          val program = RectAnimationOracle.compile(
+              """
+              #rectsl
+              ->wall 18 8 meters
+              ->duration 4
+              ->fps 30
+
+              linear-track "sweep" '( 0=0   4=4 )
+
+              "marker" rect
+                0 0 ->xy
+                1.4 1.4 ->wh
+                "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
+                0x44d4b4 solid ->fill
+              ;
+              """.trimIndent()
+          ).programOrNull!!
+
+          val x = program.nodes.filterIsInstance<RectNode>().single().x
+          val before = x.describe()
+          val fit = x.fitParameters(
+              listOf(TrackFitTarget(1.0, -6.0), TrackFitTarget(3.0, 6.0)),
+              iterations = 1200
+          )
+
+          """IR before:  $before
+          |free params: ${x.freeParameters()}
+          |solved:      ${fit.parameters}
+          |IR after:    ${fit.fitted.describe()}
+          |residual:    ${fit.initialResidual} -> ${fit.finalResidual}
+          |x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}""".trimMargin()
+  - await:
+      wait: pending
+  - wait:
+      millis: 400
