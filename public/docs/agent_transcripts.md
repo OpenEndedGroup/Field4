@@ -263,7 +263,7 @@ the largest planted radius. *Motion* warps a frame by a *known* affine transform
 pyramidal Lucas–Kanade, fits a homography with RANSAC, and prints how far the recovered model
 disagrees with the planted one over a 16-point probe grid — the honest number for this whole family.
 
-![Two frames, their difference, a quiver of tracked flow vectors, and the second frame warped back by the recovered homography](assets/imaging_examples/motion.png)
+![Four panels: frame A, frame B rotated and translated, their absolute difference as an inferno interference pattern, and frame B warped back by the recovered homography — which reads as frame A again](assets/imaging_examples/motion.png)
 
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/imaging_cv_examples/metadata.edn)
 

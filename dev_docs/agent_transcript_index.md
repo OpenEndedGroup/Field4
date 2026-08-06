@@ -45,9 +45,11 @@ its heavyweight sibling `checkAgentTranscripts` (~25 s, because that one builds 
 **transcript_name** — prose…
 ```
 
-with an em dash. One per transcript, no more. Consequence worth knowing: do not start a line with a
-single bold lowercase word followed by an em dash unless it is an entry — that shape is reserved, and
-the guard will read it as an entry for a transcript that does not exist. Bold mid-sentence is fine.
+with an em dash. One per transcript, no more. Fenced code blocks are skipped before any of this is
+parsed, so a `##` line or an entry-shaped line inside a fence is not read as page structure.
+Consequence worth knowing: do not start a line with a single bold lowercase word followed by an em
+dash unless it is an entry — that shape is reserved, and the guard will read it as an entry for a
+transcript that does not exist. Bold mid-sentence is fine.
 
 **A section** is a `##` heading, followed within four lines by a marker declaring how CI verifies the
 scenes beneath it:
@@ -100,8 +102,11 @@ the welcome screen cannot open.
 ## Figures
 
 The index is meant to be illustrated, and there is a hard rule about how: **never** synthesize,
-hand-draw or mock up a capture. Every figure on it is docs-capture output from the walkthrough page
-linked beside the entry — a `diffstatic_runner` fence that ran the real code. The materialized bundles
+hand-draw or mock up a capture. Every figure on it is a capture of the real code running, taken for the
+walkthrough page linked beside the entry; all but one come from a `diffstatic_runner` fence on that
+page, and the exception (`assets/imgui_vr_panel/imgui-vr-panel.png`) is a real screenshot of the live
+demo rather than a fence's output, which is worth knowing if you go looking for the fence that made it.
+The materialized bundles
 under `public/docs/assets/agent_transcripts/<name>/` are *not* a source of figures: they hold
 `metadata.edn`, `document.md` and one `.kt` per box property, and no images at all. Most entries
 therefore carry no figure, which is correct: a scene whose output is a native Vulkan window or a

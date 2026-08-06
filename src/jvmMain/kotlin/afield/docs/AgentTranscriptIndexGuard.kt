@@ -130,7 +130,16 @@ object AgentTranscriptIndexGuard {
         val entries = mutableListOf<Entry>()
         var current: Section? = null
         var totalsParagraph: String? = null
+        // A fenced code block on this page can legitimately contain a `## …` line or an entry-shaped
+        // line (the "Running one" fence does not, but a future one might), and reading either as page
+        // structure would be a confusing false failure. So fences are skipped rather than parsed.
+        var inFence = false
         for ((i, raw) in lines.withIndex()) {
+            if (raw.trimStart().startsWith("```")) {
+                inFence = !inFence
+                continue
+            }
+            if (inFence) continue
             val heading = HEADING.find(raw)
             if (heading != null) {
                 val title = heading.groupValues[1]
