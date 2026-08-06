@@ -170,7 +170,16 @@ object AgentTranscriptMaterializer {
                     }
                 }
             } else {
-                println("AgentTranscriptMaterializer: no committed bundle at ${committed.absolutePath} — skipping drift check")
+                // Not "nothing to compare against" — the bundle is committed on purpose (the welcome
+                // screen's starting points, the docs gallery and the search index all read it), so its
+                // absence in check mode is the largest possible drift, not a reason to pass. Skipping
+                // here meant `rm -rf public/docs/assets/agent_transcripts` made checkAgentTranscripts
+                // GREEN, which is the one outcome a drift guard must never have.
+                failures.add(
+                    "no committed starting-point bundle at ${committed.absolutePath} — " +
+                        "$STARTING_POINTS_REL is generated but committed, and every transcript's document is " +
+                        "missing. Regenerate with `./gradlew regenerateAgentTranscriptStartingPoints`."
+                )
             }
         }
 
