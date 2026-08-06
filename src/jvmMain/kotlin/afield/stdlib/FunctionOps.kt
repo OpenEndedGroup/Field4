@@ -192,6 +192,7 @@ object OpRegistry {
         // reason rather than letting a fit descend a gradient that is always exactly zero.
         OpSpec("exp", "transform", emptySet()) { buildUnary(it) { f -> f.exp() } },
         OpSpec("abs", "transform", setOf("absoluteValue")) { buildUnary(it) { f -> f.abs() } },
+        OpSpec("floor", "transform", setOf("floorY")) { buildUnary(it) { f -> f.floor() } },
         OpSpec("flip", "transform", setOf("negate")) { buildUnary(it) { f -> f.flip() } },
         OpSpec("sign", "transform", setOf("signum")) { buildUnary(it) { f -> f.sign() } }
     )

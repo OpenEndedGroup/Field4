@@ -122,6 +122,23 @@ sealed interface FnExpr {
      */
     data class Abs(val a: FnExpr) : FnExpr
 
+    /**
+     * `kotlin.math.floor` — the greatest integer not above the value.
+     *
+     * A staircase, and the derivative reported is **0**: that is not a fudge, it is the true
+     * derivative everywhere the function is differentiable, which is everywhere except a measure-zero
+     * set of integers. At an integer there is no derivative and 0 is what a central difference
+     * reports either side, so the analytic answer and the finite-difference oracle agree.
+     *
+     * That makes it useless *on its own* — a fit whose only path to a parameter runs through a bare
+     * floor will report convergence without moving — and valuable *inside* something else, which is
+     * the whole reason it is here. Period arithmetic is `t - p·floor(t/p)`, and the wrapped time is
+     * a perfectly good differentiable function of `p` on either side of a wrap. See the
+     * piecewise-oscillator entry in [FnNonDifferentiable], which named this kind as the missing
+     * piece before it existed.
+     */
+    data class Floor(val a: FnExpr) : FnExpr
+
     /** `sin` in radians. */
     data class Sin(val a: FnExpr) : FnExpr
 
@@ -233,6 +250,11 @@ object FnFormulas {
         put("exp", FnExpr.Exp(child("source")))
         put("flip", FnExpr.Neg(child("source")))
         put("abs", FnExpr.Abs(child("source")))
+        // `floor` is the staircase FnNonDifferentiable had been naming as its highest-value gap: on
+        // its own the derivative is zero almost everywhere, but it is the one primitive the
+        // period arithmetic of the piecewise oscillators is missing, and it is what lets RectSL's
+        // `loop-time` and `pingpong-time` lower into an Fn at all.
+        put("floor", FnExpr.Floor(child("source")))
         put("clamp", FnExpr.CoerceIn(child("source"), child("min"), child("max")))
         put(
             "softclip",
@@ -356,6 +378,7 @@ fun evalFormula(
     is FnExpr.Div -> evalFormula(expr.a, x, alpha, childValue) / evalFormula(expr.b, x, alpha, childValue)
     is FnExpr.Neg -> -evalFormula(expr.a, x, alpha, childValue)
     is FnExpr.Abs -> kotlin.math.abs(evalFormula(expr.a, x, alpha, childValue))
+    is FnExpr.Floor -> kotlin.math.floor(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Sin -> kotlin.math.sin(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> kotlin.math.cos(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Exp -> kotlin.math.exp(evalFormula(expr.a, x, alpha, childValue))
@@ -425,6 +448,12 @@ fun evalFormulaAD(
     is FnExpr.Neg -> -evalFormulaAD(expr.a, x, alpha, childValue)
     // `abs`'s tracked twin already reports 0 at exactly zero — the even-split convention.
     is FnExpr.Abs -> abs(evalFormulaAD(expr.a, x, alpha, childValue))
+    // A floor is recorded as a *constant* on the tape rather than as a tracked unary. That is the
+    // whole of its derivative rule: the adjoint through it is exactly zero, with no node to
+    // back-propagate along, which is both correct almost everywhere and free.
+    is FnExpr.Floor -> x.tape.constant(
+        kotlin.math.floor(evalFormulaAD(expr.a, x, alpha, childValue).value)
+    )
     is FnExpr.Sin -> sin(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> cos(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Exp -> exp(evalFormulaAD(expr.a, x, alpha, childValue))
@@ -506,11 +535,13 @@ data class FnOpStatus(
  * pattern the KDoc-attachment check uses. Adding an op to `Functions` and `OpRegistry` without either
  * a formula or an explicit "no, because…" is therefore not shippable.
  *
- * Measured by `FnOpCoverageTest`, which prints the fraction rather than asking you to trust it:
- * **31 of 122 canonical ops are differentiable (25.4%)** — 29 formulas plus the two numeric-leaf ops —
- * and of the 91 declared non-differentiable, **35 are closable**. The single highest-value entry in
- * that backlog is the piecewise-oscillator group (`saw`, `triangle`, `square`, the pulses), which
- * needs only an `FnExpr.Floor`, because oscillator fitting is the flagship use of [fitGradient].
+ * Measured by `FnOpCoverageTest`, which prints the fraction rather than asking you to trust it, so
+ * the number in `dev_docs/autodiff.md` can be checked rather than believed. The single highest-value
+ * entry in the backlog is still the piecewise-oscillator group (`saw`, `triangle`, `square`, the
+ * pulses), because oscillator fitting is the flagship use of [fitGradient] — but as of 2026-08-06 it
+ * is a pure transcription job rather than a missing primitive: `FnExpr.Floor` now exists, added
+ * because RectSL's `loop-time` and `pingpong-time` needed exactly the same period arithmetic, so
+ * `t - p * floor(t / p)` is expressible today.
  *
  * The 2026-07-31 pass moved four ops out of `mapY` and into the registry, which is why both the
  * numerator and the denominator grew: `abs`, `flip` and `exp` gained formulas, and `sign` gained a
@@ -545,8 +576,9 @@ object FnNonDifferentiable {
             "a piecewise oscillator: differentiable almost everywhere, with a countable set of corners " +
                 "the sample grid will usually miss",
             closable = true,
-            missing = "FnExpr.Floor (derivative 0) and a modulo built from it; then the saw/triangle/" +
-                "square/pulse formulas transcribe directly. The highest-value gap left, since " +
+            missing = "only the transcription now. FnExpr.Floor exists (added 2026-08-06 for RectSL's " +
+                "loop-time), so the modulo these need is `t - p * floor(t / p)` and the saw/triangle/" +
+                "square/pulse formulas follow directly. Still the highest-value gap left, since " +
                 "oscillator fitting is the flagship use of fitGradient",
             "saw", "triangle", "square", "pulseTrain", "pulseburst", "pulsepattern"
         )
@@ -576,7 +608,8 @@ object FnNonDifferentiable {
         group(
             "restructures the x axis by folding, tiling or wrapping the lookup, which is piecewise in x",
             closable = true,
-            missing = "FnExpr.Floor for the period arithmetic; then each is an AtX over a wrapped x",
+            missing = "only the transcription now: FnExpr.Floor exists, so the period arithmetic is " +
+                "available and each of these is an AtX over a wrapped x",
             "repeat", "mirror", "mirrorRepeat", "tile", "pad", "stretch", "reverse", "quantizeX", "jitterX"
         )
         group(
@@ -604,9 +637,10 @@ object FnNonDifferentiable {
             "a non-smooth value transform: quantising (derivative 0 almost everywhere) or reflecting " +
                 "(piecewise linear with corners)",
             closable = true,
-            missing = "clip and saturate are two-line transcriptions; wrapY, quantize and crush " +
-                "additionally need FnExpr.Floor, and fold an arc-sine. FnExpr.Abs now exists — abs " +
-                "uses it — so rectify is pointwise-expressible, and the one thing it still lacks is " +
+            missing = "clip and saturate are two-line transcriptions; wrapY, quantize and crush are " +
+                "now transcriptions too, since FnExpr.Floor exists, and fold needs an arc-sine. " +
+                "FnExpr.Abs also exists — abs uses it — so rectify is pointwise-expressible, and the " +
+                "one thing it still lacks is " +
                 "a way to dispatch on the RectifyMode string the node carries, which no FnExpr kind " +
                 "can read",
             "clip", "saturate", "fold", "wrapY", "quantize", "crush", "rectify"
