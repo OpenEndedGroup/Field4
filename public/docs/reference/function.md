@@ -1156,6 +1156,8 @@ If the walk ever needs to be the only traversal, the two costs to attack first a
 
 `src/jvmMain/kotlin/afield/stdlib/autodiff_formula.kt`
 
+**Used in:** [RectSL Inverse Animation](../rectsl_inverse_animation.md)
+
 ### Top-level functions { #autodiff-formula-kt-functions }
 
 | Declaration | Summary |
