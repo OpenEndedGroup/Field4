@@ -2739,6 +2739,62 @@ return result;
 """
 
 
+# The live counterpart to the headless popup cover (afield.FieldSuggestPresentationTest, wired into
+# `check`; see dev_docs/completion_popup_cover.md). That one stages fieldSuggest.js under node against
+# a canned server reply; this one asks the real editor, over a real payload, in a real browser — the
+# only place the whole hop is on the hook, CSS and Monaco and transport included.
+#
+# What it watches: the group header a completion is filed under has to be the category's own spelling.
+# `titleForCategory` lowercases its key and title-cases each word, so `Audio AI` rendered "Audio Ai"
+# (hand-fixed in 9ba22de77 after a human noticed) and `ALife` rendered "Alife" (found by the headless
+# guard on 2026-08-06). Both are checked here by name, because both have actually happened.
+#
+# `lenia*` is the ALife group's whole public surface at that prefix and needs no import; `fieldAudio*`
+# needs the audioai import, since nothing in that package is in the REPL intro — without it the popup
+# correctly offers nothing, which would make the assertion vacuous. (Measured, not assumed: the first
+# run of this fixture without the import came back with zero labels and zero groups.)
+#
+# No AA gate, deliberately: a candidate's category is attached server-side by
+# KotlinCompletionSupport.classifyMetadata whichever engine produced the candidate, so this is about
+# presentation and grades K1 and AA alike. The `loaded` and non-empty checks are what keep it honest.
+COMPLETION_CATEGORY_HEADERS_SNIPPET = """\
+import afield.stdlib.noir.audioai.*
+lenia
+fieldAudio
+"""
+
+COMPLETION_CATEGORY_HEADERS_JS = COMPLETION_SUGGEST_PRELUDE + r"""
+const alife = await completeAtEndOf("lenia");
+const audio = await completeAtEndOf("fieldAudio");
+const result = { ok: false, alife, audio };
+
+const check = (probe, prefix, expected, mangled) => {
+  if (!probe.loaded) return `${prefix}: completion never settled (baseItemsLoaded stayed false)`;
+  if (probe.labels.length === 0) {
+    return `${prefix}: no completions at all, so the header assertion would be vacuous`;
+  }
+  if (probe.groups.includes(mangled)) {
+    return `${prefix}: group header rendered "${mangled}" — titleForCategory lost the ` +
+      `"${expected}" spelling (see its \`known\` map in fieldSuggest.js)`;
+  }
+  if (!probe.groups.includes(expected)) {
+    return `${prefix}: expected a "${expected}" group header, saw [${probe.groups.join(", ")}]`;
+  }
+  return null;
+};
+
+const reason =
+  check(alife, "lenia", "ALife", "Alife") ||
+  check(audio, "fieldAudio", "Audio AI", "Audio Ai");
+if (reason) {
+  result.reason = reason;
+  return result;
+}
+result.ok = true;
+return result;
+"""
+
+
 def write_generated_file(relative: str, text: str) -> Path:
     path = GENERATED_ROOT / relative
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2752,6 +2808,12 @@ def prepare_generated_files() -> dict[str, Path]:
         "completion_unresolved_snippet": write_generated_file("completion-unresolved.kt", COMPLETION_UNRESOLVED_SNIPPET),
         "completion_own_import_js": write_generated_file("completion-own-import.js", COMPLETION_OWN_IMPORT_JS),
         "completion_unresolved_js": write_generated_file("completion-unresolved.js", COMPLETION_UNRESOLVED_JS),
+        "completion_category_headers_snippet": write_generated_file(
+            "completion-category-headers.kt", COMPLETION_CATEGORY_HEADERS_SNIPPET
+        ),
+        "completion_category_headers_js": write_generated_file(
+            "completion-category-headers.js", COMPLETION_CATEGORY_HEADERS_JS
+        ),
         "stack_marker_snippet": write_generated_file("stack-marker.kt", STACK_MARKER_SNIPPET),
         "editable_lines_snippet": write_generated_file("editable-lines.kt", EDITABLE_LINES_SNIPPET),
         "static_lines_snippet": write_generated_file("static-lines.kt", STATIC_LINES_SNIPPET),
@@ -3097,6 +3159,20 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             ],
             # The assertion leaves the popup open on purpose, so the capture frames the widget the
             # human photographed rather than a bare editor.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="completion-category-headers",
+            description="The completion popup files candidates under their category's own spelling: `ALife` and `Audio AI`, never \"Alife\" or \"Audio Ai\".",
+            commands=[
+                "new-box --name CompletionCategoryHeaderRegression",
+                shell_join(["set", "@last", "code", "--file", str(files["completion_category_headers_snippet"])]),
+                "sleep 1.0",
+                "editor-open @last --property code",
+                "sleep 0.5",
+                shell_join(["page-eval", "--body", "--file", str(files["completion_category_headers_js"]), "--timeout", pw_timeout]),
+            ],
+            # Leaves the popup open, so the capture frames the group header itself.
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--uid", "@last", "--with-editor", "--no-pan", "--preserve-selection", "--timeout", pw_timeout]),
         ),
         UiRegression(

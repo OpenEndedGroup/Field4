@@ -123,6 +123,47 @@ Say this out loud rather than let a green tick imply more than it means:
 The live-browser cover for the parts a stub cannot reach is `tools/run_ui_regressions.py`, which
 drives the real widget in a real page. It needs a running Field and is therefore not in `check`.
 
+## The live half
+
+`completion-category-headers` in `tools/run_ui_regressions.py` is the same category question asked of
+the real thing: a real box, a real `complete` round trip, real `fieldSuggest.js` in a real browser.
+It completes `lenia` (the ALife package) and `fieldAudio` (the Audio AI package) and requires the
+rendered `.afield-suggest-section` text to be `ALife` and `Audio AI` — and *not* `Alife` or
+`Audio Ai`, both of which have actually shipped.
+
+```
+PORT=9602 AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh          # in one shell
+python3 tools/run_ui_regressions.py --port 9602 --id completion-category-headers
+```
+
+No AA gate, unlike the two completion regressions above it: a candidate's category is attached
+server-side by `classifyMetadata` whichever engine produced the candidate, so this grades K1 and AA
+alike. What keeps it from passing vacuously is that it requires completions to have arrived at all —
+`fieldAudio` needs the `audioai` import, because nothing in that package is in the REPL intro and
+without the import the popup correctly offers nothing.
+
+Observed 2026-08-06 against a Field on 9602 (sidecar off, so K1 answered): PASS in 3.8s, with the
+group headers read back as `["ALife"]` and `["Audio AI"]`. Inverting the expected and mangled
+spellings made it FAIL with "group header rendered ALife — titleForCategory lost the Alife spelling",
+which is how the live assertion was confirmed to be reading the live popup rather than agreeing with
+itself.
+
+## Seeing it by hand
+
+`dev_docs/agents/transcripts/docs_capture/completion_category_headers.yaml` is the eyeball version —
+two boxes, one seeded `lenia` and one seeded `fieldAudio`:
+
+```
+python3 tools/field_backdoor.py --json --scratch --port <your port> \
+  --command 'macro write completion_category_headers --file dev_docs/agents/transcripts/docs_capture/completion_category_headers.yaml' \
+  --command 'macro run completion_category_headers'
+```
+
+Then click into either editor, put the caret at the end of the seeded line and press Ctrl+Space; the
+grey group header above the rows is the thing under test. (Replay verified: `applied=3 errors=0`.) It
+lives under `docs_capture/` because `AgentTranscriptMaterializer` scans `transcripts/` itself and
+would demand a committed starting-point bundle for anything at the top level.
+
 ## Adding a case
 
 Add an entry to `CASES` in `src/jvmTest/resources/fieldSuggest/probe.mjs`. A case is an async
