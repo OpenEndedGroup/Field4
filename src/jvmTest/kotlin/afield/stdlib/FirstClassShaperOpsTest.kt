@@ -119,7 +119,7 @@ class FirstClassShaperOpsTest {
     fun eachShaperRebuildsThroughOpRegistryAndSurvivesTheRoundTrip() = with(Functions) {
         // A value transform with a `source` child, which is what OpRegistry.rebuild needs.
         val start = sin(1.0).clip(0.9)
-        for (op in listOf("exp", "abs", "flip", "sign")) {
+        for (op in listOf("exp", "abs", "flip", "sign", "floor")) {
             val rebuilt = OpRegistry.rebuild(start, op)
             assertNotNull(rebuilt, "rebuild(clip-node, $op) must be non-null")
             assertEquals(op, rebuilt.graphNode().op)
@@ -160,15 +160,15 @@ class FirstClassShaperOpsTest {
      * `FnMutations.substituteOp` draws its replacement with
      * `opsInFamily(family)[rng.nextInt(targets.size)]` (`FunctionEvolve.kt:63-65`), so the *size* of a
      * family is part of every seeded `evolve` run's random stream. Adding four ops to `transform` took
-     * it from 15 to 19 and therefore changes which op a given seed picks — see
-     * `dev_docs/stdlib_behaviour_changes.md`. Asserting the size here makes the next addition a
-     * conscious decision rather than a silent reproducibility break.
+     * it from 15 to 19 and therefore changes which op a given seed picks; `floor` took it to 20 on
+     * 2026-08-06 — see `dev_docs/stdlib_behaviour_changes.md`. Asserting the size here makes the next
+     * addition a conscious decision rather than a silent reproducibility break.
      */
     @Test
     fun theTransformFamilySizeIsPinnedBecauseSeededEvolveDrawsFromIt() {
         val transform = OpRegistry.opsInFamily("transform")
         assertEquals(
-            19, transform.size,
+            20, transform.size,
             "the transform family changed size, which reseeds every evolve run that mutates a " +
                 "transform node — declare it in dev_docs/stdlib_behaviour_changes.md: $transform"
         )
