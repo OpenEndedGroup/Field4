@@ -80,6 +80,24 @@ class FieldSuggestPresentationTest {
             "expected the whole completion-category vocabulary, found ${categories.size}: $categories"
         )
 
+        // Half of the guard's honesty rests on the JavaScript being handed the same string the
+        // annotation declares. If the server respelled `ALife` on the way out, the case below would be
+        // grading a string no popup ever sees. `classifyMetadata` is the server's last word on a
+        // candidate's category, so ask it, for every category, in process.
+        for (category in categories) {
+            val classified = KotlinCompletionSupport.classifyMetadata(
+                Metadata(icon = "method", tail = "", text = "probe", displayText = "probe", category = category.name),
+                "probe"
+            )
+            assertTrue(
+                classified.category == category.name,
+                "the server respells `${category.name}` (${category.origin}) as " +
+                    "`${classified.category}` before the popup ever sees it, so the popup-title guard " +
+                    "below would be testing the wrong string. Reconcile " +
+                    "KotlinCompletionSupport.normalizedCompletionCategory with the declared spelling."
+            )
+        }
+
         runProbe("categories", categorySpecJson(categories))
     }
 
