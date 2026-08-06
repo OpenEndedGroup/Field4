@@ -174,7 +174,7 @@ property a test can check:
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_features.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #imaging-features-kt-functions }
 
@@ -348,7 +348,7 @@ Two performance-relevant choices worth knowing about:
 
 `src/jvmMain/kotlin/afield/stdlib/imaging_filters.kt`
 
-**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Imaging and computer vision](../imaging_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #imaging-filters-kt-functions }
 
