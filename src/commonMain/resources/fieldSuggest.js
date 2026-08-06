@@ -148,9 +148,14 @@ const titleForCategory = (category) => {
     .toLowerCase();
   if (!key) return "Other";
   const known = {
+    // The fallback below title-cases each word and lowercases the rest of it, so every category
+    // whose own spelling is not Capitalised-Words has to be spelled out here. `Audio AI` would
+    // render "Audio Ai", `ALife` would render "Alife". FieldSuggestPresentationTest's category guard
+    // renders every category the Kotlin side can emit and fails if one of them comes back respelled,
+    // so the next such category is caught here rather than by someone squinting at a popup.
     ai: "AI",
-    // the fallback title-cases each word, which would render this one "Audio Ai"
     "audio ai": "Audio AI",
+    alife: "ALife",
     import: "Imports",
     imports: "Imports",
     type: "Types",
