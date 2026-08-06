@@ -19,7 +19,7 @@ import kotlin.math.abs
  * `autodiff_fn.kt` differentiates an `Fn` graph exactly with respect to its numeric leaves. So a
  * track that lowers to an `Fn` is a track you can take the derivative of, and therefore a track
  * you can **solve**: declare where a rect should be at some instant and let a gradient find the
- * numbers that put it there. That is [fitTrackParameters], and it is the point of this file.
+ * numbers that put it there. That is [Track.fitParameters], and it is the point of this file.
  *
  * # The two identities that make it possible
  *

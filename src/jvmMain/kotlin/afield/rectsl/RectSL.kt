@@ -970,7 +970,7 @@ data class HeadingTrack(
  * Every backend treats it as the constant it presently is — the CPU sampler and the shader both
  * read [value], so a scene with free parameters plays exactly as written. What changes is that the
  * differentiable backend lowers it to a *labelled* `Fn` leaf, so [freeParameterIndices] can find
- * which θ slot it landed in and [fitTrackParameters] can move that slot and nothing else. That is
+ * which θ slot it landed in and [Track.fitParameters] can move that slot and nothing else. That is
  * the whole mechanism behind inverse animation: say where a rect should be and when, and let the
  * gradient answer with the numbers.
  *
@@ -2338,6 +2338,26 @@ class RectLangVm(
             vm.defineTrack(name, vm.quoteToScalarTrack(quote, TrackMode.Hold))
         }
         word("track-ref") { vm -> vm.push(VTrack(vm.namedTrack(vm.popString()))) }
+
+        // A named unknown. `4.0 free-param radius` is a 4.0 that says it would rather be solved
+        // for: every backend still reads it as the constant it presently is, so the scene plays
+        // exactly as written, but the differentiable backend labels its Fn leaf so
+        // [Track.fitParameters] can move that one number and nothing else. See RectSLFn.kt and
+        // [FreeParamTrack]. Not spelled `param`: the pattern layer already owns that word for a
+        // mini-notation parameter lookup.
+        word("free-param") { vm ->
+            val name = vm.consumeName("free-param")
+            val initial = when (val v = vm.pop()) {
+                is VNum -> v.x
+                is VTrack<*> -> trackConstantValue(
+                    @Suppress("UNCHECKED_CAST") (v.track as Track<Double>)
+                ) ?: throw RectLangException(
+                    "free-param needs a constant starting value, not a varying track"
+                )
+                else -> throw RectLangException("free-param expected a number")
+            }
+            vm.push(VTrack(FreeParamTrack(name, initial)))
+        }
 
         word("rgb") { vm ->
             val r = vm.consumeNumber("rgb")
