@@ -92,22 +92,58 @@ shape over a **mask**: only the named parameters ever move. Everything under the
 the gradient is `Fn.gradientAt`, one backward sweep through the same `FnFormulas` table `Fn.eval` is
 pinned against.
 
-## What is refused, and why
+## One step, and most of the refusals go away
 
-A wrong derivative is worse than no derivative, so the lowering never guesses. Every op declares
-either a lowering or a refusal *with a reason*, and `Track.toFn()` returns
-`RectSLFnLowering.Refused(why)` rather than a null or a plausible-looking zero.
+The first version of this backend refused 14.2% of the gallery's tracks in five different ways. Four
+of those five turned out to be the *same* missing primitive, and it was a primitive the stdlib had
+already written down as its own biggest gap: `FnNonDifferentiable`'s KDoc said, in as many words,
+that the piecewise oscillators "need only an `FnExpr.Floor`".
 
-| refused | why |
-| --- | --- |
-| `floor` `ceil` `fract` `mod` | an integer lattice: the derivative is zero on every open interval and undefined on each jump |
-| `loop-time` `pingpong-time` | folding the clock is piecewise in time — but a window that stays inside one period *is* the identity, and lowers exactly |
-| a hold track with 2+ keys | a step |
-| a gate with an edge inside the window | a hard 0/1 discontinuity — wholly inside or wholly outside, it is a constant and lowers |
-| `->face-travel` headings | `atan2` has no `Fn` op |
-| the pattern tracks | an interpreter over a mini-notation tree, which is why `FnNonDifferentiable` refuses `pat` too |
-| `/` and `smoothstep` with non-constant guards | RectSL's `/` returns 0 where `\|divisor\| <= 1e-12`; a *constant* divisor folds the guard exactly, anything else is refused rather than silently dropped |
-| `expo-*` `elastic-*` `bounce-*` easings | exact-endpoint special cases the closed form does not reach, and four parabolic arcs |
+So `Fn` gained a `floor`. It is a first-class node **and** differentiable, which reads like a
+contradiction and is not: the derivative of a staircase is zero everywhere it exists, and zero is
+what it reports. On its own that makes it a dead end, exactly as `sign` is. Inside something else it
+is the opposite, and the reason is one line of arithmetic:
+
+```
+clamp01(floor(x) + 1)   ==   1 where x >= 0, 0 below it — exactly, for every x
+```
+
+That is an exact step function, and a step is *every hard edge in an animation language*. RectSL has
+three: a visibility gate, a hold track, and the wrap of a looped clock. All three lower through that
+one expression, plus a fourth thing — the `expo-*` and `elastic-*` easings, whose closed forms do not
+reach their own endpoints (`expo-in` is 2⁻¹⁰ at u=0, not 0) and which in a keyed track spend most of
+their time exactly at those endpoints. `closed(u)·(1−floor(u))·(1−floor(1−u)) + floor(u)` is that
+branch structure written as arithmetic.
+
+| | before `floor` | after |
+| --- | --- | --- |
+| gallery tracks that lower | 2363 / 2754 (85.8%) | **2638 / 2754 (95.8%)** |
+| channel values compared | 302,293 | **328,451 of 333,207 (98.6%)** |
+| easings that lower | 29 / 38 | **35 / 38** |
+| distinct refusal reasons | 5 | **1** |
+| worst relative disagreement | 6.6·10⁻¹⁶ | 6.6·10⁻¹⁶ (unchanged) |
+
+## What is still refused, and whether that is permanent
+
+A wrong derivative is worse than no derivative, so the lowering never guesses. `Track.toFn()` returns
+`RectSLFnLowering.Refused(why, closable, missing)` rather than a null or a plausible-looking zero —
+and `closable` is the distinction a reader actually needs, borrowed from the stdlib's own
+`FnOpStatus`: **not yet written** is a different fact from **no honest lowering exists**.
+
+| refused | closable? | why, and what it would take |
+| --- | --- | --- |
+| `->face-travel` headings | yes | `atan2` has no `Fn` op. Needs an `FnExpr.Atan` plus atan2's quadrant fix-up, which the exact step can now supply. This is the whole of the remaining 4.2%. |
+| `/` by a non-constant | yes | RectSL's `/` returns 0 where `\|divisor\| <= 1e-12`. An exact indicator exists now; what blocks it is that the suppressed branch still evaluates `a/b` and yields `0·inf` = NaN. A *constant* divisor folds the guard exactly. |
+| `smoothstep` with non-constant edges | yes | the same `0·inf` problem, for the coincident-edge guard. |
+| `mod` | yes | Kotlin's `%` truncates toward zero, and `trunc` is not `floor`; it needs a sign primitive. A constant pair still folds. |
+| `bounce-*` easings | yes | four parabolic arcs, each join needing its own clamped ramp. Expressible with the machinery that is now here; not yet expressed. |
+| the pattern tracks | **no** | an interpreter over a mini-notation tree, not an expression of fixed shape — the same reason `FnNonDifferentiable` refuses `pat` itself. |
+
+There is a matching honesty rule in the fitter. A staircase's derivative really is zero, so a
+parameter reachable *only* through a `floor`, a gate or a hold has no path to the value at all —
+present in the graph and unsolvable. `fitParameters` refuses that by name instead of printing a
+residual that never moved and calling it convergence. A parameter *beside* a staircase is still fine:
+under a floor it is refused, beside a gate it solves from residual 3.0 to 6.2·10⁻¹⁵.
 
 ## How much of it is checked
 
@@ -119,12 +155,14 @@ Fn-lowered tracks:
 
 | measurement | value |
 | --- | --- |
-| gallery tracks that lower | 2363 of 2754 (85.8%) |
-| channel values compared | 302,293 across all 33 compilable programs (30,914 declined) |
+| gallery tracks that lower | 2638 of 2754 (95.8%) |
+| channel values compared | 328,451 of 333,207 across all 33 compilable programs (98.6%) |
 | worst relative disagreement | **6.6·10⁻¹⁶** |
 | worst absolute disagreement | **1.3·10⁻¹⁵** |
-| easings lowered | 29 of 38, worst disagreement 8.9·10⁻¹⁶ over a 1001-point grid |
-| exact gradient vs central difference | worst **7.1·10⁻¹¹** over sixteen parameterised shapes |
+| easings lowered | 35 of 38, worst disagreement 8.9·10⁻¹⁶ over a 1001-point grid |
+| exact gradient vs central difference | worst **7.1·10⁻¹¹** over twenty-one parameterised shapes |
+| the exact step, at its own boundary | exact, including at `-0.0` |
+| a looped clock across 4.5 periods | **bit-identical** (0.0); ping-pong 8.9·10⁻¹⁶; a hold track 5.6·10⁻¹⁷ |
 
 That last row is the one that matters for a fit. Agreeing on values proves nothing about a
 derivative — a second interpreter can reproduce `eval` everywhere and still differentiate the wrong
@@ -139,6 +177,29 @@ requires bit-equality with the golden across 333,207 channel values, which is wh
 transcription from rotting. And the figure at the top of this page is a CPU raster rather than a GPU
 capture — every rectangle in it is real geometry sampled from the real track at a real instant, but
 it is not the shader's own answer.
+
+## The rest of what a symbolic IR bought
+
+`ddf732260` named five things a closure cannot be: printed, compared, serialized, rewritten, or
+emitted as GLSL. GLSL shipped with it; this page is the differentiable backend; and the remaining
+three are small once the IR is data.
+
+- `Track.describe()` prints a tree as its algebra —
+  `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)` — rather than as nested constructors.
+- **Comparison came free.** The IR is data classes, so two tracks built by the same `array` body are
+  already `==`; the GLSL emitter's function deduplication has been relying on that since the refactor
+  without anyone writing it down.
+- `Track.simplify()` is the general rewriter, and `substituteParameters` the targeted one a fit uses.
+
+The simplifier is worth a paragraph because of what it *refuses*. Its contract is that a rewritten
+track samples **bit-identically**, and the gallery corpus broke the first reflexive rule within a
+minute: `0 - x` is not `-x`, because `0.0 - 0.0` is `+0.0` while `-(0.0)` is `-0.0`. Signed zero is
+observable here — `HeadingTrack` takes `atan2`, and `atan2(+0.0, -1.0)` is `+π` while
+`atan2(-0.0, -1.0)` is `-π`, half a turn apart — so a rewrite that "only" changes the sign of a zero
+can spin a rectangle through 180°. Five reflexive rewrites are therefore refused and asserted as
+refused: `x + 0`, `0 - x`, and all three `mix` degeneracies (`mix(a, b, 1)` is `a + (b - a)`, which is
+simply not `b` in floating point). What survives still takes the gallery from 8197 nodes to 6442
+(21.4% smaller), because the constant fold does the heavy lifting.
 
 ## A limitation worth knowing
 
