@@ -1076,6 +1076,15 @@ tasks {
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs(vectorizationJvmArgs)
+
+    // A test worker is a fresh JVM and does not inherit the build's system properties, so the
+    // `-Dafield.…=write` switches our characterization tests document for regenerating their
+    // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
+    // the documented recipes working without making the whole build's property soup an input.
+    for ((key, value) in System.getProperties()) {
+        val name = key.toString()
+        if (name.startsWith("afield.")) systemProperty(name, value.toString())
+    }
 }
 
 // Measurement fixtures deliberately print publishable timing/search data and make no assertions.
