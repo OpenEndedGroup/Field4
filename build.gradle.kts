@@ -1181,6 +1181,22 @@ tasks.register<JavaExec>("checkAgentTranscripts") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+// The *other* half of the same artifact, and the half nothing checked until 2026-08-06:
+// `public/docs/agent_transcripts.md` is the published, hand-written index of the same corpus, and it
+// had drifted to 28 entries for 52 transcripts while its opening paragraph claimed that "every one of
+// them is exercised end-to-end in CI". The generated bundle above stayed current for months precisely
+// because a guard watched it; the prose beside it did not. This is that guard for the prose. It is not
+// a regeneration task on purpose — the entries quote the number a box prints and why it matters, which
+// no generator over the op-verb yaml can write — so a failure is fixed by writing a paragraph. Reads
+// text only: no boxes, no runloop, no GPU, so it costs a fraction of checkAgentTranscripts.
+tasks.register<JavaExec>("checkAgentTranscriptIndex") {
+    group = "verification"
+    description = "Fails if public/docs/agent_transcripts.md is not a true index of dev_docs/agents/transcripts/ — a missing or orphaned entry, a dead starting-point link, or a CI claim that does not match DemoTranscriptExecSmokeTest's classification."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.docs.AgentTranscriptIndexGuard")
+}
+
 tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
     group = "documentation"
     description = "Rewrites the committed public/docs/assets/agent_transcripts/ bundle from dev_docs/agents/transcripts/*.yaml — the fix for a checkAgentTranscripts failure."
@@ -1290,6 +1306,7 @@ tasks.named("check") {
     dependsOn("checkKDocAttachment")
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
+    dependsOn("checkAgentTranscriptIndex")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {

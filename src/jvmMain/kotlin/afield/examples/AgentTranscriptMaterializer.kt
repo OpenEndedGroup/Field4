@@ -69,8 +69,12 @@ object AgentTranscriptMaterializer {
      * opening it as a generic welcome starting point cannot make sound without that extra interaction.
      * `remotear_scene_motion` demonstrates the richer asset API but deliberately refers to an external
      * `/abs/assets/robot.glb`, so the smaller asset-free RemoteAR starter is the loadable starting point.
+     *
+     * `internal` rather than private because [afield.docs.AgentTranscriptIndexGuard] reads it: the
+     * public index page must carry an `Open ↗` starting-point link for a transcript exactly when that
+     * transcript is materialized, so this set is also the list of entries that must *not* offer one.
      */
-    private val EXCLUDE = setOf(
+    internal val EXCLUDE = setOf(
         "afield_four_traditional_triangle",
         "graphics_renderer_launch",
         "remotear_scene_motion",

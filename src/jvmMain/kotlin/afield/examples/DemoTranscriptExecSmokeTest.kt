@@ -60,11 +60,17 @@ expect:
  *
  * Adding a demo: drop the `*.yaml` in `dev_docs/agents/transcripts/`, then add its name to exactly
  * one of [EXECUTE] or [COMPILE_ONLY] below. An unclassified transcript fails the test on purpose.
+ *
+ * These three sets are also where the *public* index page's claim about CI comes from:
+ * [afield.docs.AgentTranscriptIndexGuard] reads them and fails the build unless
+ * `public/docs/agent_transcripts.md` has an entry for every transcript, filed under a section whose
+ * declared verification level matches the set the transcript is in. That is why they are `internal`
+ * rather than private — classification is decided here and nowhere else.
  */
 object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
-    private val EXECUTE = setOf(
+    internal val EXECUTE = setOf(
         "fn_differentiable_fit_demo",
         "linalg_thumbnails_demo",
         "hello_display",
@@ -161,7 +167,7 @@ object DemoTranscriptExecSmokeTest {
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
-    private val COMPILE_ONLY = setOf(
+    internal val COMPILE_ONLY = setOf(
         "graphics_renderer_launch",
         "afield_four_traditional_triangle",
         "recstl_playground",
@@ -184,7 +190,7 @@ object DemoTranscriptExecSmokeTest {
      * profile the `// {{ marker }}` selects (the identical path a live box takes), and asserted to
      * carry no error diagnostics. Faithful replay for markers like `// {{ tone }}` / `// {{ remoteAR }}`.
      */
-    private val KOTLINJS = setOf(
+    internal val KOTLINJS = setOf(
         "tone_synth_sequence",
         "remotear_start",
         "remotear_scene_motion",
