@@ -1,7 +1,8 @@
 # RectSL's track IR becomes differentiable — the third backend
 
 Nightly agent, 2026-08-06, kind A. Branch `nightly/2026-08-06/1-rectsl-differentiable-tracks`,
-based on `50d838851`. Worked 03:26–07:35.
+based on `50d838851`. Worked 03:26–05:15 in two sessions: the backend and the fitter, then a
+coverage-and-rewriting pass after the orchestrator pointed at the refusal number.
 
 ## Plan (as written before starting, kept for the record)
 
@@ -77,25 +78,44 @@ regenerated, and two KDoc blocks the attachment guard could not attach.)
 pre-refactor code**. The differential test reads it as data and recomputes each rect's nine numeric
 channels through Fn-lowered tracks:
 
-| | |
-| --- | --- |
-| gallery tracks lowered | 2363 of 2754 (85.8%) |
-| channel values compared | 302,293 across all 33 compilable programs; 30,914 declined |
-| every program contributes | yes (asserted) |
-| **worst relative disagreement** | **6.617e-16** |
-| **worst absolute disagreement** | **1.332e-15** |
-| worst at | `auto-orient/pip-copy-8@5.625 center.x: golden=-1.0133003897732542 fn=-1.0133003897732529` |
-| refusals | 215 LOOP, 116 heading/atan2, 56 gate-edge-in-window, 3 PINGPONG, 1 hold |
+| | first pass | after the second session |
+| --- | --- | --- |
+| gallery tracks lowered | 2363 of 2754 (85.8%) | **2638 of 2754 (95.8%)** |
+| channel values compared | 302,293; 30,914 declined | **328,451 of 333,207 (98.6%); 4,756 declined** |
+| every program contributes | yes (asserted) | yes |
+| **worst relative disagreement** | **6.617e-16** | **6.617e-16** (unchanged) |
+| **worst absolute disagreement** | **1.332e-15** | **1.332e-15** (unchanged) |
+| worst at | `auto-orient/pip-copy-8@5.625 center.x: golden=-1.0133003897732542 fn=-1.0133003897732529` | same |
+| refusal kinds | 215 LOOP, 116 heading, 56 gate, 3 PINGPONG, 1 hold | **116 heading/atan2, and nothing else** |
 
-**The gradient oracle.** Exact vs central finite difference over sixteen parameterised shapes
-(keyed linear, eased, TCB, every unary and binary op, both usable ternaries, all three affine
-warps), at times chosen off segment boundaries and off the kinks of abs/clamp/min/max: **worst
-relative 7.123e-11**, which is the finite difference's own O(h²) truncation error at a 1e-6 relative
-step rather than the gradient's.
+**The gradient oracle.** Exact vs central finite difference over **twenty-one** parameterised shapes
+(keyed linear, eased, TCB, every unary and binary op, both usable ternaries, all three affine warps,
+and after the second session `floor`, `fract`, both wrapping warps and a gate), at times chosen off
+segment boundaries and off the kinks of abs/clamp/min/max: **worst relative 7.123e-11**, which is the
+finite difference's own O(h²) truncation error at a 1e-6 relative step rather than the gradient's.
+`floor` and `fract` report a disagreement of exactly 0.0, which is the interesting entry: what is
+being checked there is that the exact path reports the *same* zero a central difference does rather
+than something plausible-looking, since a wrong non-zero derivative through a staircase would be the
+hardest kind to notice.
 
-**The easings.** 29 of 38 lower; worst disagreement **8.882e-16** against each easing's own closure
-over a 1001-point grid, and every lowered easing is 0 at u=0 and 1 at u=1 to 1e-12 (which is what
-makes the telescoping sum exact).
+**The easings.** **35** of 38 lower (29 before the second session); worst disagreement **8.882e-16**
+against each easing's own closure over a 1001-point grid, and every lowered easing is 0 at u=0 and 1
+at u=1 to 1e-12 (which is what makes the telescoping sum exact).
+
+**The primitives the second session added.** The exact step `clamp01(floor(x) + 1)` is exact at its
+own boundary and at `-0.0`. A looped clock agrees with the CPU sampler **bit-identically (0.0)**
+across 4.5 periods; ping-pong to 8.9e-16; a gate exactly at both edges; a hold track to 5.6e-17.
+
+**The simplifier.** Over the gallery: 2754 channels, **8197 nodes to 6442 (21.4% smaller)**, 112,914
+samples compared **bit-for-bit**, and a fixed point on a second pass. Five reflexive rewrites are
+refused rather than kept, and asserted as refused.
+
+**The stdlib.** `Fn.floor()` takes op coverage from 31/122 (25.4%) to 32/124 (25.8%). The existing
+guards did the verifying, which is the point of having them: the raw-bit formula-transcription oracle
+covers two new graphs (a bare floor, and the modulo it was added for), and two vocabulary guards went
+red and were satisfied properly rather than relaxed — the transform family's pinned size (19 to 20,
+which reseeds `evolve`) is declared in `dev_docs/stdlib_behaviour_changes.md`, and `floor`/`floorY`
+were added to the editor's `opWords`.
 
 **Fits, residual before → after, all measured:**
 
@@ -119,6 +139,67 @@ event on channel `figure` carrying a `data:image/png;base64,…` figure; box two
 SIGINT did not take within 8s (as the orchestrator warned), escalated to SIGTERM on the pid I
 started, and `lsof -nP -iTCP:9601 -sTCP:LISTEN` now reports nothing.
 
+## Second session (04:30–05:15): closing the 14.2%
+
+The orchestrator's read was right that the refusal number was the most interesting thing in the first
+report, and it turned out to be mostly *one missing primitive* rather than anything genuinely
+non-differentiable.
+
+**What I added**
+
+- `Fn.floor()` in the stdlib (`autodiff_formula.kt`, `Functions.kt`, `FunctionOps.kt`), with
+  `FnExpr.Floor` in both walkers. `FnNonDifferentiable`'s own KDoc had been naming this as the single
+  highest-value gap in its backlog, in three separate refusal groups. Its AD rule needs no new tape
+  node: a floor is recorded as a *constant*, so the adjoint through it is exactly zero.
+- The one line that made it worth it: `clamp01(floor(x) + 1)` is `1` where `x >= 0` and `0` below,
+  **exactly**, for every finite or infinite x, with the half-open boundary falling the right way
+  round. A step is every hard edge in an animation language, and RectSL has three (a gate, a hold, the
+  wrap of a looped clock) plus a fourth use (the exact endpoints the expo/elastic easings need).
+- `RectSLFnLowering.Refused` now carries `closable` and `missing`, borrowed from `FnOpStatus`, so
+  "not yet written" is distinguishable from "no honest lowering exists" without reading the code. All
+  six remaining refusals are classified and five are closable with a named next step.
+- `fitParameters` refuses a fit whose every parameter has an exactly zero derivative at every target,
+  naming the parameter. That is the honesty follow-through for having lowered the staircases: a
+  staircase's derivative really is zero, so a parameter reachable only through one is present in the
+  graph and unsolvable, and descending on it would print a residual that never moved.
+- `Track.simplify()` and `nodeCount()` — the general rewriter, the last of the capabilities
+  `ddf732260` named. Comparison, the other one, turned out to have come free with the data classes.
+
+**Coverage, before → after** (the golden differential re-verified all of it for free, which is the
+leverage the first session was spent building):
+
+| | before | after |
+| --- | --- | --- |
+| gallery tracks lowered | 2363 / 2754 = **85.8%** | 2638 / 2754 = **95.8%** |
+| channel values compared | 302,293 | 328,451 of 333,207 = **98.6%** |
+| easings lowered | 29 / 38 | **35 / 38** |
+| distinct refusal reasons | 5 | **1** (atan2 headings) |
+| worst relative disagreement | 6.617e-16 | **6.617e-16, unchanged** |
+| stdlib op coverage | 31/122 (25.4%) | **32/124 (25.8%)** |
+
+**What I attempted and abandoned**
+
+*Fitting a scene to a target image, through the SDF.* Abandoned deliberately, and not for lack of
+time — for a reason I should have seen at planning time. My lowering is per *track*: a scalar function
+of time. Fitting to a raster needs `d(pixel)/d(parameter)`, which means differentiating the
+**rasterizer**, and a rasterizer's coverage function is a step in screen space. That is the soft-
+rasterization problem, a genuinely separate piece of research with its own literature, and the
+honest version of it needs a differentiable coverage approximation whose bias you can characterize.
+There is no version of it I could have landed and verified in an hour, and a half-landed one would
+have been the most impressive-looking and least trustworthy thing in the branch. Noted here so the
+next attempt starts from the right problem statement rather than from "we nearly had it".
+
+**What the corpus caught that I would not have**
+
+The simplifier's first run, within a minute of the test existing: `0 - x` is not `-x`, because
+`0.0 - 0.0` is `+0.0` and `-(0.0)` is `-0.0`. That is not pedantry in this IR — `HeadingTrack` takes
+`atan2`, and `atan2(+0.0, -1.0)` is `+π` while `atan2(-0.0, -1.0)` is `-π`, half a turn apart. So a
+rewrite that "only" changes the sign of a zero can spin a rectangle through 180°. Five reflexive
+rewrites are refused as a result (`x + 0`, `0 - x`, and all three `mix` degeneracies — `mix(a, b, 1)`
+is `a + (b - a)`, which is not `b` in floating point at all), each asserted as refused so a tidying
+pass cannot re-add one. The rewriter is smaller than the one I set out to write and provably exact
+instead of probably exact, which is the better trade.
+
 ## Weaknesses in my own evidence
 
 Volunteered, in descending order of how much they should worry a reader.
@@ -137,10 +218,13 @@ Volunteered, in descending order of how much they should worry a reader.
    scratch document, which had been discarded by the time I went back for the bytes. What I actually
    observed is that the box emitted a display PNG; that it is the *same* PNG rests on it being the
    same code, not on a comparison.
-4. **14.2% of gallery tracks do not lower**, and the biggest single reason (215 LOOP refusals) is an
-   artefact of the golden deliberately sampling out to 1.25× duration, past the wrap. Over `[0,
-   duration)` a `loop-time` at the scene duration lowers exactly. So real coverage on a scene's own
-   clock is higher than 85.8%, and I did not measure that number.
+4. ~~14.2% of gallery tracks do not lower~~ — **closed in the second session**: 95.8% now lower and
+   the only remaining refusal is `atan2` headings. What is left of this weakness is smaller and
+   sharper: the exact step and the floored modulo are *bit-exact against the CPU sampler* (measured
+   0.0 for a looped clock across 4.5 periods), but their **derivative** is zero almost everywhere, so
+   coverage of the *value* backend grew by 10 points while coverage of things you can usefully *fit*
+   grew by much less. The fitter's new zero-gradient refusal makes that visible at the call site
+   rather than hiding it, but "95.8% lowers" should not be read as "95.8% is solvable".
 5. **TCB tangents are baked at lowering time.** They are derived from the key values and times, so a
    fit that moved a key value ought to move the tangents with it and this lowering does not. The
    derivative is exact for the spline whose tangents are the ones it baked. Stated in the code and
@@ -148,6 +232,13 @@ Volunteered, in descending order of how much they should worry a reader.
 6. **The 1e-12 tolerance in the differential test is 4 orders of magnitude looser than the measured
    6.6e-16.** Deliberate slack against JDK `Math.pow` variation, but it means a real regression of
    up to ~1e-12 would slip past.
+7. **The demo transcript was replayed before the second session's changes, not after.** The figure
+   asset is byte-identical after everything (re-rendered and `git status` clean, which is a real
+   check), and box two's code path is covered by `theFreeParamWordReachesTheSceneAndSolves`, but I did
+   not launch Field a second time. The claim "it replays" rests on the first replay plus the tests.
+8. **`bounce-*` is the one easing family I claimed was expressible and did not express.** The claim is
+   reasoned (four parabolic arcs, continuous at their joins, and the clamped-ramp fold handles exactly
+   that shape) but it is a claim, not a measurement.
 
 ## What I learned that the plan did not know
 
@@ -165,12 +256,25 @@ Volunteered, in descending order of how much they should worry a reader.
 
 ## Risks
 
-The only production behaviour change to existing paths is `PLOT_NUMERAL_GLYPHS` → `PLOT_GLYPHS`
-(pure rename, plus letters the old callers never look up) and the GLSL emitter's constant folder
-delegating to a shared function (same logic, `FreeParamTrack` folded at its value). Everything else
-is additive. `build.gradle.kts` gains a `systemProperty` loop, which very slightly widens what
-counts as a test task input — if a stray `-Dafield.*` is on a future build command line, test tasks
-will re-run. That is the intent.
+**The rename risk is closed.** `PLOT_NUMERAL_GLYPHS` → `PLOT_GLYPHS` was my only non-additive change
+to a shared surface, and the symbol is `internal`, which in this build *is* visible to `src/personal`
+(a separate compilation associated with `jvmMain`) — a tree that is gitignored and therefore invisible
+from this worktree. I grepped the primary checkout read-only: `/Users/marc/field4/src/personal` has
+**no reference** to either spelling, and the only hits anywhere are the two the rename fixed. No alias
+needed.
+
+**The one real behaviour change is now `Fn.floor()`, not the rename.** Growing the `transform` family
+from 19 to 20 reseeds every `evolve` run that mutates a transform node — same seed, different
+replacement op, different output, nothing thrown. That is declared in
+`dev_docs/stdlib_behaviour_changes.md` with the three other surfaces it touches. The subtler one on
+that list: `fitGradient(gradient = EXACT)` now accepts a graph containing a `floor` and will descend a
+gradient of exactly zero through it. RectSL's `fitParameters` refuses that case by name; a bare
+`fitGradient` does not, and I did not change `fitGradient` to.
+
+Everything else is additive: the GLSL emitter's constant folder delegates to a shared function (same
+logic, `FreeParamTrack` folded at its value), and `build.gradle.kts` gains a `systemProperty` loop
+that slightly widens what counts as a test-task input — a stray `-Dafield.*` on a future command line
+will re-run tests. That is the intent.
 
 ## Recommendation: **merge**
 
@@ -179,10 +283,18 @@ than admired, the derivative was checked against the only oracle that does not p
 the fit produces both a measured residual and a picture with its counterfactual in the frame. Full
 `check` is green with zero warnings. The weaknesses above are disclosures, not defects.
 
-If continued, the three things I would do next, in order: make `TcbKey` track-valued so a keyframe's
-*value* can be an unknown (the single biggest limitation); measure coverage over each scene's own
-clock rather than the golden's 1.25× window; and push the fit up to the SDF, where a target *image*
-is within reach because the CPU sampler is already proven bit-comparable to the shader.
+If continued, the four things I would do next, in order:
+
+1. Make `TcbKey` track-valued so a keyframe's *value* can be an unknown. Still the single biggest
+   limitation, and the one users would hit first.
+2. `FnExpr.Atan`, which closes the last RectSL refusal (`atan2` headings, the whole remaining 4.2%)
+   and is a *real* derivative rather than a zero — the quadrant fix-up atan2 needs is now cheap,
+   because the exact step exists.
+3. Transcribe `saw` / `triangle` / `square` / the pulses in the stdlib. That backlog entry has said
+   "needs only an `FnExpr.Floor`" for months; the primitive now exists, so it is pure transcription,
+   and oscillator fitting is `fitGradient`'s flagship use.
+4. The image fit — but starting from the soft-rasterization problem, not from this branch. See the
+   abandonment note above.
 
 ## Demo artifact
 
