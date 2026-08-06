@@ -28,14 +28,12 @@ class RectSLFitFigureTest {
     private val assetPath: Path =
         repoRoot().resolve("public/docs/assets/rectsl/rectsl-inverse-animation.png")
 
-    /**
-     * The demo scene, built once and shared by the test and the committed asset so the picture and
-     * the numbers can never drift apart.
-     *
-     * A rect crossing the wall on a cosine in x and a sine in y — the seed is a small, badly-phased
-     * circle; the three markers ask it to pass through three places at three times. Six unknowns,
-     * six equations, and a landscape with real curvature in it (the phases enter through a cosine).
-     */
+    // The demo scene, built once and shared by the test and the committed asset so the picture and
+    // the numbers can never drift apart.
+    //
+    // A rect crossing the wall on a cosine in x and a sine in y — the seed is a small, badly-phased
+    // circle; the three markers ask it to pass through three places at three times. Six unknowns,
+    // six equations, and a landscape with real curvature in it (the phases enter through a cosine).
     companion object {
         /** A clamped identity in time — RectSL's own spelling of "follow the clock". */
         fun clock(duration: Double): Track<Double> =

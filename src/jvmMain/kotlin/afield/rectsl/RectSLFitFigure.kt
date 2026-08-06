@@ -61,11 +61,9 @@ object RectSLFitFigure {
         width: Int = 980,
         bandHeight: Int = 250,
         pad: Int = 14,
-        /**
-         * How much more than the wall to show. A solved animation is under no obligation to stay
-         * inside the wall, and a figure that clips the answer is worse than one that is not to
-         * scale — so the default shows a fifth more, with the wall's own bounds drawn as a rule.
-         */
+        // How much more than the wall to show. A solved animation is under no obligation to stay
+        // inside the wall, and a figure that clips the answer is worse than one that is not to
+        // scale — so the default shows a fifth more, with the wall's own bounds drawn as a rule.
         viewScale: Double = 1.2
     ): ByteArray {
         require(bands.isNotEmpty()) { "a figure needs at least one band" }
