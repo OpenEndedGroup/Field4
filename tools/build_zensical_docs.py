@@ -5,6 +5,7 @@ import argparse
 import fnmatch
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,109 @@ from typing import Any
 import yaml
 
 from verification_runtime import verification_lock
+
+
+def ceres_library_path(repo_root: Path) -> Path:
+    """Where `afield.stdlib.ceres.CeresNativeLibrary.defaultPath` will look, from Python.
+
+    Kept deliberately in step with that object: the override properties, the three
+    platform file names, and the `build/ken-ceres-redistributable` default are the
+    same three rules in the same order. `-Dafield.ceres.library` is a JVM system
+    property this process cannot see, so only the environment override is honoured
+    here; a run that sets the property and not the variable gets a false alarm it
+    can silence by exporting `AFIELD_CERES_LIBRARY` too.
+    """
+    override = os.environ.get("AFIELD_CERES_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    system = sys.platform
+    if system.startswith("win"):
+        name = "ken_ceres_jvm.dll"
+    elif system == "darwin":
+        name = "libken_ceres_jvm.dylib"
+    else:
+        name = "libken_ceres_jvm.so"
+    return repo_root / "build" / "ken-ceres-redistributable" / name
+
+
+# A capture that cannot run without a native artifact declares it with `requires="<key>"`
+# on its fence. Each key maps to where the artifact lives and the one command that builds
+# it. Nothing else reads the attribute -- docs_hooks ignores unknown fence attributes, so
+# adding one does not change a fence's capture digest.
+NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
+    "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
+}
+
+REQUIRES_ATTR_RE = re.compile(r'(?m)^```\w*_?runner\b[^\n]*?\brequires="([^"]*)"')
+
+
+def check_native_prerequisites(
+    *,
+    public_dir: Path,
+    repo_root: Path,
+    page_filters: tuple[str, ...],
+    runner_mode: str,
+) -> None:
+    """Fail in a second on a missing native artifact, instead of 38 minutes in.
+
+    `clean` deletes `build/`, and the Ceres wrapper that lives there is an optional
+    extra that no task in the docs path declares a dependency on -- so a clean tree
+    (including every fresh clone) used to run 311 captures and then die on the 312th
+    with the FFM linker's "Cannot open library". The artifact was never going to
+    appear in between, so there was nothing to learn from those 38 minutes.
+
+    Only a full recapture is gated. Under `incremental` the committed asset is
+    normally reused and Ceres is genuinely not needed, so a missing artifact is a
+    warning there: blocking it would stop a fresh clone from building the docs at all,
+    which is the same class of mistake in the other direction.
+    """
+    if runner_mode == "never":
+        return
+    source_docs = public_dir / "docs"
+    needed: dict[str, list[str]] = {}
+    for path in sorted(source_docs.rglob("*.md")):
+        relative = path.relative_to(source_docs)
+        if page_filters and not matches_page_filter(relative, page_filters):
+            continue
+        for match in REQUIRES_ATTR_RE.finditer(path.read_text(encoding="utf-8")):
+            for raw_key in match.group(1).split(","):
+                key = raw_key.strip().lower()
+                if not key:
+                    continue
+                if key not in NATIVE_PREREQUISITES:
+                    raise RuntimeError(
+                        f"{relative} declares requires=\"{key}\", which is not a known native "
+                        f"prerequisite. Known: {', '.join(sorted(NATIVE_PREREQUISITES))}."
+                    )
+                needed.setdefault(key, [])
+                if relative.as_posix() not in needed[key]:
+                    needed[key].append(relative.as_posix())
+
+    missing: list[str] = []
+    for key, pages in sorted(needed.items()):
+        resolve, how_to_build = NATIVE_PREREQUISITES[key]
+        artifact = resolve(repo_root)
+        if artifact.exists():
+            continue
+        missing.append(
+            f"  {key}: no artifact at {artifact}\n"
+            f"    needed by: {', '.join(pages)}\n"
+            f"    build it with: {how_to_build}"
+        )
+    if not missing:
+        return
+    detail = "\n".join(missing)
+    if runner_mode != "always":
+        print(
+            "Warning: a native prerequisite is missing. Captures that need it will fail if the "
+            f"cache does not cover them:\n{detail}",
+            file=sys.stderr,
+        )
+        return
+    raise RuntimeError(
+        "This is a full recapture (FIELD_DOCS_RUNNER_MODE=always) and a native prerequisite is "
+        f"missing, so a capture will certainly fail:\n{detail}"
+    )
 
 
 def _configure_logging() -> None:
@@ -220,6 +324,16 @@ def run(args: argparse.Namespace) -> int:
                 time.sleep(0.1)
     generated_root.mkdir(parents=True, exist_ok=True)
     generated_docs.mkdir(parents=True, exist_ok=True)
+
+    sys.path.insert(0, str(public_dir))
+    import docs_hooks  # type: ignore[import-not-found]
+
+    check_native_prerequisites(
+        public_dir=public_dir,
+        repo_root=repo_root,
+        page_filters=tuple(args.page),
+        runner_mode=docs_hooks.resolve_runner_mode(os.environ.get(docs_hooks.RUNNER_MODE_ENV)),
+    )
 
     preprocess_docs(public_dir=public_dir, generated_docs=generated_docs, page_filters=tuple(args.page))
     generated_config = build_generated_config(public_dir=public_dir, generated_root=generated_root)

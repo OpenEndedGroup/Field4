@@ -1014,7 +1014,7 @@ section.
 Three embeddings of the same combinatorics: `kkC` as `kis kis C` built it, what `canonicalize()`
 converges to, and what `relaxWithCeres` reaches. Nothing about the topology differs between them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/kkc_canonical.png" wait="6.0" capture="box" open-outputs="true" w="1240" h="620" padding="14" requires="ceres"}
 :::static
 import afield.stdlib.polytope.*
 import java.util.Base64
