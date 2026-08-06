@@ -3157,7 +3157,7 @@ class RectLangVm(
         val dot = cell * 0.9
         var glyphCx = cx - totalW / 2.0 + 1.5 * cell
         for (ch in text) {
-            val pattern = PLOT_NUMERAL_GLYPHS[ch] ?: PLOT_NUMERAL_GLYPHS[' ']!!
+            val pattern = PLOT_GLYPHS[ch] ?: PLOT_GLYPHS[' ']!!
             for (row in 0 until 5) {
                 for (col in 0 until 3) {
                     if (pattern[row][col] == '#') {
@@ -3417,11 +3417,16 @@ internal data class PlotFrame(val left: Double, val right: Double, val bottom: D
 }
 
 /**
- * A 3×5 dot-matrix font for the numerals RectSL's `axes`/`colorbar` tick labels need.
- * RectSL has no text primitive (everything is a rect), so a label is drawn as a little
- * grid of rects — this is a pure builder, not a renderer feature. Rows run top→bottom.
+ * A 3×5 dot-matrix font. RectSL has no text primitive (everything is a rect), so a label
+ * is drawn as a little grid of rects — a pure builder, not a renderer feature. Rows run
+ * top→bottom.
+ *
+ * The numerals are what `axes`/`colorbar` tick labels need. The uppercase letters are for
+ * captions on a raster figure ([RectSLFitFigure]) that has no text primitive either, and
+ * they are here rather than in a second table because there should be one dot-matrix font
+ * in this package, not two.
  */
-internal val PLOT_NUMERAL_GLYPHS: Map<Char, List<String>> = mapOf(
+internal val PLOT_GLYPHS: Map<Char, List<String>> = mapOf(
     '0' to listOf("###", "#.#", "#.#", "#.#", "###"),
     '1' to listOf(".#.", "##.", ".#.", ".#.", "###"),
     '2' to listOf("###", "..#", "###", "#..", "###"),
@@ -3434,7 +3439,38 @@ internal val PLOT_NUMERAL_GLYPHS: Map<Char, List<String>> = mapOf(
     '9' to listOf("###", "#.#", "###", "..#", "###"),
     '-' to listOf("...", "...", "###", "...", "..."),
     '.' to listOf("...", "...", "...", "...", ".#."),
-    ' ' to listOf("...", "...", "...", "...", "...")
+    ' ' to listOf("...", "...", "...", "...", "..."),
+    'A' to listOf("###", "#.#", "###", "#.#", "#.#"),
+    'B' to listOf("##.", "#.#", "##.", "#.#", "##."),
+    'C' to listOf("###", "#..", "#..", "#..", "###"),
+    'D' to listOf("##.", "#.#", "#.#", "#.#", "##."),
+    'E' to listOf("###", "#..", "##.", "#..", "###"),
+    'F' to listOf("###", "#..", "##.", "#..", "#.."),
+    'G' to listOf("###", "#..", "#.#", "#.#", "###"),
+    'H' to listOf("#.#", "#.#", "###", "#.#", "#.#"),
+    'I' to listOf("###", ".#.", ".#.", ".#.", "###"),
+    'J' to listOf("..#", "..#", "..#", "#.#", "###"),
+    'K' to listOf("#.#", "#.#", "##.", "#.#", "#.#"),
+    'L' to listOf("#..", "#..", "#..", "#..", "###"),
+    'M' to listOf("#.#", "###", "###", "#.#", "#.#"),
+    'N' to listOf("##.", "#.#", "#.#", "#.#", "#.#"),
+    'O' to listOf("###", "#.#", "#.#", "#.#", "###"),
+    'P' to listOf("###", "#.#", "###", "#..", "#.."),
+    'Q' to listOf("###", "#.#", "###", "..#", "..#"),
+    'R' to listOf("###", "#.#", "##.", "#.#", "#.#"),
+    'S' to listOf("###", "#..", "###", "..#", "###"),
+    'T' to listOf("###", ".#.", ".#.", ".#.", ".#."),
+    'U' to listOf("#.#", "#.#", "#.#", "#.#", "###"),
+    'V' to listOf("#.#", "#.#", "#.#", "#.#", ".#."),
+    'W' to listOf("#.#", "#.#", "###", "###", "#.#"),
+    'X' to listOf("#.#", "#.#", ".#.", "#.#", "#.#"),
+    'Y' to listOf("#.#", "#.#", ".#.", ".#.", ".#."),
+    'Z' to listOf("###", "..#", ".#.", "#..", "###"),
+    '=' to listOf("...", "###", "...", "###", "..."),
+    ':' to listOf("...", ".#.", "...", ".#.", "..."),
+    '(' to listOf(".#.", "#..", "#..", "#..", ".#."),
+    ')' to listOf(".#.", "..#", "..#", "..#", ".#."),
+    '/' to listOf("..#", "..#", ".#.", "#..", "#..")
 )
 
 private fun NodeRef.toValue(): Value = when (this) {
