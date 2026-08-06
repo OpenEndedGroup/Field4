@@ -4,7 +4,90 @@ A RectSL animation is normally read forwards: you write the tracks, and the samp
 the rectangles went. This page is about running that arrow backwards — saying **where a rect should
 be, and when**, and letting a gradient work out the numbers that put it there.
 
-![Target, seed and fitted, in one frame](assets/rectsl/rectsl-inverse-animation.png)
+The figure below is not an illustration of that idea; it is the idea, run. The box is executed on every
+docs build and photographed with its output open, so the numbers in the captions are the numbers this
+page's own code produced — nothing here was drawn by hand or kept up to date by remembering to.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14"}
+import afield.rectsl.*
+import afield.stdlib.Functions
+import java.util.Base64
+
+// A clamped identity in time — RectSL's own spelling of "follow the clock".
+fun clock(d: Double): Track<Double> =
+    LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(d, d)))
+
+val duration = 4.0
+
+// amp * trig(rate*t + phase) + centre, with amp / phase / centre all unknown.
+fun channel(axis: String, rate: Double, op: TrackOp1): Track<Double> =
+    BinaryDoubleTrack(
+        BinaryDoubleTrack(
+            MappedDoubleTrack(
+                BinaryDoubleTrack(
+                    BinaryDoubleTrack(clock(duration), constantTrack(rate), TrackOp2.MUL),
+                    FreeParamTrack("$axis-phase", 0.0),
+                    TrackOp2.ADD
+                ),
+                op
+            ),
+            FreeParamTrack("$axis-amp", 1.0),
+            TrackOp2.MUL
+        ),
+        FreeParamTrack("$axis-centre", 0.0),
+        TrackOp2.ADD
+    )
+
+val seedX = channel("x", 1.1, TrackOp1.COS)
+val seedY = channel("y", 1.1, TrackOp1.SIN)
+
+// Where the rect must be, and when.
+val waypoints = listOf(
+    RectSLFitFigure.Marker(0.4, -6.5, 2.6),
+    RectSLFitFigure.Marker(1.8, 0.5, -2.4),
+    RectSLFitFigure.Marker(3.4, 6.2, 1.8)
+)
+val window = Functions.Domain(0.0, duration)
+val fitX = seedX.fitParameters(waypoints.map { TrackFitTarget(it.time, it.x) }, window, iterations = 1500)
+val fitY = seedY.fitParameters(waypoints.map { TrackFitTarget(it.time, it.y) }, window, iterations = 1500)
+
+fun miss(x: Track<Double>, y: Track<Double>): Double =
+    waypoints.maxOf { kotlin.math.hypot(x.sample(it.time) - it.x, y.sample(it.time) - it.y) }
+val seedMiss = miss(seedX, seedY)
+val fittedMiss = miss(fitX.fitted, fitY.fitted)
+
+val png = RectSLFitFigure.render(
+    bands = listOf(
+        RectSLFitFigure.Band(
+            "target", constantTrack(0.0), constantTrack(0.0),
+            afield.Color4(0.86, 0.88, 0.91), note = "3 waypoints", strobe = false
+        ),
+        RectSLFitFigure.Band(
+            "seed", seedX, seedY, afield.Color4(1.0, 0.42, 0.28),
+            note = "worst miss %.2fm".format(seedMiss)
+        ),
+        RectSLFitFigure.Band(
+            "fitted", fitX.fitted, fitY.fitted, afield.Color4(0.29, 0.83, 0.7),
+            note = "worst miss %.1em".format(fittedMiss)
+        )
+    ),
+    markers = waypoints,
+    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+    rectSize = Vec2d(1.5, 1.5),
+    times = (0..32).map { it * duration / 32.0 }
+)
+display(
+    "figure",
+    "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+        "style='width:100%;border-radius:5px;display:block'/>"
+)
+
+"""x: ${fitX.initialParameters} -> ${fitX.parameters}
+|   residual ${fitX.initialResidual} -> ${fitX.finalResidual}
+|y: ${fitY.initialParameters} -> ${fitY.parameters}
+|   residual ${fitY.initialResidual} -> ${fitY.finalResidual}
+|worst waypoint miss: seed $seedMiss m -> fitted $fittedMiss m""".trimMargin()
+```
 
 Three bands, one image. The top band is where the rect was *asked* to go — three waypoints, three
 instants. The middle band is what the seed parameters actually do: a small, badly-phased circle near
@@ -75,12 +158,102 @@ fitter can find which θ slot it landed in.
 
 ```kotlin
 val fit = track.fitParameters(
-    listOf(TrackFitTarget(1.0, -6.0), TrackFitTarget(3.0, 6.0))
+    listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
 )
 fit.parameters        // {gain=4.0, bias=-8.0}
 fit.initialResidual   // 3.606
-fit.finalResidual     // 2.6e-15
+fit.finalResidual     // 2.9e-15 — the box below prints this run's exact value
 fit.fitted            // the same track, solved — samplable, renderable, emittable as GLSL
+```
+
+Those four values are worth seeing arrive rather than taking on trust, so here is the whole loop in one
+box, from RectSL source: a scene with two `free-param` numbers in it, the IR printed as its own algebra
+before and after, and — because a residual is easier to believe as motion than as a number — the scene
+drawn **as authored and as solved**, in the same two-band figure the top of this page uses. The authored
+band is the animation you get if you never fit anything: `gain=1.0, bias=0.0`, the marker sweeping the
+wrong span and missing both waypoints. The solved band is the same scene, same renderer, after the
+gradient has chosen for you.
+
+`gain=4.0, bias=-8.0` is the analytic answer to `t·gain + bias` through both waypoints, so the solver is
+not being graded against its own output.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14"}
+import afield.rectsl.*
+import afield.stdlib.Functions
+import java.util.Base64
+
+// `free-param` is the RectSL word for a number you would rather have solved for. Every
+// backend still reads it as the constant it presently is, so the scene plays as authored.
+val program = RectAnimationOracle.compile(
+    """
+    #rectsl
+    ->wall 18 8 meters
+    ->duration 4
+    ->fps 30
+
+    linear-track "sweep" '( 0=0   4=4 )
+
+    "marker" rect
+      0 0 ->xy
+      1.4 1.4 ->wh
+      "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
+      0x44d4b4 solid ->fill
+    ;
+    """.trimIndent()
+).programOrNull!!
+
+val node = program.nodes.filterIsInstance<RectNode>().single()
+val x = node.x
+
+// The IR prints as its own algebra now, not as nested constructors.
+val before = x.describe()
+
+// Two waypoints, two unknowns: solve exactly. The sweep is the identity in time, so asking for
+// -4 at t=1 and +4 at t=3 has the closed-form answer gain=4, bias=-8 — which is the point: the
+// gradient is being checked against arithmetic, not against its own previous output.
+val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+val fit = x.fitParameters(targets, Functions.Domain(0.0, 4.0), iterations = 2000)
+
+// The numbers are the point, but they are easier to believe as motion. Same renderer as the figure
+// at the top of this page, two bands instead of three: the scene as authored, and the scene solved.
+// `->x` is the only channel with unknowns in it, so y is the node's own track in both bands.
+fun missOf(track: Track<Double>): Double =
+    targets.maxOf { kotlin.math.abs(track.sample(it.time) - it.value) }
+
+val png = RectSLFitFigure.render(
+    bands = listOf(
+        RectSLFitFigure.Band(
+            "authored", x, node.y, afield.Color4(1.0, 0.42, 0.28),
+            note = "${x.freeParameters()} — worst miss %.2fm".format(missOf(x))
+        ),
+        RectSLFitFigure.Band(
+            "solved", fit.fitted, node.y, afield.Color4(0.29, 0.83, 0.7),
+            note = "${fit.parameters} — worst miss %.1em".format(missOf(fit.fitted))
+        )
+    ),
+    markers = targets.map { RectSLFitFigure.Marker(it.time, it.value, 0.0) },
+    wall = WallSpec(18.0, 8.0, UnitKind.Meters),
+    rectSize = Vec2d(1.4, 1.4),
+    times = (0..32).map { it * 4.0 / 32.0 }
+)
+val report = """IR before:   $before
+|free params: ${x.freeParameters()}
+|solved:      ${fit.parameters}
+|IR after:    ${fit.fitted.describe()}
+|residual:    ${fit.initialResidual} -> ${fit.finalResidual}
+|x(1.0) = ${fit.fitted.sample(1.0)}   x(3.0) = ${fit.fitted.sample(3.0)}""".trimMargin()
+
+// Both halves go in ONE output channel on purpose. Returned as a bare String the report is a
+// 377-character value and the inline viewer collapses it to "+277 chars" — true, and useless to
+// read — while a second `display` channel would arrive collapsed, since only one pane opens.
+display(
+    "before / after",
+    "<img src='data:image/png;base64,${Base64.getEncoder().encodeToString(png)}' " +
+        "style='width:100%;border-radius:5px;display:block'/>" +
+        "<pre style='margin:10px 0 0;font-size:12.5px;line-height:1.6;white-space:pre-wrap;" +
+        "color:#cfd6dd'>" + report.replace("&", "&amp;").replace("<", "&lt;") + "</pre>"
+)
+"solved: ${fit.parameters}"
 ```
 
 `fitParameters` is not `fitGradient`, and the difference matters. `fitGradient` moves **every**
