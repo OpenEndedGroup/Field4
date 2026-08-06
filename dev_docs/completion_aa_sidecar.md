@@ -15,7 +15,9 @@ When you type in a Kotlin box, the editor sends a `complete` RPC to the Field se
 `KotlinInterface2.complete()`, which — when the AA backend is active (the default) — POSTs the box's
 REPL context to an **out-of-process K2 Analysis-API sidecar** (`/complete`). The sidecar computes
 candidates with the Kotlin Analysis API and returns them as structured rows. The Field server enriches
-them with KDoc/AI docs and ships them to the browser, where `fieldSuggest.js` does the ranking. If the
+them with KDoc/AI docs and ships them to the browser, where `fieldSuggest.js` does the ranking — and the
+grouping, the category titles and the documentation pane; see
+[`completion_popup_cover.md`](completion_popup_cover.md) for that half and the test that covers it. If the
 sidecar is absent, slow, erroring, or returns nothing, the request transparently falls back to the
 compiler-grade **K1** delegate — so AA is never *worse* than K1 in coverage.
 

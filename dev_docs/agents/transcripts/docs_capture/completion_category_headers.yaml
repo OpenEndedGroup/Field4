@@ -1,0 +1,54 @@
+name: completion_category_headers
+description: >
+  See the completion popup's group headers for yourself. Two boxes, each seeded with a prefix whose
+  completions come from a package that declares its own `@file:CompletionCategory` with a spelling
+  the popup's title-caser would otherwise mangle:
+
+    * `lenia` -> the ALife package (alife_continuous.kt), which must head its group **ALife**, not
+      "Alife" (that was a live defect until 2026-08-06);
+    * `fieldAudio` -> the Audio AI package, which must head its group **Audio AI**, not "Audio Ai"
+      (hand-fixed in 9ba22de77, the defect this whole line of work came from).
+
+  To see it: replay this, click into either box's editor, put the caret at the end of the seeded
+  prefix line and press Ctrl+Space (or Cmd+Space). Read the grey group header above the rows. The
+  headless regression cover for the same thing is `afield.FieldSuggestPresentationTest`
+  (dev_docs/completion_popup_cover.md); this is the human-eyeball version of it, and the only version
+  that also proves the CSS, Monaco and the real transport.
+
+  Capture/demo-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans
+  the transcripts/ directory itself and would expect a committed starting-point bundle for it.
+operations:
+  - create:
+      box: agent_completion_header_alife
+      name: ALife header
+      frame:
+        x: 80.0
+        y: 80.0
+        w: 620.0
+        h: 150.0
+      properties:
+        code: |
+          // Caret at the end of the next line, then Ctrl+Space.
+          // Every completion offered here is declared `@file:CompletionCategory("ALife")`, so the
+          // group header above the rows must read exactly "ALife".
+          lenia
+  - create:
+      box: agent_completion_header_audio_ai
+      name: Audio AI header
+      frame:
+        x: 80.0
+        y: 260.0
+        w: 620.0
+        h: 150.0
+      properties:
+        code: |
+          // The import is load-bearing: nothing in the audioai package is in the REPL intro, so
+          // without it the popup correctly offers nothing here at all (measured, not guessed).
+          import afield.stdlib.noir.audioai.*
+
+          // Caret at the end of the next line, then Ctrl+Space.
+          // These come from `@file:CompletionCategory("Audio AI")`, so the group header must read
+          // exactly "Audio AI" — two capitals, no "Audio Ai".
+          fieldAudio
+  - wait:
+      millis: 200
