@@ -112,6 +112,13 @@ class AutoDiffFnBridgeTest {
             "exp" to sin(1.0, amplitude = 0.5, offset = 0.3).exp(),
             "flip" to sin(1.2, amplitude = 0.7).flip(),
             "abs" to sin(1.3, amplitude = 0.9).abs(),
+            // `floor` on a source that spans several integers, so the staircase really steps inside
+            // the oracle's grid rather than sitting on one tread.
+            "floor" to sin(1.1, amplitude = 3.0, offset = 0.4).floor(),
+            // And a floor doing the job it was added for: a modulo, `t - p*floor(t/p)`, whose value
+            // is a genuinely differentiable function of the period away from the wraps.
+            "modulo" to (identity(Functions.Domain.ALL) -
+                (c(0.3, Functions.Domain.ALL) * (identity(Functions.Domain.ALL) / c(0.3, Functions.Domain.ALL)).floor())),
             // The user-reported acceptance shape: an abs in the middle of a product, which is what
             // `fitGradient(gradient = EXACT)` used to refuse outright.
             "cos.abs*sin" to (cos(1.9).abs() * sin(1.3, amplitude = 1.0)),

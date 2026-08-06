@@ -358,56 +358,147 @@ internal fun Double.glslFloat(): String = when {
  * the divide-by-zero guards are reproduced, and [MOD] spells out Kotlin's
  * truncated `%` instead of reaching for GLSL's `mod()`, which floors and so
  * disagrees for negative operands.
+ *
+ * The third column, `fn:`, is the differentiable one — the op as a transform of
+ * [afield.stdlib.Functions.Fn] graphs, so a track can be handed to a gradient
+ * fitter. Not every op has one, and the ones that do not say so in the type
+ * rather than answering with something plausible: see [RectSLFnLowering] and the
+ * refusal catalogue in `RectSLFn.kt`.
  */
-enum class TrackOp1(val eval: (Double) -> Double, val glsl: (String) -> String) {
-    NEG({ -it }, { "-($it)" }),
-    ABS({ abs(it) }, { "abs($it)" }),
-    FLOOR({ floor(it) }, { "floor($it)" }),
-    CEIL({ ceil(it) }, { "ceil($it)" }),
-    FRACT({ it - floor(it) }, { "fract($it)" }),
-    SQRT({ sqrt(max(it, 0.0)) }, { "sqrt(max($it, 0.0))" }),
-    SIN({ sin(it) }, { "sin($it)" }),
-    COS({ cos(it) }, { "cos($it)" }),
-    SATURATE({ it.coerceIn(0.0, 1.0) }, { "clamp($it, 0.0, 1.0)" })
+enum class TrackOp1(
+    val eval: (Double) -> Double,
+    val glsl: (String) -> String,
+    val fn: RectSLFnLowering<TrackFnUnary>
+) {
+    NEG({ -it }, { "-($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.flip() } })),
+    ABS({ abs(it) }, { "abs($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.abs() } })),
+    FLOOR(
+        { floor(it) },
+        { "floor($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a.floor() } })
+    ),
+    // `ceil(x)` is `-floor(-x)`, which IEEE makes exact rather than approximate: both negations are
+    // exact operations, so the round trip cannot lose a bit.
+    CEIL(
+        { ceil(it) },
+        { "ceil($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a.flip().floor().flip() } })
+    ),
+    FRACT(
+        { it - floor(it) },
+        { "fract($it)" },
+        RectSLFnLowering.Lowered({ a -> with(Functions) { a - a.floor() } })
+    ),
+    SQRT(
+        { sqrt(max(it, 0.0)) },
+        { "sqrt(max($it, 0.0))" },
+        // `max(x, 0)` is a clamp with an effectively infinite ceiling and `sqrt` is `pow(0.5)`; Fn
+        // has neither op under its own name. Math.pow(x, 0.5) agrees with Math.sqrt(x) to an ulp.
+        RectSLFnLowering.Lowered({ a ->
+            with(Functions) { a.clamp(fnLeaf(0.0), fnLeaf(Double.MAX_VALUE)).pow(fnLeaf(0.5)) }
+        })
+    ),
+    SIN({ sin(it) }, { "sin($it)" }, RectSLFnLowering.Lowered({ a -> fnSinOf(a) })),
+    COS({ cos(it) }, { "cos($it)" }, RectSLFnLowering.Lowered({ a -> fnCosOf(a) })),
+    SATURATE(
+        { it.coerceIn(0.0, 1.0) },
+        { "clamp($it, 0.0, 1.0)" },
+        RectSLFnLowering.Lowered({ a -> fnClamp01(a) })
+    )
 }
 
 enum class TrackOp2(
     val eval: (Double, Double) -> Double,
-    val glsl: (String, String) -> String
+    val glsl: (String, String) -> String,
+    val fn: RectSLFnLowering<TrackFnBinary>
 ) {
-    ADD({ a, b -> a + b }, { a, b -> "($a + $b)" }),
-    SUB({ a, b -> a - b }, { a, b -> "($a - $b)" }),
-    MUL({ a, b -> a * b }, { a, b -> "($a * $b)" }),
+    ADD(
+        { a, b -> a + b },
+        { a, b -> "($a + $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a + b } })
+    ),
+    SUB(
+        { a, b -> a - b },
+        { a, b -> "($a - $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a - b } })
+    ),
+    MUL(
+        { a, b -> a * b },
+        { a, b -> "($a * $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a * b } })
+    ),
     DIV(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b },
-        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" }
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" },
+        RectSLFnLowering.Refused(
+            "the near-zero guard (0 rather than an infinity) is a discontinuity no Fn op can " +
+                "express, so only a statically constant divisor lowers",
+            closable = true,
+            missing = "the guard is `[|b| > 1e-12]`, and fnStepFrom can now build an exact " +
+                "indicator; what stops it is that the false branch still evaluates a/b, so the " +
+                "product is 0*inf = NaN rather than 0"
+        )
     ),
     MOD(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b },
-        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" }
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" },
+        RectSLFnLowering.Refused(
+            "Kotlin's `%` truncates toward zero, and `trunc` is not `floor` — rebuilding it needs a " +
+                "sign primitive, which Fn does not have. A statically constant pair still folds",
+            closable = true,
+            missing = "either an FnExpr.Trunc, or a sign built from two exact steps: " +
+                "`2*step(x) - 1` is +/-1 with the wrong answer only at x = 0, where trunc is 0 anyway"
+        )
     ),
-    POW({ a, b -> a.pow(b) }, { a, b -> "pow($a, $b)" }),
-    MIN({ a, b -> min(a, b) }, { a, b -> "min($a, $b)" }),
-    MAX({ a, b -> max(a, b) }, { a, b -> "max($a, $b)" })
+    POW(
+        { a, b -> a.pow(b) },
+        { a, b -> "pow($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a.pow(b) } })
+    ),
+    MIN(
+        { a, b -> min(a, b) },
+        { a, b -> "min($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> fnMinOf(a, b) })
+    ),
+    MAX(
+        { a, b -> max(a, b) },
+        { a, b -> "max($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> fnMaxOf(a, b) })
+    )
 }
 
 enum class TrackOp3(
     val eval: (Double, Double, Double) -> Double,
-    val glsl: (String, String, String) -> String
+    val glsl: (String, String, String) -> String,
+    val fn: RectSLFnLowering<TrackFnTernary>
 ) {
     /** Order-insensitive bounds, matching `coerceIn(min(lo, hi), max(lo, hi))`. */
     CLAMP(
         { x, lo, hi -> x.coerceIn(min(lo, hi), max(lo, hi)) },
-        { x, lo, hi -> "clamp($x, min($lo, $hi), max($lo, $hi))" }
+        { x, lo, hi -> "clamp($x, min($lo, $hi), max($lo, $hi))" },
+        RectSLFnLowering.Lowered({ x, lo, hi ->
+            with(Functions) { x.clamp(fnMinOf(lo, hi), fnMaxOf(lo, hi)) }
+        })
     ),
-    MIX({ a, b, t -> a + (b - a) * t }, { a, b, t -> "mix($a, $b, $t)" }),
+    MIX(
+        { a, b, t -> a + (b - a) * t },
+        { a, b, t -> "mix($a, $b, $t)" },
+        RectSLFnLowering.Lowered({ a, b, t -> with(Functions) { a + (b - a) * t } })
+    ),
     SMOOTHSTEP(
         { low, high, x ->
             val denom = high - low
             val u = if (abs(denom) <= 1e-12) 0.0 else ((x - low) / denom).coerceIn(0.0, 1.0)
             u * u * (3.0 - 2.0 * u)
         },
-        { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" }
+        { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" },
+        RectSLFnLowering.Refused(
+            "the coincident-edge guard (0 rather than dividing by zero) is a discontinuity no Fn " +
+                "op can express, so only statically constant edges lower",
+            closable = true,
+            missing = "the same 0*inf problem TrackOp2.DIV has: an exact indicator exists, but the " +
+                "branch it is meant to suppress still evaluates and returns a NaN"
+        )
     )
 }
 
@@ -415,29 +506,84 @@ enum class TrackOp3(
  * How a [TimeWarpTrack] rewrites the time it hands to its source. Each kind
  * takes one scalar parameter, fixed when the warp is built, so the whole warp is
  * `(kind, amount)` rather than a closure over that amount.
+ *
+ * The `fn:` column is a *lookup* transform rather than a value one, which `Fn`
+ * spells `shift`, `scaleX` and `warp`. All five lower. The two wrapping ones did
+ * not until [afield.stdlib.Functions.Fn.floor] existed, which is what it was
+ * added for — a folded clock is `x - p·floor(x / p)`, and that is the same
+ * period arithmetic `FnNonDifferentiable` had been naming as the one missing
+ * piece for the piecewise oscillators.
  */
 enum class TimeWarpKind(
     val eval: (Double, Double) -> Double,
-    val glsl: (String, Double) -> String
+    val glsl: (String, Double) -> String,
+    val fn: RectSLFnLowering<TrackFnWarp>
 ) {
     /** `delay-time` / `time+` / `->live`: play the source `amount` seconds later. */
-    SHIFT({ t, amount -> t - amount }, { t, amount -> "($t - ${amount.glslFloat()})" }),
+    SHIFT(
+        { t, amount -> t - amount },
+        { t, amount -> "($t - ${amount.glslFloat()})" },
+        RectSLFnLowering.Lowered({ src, amount -> with(Functions) { src.shift(fnLeaf(amount)) } })
+    ),
 
     /** `scale-time` / `time*`: stretch the source's clock by `amount`. */
-    SCALE({ t, amount -> t / amount }, { t, amount -> "($t / ${amount.glslFloat()})" }),
+    SCALE(
+        { t, amount -> t / amount },
+        { t, amount -> "($t / ${amount.glslFloat()})" },
+        RectSLFnLowering.Lowered({ src, amount ->
+            with(Functions) { src.scaleX(fnLeaf(amount), fnLeaf(0.0)) }
+        })
+    ),
 
-    /** `reverse-time`: `amount` is the scene duration, not a factor. */
-    REVERSE({ t, amount -> amount - t }, { t, amount -> "(${amount.glslFloat()} - $t)" }),
+    /**
+     * `reverse-time`: `amount` is the scene duration, not a factor.
+     *
+     * Mirroring and *then* delaying, in that order: `scaleX(-1)` looks up at `-x`, and the delay
+     * makes that `-(x - amount)`. That is `amount - x` to the bit rather than to an ulp, because it
+     * is one exact negation of one subtraction — whereas mirroring about `amount/2` would round
+     * twice.
+     */
+    REVERSE(
+        { t, amount -> amount - t },
+        { t, amount -> "(${amount.glslFloat()} - $t)" },
+        RectSLFnLowering.Lowered({ src, amount ->
+            with(Functions) { src.scaleX(fnLeaf(-1.0), fnLeaf(0.0)).shift(fnLeaf(amount)) }
+        })
+    ),
 
-    /** `loop-time`: wrap into `[0, amount)`. */
+    /**
+     * `loop-time`: wrap into `[0, amount)`.
+     *
+     * Lowers as `x - p·floor(x / p)`, which is `positiveModulo` with its sign branch turned into
+     * arithmetic. The whole reason [afield.stdlib.Functions.Fn.floor] exists is this line.
+     */
     LOOP(
         { t, amount -> positiveModulo(t, amount) },
         { t, amount ->
             if (amount <= 1e-12) "($t)" else "mod($t, ${amount.glslFloat()})"
-        }
+        },
+        RectSLFnLowering.Lowered({ src, amount ->
+            if (amount <= 1e-12) {
+                src
+            } else {
+                // A direct warp rather than fnLookupAt: `x + (-p)·floor(x/p)` is the floored modulo
+                // in exactly one multiply and one add, with no `- x` round trip to lose bits on.
+                with(Functions) {
+                    src.warp(
+                        mod = (fnTime() / fnLeaf(amount)).floor(),
+                        depth = fnLeaf(-amount)
+                    )
+                }
+            }
+        })
     ),
 
-    /** `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends. */
+    /**
+     * `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends.
+     *
+     * `a - |mod(x, 2a) - a|` — the same closed form the GLSL column already emits, which the SDF
+     * agreement test has been exercising against the CPU sampler all along.
+     */
     PINGPONG(
         { t, amount ->
             val p = positiveModulo(t, amount * 2.0)
@@ -446,7 +592,18 @@ enum class TimeWarpKind(
         { t, amount ->
             if (amount * 2.0 <= 1e-12) "($t)"
             else "(${amount.glslFloat()} - abs(mod($t, ${(amount * 2.0).glslFloat()}) - ${amount.glslFloat()}))"
-        }
+        },
+        RectSLFnLowering.Lowered({ src, amount ->
+            if (amount * 2.0 <= 1e-12) {
+                src
+            } else {
+                with(Functions) {
+                    val folded = fnLeaf(amount) -
+                        (fnFlooredModulo(fnTime(), amount * 2.0) - fnLeaf(amount)).abs()
+                    fnLookupAt(src, folded)
+                }
+            }
+        })
     )
 }
 
@@ -839,6 +996,27 @@ data class HeadingTrack(
         }
         return offset
     }
+}
+
+/**
+ * A named unknown: a constant whose value is *currently* [value] but which is meant to be solved
+ * for rather than authored.
+ *
+ * Every backend treats it as the constant it presently is — the CPU sampler and the shader both
+ * read [value], so a scene with free parameters plays exactly as written. What changes is that the
+ * differentiable backend lowers it to a *labelled* `Fn` leaf, so [freeParameterIndices] can find
+ * which θ slot it landed in and [Track.fitParameters] can move that slot and nothing else. That is
+ * the whole mechanism behind inverse animation: say where a rect should be and when, and let the
+ * gradient answer with the numbers.
+ *
+ * Written `4.0 "radius" param` in RectSL.
+ */
+data class FreeParamTrack(
+    val name: String,
+    val value: Double
+) : Track<Double> {
+    override val kind: TrackValueKind = TrackValueKind.Double
+    override fun sample(t: Double): Double = value
 }
 
 fun constantTrack(x: Double): Track<Double> = ConstantTrack(x, TrackValueKind.Double)
@@ -2196,6 +2374,26 @@ class RectLangVm(
         }
         word("track-ref") { vm -> vm.push(VTrack(vm.namedTrack(vm.popString()))) }
 
+        // A named unknown. `4.0 free-param radius` is a 4.0 that says it would rather be solved
+        // for: every backend still reads it as the constant it presently is, so the scene plays
+        // exactly as written, but the differentiable backend labels its Fn leaf so
+        // [Track.fitParameters] can move that one number and nothing else. See RectSLFn.kt and
+        // [FreeParamTrack]. Not spelled `param`: the pattern layer already owns that word for a
+        // mini-notation parameter lookup.
+        word("free-param") { vm ->
+            val name = vm.consumeName("free-param")
+            val initial = when (val v = vm.pop()) {
+                is VNum -> v.x
+                is VTrack<*> -> trackConstantValue(
+                    @Suppress("UNCHECKED_CAST") (v.track as Track<Double>)
+                ) ?: throw RectLangException(
+                    "free-param needs a constant starting value, not a varying track"
+                )
+                else -> throw RectLangException("free-param expected a number")
+            }
+            vm.push(VTrack(FreeParamTrack(name, initial)))
+        }
+
         word("rgb") { vm ->
             val r = vm.consumeNumber("rgb")
             val g = vm.consumeNumber("rgb")
@@ -2994,7 +3192,7 @@ class RectLangVm(
         val dot = cell * 0.9
         var glyphCx = cx - totalW / 2.0 + 1.5 * cell
         for (ch in text) {
-            val pattern = PLOT_NUMERAL_GLYPHS[ch] ?: PLOT_NUMERAL_GLYPHS[' ']!!
+            val pattern = PLOT_GLYPHS[ch] ?: PLOT_GLYPHS[' ']!!
             for (row in 0 until 5) {
                 for (col in 0 until 3) {
                     if (pattern[row][col] == '#') {
@@ -3254,11 +3452,16 @@ internal data class PlotFrame(val left: Double, val right: Double, val bottom: D
 }
 
 /**
- * A 3×5 dot-matrix font for the numerals RectSL's `axes`/`colorbar` tick labels need.
- * RectSL has no text primitive (everything is a rect), so a label is drawn as a little
- * grid of rects — this is a pure builder, not a renderer feature. Rows run top→bottom.
+ * A 3×5 dot-matrix font. RectSL has no text primitive (everything is a rect), so a label
+ * is drawn as a little grid of rects — a pure builder, not a renderer feature. Rows run
+ * top→bottom.
+ *
+ * The numerals are what `axes`/`colorbar` tick labels need. The uppercase letters are for
+ * captions on a raster figure ([RectSLFitFigure]) that has no text primitive either, and
+ * they are here rather than in a second table because there should be one dot-matrix font
+ * in this package, not two.
  */
-internal val PLOT_NUMERAL_GLYPHS: Map<Char, List<String>> = mapOf(
+internal val PLOT_GLYPHS: Map<Char, List<String>> = mapOf(
     '0' to listOf("###", "#.#", "#.#", "#.#", "###"),
     '1' to listOf(".#.", "##.", ".#.", ".#.", "###"),
     '2' to listOf("###", "..#", "###", "#..", "###"),
@@ -3271,7 +3474,38 @@ internal val PLOT_NUMERAL_GLYPHS: Map<Char, List<String>> = mapOf(
     '9' to listOf("###", "#.#", "###", "..#", "###"),
     '-' to listOf("...", "...", "###", "...", "..."),
     '.' to listOf("...", "...", "...", "...", ".#."),
-    ' ' to listOf("...", "...", "...", "...", "...")
+    ' ' to listOf("...", "...", "...", "...", "..."),
+    'A' to listOf("###", "#.#", "###", "#.#", "#.#"),
+    'B' to listOf("##.", "#.#", "##.", "#.#", "##."),
+    'C' to listOf("###", "#..", "#..", "#..", "###"),
+    'D' to listOf("##.", "#.#", "#.#", "#.#", "##."),
+    'E' to listOf("###", "#..", "##.", "#..", "###"),
+    'F' to listOf("###", "#..", "##.", "#..", "#.."),
+    'G' to listOf("###", "#..", "#.#", "#.#", "###"),
+    'H' to listOf("#.#", "#.#", "###", "#.#", "#.#"),
+    'I' to listOf("###", ".#.", ".#.", ".#.", "###"),
+    'J' to listOf("..#", "..#", "..#", "#.#", "###"),
+    'K' to listOf("#.#", "#.#", "##.", "#.#", "#.#"),
+    'L' to listOf("#..", "#..", "#..", "#..", "###"),
+    'M' to listOf("#.#", "###", "###", "#.#", "#.#"),
+    'N' to listOf("##.", "#.#", "#.#", "#.#", "#.#"),
+    'O' to listOf("###", "#.#", "#.#", "#.#", "###"),
+    'P' to listOf("###", "#.#", "###", "#..", "#.."),
+    'Q' to listOf("###", "#.#", "###", "..#", "..#"),
+    'R' to listOf("###", "#.#", "##.", "#.#", "#.#"),
+    'S' to listOf("###", "#..", "###", "..#", "###"),
+    'T' to listOf("###", ".#.", ".#.", ".#.", ".#."),
+    'U' to listOf("#.#", "#.#", "#.#", "#.#", "###"),
+    'V' to listOf("#.#", "#.#", "#.#", "#.#", ".#."),
+    'W' to listOf("#.#", "#.#", "###", "###", "#.#"),
+    'X' to listOf("#.#", "#.#", ".#.", "#.#", "#.#"),
+    'Y' to listOf("#.#", "#.#", ".#.", ".#.", ".#."),
+    'Z' to listOf("###", "..#", ".#.", "#..", "###"),
+    '=' to listOf("...", "###", "...", "###", "..."),
+    ':' to listOf("...", ".#.", "...", ".#.", "..."),
+    '(' to listOf(".#.", "#..", "#..", "#..", ".#."),
+    ')' to listOf(".#.", "..#", "..#", "..#", ".#."),
+    '/' to listOf("..#", "..#", ".#.", "#..", "#..")
 )
 
 private fun NodeRef.toValue(): Value = when (this) {

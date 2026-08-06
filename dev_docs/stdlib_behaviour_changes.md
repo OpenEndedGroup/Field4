@@ -61,3 +61,23 @@ Whole-repository sweep for call sites of every symbol above (`src/`, `dev_docs/`
   hits at all** for any changed symbol.
 - **`templates/field.sketch2_examples.edn`** — one hit, `pointsOut`, inside a commented-out line; the
   box hand-rolls the same loop below it.
+
+## 2026-08-06 — `Fn.floor()` joins the transform family
+
+One op added, and one declared reproducibility consequence.
+
+`Fn.floor()` is new: a first-class, **differentiable** staircase node (derivative 0, which is the true
+derivative everywhere it exists). It was added because `FnNonDifferentiable`'s own KDoc had been naming
+`FnExpr.Floor` as the single highest-value gap in the backlog — the piecewise oscillators need nothing
+else — and because RectSL's `loop-time`, `pingpong-time`, visibility gates and hold tracks are all the
+same problem: `clamp01(floor(x) + 1)` is an exact step function.
+
+| surface | change | who notices | how to spot it |
+| --- | --- | --- | --- |
+| `OpRegistry.opsInFamily("transform")` | size 19 -> 20 | **seeded `evolve` runs that mutate a transform node**. `FnMutations.substituteOp` indexes the family by `rng.nextInt(size)`, so the same seed now picks a different replacement op. Fitness and output change; nothing throws. | any `evolve(..., rngSeed = n)` whose trace touches a transform node |
+| `FnAutoDiff.differentiableOps` | 31 -> 32 (25.4% -> 25.8% of canonical ops) | `fitGradient(gradient = EXACT)` now *accepts* a graph containing a `floor` instead of refusing it. A fit whose only path to a parameter runs through one will descend a gradient of exactly zero and report convergence without moving — the same trap `sign` is deliberately refused to avoid. RectSL's `Track.fitParameters` detects and refuses that case by name; a bare `fitGradient` does not. | `EXACT` on a graph with a `floor` |
+| `FnNonDifferentiable` `missing` prose | three groups (piecewise oscillators; the x-axis folds; `wrapY`/`quantize`/`crush`) reworded from "needs `FnExpr.Floor`" to "needs only the transcription" | nobody at runtime; it is a docs/planning fact | reading the backlog |
+| `fnrewrite.js` `opWords` | gains `floor`, `floorY` | the editor highlights and completes them after `op=` | typing `op="floor"` in a rewrite rule |
+
+Not a change: `Fn.eval` for every existing graph, every existing formula, and the finite-difference
+fit path are all untouched.

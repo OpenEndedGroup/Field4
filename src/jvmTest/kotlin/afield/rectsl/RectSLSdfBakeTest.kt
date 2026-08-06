@@ -348,7 +348,6 @@ class RectSLSdfBakeTest {
                 is GroupNode -> roots += listOf(
                     node.x, node.y, node.rotation, node.scaleX, node.scaleY, node.alpha
                 )
-                else -> Unit
             }
         }
         while (roots.isNotEmpty()) {

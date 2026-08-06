@@ -604,32 +604,14 @@ float rectslSmin(float a, float b, float k) {
          * hundred-copy array arrives here as a hundred
          * `BinaryDoubleTrack(const, const, ADD)` nodes. Folding them turns a
          * hundred emitted functions into a hundred literals.
+         *
+         * The fold itself lives in [trackConstantValue], shared with the
+         * differentiable backend, which needs exactly the same one. The shader
+         * takes the default `foldFreeParameters = true`: a [FreeParamTrack] is
+         * baked at its current value, because a shader has no notion of an
+         * unknown to solve for.
          */
-        private fun constantValue(track: Track<Double>): Double? = when (track) {
-            is ConstantTrack<*> -> track.value as Double
-            is MappedDoubleTrack -> constantValue(track.source)?.let(track.op.eval)
-            is BinaryDoubleTrack -> {
-                val a = constantValue(track.a)
-                val b = constantValue(track.b)
-                if (a != null && b != null) track.op.eval(a, b) else null
-            }
-            is TernaryDoubleTrack -> {
-                val a = constantValue(track.a)
-                val b = constantValue(track.b)
-                val c = constantValue(track.c)
-                if (a != null && b != null && c != null) track.op.eval(a, b, c) else null
-            }
-            // Warping the clock of something that ignores the clock changes nothing.
-            is TimeWarpTrack -> constantValue(track.source)
-            is TcbTrack -> track.keys.singleOrNull()?.value
-            is LinearScalarTrack -> track.keys.singleOrNull()?.value
-            is HoldScalarTrack -> track.keys.singleOrNull()?.value
-            is EasedScalarTrack -> track.keys.singleOrNull()?.value
-            is GateTrack -> null
-            is HeadingTrack -> null
-            // Every pattern track is a function of the cycle, so none is constant.
-            is CycleGateTrack, is CycleSwitchTrack, is DegradeGateTrack, is PatTrack, is PatHoldTrack -> null
-        }
+        private fun constantValue(track: Track<Double>): Double? = trackConstantValue(track)
 
         private fun gateExpr(track: GateTrack, timeExpr: String): String {
             val lo = if (track.lo == Double.NEGATIVE_INFINITY) null else track.lo
@@ -672,6 +654,9 @@ float rectslSmin(float a, float b, float k) {
                 is TimeWarpTrack -> wrapper(name, ref(track.source, track.warp.glsl("t", track.amount)))
                 is GateTrack -> wrapper(name, gateExpr(track, "t"))
                 is ConstantTrack<*> -> wrapper(name, (track.value as Double).glslFloat())
+                // Unreachable in practice — constantValue folds a free parameter to its current
+                // value before we ever get here — but the sealed `when` has to be total.
+                is FreeParamTrack -> wrapper(name, track.value.glslFloat())
 
                 // --- the pattern-language tracks ---------------------------
                 // `->every k` fires on cycles 0, k, 2k, … Both of these lower

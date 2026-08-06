@@ -68,6 +68,7 @@ nav:
         - Language Extensions: language_extensions.md
         - RectSL Cheatsheet: rectsl_cheatsheet.md
         - RectSL Examples: rectsl_examples.md
+        - RectSL Inverse Animation: rectsl_inverse_animation.md
         - Nano Examples: nano_examples.md
         - Bridging Another Language (MorphoHDL): morpho_examples.md
       - Drawing From Data:

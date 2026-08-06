@@ -7078,6 +7078,24 @@ canvas {
     ) { x -> kotlin.math.abs(eval(x)) }
 
     /**
+     * The greatest integer at or below every value — a staircase.
+     *
+     * A first-class node **and** differentiable, which reads like a contradiction and is not: the
+     * derivative of a step function is zero everywhere it exists, and zero is what this reports. On
+     * its own that makes it a dead end for a fit, exactly as [sign] is. Inside something else it is
+     * the opposite of a dead end: period arithmetic is `t - p·floor(t / p)`, and the wrapped time
+     * that falls out *is* a differentiable function of the period on either side of a wrap. That is
+     * why `FnNonDifferentiable` had been naming `FnExpr.Floor` as the highest-value missing piece in
+     * the whole backlog — the piecewise oscillators need nothing else — and it is what lets RectSL's
+     * `loop-time` and `pingpong-time` lower into an `Fn` at all.
+     */
+    fun Fn.floor(): Fn = graphFn(
+        domain,
+        name,
+        node("floor", children = listOf(fnEdge("source", this)), rebuild = { it[0].floor() })
+    ) { x -> kotlin.math.floor(eval(x)) }
+
+    /**
      * The sign of the signal: `-1`, `0` or `+1`. A hard three-level comparator — everything about the
      * magnitude is discarded.
      *
