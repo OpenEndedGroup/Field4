@@ -26,6 +26,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`ai/DOCS_SEARCH_FEATURE.md`](./ai/DOCS_SEARCH_FEATURE.md)
 - [`stdlib/GENERATED_LINALG_ARCHITECTURE.md`](./stdlib/GENERATED_LINALG_ARCHITECTURE.md) — generated linear-algebra source and storage architecture
 - [`COMPLETION_ENGINE.md`](./COMPLETION_ENGINE.md)
+- [`completion_popup_cover.md`](./completion_popup_cover.md) — the *other* half of completion: what `fieldSuggest.js` does to candidates in the browser (ranking, grouping, category titles, doc pane), the `check`-wired test that runs that real JavaScript under node, and what it deliberately does not cover
 - [`kdoc_reference_contract.md`](./kdoc_reference_contract.md) — how a KDoc block reaches the completion panel and `public/docs/reference/`, which declaration forms the extractor can and cannot see, and what `checkKDocAttachment` enforces
 - [`stdlib_behaviour_changes.md`](./stdlib_behaviour_changes.md) — the running ledger of `afield.stdlib` fixes that change what already-written box code *computes*, with the caller sweep behind each one
 - [`docs_capture_staleness.md`](./docs_capture_staleness.md) — current execution, cache-freshness, and two-run determinism contracts for generated documentation media

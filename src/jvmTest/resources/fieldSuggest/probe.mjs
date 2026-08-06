@@ -18,7 +18,7 @@
 // function that throws (or returns a string) to fail.
 
 import { installHost, makeModel, makeMonaco, makeEditor, settle } from "./host.mjs";
-import { rpc, requests } from "./afield.mjs";
+import { rpc, requests, defer, flush } from "./afield.mjs";
 import { readFileSync } from "node:fs";
 
 const window = installHost();
@@ -111,6 +111,10 @@ const openPopup = async ({
   languageId = "kotlin",
   recency = null,
   resolve = null,
+  resolveSource = null,
+  // RPC names whose reply is parked until the case calls `flush(name)` — the only way to observe the
+  // popup's intermediate states.
+  deferred = [],
 }) => {
   const caret = code.indexOf(CARET);
   if (caret < 0) throw new Error(`fixture has no ${CARET} caret marker`);
@@ -125,17 +129,30 @@ const openPopup = async ({
   requests.length = 0;
   window._badges.length = 0;
   rpc.clear();
-  rpc.set("complete", () => completionReply(metadata, caret - prefix.length, caret));
-  rpc.set("complete-kotlin-ai", () => completionReply(aiMetadata, caret - prefix.length, caret));
+  flush();
+  window._httpRoutes.clear();
+  window._httpRequests.length = 0;
+  const park = (name, responder) => rpc.set(name, deferred.includes(name) ? defer(responder) : responder);
+  park("complete", () => completionReply(metadata, caret - prefix.length, caret));
+  park("complete-kotlin-ai", () => completionReply(aiMetadata, caret - prefix.length, caret));
   if (resolve) rpc.set("resolve-completion", resolve);
+  if (resolveSource) rpc.set("resolve-source", resolveSource);
 
-  const controller = installFieldSuggest(editor, makeMonaco());
+  const monaco = makeMonaco();
+  const controller = installFieldSuggest(editor, monaco);
   await controller.open({ manual: true });
   await settle();
 
   const list = () => controller.root.querySelector(".afield-suggest-list").innerHTML;
   const doc = () => controller.root.querySelector(".afield-suggest-doc").innerHTML;
-  return { controller, editor, model, position, caret, list, doc };
+  const docNode = () => controller.root.querySelector(".afield-suggest-doc");
+  /** Deliver one key to the popup's own `onKeyDown`, the way Monaco would. */
+  const press = (keyCode) => {
+    const handler = editor._handlers.onKeyDown[0];
+    handler({ keyCode, ctrlKey: false, metaKey: false, preventDefault() {}, stopPropagation() {} });
+  };
+  const activeRow = () => rowsOf(list()).find((row) => row.active) || null;
+  return { controller, editor, model, monaco, position, caret, list, doc, docNode, press, activeRow };
 };
 
 /**
@@ -195,7 +212,7 @@ const CASES = {
   "each category gets exactly one header and its rows stay contiguous": async () => {
     // Scores deliberately interleave the two categories (via the server's contextScore), so a
     // popup that only sorted — and never grouped — would render G, I, G, I.
-    const { list } = await openPopup({
+    const opened = await openPopup({
       code: "val x = |",
       metadata: [
         candidate("gridA", { category: "Graphics", contextScore: 0 }),
@@ -204,7 +221,7 @@ const CASES = {
         candidate("importD", { category: "Imports", contextScore: 0 }),
       ],
     });
-    const html = list();
+    const html = opened.list();
     eq(sectionsOf(html), ["Graphics", "Imports"], "one header per category, in first-ranked order");
     eq(labelsOf(html), ["gridC", "gridA", "importB", "importD"], "rows grouped, ranked within group");
     eq(
@@ -212,6 +229,13 @@ const CASES = {
       ["section", "row", "row", "section", "row", "row"],
       "header then its rows",
     );
+    // Grouping has to happen to the ITEM LIST and not only to the markup, or the arrow keys walk in
+    // score order while the eye walks in group order. `renderList` groups a second time, so this is
+    // the only assertion that can tell the difference — and the one that fails if the
+    // `orderItemsForGroupedDisplay` pass is dropped from `filterAndLimit`.
+    eq(rowsOf(html).map((row) => row.index), [0, 1, 2, 3], "keyboard order is visual order");
+    opened.press(opened.monaco.KeyCode.DownArrow);
+    eq(opened.activeRow().label, "gridA", "down arrow lands on the row below, not the next by score");
   },
 
   // ---- ranking -------------------------------------------------------------------------------
@@ -488,6 +512,231 @@ const CASES = {
     // matches none of them is the case that must land on the empty state.
     ok(/afield-suggest-empty/.test(list()), `expected the empty state, got:\n${list()}`);
     ok(!/afield-suggest-spinner/.test(list()), `still spinning after the server answered:\n${list()}`);
+  },
+
+  // ---- what the popup does while it is still waiting ------------------------------------------
+  "a slow AI round trip never holds up the list": async () => {
+    // This is the behaviour fieldSuggest.js's own comment in renderItems is about: AI completions
+    // cost a model round trip, so the list must render on the fast base answer alone.
+    const opened = await openPopup({
+      code: "val v = ve|",
+      metadata: [candidate("vec", { category: "Math", tail: ": Vec3" })],
+      aiMetadata: [candidate("vecFromMouse", { category: "Math", tail: ": Vec3" })],
+      deferred: ["complete-kotlin-ai"],
+    });
+    eq(labelsOf(opened.list()), ["vec"], "the base answer renders on its own");
+    ok(!/spinner/.test(opened.list()), "must not spin while only the AI answer is outstanding");
+
+    eq(flush("complete-kotlin-ai"), 1, "expected one parked AI reply");
+    await settle();
+    eq(sectionsOf(opened.list()), ["Math", "AI"], "AI items arrive in their own group, below");
+    eq(labelsOf(opened.list()), ["vec", "vecFromMouse"], "and the base item keeps its place");
+  },
+
+  "quick stubs stand in until the compiler answers, then get out of the way": async () => {
+    const opened = await openPopup({
+      code: "val v = ve|",
+      metadata: [candidate("vec", { category: "Math", tail: ": Vec3", icon: "method" })],
+      deferred: ["complete"],
+    });
+    // The hard-coded KOTLIN_QUICK_COMPLETIONS fill the wait; `vec` is one of them.
+    const stub = opened.controller.items.find((item) => item.label === "vec");
+    ok(stub, `expected a quick stub for vec, got ${JSON.stringify(labelsOf(opened.list()))}`);
+    eq(stub.source, "quick", "before the compiler answers, the row is a quick stub");
+    eq(stub.detail, "", "a quick stub has no return type to show");
+
+    eq(flush("complete"), 1, "expected one parked base reply");
+    await settle();
+    const real = opened.controller.items.find((item) => item.label === "vec");
+    eq(real.source, "rpc", "the compiler's answer replaces the stub");
+    eq(real.detail, ": Vec3", "and it brings the return type with it");
+    eq(
+      opened.controller.items.filter((item) => item.source === "quick").length,
+      0,
+      "no quick stubs survive alongside real completions",
+    );
+  },
+
+  // ---- keyboard ------------------------------------------------------------------------------
+  "arrow keys move the selection and Escape closes the popup": async () => {
+    const opened = await openPopup({
+      code: "val v = ve|",
+      metadata: [
+        candidate("vec", { category: "Math" }),
+        candidate("vecLength", { category: "Math" }),
+        candidate("vecNormalize", { category: "Math" }),
+      ],
+    });
+    const { press, monaco, controller, activeRow } = opened;
+    eq(activeRow().index, 0, "the first row starts active");
+    press(monaco.KeyCode.DownArrow);
+    eq(activeRow().index, 1, "down arrow");
+    press(monaco.KeyCode.DownArrow);
+    press(monaco.KeyCode.DownArrow);
+    eq(activeRow().index, 2, "down arrow clamps at the last row");
+    press(monaco.KeyCode.UpArrow);
+    eq(activeRow().index, 1, "up arrow");
+    press(monaco.KeyCode.PageUp);
+    eq(activeRow().index, 0, "page up clamps at the first row");
+    ok(controller.isVisible(), "still open");
+    press(monaco.KeyCode.Escape);
+    ok(!controller.isVisible(), "escape closes the popup");
+  },
+
+  "Enter accepts whatever is selected": async () => {
+    const opened = await openPopup({
+      code: "val v = ve|",
+      metadata: [
+        candidate("vec", { category: "Math" }),
+        candidate("vecLength", { category: "Math" }),
+      ],
+    });
+    opened.press(opened.monaco.KeyCode.DownArrow);
+    opened.press(opened.monaco.KeyCode.Enter);
+    await settle();
+    eq(opened.model.getValue(), "val v = vecLength", "Enter inserted the selected row");
+    ok(!opened.controller.isVisible(), "and closed the popup");
+  },
+
+  // ---- the documentation browser --------------------------------------------------------------
+  "a [Symbol] link opens a source card, with breadcrumbs and history": async () => {
+    const opened = await openPopup({
+      code: "val n = cros|",
+      metadata: [
+        candidate("cross", {
+          category: "Math",
+          documentation: "Cross product of [Vec3](field-source:?name=Vec3).",
+        }),
+        candidate("crossSigned", { category: "Math", documentation: "A signed variant." }),
+      ],
+      resolveSource: (payload) => ({
+        found: true,
+        title: payload.symbol,
+        documentation: "A three component vector.",
+        category: "Math",
+        sourceName: "Vec3.kt",
+        sourcePath: "src/jvmMain/kotlin/afield/math/Vec3.kt",
+        sourceLine: 7,
+      }),
+    });
+    ok(opened.doc().includes("Cross product of"), `the completion's own doc first:\n${opened.doc()}`);
+
+    opened.controller.navigateToSource(
+      "field-source:?path=src/jvmMain/kotlin/afield/math/Vec3.kt&line=7&name=Vec3",
+      "Vec3",
+    );
+    await settle();
+    const card = opened.doc();
+    ok(card.includes("A three component vector."), `navigated card body:\n${card}`);
+    ok(/class="afield-suggest-nav"/.test(card), `no back/forward control:\n${card}`);
+    ok(/cross › Vec3/.test(card), `breadcrumbs should trail from the completion:\n${card}`);
+    ok(!/data-nav="back" disabled/.test(card), "back should be live on a card");
+    ok(/data-nav="forward" disabled/.test(card), "forward should be dead at the end of history");
+
+    opened.controller.navBack();
+    await settle();
+    const back = opened.doc();
+    ok(back.includes("Cross product of"), `back should return to the completion:\n${back}`);
+    ok(/data-nav="back" disabled/.test(back), "back should be dead at the root");
+
+    opened.controller.navForward();
+    await settle();
+    ok(opened.doc().includes("A three component vector."), "forward should return to the card");
+
+    // Moving the selection abandons the browse — a card about one symbol must not survive onto
+    // another.
+    opened.controller.setActive(1);
+    await settle();
+    const moved = opened.doc();
+    eq(opened.controller.navStack.length, 0, "changing selection drops the browse history");
+    ok(moved.includes("A signed variant."), `expected the newly selected item's doc:\n${moved}`);
+    ok(!/class="afield-suggest-nav"/.test(moved), `no stale back/forward control:\n${moved}`);
+  },
+
+  "the source footer expands the real source inline, and collapses again": async () => {
+    const opened = await openPopup({
+      code: "val n = cros|",
+      metadata: [
+        candidate("cross", {
+          category: "Math",
+          documentation: "Cross product.",
+          documentationSourceName: "Vec3.kt",
+          documentationSourcePath: "src/jvmMain/kotlin/afield/math/Vec3.kt",
+          documentationSourceLine: 42,
+        }),
+      ],
+    });
+    window._httpRoutes.set(
+      "/api/source",
+      JSON.stringify({
+        found: true,
+        path: "src/jvmMain/kotlin/afield/math/Vec3.kt",
+        startLine: 40,
+        language: "kotlin",
+        code: "fun Vec3.cross(other: Vec3): Vec3 = Vec3(\n    y * other.z - z * other.y,\n)",
+      }),
+    );
+    const anchor = opened.docNode().querySelector(".afield-suggest-source-link");
+    ok(anchor, `no source link to click:\n${opened.doc()}`);
+
+    opened.controller.viewSource("field-source-view:?path=src/x/Vec3.kt&line=42", anchor);
+    await settle();
+    ok(
+      window._httpRequests.some((url) => url.startsWith("/api/source?")),
+      `expected a GET /api/source, saw ${JSON.stringify(window._httpRequests)}`,
+    );
+    ok(/context=60/.test(window._httpRequests[0]), `expected surrounding context: ${window._httpRequests[0]}`);
+    // The popup appends this block as an element rather than rewriting the pane's innerHTML, so read
+    // it off the node.
+    const block = opened.docNode().querySelector(".afield-suggest-source-code");
+    ok(block, "the inline source block was not inserted");
+    ok(/language-kotlin/.test(block.innerHTML), `expected a highlightable block:\n${block.innerHTML}`);
+    ok(/Vec3.kt:40/.test(block.innerHTML), `expected the path and first line:\n${block.innerHTML}`);
+    ok(!/<\/code>fun/.test(block.innerHTML), "source must be escaped, not spliced in as markup");
+
+    opened.controller.viewSource("field-source-view:?path=src/x/Vec3.kt&line=42", anchor);
+    await settle();
+    ok(
+      !opened.docNode().querySelector(".afield-suggest-source-code"),
+      "clicking again should collapse the inline source",
+    );
+  },
+
+  // ---- volume ---------------------------------------------------------------------------------
+  "a huge answer is capped, and duplicates are shown once": async () => {
+    const many = [];
+    for (let i = 0; i < 140; i++) {
+      many.push(candidate(`item${String(i).padStart(3, "0")}`, { category: "Math" }));
+    }
+    many.push(candidate("item000", { category: "Math" })); // an exact duplicate
+    const { list, controller } = await openPopup({ code: "val x = item|", metadata: many });
+    eq(rowsOf(list()).length, 80, "MAX_VISIBLE_ITEMS rows");
+    eq(
+      controller.items.filter((item) => item.label === "item000").length,
+      1,
+      "the duplicate is shown once",
+    );
+  },
+
+  // ---- characterization: today's behaviour, written down because it is surprising -------------
+  "CHARACTERIZATION: the category weights predate the server's category vocabulary": async () => {
+    // CATEGORY_WEIGHT keys the *old* client-side buckets (local/graphics/functions/values/…), so of
+    // the categories the Kotlin side now sends only `Graphics` scores at all: `Math`, `Data`,
+    // `Polytopes`, `Audio AI`, `ALife`, `Solvers`, `Imaging`, `Workspace`, `Function`, `Kotlin`,
+    // `External` all fall through to 0 — the same weight as `other`, and below `imports` (10) and
+    // `snippets` (8). The visible consequence is asserted here rather than argued about: at equal
+    // fuzzy score, an import outranks a Math function.
+    //
+    // This is a characterization, NOT an endorsement. If you are here because you rebalanced the
+    // weights, this expectation is what you came to change.
+    const { list } = await openPopup({
+      code: "val l = line|",
+      metadata: [
+        candidate("line", { category: "Math", tail: ": Double" }),
+        candidate("line", { category: "Imports" }),
+      ],
+    });
+    eq(sectionsOf(list()), ["Imports", "Math"], "today: Imports (10) outranks Math (unweighted)");
   },
 };
 

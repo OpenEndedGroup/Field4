@@ -34,7 +34,7 @@ import kotlin.test.fail
  * Two tests, for two different kinds of failure:
  *
  *  - [`the popup ranks, groups and renders the way the editor expects`] is the behaviour suite —
- *    ~17 cases covering ranking, grouping, `tail`/return-type display, the request payload, the doc
+ *    24 cases covering ranking, grouping, `tail`/return-type display, the request payload, the doc
  *    pane, accepting, escaping and NaN hardening. Add a case in `probe.mjs`.
  *  - [`every completion category has a correct popup title`] is the **class-level** guard behind the
  *    `Audio Ai` defect. That bug was a class, not an instance: any new multi-word or

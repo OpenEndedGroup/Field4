@@ -70,6 +70,7 @@ class Element {
     this.scrollTop = 0;
     this.disabled = false;
     this._children = [];
+    this._parent = null;
     this._html = "";
   }
 
@@ -102,13 +103,29 @@ class Element {
   }
 
   appendChild(child) {
+    child._parent = this;
     this._children.push(child);
+    return child;
+  }
+
+  insertBefore(child, reference) {
+    child._parent = this;
+    const at = this._children.indexOf(reference);
+    if (at < 0) this._children.push(child);
+    else this._children.splice(at, 0, child);
     return child;
   }
 
   addEventListener() {}
   removeEventListener() {}
-  remove() {}
+  /** Real, because `viewSource` toggles its inline source block by removing it. */
+  remove() {
+    const siblings = this._parent && this._parent._children;
+    if (!siblings) return;
+    const at = siblings.indexOf(this);
+    if (at >= 0) siblings.splice(at, 1);
+    this._parent = null;
+  }
   select() {}
   focus() {}
   scrollIntoView() {}
@@ -330,7 +347,26 @@ export const installHost = ({ uid = "box-under-test", property = "code" } = {}) 
   // node ships a getter-only `navigator`; the popup only reads `navigator.clipboard`, so leave it.
   globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
-  globalThis.fetch = () => Promise.reject(new Error("no network in the popup harness"));
+  // `viewSource` fetches GET /api/source. Route it to a table the probe fills in, and parse the body
+  // with JSON.parse — i.e. as strictly as a browser does. `curl` and python will happily accept a
+  // body containing bare NaN/Infinity where a browser's `response.json()` throws, and that exact gap
+  // once hid a "semantic search returns nothing" bug in this repo, so the harness must be the strict
+  // one.
+  window._httpRoutes = new Map();
+  window._httpRequests = [];
+  globalThis.fetch = (url) => {
+    window._httpRequests.push(String(url));
+    const path = String(url).split("?")[0];
+    const route = window._httpRoutes.get(path);
+    if (!route) return Promise.reject(new Error(`no route for ${url} in the popup harness`));
+    const body = typeof route === "function" ? route(String(url)) : route;
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      text: () => Promise.resolve(body),
+      json: () => Promise.resolve(JSON.parse(body)),
+    });
+  };
   return window;
 };
 

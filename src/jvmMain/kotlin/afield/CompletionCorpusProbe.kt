@@ -20,7 +20,9 @@ expect:
  *
  *  - Assertions are ENGINE RECALL + TYPES, order-independent: does the candidate SET contain the
  *    expected item (by call form / class / exact text), and with the right return type? Ranking is
- *    client-side (fieldSuggest.js) and deliberately NOT asserted here.
+ *    client-side (fieldSuggest.js) and deliberately NOT asserted here — `FieldSuggestPresentationTest`
+ *    is the other half of the split, and asserts the ranking, grouping and titling by running that
+ *    real JavaScript under node (see dev_docs/completion_popup_cover.md).
  *  - Goals encode the desired behavior, so the current K1 engine is EXPECTED to fail some of them.
  *    Those failures are the target a future K2 Analysis-API engine must satisfy. Anti-goals encode
  *    warts that must be fixed (e.g. the synthetic REPL wrapper class name leaking into candidates).
