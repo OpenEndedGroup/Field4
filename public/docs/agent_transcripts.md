@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 52 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 35 of them are
+All 53 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 36 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
@@ -560,6 +560,17 @@ functions, because the stack VM ran once at compile time and `array`, `grid`, se
 `{{ }}` escapes are all spent before the GLSL exists. To see the same thing drawn and moving, replay
 `rectsl_sdf_live` below.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_glsl_sdf/metadata.edn)
+
+**rectsl_inverse_animation** — Two boxes on the *third* track backend. A RectSL track already knew how
+to evaluate itself and how to spell itself as GLSL; `toFn` lowers it to an `Fn` instead, which makes it
+differentiable, so a track can be solved rather than authored. The first box prints the symbolic IR with
+its unknowns still in it — `ADD(MUL(linear[0.0=0.0 4.0=4.0], ?gain=1.0), ?bias=0.0)` — and is the
+clearest look at what `free-param` actually puts in the tree. The second states three waypoints a rect
+should pass through, fits the parameters against them on the exact gradient, and rasterises the answer as
+three stacked bands: the target, a seed missing every waypoint by 7.72, and the solved arc threading all
+three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one somewhere
+`amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the honest miss instead.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
 
 ## visionOS device scenes
 
