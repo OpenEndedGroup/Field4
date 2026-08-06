@@ -358,83 +358,204 @@ internal fun Double.glslFloat(): String = when {
  * the divide-by-zero guards are reproduced, and [MOD] spells out Kotlin's
  * truncated `%` instead of reaching for GLSL's `mod()`, which floors and so
  * disagrees for negative operands.
+ *
+ * The third column, `fn:`, is the differentiable one — the op as a transform of
+ * [afield.stdlib.Functions.Fn] graphs, so a track can be handed to a gradient
+ * fitter. Not every op has one, and the ones that do not say so in the type
+ * rather than answering with something plausible: see [RectSLFnLowering] and the
+ * refusal catalogue in `RectSLFn.kt`.
  */
-enum class TrackOp1(val eval: (Double) -> Double, val glsl: (String) -> String) {
-    NEG({ -it }, { "-($it)" }),
-    ABS({ abs(it) }, { "abs($it)" }),
-    FLOOR({ floor(it) }, { "floor($it)" }),
-    CEIL({ ceil(it) }, { "ceil($it)" }),
-    FRACT({ it - floor(it) }, { "fract($it)" }),
-    SQRT({ sqrt(max(it, 0.0)) }, { "sqrt(max($it, 0.0))" }),
-    SIN({ sin(it) }, { "sin($it)" }),
-    COS({ cos(it) }, { "cos($it)" }),
-    SATURATE({ it.coerceIn(0.0, 1.0) }, { "clamp($it, 0.0, 1.0)" })
+enum class TrackOp1(
+    val eval: (Double) -> Double,
+    val glsl: (String) -> String,
+    val fn: RectSLFnLowering<TrackFnUnary>
+) {
+    NEG({ -it }, { "-($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.flip() } })),
+    ABS({ abs(it) }, { "abs($it)" }, RectSLFnLowering.Lowered({ a -> with(Functions) { a.abs() } })),
+    FLOOR({ floor(it) }, { "floor($it)" }, LATTICE_REFUSAL),
+    CEIL({ ceil(it) }, { "ceil($it)" }, LATTICE_REFUSAL),
+    FRACT({ it - floor(it) }, { "fract($it)" }, LATTICE_REFUSAL),
+    SQRT(
+        { sqrt(max(it, 0.0)) },
+        { "sqrt(max($it, 0.0))" },
+        // `max(x, 0)` is a clamp with an effectively infinite ceiling and `sqrt` is `pow(0.5)`; Fn
+        // has neither op under its own name. Math.pow(x, 0.5) agrees with Math.sqrt(x) to an ulp.
+        RectSLFnLowering.Lowered({ a ->
+            with(Functions) { a.clamp(fnLeaf(0.0), fnLeaf(Double.MAX_VALUE)).pow(fnLeaf(0.5)) }
+        })
+    ),
+    SIN({ sin(it) }, { "sin($it)" }, RectSLFnLowering.Lowered({ a -> fnSinOf(a) })),
+    COS({ cos(it) }, { "cos($it)" }, RectSLFnLowering.Lowered({ a -> fnCosOf(a) })),
+    SATURATE(
+        { it.coerceIn(0.0, 1.0) },
+        { "clamp($it, 0.0, 1.0)" },
+        RectSLFnLowering.Lowered({ a -> fnClamp01(a) })
+    )
 }
+
+/**
+ * The shared `fn:` refusal for the integer-lattice ops (`floor`, `ceil`, `fract`, `mod`).
+ *
+ * A top-level val rather than a companion-object one because an enum entry's constructor arguments
+ * are evaluated before the enum's companion object is initialised.
+ *
+ * Their derivative is zero on every open interval and undefined on each jump, so a gradient
+ * threaded through one is not merely imprecise — it carries no information about the parameter at
+ * all. That is precisely the argument `FnNonDifferentiable` makes for refusing `sign`.
+ */
+internal val LATTICE_REFUSAL: RectSLFnLowering.Refused = RectSLFnLowering.Refused(
+    "an integer lattice: the derivative is zero on every open interval and undefined on each " +
+        "jump, so a gradient through it says nothing about the parameter"
+)
 
 enum class TrackOp2(
     val eval: (Double, Double) -> Double,
-    val glsl: (String, String) -> String
+    val glsl: (String, String) -> String,
+    val fn: RectSLFnLowering<TrackFnBinary>
 ) {
-    ADD({ a, b -> a + b }, { a, b -> "($a + $b)" }),
-    SUB({ a, b -> a - b }, { a, b -> "($a - $b)" }),
-    MUL({ a, b -> a * b }, { a, b -> "($a * $b)" }),
+    ADD(
+        { a, b -> a + b },
+        { a, b -> "($a + $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a + b } })
+    ),
+    SUB(
+        { a, b -> a - b },
+        { a, b -> "($a - $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a - b } })
+    ),
+    MUL(
+        { a, b -> a * b },
+        { a, b -> "($a * $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a * b } })
+    ),
     DIV(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a / b },
-        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" }
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a / $b)" },
+        RectSLFnLowering.Refused(
+            "the near-zero guard (0 rather than an infinity) is a discontinuity no Fn op can " +
+                "express, so only a statically constant divisor lowers"
+        )
     ),
     MOD(
         { a, b -> if (abs(b) <= 1e-12) 0.0 else a % b },
-        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" }
+        { a, b -> "(abs($b) <= 1e-12 ? 0.0 : $a - $b * trunc($a / $b))" },
+        LATTICE_REFUSAL
     ),
-    POW({ a, b -> a.pow(b) }, { a, b -> "pow($a, $b)" }),
-    MIN({ a, b -> min(a, b) }, { a, b -> "min($a, $b)" }),
-    MAX({ a, b -> max(a, b) }, { a, b -> "max($a, $b)" })
+    POW(
+        { a, b -> a.pow(b) },
+        { a, b -> "pow($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> with(Functions) { a.pow(b) } })
+    ),
+    MIN(
+        { a, b -> min(a, b) },
+        { a, b -> "min($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> fnMinOf(a, b) })
+    ),
+    MAX(
+        { a, b -> max(a, b) },
+        { a, b -> "max($a, $b)" },
+        RectSLFnLowering.Lowered({ a, b -> fnMaxOf(a, b) })
+    )
 }
 
 enum class TrackOp3(
     val eval: (Double, Double, Double) -> Double,
-    val glsl: (String, String, String) -> String
+    val glsl: (String, String, String) -> String,
+    val fn: RectSLFnLowering<TrackFnTernary>
 ) {
     /** Order-insensitive bounds, matching `coerceIn(min(lo, hi), max(lo, hi))`. */
     CLAMP(
         { x, lo, hi -> x.coerceIn(min(lo, hi), max(lo, hi)) },
-        { x, lo, hi -> "clamp($x, min($lo, $hi), max($lo, $hi))" }
+        { x, lo, hi -> "clamp($x, min($lo, $hi), max($lo, $hi))" },
+        RectSLFnLowering.Lowered({ x, lo, hi ->
+            with(Functions) { x.clamp(fnMinOf(lo, hi), fnMaxOf(lo, hi)) }
+        })
     ),
-    MIX({ a, b, t -> a + (b - a) * t }, { a, b, t -> "mix($a, $b, $t)" }),
+    MIX(
+        { a, b, t -> a + (b - a) * t },
+        { a, b, t -> "mix($a, $b, $t)" },
+        RectSLFnLowering.Lowered({ a, b, t -> with(Functions) { a + (b - a) * t } })
+    ),
     SMOOTHSTEP(
         { low, high, x ->
             val denom = high - low
             val u = if (abs(denom) <= 1e-12) 0.0 else ((x - low) / denom).coerceIn(0.0, 1.0)
             u * u * (3.0 - 2.0 * u)
         },
-        { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" }
+        { low, high, x -> "(abs($high - $low) <= 1e-12 ? 0.0 : smoothstep($low, $high, $x))" },
+        RectSLFnLowering.Refused(
+            "the coincident-edge guard (0 rather than dividing by zero) is a discontinuity no Fn " +
+                "op can express, so only statically constant edges lower"
+        )
     )
 }
+
+/**
+ * The shared `fn:` refusal for the two time warps that fold the clock.
+ *
+ * Both are piecewise in time with a period's worth of pieces, so they lower only over a window
+ * that stays inside one period — which the lowering in `RectSLFn.kt` checks for, because
+ * `loop-time` with the scene's own duration is the common spelling and does nothing at all over
+ * `[0, duration)`.
+ */
+internal val WRAPPING_WARP_REFUSAL: RectSLFnLowering.Refused = RectSLFnLowering.Refused(
+    "folding the clock is piecewise in time, so it lowers only over a window that stays inside " +
+        "one period"
+)
 
 /**
  * How a [TimeWarpTrack] rewrites the time it hands to its source. Each kind
  * takes one scalar parameter, fixed when the warp is built, so the whole warp is
  * `(kind, amount)` rather than a closure over that amount.
+ *
+ * The `fn:` column is a *lookup* transform rather than a value one, which `Fn`
+ * spells `shift` and `scaleX`. The three affine warps lower exactly; the two
+ * wrapping ones carry [WRAPPING_WARP_REFUSAL].
  */
 enum class TimeWarpKind(
     val eval: (Double, Double) -> Double,
-    val glsl: (String, Double) -> String
+    val glsl: (String, Double) -> String,
+    val fn: RectSLFnLowering<TrackFnWarp>
 ) {
     /** `delay-time` / `time+` / `->live`: play the source `amount` seconds later. */
-    SHIFT({ t, amount -> t - amount }, { t, amount -> "($t - ${amount.glslFloat()})" }),
+    SHIFT(
+        { t, amount -> t - amount },
+        { t, amount -> "($t - ${amount.glslFloat()})" },
+        RectSLFnLowering.Lowered({ src, amount -> with(Functions) { src.shift(fnLeaf(amount)) } })
+    ),
 
     /** `scale-time` / `time*`: stretch the source's clock by `amount`. */
-    SCALE({ t, amount -> t / amount }, { t, amount -> "($t / ${amount.glslFloat()})" }),
+    SCALE(
+        { t, amount -> t / amount },
+        { t, amount -> "($t / ${amount.glslFloat()})" },
+        RectSLFnLowering.Lowered({ src, amount ->
+            with(Functions) { src.scaleX(fnLeaf(amount), fnLeaf(0.0)) }
+        })
+    ),
 
-    /** `reverse-time`: `amount` is the scene duration, not a factor. */
-    REVERSE({ t, amount -> amount - t }, { t, amount -> "(${amount.glslFloat()} - $t)" }),
+    /**
+     * `reverse-time`: `amount` is the scene duration, not a factor.
+     *
+     * Mirroring and *then* delaying, in that order: `scaleX(-1)` looks up at `-x`, and the delay
+     * makes that `-(x - amount)`. That is `amount - x` to the bit rather than to an ulp, because it
+     * is one exact negation of one subtraction — whereas mirroring about `amount/2` would round
+     * twice.
+     */
+    REVERSE(
+        { t, amount -> amount - t },
+        { t, amount -> "(${amount.glslFloat()} - $t)" },
+        RectSLFnLowering.Lowered({ src, amount ->
+            with(Functions) { src.scaleX(fnLeaf(-1.0), fnLeaf(0.0)).shift(fnLeaf(amount)) }
+        })
+    ),
 
     /** `loop-time`: wrap into `[0, amount)`. */
     LOOP(
         { t, amount -> positiveModulo(t, amount) },
         { t, amount ->
             if (amount <= 1e-12) "($t)" else "mod($t, ${amount.glslFloat()})"
-        }
+        },
+        WRAPPING_WARP_REFUSAL
     ),
 
     /** `pingpong-time`: triangle wave over `[0, amount]`, folded at both ends. */
@@ -446,7 +567,8 @@ enum class TimeWarpKind(
         { t, amount ->
             if (amount * 2.0 <= 1e-12) "($t)"
             else "(${amount.glslFloat()} - abs(mod($t, ${(amount * 2.0).glslFloat()}) - ${amount.glslFloat()}))"
-        }
+        },
+        WRAPPING_WARP_REFUSAL
     )
 }
 
@@ -839,6 +961,27 @@ data class HeadingTrack(
         }
         return offset
     }
+}
+
+/**
+ * A named unknown: a constant whose value is *currently* [value] but which is meant to be solved
+ * for rather than authored.
+ *
+ * Every backend treats it as the constant it presently is — the CPU sampler and the shader both
+ * read [value], so a scene with free parameters plays exactly as written. What changes is that the
+ * differentiable backend lowers it to a *labelled* `Fn` leaf, so [freeParameterIndices] can find
+ * which θ slot it landed in and [fitTrackParameters] can move that slot and nothing else. That is
+ * the whole mechanism behind inverse animation: say where a rect should be and when, and let the
+ * gradient answer with the numbers.
+ *
+ * Written `4.0 "radius" param` in RectSL.
+ */
+data class FreeParamTrack(
+    val name: String,
+    val value: Double
+) : Track<Double> {
+    override val kind: TrackValueKind = TrackValueKind.Double
+    override fun sample(t: Double): Double = value
 }
 
 fun constantTrack(x: Double): Track<Double> = ConstantTrack(x, TrackValueKind.Double)
