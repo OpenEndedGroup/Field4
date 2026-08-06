@@ -123,17 +123,44 @@ arithmetic. There is no `sin`: `Functions.sin` is an *oscillator* over the sampl
 `offset + amplitude·sin(2π·frequency·x + phase)`, which is not a composition. But its `phase` child
 is evaluated **at x**, so
 
-```
-sin(frequency = 0, phase = u, amplitude = 1, offset = 0)   ==   sin(u(x))
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14"}
+import afield.stdlib.Functions
+
+// `Fn` has no "apply sin to another Fn" op. But `sin`'s `phase` child is evaluated at x, so a
+// zero-frequency oscillator *is* composition: 0 + 1·sin(2π·0·x + u) collapses term by term.
+// This box is that claim, checked, rather than that claim, asserted.
+val (composed, u) = with(Functions) {
+    val u = identity(Functions.Domain.ALL)                     // any inner function will do; u(x) = x
+    sin(
+        frequency = 0.0.c, phase = u, amplitude = 1.0.c, offset = 0.0.c,
+        domain = Functions.Domain.ALL
+    ) to u
+}
+
+val xs = (0..4000).map { -2.0 + it * 4.0 / 4000.0 }
+val worst = xs.maxOf { x -> kotlin.math.abs(composed.eval(x) - kotlin.math.sin(u.eval(x))) }
+val notBitEqual = xs.count { x -> composed.eval(x) != kotlin.math.sin(u.eval(x)) }
+
+display(
+    "identity",
+    "<pre style='margin:0;font-size:12.5px;line-height:1.6;color:#cfd6dd'>" +
+        "sin(frequency = 0, phase = u, amplitude = 1, offset = 0)   vs   sin(u(x))\n" +
+        "samples:               ${xs.size} over x in [-2, 2]\n" +
+        "worst difference:      $worst\n" +
+        "samples not bit-equal: $notBitEqual" + "</pre>"
+)
+"worst $worst over ${xs.size} samples"
 ```
 
-exactly — `0 + 1·sin(2π·0·x + u)` collapses term by term with no rounding at all. That one identity
-carries the whole trigonometric family, and with it most of the Penner easings.
+The claim is not "close enough": `0 + 1·sin(2π·0·x + u)` collapses term by term with no rounding at
+all, so the box above should report a worst difference of exactly zero and zero samples that differ in
+their last bit. That one identity carries the whole trigonometric family, and with it most of the
+Penner easings.
 
 **`Fn` has no piecewise-in-x op, and every keyframed track is piecewise.** A clamped-ramp sum fixes
 it. For keys `(tᵢ, vᵢ)` and any segment shape `Sᵢ` with `Sᵢ(0) = vᵢ` and `Sᵢ(1) = vᵢ₊₁`,
 
-```
+```diffstatic {data-lang=text}
 v(t)  =  v₀ + Σᵢ [ Sᵢ(clamp01((t - tᵢ) / (tᵢ₊₁ - tᵢ))) - vᵢ ]
 ```
 
@@ -146,7 +173,7 @@ therefore yield to the same trick.
 
 ## Declaring an unknown
 
-```
+```diffstatic {data-lang=rectsl}
 # a bar whose height and offset are to be solved for, not authored
 "sweep" track-ref 1.0 free-param gain * 0.0 free-param bias + ->x
 ```
@@ -156,14 +183,52 @@ the constant it presently is, so a scene with free parameters plays exactly as w
 exactly as written; only the differentiable backend treats it specially, labelling its `Fn` leaf so a
 fitter can find which θ slot it landed in.
 
-```kotlin
-val fit = track.fitParameters(
-    listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+The box below runs the same fit twice, and the pair is the useful part. `fitParameters` defaults to
+`iterations = 300` at `lr = 0.05`; Adam moves a parameter by roughly `lr` per step, so a `bias` that
+must travel from 0 to −8 cannot possibly arrive in 300 steps, and the default call stops short with a
+residual near 0.1 — a 97% reduction, which would satisfy a "did it improve?" check while being nowhere
+near solved. Given 2000 iterations the same call lands on the closed-form answer. **Read the residual,
+not the fact that a fit returned.**
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14"}
+import afield.rectsl.*
+
+// The Kotlin API under the RectSL word: any Track carrying FreeParamTrack leaves can be solved
+// directly, without going through `#rectsl` source at all. Same track as the scene below —
+// a sweep that is the identity in time, times gain, plus bias.
+val track = BinaryDoubleTrack(
+    BinaryDoubleTrack(
+        LinearScalarTrack(listOf(TcbKey(0.0, 0.0), TcbKey(4.0, 4.0))),
+        FreeParamTrack("gain", 1.0),
+        TrackOp2.MUL
+    ),
+    FreeParamTrack("bias", 0.0),
+    TrackOp2.ADD
 )
-fit.parameters        // {gain=4.0, bias=-8.0}
-fit.initialResidual   // 3.606
-fit.finalResidual     // 2.9e-15 — the box below prints this run's exact value
-fit.fitted            // the same track, solved — samplable, renderable, emittable as GLSL
+
+val targets = listOf(TrackFitTarget(1.0, -4.0), TrackFitTarget(3.0, 4.0))
+
+// The defaults are iterations = 300, lr = 0.05. Adam's step is about `lr` per iteration, so a
+// parameter that has to travel 8 units cannot get there in 300 of them — which is visible below
+// and is the one thing to know before trusting a residual from a default call.
+val quick = track.fitParameters(targets)
+val patient = track.fitParameters(targets, iterations = 2000)
+
+display(
+    "fit",
+    "<pre style='margin:0;font-size:12.5px;line-height:1.6;color:#cfd6dd'>" +
+        "                     default (300 iterations)\n" +
+        "fit.parameters       ${quick.parameters}\n" +
+        "fit.initialResidual  ${quick.initialResidual}\n" +
+        "fit.finalResidual    ${quick.finalResidual}\n\n" +
+        "                     iterations = 2000\n" +
+        "fit.parameters       ${patient.parameters}\n" +
+        "fit.finalResidual    ${patient.finalResidual}\n" +
+        "fit.fitted           ${patient.fitted.describe()}\n" +
+        "                     — the same track, solved: samplable, renderable, emittable as GLSL" +
+        "</pre>"
+)
+"${patient.parameters}"
 ```
 
 Those four values are worth seeing arrive rather than taking on trust, so here is the whole loop in one
@@ -277,8 +342,32 @@ contradiction and is not: the derivative of a staircase is zero everywhere it ex
 what it reports. On its own that makes it a dead end, exactly as `sign` is. Inside something else it
 is the opposite, and the reason is one line of arithmetic:
 
-```
-clamp01(floor(x) + 1)   ==   1 where x >= 0, 0 below it — exactly, for every x
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-exact-step.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="360" padding="14"}
+import afield.stdlib.Functions
+
+// clamp01(floor(x) + 1) is claimed to be an EXACT step: 1 where x >= 0, 0 below it, for every x.
+// "Exact" is a strong word, so it is checked here rather than asserted — including at x = 0 and at
+// the negative integers, which are the only places a floor-based step can get the boundary wrong.
+val step = with(Functions) { identity(Functions.Domain.ALL).floor().offsetY(1.0).clamp(0.0, 1.0) }
+
+val grid = (-4000..4000).map { it / 1000.0 }
+val edges = listOf(-3.0, -2.0, -1.0, -1e-16, 0.0, 1e-16, 1.0, 2.0)
+val xs = grid + edges
+
+val wrong = xs.filter { x -> step.eval(x) != (if (x >= 0.0) 1.0 else 0.0) }
+val atZero = step.eval(0.0)
+val justBelow = step.eval(-1e-16)
+
+display(
+    "exact step",
+    "<pre style='margin:0;font-size:12.5px;line-height:1.6;color:#cfd6dd'>" +
+        "clamp01(floor(x) + 1)  vs  1 where x >= 0, 0 below\n" +
+        "samples:           ${xs.size} (grid over [-4, 4] plus the integer boundaries)\n" +
+        "disagreements:     ${wrong.size}${if (wrong.isEmpty()) "" else " at " + wrong.take(6)}\n" +
+        "step(0.0):         $atZero\n" +
+        "step(-1e-16):      $justBelow" + "</pre>"
+)
+"${wrong.size} disagreements over ${xs.size} samples"
 ```
 
 That is an exact step function, and a step is *every hard edge in an animation language*. RectSL has
