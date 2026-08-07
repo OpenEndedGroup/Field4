@@ -113,6 +113,15 @@ Both were discovered by writing these cases, and both surprise people:
    and `completion.lowering-invariant.probe`'s per-bucket recall, which is what caught this. The ranker
    cannot demote what it never received. See
    [`completion_aa_sidecar.md`](completion_aa_sidecar.md#the-ratchet-what-the-numbers-assert).
+4. **At an empty prefix this file's subject does not rank at all — the server's order is what a person
+   sees.** Measured with the harness here (`node probe.mjs rank`): at a bare dot every row scores alike,
+   the sort is stable, and `MAX_VISIBLE_ITEMS = 80` keeps the server's first 80. `f.` on an FLine rendered
+   `Close … byVariableRibboning` while `moveTo` sat at server index 159 of 249 — a *hit* by every
+   payload-side measurement in the repo, and invisible to the user. The sidecar now orders an empty-prefix
+   response by proximity to the receiver, and `the answer a person typed is among the rows a person can
+   see` is the only test in this file that asserts a **rank** rather than a relative order. Two of its
+   cases are recorded as *not shown* deliberately: they are point 2 above doing visible damage —
+   `kotlin.math.sin` is off-screen because `Math` scores 0 while an `(import)` row scores 10.
 
 ## What is deliberately NOT covered
 
@@ -213,7 +222,15 @@ least one, and no mutation survived unnoticed:
 ./gradlew --no-daemon jvmTest --tests 'afield.FieldSuggestPresentationTest'
 ```
 
-Both tests print every case's PASS/FAIL line, so a failure in CI is readable without re-running
+All three tests print every case's PASS/FAIL line, so a failure in CI is readable without re-running
 anything. Needs `node` >= 14 (`afield.util.NodeTool` finds one that actually *meets* that floor,
 which matters on machines whose `PATH` starts with an ancient nvm entry). `AFIELD_SKIP_JS_TESTS=1`
 opts out — deliberately and visibly, rather than having the gate quietly stop testing anything.
+
+**Re-cutting `rank-payloads.json`.** The rank cases hold real recorded `/complete` responses, so they need
+re-recording when the sidecar's candidate set or ordering changes — and the gate *tells* you, by failing
+with "is now VISIBLE at rank N … re-cut rank-payloads.json's observedRank". Record against a sidecar built
+from your own checkout (`field.sh` starts one; `/health` reports its `workspaceRoot`), POST each case's
+snippet to `/complete`, and keep `text`/`displayText`/`tail`/`icon` per row, one row per line — the category
+is deliberately *not* stored, because the test fills it in through the server's own classifier so that a
+change to classification moves this measurement, exactly as it moves the real popup.
