@@ -77,7 +77,7 @@ Reusable transcript examples live under `dev_docs/agents/transcripts/`. The most
 
 ## Small languages
 
-- [FieldML Examples](fieldml_examples.md) covers Field's small ML-flavoured expression language.
+- [FieldML Cheatsheet](fieldml_cheatsheet.md) and [FieldML Examples](fieldml_examples.md) cover Field's small ML-flavoured expression language, from its prelude of numbers, lists and vectors to boxes that generate and animate drawings.
 - [Forth Examples](forth_examples.md) covers Field's small stack language, its output helpers, and its bridge into JVM objects.
 - [StackSL Cheatsheet](stacksl_cheatsheet.md) and [StackSL Examples](stacksl_examples.md) document the concatenative stack language and its worked drawings.
 - [Language Extensions](language_extensions.md) explains how these small languages plug into the editor — highlighting, flow, and completion.

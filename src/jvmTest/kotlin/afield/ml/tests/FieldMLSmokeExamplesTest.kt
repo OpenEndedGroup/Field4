@@ -60,15 +60,22 @@ class FieldMLSmokeExamplesTest {
 
     @Test
     fun docsFieldMLExamplesCompileAndEvaluate() {
-        val docsPath = Path.of("public/docs/fieldml_examples.md")
-        val source = docsPath.toFile().readText()
-        val snippets = fieldMLDocSnippets(source)
+        val docsPages = listOf(
+            Path.of("public/docs/fieldml_examples.md"),
+            Path.of("public/docs/fieldml_cheatsheet.md"),
+        )
 
-        assertTrue(snippets.isNotEmpty(), "Expected FieldML snippets in $docsPath")
-        snippets.forEachIndexed { index, snippet ->
-            val name = "docs snippet ${index + 1}"
-            val result = compileOk(name, snippet)
-            Evaluator(FieldMLRuntimePrelude.values(box = Box("fieldml-docs-smoke-$index"))).evaluate(result.core!!)
+        docsPages.forEach { docsPath ->
+            val source = docsPath.toFile().readText()
+            val snippets = fieldMLDocSnippets(source)
+
+            assertTrue(snippets.isNotEmpty(), "Expected FieldML snippets in $docsPath")
+            snippets.forEachIndexed { index, snippet ->
+                val name = "${docsPath.fileName} snippet ${index + 1}"
+                val result = compileOk(name, snippet)
+                val box = Box("fieldml-docs-smoke-${docsPath.fileName}-$index")
+                Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+            }
         }
     }
 
