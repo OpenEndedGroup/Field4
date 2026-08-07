@@ -743,6 +743,61 @@ const CASES = {
 // ---------------------------------------------------------------------------- category guard
 
 /**
+ * RANK mode: where does the answer the author actually wrote land among the rows a human can SEE?
+ *
+ * Every other measurement of completion in this repo asks whether the right candidate is in the
+ * response. The popup renders at most `MAX_VISIBLE_ITEMS` (80) of them, so "in the payload" and "on
+ * screen" are different questions and only the second is the user's. This mode replays REAL recorded
+ * `/complete` payloads (`rank-payloads.json`, whose rows the Kotlin side has run through the server's
+ * own `classifyMetadata`, so the categories are the ones a browser would receive) and reports the
+ * truth's rank in the rendered list, the number of visible rows, and the ranking wall time.
+ *
+ * Each case records the rank observed when it was cut. A case that gets worse fails. A case that gets
+ * BETTER also fails, asking for the fixture to be re-cut — the same ratchet shape as the caret-recall
+ * floors, and for the same reason: an improvement nobody records is an improvement the next change can
+ * silently undo.
+ */
+const runRankGuard = async (specPath) => {
+  const spec = JSON.parse(readFileSync(specPath, "utf8"));
+  const failures = [];
+  console.log(
+    "  " + "case".padEnd(22) + "sent".padStart(6) + "visible".padStart(9) +
+    "rank".padStart(10) + "was".padStart(10) + "ms".padStart(7)
+  );
+  for (const c of spec.cases) {
+    const t0 = process.hrtime.bigint();
+    const { list } = await openPopup({ code: c.code, metadata: c.metadata });
+    const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+    const rows = labelsOf(list());
+    const index = rows.findIndex((row) => row === c.truth || row.startsWith(c.truth));
+    const rank = index < 0 ? null : index + 1;
+    const was = c.observedRank == null ? null : c.observedRank;
+    const show = (v) => (v === null ? "not shown" : String(v));
+    console.log(
+      "  " + c.label.padEnd(22) + String(c.metadata.length).padStart(6) +
+      String(rows.length).padStart(9) + show(rank).padStart(10) + show(was).padStart(10) +
+      ms.toFixed(1).padStart(7)
+    );
+    if (was === null && rank !== null) {
+      failures.push(
+        `${c.label}: \`${c.truth}\` is now VISIBLE at rank ${rank}, where the fixture records it as ` +
+        `off-screen. That is an improvement — re-cut rank-payloads.json's observedRank so the gate holds it.`
+      );
+    } else if (was !== null && rank === null) {
+      failures.push(
+        `${c.label}: \`${c.truth}\` was visible at rank ${was} and is now OFF-SCREEN ` +
+        `(${rows.length} rows shown of ${c.metadata.length} sent) — a person typing cannot see it.`
+      );
+    } else if (was !== null && rank > was) {
+      failures.push(`${c.label}: \`${c.truth}\` fell from rank ${was} to ${rank} of ${rows.length} visible rows`);
+    }
+  }
+  for (const message of failures) console.log(`FAIL rank: ${message}`);
+  if (failures.length === 0) console.log("PASS rank: every recorded answer is where it was recorded");
+  return failures.length;
+};
+
+/**
  * The class-level guard behind the "Audio Ai" defect: *every* category the Kotlin side can put on a
  * completion must render its own spelling in the popup header. The expectations come from Kotlin
  * (see FieldSuggestPresentationTest.kt), which enumerates the vocabulary from the source tree, so a
@@ -797,6 +852,14 @@ if (mode === "categories" || mode === "all") {
     failed++;
   } else {
     failed += await runCategoryGuard(specPath);
+  }
+}
+if (mode === "rank") {
+  if (!specPath) {
+    console.log("FAIL rank mode needs a path to the recorded-payload spec json");
+    failed++;
+  } else {
+    failed += await runRankGuard(specPath);
   }
 }
 
