@@ -741,16 +741,51 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         //   2. what FITS the expected type (`d.scheme = ‸` → the enum's entries, late in the alphabet and
         //      behind every `Box` member);
         //   3. name order, as before.
-        // Stable sorts, so nothing else reorders. This is not ranking — that stays the client's job
-        // (fieldSuggest.js) — it only decides what a truncation is allowed to destroy.
+        // Stable sorts, so nothing else reorders.
+        //
+        // "Ranking is the client's job" is true WITH A PREFIX and false without one. Measured, by running
+        // the shipped `fieldSuggest.js` verbatim over recorded payloads (`FieldSuggestRankTest`): at an
+        // empty prefix every row scores alike, the client's sort is stable, and `MAX_VISIBLE_ITEMS = 80`
+        // then keeps the first 80 — so THIS ORDER IS THE ORDER A HUMAN SEES at a bare dot. Leaving it
+        // alphabetical meant `f.` on an FLine showed `Close … byVariableRibboning` and `moveTo` — server
+        // index 159 of 249 — was not on screen at all, no matter how many candidates the transport shipped.
+        // Raising the cap was necessary and not sufficient: it moved the cut from 200-by-alphabet to
+        // 80-by-alphabet.
+        //
+        // So at an empty prefix, order by PROXIMITY TO THE RECEIVER, which is the one thing the client
+        // cannot recover (the wire carries the caret's receiver on every row, not the declaring container):
+        // the receiver's own members, then extensions declared on its own type, then the generic
+        // `Any`/type-variable extensions — `also`/`apply`/`let`/`takeIf`, which apply to everything and are
+        // therefore evidence of nothing — then classifiers and top-level names.
         val prefix = prefixAt(req.snippet, req.cursor.coerceIn(0, req.snippet.length))
         val ordered = result.candidates.sortedByDescending { it.fitsExpected }.let {
-            if (prefix.isEmpty()) it
+            if (prefix.isEmpty()) it.sortedBy(::receiverProximity)
             else it.sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
                 .sortedByDescending { c -> c.name.startsWith(prefix) }
         }
         val candidates = ordered.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
+    }
+
+    /**
+     * How close a candidate is to the receiver the caret is on — the empty-prefix ordering key, lower first.
+     *
+     * A GENERIC extension receiver (`Any`, `Any?`, or a bare type variable like `T`/`R`, which is how
+     * `also`/`let`/`apply`/`takeIf`/`runCatching` arrive) applies to every receiver in the language, so its
+     * presence says nothing about what the user is holding; a member of the receiver's own type says
+     * everything. Between them sit extensions written FOR that type (`FLine.byThickening`,
+     * `String.trimIndent`) — the API someone chose to write for this receiver.
+     */
+    private fun receiverProximity(c: AaCandidate): Int {
+        val container = (c.container ?: "").trim().removeSuffix("?").substringBefore('<')
+        val generic = container.isEmpty() || container == "Any" ||
+            Regex("""[A-Z][0-9]?""").matches(container.substringAfterLast('.'))
+        return when {
+            c.kind == AaCandidate.Kind.MEMBER -> 0
+            c.kind == AaCandidate.Kind.EXTENSION && !generic -> 1
+            c.kind == AaCandidate.Kind.EXTENSION -> 2
+            else -> 3
+        }
     }
 
     /**
