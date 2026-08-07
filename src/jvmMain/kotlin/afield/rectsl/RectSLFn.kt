@@ -60,21 +60,41 @@ import kotlin.math.abs
  * the first refusal it meets. This is the same discipline `FnNonDifferentiable` already applies
  * inside the stdlib, and for the same reason: the gap has to be readable, or it grows in silence.
  *
- * What is refused, and why:
+ * What is refused, and why. **This list shrank once**, when `Fn` gained a first-class differentiable
+ * `floor` (`autodiff_formula.kt:257`) and `clamp01(floor(x) + 1)` turned out to be an *exact* step —
+ * 1 at and above 0, 0 below, at every double including `-0.0`. Every hard edge in an animation
+ * language is a step, so most of the original refusals went away. What is left:
  *
- * - `FLOOR` / `CEIL` / `FRACT` / `MOD` — a lattice. The derivative is zero on every open interval
- *   and undefined on the jumps, so a gradient through one carries no information at all.
- * - `LOOP` / `PINGPONG` time warps, unless the whole requested window sits inside one period, in
- *   which case they *are* the identity and lower exactly.
- * - [HoldScalarTrack] with more than one key, and [GateTrack] straddling an edge — genuine
- *   discontinuities. A gate wholly inside or wholly outside its window is a constant, and lowers.
- * - [HeadingTrack] — `atan2` has no `Fn` op.
- * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, which
- *   is the same reason `FnNonDifferentiable` files `pat` itself.
- * - The near-zero guards. RectSL's `/` returns 0 where `|divisor| <= 1e-12` and its `smoothstep`
- *   returns 0 for coincident edges; both are discontinuities no `Fn` op can express. Where the
- *   divisor (or the edge pair) is statically constant the guard is *folded* and the lowering is
- *   exact; where it is not, the op is refused rather than silently dropped.
+ * - [HeadingTrack] — `atan2` has no `Fn` op. Closable: it needs an `FnExpr.Atan` plus atan2's
+ *   quadrant fix-up, which the exact step can now supply. This is the whole of the residual
+ *   refusal rate on the gallery.
+ * - `TrackOp2.MOD` with a non-constant divisor — Kotlin's `%` truncates toward zero and `trunc` is
+ *   not `floor`, so rebuilding it needs a sign primitive `Fn` does not have. A statically constant
+ *   pair still folds.
+ * - The near-zero guards on `TrackOp2.DIV` and `TrackOp3.SMOOTHSTEP`. RectSL's `/` returns 0 where
+ *   `|divisor| <= 1e-12` and its `smoothstep` returns 0 for coincident edges. The *indicator* is
+ *   now expressible, but the false branch still evaluates `a/b`, so the product is `0·inf` = NaN
+ *   rather than 0. Where the divisor (or the edge pair) is statically constant the guard is folded
+ *   and the lowering is exact; where it is not, the op is refused rather than silently dropped.
+ * - The pattern tracks ([PatTrack] and friends) — an interpreter over a mini-notation tree, not an
+ *   expression of fixed shape. The same reason `FnNonDifferentiable` files `pat` itself, and the
+ *   only refusal here that is not closable.
+ * - Degenerate keyed tracks: no keys at all (nothing to sample), or two keys sharing a time (a step
+ *   between two named values, which the clamped-ramp identity cannot express).
+ *
+ * What used to be on this list and now lowers exactly, because reading a stale refusal catalogue as
+ * authoritative is worse than having none:
+ *
+ * - `FLOOR`, `CEIL` (`-floor(-x)`, exact in IEEE) and `FRACT` (`x - floor(x)`) — `RectSL.kt:375-391`.
+ *   Zero-almost-everywhere is the *truth* about a staircase, not an approximation of one, and
+ *   `fitParameters` refuses a parameter reachable only through one rather than pretending otherwise.
+ * - `LOOP` (`x - p·floor(x/p)`) and `PINGPONG` (`a - |mod(x, 2a) - a|`) time warps, for **any**
+ *   window — `RectSL.kt:560-607`. The window check remains as a fold, not as the condition.
+ * - [HoldScalarTrack] with any number of keys, as `v₀ + Σ (vᵢ - vᵢ₋₁)·[t ≥ tᵢ]`, and [GateTrack]
+ *   straddling an edge, as `[t ≥ lo]·(1 - [t ≥ hi])` — both exactly the sampler, half-open boundary
+ *   included.
+ * - The expo and elastic easings, whose closed forms do not reach their own endpoints; see
+ *   `withExactEndpoints` below.
  *
  * # How the fidelity is checked
  *

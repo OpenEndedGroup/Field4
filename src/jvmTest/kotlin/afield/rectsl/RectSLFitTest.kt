@@ -281,6 +281,54 @@ class RectSLFitTest {
         val fit = beside.fitParameters(listOf(TrackFitTarget(2.0, 5.0)), iterations = 600)
         println("beside a gate: residual ${fit.initialResidual} -> ${fit.finalResidual}")
         assertTrue(fit.finalResidual < 1e-6, "residual ${fit.finalResidual}")
+        assertTrue(fit.stuckParameters.isEmpty(), "nothing is stuck here: ${fit.stuckParameters}")
+        assertTrue(!fit.partlyStuck)
+    }
+
+    /**
+     * The case the refusal above deliberately does *not* catch, and which used to be silent.
+     *
+     * `fitParameters` throws only when **every** free parameter has an exactly zero derivative. That
+     * threshold is right — a partly-stuck fit descends in the subspace it can reach, and the
+     * `beside a gate` half of the test above is exactly such a fit succeeding — but until 2026-08-07
+     * the result carried no trace of the parameters that could not move, so "solved two parameters"
+     * and "solved one and left the other where you put it" were indistinguishable.
+     * [TrackFitResult.stuckParameters] is that trace, and this pins it.
+     */
+    @Test
+    fun aPartlyStuckFitProceedsAndSaysWhichParameterCouldNotMove() {
+        // floor(stuckGain * ramp) + liveGain * ramp: the first parameter is under a staircase and can
+        // never move, the second is not and carries the whole fit.
+        val mixed = BinaryDoubleTrack(
+            MappedDoubleTrack(
+                BinaryDoubleTrack(ramp(4.0), FreeParamTrack("stuckGain", 1.0), TrackOp2.MUL),
+                TrackOp1.FLOOR
+            ),
+            BinaryDoubleTrack(ramp(4.0), FreeParamTrack("liveGain", 1.0), TrackOp2.MUL),
+            TrackOp2.ADD
+        )
+        val fit = mixed.fitParameters(
+            listOf(TrackFitTarget(1.0, 3.0), TrackFitTarget(3.0, 6.0)),
+            iterations = 600
+        )
+        println(
+            "partly stuck: residual ${fit.initialResidual} -> ${fit.finalResidual}, " +
+                "stuck=${fit.stuckParameters}"
+        )
+        assertEquals(setOf("stuckGain"), fit.stuckParameters)
+        assertTrue(fit.partlyStuck, "a partly stuck fit must report itself as such")
+        // It really is a fit, not a refusal dressed up as one.
+        assertTrue(fit.improved, "residual ${fit.initialResidual} -> ${fit.finalResidual}")
+        assertEquals(
+            1.0,
+            fit.parameters.getValue("stuckGain"),
+            0.0,
+            "a stuck parameter must come back exactly as it went in"
+        )
+        assertTrue(
+            fit.parameters.getValue("liveGain") != 1.0,
+            "the live parameter should have moved: ${fit.parameters}"
+        )
     }
 
     @Test

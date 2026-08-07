@@ -342,8 +342,9 @@ two-contour glyph with a counter — and captions every panel with one number, t
 original length the reversal actually retraced, because a reversal that drops a segment is shorter
 than what it reversed and that is the whole story. It also round-trips each reversal twice and prints
 whether the node-class sequence came back identical. *The shipped primitive* is the provenance
-argument: `arrow(a, b, startHead = true, endHead = true)` from the stdlib has two interior `Close`
-nodes, so no user cleverness was needed to build one. It runs ten public operations over that arrow
+argument: `arrow(a, b, startHead = true, endHead = true)` from the stdlib is ten nodes with two
+`Close` nodes in it, at indices 5 and 9 — so exactly one of them is interior, and no user cleverness
+was needed to build one. It runs ten public operations over that arrow
 under `runCatching` — reverse, subdivide, simplify, convex hull, filter, winding number, contains,
 centroid, bounds, dash — and prints `ok` or `THREW` for each. Every one of them threw
 `IndexOutOfBoundsException` on that exact line before 2026-08-01. Both boxes draw with
