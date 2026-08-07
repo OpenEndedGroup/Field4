@@ -5,13 +5,15 @@ import afield.HasOutput
 import afield.ai.KotlinSourceIndex
 import afield.graphics.FLine
 import afield.graphics.lines
+import afield.ml.core.FieldMLHostBridge
 import afield.ml.core.FieldMLValue
 import afield.ml.core.applyFieldMLFunction
 import afield.ml.core.fieldMLValueToHost
-import afield.ml.core.hostToFieldMLValue
 import afield.ml.core.renderFieldMLValue
 import afield.ml.core.vectorComponents
 import afield.ml.core.vectorValue
+import afield.ml.type.FieldMLHostTypes
+import afield.ml.type.THost
 import afield.stdlib.color
 import afield.stdlib.filled
 import afield.stdlib.pointSize
@@ -21,9 +23,6 @@ import afield.stdlib.thickness
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
-import java.lang.reflect.Field
-import java.lang.reflect.Method
-import java.lang.reflect.Modifier
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -319,29 +318,64 @@ object FieldMLRuntimePrelude {
             },
 
             "hostInput" to FieldMLValue.HostValue(HostInputPlaceholder),
-            "hostClass" to native1("hostClass") { name -> FieldMLValue.HostValue(Class.forName(name.asString("class name"))) },
+            // JVM `null`, which FieldML has no literal for: `Unit` is a value, not an absence, and
+            // Kotlin default arguments are invisible to a reflective call, so an optional
+            // parameter has to be spelled out.
+            "hostNull" to FieldMLValue.HostValue(null),
+            "hostClass" to native1("hostClass") { name -> FieldMLValue.HostValue(hostClass(name.asString("class name"))) },
+            "hostNew" to native2("hostNew") { arguments, klass ->
+                FieldMLHostBridge.construct(klass.asClass("hostNew"), FieldMLHostBridge.spreadArguments(arguments))
+            },
             "hostNew0" to native1("hostNew0") { klass ->
-                val javaClass = klass.asHost("hostNew0") as? Class<*> ?: error("hostNew0 expects a Class host value")
-                hostToFieldMLValue(javaClass.getDeclaredConstructor().also { it.isAccessible = true }.newInstance())
+                FieldMLHostBridge.construct(klass.asClass("hostNew0"), emptyList())
+            },
+            "hostCall" to native3("hostCall") { name, arguments, target ->
+                FieldMLHostBridge.callMethod(
+                    name.asString("method name"),
+                    target.asHost("target"),
+                    FieldMLHostBridge.spreadArguments(arguments),
+                )
             },
             "hostCall0" to native2("hostCall0") { name, target ->
-                callHostMethod(name.asString("method name"), target.asHost("target"), emptyList())
+                FieldMLHostBridge.callMethod(name.asString("method name"), target.asHost("target"), emptyList())
             },
             "hostCall1" to native3("hostCall1") { name, argument, target ->
-                callHostMethod(name.asString("method name"), target.asHost("target"), listOf(fieldMLValueToHost(argument)))
+                FieldMLHostBridge.callMethod(
+                    name.asString("method name"),
+                    target.asHost("target"),
+                    listOf(fieldMLValueToHost(argument)),
+                )
             },
             "hostCall2" to native4("hostCall2") { name, a, b, target ->
-                callHostMethod(name.asString("method name"), target.asHost("target"), listOf(fieldMLValueToHost(a), fieldMLValueToHost(b)))
+                FieldMLHostBridge.callMethod(
+                    name.asString("method name"),
+                    target.asHost("target"),
+                    listOf(fieldMLValueToHost(a), fieldMLValueToHost(b)),
+                )
             },
             "hostStaticCall" to native3("hostStaticCall") { name, arguments, klass ->
-                val javaClass = klass.asHost("hostStaticCall class") as? Class<*> ?: error("hostStaticCall expects a Class host value")
-                val args = arguments.asHostArguments("hostStaticCall arguments")
-                callHostStaticMethod(name.asString("method name"), javaClass, args)
+                FieldMLHostBridge.callStaticMethod(
+                    name.asString("method name"),
+                    klass.asClass("hostStaticCall class"),
+                    FieldMLHostBridge.spreadArguments(arguments),
+                )
+            },
+            // Kotlin extensions compile to statics whose first parameter is the receiver, and Field's
+            // Kotlin surface is mostly extensions — so the pipe-shaped form of a static call, with the
+            // piped value going in front of the written arguments, is the one that actually gets used.
+            "hostExt" to native4("hostExt") { klass, name, arguments, receiver ->
+                FieldMLHostBridge.callStaticMethod(
+                    name.asString("method name"),
+                    klass.asClass("hostExt class"),
+                    listOf(fieldMLValueToHost(receiver)) + FieldMLHostBridge.spreadArguments(arguments),
+                )
             },
             "hostStaticTap" to native4("hostStaticTap") { name, arguments, klass, input ->
-                val javaClass = klass.asHost("hostStaticTap class") as? Class<*> ?: error("hostStaticTap expects a Class host value")
-                val args = arguments.substituteHostInput(input).asHostArguments("hostStaticTap arguments")
-                callHostStaticMethod(name.asString("method name"), javaClass, args)
+                FieldMLHostBridge.callStaticMethod(
+                    name.asString("method name"),
+                    klass.asClass("hostStaticTap class"),
+                    FieldMLHostBridge.spreadArguments(arguments.substituteHostInput(input)),
+                )
                 input
             },
             "hostTap" to native3("hostTap") { target, arguments, input ->
@@ -349,14 +383,52 @@ object FieldMLRuntimePrelude {
                 input
             },
             "hostGet" to native2("hostGet") { name, target ->
-                getHostMember(name.asString("member name"), target.asHost("target"))
+                FieldMLHostBridge.readMember(name.asString("member name"), target.asHost("target"))
             },
             "hostSet" to native3("hostSet") { name, value, target ->
                 val host = target.asHost("target")
-                setHostMember(name.asString("member name"), host, fieldMLValueToHost(value))
+                FieldMLHostBridge.writeMember(name.asString("member name"), host, fieldMLValueToHost(value))
                 FieldMLValue.HostValue(host)
             },
+
+            // Erasure escapes. A member reflection can only see as `Object` stays typed `Host`, which
+            // is honest but unusable downstream; these are the author saying what it really is.
+            //
+            // `hostAs` is the general one, and it is also how FieldML *names* a JVM class: a value
+            // arriving from a generic signature, or a parameter of a lambda the JVM handed us, gets a
+            // real type from here and everything after it — member access, completion, arithmetic —
+            // works as if reflection had known all along. The cast is checked, so a wrong name is a
+            // run-time error at the point of the claim rather than a confusing failure later.
+            "hostAs" to native2("hostAs") { name, value ->
+                val requested = name.asString("class name")
+                val klass = FieldMLHostTypes.jvmClassOf(THost(requested))
+                    ?: error("hostAs does not know the class '$requested'")
+                val host = value.asHost("hostAs value")
+                if (!klass.isInstance(host)) {
+                    error("hostAs \"$requested\" was given a ${host.javaClass.name}")
+                }
+                FieldMLValue.HostValue(host)
+            },
+            "hostAsInt" to native1("hostAsInt") { value -> FieldMLValue.IntValue(value.coerceToLong("hostAsInt")) },
+            "hostAsFloat" to native1("hostAsFloat") { value -> FieldMLValue.FloatValue(value.coerceToDouble("hostAsFloat")) },
+            "hostAsBool" to native1("hostAsBool") { value -> FieldMLValue.BoolValue(value.coerceToBool("hostAsBool")) },
+            "hostAsString" to native1("hostAsString") { value -> FieldMLValue.StringValue(value.coerceToString()) },
         )
+
+    /**
+     * Class lookup with the two spellings a FieldML author is likely to try: the JVM binary name and
+     * the Kotlin nested-class spelling. `Img.Companion` is `afield.stdlib.imaging.Img$Companion` to
+     * the class loader, and nobody writes the `$` by hand.
+     */
+    private fun hostClass(name: String): Class<*> {
+        runCatching { return Class.forName(name) }
+        var candidate = name
+        while (candidate.contains('.')) {
+            candidate = candidate.replaceAfterLast('.', "").dropLast(1) + "$" + candidate.substringAfterLast('.')
+            runCatching { return Class.forName(candidate) }
+        }
+        error("Unknown JVM class '$name'")
+    }
 
     /**
      * One frame of animation per step of the returned sequence: Field's launch machinery advances a
@@ -487,6 +559,41 @@ object FieldMLRuntimePrelude {
     private fun FieldMLValue.asHost(name: String): Any =
         (this as? FieldMLValue.HostValue)?.value ?: error("Expected host $name, found ${renderFieldMLValue(this)}")
 
+    private fun FieldMLValue.asClass(name: String): Class<*> =
+        asHost(name) as? Class<*> ?: error("$name expects a class handle from hostClass, found ${renderFieldMLValue(this)}")
+
+    /** The `hostAs…` family: reads a scalar out of whatever a `Host`-typed value turned out to be. */
+    private fun FieldMLValue.coerceToDouble(name: String): Double =
+        when (this) {
+            is FieldMLValue.IntValue -> value.toDouble()
+            is FieldMLValue.FloatValue -> value
+            is FieldMLValue.StringValue -> value.toDoubleOrNull() ?: error("$name cannot read a number from \"$value\"")
+            is FieldMLValue.HostValue -> (value as? Number)?.toDouble()
+                ?: error("$name expects a number, found ${renderFieldMLValue(this)}")
+            else -> error("$name expects a number, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun FieldMLValue.coerceToLong(name: String): Long =
+        when (this) {
+            is FieldMLValue.IntValue -> value
+            else -> coerceToDouble(name).toLong()
+        }
+
+    private fun FieldMLValue.coerceToBool(name: String): Boolean =
+        when (this) {
+            is FieldMLValue.BoolValue -> value
+            is FieldMLValue.HostValue -> (value as? Boolean)
+                ?: error("$name expects a Bool, found ${renderFieldMLValue(this)}")
+            else -> error("$name expects a Bool, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun FieldMLValue.coerceToString(): String =
+        when (this) {
+            is FieldMLValue.StringValue -> value
+            is FieldMLValue.HostValue -> value?.toString() ?: "null"
+            else -> renderFieldMLValue(this)
+        }
+
     private fun FieldMLValue.asRecord(name: String): Map<String, FieldMLValue> =
         (this as? FieldMLValue.RecordValue)?.fields ?: error("Expected record $name, found ${renderFieldMLValue(this)}")
 
@@ -515,26 +622,6 @@ object FieldMLRuntimePrelude {
     private fun FieldMLValue.asVec4(name: String): Vector4f =
         asHost(name) as? Vector4f ?: error("Expected Vec4 for $name, found ${renderFieldMLValue(this)}")
 
-    private fun callHostMethod(name: String, target: Any, args: List<Any?>): FieldMLValue {
-        val method = target.javaClass.methods
-            .asSequence()
-            .filter { it.name == name && it.parameterCount == args.size }
-            .firstOrNull { method -> args.zip(method.parameterTypes.toList()).all { (arg, type) -> isCompatible(type, arg) } }
-            ?: error("No compatible method '$name/${args.size}' on ${target.javaClass.name}")
-        val coerced = args.zip(method.parameterTypes.toList()).map { (arg, type) -> coerceHostArgument(type, arg) }.toTypedArray()
-        return hostToFieldMLValue(method.invoke(target, *coerced))
-    }
-
-    private fun callHostStaticMethod(name: String, target: Class<*>, args: List<Any?>): FieldMLValue {
-        val method = target.methods
-            .asSequence()
-            .filter { it.name == name && Modifier.isStatic(it.modifiers) && it.parameterCount == args.size }
-            .firstOrNull { method -> args.zip(method.parameterTypes.toList()).all { (arg, type) -> isCompatible(type, arg) } }
-            ?: error("No compatible static method '$name/${args.size}' on ${target.name}")
-        val coerced = args.zip(method.parameterTypes.toList()).map { (arg, type) -> coerceHostArgument(type, arg) }.toTypedArray()
-        return hostToFieldMLValue(method.invoke(null, *coerced))
-    }
-
     private fun callIndexedHostTap(
         target: String,
         namedArguments: Map<String, FieldMLValue>,
@@ -548,7 +635,7 @@ object FieldMLRuntimePrelude {
             val built = candidate.buildArguments(namedArguments, input, box)
             if (built != null) {
                 val javaClass = Class.forName(candidate.ownerClassName)
-                val result = runCatching { callHostStaticMethod(candidate.name, javaClass, built) }
+                val result = runCatching { FieldMLHostBridge.callStaticMethod(candidate.name, javaClass, built) }
                 if (result.isSuccess) return
                 errors += "${candidate.ownerClassName}.${candidate.name}: ${result.exceptionOrNull()?.message}"
             }
@@ -777,76 +864,6 @@ object FieldMLRuntimePrelude {
         val hasDefault: Boolean,
         val defaultValue: Any?,
     )
-
-    private fun getHostMember(name: String, target: Any): FieldMLValue {
-        if (target is Map<*, *>) return hostToFieldMLValue(target[name])
-        target.javaClass.publicFieldOrNull(name)?.let { return hostToFieldMLValue(it.get(target)) }
-        target.javaClass.publicMethodOrNull(name, 0)?.let { return hostToFieldMLValue(it.invoke(target)) }
-        target.javaClass.publicMethodOrNull("get${name.replaceFirstChar(Char::uppercaseChar)}", 0)?.let {
-            return hostToFieldMLValue(it.invoke(target))
-        }
-        error("No readable member '$name' on ${target.javaClass.name}")
-    }
-
-    private fun setHostMember(name: String, target: Any, value: Any?) {
-        if (target is MutableMap<*, *>) {
-            @Suppress("UNCHECKED_CAST")
-            (target as MutableMap<String, Any?>)[name] = value
-            return
-        }
-        target.javaClass.publicFieldOrNull(name)?.let {
-            it.set(target, coerceHostArgument(it.type, value))
-            return
-        }
-        target.javaClass.publicMethodOrNull("set${name.replaceFirstChar(Char::uppercaseChar)}", 1)?.let {
-            it.invoke(target, coerceHostArgument(it.parameterTypes.single(), value))
-            return
-        }
-        error("No writable member '$name' on ${target.javaClass.name}")
-    }
-
-    private fun Class<*>.publicFieldOrNull(name: String): Field? =
-        fields.firstOrNull { it.name == name }?.also { it.isAccessible = true }
-
-    private fun Class<*>.publicMethodOrNull(name: String, arity: Int): Method? =
-        methods.firstOrNull { it.name == name && it.parameterCount == arity }?.also { it.isAccessible = true }
-
-    private fun isCompatible(type: Class<*>, arg: Any?): Boolean =
-        arg == null ||
-            type.isInstance(arg) ||
-            Number::class.java.isAssignableFrom(boxed(type)) && arg is Number ||
-            boxed(type) == Boolean::class.javaObjectType && arg is Boolean ||
-            boxed(type) == String::class.java && arg is String
-
-    private fun coerceHostArgument(type: Class<*>, arg: Any?): Any? {
-        if (arg == null) return null
-        if (type.isInstance(arg)) return arg
-        if (arg is Number) {
-            return when (boxed(type)) {
-                Int::class.javaObjectType -> arg.toInt()
-                Long::class.javaObjectType -> arg.toLong()
-                Float::class.javaObjectType -> arg.toFloat()
-                Double::class.javaObjectType -> arg.toDouble()
-                Short::class.javaObjectType -> arg.toShort()
-                Byte::class.javaObjectType -> arg.toByte()
-                else -> arg
-            }
-        }
-        return arg
-    }
-
-    private fun boxed(type: Class<*>): Class<*> =
-        when (type) {
-            java.lang.Integer.TYPE -> Int::class.javaObjectType
-            java.lang.Long.TYPE -> Long::class.javaObjectType
-            java.lang.Float.TYPE -> Float::class.javaObjectType
-            java.lang.Double.TYPE -> Double::class.javaObjectType
-            java.lang.Boolean.TYPE -> Boolean::class.javaObjectType
-            java.lang.Short.TYPE -> Short::class.javaObjectType
-            java.lang.Byte.TYPE -> Byte::class.javaObjectType
-            java.lang.Character.TYPE -> Char::class.javaObjectType
-            else -> type
-        }
 
     private object HostInputPlaceholder {
         override fun toString(): String = "<hostInput>"

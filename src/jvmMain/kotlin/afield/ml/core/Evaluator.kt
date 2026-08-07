@@ -93,7 +93,10 @@ private fun evalFieldML(expr: CoreExpr, env: RuntimeEnv): FieldMLValue =
         is CRecord -> FieldMLValue.RecordValue(expr.fields.associate { (name, value) -> name to evalFieldML(value, env) })
         is CField -> when (val target = evalFieldML(expr.target, env)) {
             is FieldMLValue.RecordValue -> target.fields[expr.field] ?: error("No such field: ${expr.field}")
+            // Vector components first: they are the hot path and read straight off the value. Anything
+            // else on a host value is a JVM member, which is what makes `img.width` work.
             is FieldMLValue.HostValue -> readVectorComponent(target.value, expr.field)
+                ?: target.value?.let { FieldMLHostBridge.readMember(expr.field, it) }
                 ?: error("No such field: ${expr.field}")
             else -> error("Field access on non-record value")
         }
