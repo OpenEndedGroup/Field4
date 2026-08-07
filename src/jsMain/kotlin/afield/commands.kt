@@ -2569,6 +2569,10 @@ fun registerBuiltinCommands() {
             id:'copy-selection',
             label:"Copy Selection",
             keys: 'cmd+c',
+            // Canvas only. `run` already declines when an editor has focus, but a Monaco
+            // registration consumes the chord before the browser can act on it, so registering one
+            // just to no-op left Cmd+C dead inside the editor. Same for paste below.
+            keyScope: 'canvas',
             detail:"Copy selected boxes (and all their code & properties)",
             // Never steal the chord from an ordinary text selection — that is a plain document copy.
             canvasGuard: (event) => {
@@ -2588,6 +2592,7 @@ fun registerBuiltinCommands() {
             id:'paste-selection',
             label:"Paste Selection",
             keys: 'cmd+v',
+            keyScope: 'canvas',
             detail:"Paste as new boxes",
             run: () => {
                 if (window.globalEditor && window.globalEditor.hasTextFocus && window.globalEditor.hasTextFocus()) return
