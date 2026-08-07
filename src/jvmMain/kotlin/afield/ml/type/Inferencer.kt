@@ -631,6 +631,58 @@ class Inferencer {
 
     private fun isDynamicHost(type: Type): Boolean = type is THost && type.name == FieldMLHostTypes.OPAQUE
 
+    /**
+     * Two host types. Equal names are the same class; an opaque `Host` on either side is the dynamic
+     * escape; and a class that is *assignable* from the other unifies too, because Field's linalg types
+     * are declared half against read-only interfaces (`Vector2f` where the signature says `Vector2fc`)
+     * and refusing that would report a sound call as an error. Two unrelated known classes are a type
+     * error — the whole point of a host value carrying its class.
+     */
+    private fun unifyHosts(a: THost, b: THost, range: SourceRange) {
+        if (a.name == b.name) return
+        if (a.name == FieldMLHostTypes.OPAQUE || b.name == FieldMLHostTypes.OPAQUE) return
+        val left = FieldMLHostTypes.jvmClassOf(a)
+        val right = FieldMLHostTypes.jvmClassOf(b)
+        // An unloadable class is unknown, not wrong: the same conservatism as everywhere else here.
+        if (left == null || right == null) return
+        if (left.isAssignableFrom(right) || right.isAssignableFrom(left)) return
+        abort(
+            "Type mismatch: ${TypePrinter().print(a)} is not ${TypePrinter().print(b)}" +
+                " (${left.name} and ${right.name} are unrelated)",
+            range,
+        )
+    }
+
+    /**
+     * The bound on `Host` as a dynamic type: it stands in for a value whose *class* is unknown, not for
+     * a value of unknown *shape*.
+     *
+     * A JVM value that reflection could only see as `Object` may well turn out to be a number, a
+     * string, a boolean, nothing at all, or another object — so `Host` unifies with all of those and an
+     * erased result can be used without a cast, which is the ergonomics this bridge exists for. It does
+     * *not* unify with a function or with a FieldML structure. Those are not things an opaque host value
+     * ever *is*: `hostToFieldMLValue` never produces a FieldML function from a JVM value, so applying a
+     * `Host` fails every time it runs, and reaching a list or a record needs `hostAsList` — which really
+     * converts, and therefore also works on the erased-`Object`-that-was-a-`List` case.
+     *
+     * So the trade is: one honest conversion at the boundary, in exchange for the class of mistake that
+     * used to type-check and then fail on the first run.
+     */
+    private fun requireDynamicallyReachable(other: Type, range: SourceRange) {
+        val advice = when (other) {
+            is TFun -> "call it with hostCall1 \"invoke\" instead"
+            is TList -> "convert it with hostAsList"
+            is TTuple -> "convert it with hostAsList, or read its parts with hostGet"
+            is TRecord -> "read its members with hostGet"
+            else -> return
+        }
+        abort(
+            "A Host cannot be used as ${TypePrinter().print(normalize(other))}:" +
+                " reflection could not type this value, so $advice",
+            range,
+        )
+    }
+
     private fun unify(left: Type, right: Type, range: SourceRange) {
         val a = prune(left)
         val b = prune(right)
@@ -651,14 +703,11 @@ class Inferencer {
             a is TAdt && b is TAdt && a.name == b.name && a.arguments.size == b.arguments.size -> {
                 a.arguments.zip(b.arguments).forEach { (leftArg, rightArg) -> unify(leftArg, rightArg, range) }
             }
-            a is THost && b is THost && a.name == b.name -> Unit
-            // `Host` is FieldML's one dynamic type: the type of a JVM value whose class reflection
-            // could not pin down. Refusing to unify it would mean that every erased host result had
-            // to be threaded through a cast before it could be used at all, which is the state this
-            // bridge exists to end. Everything *else* about host types is checked, and a value whose
-            // class is known keeps its own name, so this escape is confined to the genuinely unknown.
-            a is THost && a.name == FieldMLHostTypes.OPAQUE -> Unit
-            b is THost && b.name == FieldMLHostTypes.OPAQUE -> Unit
+            a is THost && b is THost -> unifyHosts(a, b, range)
+            // `Host` is FieldML's one dynamic type — but a *bounded* one, see
+            // [requireDynamicallyReachable].
+            a is THost && a.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(b, range)
+            b is THost && b.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(a, range)
             else -> abort(
                 "Type mismatch: ${TypePrinter().print(normalize(a))} is not ${TypePrinter().print(normalize(b))}",
                 range,

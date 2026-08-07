@@ -95,11 +95,27 @@ So:
 - a member or an overload that does not exist is a **type error**, reported where the name was written, rather than a crash on the first run — misspell `hostGet "widht"` and the box says `Box has no member 'widht'` before it runs;
 - completion offers the members of a typed receiver: inside `img |> hostGet "wi` the list is `width`, and it says `Int`.
 
-### `Host` is the dynamic type
+### `Host` is the dynamic type, and it has a boundary
 
 Reflection cannot always say. A generic erased to `Object`, an array, a `Map`, a nullable Kotlin return that may arrive as nothing at all — for all of these the answer stays the opaque `Host`, because naming a class the program can violate on its first run would be worse than saying nothing.
 
-`Host` is therefore the one type that unifies with every other, and satisfies the numeric, vector and equality constraints. That keeps every FieldML program written before any of this existed working unchanged, and it is what the `hostAs…` family is for when a value needs to become concrete:
+`Host` therefore unifies with other types, and satisfies the numeric, vector and equality constraints, so an erased result is usable without a cast. But it is bounded, and the bound is one sentence: **`Host` stands in for a value of unknown *class*, not of unknown *shape*.**
+
+An `Object`-erased JVM value may well turn out to be a number, a string, a boolean, nothing at all, or another object — so `Host` unifies with all of those. It is never a FieldML *function* and never a FieldML *structure*, because the host-to-FieldML conversion cannot produce one. So these are type errors, and they say what to do instead:
+
+```diffstatic {data-lang=text}
+(hostInput |> hostGet "whatever") 42
+  A Host cannot be used as (Int -> 'a): reflection could not type this
+  value, so call it with hostCall1 "invoke" instead
+
+hostInput |> hostGet "whatever" |> head
+  A Host cannot be used as ['a]: reflection could not type this value,
+  so convert it with hostAsList
+```
+
+Two host types whose classes are both *known* and unrelated do not unify either — `if true then img else fline` is `Img is not FLine (afield.stdlib.Img and afield.graphics.FLine are unrelated)`. Two where one is assignable from the other do, which is what lets a `Vector2f` reach a parameter declared as its read-only `Vector2fc` interface.
+
+`hostAsList` is the way from an opaque host value to a FieldML list — it converts a JVM `List`, `Set`, array or `Map`, which is also how `Box.parents` becomes something a FieldML box can walk. The rest of the `hostAs…` family is for when a value needs to become a scalar:
 
 ```diffstatic {data-lang=fieldml}
 let Collections = hostClass "java.util.Collections"

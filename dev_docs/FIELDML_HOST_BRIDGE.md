@@ -51,17 +51,34 @@ succeed and change nothing. So `refineHostIntrinsic` returns a type and the call
 no test that only checks *values* will notice — `FieldMLHostBridgeTest`'s type assertions are what
 catch it.
 
-### 2. `Host` is the dynamic type
+### 2. `Host` is the dynamic type, and the boundary is deliberate
 
-`unify` accepts `THost("Host")` against anything, and `requireNumeric`/`requireVector`/
-`requireEquality` accept it too. This is not laziness: reflection genuinely cannot type an erased
-generic, and without the escape every such result would need a cast before any use — which is the
-state this work exists to end. The confinement is that `Host` only *arises* from host interop, and
-a host value whose class is known keeps its own name.
+`unify` accepts `THost("Host")` against the scalars, `Unit` and any other host type, and
+`requireNumeric`/`requireVector`/`requireEquality` accept it too. This is not laziness: reflection
+genuinely cannot type an erased generic, and without the escape every such result would need a cast
+before any use — which is the state this work exists to end.
 
-The cost is real and worth stating: a program can pass the type checker and fail at run time inside
-a `Host`. `hostAsInt`/`hostAsFloat`/`hostAsBool`/`hostAsString`/`hostAs "Class"` are the explicit
-way to leave the dynamic region, and `hostAs` doubles as the way FieldML *names* a class.
+It is *bounded*, and the bound is the interesting part. `requireDynamicallyReachable` refuses `Host`
+against `TFun`, `TList`, `TTuple` and `TRecord`, with a diagnostic naming the conversion to use. The
+justification is that those are not things an opaque host value ever *is*: `hostToFieldMLValue` never
+produces a FieldML function from a JVM value, so applying a `Host` fails every single time it runs,
+and reaching a list needs `hostAsList` — which really converts, and therefore also handles the
+erased-`Object`-that-was-a-`List` case. One honest conversion at the boundary buys the whole class of
+mistake that used to type-check and fail on the first run.
+
+`unifyHosts` is the other half: two known, unrelated classes are a type error, and two where one is
+assignable from the other unify — Field's linalg surface is declared half against read-only
+interfaces (`Vector2fc`), and refusing `Vector2f` there would report a sound call as an error.
+
+`FieldMLHostDynamicBoundaryTest` holds both sides of the line: eight programs that must be refused
+(each also checked for a diagnostic that says what to do instead) and eleven that must still compile.
+If you widen the escape, that second list is what tells you whether you broke the ergonomics; if you
+narrow it, the first list is what tells you whether it was already narrow enough.
+
+The residual cost, stated plainly: a program can still pass the type checker and fail at run time
+inside a `Host` — just no longer by using it as a function or a structure.
+`hostAsInt`/`hostAsFloat`/`hostAsBool`/`hostAsString`/`hostAsList`/`hostAs "Class"` are the explicit
+way out of the dynamic region, and `hostAs` doubles as the way FieldML *names* a class.
 
 ### 3. SAM conversion has to read the generic type at the use site
 
@@ -132,6 +149,7 @@ question (a FieldML macro layer) rather than a bridge one.
 | `FieldMLHostSurfaceCoverageTest` | The measurement. Every method is called twice — through the bridge and through plain `Method.invoke` — and the results compared, so the headline number is *agreement*, not reachability. `disagreed.isEmpty()` is asserted outright, because a disagreement is a bug. It also computes the "before" number in the same run. Raise the floors when the bridge learns something. |
 | `FieldMLHostAgreementTest` | The semantically interesting calls, written beside the Kotlin they should equal. Covers what a synthesised constant-returning lambda cannot: arguments travelling *into* a FieldML function the JVM calls back, and bit-exact narrowing. |
 | `FieldMLAfieldFourReachTest` | The `threebox-2` survey above, plus the five `afield.four` calls that run headlessly. |
+| `FieldMLHostDynamicBoundaryTest` | Both sides of the `Host` boundary: what must be refused, and what must still compile. |
 | `FieldMLCompletionEngineTest` | The six host completion contexts. |
 | `FieldMLSmokeExamplesTest` | Every FieldML snippet on the public pages, **and** every box of the loadable demo document, compiled and evaluated. |
 | `FieldMLCheatsheetCoverageTest` | The cheatsheet lists every prelude name with its type. Adding a `host…` name without a row fails the build. |
