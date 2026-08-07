@@ -53,7 +53,7 @@ expect:
  *   AFIELD_LOWERING_CORPUS        comma-separated dirs (default: starting points + templates)
  *   AFIELD_LOWERING_DOCS          max documents (default 200)
  *   AFIELD_LOWERING_CARETS        carets sampled per box (default 4)
- *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 400)
+ *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 4000 — i.e. the whole corpus)
  *   AFIELD_LOWERING_SEED          RNG seed (default 42)
  *   AFIELD_LOWERING_JSON          write the machine summary here (default build/completion-lowering/report.json)
  *   AFIELD_LOWERING_SKIP_RECALL   set to 1 to run the invariant only
@@ -71,6 +71,14 @@ object CompletionLoweringProbe {
      * independent samples — which is the whole point, since the gap between them is the diagnosis.
      */
     private data class Site(val offset: Int, val truth: String, val kind: String)
+
+    /** One question the recall sweep will put to the sidecar: a [Site] of a box under one variant. */
+    private data class Ask(
+        val case: CompletionCorpus.Case,
+        val site: Site,
+        val typed: Int,
+        val mode: String,
+    )
 
     private val IDENT = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
     /** Names that carry no information about scope — `it`, keywords, and the like. */
@@ -199,7 +207,10 @@ object CompletionLoweringProbe {
             .split(',').map { it.trim() }.filter { it.isNotEmpty() }.map(::File).filter { it.isDirectory }
         val maxDocs = env("AFIELD_LOWERING_DOCS", "200").toInt()
         val caretsPerBox = env("AFIELD_LOWERING_CARETS", "4").toInt()
-        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "400").toInt()
+        // High enough to sweep the whole corpus (~1.7k questions at 4 carets/box, ~1 minute at the
+        // measured p50): a cap that BINDS turns the report into a sample, and the buckets it starves are
+        // the ones with the interesting numbers. It stays a knob so an exploration run can be quick.
+        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "4000").toInt()
         val seed = env("AFIELD_LOWERING_SEED", "42").toLong()
         val jsonOut = File(env("AFIELD_LOWERING_JSON", "build/completion-lowering/report.json"))
         val skipRecall = env("AFIELD_LOWERING_SKIP_RECALL", "0") == "1"
@@ -285,6 +296,7 @@ object CompletionLoweringProbe {
         val recall = Counter<String>()
         val attempts = Counter<String>()
         val missNotes = Counter<String>()
+        val notesByBucket = LinkedHashMap<String, Counter<String>>()
         val missedNames = Counter<String>()
         val missExamples = mutableListOf<String>()
         var requests = 0
@@ -293,11 +305,15 @@ object CompletionLoweringProbe {
             println()
             println("══ 2. CARET RECALL — is what the author wrote actually offered? ══")
             val rng = Random(seed)
-            outer@ for (c in cases) {
+            // Every question the sweep could ask, built before any of it is asked so the request cap
+            // truncates EVENLY across the corpus. Asked box-by-box (as this was), a 400-request cap only
+            // ever reached the first ~30 of 182 boxes — every reported miss came from `alife_*`, `dot` got
+            // 15 samples, and a floor set on 15 samples measures the sample, not the engine. Round-robin
+            // by caret index instead: request N of the run is caret N/182 of box N%182.
+            val perCase = cases.map { c ->
                 val all = targetsIn(c.code)
-                if (all.isEmpty()) continue
                 val picked = all.shuffled(rng).distinctBy { it.offset }.take(caretsPerBox)
-                for (site in picked) {
+                picked.flatMap { site ->
                     // A bare `.` and two characters typed are different questions of the same caret; a
                     // name position with nothing typed is not asked at all (the AA path withholds
                     // star-import scopes there on purpose, so it would measure a decision, not a defect).
@@ -309,44 +325,59 @@ object CompletionLoweringProbe {
                     // was inflating the typing-vs-editing gap with an artifact of the sweep.
                     val suppliedNamedArg = site.kind == "name" &&
                         Regex("""^\s*=[^=]""").containsMatchIn(c.code.drop(site.offset + site.truth.length))
-                    for ((typed, mode) in typedVariants.flatMap { t -> listOf("blank", "keep").map { t to it } }) {
-                        if (requests >= maxRequests) break@outer
-                        if (typed > site.truth.length) continue
-                        if (mode == "keep" && suppliedNamedArg) continue
-                        val t = Site(site.offset + typed, site.truth, site.kind)
-                        val (snippet, cursor) = snippetFor(c.code, t.offset, mode)
-                        if (cursor > snippet.length) continue
-                        val key = "${site.kind}/$typed/$mode"
-                        attempts.add(key)
-                        requests++
-                        val t0 = System.nanoTime()
-                        val outcome = AaCompletionClient.complete(
-                            snippet, cursor, c.preamble, receivers, replImports = introImports,
-                        )
-                        times += (System.nanoTime() - t0) / 1_000_000
-                        val cands = (outcome.result as? CompletionResult.Success)?.metadata.orEmpty()
-                        val hit = cands.any {
-                            it.text.trimEnd('(', ' ', '=') == t.truth || it.displayText.startsWith(t.truth)
+                    typedVariants.flatMap { t -> listOf("blank", "keep").map { t to it } }
+                        .filter { (typed, mode) ->
+                            typed <= site.truth.length && !(mode == "keep" && suppliedNamedArg)
                         }
-                        if (hit) recall.add(key)
-                        else {
-                            // A histogram says WHAT is missed; it can't be reproduced. Keep a handful of
-                            // misses verbatim — the line the caret was on, and the note — so each bucket
-                            // in the summary leads to something that can be pasted into a box.
-                            if (missExamples.size < maxExamples) {
-                                val line = c.code.take(t.offset).substringAfterLast('\n') +
-                                    "‸" + c.code.drop(t.offset).substringBefore('\n')
-                                missExamples += "${c.label} $key .${t.truth}\n" +
-                                    "        line: ${line.trim().take(110)}\n" +
-                                    "        note: ${outcome.detail.take(110)}"
-                            }
-                            missedNames.add(t.truth)
-                            missNotes.add(outcome.detail.substringBefore(':').take(60).let {
-                                if (outcome.detail.startsWith("empty")) "empty: " + outcome.detail
-                                    .substringAfter("empty: ").substringBefore(':').take(40) else it
-                            })
-                        }
+                        .map { (typed, mode) -> Ask(c, Site(site.offset + typed, site.truth, site.kind), typed, mode) }
+                }
+            }
+            val queue = ArrayList<Ask>()
+            var round = 0
+            while (queue.size < maxRequests) {
+                val added = perCase.count { round < it.size }
+                if (added == 0) break
+                perCase.forEach { if (round < it.size) queue += it[round] }
+                round++
+            }
+            for (ask in queue.take(maxRequests)) {
+                val (c, t, typed, mode) = ask
+                val (snippet, cursor) = snippetFor(c.code, t.offset, mode)
+                if (cursor > snippet.length) continue
+                val key = "${t.kind}/$typed/$mode"
+                attempts.add(key)
+                requests++
+                val t0 = System.nanoTime()
+                val outcome = AaCompletionClient.complete(
+                    snippet, cursor, c.preamble, receivers, replImports = introImports,
+                )
+                times += (System.nanoTime() - t0) / 1_000_000
+                val cands = (outcome.result as? CompletionResult.Success)?.metadata.orEmpty()
+                val hit = cands.any {
+                    it.text.trimEnd('(', ' ', '=') == t.truth || it.displayText.startsWith(t.truth)
+                }
+                if (hit) recall.add(key)
+                else {
+                    // A histogram says WHAT is missed; it can't be reproduced. Keep a handful of
+                    // misses verbatim — the line the caret was on, and the note — so each bucket
+                    // in the summary leads to something that can be pasted into a box.
+                    if (missExamples.size < maxExamples) {
+                        val line = c.code.take(t.offset).substringAfterLast('\n') +
+                            "‸" + c.code.drop(t.offset).substringBefore('\n')
+                        missExamples += "${c.label} $key .${t.truth}\n" +
+                            "        line: ${line.trim().take(110)}\n" +
+                            "        note: ${outcome.detail.take(110)}"
                     }
+                    missedNames.add(t.truth)
+                    val note = outcome.detail.substringBefore(':').take(60).let {
+                        if (outcome.detail.startsWith("empty")) "empty: " + outcome.detail
+                            .substringAfter("empty: ").substringBefore(':').take(40) else it
+                    }
+                    missNotes.add(note)
+                    // Kept per bucket as well as overall, because that is what a ratchet failure has to
+                    // say: "bare-dot recall fell to 71%, and the sidecar's own note on those misses is X"
+                    // is a diagnosis; "recall fell" is a number to argue about.
+                    notesByBucket.getOrPut(key) { Counter() }.add(note)
                 }
             }
             println("  requests $requests   latency p50=${times.sorted().getOrNull(times.size / 2)}ms")
