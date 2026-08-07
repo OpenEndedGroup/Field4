@@ -231,22 +231,22 @@ object CompletionLoweringProbe {
     private val FLOORS = listOf(
         // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
         // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
-        Floor("dot/0/blank", minAttempts = 55, minPercent = 82, observed = 87),
-        Floor("dot/0/keep", minAttempts = 55, minPercent = 79, observed = 84),
+        Floor("dot/0/blank", minAttempts = 55, minPercent = 93, observed = 98),
+        Floor("dot/0/keep", minAttempts = 55, minPercent = 90, observed = 95),
         // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
-        Floor("dot/2/blank", minAttempts = 55, minPercent = 92, observed = 97),
-        Floor("dot/2/keep", minAttempts = 55, minPercent = 88, observed = 93),
+        Floor("dot/2/blank", minAttempts = 55, minPercent = 93, observed = 98),
+        Floor("dot/2/keep", minAttempts = 55, minPercent = 90, observed = 95),
         // Name position: scope, the index, and implicit-receiver extensions.
-        Floor("name/2/blank", minAttempts = 478, minPercent = 86, observed = 91),
-        Floor("name/2/keep", minAttempts = 407, minPercent = 85, observed = 90),
+        Floor("name/2/blank", minAttempts = 478, minPercent = 89, observed = 94),
+        Floor("name/2/keep", minAttempts = 407, minPercent = 89, observed = 94),
         // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
-        Floor("pkg/0/blank", minAttempts = 108, minPercent = 81, observed = 86),
-        Floor("pkg/0/keep", minAttempts = 108, minPercent = 82, observed = 87),
-        Floor("pkg/2/blank", minAttempts = 108, minPercent = 90, observed = 95),
-        Floor("pkg/2/keep", minAttempts = 108, minPercent = 90, observed = 95),
+        Floor("pkg/0/blank", minAttempts = 108, minPercent = 92, observed = 97),
+        Floor("pkg/0/keep", minAttempts = 108, minPercent = 92, observed = 97),
+        Floor("pkg/2/blank", minAttempts = 108, minPercent = 92, observed = 97),
+        Floor("pkg/2/keep", minAttempts = 108, minPercent = 92, observed = 97),
         // The headline number, gated too — not because the buckets don't cover it, but because it is what
         // gets quoted, and a change that trades one bucket off against another should have to say so.
-        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 86, observed = 91),
+        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 90, observed = 95),
     )
 
     /** The sweep must have asked something like the whole corpus; a truncated sweep is not a gate. */
