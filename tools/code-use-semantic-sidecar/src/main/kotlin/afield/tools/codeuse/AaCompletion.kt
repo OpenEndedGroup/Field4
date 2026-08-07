@@ -501,12 +501,15 @@ private class FacadeVisitor(
          * unreachable — the accessor name is not what anyone types. Both are offered; resolution decides.
          */
         fun kotlinNames(jvm: String): List<String> {
-            val stripped = when {
-                jvm.length > 3 && (jvm.startsWith("get") || jvm.startsWith("set")) && jvm[3].isUpperCase() ->
-                    jvm[3].lowercaseChar() + jvm.substring(4)
-                else -> null
-            }
-            return if (stripped == null) listOf(jvm) else listOf(jvm, stripped)
+            if (jvm.length <= 3 || !(jvm.startsWith("get") || jvm.startsWith("set")) || !jvm[3].isUpperCase())
+                return listOf(jvm)
+            val rest = jvm.substring(3)
+            // BOTH un-manglings, because the JVM name does not say which one it came from: `getPos` is
+            // `pos`, but `getCYCLIC_LABYRINTH` is `CYCLIC_LABYRINTH` — a SHOUTING_CASE property (every
+            // rule constant, every palette) is not decapitalised, and guessing `cYCLIC_LABYRINTH` left it
+            // as unreachable as indexing the raw accessor name did. Resolution decides which spelling
+            // exists; the cost of the other is one lookup that finds nothing.
+            return listOf(jvm, rest, rest[0].lowercaseChar() + rest.substring(1)).distinct()
         }
     }
 
@@ -520,7 +523,14 @@ private class FacadeVisitor(
         // gets indexed too and then resolves as private, where the use-site visibility check drops it —
         // one wasted lookup, versus a whole family of names being unreachable.
         if (stat && name != "<clinit>" && !name.contains('$')) {
-            onCallable(name)
+            // [kotlinNames], not the raw JVM name. A top-level PROPERTY compiles to `getCYCLIC_LABYRINTH()`,
+            // and `getCYCLIC_LABYRINTH` is not what anyone types — so indexing the JVM name alone made
+            // every top-level `val`/`var` in a binary package unreachable at a name position: the index
+            // had no name starting with `CY`, and `findTopLevelCallables` (which needs an EXACT Kotlin
+            // name) was never asked. `CYCLIC_LABYRINTH`, `GRAY_SCOTT_MAZE` and the `val Box.once` /
+            // `val Box.strategy` family were 33 of the caret sweep's misses. The receiver index below has
+            // always done this; the by-package index simply hadn't.
+            kotlinNames(name).forEach(onCallable)
             val receiver = desc?.let(::firstParameter)
             if (receiver != null) kotlinNames(name).forEach { onReceiver(receiver, it) }
         }
