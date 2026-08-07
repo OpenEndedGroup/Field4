@@ -122,6 +122,28 @@ function diagnosticLog(event, details = {}) {
   }
 }
 
+// Electron's default handler for an uncaught main-process error is a modal NSAlert
+// ("A JavaScript error occurred in the main process"). A modal run loop stops Chromium
+// servicing browser-process tasks, so every tab freezes mid-load — a newly opened tab
+// commits its navigation and then renders black forever. Worse, the dialog is a small
+// window that readily hides behind the main window or sits on another Space, so the app
+// looks hung for no reason and only a restart clears it. Log and keep running instead:
+// a broken tab is recoverable, a frozen browser process is not.
+process.on("uncaughtException", (error) => {
+  console.error("[electron,uncaught] main-process exception", error);
+  diagnosticLog("main-process-uncaught-exception", {
+    error: diagnosticError(error),
+  });
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[electron,uncaught] unhandled rejection", reason);
+  diagnosticLog("main-process-unhandled-rejection", {
+    error: diagnosticError(
+      reason instanceof Error ? reason : new Error(String(reason)),
+    ),
+  });
+});
+
 app.setName(APP_NAME);
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
@@ -773,11 +795,54 @@ function createMainWindow() {
     return { width, height };
   };
 
+  // A tab's WebContents can go away underneath us — a destroyed view, a renderer that
+  // was torn down out of band — while the tab entry is still in `tabs`. Reading through
+  // `tab.view.webContents` unguarded then throws, and an uncaught main-process throw
+  // freezes the whole browser process behind a modal (see the uncaughtException handler
+  // above). Every access goes through these two helpers instead.
+  const liveContents = (tab) => {
+    const contents = tab?.view?.webContents;
+    if (!contents) return null;
+    try {
+      return contents.isDestroyed() ? null : contents;
+    } catch (_) {
+      return null;
+    }
+  };
+
+  const contentsId = (tab) => liveContents(tab)?.id ?? null;
+
+  const contentsUrl = (tab) => {
+    const contents = liveContents(tab);
+    if (!contents) return tab?.url || "";
+    try {
+      return contents.getURL() || tab.url;
+    } catch (_) {
+      return tab.url;
+    }
+  };
+
+  // Drop tabs whose contents died without going through closeTab, so they can't be
+  // handed back by activeTab()/existingTabForDocument() and re-thrown on next touch.
+  const reapDeadTabs = () => {
+    for (let i = tabs.length - 1; i >= 0; i -= 1) {
+      if (liveContents(tabs[i])) continue;
+      const [dead] = tabs.splice(i, 1);
+      diagnosticLog("tab-reaped-dead-contents", {
+        windowId: win.id,
+        tabId: dead.id,
+        url: dead.url,
+      });
+      if (activeTabId === dead.id) activeTabId = null;
+    }
+  };
+
   const activeTab = () => tabs.find((tab) => tab.id === activeTabId) || null;
 
   const existingTabForDocument = (targetUrl, exceptTabId = null) => {
     const key = documentKeyFromUrl(targetUrl);
     if (!key) return null;
+    reapDeadTabs();
     return (
       tabs.find(
         (tab) => tab.id !== exceptTabId && documentKeyFromUrl(tab.url) === key,
@@ -855,11 +920,14 @@ function createMainWindow() {
 
   const maybeOpenDevTools = (tab) => {
     if (!WITH_DEVTOOLS || !tab || tab.devtoolsOpened) return;
-    tab.view.webContents.openDevTools({ mode: "detach" });
+    const contents = liveContents(tab);
+    if (!contents) return;
+    contents.openDevTools({ mode: "detach" });
     tab.devtoolsOpened = true;
   };
 
   const activateTab = (tabId) => {
+    reapDeadTabs();
     const next = tabs.find((tab) => tab.id === tabId);
     if (!next) return;
 
@@ -877,8 +945,8 @@ function createMainWindow() {
       windowId: win.id,
       previousTabId: previous?.id || null,
       tabId: next.id,
-      webContentsId: next.view.webContents.id,
-      url: next.view.webContents.getURL() || next.url,
+      webContentsId: contentsId(next),
+      url: contentsUrl(next),
     });
 
     try {
@@ -893,9 +961,7 @@ function createMainWindow() {
     sendTabState();
     maybeOpenDevTools(next);
     setImmediate(() => {
-      if (!next.view.webContents.isDestroyed()) {
-        next.view.webContents.focus();
-      }
+      liveContents(next)?.focus();
     });
   };
 
@@ -906,8 +972,8 @@ function createMainWindow() {
     diagnosticLog("tab-close-requested", {
       windowId: win.id,
       tabId: tab.id,
-      webContentsId: tab.view.webContents.id,
-      url: tab.view.webContents.getURL() || tab.url,
+      webContentsId: contentsId(tab),
+      url: contentsUrl(tab),
     });
 
     if (tabs.length === 1) {
@@ -915,7 +981,7 @@ function createMainWindow() {
         tab.url = welcomeUrl;
         tab.title = filenameFromUrl(welcomeUrl);
         setViewBackground(tab.view, colorForUrl(welcomeUrl));
-        tab.view.webContents.loadURL(welcomeUrl);
+        liveContents(tab)?.loadURL(welcomeUrl);
       }
       activateTab(tab.id);
       return;
@@ -929,7 +995,7 @@ function createMainWindow() {
     } catch (_) {
       // The tab may be inactive.
     }
-    tab.view.webContents.destroy();
+    liveContents(tab)?.destroy();
 
     if (!wasActive) {
       sendTabState();
@@ -963,7 +1029,7 @@ function createMainWindow() {
       diagnosticLog("tab-open-reused", {
         windowId: win.id,
         tabId: existing.id,
-        webContentsId: existing.view.webContents.id,
+        webContentsId: contentsId(existing),
         normalizedUrl,
       });
       activateTab(existing.id);
@@ -986,14 +1052,14 @@ function createMainWindow() {
     diagnosticLog("tab-created", {
       windowId: win.id,
       tabId: tab.id,
-      webContentsId: tab.view.webContents.id,
+      webContentsId: contentsId(tab),
       normalizedUrl,
     });
     setViewBackground(tab.view, colorForUrl(normalizedUrl));
     installPageBackgroundGuard(tab);
     installPageShortcuts(tab.view.webContents);
 
-    const updateTitle = (url = tab.view.webContents.getURL() || tab.url) => {
+    const updateTitle = (url = contentsUrl(tab)) => {
       tab.url = url || tab.url;
       tab.title = filenameFromUrl(tab.url);
       setViewBackground(tab.view, colorForUrl(tab.url));
@@ -1007,8 +1073,8 @@ function createMainWindow() {
       diagnosticLog("tab-window-open", {
         windowId: win.id,
         tabId: tab.id,
-        webContentsId: tab.view.webContents.id,
-        currentUrl: tab.view.webContents.getURL() || tab.url,
+        webContentsId: contentsId(tab),
+        currentUrl: contentsUrl(tab),
         targetUrl: url,
       });
       openTab(url, { activate: true, baseUrl: tab.url });
@@ -1016,14 +1082,14 @@ function createMainWindow() {
     });
 
     tab.view.webContents.on("will-navigate", (event, url) => {
-      const currentUrl = tab.view.webContents.getURL() || tab.url;
+      const currentUrl = contentsUrl(tab);
       const target = normalizeUrl(url, currentUrl || initialUrl);
       const existing = existingTabForDocument(target, tab.id);
       if (existing) {
         diagnosticLog("tab-will-navigate", {
           windowId: win.id,
           tabId: tab.id,
-          webContentsId: tab.view.webContents.id,
+          webContentsId: contentsId(tab),
           currentUrl,
           targetUrl: target,
           decision: "activate-existing-tab",
@@ -1037,7 +1103,7 @@ function createMainWindow() {
         diagnosticLog("tab-will-navigate", {
           windowId: win.id,
           tabId: tab.id,
-          webContentsId: tab.view.webContents.id,
+          webContentsId: contentsId(tab),
           currentUrl,
           targetUrl: target,
           decision: "open-new-tab",
@@ -1049,7 +1115,7 @@ function createMainWindow() {
       diagnosticLog("tab-will-navigate", {
         windowId: win.id,
         tabId: tab.id,
-        webContentsId: tab.view.webContents.id,
+        webContentsId: contentsId(tab),
         currentUrl,
         targetUrl: target,
         decision: "allow",
@@ -1060,9 +1126,9 @@ function createMainWindow() {
     const tabDetails = (details = {}) => ({
       windowId: win.id,
       tabId: tab.id,
-      webContentsId: tab.view.webContents.id,
+      webContentsId: contentsId(tab),
       active: tab.id === activeTabId,
-      url: tab.view.webContents.getURL() || tab.url,
+      url: contentsUrl(tab),
       ...details,
     });
 
@@ -1309,11 +1375,11 @@ function createMainWindow() {
   };
   const onHistoryCaptureWindow = async (event) => {
     const tab = activeTab();
-    if (!tab || event.sender !== tab.view.webContents) return null;
+    const contents = liveContents(tab);
+    if (!contents || event.sender !== contents) return null;
     const payload =
-      (await captureScreenshotPayload(() =>
-        tab.view.webContents.capturePage(),
-      )) || (await captureScreenshotPayload(() => win.capturePage()));
+      (await captureScreenshotPayload(() => contents.capturePage())) ||
+      (await captureScreenshotPayload(() => win.capturePage()));
     if (payload) diagnosticLog("history-screenshot", payload.timings);
     return payload;
   };
