@@ -297,8 +297,34 @@ data class AaSymbolIndex(
     }
 
     companion object {
-        /** Bump when the on-disk format or the scan semantics change, to invalidate stale caches. */
-        private const val FORMAT_VERSION = 4
+        /** Bump when the on-disk format changes. Scan SEMANTICS are covered by [scanCodeVersion]. */
+        private const val FORMAT_VERSION = 5
+
+        /**
+         * A hash of the scan's own bytecode, folded into the cache fingerprint.
+         *
+         * The fingerprint used to cover the classpath and a hand-maintained [FORMAT_VERSION], so a change
+         * to WHAT THE SCAN RECORDS — the whole point of touching this code — left every existing cache
+         * file valid and the sidecar happily served the old index. That cost an hour of a night's work
+         * exactly once: a fixed `kotlinNames` looked like it had no effect, while the cache under
+         * `build/…/completion-index` answered with the names the previous build had written. Nobody should
+         * have to remember a version bump for a behaviour change; the class files ARE the version.
+         *
+         * Costs two class-file reads per fingerprint, once per session build.
+         */
+        private val scanCodeVersion: String by lazy {
+            val md = MessageDigest.getInstance("SHA-256")
+            for (cls in listOf(FacadeVisitor::class.java, AaSymbolIndex::class.java, MetadataVisitor::class.java)) {
+                val resource = cls.name.replace('.', '/') + ".class"
+                val bytes = runCatching {
+                    cls.classLoader.getResourceAsStream(resource)?.use { it.readBytes() }
+                }.getOrNull()
+                // A missing resource must NOT silently fingerprint as "same": fall back to something that
+                // changes every run, so the cache is bypassed rather than trusted.
+                md.update(bytes ?: System.nanoTime().toString().toByteArray())
+            }
+            md.digest().joinToString("") { "%02x".format(it) }.take(12)
+        }
         private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
         val EMPTY = AaSymbolIndex(emptyMap(), emptyMap(), emptyMap())
@@ -338,6 +364,7 @@ data class AaSymbolIndex(
         private fun fingerprint(roots: List<Path>, packages: Set<String>): String {
             val md = MessageDigest.getInstance("SHA-256")
             md.update("v$FORMAT_VERSION".toByteArray())
+            md.update(scanCodeVersion.toByteArray())
             md.update(packages.sorted().joinToString(",").toByteArray())
             for (root in roots.sortedBy { it.toString() }) {
                 md.update(root.toString().toByteArray())
