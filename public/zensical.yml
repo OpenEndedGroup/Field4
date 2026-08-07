@@ -63,6 +63,7 @@ nav:
       - Small Languages:
         - FieldML Cheatsheet: fieldml_cheatsheet.md
         - FieldML Examples: fieldml_examples.md
+        - FieldML JVM Bridge: fieldml_host_bridge.md
         - Forth Examples: forth_examples.md
         - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md

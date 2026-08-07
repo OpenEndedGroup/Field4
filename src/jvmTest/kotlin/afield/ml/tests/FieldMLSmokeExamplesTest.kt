@@ -63,6 +63,7 @@ class FieldMLSmokeExamplesTest {
         val docsPages = listOf(
             Path.of("public/docs/fieldml_examples.md"),
             Path.of("public/docs/fieldml_cheatsheet.md"),
+            Path.of("public/docs/fieldml_host_bridge.md"),
         )
 
         docsPages.forEach { docsPath ->
@@ -78,6 +79,38 @@ class FieldMLSmokeExamplesTest {
             }
         }
     }
+
+    /**
+     * The loadable demo document is an artifact a human opens in a fresh Field, so a broken box in it
+     * is a broken promise. Every box's code is compiled and run here, the same guard the docs pages
+     * get — which is what makes the demo trustworthy without opening it.
+     */
+    @Test
+    fun hostBridgeDemoDocumentBoxesCompileAndEvaluate() {
+        val demo = Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertTrue(sources.size >= 4, "Expected at least four FieldML boxes in $demo, found ${sources.size}")
+        sources.forEachIndexed { index, source ->
+            val name = "$demo box ${index + 1}"
+            val result = compileOk(name, source)
+            val box = Box("fieldml-host-bridge-demo-$index")
+            Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+        }
+    }
+
+    /** The `:code "…"` values of a saved Field document, with EDN's string escapes undone. */
+    private fun ednCodeStrings(text: String): List<String> =
+        Regex(""":code\s+"((?:[^"\\]|\\.)*)"""")
+            .findAll(text)
+            .map { match ->
+                match.groupValues[1]
+                    .replace("\\n", "\n")
+                    .replace("\\t", "\t")
+                    .replace("\\\"", "\"")
+                    .replace("\\\\", "\\")
+            }
+            .toList()
 
     private fun compileOk(name: String, source: String): CompilationResult {
         val result = FieldMLCompiler.compile(source.trimIndent())
