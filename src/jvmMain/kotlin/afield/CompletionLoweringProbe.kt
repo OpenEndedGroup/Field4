@@ -219,38 +219,46 @@ object CompletionLoweringProbe {
     private data class Floor(val bucket: String, val minAttempts: Int, val minPercent: Int, val observed: Int)
 
     /**
-     * The floors, all cut ~5 points below the number measured over the whole harvested corpus (1708
-     * carets, ~60–530 per bucket). 5 points is chosen against the noise: the buckets are deterministic
-     * given the same corpus and the same backend, so any movement at all is a real change, and the margin
-     * exists for the ordering churn a candidate-set change causes near a truncation boundary — while every
-     * regression this measurement has actually caught moved a bucket by 10 to 40 points.
+     * The floors, all cut **3 points** below the number measured over the whole harvested corpus (5277
+     * carets, 480–698 per bucket — the `n=` each verdict line prints is the honest statement of how much
+     * each floor rests on).
      *
-     * `minAttempts` is ~90% of the sample size observed with the same corpus; it only falls if the
-     * corpus shrinks or the caret sweep stops recognising a kind of site.
+     * 3 points, not 5, and not 1. The margin has to cover the ordering churn a candidate-set change causes
+     * near a truncation boundary, and nothing more: the buckets are deterministic given the same corpus and
+     * backend, and every regression this measurement has actually caught moved a bucket 8 to 40 points. At
+     * 480+ carets a single caret is 0.2 points, so 3 points is ~15 carets of headroom — where the first
+     * version of this table, cut when `dot` had only 61 carets, was buying 5 points that were worth about
+     * three carets. Widening the sample is what let the margin tighten; if a bucket's `n` ever falls back
+     * towards 60, widen the sample rather than the margin.
+     *
+     * `minAttempts` is ~90% of the sample size observed with the same corpus; it only falls if the corpus
+     * shrinks or the caret sweep stops recognising a kind of site.
      */
     private val FLOORS = listOf(
         // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
         // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
-        Floor("dot/0/blank", minAttempts = 55, minPercent = 93, observed = 98),
-        Floor("dot/0/keep", minAttempts = 55, minPercent = 90, observed = 95),
+        Floor("dot/0/blank", minAttempts = 432, minPercent = 94, observed = 97),
+        Floor("dot/0/keep", minAttempts = 432, minPercent = 93, observed = 96),
         // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
-        Floor("dot/2/blank", minAttempts = 55, minPercent = 93, observed = 98),
-        Floor("dot/2/keep", minAttempts = 55, minPercent = 90, observed = 95),
+        Floor("dot/2/blank", minAttempts = 432, minPercent = 94, observed = 97),
+        Floor("dot/2/keep", minAttempts = 432, minPercent = 93, observed = 96),
         // Name position: scope, the index, and implicit-receiver extensions.
-        Floor("name/2/blank", minAttempts = 478, minPercent = 89, observed = 94),
-        Floor("name/2/keep", minAttempts = 407, minPercent = 89, observed = 94),
+        Floor("name/2/blank", minAttempts = 628, minPercent = 91, observed = 94),
+        Floor("name/2/keep", minAttempts = 528, minPercent = 91, observed = 94),
         // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
-        Floor("pkg/0/blank", minAttempts = 108, minPercent = 92, observed = 97),
-        Floor("pkg/0/keep", minAttempts = 108, minPercent = 92, observed = 97),
-        Floor("pkg/2/blank", minAttempts = 108, minPercent = 92, observed = 97),
-        Floor("pkg/2/keep", minAttempts = 108, minPercent = 92, observed = 97),
+        Floor("pkg/0/blank", minAttempts = 466, minPercent = 94, observed = 97),
+        Floor("pkg/0/keep", minAttempts = 466, minPercent = 93, observed = 96),
+        Floor("pkg/2/blank", minAttempts = 466, minPercent = 94, observed = 97),
+        Floor("pkg/2/keep", minAttempts = 466, minPercent = 94, observed = 97),
         // The headline number, gated too — not because the buckets don't cover it, but because it is what
         // gets quoted, and a change that trades one bucket off against another should have to say so.
-        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 90, observed = 95),
+        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 96),
     )
 
-    /** The sweep must have asked something like the whole corpus; a truncated sweep is not a gate. */
-    private const val MIN_REQUESTS = 1600
+    /** The sweep must have asked something like the whole corpus (5277 questions); a truncated sweep is
+     *  not a gate — and with the cap raised past what the corpus yields, a short run means something
+     *  stopped producing questions. */
+    private const val MIN_REQUESTS = 4800
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -274,10 +282,11 @@ object CompletionLoweringProbe {
             .split(',').map { it.trim() }.filter { it.isNotEmpty() }.map(::File).filter { it.isDirectory }
         val maxDocs = env("AFIELD_LOWERING_DOCS", "200").toInt()
         val caretsPerBox = env("AFIELD_LOWERING_CARETS", "4").toInt()
-        // High enough to sweep the whole corpus (~1.7k questions at 4 carets/box, ~1 minute at the
-        // measured p50): a cap that BINDS turns the report into a sample, and the buckets it starves are
-        // the ones with the interesting numbers. It stays a knob so an exploration run can be quick.
-        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "4000").toInt()
+        // High enough to sweep the whole corpus (~4.6k questions at 4 carets per kind per box, ~2 minutes
+        // at the measured p50): a cap that BINDS turns the report into a sample, and makes the numbers
+        // depend on how many questions the corpus happens to yield. It stays a knob so an exploration run
+        // can be quick — but the gate needs the whole sweep, which is why MIN_REQUESTS is a floor too.
+        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "8000").toInt()
         val seed = env("AFIELD_LOWERING_SEED", "42").toLong()
         val jsonOut = File(env("AFIELD_LOWERING_JSON", "build/completion-lowering/report.json"))
         val skipRecall = env("AFIELD_LOWERING_SKIP_RECALL", "0") == "1"
@@ -380,7 +389,13 @@ object CompletionLoweringProbe {
             // by caret index instead: request N of the run is caret N/182 of box N%182.
             val perCase = cases.map { c ->
                 val all = targetsIn(c.code)
-                val picked = all.shuffled(rng).distinctBy { it.offset }.take(caretsPerBox)
+                // Sampled PER KIND, not `take(n)` over the lot. Real box code is mostly name positions, so
+                // a flat sample follows that distribution: `dot` came out at 61 carets against `name`'s 531,
+                // and a floor cut 5 points under a 61-caret observation is three carets from a false red —
+                // which is how a gate gets deleted instead of repaired. Each bucket is measured on its own
+                // denominator anyway, so evening out the denominators costs nothing but requests.
+                val picked = all.shuffled(rng).distinctBy { it.offset }
+                    .groupBy { it.kind }.values.flatMap { it.take(caretsPerBox) }
                 picked.flatMap { site ->
                     // A bare `.` and two characters typed are different questions of the same caret; a
                     // name position with nothing typed is not asked at all (the AA path withholds
