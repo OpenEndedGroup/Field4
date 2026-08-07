@@ -1604,10 +1604,15 @@ class AaCompleter(
                 }.toList()
                 // Global symbols (index-backed) only once a prefix is typed — an empty prefix shouldn't
                 // flood the client with every class in the classpath (client owns ranking, not volume).
+                // Counted, not just collected: `0 candidates at name position` was the least informative
+                // note in the whole residual — it cannot distinguish "the index never held that name" from
+                // "it held it and resolution came back empty", which are opposite bugs with opposite fixes.
+                var indexNameHits = 0
                 val indexCallables: List<KaCallableSymbol> = if (prefix.isEmpty()) emptyList() else
                     index.callables.asSequence().flatMap { (pkg, names) ->
                         val fq = FqName(pkg)
                         names.asSequence().filter { it.startsWith(prefix) }
+                            .onEach { indexNameHits++ }
                             .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
                     }.toList()
                 val topCallables = indexCallables.filter { !it.isExtension }
@@ -1647,7 +1652,12 @@ class AaCompleter(
                     .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(
                     out,
-                    if (out.isEmpty()) "0 candidates at name position"
+                    // The breakdown goes AFTER a colon on purpose: the probe's histogram keys on the text
+                    // before it, so the reason stays one bucket instead of fragmenting per prefix, while a
+                    // paste-able example still carries the numbers.
+                    if (out.isEmpty()) "0 candidates at name position: prefix=$prefix " +
+                        "index-names=$indexNameHits resolved=${indexCallables.size} scope=${fromScopes.size} " +
+                        "receivers=${fromReceivers.size} classifiers=${classifiers.size}"
                     else if (expectedTypes.isNotEmpty())
                         "expected=${expectedTypes.joinToString("|") { shortenType(runCatching { it.toString() }.getOrDefault("?")) }}" +
                             " values=${expectedValues.size} fits=${out.count { it.fitsExpected }}"
