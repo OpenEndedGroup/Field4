@@ -3,6 +3,10 @@ package afield.stdlib.noir.audioai
 import afield.stdlib.AudioVisualizer
 import afield.stdlib.AudioVisualizerOptions
 import afield.stdlib.AudioVisualizerSource
+import java.util.Locale
+
+private fun candidateNumber(value: Double): String = String.format(Locale.US, "%.3f", value)
+private fun candidatePercent(value: Double): String = String.format(Locale.US, "%.1f", value * 100)
 
 private fun String.htmlEscaped(): String = buildString(length) {
     for (character in this@htmlEscaped) append(
@@ -32,6 +36,11 @@ fun candidateBoardHtml(
     val base = serviceBaseUrl.trimEnd('/').htmlEscaped()
     val setId = candidateSet.id.htmlEscaped()
     val cards = candidateSet.candidates.joinToString("\n") { candidate ->
+        val gesture = candidate.gestureEvaluation
+        val fit = gesture?.overallScore ?: candidate.score
+        val fitDetails = gesture?.laneScores?.entries?.sortedBy { it.key }?.joinToString("") { (name, score) ->
+            """<span title="${name.htmlEscaped()}: ${candidateNumber(score)}"><b>${name.htmlEscaped()}</b><i><em style="width:${candidatePercent(score)}%"></em></i></span>"""
+        }.orEmpty()
         val proxy = requireNotNull(candidate.proxyRepresentation) {
             "candidate ${candidate.index} has no inline proxy representation metadata"
         }
@@ -60,9 +69,10 @@ fun candidateBoardHtml(
         }.orEmpty()
         """
         <article class="fa-card" data-index="${candidate.index}">
-          <header><strong>${candidate.index + 1}</strong><span>seed ${candidate.seed}</span></header>
+          <header><strong>${candidate.index + 1}</strong><span>seed ${candidate.seed}${fit?.let { " · gesture ${candidateNumber(it)}" } ?: ""}</span></header>
           $candidatePlayer
           $splicePlayer
+          ${if (fitDetails.isEmpty()) "" else """<div class="fa-gesture-fit">$fitDetails</div>"""}
           <div class="fa-provenance">
             native ${native?.sampleRate ?: "?"} Hz / ${native?.channels ?: "?"} ch
             → proxy ${proxy.sampleRate ?: "?"} Hz / ${proxy.channels ?: "?"} ch
@@ -88,6 +98,10 @@ fun candidateBoardHtml(
         .fa-card header strong { color:#f0c674; font-size:16px; }
         .fa-card > .field-audio-visualizer { margin-top:8px }
         .fa-provenance { color:#878c98; margin:9px 0; font-family:ui-monospace,monospace; }
+        .fa-gesture-fit { display:grid; grid-template-columns:repeat(2,minmax(100px,1fr)); gap:4px 10px; margin:9px 0; }
+        .fa-gesture-fit span { display:grid; grid-template-columns:72px 1fr; gap:5px; align-items:center; color:#8f949f; font-size:9px; }
+        .fa-gesture-fit b { overflow:hidden; text-overflow:ellipsis; font-weight:500; white-space:nowrap; }
+        .fa-gesture-fit i { height:3px; background:#32353c; overflow:hidden; } .fa-gesture-fit em { display:block; height:100%; background:#f0c674; }
         .fa-judgement { display:grid; grid-template-columns:1fr auto; gap:6px 10px; align-items:center; }
         .fa-note { grid-column:1 / -1; background:#18191d; border:1px solid #3b3e46; color:#ddd; padding:5px 7px; }
         .fa-save { justify-self:start; background:#323641; color:#ddd; border:1px solid #4a4f5d; border-radius:4px; padding:4px 12px; }

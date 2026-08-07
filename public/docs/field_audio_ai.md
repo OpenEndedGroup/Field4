@@ -20,6 +20,7 @@ current pinned HTTP objects, states, and error vocabulary.
 - immutable content-addressed source assets and 48 kHz project representations;
 - asynchronous, cached and reproducible operations with progress and structured errors;
 - source-window MusicGen-Style candidate families and automatic splice previews;
+- typed temporal gesture boards with prompt compilation and waveform-based candidate scoring;
 - EnCodec token capture, reconstruction, metrics, waveform and spectrogram comparison;
 - multi-scale beat and tempo trajectories;
 - monophonic pYIN and polyphonic Basic Pitch analysis;
@@ -56,20 +57,23 @@ does not accept an arbitrary event timeline or density curve.
 
 ## Gestures and how strongly they are enforced
 
-Field's intended gesture vocabulary includes timed prompts and events, chord regions, pitch
-salience, pulse, density, register and activity curves, continuation endpoints, corpus attraction,
-and EnCodec codebook selections. The interface should always reveal how a gesture reaches the
-sound:
+Field's gesture board now accepts timed prompt regions, salience events, and density, register,
+brightness and activity curves. Chord regions, pitch salience, pulse, continuation endpoints,
+corpus attraction, and EnCodec codebook selections remain later vocabulary. The interface always
+reveals how a gesture reaches the sound:
 
 - **direct** — consumed as a native model condition;
 - **compiled** — translated into chords, drums, pitch salience or several bounded requests;
 - **evaluative** — used to analyse, rank and retry candidate families;
 - **transformative** — applied afterward through tokens, splicing or decoding.
 
-This distinction matters. A density curve can already be useful as an analysis-and-ranking target,
-but it should not be labelled as direct control. A future JASCO worker can make timed chords, drum
-gestures and melodic salience model-native. Until then, source-window motion, parameter sweeps,
-candidate comparison, beat/pitch analysis and token surgery form the honest playable instrument.
+This distinction matters. Today a density curve is an analysis-and-ranking target, not a direct
+MusicGen control. The service measures every candidate, persists per-lane scores, and the Field
+browser presents them alongside listening and human ratings. A future JASCO worker can make timed
+chords, drum gestures and melodic salience model-native without changing the board's data model.
+
+Start with the executable [gesture board](audio_ai_gesture_board.md), then use source-window motion,
+parameter sweeps, candidate comparison, beat/pitch analysis and token surgery around it.
 
 Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) and the
 [recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation).

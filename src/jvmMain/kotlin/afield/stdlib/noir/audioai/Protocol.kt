@@ -53,6 +53,97 @@ data class WaveformSummary(
 )
 
 @Serializable
+enum class GestureDelivery {
+    @SerialName("direct") DIRECT,
+    @SerialName("compiled") COMPILED,
+    @SerialName("evaluative") EVALUATIVE,
+    @SerialName("transformative") TRANSFORMATIVE,
+}
+
+@Serializable
+enum class GestureCurveKind {
+    @SerialName("density") DENSITY,
+    @SerialName("activity") ACTIVITY,
+    @SerialName("register") REGISTER,
+    @SerialName("brightness") BRIGHTNESS,
+}
+
+@Serializable
+data class GesturePoint(
+    @SerialName("time_seconds") val timeSeconds: Double,
+    val value: Double,
+)
+
+@Serializable
+data class GestureCurve(
+    val name: String,
+    val kind: GestureCurveKind,
+    val points: List<GesturePoint>,
+    val weight: Double = 1.0,
+    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
+)
+
+@Serializable
+data class GestureEvent(
+    @SerialName("time_seconds") val timeSeconds: Double,
+    val label: String,
+    val strength: Double = 1.0,
+    val weight: Double = 1.0,
+    val delivery: GestureDelivery = GestureDelivery.EVALUATIVE,
+)
+
+@Serializable
+data class GesturePromptRegion(
+    @SerialName("start_seconds") val startSeconds: Double,
+    @SerialName("duration_seconds") val durationSeconds: Double,
+    val text: String,
+    val weight: Double = 1.0,
+    val delivery: GestureDelivery = GestureDelivery.COMPILED,
+)
+
+@Serializable
+data class GestureBoard(
+    @SerialName("duration_seconds") val durationSeconds: Double,
+    @SerialName("base_prompt") val basePrompt: String = "",
+    @SerialName("prompt_regions") val promptRegions: List<GesturePromptRegion> = emptyList(),
+    val events: List<GestureEvent> = emptyList(),
+    val curves: List<GestureCurve> = emptyList(),
+    val metadata: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class GestureBinding(
+    val name: String,
+    val kind: String,
+    val delivery: GestureDelivery,
+    val target: String,
+    val explanation: String,
+)
+
+@Serializable
+data class GestureCompileRequest(
+    val board: GestureBoard,
+    val operation: String = "generate.style",
+    val parameters: JsonObject = JsonObject(emptyMap()),
+)
+
+@Serializable
+data class GestureCompilation(
+    val board: GestureBoard,
+    val operation: String,
+    @SerialName("effective_prompt") val effectivePrompt: String,
+    val parameters: JsonObject,
+    val bindings: List<GestureBinding>,
+)
+
+@Serializable
+data class GestureEvaluation(
+    @SerialName("overall_score") val overallScore: Double,
+    @SerialName("lane_scores") val laneScores: Map<String, Double> = emptyMap(),
+    @SerialName("feature_summary") val featureSummary: Map<String, Double> = emptyMap(),
+)
+
+@Serializable
 data class ModelOperation(
     val operation: String,
     val inputs: List<AssetRegion> = emptyList(),
@@ -61,6 +152,7 @@ data class ModelOperation(
     @SerialName("candidate_count") val candidateCount: Int = 8,
     @SerialName("backend_preference") val backendPreference: String? = null,
     @SerialName("requested_by") val requestedBy: String? = null,
+    @SerialName("gesture_board") val gestureBoard: GestureBoard? = null,
     @SerialName("force_regenerate") val forceRegenerate: Boolean = false,
 )
 
@@ -73,6 +165,7 @@ enum class JobState {
     @SerialName("analysing") ANALYSING,
     @SerialName("decoding") DECODING,
     @SerialName("generating") GENERATING,
+    @SerialName("evaluating_gestures") EVALUATING_GESTURES,
     @SerialName("writing_assets") WRITING_ASSETS,
     @SerialName("making_proxies") MAKING_PROXIES,
     @SerialName("complete") COMPLETE,
@@ -151,6 +244,7 @@ data class Candidate(
     @SerialName("proxy_representation") val proxyRepresentation: AssetRepresentation? = null,
     @SerialName("splice_preview_representation") val splicePreviewRepresentation: AssetRepresentation? = null,
     val score: Double? = null,
+    @SerialName("gesture_evaluation") val gestureEvaluation: GestureEvaluation? = null,
     val rating: Double? = null,
     val selected: Boolean = false,
     val annotation: String? = null,

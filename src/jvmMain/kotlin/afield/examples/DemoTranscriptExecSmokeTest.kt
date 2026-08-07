@@ -90,6 +90,9 @@ object DemoTranscriptExecSmokeTest {
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",
+        // The first box draws the real typed gesture-board renderer. The service-backed second box
+        // remains inert until a user runs it with Field Audio available.
+        "audio_ai_gesture_board",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,

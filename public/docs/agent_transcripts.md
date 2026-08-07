@@ -276,6 +276,20 @@ Walkthrough: [Polytopes: topology first, coordinates later](polytope_examples.md
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/polytope_conway_gallery/metadata.edn)
 
 
+## Service-backed composition scenes
+
+These are complete, editable starting points whose first view works without model weights. Their
+generation boxes deliberately remain explicit about the companion service or hardware they need.
+
+**audio_ai_gesture_board** — Draw timed prompt regions, salience events, and activity, density,
+register and brightness curves over one shared musical timeline. The first box renders and explains
+the typed sketch immediately. The second resolves a source recording by filename, requests eight
+MusicGen-Style candidates, then presents both gesture-fit rankings and the full waveform/splice
+audition board. The current worker treats prompt wording as compiled conditioning and the numeric
+lanes as waveform-evaluated targets; the UI never disguises either as native timed control.
+Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_gesture_board/metadata.edn)
+
 ## visionOS device scenes
 
 These publish to Field4Vision's autonomous Live Metal renderer. Open **Live Metal** in the visionOS
