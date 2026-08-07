@@ -88,9 +88,9 @@ it is a literal token that must still appear at (or within two lines of) the cit
 | 11 | the list of editor language modules loaded at boot | `src/commonMain/resources/bootstrapMonaco.js:45` | `FIELD_LANGUAGE_MODULES` |
 | 12 | the one-at-a-time module loader, and why it is not one `require` | `src/commonMain/resources/bootstrapMonaco.js:58` | `loadFieldLanguageModules` |
 | 13 | the set of languages Field's own suggest widget serves | `src/commonMain/resources/fieldSuggest.js:7` | `DEFAULT_LANGUAGES` |
-| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1091` | `this.languages.has` |
-| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:689` | `const rankItems` |
-| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1212` | `requestWithReply("complete"` |
+| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1108` | `this.languages.has` |
+| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:702` | `const rankItems` |
+| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1229` | `requestWithReply("complete"` |
 | 17 | the server handler for it | `src/jvmMain/kotlin/afield/Server.kt:2189` | `handlers["complete"]` |
 | 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/Server.kt:2195` | `box.ke.complete` |
 | 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2200` | `handlers["symbol-context"]` |
@@ -252,13 +252,13 @@ Three properties of the registry that matter when you are writing one:
 | where it runs | browser | JVM |
 | entry point | `provideCompletionItems` (`languageExtensions.js:84`) | `BoxExecution.complete` (`execution.kt:89`) |
 | what it can know | the text, lexically | whatever the compiler knows, including inferred types |
-| ranking | client-side either way — `rankItems` (`fieldSuggest.js:689`) | client-side either way |
+| ranking | client-side either way — `rankItems` (`fieldSuggest.js:702`) | client-side either way |
 | latency | none | one websocket round trip |
 | opt-in | `FieldLanguageExtensions.register` | membership of `DEFAULT_LANGUAGES` (`fieldSuggest.js:7`) |
 
 Both routes deliver into the *same* widget and the *same* client-side ranking. The server does not
 rank; it returns everything and `rankItems` scores by fuzzy match, category weight, recency and the
-server-supplied `contextScore` (`fieldSuggest.js:689-710`). So a server-side engine's leverage is in
+server-supplied `contextScore` (`fieldSuggest.js:702-723`). So a server-side engine's leverage is in
 what it *knows*, not in what order it answers.
 
 Field's suggest widget serves **13** languages: `bend`, `clojure`, `fieldml`, `forth`, `glsl`,
@@ -268,7 +268,7 @@ Field's suggest widget serves **13** languages: `bend`, `clojure`, `fieldml`, `f
 
 And note the two exceptions, because "everything goes through FieldSuggest" is *almost* true: `msl` and
 `morpho` have editor modules but are **not** in `DEFAULT_LANGUAGES`, so the gate at
-`fieldSuggest.js:1091` returns false for them. MSL supplies its own Monaco provider (`msl.js:280`);
+`fieldSuggest.js:1108` returns false for them. MSL supplies its own Monaco provider (`msl.js:280`);
 morpho has no completion at all. `dev_docs/COMPLETION_ENGINE.md:3-9` states the policy — that path is
 retired, and a second completion path through Monaco's provider API is not to be added. Read it before
 you copy MSL.
