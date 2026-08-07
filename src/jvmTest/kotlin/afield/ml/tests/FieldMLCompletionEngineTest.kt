@@ -168,6 +168,66 @@ class FieldMLCompletionEngineTest {
         )
     }
 
+    // ---- typed host values -------------------------------------------------------------------
+    //
+    // These are only possible because host values carry their JVM class now. Before, a receiver's type
+    // was the single opaque `Host` and there was nothing to reflect on.
+
+    @Test
+    fun completesJvmMembersInsideHostGet() {
+        val completion = complete("""thisBox |> hostGet "na""")
+
+        val item = assertHas(completion, "name")
+        assertEquals("String", item.tail)
+        assertTrue("Box" in item.documentation, item.documentation)
+    }
+
+    @Test
+    fun completesJvmMethodsInsideHostCall() {
+        val completion = complete("""fline |> hostCall "trans""")
+
+        val item = assertHas(completion, "transform")
+        assertEquals("(Function1) -> FLine", item.tail)
+    }
+
+    @Test
+    fun completesJvmMembersAfterADotOnATypedHostValue() {
+        val samples = (0 until 16).joinToString(", ") { "0.0" }
+        val completion = complete(
+            """
+            let img = hostNew (4, 4, 1, [$samples]) (hostClass "afield.stdlib.Img")
+            img.
+            """,
+        )
+
+        assertEquals("Int", assertHas(completion, "width").tail)
+        assertEquals("Int", assertHas(completion, "pixelCount").tail)
+        assertEquals("Bool", assertHas(completion, "isScalar").tail)
+    }
+
+    @Test
+    fun completesStaticMembersOffAClassHandle() {
+        assertHas(complete("""hostClass "afield.stdlib.Img" |> hostGet "Comp"""), "Companion")
+    }
+
+    @Test
+    fun completesStaticMethodsForHostExtOnTheNamedOwner() {
+        val completion = complete(
+            """
+            let Imaging = hostClass "afield.stdlib.Imaging_fieldKt"
+            fline |> hostExt Imaging "colorm
+            """.trimIndent().trimEnd(),
+        )
+        assertHas(completion, "colormap")
+    }
+
+    @Test
+    fun completesClassNamesForHostAs() {
+        val completion = complete("""hostAs "Vec""")
+        assertHas(completion, "Vec2")
+        assertHas(completion, "Vec3")
+    }
+
     private fun contextAt(source: String, symbol: String, occurrence: Int = 1) =
         FieldMLCompletionEngine.describeSymbolContext(
             SymbolContextRequest(

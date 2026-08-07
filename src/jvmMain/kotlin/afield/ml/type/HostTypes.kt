@@ -51,6 +51,9 @@ object FieldMLHostTypes {
         "Box" to "afield.Box",
     )
 
+    /** The short names FieldML understands in `hostAs` and `hostClass`, for completion. */
+    val curatedTypeNames: List<String> get() = curatedClassNames.keys.toList()
+
     /** The type of a host *value* of [className]. */
     fun valueType(className: String): THost =
         THost(curatedClassNames.entries.firstOrNull { it.value == className }?.key ?: className)

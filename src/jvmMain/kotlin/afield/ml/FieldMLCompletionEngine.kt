@@ -14,6 +14,7 @@ import afield.ml.ast.PList
 import afield.ml.ast.PTuple
 import afield.ml.ast.PVar
 import afield.ml.ast.Pattern
+import afield.ml.type.FieldMLHostTypes
 import afield.ml.type.FieldMLTypePrelude
 import afield.ml.type.Scheme
 import afield.ml.type.TExpr
@@ -41,6 +42,11 @@ object FieldMLCompletionEngine {
 
         hostTapArgumentContext(code, cursor)?.let { context ->
             return completion(context.boundsStart, context.boundsEnd, hostTapArgumentItems(context))
+        }
+
+        hostMemberContext(code, cursor)?.let { context ->
+            val members = hostMemberItems(code, context)
+            if (members.isNotEmpty()) return completion(context.boundsStart, context.boundsEnd, members)
         }
 
         recordFieldContext(code, cursor)?.let { context ->
@@ -355,7 +361,9 @@ object FieldMLCompletionEngine {
     private fun typedVisibleNameFallback(code: String, cursor: Int): Map<String, Type> {
         val before = code.take(cursor)
         val out = linkedMapOf<String, Type>()
-        Regex("""(?m)^\s*let\s+([a-z_][A-Za-z0-9_']*)\s*=\s*(.+)$""")
+        // Capitalised names included: `let Img = hostClass "…"` is how a class handle reads, and this
+        // fallback is exactly the path taken while the rest of the line is still being typed.
+        Regex("""(?m)^\s*let\s+([A-Za-z_][A-Za-z0-9_']*)\s*=\s*(.+)$""")
             .findAll(before)
             .forEach { match ->
                 val name = match.groupValues[1]
@@ -395,7 +403,12 @@ object FieldMLCompletionEngine {
     }
 
     private fun recordFieldItems(code: String, context: RecordFieldContext): List<Metadata> {
-        val type = typedVisibleNames(context.sourceForTypes, context.sourceForTypes.length)[context.receiver] as? TRecord ?: return emptyList()
+        val receiverType = typedVisibleNames(context.sourceForTypes, context.sourceForTypes.length)[context.receiver]
+        // Dot access on a host value reads a JVM member, so a receiver whose class is known completes
+        // from reflection. This is the payoff of typing host values at all: `img.` offers what `Img`
+        // has, which is something FieldML could not do at any point before tonight.
+        if (receiverType is THost) return hostMemberMetadata(receiverType, context.prefix, context.receiver)
+        val type = receiverType as? TRecord ?: return emptyList()
         return type.fields.entries
             .filter { (field, _) -> field.startsWith(context.prefix) }
             .map { (field, type) ->
@@ -436,6 +449,149 @@ object FieldMLCompletionEngine {
                     .filter { it.firstOrNull()?.isUpperCase() == true }
             }
             .toList()
+
+    /**
+     * The caret sitting inside the string literal of a `host…` intrinsic — the one place where what a
+     * FieldML author needs to know is *the JVM's* vocabulary rather than FieldML's.
+     *
+     * The receiver comes from the pipe on the left, which is why this only fires for the piped form
+     * (`img |> hostGet "wi`). In `hostGet "wi" img` the receiver is written after the caret and
+     * genuinely is not available yet; offering everything in that case would be worse than offering
+     * nothing. `hostExt` is the exception: its owner class is written *before* the name.
+     */
+    private fun hostMemberContext(code: String, cursor: Int): HostStringContext? {
+        val quote = code.lastIndexOf('"', startIndex = (cursor - 1).coerceAtLeast(0))
+        if (quote < 0) return null
+        val nextQuote = code.indexOf('"', quote + 1)
+        if (nextQuote in 0 until cursor) return null
+        val match = Regex("""\b(host[A-Za-z0-9]*)\s+(?:([A-Za-z_][A-Za-z0-9_']*)\s+)?$""")
+            .find(code.substring(0, quote).takeLast(64)) ?: return null
+        val intrinsic = match.groupValues[1]
+        if (intrinsic !in hostIntrinsicsWithNamedMembers) return null
+        return HostStringContext(
+            intrinsic = intrinsic,
+            owner = match.groupValues[2].takeIf { it.isNotBlank() },
+            prefix = code.substring(quote + 1, cursor),
+            boundsStart = quote + 1,
+            boundsEnd = cursor,
+            quoteIndex = quote,
+        )
+    }
+
+    private val hostIntrinsicsWithNamedMembers = setOf(
+        "hostGet",
+        "hostSet",
+        "hostCall",
+        "hostCall0",
+        "hostCall1",
+        "hostCall2",
+        "hostExt",
+        "hostClass",
+        "hostAs",
+    )
+
+    private fun hostMemberItems(code: String, context: HostStringContext): List<Metadata> {
+        if (context.intrinsic == "hostClass" || context.intrinsic == "hostAs") {
+            return hostClassNameItems(context.prefix)
+        }
+        val receiver = when (context.intrinsic) {
+            // `hostExt Owner "name"` calls a static of Owner, and Owner is a name in scope.
+            "hostExt" -> context.owner?.let { typedVisibleNames(code, context.quoteIndex)[it] }
+            else -> pipeInputType(code, context.quoteIndex)
+        } ?: return emptyList()
+        return when (context.intrinsic) {
+            "hostGet", "hostSet" -> hostMemberMetadata(receiver, context.prefix, receiverLabel(receiver))
+            else -> hostMethodMetadata(receiver, context.prefix, receiverLabel(receiver))
+        }
+    }
+
+    private fun receiverLabel(type: Type): String = TypePrinter().print(type)
+
+    private fun hostMemberMetadata(receiver: Type, prefix: String, label: String): List<Metadata> =
+        FieldMLHostTypes.readableMembers(receiver)
+            .filter { it.name.startsWith(prefix) }
+            .take(200)
+            .map { member ->
+                val rendered = TypePrinter().printSignature(member.type)
+                Metadata(
+                    icon = "property",
+                    tail = rendered,
+                    text = member.name,
+                    displayText = member.name,
+                    documentation = "JVM member of `${member.owner}`.\n\n```fieldml\n$label.${member.name} : $rendered\n```",
+                    category = "values",
+                )
+            }
+
+    private fun hostMethodMetadata(receiver: Type, prefix: String, label: String): List<Metadata> =
+        FieldMLHostTypes.callableMethods(receiver)
+            .filter { it.name.startsWith(prefix) }
+            .take(200)
+            .map { method ->
+                val rendered = TypePrinter().printSignature(method.resultType)
+                val parameters = method.parameters.joinToString(", ")
+                Metadata(
+                    icon = "method",
+                    tail = "($parameters) -> $rendered",
+                    text = method.name,
+                    displayText = method.name,
+                    documentation = "JVM method of `${method.owner}`.\n\n```kotlin\n${method.owner}.${method.name}" +
+                        "($parameters): $rendered\n```",
+                    category = "functions",
+                )
+            }
+
+    /**
+     * Class names for `hostClass` and `hostAs`: the short aliases FieldML already understands, then
+     * the classes in Field's own source index. The index stores a simple name and a file, so the
+     * package has to be read back out of the file — done once per process, because it is hundreds of
+     * files and this runs on a keystroke.
+     */
+    private fun hostClassNameItems(prefix: String): List<Metadata> =
+        (FieldMLHostTypes.curatedTypeNames + indexedKotlinClassNames())
+            .asSequence()
+            .filter { it.startsWith(prefix) }
+            .distinct()
+            .take(120)
+            .map { name ->
+                Metadata(
+                    icon = "class",
+                    tail = "JVM class",
+                    text = name,
+                    displayText = name,
+                    documentation = "```fieldml\nhostClass \"$name\"\n```",
+                    category = "values",
+                )
+            }
+            .toList()
+
+    private val indexedKotlinClassNames: () -> List<String> = run {
+        var cached: List<String>? = null
+        {
+            cached ?: buildIndexedKotlinClassNames().also { cached = it }
+        }
+    }
+
+    private fun buildIndexedKotlinClassNames(): List<String> {
+        val root = Paths.get(System.getProperty("user.dir")).normalize()
+        val index = KotlinSourceIndex.latestIndex ?: KotlinSourceIndex.loadIndex() ?: return emptyList()
+        val packages = mutableMapOf<String, String>()
+        return index.definitions
+            .asSequence()
+            .filter { it.kind == "class" || it.kind == "object" || it.kind == "interface" }
+            .mapNotNull { definition ->
+                val pkg = packages.getOrPut(definition.filePath) {
+                    val file = root.resolve(definition.filePath).normalize()
+                    val text = runCatching { Files.readString(file) }.getOrNull() ?: return@getOrPut ""
+                    Regex("""(?m)^\s*package\s+([A-Za-z_][A-Za-z0-9_.]*)""").find(text)?.groupValues?.get(1).orEmpty()
+                }
+                val simple = definition.name.substringAfterLast('.')
+                if (pkg.isBlank()) simple else "$pkg.$simple"
+            }
+            .distinct()
+            .sorted()
+            .toList()
+    }
 
     private fun hostTapTargetContext(code: String, cursor: Int): StringContext? {
         val quote = code.lastIndexOf('"', startIndex = (cursor - 1).coerceAtLeast(0))
@@ -744,6 +900,16 @@ object FieldMLCompletionEngine {
     private data class SymbolBounds(val start: Int, val end: Int, val text: String)
     private data class Snippet(val label: String, val insertText: String, val documentation: String)
     private data class StringContext(val prefix: String, val boundsStart: Int, val boundsEnd: Int)
+
+    private data class HostStringContext(
+        val intrinsic: String,
+        val owner: String?,
+        val prefix: String,
+        val boundsStart: Int,
+        val boundsEnd: Int,
+        /** Where the literal opens, which is also where the receiver's pipe expression ends. */
+        val quoteIndex: Int,
+    )
     private data class RecordFieldContext(
         val receiver: String,
         val prefix: String,
