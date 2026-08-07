@@ -168,17 +168,42 @@ so the client sees a clean "server-fail" and falls back to K1, never an HTTP err
 `AaCompleter.complete()` (`AaCompletion.kt:295`) reconstructs the box's editing context as a synthetic,
 compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in scope at the caret:
 
-- **Preamble → local stubs.** A dangling file's own *top-level* declarations don't enter completion
-  scope, so `splitPreamble()` (`:349`) splits the inherited preamble into (a) import lines kept at file
-  top level and (b) every `prop<>`/`@exported`/plain declaration re-emitted as a *local* stub (name +
-  type preserved, receiver/delegate stripped) inside the completion function. This is the load-bearing
-  invariant that surfaces inherited REPL names — see `COMPLETION_ENGINE.md`.
+- **Preamble → local stubs, *and* file scope.** A dangling file's own *top-level* declarations don't
+  enter completion **scope** (they are not enumerated by `scopeContext`), so `splitPreamble()` (`:349`)
+  splits the inherited preamble into (a) import lines kept at file top level and (b) every
+  `prop<>`/`@exported`/plain declaration re-emitted as a *local* stub (name + type preserved,
+  receiver/delegate stripped) inside the completion function. This is the load-bearing invariant that
+  surfaces inherited REPL names — see `COMPLETION_ENGINE.md`.
+
+  They are also emitted **verbatim at file scope**, gated on the preamble text parsing cleanly on its
+  own (`parses()`; an unparseable preamble degrades to stubs-only rather than breaking the request).
+  Top-level declarations don't *enumerate*, but they do **resolve** — and a stub cannot stand in for a
+  class, nor for an extension whose parameter is a lambda with a receiver. The graphics `/*supermap*/`
+  macro writes both (`class MappedStructure { lateinit var tri: IntBuffer … }` +
+  `fun Mesh.set(…, builder: MappedStructure.() -> Unit)`), so without them the body of
+  `m.set(3, 1) { tri.‸ }` had no `MappedStructure` receiver: `tri` resolved to the next thing in scope
+  by that name — `afield.four.synth.tri`, a triangle oscillator, via intro's `import afield.four.synth.*`
+  — and the panel answered with `TriOsc`'s members. Because file-scope declarations don't enumerate, the
+  dot path adds the file's own callables explicitly (`fromFile`) and the name path its own classifiers
+  (`fileClassifiers`), which is what makes the preamble's `m.set(`/`m.pos` reachable on `m.`.
 - **Synthetic declarations → file scope plus discovery stubs.** Language runtimes such as KotlinJS
   can supply JVM-analysis-safe type models separately from the inherited REPL preamble. Classes and
   objects remain at file scope, including nested classifiers such as `THREE.Vector3`; top-level
   callables/properties are additionally stubbed locally so bare-name discovery remains reliable.
-- **Implicit receivers → `with(...)` scopes.** Each implicit receiver type becomes a `with(__rN) { … }`
-  wrapper (`:320-328`) so receiver members resolve as bare names and dot-completion on the receiver works.
+- **Implicit receivers → `with(...)` scopes.** Each implicit receiver type becomes a
+  `with<Type, Unit>(__rN) { … }` wrapper (`:320-328`) so receiver members resolve as bare names and
+  dot-completion on the receiver works. Both type arguments are **explicit**: leaving `R` to be inferred
+  from the block means a box whose last expression doesn't type — i.e. any box mid-edit — fails to infer
+  `with` itself, putting the receiver scope at risk for the whole box. That was every injected-region
+  error the lowering invariant found (5 boxes, all visionOS/remoteAR); pinning `R = Unit` costs nothing,
+  since a block's value is coerced to Unit anyway.
+- **The empty selector slot → the caret marker.** `recv.‸` at the end of a line parses to *no*
+  `KtQualifiedExpression`, so the dot path had no receiver to work from and bailed ("no qualified expr" —
+  11 of the caret sweep's misses, every one of them the most ordinary thing a user does). The marker
+  already spliced at untyped expression slots is now spliced into an empty selector too, making it
+  `recv.__fieldCaret__`; as a bonus this gives the IDE's extension-applicability checker the selector it
+  needs, which could never be built at a bare dot before. Only when the slot really is empty: if the next
+  character could continue an identifier there *is* a selector, and appending would rename it.
 - **Analysis** (`completeAt`, `:381`) runs inside `analyze(file) { … }`:
   - **Dot completion** (`recv.` / safe `recv?.`, `:401`): resolves the receiver's expression type, then
     lists substituted member callables via `type.scope.getCallableSignatures(...)`, nested classifiers
@@ -188,8 +213,84 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
     to avoid flooding), implicit-receiver members, index-backed global symbols once a prefix is typed,
     receiver-applicable extension functions, classifiers, and — at an argument position — the enclosing
     call's not-yet-supplied **named parameters** (`:442-453`). Named-argument completion is AA-only; the
-    K1 delegate produces none (this is what the E2E probe asserts to prove AA actually served).
+    K1 delegate produces none (this is what the E2E probe asserts to prove AA actually served). When the
+    enclosing call doesn't resolve — one bad argument is enough, which is the normal state of a call being
+    written — `resolveToCallCandidates` returns nothing and the parameter names went with it. That is
+    backwards, since the names are *most* wanted while the call is still wrong, so there is a fallback
+    through the callee's **name**: every function in scope or in the index under that name, unioned.
+  - **Package qualifiers** (`afield.‸` → `stdlib`, `four`): see the ASM index section.
+  - **Visibility** (`accessible`): every candidate has to be something the box could actually *write*. A
+    type's member scope is the declaration's, not the use site's, so it hands back `private`, Java
+    package-private and other-module `internal` members alike — `TriOsc` offered its `private var
+    integrator`/`phase`/`freqBuf` and `Signal`'s `private var _cache*`, `java.nio.IntBuffer` offered
+    `Buffer`'s package-private `address`/`base()`/`checkIndex()`. `PUBLIC` (the overwhelming majority)
+    and `LOCAL` (the preamble's own stubs) short-circuit; anything else asks AA's own
+    `createUseSiteVisibilityChecker`, which gets the cases a hand-rolled rule wouldn't (private IS
+    visible inside its own class, `protected` from a subclass). Over the differential corpus this drops
+    exactly 9 candidates and adds none; all 9 are `private`/`internal` on inspection.
   - **The expected type at the caret** — see below.
+
+#### Measuring it: `completion.lowering-invariant.probe`
+
+Two ground-truth measurements over a corpus of real boxes (`CompletionLoweringProbe`), so completion
+quality stops being a matter of opinion and reported screenshots. Report-only — it prints numbers, not a
+verdict; thresholds belong in a gate once the numbers are known.
+
+- **The lowering invariant.** `/lower` builds the same synthetic file `/complete` would (both go through
+  `AaCompleter.lower`, so they cannot drift) and hands it to the compiler's own checkers. Each error is
+  attributed to a region: an error in the *injected* regions (file-scope preamble, local stubs, the
+  `fun __c` wrapper) is the lowering's own fault; an error in the *snippet* region is the box needing
+  runtime context a headless session can't have, which predicts where completion will be weak.
+- **Caret recall against the source.** Working box code is a free labelled corpus: at a caret in front of
+  `pos.add(…)` the answer is `add`, with no fixture to write. Carets are sampled in two modes — `blank`
+  (rest of the line removed: what happens while *typing*) and `keep` (left in place: *editing* existing
+  code) — and at 0 and 2 characters typed on the same caret, so the buckets are comparable.
+
+#### The corpus is harvested, not read (`CompletionCorpus` / `completion.corpus-harvest.probe`)
+
+A document as materialised on disk is **not** the context a user edits in. A large part of a box's
+inherited preamble is written by macro expansion, not by an author: `prop<Int>(sgL)` becomes
+`var Box.sgL by Inheritance<Int>()`, `moduleHere { }` becomes the `/*supermap*/ class MappedStructure` +
+`fun Mesh.set(…, builder: MappedStructure.() -> Unit)` pair plus the generated `Structure` classes and
+push-constant bindings, `@exported` republishes a box's own values. Measured against raw documents, the
+probe's top unresolved names were `renderer` (33), `window` (28) and the whole `sg*` family — every one a
+macro expansion that hadn't happened.
+
+`CompletionCorpus.harvest` gets them without running anything: `applyMacros(previewOnly = false)` is the
+engine's own expansion pass, and it merges each macro's generated segments into the box's preamble
+*without evaluating a line of box code* — no window, no GPU, no runloop, and a box that would loop forever
+at runtime harvests in milliseconds. The result is checked in under `tools/completion-corpus/boxes/` as one
+manifest line per box plus a `.preamble.kt` per box that has one, so the measurement is reproducible and
+the interesting part — what context completion gains or loses when a macro changes — shows up as a diff.
+`completion.corpus-harvest.probe` regenerates it with `AFIELD_HARVEST_WRITE=1` and otherwise **guards**
+it: it re-harvests, compares, and fails on `DRIFT` if a fixture no longer matches the code it came from.
+Not captured: `@exported` republication, which needs real evaluation of a parent box.
+
+Baselines on the 49 bundled starting points (182 Kotlin boxes, ~7.1k lines, 19 with a macro-expanded
+preamble of which 9 carry the `/*supermap*/` class), 2026-08-06: **182/182 boxes lower, 0 preambles dropped
+as unparseable, 0 injected-region errors.** 223 snippet-region errors, 116 of them unresolved references —
+all of them the box wanting runtime context, none of them the lowering. Caret recall **93% overall**:
+`dot` 89% at a bare dot / 95% with two characters typed, `name` 93% typing vs 92% editing, `pkg` 89% / 100%.
+p50 28ms.
+
+Four rounds of findings from this sweep, each of which is a defect class rather than a single bug:
+
+1. **Companion members off a class qualifier.** `Img.generate` was unreachable and `Img.` answered with the
+   one useless row `Companion`, because the companion was hunted for in `declaredMemberScope`, which is
+   empty for a *binary* class. Reading `KaNamedClassSymbol.companionObject` instead: dot recall 36%→51%.
+2. **Harvesting the corpus** (above): 51%→65%, and half the unresolved references gone.
+3. **Extensions by receiver instead of by prefix** (see the ASM index section): 65%→89% at a bare dot, and
+   the 25-point cliff between "nothing typed" and "two characters typed" closed to 6.
+4. **Measurement hygiene, twice.** Sampling carets inside comments and string literals made `the`, `and` and
+   `whether` the most-missed "identifiers"; counting an already-written named argument as a miss faked a
+   13-point typing-vs-editing gap that is really 1 point. Both are now excluded, and *package paths* are
+   reported as their own `pkg` kind — mixed into `dot`, a handful of fully-qualified type references were
+   the largest single cluster of "misses" while saying nothing about member completion.
+
+Still open, in miss-count order: **client-side truncation** (16 misses are `200 candidates` — the answer is
+computed but cut by `AaCompletionClient`'s limit before the ranker sees it, and the sidecar sorts by name,
+not by relevance); 12 `0 candidates at name position`; 11 `no qualified expr` (all package paths in type
+positions); 3 residual `Img.` cases that need per-case triage rather than a mechanism.
 
 #### The type expected at the caret (`expectedTypesAt` / `enumerableValuesOf`)
 
@@ -257,7 +358,38 @@ classifier / type-alias names exist per imported package, then AA resolves them 
 The index is disk-cached under the sidecar scratch dir, keyed by a stat-only classpath fingerprint
 (`buildOrLoad`, `:112`; fingerprint `:130`), so a recompile transparently rebuilds it and an unchanged
 classpath loads it instantly. Type aliases (which have no `.class`) are read from each file facade's
-`@Metadata` proto (`MetadataVisitor`, `:238`).
+`@Metadata` proto (`MetadataVisitor`, `:238`). `FORMAT_VERSION` invalidates every cache when the scan's
+semantics change.
+
+The scan carries three maps beyond the by-package name lists, each answering a question the by-prefix
+lists cannot:
+
+- **`extensionsByReceiver`** — ASM internal receiver name → the extensions on it. An extension compiles to
+  a static method whose *first parameter is the receiver*, so this costs nothing extra to collect, and it
+  is what makes a **bare `recv.`** able to offer extensions at all: enumerating by name prefix means there
+  is nothing to enumerate until a character is typed, which on Field's extension-heavy API is most of what
+  anyone types after a dot (measured: a 25-point recall cliff between 0 and 2 characters typed). It is
+  over-inclusive by construction — a plain `fun display(box: Box)` lands under `Box` too — and
+  `isExtension` plus receiver conformance filter it, so a false entry costs one lookup, not a wrong
+  candidate. Lookup keys are the receiver's own classifier **plus every supertype, plus the JVM built-in
+  mapping** (`JavaToKotlinClassMap.mapKotlinToJava`): `fun Iterable<T>.map` compiles to
+  `map(Ljava/lang/Iterable;…)` and `String.format` to `format(Ljava/lang/String;…)`, so without the
+  mapping a `List` receiver finds nothing in `kotlin.collections` and a `String` receiver nothing in
+  `kotlin.text` — the two largest extension families there are.
+- **`allPackages`** — every package seen on the classpath, in scope or not, recorded before the
+  in-scope filter. This is the vocabulary for **package completion** (`afield.‸` → `stdlib`, `four`,
+  `graphics`): standalone AA cannot enumerate a binary root's sub-packages, and a package path is written
+  out by hand precisely when nothing has been imported. Before it existed, `afield.` fell through to the
+  value path and answered a package with `also`/`apply`/`let` — the `Any?` extensions, matching a receiver
+  that has no real type. A value and a class both shadow a package, so the package branch is tried last
+  and only when the receiver does not resolve to a callable — a lambda's `it.` otherwise matched the
+  package `it.unimi.dsi` (fastutil).
+- The scan does **not** filter on `ACC_PUBLIC`. A `@kotlin.internal.InlineOnly` function is `public inline`
+  in Kotlin and *private in bytecode* — it has no callable entry point, only an inlined body — so
+  filtering on public silently excluded `let`, `run`, `also`, `apply`, `takeIf` and `String.format`: the
+  most-typed extensions in the language. (`"%.3f".format(…)` was in the caret sweep's miss list beside a
+  200-candidate panel that could not contain it.) Genuinely private declarations get indexed too and are
+  dropped by the use-site visibility check — one wasted lookup against a whole family of unreachable names.
 
 ### 2.6 Results back → enrichment → client-side ranking
 

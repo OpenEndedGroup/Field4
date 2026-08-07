@@ -192,4 +192,71 @@ object AaCompletionClient {
             Outcome(null, "error ${it.javaClass.simpleName}: ${it.message}")
         }
     }
+
+    /** One error in the lowered file, with the region of the lowering it belongs to. */
+    @Serializable
+    data class LoweringError(
+        val region: String,
+        val factory: String,
+        val message: String,
+        val line: Int,
+        val excerpt: String,
+    )
+
+    /** What `/lower` reports: the file completion would analyse, and every error in it. */
+    @Serializable
+    data class Lowering(
+        val success: Boolean = false,
+        val message: String = "",
+        val text: String = "",
+        val preambleInjected: Boolean = false,
+        val preambleBlank: Boolean = true,
+        val stubCount: Int = 0,
+        val errors: List<LoweringError> = emptyList(),
+    )
+
+    /**
+     * Type-check the lowering for a request instead of completing it — the invariant behind
+     * `CompletionLoweringProbe`. Same arguments as [complete] deliberately: a lowering checked under a
+     * different request than the live one isn't checked. Null when there is no sidecar or the call failed.
+     *
+     * Blocks for as long as the sidecar needs to build its session (a corpus sweep must not silently
+     * measure a warming session), so this is for probes and gates only — never a keystroke path.
+     */
+    fun lower(
+        snippet: String,
+        cursor: Int,
+        preamble: String,
+        implicitReceivers: List<String>,
+        declarations: String = "",
+        replImports: List<String> = emptyList(),
+        includeText: Boolean = false,
+        timeoutMs: Long = 300_000,
+    ): Lowering? {
+        val uri0 = endpoint() ?: return null
+        val uri = URI.create(uri0.toString().removeSuffix("/complete") + "/lower")
+        if (classpathRoots.isEmpty()) return null
+        return runCatching {
+            val body = json.encodeToString(
+                Req(
+                    snippet = snippet,
+                    cursor = cursor.coerceIn(0, snippet.length),
+                    preamble = preamble,
+                    declarations = declarations,
+                    replImports = replImports,
+                    implicitReceivers = implicitReceivers,
+                    classpathRoots = classpathRoots,
+                    limit = if (includeText) 1 else 0,
+                )
+            )
+            val request = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofMillis(timeoutMs))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build()
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+            if (response.statusCode() != 200) return null
+            json.decodeFromString<Lowering>(response.body())
+        }.getOrNull()
+    }
 }

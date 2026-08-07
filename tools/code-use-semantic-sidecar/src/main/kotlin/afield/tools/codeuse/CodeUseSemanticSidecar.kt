@@ -185,6 +185,30 @@ data class CompletionResponse(
     val candidates: List<CompletionCandidate> = emptyList(),
 )
 
+/** One error in the lowered file, attributed to the region of the lowering it sits in. */
+@Serializable
+data class LoweringError(
+    val region: String,
+    val factory: String,
+    val message: String,
+    val line: Int,
+    val excerpt: String,
+)
+
+/** `/lower`: the synthetic file completion would analyse for this request, and every error in it. */
+@Serializable
+data class LoweringResponse(
+    val success: Boolean,
+    val message: String = "",
+    /** The lowered file. Only returned when the request asks for it (it is large). */
+    val text: String = "",
+    /** False when the preamble was non-blank but wouldn't parse, so only local stubs represent it. */
+    val preambleInjected: Boolean = false,
+    val preambleBlank: Boolean = true,
+    val stubCount: Int = 0,
+    val errors: List<LoweringError> = emptyList(),
+)
+
 private val json = Json {
     encodeDefaults = true
     ignoreUnknownKeys = true
@@ -215,6 +239,27 @@ fun main(args: Array<String>) {
             onFailure = {
                 exchange.respondJson(
                     CompletionResponse(false, "k2-aa", "completion failed: ${it.message ?: it.javaClass.name}"),
+                    status = 200,
+                )
+            }
+        )
+    }
+    // The lowering invariant: type-check the synthetic file completion analyses, rather than trusting it.
+    // Same request shape as /complete on purpose — a lowering that is only checked under a *different*
+    // request than the one users hit is not checked at all.
+    server.createContext("/lower") { exchange ->
+        if (exchange.requestMethod.uppercase() != "POST") {
+            exchange.respondText(405, "POST required")
+            return@createContext
+        }
+        runCatching {
+            val body = exchange.requestBody.use { it.readBytes().toString(StandardCharsets.UTF_8) }
+            completionAnalyzer.lower(json.decodeFromString<CompletionRequest>(body))
+        }.fold(
+            onSuccess = { exchange.respondJson(it) },
+            onFailure = {
+                exchange.respondJson(
+                    LoweringResponse(false, "lowering failed: ${it.message ?: it.javaClass.name}"),
                     status = 200,
                 )
             }
@@ -693,6 +738,47 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         val candidates = result.candidates.sortedByDescending { it.fitsExpected }
             .take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
+    }
+
+    /**
+     * Type-check the lowering for [req] — see `AaCompleter.diagnose`. Unlike `/complete` this one is
+     * allowed to BLOCK on the session build: its callers are probes and gates measuring a corpus, not a
+     * keystroke, and a report that silently skipped half the corpus because the session was still warming
+     * is worse than a slow one.
+     */
+    fun lower(req: CompletionRequest): LoweringResponse {
+        if (req.snippet.isBlank()) return LoweringResponse(true, "empty snippet")
+        val roots = req.classpathRoots.mapNotNull(::pathIfExists).distinct()
+        if (roots.isEmpty()) return LoweringResponse(false, "no classpathRoots resolved on disk")
+        var cached = cachedSession(roots)
+        var waited = 0L
+        while (cached == null && waited < 240_000) {
+            Thread.sleep(500); waited += 500
+            cached = cachedSession(roots)
+        }
+        cached ?: return LoweringResponse(false, "session build timed out after ${waited}ms")
+        val result = cached.lock.withLock {
+            cached.completer.diagnose(
+                snippet = req.snippet,
+                cursor = req.cursor.coerceIn(0, req.snippet.length),
+                preamble = req.preamble,
+                declarations = req.declarations,
+                implicitReceivers = req.implicitReceivers,
+                extraImports = req.imports,
+                replImports = req.replImports,
+            )
+        }
+        return LoweringResponse(
+            success = true,
+            message = result.note,
+            // `limit` doubles as "send the lowered text back": a corpus sweep wants the counts only, but
+            // one failing box needs the file itself to be diagnosable at all.
+            text = if (req.limit > 0) result.text else "",
+            preambleInjected = result.preambleInjected,
+            preambleBlank = result.preambleBlank,
+            stubCount = result.stubCount,
+            errors = result.errors.map { LoweringError(it.region, it.factory, it.message, it.line, it.excerpt) },
+        )
     }
 
     /** Return the cached session for [roots], or null if it isn't built yet (build kicked off in the

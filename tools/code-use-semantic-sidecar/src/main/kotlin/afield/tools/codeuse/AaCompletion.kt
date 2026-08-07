@@ -7,33 +7,42 @@ import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
 import org.jetbrains.kotlin.analysis.api.KaK1Unsupported
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.idea.references.mainReference
+import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
 import org.jetbrains.kotlin.analysis.api.components.KaExtensionApplicabilityResult
 import org.jetbrains.kotlin.analysis.api.components.KaScopeKind
+import org.jetbrains.kotlin.analysis.api.diagnostics.KaSeverity
 import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassKind
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaDeclarationSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaEnumEntrySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
+import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
+import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
 import org.jetbrains.kotlin.metadata.ProtoBuf
 import org.jetbrains.kotlin.metadata.jvm.deserialization.JvmProtoBufUtil
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtPsiFactory
+import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
 import org.jetbrains.kotlin.psi.KtValueArgument
@@ -132,6 +141,66 @@ data class AaCandidate(
 data class AaCompletionResult(val candidates: List<AaCandidate>, val note: String = "")
 
 /**
+ * THE LOWERING: a box's editing context reduced to one synthetic Kotlin file, plus the map of where
+ * each injected piece ended up in it. Produced by [AaCompleter.lower] and consumed by both
+ * [AaCompleter.complete] (analyse at [cursorOffset]) and [AaCompleter.diagnose] (type-check the whole
+ * thing) — so what completion answers from and what the invariant checks are the same artifact by
+ * construction, not by two functions that agree today.
+ *
+ * The ranges are what make the invariant *attributable*: an error inside [preambleRange] means the
+ * lowering is broken, an error inside [snippetRange] means the box's own code needs runtime context
+ * this session doesn't model. Those are different bugs with different owners, and a single error count
+ * conflates them. An absent region is [IntRange.EMPTY].
+ */
+data class AaLoweredFile(
+    val text: String,
+    val cursorOffset: Int,
+    /** The inherited preamble, emitted verbatim at file scope. Empty when it didn't parse (see `parses`). */
+    val preambleRange: IntRange,
+    /** A synthetic language profile's file-scope declarations (KotlinJS heads). */
+    val declarationsRange: IntRange,
+    /** The local stubs re-emitted inside `fun __c`. */
+    val stubsRange: IntRange,
+    /** The box's own code. */
+    val snippetRange: IntRange,
+    /** False when the preamble was non-blank but unparseable, so only stubs represent it. */
+    val preambleInjected: Boolean,
+    val stubs: List<String>,
+    val boxImports: List<String>,
+    val providedImports: List<String>,
+    val isDot: Boolean,
+    val prefix: String,
+) {
+    /** Which injected region [offset] falls in — the label an error is reported under. */
+    fun regionAt(offset: Int): String = when (offset) {
+        in preambleRange -> "preamble"
+        in declarationsRange -> "declarations"
+        in stubsRange -> "stubs"
+        in snippetRange -> "snippet"
+        else -> "wrapper"
+    }
+}
+
+/** One error the lowered file type-checks to, with the region of the lowering it belongs to. */
+data class AaLoweringError(
+    val region: String,
+    val factory: String,
+    val message: String,
+    val line: Int,
+    val excerpt: String,
+)
+
+/** [AaCompleter.diagnose]'s answer: the lowering, and every error in it. */
+data class AaLoweringResult(
+    val text: String,
+    val preambleInjected: Boolean,
+    val preambleBlank: Boolean,
+    val stubCount: Int,
+    val errors: List<AaLoweringError>,
+    val note: String = "",
+)
+
+/**
  * Compact a type string for display: `afield/graphics/FLine` → `FLine`,
  * `kotlin.collections.List<kotlin.Int>` → `List<Int>`, `kotlin.Float?` → `Float?`. Package segments
  * (lowercase) before a Capitalised class name are dropped; generics/nullability are preserved.
@@ -189,6 +258,29 @@ data class AaSymbolIndex(
     val classifiers: Map<String, List<String>>,
     /** package fqName -> type-alias simple names (read from facade @Metadata; they have no .class). */
     val typeAliases: Map<String, List<String>>,
+    /**
+     * ASM internal receiver name (`java/nio/IntBuffer`, `afield/stdlib/Functions$RectifyMode`) -> the
+     * `package|name` of every top-level callable whose FIRST PARAMETER is that type — which, for an
+     * extension, is exactly its receiver (`fun Img.sobel()` compiles to `static sobel(Img)`).
+     *
+     * This is what lets a bare `.` offer extensions at all. Enumerating them by NAME PREFIX means there
+     * is nothing to enumerate until a character is typed, which is why `recv.` answered with members only
+     * and the caret-recall sweep measured a 25-point gap between a bare dot and two characters typed —
+     * on Field's extension-heavy API that gap is most of what people type after a dot. Keyed by receiver
+     * the work is bounded by "extensions on THIS type" instead of "all names in the index", so no prefix
+     * gate is needed.
+     *
+     * Over-inclusive on purpose: a plain `fun display(box: Box)` lands here too, since ASM cannot tell it
+     * from an extension. Resolution filters on `isExtension` and receiver conformance anyway, so the cost
+     * of a false entry is one symbol lookup, not a wrong candidate.
+     */
+    val extensionsByReceiver: Map<String, List<String>> = emptyMap(),
+    /**
+     * EVERY package seen on the classpath, in scope or not — the vocabulary for completing a package path.
+     * `afield.‸` has to offer `stdlib`/`four`/`graphics` whether or not they were imported, and standalone
+     * AA cannot enumerate sub-packages of a binary root, so the ASM walk records them on the way past.
+     */
+    val allPackages: List<String> = emptyList(),
 ) {
     val callableCount: Int get() = callables.values.sumOf { it.size }
     val classifierCount: Int get() = classifiers.values.sumOf { it.size }
@@ -200,12 +292,13 @@ data class AaSymbolIndex(
         fun merge(a: Map<String, List<String>>, b: Map<String, List<String>>) =
             (a.keys + b.keys).associateWith { k -> (a[k].orEmpty() + b[k].orEmpty()).distinct() }
         return AaSymbolIndex(merge(callables, other.callables), merge(classifiers, other.classifiers),
-            merge(typeAliases, other.typeAliases))
+            merge(typeAliases, other.typeAliases), merge(extensionsByReceiver, other.extensionsByReceiver),
+            (allPackages + other.allPackages).distinct())
     }
 
     companion object {
         /** Bump when the on-disk format or the scan semantics change, to invalidate stale caches. */
-        private const val FORMAT_VERSION = 2
+        private const val FORMAT_VERSION = 4
         private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
         val EMPTY = AaSymbolIndex(emptyMap(), emptyMap(), emptyMap())
@@ -274,11 +367,18 @@ data class AaSymbolIndex(
             val callables = HashMap<String, MutableSet<String>>()
             val classifiers = HashMap<String, MutableSet<String>>()
             val typeAliases = HashMap<String, MutableSet<String>>()
+            val byReceiver = HashMap<String, MutableSet<String>>()
+
+            val allPackages = HashSet<String>()
 
             fun consider(entryPath: String, bytes: () -> ByteArray) {
                 if (!entryPath.endsWith(".class")) return
                 val slash = entryPath.lastIndexOf('/')
                 val pkg = if (slash < 0) "" else entryPath.substring(0, slash).replace('/', '.')
+                // Recorded BEFORE the in-scope filter: package completion (`afield.‸` → `stdlib`) has to
+                // know about packages nobody has imported — that is the whole point of writing a package
+                // path out by hand. Costs a string per class file and nothing else; no bytes are read.
+                if (pkg.isNotEmpty()) allPackages.add(pkg)
                 if (pkg !in packages) return
                 val simple = entryPath.substring(slash + 1).removeSuffix(".class")
                 if (simple.contains('$')) return // inner / synthetic
@@ -291,6 +391,9 @@ data class AaSymbolIndex(
                             FacadeVisitor(
                                 onCallable = { callables.getOrPut(pkg) { hashSetOf() }.add(it) },
                                 onTypeAlias = { typeAliases.getOrPut(pkg) { hashSetOf() }.add(it) },
+                                onReceiver = { receiver, name ->
+                                    byReceiver.getOrPut(receiver) { hashSetOf() }.add("$pkg|$name")
+                                },
                             ),
                             ClassReader.SKIP_CODE or ClassReader.SKIP_DEBUG or ClassReader.SKIP_FRAMES,
                         )
@@ -323,20 +426,77 @@ data class AaSymbolIndex(
                 callables = callables.mapValues { it.value.toList() },
                 classifiers = classifiers.mapValues { it.value.toList() },
                 typeAliases = typeAliases.mapValues { it.value.toList() },
+                extensionsByReceiver = byReceiver.mapValues { it.value.toList() },
+                allPackages = allPackages.sorted(),
             )
         }
     }
 }
 
-/** ASM visitor over a `*Kt` facade: collects public-static method names + @Metadata type aliases. */
+/**
+ * ASM visitor over a `*Kt` facade: collects public-static method names, @Metadata type aliases, and — for
+ * [AaSymbolIndex.extensionsByReceiver] — the first-parameter type of each method paired with the Kotlin
+ * name it is reachable by.
+ */
 private class FacadeVisitor(
     private val onCallable: (String) -> Unit,
     private val onTypeAlias: (String) -> Unit,
+    private val onReceiver: (receiver: String, name: String) -> Unit = { _, _ -> },
 ) : ClassVisitor(Opcodes.ASM9) {
+
+    private companion object {
+        /** JVM descriptor letters → the Kotlin classifier a `fun Int.foo()`-style receiver resolves to. */
+        val PRIMITIVES = mapOf(
+            'I' to "kotlin/Int", 'J' to "kotlin/Long", 'F' to "kotlin/Float", 'D' to "kotlin/Double",
+            'Z' to "kotlin/Boolean", 'B' to "kotlin/Byte", 'S' to "kotlin/Short", 'C' to "kotlin/Char",
+        )
+        val PRIMITIVE_ARRAYS = mapOf(
+            "[I" to "kotlin/IntArray", "[J" to "kotlin/LongArray", "[F" to "kotlin/FloatArray",
+            "[D" to "kotlin/DoubleArray", "[Z" to "kotlin/BooleanArray", "[B" to "kotlin/ByteArray",
+            "[S" to "kotlin/ShortArray", "[C" to "kotlin/CharArray",
+        )
+
+        /** The first parameter of [desc] as an ASM-internal type name, or null when there isn't one. */
+        fun firstParameter(desc: String): String? {
+            val params = desc.substringAfter('(', "").substringBefore(')')
+            if (params.isEmpty()) return null
+            return when {
+                params[0] == 'L' -> params.substring(1, params.indexOf(';').takeIf { it > 0 } ?: return null)
+                params.startsWith("[L") -> null                     // Array<T>: not worth keying
+                params.length >= 2 && params.take(2) in PRIMITIVE_ARRAYS -> PRIMITIVE_ARRAYS[params.take(2)]
+                else -> PRIMITIVES[params[0]]
+            }
+        }
+
+        /**
+         * The Kotlin-visible names a JVM method name stands for. An extension PROPERTY compiles to
+         * `getPos(Img)`/`setPos(Img, v)`, so indexing the JVM name alone left every extension property
+         * unreachable — the accessor name is not what anyone types. Both are offered; resolution decides.
+         */
+        fun kotlinNames(jvm: String): List<String> {
+            val stripped = when {
+                jvm.length > 3 && (jvm.startsWith("get") || jvm.startsWith("set")) && jvm[3].isUpperCase() ->
+                    jvm[3].lowercaseChar() + jvm.substring(4)
+                else -> null
+            }
+            return if (stripped == null) listOf(jvm) else listOf(jvm, stripped)
+        }
+    }
+
     override fun visitMethod(access: Int, name: String, desc: String?, sig: String?, exc: Array<String>?): MethodVisitor? {
-        val pub = access and Opcodes.ACC_PUBLIC != 0
         val stat = access and Opcodes.ACC_STATIC != 0
-        if (pub && stat && name != "<clinit>" && !name.contains('$')) onCallable(name)
+        // NOT filtered on ACC_PUBLIC. A `@kotlin.internal.InlineOnly` function is `public inline` in Kotlin
+        // and PRIVATE in bytecode — it has no callable entry point, only an inlined body — so requiring
+        // public here silently excluded `let`, `run`, `also`, `apply`, `takeIf` and `String.format`: the
+        // most-typed extensions in the language. (`"%.3f".format(…)` was in the caret sweep's miss list
+        // with a 200-candidate panel that couldn't contain it.) A genuinely `private` Kotlin declaration
+        // gets indexed too and then resolves as private, where the use-site visibility check drops it —
+        // one wasted lookup, versus a whole family of names being unreachable.
+        if (stat && name != "<clinit>" && !name.contains('$')) {
+            onCallable(name)
+            val receiver = desc?.let(::firstParameter)
+            if (receiver != null) kotlinNames(name).forEach { onReceiver(receiver, it) }
+        }
         return null
     }
 
@@ -391,6 +551,14 @@ private const val CARET_MARKER = "__fieldCaret__"
 
 /** `return` as a whole trailing token — `return ‸` is an expression slot, `myreturn‸` is not. */
 private val RETURN_TAIL = Regex("""(?:^|[^A-Za-z0-9_.])return$""")
+
+/**
+ * How many receiver-keyed extension names one request will resolve. Generous — the point of keying by
+ * receiver is that the list is already bounded by the type — but not unbounded: `Any`'s extensions are
+ * every `also`/`let`/`takeIf` in scope plus anything a box declares on `Any?`, and a pathological receiver
+ * should slow a keystroke down, not stall it. Truncation is reported in the result note.
+ */
+private const val RECEIVER_INDEX_CAP = 800
 
 /**
  * K2 Analysis-API completion candidate generation. Reusable across the spike harness (Stage A/B) and
@@ -489,6 +657,85 @@ class AaCompleter(
         replImports: List<String> = emptyList(),
         jsTarget: Boolean = false,
     ): AaCompletionResult {
+        val lowered = try {
+            lower(snippet, cursor, preamble, declarations, implicitReceivers, extraImports, replImports)
+        } catch (t: Throwable) {
+            return AaCompletionResult(emptyList(), "lower error ${t.javaClass.simpleName}: ${t.message}")
+        }
+        return try {
+            val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
+                .createFile("AaCompletion.kt", lowered.text)
+            val scope = indexFor(lowered.boxImports, lowered.providedImports)
+            completeAt(file, lowered.cursorOffset, lowered.isDot, lowered.prefix, jsTarget, scope.index, scope.extraPackages)
+        } catch (t: Throwable) {
+            AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
+        }
+    }
+
+    /**
+     * Type-check the lowering itself — the invariant behind every "completion answered with junk" report.
+     *
+     * Completion can only be as good as the file it analyses, and until this existed nothing ever asked
+     * whether that file was *sound*: a preamble form the lowering mangled produced a plausible-looking
+     * wrong answer (the `tri` → `TriOsc` case) with no signal anywhere. Now the same artifact completion
+     * uses is handed to the compiler's own checkers, and every error is attributed to a region — an error
+     * in `preamble` is the lowering's fault and gate-able; an error in `snippet` is the box needing runtime
+     * context a headless session cannot have, which is a *prediction* of where completion will be weak
+     * rather than a defect in itself.
+     *
+     * Same signature as [complete] because it must be the same request. Put the caret at the end of the
+     * snippet (no caret marker is spliced there) to check the box exactly as written.
+     */
+    @OptIn(KaExperimentalApi::class)
+    fun diagnose(
+        snippet: String,
+        cursor: Int,
+        preamble: String = "",
+        declarations: String = "",
+        implicitReceivers: List<String> = emptyList(),
+        extraImports: List<String> = emptyList(),
+        replImports: List<String> = emptyList(),
+    ): AaLoweringResult {
+        val lowered = try {
+            lower(snippet, cursor, preamble, declarations, implicitReceivers, extraImports, replImports)
+        } catch (t: Throwable) {
+            return AaLoweringResult("", false, preamble.isBlank(), 0, emptyList(),
+                "lower error ${t.javaClass.simpleName}: ${t.message}")
+        }
+        return try {
+            val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
+                .createFile("AaLowering.kt", lowered.text)
+            val errors = analyze(file) {
+                file.collectDiagnostics(KaDiagnosticCheckerFilter.ONLY_COMMON_CHECKERS)
+                    .filter { it.severity == KaSeverity.ERROR }
+                    .map { d ->
+                        val offset = runCatching { d.psi.textRange.startOffset }.getOrDefault(0)
+                        AaLoweringError(
+                            region = lowered.regionAt(offset),
+                            factory = runCatching { d.factoryName }.getOrDefault("?"),
+                            message = runCatching { d.defaultMessage }.getOrDefault("?").take(200),
+                            line = lowered.text.take(offset).count { it == '\n' } + 1,
+                            excerpt = runCatching { d.psi.text }.getOrDefault("").take(80).replace('\n', ' '),
+                        )
+                    }
+            }
+            AaLoweringResult(lowered.text, lowered.preambleInjected, preamble.isBlank(), lowered.stubs.size, errors)
+        } catch (t: Throwable) {
+            AaLoweringResult(lowered.text, lowered.preambleInjected, preamble.isBlank(), lowered.stubs.size,
+                emptyList(), "diagnose error ${t.javaClass.simpleName}: ${t.message}")
+        }
+    }
+
+    /** Build the synthetic file for a request. See [AaLoweredFile]; the KDoc on [complete] documents the params. */
+    internal fun lower(
+        snippet: String,
+        cursor: Int,
+        preamble: String = "",
+        declarations: String = "",
+        implicitReceivers: List<String> = emptyList(),
+        extraImports: List<String> = emptyList(),
+        replImports: List<String> = emptyList(),
+    ): AaLoweredFile {
         // A box's own `import` lines arrive inside [snippet] — but the snippet is pasted into the
         // synthetic `fun __c() { … }` below, where an import is a syntax error. So `import sentences.*`
         // on line 1 left `SentenceDiagram` unresolved and every member of the box's own type missing.
@@ -506,6 +753,15 @@ class AaCompleter(
         // `display(…)` on the next line parses as `d.scheme = display(…)`. So splice a dummy name in,
         // the way IntelliJ does. See [wantsCaretMarker] for why this is limited to those slots.
         val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(before)
+        // …and the same trick for an EMPTY SELECTOR SLOT. `recv.‸` at the end of a line parses to no
+        // `KtQualifiedExpression` at all, so the dot path had nothing to take a receiver from and bailed
+        // with "no qualified expr" — 12 of the caret sweep's misses, and every one of them the most
+        // ordinary thing a user does. A marker in the slot makes it `recv.__fieldCaret__`, which parses,
+        // and as a bonus gives the IDE's extension-applicability checker the selector it needs (it could
+        // never be built at a bare dot before). Only when the slot really is empty: if the next character
+        // could continue an identifier there IS a selector, and appending to it would rename it.
+        val emptySelector = after.firstOrNull()?.let { !it.isLetterOrDigit() && it != '_' } ?: true
+        val spliceDotCaret = isDot && prefix.isEmpty() && emptySelector
 
         // A dangling file's own TOP-LEVEL declarations do NOT enter the completion scope (only imports,
         // implicit receivers, and LOCAL declarations do). So the inherited preamble is split: import
@@ -514,6 +770,22 @@ class AaCompleter(
         // local-legal). This surfaces `prop<>` and `@exported` inherited names — the load-bearing invariant.
         val (preambleImports, localStubs) = splitPreamble(preamble)
         val (declarationImports, declarationStubs) = splitPreamble(declarations)
+        // …but a *stub* cannot stand in for everything a preamble declares. It keeps a name and a type,
+        // which is all a `prop<>`/`@exported` value needs, and it drops classes entirely and reduces a
+        // function to its signature-by-regex. Two preamble forms need more than that:
+        //   - a CLASS (`/*supermap*/ class MappedStructure { lateinit var tri: IntBuffer … }`), which no
+        //     local stub is even emitted for;
+        //   - an extension function whose parameter is a LAMBDA WITH A RECEIVER
+        //     (`fun Mesh.set(…, builder: MappedStructure.() -> Unit)`), where losing either the receiver
+        //     or the class means the lambda body has no implicit receiver.
+        // Without them `m.set(3, 1) { tri.‸ }` had no `MappedStructure` in scope, so `tri` resolved to the
+        // next thing in scope by that name — `afield.four.synth.tri`, a triangle oscillator, via `intro`'s
+        // `import afield.four.synth.*` — and the panel filled with `TriOsc`'s members. So the preamble is
+        // ALSO emitted verbatim at file scope, where it is legal (it came from one) and where a class and a
+        // receiver-typed lambda parameter both survive. The local stubs stay: they shadow harmlessly (a
+        // local `val window: Window` over a top-level `var Box.window`, same name, same type) and they are
+        // what makes bare-name discovery of inherited values reliable.
+        val fileScopePreamble = preambleDeclarations(preamble).takeIf { it.isNotBlank() && parses(it) }.orEmpty()
 
         // What the box wrote or inherited, versus what it was handed. Kept apart because only the former
         // is small enough to enumerate at an empty prefix — see [indexFor].
@@ -524,32 +796,77 @@ class AaCompleter(
         allImports.map { it.removePrefix("import ").trim() }
             .filter { it.isNotEmpty() }.distinct().forEach { sb.append("import ").append(it).append('\n') }
         sb.append('\n')
+        val preambleStart = sb.length
+        if (fileScopePreamble.isNotBlank()) sb.append(fileScopePreamble).append("\n\n")
+        val preambleRange = if (fileScopePreamble.isBlank()) IntRange.EMPTY else preambleStart until sb.length
+        val declarationsStart = sb.length
         declarations.trimIndent().lineSequence()
             .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
             .forEach { sb.append(it).append('\n') }
         if (declarations.isNotBlank()) sb.append('\n')
+        val declarationsRange = if (declarations.isBlank()) IntRange.EMPTY else declarationsStart until sb.length
 
         val recvs = implicitReceivers.filter { it.isNotBlank() }
         val params = recvs.mapIndexed { i, t -> "__r$i: $t" }.joinToString(", ")
         sb.append("fun __c(").append(params).append(") {\n")
-        (localStubs + declarationStubs).forEach { sb.append("    ").append(it).append('\n') }
-        recvs.indices.forEach { i -> sb.append("with(__r").append(i).append(") { ") }
+        val stubs = localStubs + declarationStubs
+        val stubsStart = sb.length
+        stubs.forEach { sb.append("    ").append(it).append('\n') }
+        val stubsRange = if (stubs.isEmpty()) IntRange.EMPTY else stubsStart until sb.length
+        // `with<T, Unit>` — both type arguments explicit. `with(__r0) { … }` leaves `R` to be inferred
+        // from the block, so a box whose last expression doesn't type (which is the normal state of code
+        // being edited, and was the state of all 5 visionOS/remoteAR boxes the lowering invariant flagged)
+        // fails to infer `with` itself, and an un-inferred wrapper puts the receiver scope at risk for the
+        // whole box. Pinning `R = Unit` costs nothing — a block's value is coerced to Unit — and takes the
+        // wrapper out of inference entirely.
+        recvs.forEachIndexed { i, t -> sb.append("with<").append(t).append(", Unit>(__r").append(i).append(") { ") }
+        val snippetStart = sb.length
         sb.append(before)
-        if (spliceCaret) sb.append(CARET_MARKER)
+        if (spliceCaret || spliceDotCaret) sb.append(CARET_MARKER)
         val cursorOffset = sb.length
         sb.append(after)
+        val snippetRange = snippetStart until sb.length
         recvs.forEach { _ -> sb.append(" }") }
         sb.append("\n}\n")
 
-        return try {
-            val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
-                .createFile("AaCompletion.kt", sb.toString())
-            val scope = indexFor(boxImports, providedImports)
-            completeAt(file, cursorOffset, isDot, prefix, jsTarget, scope.index, scope.extraPackages)
-        } catch (t: Throwable) {
-            AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
-        }
+        return AaLoweredFile(
+            text = sb.toString(),
+            cursorOffset = cursorOffset,
+            preambleRange = preambleRange,
+            declarationsRange = declarationsRange,
+            stubsRange = stubsRange,
+            snippetRange = snippetRange,
+            preambleInjected = fileScopePreamble.isNotBlank(),
+            stubs = stubs,
+            boxImports = boxImports,
+            providedImports = providedImports,
+            isDot = isDot,
+            prefix = prefix,
+        )
     }
+
+    /** A preamble's declaration text — everything but its `import`/`package` lines, which are hoisted
+     *  into the synthetic file's header separately (and are illegal after a declaration anyway). */
+    internal fun preambleDeclarations(preamble: String): String =
+        preamble.trimIndent().lineSequence()
+            .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
+
+    /**
+     * Does [text] stand on its own as a Kotlin file? The gate on injecting a preamble at file scope.
+     *
+     * A preamble is declarations by contract, but it is assembled by string concatenation from macro
+     * expansions (`writeSuperMap`'s `;`-joined one-liner among them) and inherited up a box chain, so it
+     * is not guaranteed to be *parseable* declarations. Splicing an unparseable one into the synthetic
+     * file would break the whole request rather than the one name it describes, and the stub path already
+     * handles the value-shaped cases — so an unparseable preamble degrades to stubs-only, as before.
+     */
+    internal fun parses(text: String): Boolean = runCatching {
+        val probe = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
+            .createFile("AaPreambleProbe.kt", text)
+        !PsiTreeUtil.hasErrorElements(probe)
+    }.getOrDefault(false)
 
     /**
      * True when the caret sits where a *value* is expected and there is nothing there yet, so splicing
@@ -656,6 +973,66 @@ class AaCompleter(
         val jsFilter: (AaCandidate) -> Boolean = { c -> !jsTarget || !isJvmOnlyForJsTarget(c) }
 
         return analyze(file) {
+            /**
+             * Can the box actually WRITE this symbol? A type's member scope is the declaration's, not the
+             * use site's: it hands back `private`, Java package-private and other-module `internal`
+             * members alike. Nothing filtered them, so `tri.` on a `TriOsc` offered `_cache`, `phase`,
+             * `integrator` and `freqBuf` — four of the top rows in the panel were uncompilable — and
+             * `IntBuffer` offered `java.nio.Buffer`'s package-private `address`/`base()`/`checkIndex()`.
+             *
+             * The use-site checker is the IDE's own answer and handles every case a hand-rolled visibility
+             * rule gets wrong (a private member IS visible from inside its own class; `protected` from a
+             * subclass; `internal` within a module). PUBLIC short-circuits it, which is the overwhelming
+             * majority of candidates. LOCAL is the preamble's own stubs — always visible, and not
+             * something the checker is asked about. If the checker can't be built at all, only the
+             * unambiguously-inaccessible visibilities are dropped, so a checker-less session loses no
+             * candidate it would have kept.
+             */
+            val visibilityChecker = runCatching { createUseSiteVisibilityChecker(file.symbol, null, leaf) }.getOrNull()
+            fun accessible(sym: KaSymbol): Boolean {
+                val decl = sym as? KaDeclarationSymbol ?: return true
+                return when (runCatching { decl.visibility }.getOrNull()) {
+                    null, KaSymbolVisibility.PUBLIC, KaSymbolVisibility.LOCAL, KaSymbolVisibility.UNKNOWN -> true
+                    KaSymbolVisibility.INTERNAL ->
+                        visibilityChecker?.let { c -> runCatching { c.isVisible(decl) }.getOrDefault(true) } ?: true
+                    else -> visibilityChecker?.let { c -> runCatching { c.isVisible(decl) }.getOrDefault(false) } ?: false
+                }
+            }
+
+            /**
+             * The receiver's own classifier plus every supertype, as ASM-internal names — the keys to look
+             * up in [AaSymbolIndex.extensionsByReceiver]. Supertypes are included because
+             * `fun Iterable<T>.map(…)` has to reach a `List`, and `fun Any?.also(…)` has to reach anything.
+             * `ClassId.asString()` already writes the package with `/`; the remaining `.` separate nested
+             * classes, which ASM writes as `$`.
+             */
+            fun internalNamesOf(t: KaType): List<String> {
+                val out = LinkedHashSet<String>()
+                fun visit(ty: KaType, depth: Int) {
+                    if (depth > 8 || out.size > 64) return
+                    val classType = ty as? KaClassType ?: return
+                    val id = runCatching { classType.classId }.getOrNull() ?: return
+                    // Kotlin's built-ins have a different name in bytecode than in the type system:
+                    // `fun Iterable<T>.map(…)` compiles to `map(Ljava/lang/Iterable;…)`, `String.format`
+                    // to `format(Ljava/lang/String;…)`. Walking supertypes yields the KOTLIN names, so
+                    // without the mapping a `List` receiver found none of `kotlin.collections` and a
+                    // `String` receiver none of `kotlin.text` — the two biggest extension families there
+                    // are. `JavaToKotlinClassMap` is the compiler's own table; a hand-written one would be
+                    // wrong the first time someone hit `CharSequence` or `MutableList`.
+                    runCatching {
+                        JavaToKotlinClassMap.mapKotlinToJava(id.asSingleFqName().toUnsafe())
+                            ?.let { out.add(it.asString().replace('.', '$')) }
+                    }
+                    if (!out.add(id.asString().replace('.', '$'))) return
+                    val sym = runCatching { classType.symbol as? KaClassSymbol }.getOrNull() ?: return
+                    runCatching { sym.superTypes }.getOrDefault(emptyList()).forEach { visit(it, depth + 1) }
+                }
+                visit(t, 0)
+                out.add("kotlin/Any")   // `also`/`let`/`takeIf` and friends hang off Any?, which no
+                out.add("java/lang/Object")  // supertype walk of a Java type ever mentions as `kotlin/Any`.
+                return out.toList()
+            }
+
             fun iconFor(sym: KaCallableSymbol): String = when (sym) {
                 is KaNamedFunctionSymbol -> "method"
                 is KaPropertySymbol -> if (sym.isVal) "val" else "var"
@@ -727,6 +1104,7 @@ class AaCompleter(
 
             fun asCandidate(sym: KaCallableSymbol, kind: AaCandidate.Kind, container: String?): AaCandidate? {
                 val nm = (sym as? KaNamedSymbol)?.name?.asString() ?: return null
+                if (!accessible(sym)) return null
                 val type = runCatching { sym.returnType }.getOrNull()
                 return AaCandidate(
                     nm, kind, runCatching { type?.toString() }.getOrNull(), container, iconFor(sym), paramsOf(sym),
@@ -745,6 +1123,45 @@ class AaCompleter(
              * each import (explicit and star), which is how `afield.stdlib.*` in a box body brings
              * `FnGradientMode` into scope.
              */
+            /** Is [text] a package? The index knows every package on the classpath; AA is the fallback. */
+            fun isPackageName(text: String, index: AaSymbolIndex): Boolean =
+                index.allPackages.contains(text) ||
+                    index.allPackages.any { it.startsWith("$text.") } ||
+                    runCatching { findPackage(FqName(text)) != null }.getOrDefault(false)
+
+            /**
+             * What lives under a package qualifier: its immediate SUB-PACKAGES, its classifiers, and — once
+             * something is typed — its top-level callables (`afield.stdlib.si‸n`). Sub-packages and
+             * classifiers come from the ASM index, which is the only thing that can enumerate a binary
+             * root; callables are resolved through AA so the use-site visibility check can drop the
+             * private ones the index deliberately keeps (see [FacadeVisitor.visitMethod]).
+             */
+            fun packageCandidates(pkg: String, index: AaSymbolIndex): List<AaCandidate> {
+                val out = ArrayList<AaCandidate>()
+                index.allPackages.asSequence()
+                    .filter { it.startsWith("$pkg.") }
+                    .map { it.removePrefix("$pkg.").substringBefore('.') }
+                    .filter { it.isNotEmpty() && match(Name.identifier(it)) }
+                    .distinct()
+                    .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "package")) }
+                index.classifiers[pkg].orEmpty().asSequence()
+                    .filter { match(Name.identifier(it)) }
+                    .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                index.typeAliases[pkg].orEmpty().asSequence()
+                    .filter { match(Name.identifier(it)) }
+                    .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                // Only with a prefix: a bare `afield.stdlib.` would otherwise resolve every top-level
+                // function in the package, which is thousands of symbols for one keystroke.
+                if (prefix.isNotEmpty()) {
+                    index.callables[pkg].orEmpty().asSequence()
+                        .filter { it.startsWith(prefix) }
+                        .flatMap { nm -> findTopLevelCallables(FqName(pkg), Name.identifier(nm)) }
+                        .take(RECEIVER_INDEX_CAP)
+                        .forEach { sym -> asCandidate(sym, AaCandidate.Kind.TOP_LEVEL, pkg)?.let(out::add) }
+                }
+                return out
+            }
+
             fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
                 val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
                     ?: return null
@@ -818,16 +1235,15 @@ class AaCompleter(
 
                 runCatching { harvest(cls.staticDeclaredMemberScope, AaCandidate.Kind.MEMBER) }
                 runCatching { harvest(cls.staticMemberScope, AaCandidate.Kind.MEMBER) }
-                // `Foo.create()` on a companion is reached off the qualifier too. There is no
-                // `companionObject` accessor on KaClassSymbol in this AA version, so find it the way the
-                // language defines it: a declared nested classifier whose kind is COMPANION_OBJECT.
+                // `Img.generate(…)` — a companion member off the class qualifier. Read the companion
+                // straight off the symbol: `KaNamedClassSymbol.companionObject`. It used to be hunted for
+                // as a COMPANION_OBJECT-kind classifier of `declaredMemberScope`, which is EMPTY for a
+                // binary class (the same caveat the enum-entry harvest below documents) — so for every
+                // class on Field's classpath the hunt found nothing and `Img.` answered with one useless
+                // row, the nested `Companion` classifier itself. `Img.generate` was unreachable. The
+                // caret-recall sweep put this at 62 of its 244 misses, the single largest cluster.
                 runCatching {
-                    for (nested in cls.declaredMemberScope.classifiers { true }) {
-                        val obj = nested as? org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol ?: continue
-                        if (obj.classKind == org.jetbrains.kotlin.analysis.api.symbols.KaClassKind.COMPANION_OBJECT) {
-                            harvest(obj.memberScope, AaCandidate.Kind.MEMBER)
-                        }
-                    }
+                    (cls as? KaNamedClassSymbol)?.companionObject?.let { harvest(it.memberScope, AaCandidate.Kind.MEMBER) }
                 }
                 // An enum's entries are declared members of the class itself, not of its static scope in
                 // every AA version, so include the declared scope's callables too. Instance members are
@@ -955,6 +1371,39 @@ class AaCompleter(
                     )
                 }
 
+                // A PACKAGE qualifier: `afield.‸` → `stdlib`, `four`, `graphics`. Checked after the class
+                // qualifier above, so a class beats a same-named package the way Kotlin's own resolution
+                // does. Before this, `afield.` fell through to the value path, where the receiver has no
+                // real type and the `Any?` extensions matched everything — the panel answered a package
+                // path with `also`/`apply`/`let`/`matches`. Suppressing that is worth as much as offering
+                // the sub-packages: junk after a dot is what makes people stop trusting the panel.
+                val recvText = recv.text?.trim().orEmpty()
+                val looksLikePath = recvText.isNotEmpty() &&
+                    recvText.all { it.isLetterOrDigit() || it == '_' || it == '.' } && !recvText.endsWith(".")
+                // A PACKAGE qualifier: `afield.‸` → `stdlib`, `four`, `graphics`. Last of the three, because
+                // a VALUE and a CLASS both shadow a package — checked before this, a lambda's `it.` matched
+                // the package `it.unimi.dsi` (fastutil) and answered a real receiver with a package listing.
+                // Reached only when the receiver has no usable type at all, which is exactly the case where
+                // the value path would otherwise return `Any?` extensions: before this, `afield.` answered
+                // with `also`/`apply`/`let`/`matches`, and junk after a dot is what makes people stop
+                // trusting the panel.
+                // Does the receiver name a VALUE? That is the question to ask, and it has to be asked of
+                // the resolver rather than guessed from the type: a package receiver has an
+                // `expressionType` (`afield.` types as `Unit`), so "no usable type" does not identify one,
+                // and a name that *is* a value must win — a lambda's `it.` matched the package
+                // `it.unimi.dsi` (fastutil) and answered a real Int receiver with a package listing.
+                val recvIsValue = runCatching {
+                    val sym = (recv as? KtNameReferenceExpression)?.mainReference?.resolveToSymbol()
+                    sym is KaCallableSymbol
+                }.getOrDefault(false)
+                if (!recvIsValue && looksLikePath && isPackageName(recvText, index)) {
+                    val out = packageCandidates(recvText, index).filterNot { it.isSynthetic }
+                        .distinctBy { it.dedupKey }.sortedBy { it.name }
+                    return@analyze AaCompletionResult(
+                        out, if (out.isEmpty()) "0 matched in package $recvText" else ""
+                    )
+                }
+
                 val type = recv.expressionType
                     ?: return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED: ${recv.text}")
                 // An ERROR type is not a type. `errorType.isSubtypeOf(anything)` is vacuously true, so
@@ -970,6 +1419,7 @@ class AaCompleter(
                 // Substituted members of the receiver type.
                 val members = type.scope?.getCallableSignatures(match).orEmpty().mapNotNull { sig ->
                     val nm = (sig.symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
+                    if (!accessible(sig.symbol)) return@mapNotNull null
                     AaCandidate(nm, AaCandidate.Kind.MEMBER, runCatching { sig.returnType.toString() }.getOrNull(), typeStr, iconFor(sig.symbol), paramsOf(sig.symbol))
                 }.toList()
 
@@ -998,7 +1448,34 @@ class AaCompleter(
                         names.asSequence().filter { prefix.isEmpty() || it.startsWith(prefix) }
                             .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
                     }
-                val extCandidates = (ctx.compositeScope().callables(match) + fromPackages +
+
+                // Extensions looked up BY RECEIVER TYPE rather than by name prefix — the answer to a bare
+                // `.`, where there is no prefix to enumerate by and where the by-prefix path above is
+                // therefore switched off. Bounded by the receiver's own hierarchy, so this is a handful of
+                // resolutions for `IntBuffer` and a legitimately long list for `List`, instead of a walk
+                // over every name in the index. See [AaSymbolIndex.extensionsByReceiver].
+                val receiverKeys = internalNamesOf(type)
+                val receiverIndexHits = receiverKeys.asSequence()
+                    .flatMap { rn -> index.extensionsByReceiver[rn]?.asSequence() ?: emptySequence() }
+                    .map { it.substringBefore('|') to it.substringAfter('|') }
+                    .filter { (_, nm) -> prefix.isEmpty() || nm.startsWith(prefix) }
+                    .distinct().toList()
+                // Truncation is reported rather than silent: a capped list that looks complete is how a
+                // missing candidate becomes a mystery.
+                val receiverIndexCapped = receiverIndexHits.size > RECEIVER_INDEX_CAP
+                val fromReceiverIndex = receiverIndexHits.asSequence().take(RECEIVER_INDEX_CAP)
+                    .flatMap { (pkg, nm) -> findTopLevelCallables(FqName(pkg), Name.identifier(nm)) }
+                // …plus the synthetic file's OWN top-level callables, which is where the preamble now
+                // lands. A dangling file's top-level declarations do not enter `scopeContext` (the finding
+                // the local-stub path exists for), so the preamble's `val Mesh.pos by FromInput()` and
+                // `fun Mesh.set(…)` — the box's own graphics API, and the reason the preamble is injected
+                // at all — were absent from `m.` even though writing them out by hand resolves. Read off
+                // the file's declarations directly; `__c` itself is not an extension, so it never enters.
+                val fromFile = file.declarations.asSequence()
+                    .mapNotNull { runCatching { it.symbol as? KaCallableSymbol }.getOrNull() }
+                    .filter { sym -> match((sym as? KaNamedSymbol)?.name ?: return@filter false) }
+                val extCandidates = (ctx.compositeScope().callables(match) + fromPackages + fromFile +
+                    fromReceiverIndex +
                     ctx.implicitReceivers.asSequence().flatMap { r ->
                         r.type.scope?.getCallableSignatures(match)?.map { it.symbol } ?: emptySequence()
                     }).filter { it.isExtension }.toList()
@@ -1016,18 +1493,28 @@ class AaCompleter(
                 // not callables, so the member-only path used to make namespace-like head APIs blank.
                 val nestedClassifiers = type.scope?.getClassifierSymbols(match).orEmpty().mapNotNull { symbol ->
                     val name = (symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
+                    if (!accessible(symbol)) return@mapNotNull null
                     AaCandidate(name, AaCandidate.Kind.CLASSIFIER, null, typeStr, "class")
                 }.toList()
 
                 val out = (members + extensions + nestedClassifiers)
                     .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
-                AaCompletionResult(out, if (out.isEmpty()) "0 matched; type=$typeStr; members=${members.size}" else "")
+                AaCompletionResult(
+                    out,
+                    when {
+                        out.isEmpty() -> "0 matched; type=$typeStr; members=${members.size}"
+                        receiverIndexCapped -> "receiver-index truncated at $RECEIVER_INDEX_CAP of " +
+                            "${receiverIndexHits.size} candidates for $typeStr"
+                        else -> ""
+                    }
+                )
             } else {
                 val pos = PsiTreeUtil.getParentOfType(leaf, KtElement::class.java) ?: (leaf as? KtElement)
                     ?: return@analyze AaCompletionResult(emptyList(), "no position element")
 
                 // Argument position → the enclosing call's remaining (not-yet-supplied) named params,
                 // unioned across all overloads (an incomplete call may resolve to a no-arg overload).
+                val ctx = file.scopeContext(pos)
                 val argList = PsiTreeUtil.getParentOfType(leaf, KtValueArgumentList::class.java)
                 // …but NOT once the caret is past a named argument's `=`: at `f(word = ‸)` the caret is in
                 // the VALUE slot, where `family = ` is not just unhelpful, it is a syntax error. The
@@ -1040,7 +1527,27 @@ class AaCompleter(
                     val callCands = call?.resolveToCallCandidates().orEmpty()
                         .mapNotNull { it.candidate as? KaFunctionCall<*> }
                     val supplied = argList.arguments.mapNotNull { it.getArgumentName()?.asName?.asString() }.toSet()
-                    callCands.flatMap { it.partiallyAppliedSymbol.signature.valueParameters }.map { it.symbol }
+                    // A call being edited often doesn't resolve — one bad argument is enough — and then
+                    // `resolveToCallCandidates` returns nothing and the parameter names go with it. That is
+                    // backwards: the names are *most* wanted while the call is still wrong. So fall back to
+                    // the callee's NAME: whatever functions are in scope (or in the index) under that name,
+                    // unioned. `animateEvolution(totalSteps = …, columns = …, cellSide = ‸)` is the shape
+                    // the caret sweep kept missing.
+                    val byCalleeName: List<KaCallableSymbol> = if (callCands.isNotEmpty()) emptyList() else {
+                        val callee = (call?.calleeExpression as? KtSimpleNameExpression)?.getReferencedName()
+                        if (callee == null) emptyList() else {
+                            val exact: (Name) -> Boolean = { it.asString() == callee }
+                            val fromScope = runCatching { ctx.compositeScope().callables(exact).toList() }
+                                .getOrDefault(emptyList())
+                            val fromIndex = index.callables.asSequence()
+                                .filter { callee in it.value }
+                                .flatMap { (pkg, _) -> findTopLevelCallables(FqName(pkg), Name.identifier(callee)) }
+                                .toList()
+                            (fromScope + fromIndex).filterIsInstance<KaNamedFunctionSymbol>()
+                        }
+                    }
+                    (callCands.flatMap { it.partiallyAppliedSymbol.signature.valueParameters }.map { it.symbol } +
+                        byCalleeName.filterIsInstance<KaNamedFunctionSymbol>().flatMap { it.valueParameters })
                         .distinctBy { it.name.asString() }
                         .filter { it.name.asString() !in supplied }
                         .filter { prefix.isEmpty() || it.name.asString().startsWith(prefix) }
@@ -1061,7 +1568,6 @@ class AaCompleter(
                     runCatching { enumerableValuesOf(it) }.getOrDefault(emptyList())
                 }
 
-                val ctx = file.scopeContext(pos)
                 // Scope filtering: (1) implicit-receiver members come from `fromReceivers` below, so drop
                 // the `with(...)` TypeScope here to avoid listing them twice; (2) with an empty prefix
                 // (right after `f(` or on a blank line) the star-import scopes would flood the panel with
@@ -1072,10 +1578,16 @@ class AaCompleter(
                 }
                 val fromScopes = ctx.compositeScope(scopeFilter).callables(match)
                     .mapNotNull { asCandidate(it, AaCandidate.Kind.TOP_LEVEL, null) }.toList()
-                val sourceClassifiers = ctx.compositeScope(scopeFilter).classifiers(match).mapNotNull { symbol ->
+                // The file's own classifiers are added explicitly for the same reason its callables are on
+                // the dot path: a dangling file's top-level declarations don't reach `scopeContext`, so a
+                // class the preamble declares (`/*supermap*/ class MappedStructure`) was unnameable.
+                val fileClassifiers = file.declarations.asSequence()
+                    .filterIsInstance<KtClassOrObject>().mapNotNull { it.nameAsName }.filter(match)
+                    .map { AaCandidate(it.asString(), AaCandidate.Kind.CLASSIFIER, null, null, "class") }
+                val sourceClassifiers = (ctx.compositeScope(scopeFilter).classifiers(match).mapNotNull { symbol ->
                     val name = (symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
                     AaCandidate(name, AaCandidate.Kind.CLASSIFIER, null, null, "class")
-                }.toList()
+                } + fileClassifiers).toList()
                 // At an empty-prefix ARGUMENT position (`f(‸`) the call's parameters are what matters;
                 // dumping every implicit-receiver (e.g. `Box`) member there just buries the params. Skip
                 // them until a prefix is typed. At a name position (blank line) they stay — that's how you

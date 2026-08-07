@@ -181,6 +181,10 @@ Decision already made: **out-of-process** (the AA classpath must stay out of the
       `CompletionContextProbe` forms: `prop<Int>(inheritedCount)` → `inheritedCount: kotlin.Int` ✓,
       `@exported _exportedGreeting` → `: kotlin.String` ✓, bare `_` → `_exportedGreeting` ✓, plus normal
       dot (`moveTo`) / name (`Vec3`) intact.
+      **Sharpened later:** top-level declarations don't *enumerate*, but they do *resolve*, and a stub
+      cannot stand in for a class or for a lambda parameter's receiver — so the preamble is now ALSO
+      emitted verbatim at file scope, with the dot/name paths enumerating the file's own declarations
+      explicitly. See "Preamble → local stubs, *and* file scope" in `completion_aa_sidecar.md`.
 - [x] **KI2 `complete()` behind a flag** — `KotlinEngineConfig.activeCompletionBackend = K1 | AA`
       (`-Dafield.kotlin.completion`). When AA, `AaCompletionClient` (`AaCompletionClient.kt`) POSTs
       `/complete` on `Dispatchers.IO` and returns a `CompletionResult.Success`; **any** failure / timeout /
