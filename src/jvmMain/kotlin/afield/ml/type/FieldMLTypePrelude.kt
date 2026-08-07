@@ -1,11 +1,18 @@
 package afield.ml.type
 
 object FieldMLTypePrelude {
-    val host = THost("Host")
+    val host = THost(FieldMLHostTypes.OPAQUE)
     val vec2 = THost("Vec2")
     val vec3 = THost("Vec3")
     val vec4 = THost("Vec4")
     val fline = THost("FLine")
+
+    /**
+     * `thisBox` is the receiver most host calls start from, and it really is an `afield.Box` — so
+     * typing it as one is what turns the whole `hostGet`/`hostCall` family from opaque into checked
+     * in the case a live document hits first.
+     */
+    val box = THost("Box")
 
     private val vectorNames = setOf("Vec2", "Vec3", "Vec4")
 
@@ -59,7 +66,7 @@ object FieldMLTypePrelude {
 
     val schemes: Map<String, Scheme> = linkedMapOf(
         "Unit" to Scheme(emptySet(), TUnit),
-        "thisBox" to Scheme(emptySet(), hostAny),
+        "thisBox" to Scheme(emptySet(), box),
         "print" to Scheme(setOf(-1), fn(any, any)),
         "println" to Scheme(setOf(-1), fn(any, any)),
         "display" to Scheme(setOf(-1), fn(TString, fn(any, any))),
@@ -163,16 +170,28 @@ object FieldMLTypePrelude {
         "animateFor" to poly { a -> fn(TFloat, TFun(TFloat, a), hostAny) },
 
         "hostInput" to Scheme(emptySet(), hostAny),
+        "hostNull" to Scheme(emptySet(), hostAny),
         "hostClass" to Scheme(emptySet(), fn(TString, hostAny)),
+        "hostNew" to Scheme(setOf(-43), fn(TVar(-43), fn(hostAny, hostAny))),
         "hostNew0" to Scheme(emptySet(), fn(hostAny, hostAny)),
+        "hostCall" to Scheme(setOf(-44, -45), fn(TString, fn(TVar(-44), fn(TVar(-45), hostAny)))),
         "hostCall0" to Scheme(setOf(-2), fn(TString, fn(TVar(-2), hostAny))),
         "hostCall1" to Scheme(setOf(-3, -4), fn(TString, fn(TVar(-3), fn(TVar(-4), hostAny)))),
         "hostCall2" to Scheme(setOf(-5, -6, -7), fn(TString, fn(TVar(-5), fn(TVar(-6), fn(TVar(-7), hostAny))))),
         "hostStaticCall" to Scheme(setOf(-38), fn(TString, fn(TVar(-38), fn(hostAny, hostAny)))),
+        "hostExt" to Scheme(setOf(-50, -51), fn(hostAny, fn(TString, fn(TVar(-50), fn(TVar(-51), hostAny))))),
         "hostStaticTap" to Scheme(setOf(-39, -40), fn(TString, fn(TVar(-39), fn(hostAny, fn(TVar(-40), TVar(-40)))))),
         "hostTap" to Scheme(setOf(-41, -42), fn(TString, fn(TVar(-41), fn(TVar(-42), TVar(-42))))),
         "hostGet" to Scheme(setOf(-8), fn(TString, fn(TVar(-8), hostAny))),
         "hostSet" to Scheme(setOf(-9, -37), fn(TString, fn(TVar(-9), fn(TVar(-37), hostAny)))),
+
+        // Erasure escapes: the author asserting what a `Host` reflection could only see as `Object`
+        // actually is. Deliberately not inferred — a guess here would be the one dishonest type.
+        "hostAs" to Scheme(setOf(-52), fn(TString, fn(TVar(-52), hostAny))),
+        "hostAsInt" to Scheme(setOf(-46), fn(TVar(-46), TInt)),
+        "hostAsFloat" to Scheme(setOf(-47), fn(TVar(-47), TFloat)),
+        "hostAsBool" to Scheme(setOf(-48), fn(TVar(-48), TBool)),
+        "hostAsString" to Scheme(setOf(-49), fn(TVar(-49), TString)),
     )
 
     private fun fn(vararg parts: Type): Type {

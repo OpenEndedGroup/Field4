@@ -208,21 +208,32 @@ linspace 0.0 tau 24
 
 ## JVM interop
 
-`hostTap` is the one to reach for: it looks a Kotlin function up in Field's source index, fills in defaults, and puts the piped value in the data argument. The rest spell out the JVM ABI by hand. See [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
+`hostTap` is the one to reach for when a Kotlin function is an effect in the middle of a pipe: it looks the function up in Field's source index, fills in defaults, and puts the piped value in the data argument. `hostCall` is the one for everything else. See [The JVM bridge](fieldml_host_bridge.md) for the whole story and [FieldML Examples](fieldml_examples.md#jvm-interop) for worked versions.
 
 | Name | Type |
 | --- | --- |
-| `thisBox` | `Host` |
+| `thisBox` | `Box` |
 | `hostTap` | `String -> 'a -> 'b -> 'b` |
 | `hostInput` | `Host` |
+| `hostNull` | `Host` |
 | `hostClass` | `String -> Host` |
+| `hostNew` | `'a -> Host -> Host` |
 | `hostNew0` | `Host -> Host` |
+| `hostCall` | `String -> 'a -> 'b -> Host` |
 | `hostCall0` | `String -> 'a -> Host` |
 | `hostCall1` | `String -> 'a -> 'b -> Host` |
 | `hostCall2` | `String -> 'a -> 'b -> 'c -> Host` |
 | `hostStaticCall` | `String -> 'a -> Host -> Host` |
+| `hostExt` | `Host -> String -> 'a -> 'b -> Host` |
 | `hostStaticTap` | `String -> 'a -> Host -> 'b -> 'b` |
 | `hostGet` | `String -> 'a -> Host` |
 | `hostSet` | `String -> 'a -> 'b -> Host` |
+| `hostAs` | `String -> 'a -> Host` |
+| `hostAsInt` | `'a -> Int` |
+| `hostAsFloat` | `'a -> Float` |
+| `hostAsBool` | `'a -> Bool` |
+| `hostAsString` | `'a -> String` |
 
-The bridge is deliberately narrow: constructors must take no arguments, calls top out at two, and no FieldML function can cross into Kotlin as a callback. Anything beyond that shape belongs in a Kotlin box for now.
+`hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; anything else is a single argument. `hostNew` is the same for constructors. The `hostCall0`/`hostCall1`/`hostCall2` forms remain, and `hostCall1` is the way to pass one list *as* a list rather than have it spread. A FieldML function passed where the JVM wants a functional interface — a Kotlin lambda parameter, `Runnable`, `Comparator` — is converted on the way in.
+
+The types in this table are the *static* ones. In a real call the type checker does better than `Host`: it resolves the member by reflection, so `thisBox |> hostGet "width"` is an `Int`, a misspelled member name is a type error rather than a crash, and a result whose class is known keeps that class as its type. `Host` is what is left when reflection genuinely cannot say — a generic erased to `Object`, a nullable Kotlin return, an array — and it is the one type that unifies with everything, which is what the `hostAs…` family is for.
