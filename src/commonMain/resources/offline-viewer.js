@@ -1073,7 +1073,7 @@ function setupHelpOverlay() {
                 <p style="margin: 0 0 6px 0;">• Monaco editor provides syntax highlighting</p>
                 <p style="margin: 0 0 16px 0;">• Click "Open in Field·4" to launch in an already running desktop app</p>
                 <p style="margin: 0; opacity: 0.8; font-size: 13px;">
-                    This is a <b>read-only</b> documentation mode. To edit or execute code, launch Field·4 and click on the link in the bottom right.
+                    This is a <b>read-only</b> documentation mode. To edit or execute code, launch Field·4 and click on the link in the top left.
                 </p>
             </div>
             <div style="text-align: center; margin-top: 18px;">
