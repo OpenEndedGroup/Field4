@@ -153,20 +153,24 @@ class FieldMLCompletionEngineTest {
 
     private fun complete(source: String): Completion {
         val code = source.trimIndent()
-        return assertNotNull(
-            FieldMLCompletionEngine.complete(
-                CompletionRequest(
-                    uid = "test",
-                    line = 1,
-                    allCode = code,
-                    column = 1,
-                    position = code.length,
-                    property = "code",
-                ),
-            ),
-            "Expected completions for:\n$code",
-        )
+        return completeAt(code, code.length)
     }
+
+    /** Completion with the caret somewhere other than the end — where half-written boxes put it. */
+    private fun completeAt(code: String, caret: Int): Completion =
+        FieldMLCompletionEngine.complete(
+            CompletionRequest(
+                uid = "test",
+                line = 1,
+                allCode = code,
+                column = 1,
+                position = caret,
+                property = "code",
+            ),
+        )
+
+    private fun completeAfter(code: String, marker: String): Completion =
+        completeAt(code, code.indexOf(marker).also { require(it >= 0) { "No '$marker' in:\n$code" } } + marker.length)
 
     // ---- typed host values -------------------------------------------------------------------
     //
@@ -226,6 +230,84 @@ class FieldMLCompletionEngineTest {
         val completion = complete("""hostAs "Vec""")
         assertHas(completion, "Vec2")
         assertHas(completion, "Vec3")
+    }
+
+    // ---- half-written boxes ------------------------------------------------------------------
+    //
+    // A caret is almost never at the end of a program that parses. It is inside a record literal, an
+    // argument list or a lambda, with the rest of the box still to come, and the binding it needs a
+    // type for was written several lines up. These pin that case, because it is the only one that
+    // happens while someone is actually typing.
+
+    /** The demo box from `fieldml_host_bridge.md`, which is where this was first noticed. */
+    private val halfWrittenRecord = """
+        let Img = hostClass "afield.stdlib.Img"
+        let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
+
+        // A comment with an = sign and a "quoted bracket ( in it.
+        {
+          width = img.wi
+          area = img.width * img.height
+          first = img |> hostCall "at" (0, 0, 0)
+        }
+    """.trimIndent()
+
+    @Test
+    fun completesHostMembersInsideAnUnclosedRecordLiteral() {
+        val item = assertHas(completeAfter(halfWrittenRecord, "img.wi"), "width")
+
+        assertEquals("Int", item.tail)
+    }
+
+    @Test
+    fun completesInsideHostGetWhileTheRestOfTheBoxIsUnparsable() {
+        val code = halfWrittenRecord.replace("width = img.wi", """width = img |> hostGet "wi""")
+
+        assertEquals("Int", assertHas(completeAfter(code, """hostGet "wi"""), "width").tail)
+    }
+
+    /** `let img = … Img` needs `let Img = …` above it, so the bindings have to be typed together. */
+    @Test
+    fun typesABindingThatDependsOnAnEarlierBinding() {
+        val code = """
+            let Img = hostClass "afield.stdlib.Img"
+            let img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img
+
+            img.wi
+        """.trimIndent()
+
+        assertEquals("Int", assertHas(completeAt(code, code.length), "width").tail)
+    }
+
+    @Test
+    fun completesAcrossAMultiLinePipeInsideALet() {
+        val code = """
+            let warped =
+              fline
+                |> moveTo 0.0 0.0
+                |> hostCall "tra
+        """.trimIndent()
+
+        assertHas(completeAt(code, code.length), "transform")
+    }
+
+    /** After a dot the only legal continuation is a member, so `with` must not be offered for `wi`. */
+    @Test
+    fun offersNoKeywordsOrSnippetsAfterADot() {
+        val labels = completeAfter(halfWrittenRecord, "img.wi").metadata
+        assertTrue(labels.none { it.category == "snippets" }, labels.map { it.displayText }.toString())
+        assertTrue(labels.none { it.displayText == "with" }, labels.map { it.displayText }.toString())
+    }
+
+    /**
+     * An empty answer still has to be an answer. The popup is waiting on this reply and cannot tell
+     * silence from slowness, so returning nothing left it spinning until the RPC timed out.
+     */
+    @Test
+    fun repliesWithAnEmptyCompletionWhenNothingMatches() {
+        val completion = complete("zzzznosuchprefix")
+
+        assertTrue(completion.metadata.isEmpty(), completion.metadata.map { it.displayText }.toString())
     }
 
     private fun contextAt(source: String, symbol: String, occurrence: Int = 1) =

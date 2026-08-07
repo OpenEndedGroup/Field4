@@ -32,7 +32,7 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 object FieldMLCompletionEngine {
-    fun complete(request: CompletionRequest): Completion? {
+    fun complete(request: CompletionRequest): Completion {
         val code = request.allCode
         val cursor = request.position.coerceIn(0, code.length)
 
@@ -44,14 +44,16 @@ object FieldMLCompletionEngine {
             return completion(context.boundsStart, context.boundsEnd, hostTapArgumentItems(context))
         }
 
+        // These two are where the search ends, not one option among several. Inside a member name —
+        // after a dot, or inside a `hostGet "…"` — the only thing that can legally follow is a member,
+        // so an empty answer is the right answer. Falling through to the general list is how `img.wi`
+        // came to offer the `with` keyword.
         hostMemberContext(code, cursor)?.let { context ->
-            val members = hostMemberItems(code, context)
-            if (members.isNotEmpty()) return completion(context.boundsStart, context.boundsEnd, members)
+            return completion(context.boundsStart, context.boundsEnd, hostMemberItems(code, context))
         }
 
         recordFieldContext(code, cursor)?.let { context ->
-            val fields = recordFieldItems(code, context)
-            if (fields.isNotEmpty()) return completion(context.boundsStart, context.boundsEnd, fields)
+            return completion(context.boundsStart, context.boundsEnd, recordFieldItems(code, context))
         }
 
         val bounds = identifierBounds(code, cursor)
@@ -90,7 +92,7 @@ object FieldMLCompletionEngine {
         }
 
         recordFieldContext(request.allCode, request.position)?.let { context ->
-            val type = typedVisibleNames(context.sourceForTypes, context.sourceForTypes.length)[context.receiver] as? TRecord
+            val type = typedVisibleNames(request.allCode, context.receiverEnd)[context.receiver] as? TRecord
             val fieldType = type?.fields?.get(context.prefix)
             if (fieldType != null) {
                 return SymbolContextResponse(
@@ -154,8 +156,13 @@ object FieldMLCompletionEngine {
         return SymbolContextResponse()
     }
 
-    private fun completion(boundsStart: Int, boundsEnd: Int, items: List<Metadata>): Completion? =
-        if (items.isEmpty()) null else Completion(boundsStart = boundsStart, boundsEnd = boundsEnd, metadata = items)
+    /**
+     * Always a reply, even an empty one. The editor's popup is waiting on this message and has no way
+     * to tell "nothing matches" from "still thinking", so staying silent leaves it spinning until the
+     * RPC times out fifteen seconds later.
+     */
+    private fun completion(boundsStart: Int, boundsEnd: Int, items: List<Metadata>): Completion =
+        Completion(boundsStart = boundsStart, boundsEnd = boundsEnd, metadata = items)
 
     private fun identifierBounds(code: String, cursor: Int): Pair<Int, Int> {
         var start = cursor
@@ -358,29 +365,269 @@ object FieldMLCompletionEngine {
         return fallback + out
     }
 
+    /**
+     * Types for the bindings above the caret when the box as a whole does not compile — which, while
+     * someone is typing, is nearly always. The document is rebuilt as the *scope prelude*: the
+     * top-level `let`/`type` statements that precede the caret, in order, dropping any that will not
+     * compile. That is a real program, so the ordinary inferencer types it, and a binding that leans
+     * on an earlier one (`let img = hostNew … Img`) sees the earlier one — which is the whole point,
+     * and is what compiling each binding on its own could never do.
+     */
     private fun typedVisibleNameFallback(code: String, cursor: Int): Map<String, Type> {
-        val before = code.take(cursor)
+        val typed = compiledScopePrelude(code, cursor)?.typed ?: return emptyMap()
         val out = linkedMapOf<String, Type>()
-        // Capitalised names included: `let Img = hostClass "…"` is how a class handle reads, and this
-        // fallback is exactly the path taken while the rest of the line is still being typed.
-        Regex("""(?m)^\s*let\s+([A-Za-z_][A-Za-z0-9_']*)\s*=\s*(.+)$""")
-            .findAll(before)
-            .forEach { match ->
-                val name = match.groupValues[1]
-                val source = match.groupValues[2].trim()
-                if (source.isBlank() || source.contains("|>")) return@forEach
-                FieldMLCompiler.compile(source).typed?.type?.let { out[name] = it }
+        fun visit(expr: TExpr) {
+            when (expr) {
+                is TExprLet -> {
+                    out[expr.name] = expr.value.type
+                    expr.parameters.forEach { (name, type) -> out.putIfAbsent(name, type) }
+                    visit(expr.value)
+                    visit(expr.body)
+                }
+                is TExprTypeDecl -> visit(expr.body)
+                else -> Unit
             }
+        }
+        visit(typed)
         return out
     }
 
     private fun pipeInputType(code: String, cursor: Int): Type? {
-        val pipe = code.lastIndexOf("|>", startIndex = (cursor - 1).coerceAtLeast(0))
+        val pipe = maskedForScanning(code).lastIndexOf("|>", startIndex = (cursor - 1).coerceAtLeast(0))
         if (pipe < 0) return null
-        val leftSource = code.substring(0, pipe).trimEnd()
-        if (leftSource.isBlank()) return null
-        return FieldMLCompiler.compile(leftSource).typed?.type
+        return typeOfExpressionEndingAt(code, pipe)
     }
+
+    // ---- scope reconstruction ---------------------------------------------------------------
+    //
+    // Everything below exists because completion runs on source that is, by definition, half-written.
+    // Asking the compiler about a truncated prefix of the box answers "syntax error" and nothing else,
+    // so instead the caret's surroundings are rebuilt into the smallest program that still says what
+    // the receiver's type is.
+
+    /**
+     * The type of the expression that ends at [end] — the receiver of a pipe, typically — evaluated
+     * in the scope the caret actually sits in.
+     *
+     * Two things have to be true at once for this to work inside a record literal or an argument
+     * list: the expression has to be cut back to just itself (`width = img |> …` is not a program,
+     * `img` is), and the bindings above it have to come along (`img` means nothing without its `let`).
+     */
+    private fun typeOfExpressionEndingAt(code: String, end: Int): Type? {
+        val segment = expressionSegmentEndingAt(code, end)
+        if (segment.isBlank()) return null
+        val prelude = compilingScopePreludeSource(code, end)
+        val source = if (prelude.isBlank()) segment else "$prelude\n$segment"
+        return FieldMLCompiler.compile(source).takeIf { it.errorFree }?.typed?.type
+    }
+
+    /**
+     * The innermost expression ending at [end], found by walking back to whatever opened it: an
+     * unmatched bracket, a `=`/`,`/`;`, an arrow or an `in`/`then`/`else`, or the start of a top-level
+     * statement.
+     *
+     * A newline only ends the walk when the line that follows it starts in column zero, which is the
+     * same rule the parser uses to end a top-level binding. That is what lets a pipe stay in one piece
+     * across lines while `img |> …` on its own line does not swallow the `let` above it.
+     */
+    private fun expressionSegmentEndingAt(code: String, end: Int): String {
+        val mask = maskedForScanning(code)
+        var depth = 0
+        var index = (end - 1).coerceAtMost(mask.length - 1)
+        var start = 0
+        while (index >= 0) {
+            when (val ch = mask[index]) {
+                ')', ']', '}' -> depth++
+                '(', '[', '{' -> {
+                    if (depth == 0) {
+                        start = index + 1
+                        break
+                    }
+                    depth--
+                }
+                '=', ',', ';' -> {
+                    // `==`, `<=`, `>=`, `!=` are operators inside one expression, not separators.
+                    val binary = ch == '=' &&
+                        (index > 0 && mask[index - 1] in "=<>!" || index + 1 < mask.length && mask[index + 1] == '=')
+                    if (depth == 0 && !binary) {
+                        start = index + 1
+                        break
+                    }
+                }
+                '>' -> if (depth == 0 && index > 0 && mask[index - 1] == '-') {
+                    start = index + 1
+                    break
+                }
+                '\n' -> if (depth == 0 && startsTopLevelStatement(mask, index + 1)) {
+                    start = index + 1
+                    break
+                }
+                else -> {
+                    val keyword = keywordEndingAt(mask, index)
+                    if (depth == 0 && keyword != null) {
+                        start = index + 1
+                        break
+                    }
+                }
+            }
+            index--
+        }
+        return code.substring(start.coerceAtMost(end), end).trim()
+    }
+
+    /** True when the line beginning at [lineStart] has content in column zero. */
+    private fun startsTopLevelStatement(mask: String, lineStart: Int): Boolean =
+        lineStart < mask.length && !mask[lineStart].isWhitespace()
+
+    private fun keywordEndingAt(mask: String, index: Int): String? =
+        expressionOpeningKeywords.firstOrNull { keyword ->
+            val start = index - keyword.length + 1
+            start > 0 &&
+                mask.regionMatches(start, keyword, 0, keyword.length) &&
+                !isIdentifierPart(mask[start - 1]) &&
+                (index + 1 >= mask.length || !isIdentifierPart(mask[index + 1]))
+        }
+
+    private val expressionOpeningKeywords = listOf("in", "then", "else")
+
+    private val statementOpener = Regex("""^(let|type)\b""")
+
+    private fun compilingScopePreludeSource(code: String, cursor: Int): String =
+        compiledScopePrelude(code, cursor)?.source.orEmpty()
+
+    /**
+     * The longest run of top-level statements above the caret that compiles. Statements that do not
+     * are skipped rather than ending the walk, because the one being typed is usually broken and the
+     * ones after it usually are not.
+     *
+     * Memoised on the statement list: this runs on every keystroke, and the statements above the caret
+     * are exactly what does not change while a line is being typed.
+     */
+    private fun compiledScopePrelude(code: String, cursor: Int): CompilationResult? {
+        val statements = topLevelStatements(code, cursor)
+        if (statements.isEmpty()) return null
+        scopePreludeCache[statements]?.let { return it.value }
+        var kept = emptyList<String>()
+        var result: CompilationResult? = null
+        statements.forEach { statement ->
+            val candidate = kept + statement
+            val compiled = FieldMLCompiler.compile(candidate.joinToString("\n"))
+            if (compiled.errorFree) {
+                kept = candidate
+                result = compiled
+            }
+        }
+        synchronized(scopePreludeCache) {
+            if (scopePreludeCache.size > 32) scopePreludeCache.clear()
+            scopePreludeCache[statements] = CachedPrelude(result)
+        }
+        return result
+    }
+
+    /**
+     * The `let` and `type` statements before the caret, each with its indented continuation lines, so
+     * that a binding whose value runs over several lines survives intact.
+     */
+    private fun topLevelStatements(code: String, cursor: Int): List<String> {
+        val before = maskedForScanning(code).take(cursor.coerceIn(0, code.length))
+        // Split on '\n' rather than lines(): masking preserves length, and that only stays true — so
+        // that `raw` lines up with `code` — if a '\r' counts as one of the characters consumed.
+        val lines = before.split('\n')
+        val statements = mutableListOf<String>()
+        var current: MutableList<String>? = null
+        var offset = 0
+        lines.forEach { masked ->
+            val raw = code.substring(offset.coerceAtMost(code.length), (offset + masked.length).coerceAtMost(code.length))
+            offset += masked.length + 1
+            val opensStatement = masked.isNotEmpty() && !masked[0].isWhitespace() &&
+                statementOpener.containsMatchIn(masked)
+            val open = current
+            when {
+                opensStatement -> {
+                    open?.let { statements += it.joinToString("\n") }
+                    current = mutableListOf(raw)
+                }
+                open == null -> Unit
+                masked.isBlank() || masked[0].isWhitespace() -> open.add(raw)
+                else -> {
+                    // A column-zero line that is not a binding ends the one above it and is the box's
+                    // result expression, which contributes no names.
+                    statements += open.joinToString("\n")
+                    current = null
+                }
+            }
+        }
+        current?.let { statements += it.joinToString("\n") }
+        return statements
+    }
+
+    /**
+     * [code] with string literals and comments blanked out, so the backward scans above cannot be
+     * fooled by an `=` or a bracket inside `hostCall "at" (…)` or a sentence in a comment. Indices are
+     * preserved, and newlines are kept so line structure still reads.
+     */
+    private fun maskedForScanning(code: String): String {
+        maskCache[code]?.let { return it }
+        val out = StringBuilder(code.length)
+        var index = 0
+        while (index < code.length) {
+            val ch = code[index]
+            when {
+                ch == '"' -> {
+                    out.append(' ')
+                    index++
+                    while (index < code.length && code[index] != '"') {
+                        if (code[index] == '\\' && index + 1 < code.length) {
+                            out.append(' ')
+                            index++
+                        }
+                        out.append(if (code[index] == '\n') '\n' else ' ')
+                        index++
+                    }
+                    if (index < code.length) {
+                        out.append(' ')
+                        index++
+                    }
+                }
+                ch == '/' && index + 1 < code.length && code[index + 1] == '/' -> {
+                    while (index < code.length && code[index] != '\n') {
+                        out.append(' ')
+                        index++
+                    }
+                }
+                ch == '(' && index + 1 < code.length && code[index + 1] == '*' -> {
+                    var depth = 0
+                    while (index < code.length) {
+                        if (code.startsWith("(*", index)) depth++
+                        if (code.startsWith("*)", index)) depth--
+                        out.append(if (code[index] == '\n') '\n' else ' ')
+                        index++
+                        if (depth == 0) break
+                    }
+                }
+                else -> {
+                    out.append(ch)
+                    index++
+                }
+            }
+        }
+        val masked = out.toString()
+        synchronized(maskCache) {
+            if (maskCache.size > 16) maskCache.clear()
+            maskCache[code] = masked
+        }
+        return masked
+    }
+
+    private val CompilationResult.errorFree: Boolean
+        get() = typed != null && diagnostics.none { it.severity == afield.ml.diag.Severity.Error }
+
+    private class CachedPrelude(val value: CompilationResult?)
+
+    private val scopePreludeCache = java.util.Collections.synchronizedMap(
+        linkedMapOf<List<String>, CachedPrelude>(),
+    )
+    private val maskCache = java.util.Collections.synchronizedMap(linkedMapOf<String, String>())
 
     private fun recordFieldContext(code: String, cursor: Int): RecordFieldContext? {
         val dot = code.lastIndexOf('.', startIndex = (cursor - 1).coerceAtLeast(0))
@@ -396,14 +643,18 @@ object FieldMLCompletionEngine {
         return RecordFieldContext(
             receiver = receiver,
             prefix = code.substring(bounds.first, bounds.second),
-            sourceForTypes = code.substring(0, nameEnd),
+            receiverEnd = nameEnd,
             boundsStart = bounds.first,
             boundsEnd = bounds.second,
         )
     }
 
     private fun recordFieldItems(code: String, context: RecordFieldContext): List<Metadata> {
-        val receiverType = typedVisibleNames(context.sourceForTypes, context.sourceForTypes.length)[context.receiver]
+        // The whole box, with the caret's position as the visibility cut — not the prefix up to the
+        // receiver. A prefix that stops mid-record never parses, and the receiver's `let` is then just
+        // as invisible as everything else.
+        val receiverType = typedVisibleNames(code, context.receiverEnd)[context.receiver]
+            ?: typeOfExpressionEndingAt(code, context.receiverEnd)
         // Dot access on a host value reads a JVM member, so a receiver whose class is known completes
         // from reflection. This is the payoff of typing host values at all: `img.` offers what `Img`
         // has, which is something FieldML could not do at any point before tonight.
@@ -913,7 +1164,8 @@ object FieldMLCompletionEngine {
     private data class RecordFieldContext(
         val receiver: String,
         val prefix: String,
-        val sourceForTypes: String,
+        /** Where the receiver ends, which is also the scope cut for typing it. */
+        val receiverEnd: Int,
         val boundsStart: Int,
         val boundsEnd: Int,
     )

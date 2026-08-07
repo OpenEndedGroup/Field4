@@ -146,9 +146,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     }
 
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
-        FieldMLCompletionEngine.complete(completionRequest)?.let {
-            reply(Message("complete").payload(it))
-        }
+        reply(Message("complete").payload(FieldMLCompletionEngine.complete(completionRequest)))
     }
 
     override fun describeSymbolContext(inside: Box, request: SymbolContextRequest): SymbolContextResponse =
