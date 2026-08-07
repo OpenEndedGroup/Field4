@@ -501,7 +501,11 @@ object CompletionLoweringProbe {
                     broken += f.bucket
                     val notes = (if (f.bucket == "TOTAL") missNotes else notesByBucket[f.bucket])
                         ?.top(3)?.joinToString("; ") { "${it.value}× \"${it.key}\"" } ?: "no notes recorded"
-                    println("  ✗ RATCHET FAIL ${f.bucket} recall fell from ${f.observed}% to %.0f%%".format(pct) +
+                    // `%%` everywhere, including in the interpolated numbers: a bare `%` followed by a space
+                    // is an invalid format conversion, so the FAILURE MESSAGE threw instead of printing.
+                    // The gate still exited nonzero — by exception — which is exactly the shape of bug that
+                    // only deliberately breaking a guarded fix can find, since the happy path never runs it.
+                    println("  ✗ RATCHET FAIL ${f.bucket} recall fell from ${f.observed}%% to %.0f%%".format(pct) +
                         " (floor ${f.minPercent}%, $h/$n); the sidecar's own note on those misses: $notes")
                 } else {
                     held += f.bucket
