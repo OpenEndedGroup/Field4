@@ -121,11 +121,17 @@ def run_with_watchdog(
     completion_probe: Callable[[str], bool] | None = None,
     exit_grace: float = 10.0,
     input_text: str | None = None,
+    on_start: Callable[[int], None] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], int, bool]:
     """Run a child with heartbeats and a hard outer timeout.
 
     Every child gets its own process group so a timed-out Gradle/backdoor wrapper
     cannot leave descendants holding ports or stdout pipes open.
+
+    `on_start` is called once with the child's PID as soon as it exists. The docs
+    runner uses it to know *which* backdoor invocation a failure belongs to: the
+    backdoor client names its session log `…-pid<PID>-….jsonl`, so the PID is an exact
+    key where "newest log that happens to contain an error" is only a guess.
     """
     with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file, tempfile.TemporaryFile(
         mode="w+", encoding="utf-8"
@@ -143,6 +149,8 @@ def run_with_watchdog(
             popen_kwargs["start_new_session"] = True
         started = time.monotonic()
         process = subprocess.Popen(list(command), **popen_kwargs)
+        if on_start is not None:
+            on_start(process.pid)
         if input_text is not None:
             assert process.stdin is not None
             process.stdin.write(input_text)

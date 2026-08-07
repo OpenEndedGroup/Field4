@@ -332,6 +332,7 @@ class RunnerState:
             and self.runner_mode != "never"
         )
         self._session_process: subprocess.Popen[str] | None = None
+        self._last_capture_child_pid: int | None = None
         self._session_sock_path = self.repo_root / ".field-backdoor" / f"session-{self.backdoor_port}.sock"
         self._session_box_count = 0
         self._session_failures = 0
@@ -361,18 +362,38 @@ class RunnerState:
             mode=self.source_refs_mode,
         )
 
-    def handle_capture_error(self, *, page_path: Path, output_path: Path, error: Exception) -> None:
+    def handle_capture_error(
+        self, *, page_path: Path, output_path: Path, error: Exception, continuing: bool = True
+    ) -> None:
+        """Record one failed capture.
+
+        `continuing` says whether the caller will swallow the error and keep building
+        (`continue_on_error`) or re-raise and abort. **Either way the failure is recorded
+        here**, and that is the point: until 2026-08-07 the fail-fast path re-raised
+        *before* calling this, so `self.failures` stayed empty while `log_summary` still
+        ran during teardown and printed `failures=0` on a build that exited 1. The one
+        number a reader checks was wrong exactly when it mattered.
+        """
         message = f"{page_path.name} -> {output_path}: {error}"
         self.failures.append(message)
         # A committed asset already on disk means the generated HTML still points at a
         # real, previously-captured image -- degraded (stale) but not broken. No asset
         # at all means the HTML will carry a broken reference: a louder problem.
+        # That split describes a *continuing* build; when we are about to abort there is
+        # no HTML to degrade, so do not promise a fallback no reader will ever see.
         if output_path.exists():
             self.fallback_failures.append(message)
-            LOG.warning(
-                "Field docs runner capture FAILED, falling back to committed asset on disk: %s",
-                message,
-            )
+            if continuing:
+                LOG.warning(
+                    "Field docs runner capture FAILED, falling back to committed asset on disk: %s",
+                    message,
+                )
+            else:
+                LOG.error(
+                    "Field docs runner capture FAILED (a committed asset exists, but "
+                    "continue-on-error is off, so the build aborts): %s",
+                    message,
+                )
         else:
             self.broken_failures.append(message)
             LOG.error(
@@ -495,14 +516,69 @@ class RunnerState:
         found.sort(key=lambda item: item[0], reverse=True)
         return [(path, head) for _mtime, path, head in found]
 
+    def _remember_capture_child_pid(self, pid: int) -> None:
+        """Record the PID of the backdoor invocation currently being run."""
+        self._last_capture_child_pid = pid
+
+    @staticmethod
+    def _error_lines_in(log_path: Path) -> list[str]:
+        try:
+            with log_path.open("r", encoding="utf-8", errors="replace") as handle:
+                return [
+                    raw.rstrip("\n")
+                    for raw in handle
+                    if '"error"' in raw or '"traceback"' in raw or "_error" in raw
+                ]
+        except OSError:
+            return []
+
+    def _backdoor_client_log_for_pid(self, pid: int) -> Path | None:
+        """The backdoor session log written by child `pid`, if it exists.
+
+        `field_backdoor.py`'s SessionLogger names each file
+        `<timestamp>-pid<PID>-<token>.jsonl`, so the PID identifies the invocation
+        exactly.
+        """
+        log_dir = self.repo_root / ".field-backdoor" / "logs"
+        try:
+            matches = sorted(log_dir.glob(f"*-pid{pid}-*.jsonl"), key=lambda p: p.stat().st_mtime)
+        except OSError:
+            return None
+        return matches[-1] if matches else None
+
     def _latest_backdoor_client_error(self) -> tuple[str, str] | None:
-        """Return (path, tail) of error/exception events from the newest backdoor log.
+        """Return (path, tail) from the backdoor log belonging to the FAILING capture.
 
         The backdoor client (field_backdoor.py SessionLogger) writes one JSONL file per
         invocation under .field-backdoor/logs. On a dropped socket it records a
         `receiver_loop_error` (or websocket_*_error) event with the full client-side
         traceback -- the other end of the WebSocket.
+
+        **Prefer the PID of the child we just ran.** This used to return "the newest of
+        the last four logs that contains an error-shaped line", which is a guess, and on
+        2026-08-07 it guessed wrong in the way that costs the most time: the failing
+        capture's `stop` timed out and reported a clean `ok:false` with no error-shaped
+        line at all, so the scan fell through to an *older, unrelated* invocation and the
+        saved post-mortem led with a Playwright timeout from a different capture. A
+        failure whose own log is quiet is a real and informative state -- say so, rather
+        than substituting someone else's log for it.
         """
+        pid = self._last_capture_child_pid
+        if pid is not None:
+            own = self._backdoor_client_log_for_pid(pid)
+            if own is not None:
+                error_lines = self._error_lines_in(own)
+                if error_lines:
+                    return str(own), "\n".join(error_lines[-12:])
+                return (
+                    str(own),
+                    "(no error/exception events -- this capture's client log is clean, so the "
+                    "failure was reported through a command result rather than a dropped socket; "
+                    "read the command results and the server log above.)",
+                )
+
+        # No PID (or its log never appeared): fall back to the old newest-with-an-error
+        # scan, but label it, because it may belong to a different invocation.
         log_dir = self.repo_root / ".field-backdoor" / "logs"
         try:
             logs = sorted(log_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
@@ -515,16 +591,13 @@ class RunnerState:
                     continue
             except OSError:
                 continue
-            error_lines: list[str] = []
-            try:
-                with log_path.open("r", encoding="utf-8", errors="replace") as handle:
-                    for raw in handle:
-                        if '"error"' in raw or '"traceback"' in raw or "_error" in raw:
-                            error_lines.append(raw.rstrip("\n"))
-            except OSError:
-                continue
+            error_lines = self._error_lines_in(log_path)
             if error_lines:
-                return str(log_path), "\n".join(error_lines[-12:])
+                return (
+                    f"{log_path} -- NOT PID-MATCHED to this capture, may belong to another "
+                    "invocation",
+                    "\n".join(error_lines[-12:]),
+                )
         return None
 
     def _save_failure_report(self, *, output_path: Path, report: str) -> str | None:
@@ -1173,6 +1246,9 @@ class RunnerState:
             return len(parse_backdoor_results(stdout)) >= expected_results
 
         outer_timeout = runner_subprocess_timeout(options=options, is_video=is_video)
+        # Remember which backdoor invocation this was, so a failure diagnosis can find
+        # *its* client log instead of whichever recent one happens to contain an error.
+        self._last_capture_child_pid = None
         completed, duration_ms, timed_out = run_with_watchdog(
             command,
             cwd=self.repo_root,
@@ -1183,6 +1259,7 @@ class RunnerState:
             completion_probe=commands_complete,
             exit_grace=10.0,
             input_text=input_text,
+            on_start=self._remember_capture_child_pid,
         )
         if timed_out:
             emitted = len(parse_backdoor_results(completed.stdout))
@@ -1918,9 +1995,9 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         screenshot_succeeded = bool(options.screenshot)
                         video_succeeded = bool(options.video)
                     except RuntimeError as exc:
+                        state.handle_capture_error(page_path=page_path, output_path=primary_ui_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error:
                             raise
-                        state.handle_capture_error(page_path=page_path, output_path=primary_ui_path, error=exc)
                 site_dir = Path(state.config["site_dir"]).resolve()
                 use_dir_urls = bool(state.config["use_directory_urls"])
                 if screenshot_succeeded and ui_screenshot_path:
@@ -1946,9 +2023,9 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.ensure_screenshot(code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         screenshot_succeeded = True
                     except RuntimeError as exc:
+                        state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error:
                             raise
-                        state.handle_capture_error(page_path=page_path, output_path=screenshot_path, error=exc)
                 if screenshot_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=screenshot_path)
             if options.video and options.capture != "ui":
@@ -1969,9 +2046,9 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.ensure_video(code=runner_code, options=options, page_path=page_path, block_index=block_index)
                         video_succeeded = True
                     except RuntimeError as exc:
+                        state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error:
                             raise
-                        state.handle_capture_error(page_path=page_path, output_path=video_path, error=exc)
                 if video_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=video_path)
             if options.audio and options.capture != "ui":
@@ -1993,9 +2070,9 @@ def process_markdown(*, markdown: str, page_path: Path, state: RunnerState, file
                         state.ensure_audio(options=options, page_path=page_path, block_index=block_index)
                         audio_succeeded = True
                     except RuntimeError as exc:
+                        state.handle_capture_error(page_path=page_path, output_path=audio_path, error=exc, continuing=state.continue_on_error)
                         if not state.continue_on_error:
                             raise
-                        state.handle_capture_error(page_path=page_path, output_path=audio_path, error=exc)
                 if audio_succeeded:
                     register_generated_file(files=files, docs_dir=state.docs_dir, site_dir=Path(state.config["site_dir"]).resolve(), use_directory_urls=bool(state.config["use_directory_urls"]), output_path=audio_path)
 
