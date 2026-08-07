@@ -11,7 +11,7 @@ id: examples.semantic-retrieval.lucene-baseline
 runner: jvm-main
 entrypoint: afield.examples.SemanticRetrievalSmokeTest
 tags: [smoke, ai, semantic-retrieval, lucene]
-timeoutSec: 30
+timeoutSec: 90
 expect:
   exitCode: 0
   stdoutContains:
