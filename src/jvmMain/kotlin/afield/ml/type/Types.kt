@@ -47,6 +47,33 @@ data class Scheme(
 class TypePrinter {
     private val names = mutableMapOf<Int, String>()
 
+    /**
+     * Like [print], but without the parentheses that [print] puts around every arrow. Since `->` is
+     * right associative, a curried type only needs them when a function is an *argument*:
+     * `Float -> Float -> Vec2` rather than `(Float -> (Float -> Vec2))`, but still
+     * `(Int -> 'a) -> Int -> ['a]`. This is the form to show a reader — signatures in the cheatsheet
+     * and in completion — while [print] stays as it is for inline results and diagnostics.
+     */
+    fun printSignature(type: Type): String =
+        when (type) {
+            is TFun -> {
+                val from = printSignature(type.from)
+                val wrapped = if (type.from is TFun) "($from)" else from
+                "$wrapped -> ${printSignature(type.to)}"
+            }
+            is TRecord -> type.fields.entries.joinToString(prefix = "{", postfix = "}") { (name, fieldType) ->
+                "$name: ${printSignature(fieldType)}"
+            }
+            is TTuple -> type.elements.joinToString(prefix = "(", postfix = ")") { printSignature(it) }
+            is TList -> "[${printSignature(type.element)}]"
+            is TAdt -> if (type.arguments.isEmpty()) {
+                type.name
+            } else {
+                "${type.name} ${type.arguments.joinToString(" ") { printSignature(it) }}"
+            }
+            else -> print(type)
+        }
+
     fun print(type: Type): String =
         when (type) {
             TInt -> "Int"

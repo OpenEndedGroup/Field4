@@ -116,7 +116,7 @@ object FieldMLCompletionEngine {
             return SymbolContextResponse(
                 symbol = symbol,
                 html = symbolHtml(
-                    declaration = "$symbol : ${TypePrinter().print(scheme.body)}",
+                    declaration = "$symbol : ${TypePrinter().printSignature(scheme.body)}",
                     detail = if (symbol in graphicsPrelude) "FieldML graphics prelude" else "FieldML prelude",
                     documentation = docs[symbol].orEmpty(),
                 ),
@@ -204,7 +204,7 @@ object FieldMLCompletionEngine {
                     rank = if (pipeCompatible) pipeRank(name) else preludeRank(name),
                     metadata = Metadata(
                         icon = if (name.firstOrNull()?.isUpperCase() == true) "class" else "function",
-                        tail = printer.print(scheme.body),
+                        tail = printer.printSignature(scheme.body),
                         text = name,
                         displayText = name,
                         documentation = docs[name] ?: preludeDocumentation(name, scheme),
@@ -219,7 +219,7 @@ object FieldMLCompletionEngine {
             append("```fieldml\n")
             append(name)
             append(" : ")
-            append(TypePrinter().print(scheme.body))
+            append(TypePrinter().printSignature(scheme.body))
             append("\n```")
         }
 

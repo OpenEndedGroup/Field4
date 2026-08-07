@@ -664,7 +664,7 @@ from it, and `RectSLSdfLook.PRESETS` carries one worked example per capability:
 | Preset | What it demonstrates |
 | --- | --- |
 | `fill` | Antialiased interior, one pixel of edge at any resolution. |
-| `outline` | A band `\|d\| < w` at any `w`. No stroke geometry. |
+| `outline` | A band `|d| < w` at any `w`. No stroke geometry. |
 | `glow` | `exp(-k·max(d,0))` — falloff with *distance*, outside the shape. |
 | `contours` | Iso-distance lines, inside and out. The proof it is a distance. |
 | `relief` | Per-pixel normals from the gradient, lit. |

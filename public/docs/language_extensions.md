@@ -276,3 +276,29 @@ Promote it into Field when one of these becomes true:
 
 Until then, the extension registry lets the language feel native in the editor
 without becoming part of the editor bindings.
+
+## The Other Side Of Promotion: FieldML
+
+FieldML is what a promoted language looks like. It is a main language rather
+than an embedded region, so it does not use the registry described above.
+Instead it takes the built-in route, and the contrast is the useful part:
+
+- **Highlighting** comes from a registered Monaco language rather than an
+  embedded-region matcher. `src/commonMain/resources/fieldml.js` calls
+  `monaco.languages.register` and installs a Monarch grammar with its own
+  keywords, type names and operators, plus a language configuration for
+  brackets, auto-closing pairs and the `//` and `(* *)` comment forms.
+- **Completion and hover come from the server**, not from a JS
+  `completionItems` hook. A FieldML box's execution routes `complete` and
+  `describeSymbolContext` into `FieldMLCompletionEngine`, which answers from the
+  same type prelude the compiler uses. Items carry their real inferred types,
+  and when the caret follows a `|>` the engine ranks the functions whose last
+  argument accepts the piped type.
+- **Diagnostics are real type errors**, not lexical guesses. Running a box
+  compiles it, so the messages come from the inferencer with source ranges.
+
+The trade is the usual one. An extension-registry language ships as a `.js`
+file and can change shape in an afternoon; a promoted language has a compiler,
+a type checker and a prelude to keep in step, and gains completion that
+actually knows what a name means. See the
+[FieldML Cheatsheet](fieldml_cheatsheet.md) for the surface that buys.

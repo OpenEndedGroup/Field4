@@ -61,6 +61,7 @@ nav:
         - Field Probes: field_probes.md
         - Interactive Guides: interactive_guides.md
       - Small Languages:
+        - FieldML Cheatsheet: fieldml_cheatsheet.md
         - FieldML Examples: fieldml_examples.md
         - Forth Examples: forth_examples.md
         - StackSL Cheatsheet: stacksl_cheatsheet.md

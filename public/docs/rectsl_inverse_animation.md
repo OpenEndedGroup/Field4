@@ -395,7 +395,7 @@ and `closable` is the distinction a reader actually needs, borrowed from the std
 | refused | closable? | why, and what it would take |
 | --- | --- | --- |
 | `->face-travel` headings | yes | `atan2` has no `Fn` op. Needs an `FnExpr.Atan` plus atan2's quadrant fix-up, which the exact step can now supply. This is the whole of the remaining 4.2%. |
-| `/` by a non-constant | yes | RectSL's `/` returns 0 where `\|divisor\| <= 1e-12`. An exact indicator exists now; what blocks it is that the suppressed branch still evaluates `a/b` and yields `0·inf` = NaN. A *constant* divisor folds the guard exactly. |
+| `/` by a non-constant | yes | RectSL's `/` returns 0 where `|divisor| <= 1e-12`. An exact indicator exists now; what blocks it is that the suppressed branch still evaluates `a/b` and yields `0·inf` = NaN. A *constant* divisor folds the guard exactly. |
 | `smoothstep` with non-constant edges | yes | the same `0·inf` problem, for the coincident-edge guard. |
 | `mod` | yes | Kotlin's `%` truncates toward zero, and `trunc` is not `floor`; it needs a sign primitive. A constant pair still folds. |
 | `bounce-*` easings | yes | four parabolic arcs, each join needing its own clamped ramp. Expressible with the machinery that is now here; not yet expressed. |
