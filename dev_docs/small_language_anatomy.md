@@ -152,7 +152,7 @@ agree name for name:
 
 | half | site | anchor |
 | --- | --- | --- |
-| types, consumed by the inferencer | `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt:60` | `val schemes: Map<String, Scheme>` |
+| types, consumed by the inferencer | `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt:67` | `val schemes: Map<String, Scheme>` |
 | values, consumed by the evaluator | `src/jvmMain/kotlin/afield/ml/FieldMLRuntimePrelude.kt:33` | `fun values(` |
 | where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:54` | `FieldMLTypePrelude.schemes` |
 | where the value half enters | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:43` | `RuntimeEnv()` |
@@ -187,7 +187,7 @@ worth copying: an expression language wants to show its result, and a language w
 | what | site | anchor |
 | --- | --- | --- |
 | the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:34` | `fun complete(request: CompletionRequest)` |
-| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:71` | `fun describeSymbolContext` |
+| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:77` | `fun describeSymbolContext` |
 | the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:149` | `FieldMLCompletionEngine.complete` |
 
 The engine answers from the *same type prelude the compiler uses*, so items carry their real inferred
@@ -459,7 +459,7 @@ Traced against FieldML, which is the only one that went the whole way.
    intermediate form. No `Box`, no output, no server. Everything below depends on this being callable
    from a plain unit test.
 2. **Split the prelude into types and values.** Two maps keyed by the same names
-   (`FieldMLTypePrelude.kt:60`, `FieldMLRuntimePrelude.kt:33`). Do this before the prelude is big; it is
+   (`FieldMLTypePrelude.kt:67`, `FieldMLRuntimePrelude.kt:33`). Do this before the prelude is big; it is
    painful to split later, and it is what makes step 6 possible.
 3. **Take host effects as prelude parameters, not as language features.** `values(output, box)` —
    `display` and `draw` are natives closed over the box (`FieldMLRuntimePrelude.kt:45`, `:301`).
