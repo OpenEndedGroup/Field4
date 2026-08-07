@@ -411,16 +411,16 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | --- | --- | --- |
 | the fence names | `public/docs_hooks.py:42` | `RUNNER_TARGETS` |
 | the two that execute | `public/docs_hooks.py:48` | `RUNNER_FENCES` |
-| the function that finds and runs them | `public/docs_hooks.py:1822` | `def process_markdown` |
-| where the build imports the hooks | `tools/build_zensical_docs.py:107` | `import docs_hooks` |
+| the function that finds and runs them | `public/docs_hooks.py:1899` | `def process_markdown` |
+| where the build imports the hooks | `tools/build_zensical_docs.py:211` | `import docs_hooks` |
 | the full attribute set of a runner fence | `public/docs_hooks.py:217` | `class RunnerOptions` |
-| where every fence attribute is parsed | `public/docs_hooks.py:2044` | `def parse_runner_options` |
-| where `data-lang=` is read | `public/docs_hooks.py:2234` | `def fence_language_key` |
-| **per-language wrapping of the fence body** | `public/docs_hooks.py:2239` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:3758` | `elif language == "fieldml":` |
-| the accepted `capture=` modes | `public/docs_hooks.py:2067` | `if capture not in` |
-| `capture="ui"` drives the live editor | `public/docs_hooks.py:1487` | `drive the live editor` |
-| the still capture for `capture="box"` | `public/docs_hooks.py:3948` | `screenshot-box` |
+| where every fence attribute is parsed | `public/docs_hooks.py:2121` | `def parse_runner_options` |
+| where `data-lang=` is read | `public/docs_hooks.py:2311` | `def fence_language_key` |
+| **per-language wrapping of the fence body** | `public/docs_hooks.py:2316` | `def wrap_runnable_code_for_language` |
+| **per-language box construction** | `public/docs_hooks.py:3835` | `elif language == "fieldml":` |
+| the accepted `capture=` modes | `public/docs_hooks.py:2144` | `if capture not in` |
+| `capture="ui"` drives the live editor | `public/docs_hooks.py:1564` | `drive the live editor` |
+| the still capture for `capture="box"` | `public/docs_hooks.py:4026` | `screenshot-box` |
 
 `diffstatic {data-lang=x}` is highlighted and not executed; `diffstatic_runner {…}` is executed in a
 real box in a real Field and its screenshot, video or audio is captured. There are **6** `capture=`

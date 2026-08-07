@@ -784,6 +784,20 @@ kotlin {
 
             dependencies {
 
+                // We use kotlin-reflect directly -- `kotlin.reflect.full` appears in 14 files
+                // across jvmMain and jvmTest -- but never declared it, so its version was decided
+                // by conflict resolution between six transitive requests and landed on 2.3.21:
+                // *older* than the 2.4.0 compiler and stdlib reflecting over the same classes.
+                //
+                // That is not only a skew, it is a moving one. On 2026-08-07 a Ktor bump
+                // (3.3.0 -> 3.5.2) changed the winner, kotlin-reflect's `KType.toString()` started
+                // spelling function types `(Key) -> Unit` instead of `Function1<Key, Unit>`, and
+                // KeyframerCoverageTest went red on `main` with no Kotlin source having changed.
+                // The test now normalises both spellings (1fc84cf50), which is the right fix for
+                // the oracle; this is the other half -- a direct dependency we actually have,
+                // declared at the compiler's version so no transitive bump can move it again.
+                implementation(kotlin("reflect"))
+
                 val personalDeps = file("src/personal/dependencies.gradle.kts")
                 if (personalDeps.exists()) {
                     apply(from = personalDeps.path)
