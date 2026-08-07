@@ -14,6 +14,12 @@ expect:
   exitCode: 0
   stdoutContains:
     - "LOWERING PROBE DONE"
+  # The ratchet. The numbers this probe prints were report-only for exactly one day, which meant any
+  # regression in the completion backend was silent. A broken floor exits 1 (below); the marker is
+  # asserted too, so a run that somehow prints the failure without exiting still fails here. Every
+  # threshold, and why it is where it is, is in FLOORS — raise one when a fix moves it.
+  stdoutNotContains:
+    - "RATCHET FAIL"
 */
 /**
  * Measures the two things completion quality actually rests on, over a corpus of REAL boxes.
@@ -46,8 +52,17 @@ expect:
  * `AFIELD_LOWERING_CORPUS` at an un-harvested directory and it reads the documents raw instead, which is
  * useful for a personal workspace but reports every macro-declared name as unresolved.
  *
- * Report-only by design: it prints numbers, not a verdict. Thresholds belong in a gate once the numbers
- * are known, and inventing them before measuring is how you get a gate that asserts today's bugs.
+ * **And it is a gate** (§3, [FLOORS]). It was report-only for one day — the right way round, since
+ * inventing thresholds before measuring is how you get a gate that asserts today's bugs — but a
+ * measurement nothing asserts leaves every regression in the completion backend silent. Each bucket has
+ * a floor cut a few points below what was measured, plus a floor on its *sample size* (a percentage over
+ * a bucket nobody sampled is not a measurement), and the hard invariants — every box lowers, no preamble
+ * dropped, zero injected-region errors — are absolute. A failure names the bucket, what it fell from, and
+ * the sidecar's own note on the misses. `--report` restores the exploration mode: same verdicts, exit 0.
+ *
+ * It lives in the SMOKE CATALOG rather than `./gradlew check` because it needs a live AA sidecar (a
+ * `check` task must be deterministic and offline); `field.sh` starts a checkout-local one, and the probe
+ * SKIPs cleanly where none is running.
  *
  * Knobs, all env vars (the runner passes the environment through):
  *   AFIELD_LOWERING_CORPUS        comma-separated dirs (default: starting points + templates)
@@ -57,6 +72,7 @@ expect:
  *   AFIELD_LOWERING_SEED          RNG seed (default 42)
  *   AFIELD_LOWERING_JSON          write the machine summary here (default build/completion-lowering/report.json)
  *   AFIELD_LOWERING_SKIP_RECALL   set to 1 to run the invariant only
+ *   AFIELD_LOWERING_GATE          set to 0 (or pass `--report`) for the report-only exploration mode
  */
 object CompletionLoweringProbe {
 
@@ -188,8 +204,59 @@ object CompletionLoweringProbe {
     private fun jsonEscape(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
         .replace("\n", "\\n").replace("\t", "\\t")
 
+    // ── the ratchet ─────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * One recall floor. [observed] is the number measured when the floor was last cut, so a failure can
+     * say what it fell FROM; [minPercent] sits a few points below it, and [minAttempts] guards the
+     * denominator (see the gate's own comment on why a bucket's sample size is a floor too).
+     *
+     * Every bucket is gated separately, and `blank` (typing) apart from `keep` (editing), because the
+     * two carry different diagnoses: a gap between them is a parse-recovery problem, a gap in both is a
+     * scope problem, and one aggregate number would hide which. Raise a floor when a fix moves its
+     * number — that is what makes this a ratchet rather than a rubber stamp.
+     */
+    private data class Floor(val bucket: String, val minAttempts: Int, val minPercent: Int, val observed: Int)
+
+    /**
+     * The floors, all cut ~5 points below the number measured over the whole harvested corpus (1708
+     * carets, ~60–530 per bucket). 5 points is chosen against the noise: the buckets are deterministic
+     * given the same corpus and the same backend, so any movement at all is a real change, and the margin
+     * exists for the ordering churn a candidate-set change causes near a truncation boundary — while every
+     * regression this measurement has actually caught moved a bucket by 10 to 40 points.
+     *
+     * `minAttempts` is ~90% of the sample size observed with the same corpus; it only falls if the
+     * corpus shrinks or the caret sweep stops recognising a kind of site.
+     */
+    private val FLOORS = listOf(
+        // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
+        // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
+        Floor("dot/0/blank", minAttempts = 55, minPercent = 82, observed = 87),
+        Floor("dot/0/keep", minAttempts = 55, minPercent = 79, observed = 84),
+        // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
+        Floor("dot/2/blank", minAttempts = 55, minPercent = 92, observed = 97),
+        Floor("dot/2/keep", minAttempts = 55, minPercent = 88, observed = 93),
+        // Name position: scope, the index, and implicit-receiver extensions.
+        Floor("name/2/blank", minAttempts = 478, minPercent = 86, observed = 91),
+        Floor("name/2/keep", minAttempts = 407, minPercent = 85, observed = 90),
+        // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
+        Floor("pkg/0/blank", minAttempts = 108, minPercent = 81, observed = 86),
+        Floor("pkg/0/keep", minAttempts = 108, minPercent = 82, observed = 87),
+        Floor("pkg/2/blank", minAttempts = 108, minPercent = 90, observed = 95),
+        Floor("pkg/2/keep", minAttempts = 108, minPercent = 90, observed = 95),
+        // The headline number, gated too — not because the buckets don't cover it, but because it is what
+        // gets quoted, and a change that trades one bucket off against another should have to say so.
+        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 86, observed = 91),
+    )
+
+    /** The sweep must have asked something like the whole corpus; a truncated sweep is not a gate. */
+    private const val MIN_REQUESTS = 1600
+
     @JvmStatic
     fun main(args: Array<String>) {
+        // Gate by default, so the catalog entry asserts; `--report` keeps the exploration mode the
+        // measurement was built as (print every verdict, exit 0) for a run whose point is the residual.
+        val gate = !args.contains("--report") && System.getenv("AFIELD_LOWERING_GATE")?.trim() != "0"
         val url = (System.getProperty("afield.completion.sidecarUrl")?.trim()?.ifBlank { null }
             ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")?.trim()?.ifBlank { null }
             ?: File("build/completion-corpus/sidecar-url.txt").takeIf { it.exists() }?.readText()?.trim()
@@ -282,8 +349,9 @@ object CompletionLoweringProbe {
         println("  lowered ${lowered}/${cases.size} boxes (failed $loweringFailed), preambles dropped as unparseable: $preambleDropped")
         println("  errors by region: " + byRegion.counts.entries.joinToString(", ") { "${it.key}=${it.value}" }
             .ifBlank { "none" })
+        val injectedErrors = byRegion.counts.filterKeys { it in injectedRegions }.values.sum()
         println("  INVARIANT (injected regions must be clean): " +
-            "${worstBoxes.size} boxes with injected-region errors, ${byRegion.counts.filterKeys { it in injectedRegions }.values.sum()} errors")
+            "${worstBoxes.size} boxes with injected-region errors, $injectedErrors errors")
         worstBoxes.sortedByDescending { it.second }.take(12).forEach { (label, n, sample) ->
             println("    $label  $n  e.g. $sample")
         }
@@ -398,6 +466,50 @@ object CompletionLoweringProbe {
             missExamples.forEach { println("    $it") }
         }
 
+        // ── 3. the ratchet ──────────────────────────────────────────────────────────────────────────
+        println()
+        println("══ 3. RATCHET — the floors this gate holds ══")
+        val broken = mutableListOf<String>()
+        val held = mutableListOf<String>()
+        fun hard(desc: String, ok: Boolean, detail: String) {
+            if (ok) { held += desc; println("  ✓ $desc — $detail") }
+            else { broken += desc; println("  ✗ RATCHET FAIL $desc — $detail") }
+        }
+        hard("every box lowers", lowered == cases.size, "$lowered/${cases.size} lowered, $loweringFailed failed")
+        hard("no preamble dropped as unparseable", preambleDropped == 0, "$preambleDropped dropped")
+        hard(
+            "injected regions type-check", injectedErrors == 0,
+            "$injectedErrors errors in ${worstBoxes.size} boxes" +
+                worstBoxes.sortedByDescending { it.second }.firstOrNull()?.let { " (worst: ${it.first} — ${it.third})" }.orEmpty(),
+        )
+        if (!skipRecall) {
+            hard("the sweep actually ran", requests >= MIN_REQUESTS, "$requests requests (floor $MIN_REQUESTS)")
+            for (f in FLOORS) {
+                val n = if (f.bucket == "TOTAL") attempts.counts.values.sum() else attempts.counts[f.bucket] ?: 0
+                val h = if (f.bucket == "TOTAL") recall.counts.values.sum() else recall.counts[f.bucket] ?: 0
+                val pct = if (n > 0) 100.0 * h / n else 0.0
+                // A recall percentage over a bucket nobody sampled is 0/0 — vacuously fine, or vacuously
+                // broken, and either way not a measurement. So the sample size is a floor too: a change
+                // that stops PRODUCING `dot` targets must fail here rather than quietly stop asking.
+                if (n < f.minAttempts) {
+                    broken += f.bucket
+                    println("  ✗ RATCHET FAIL ${f.bucket} sampled only $n carets (floor ${f.minAttempts}, " +
+                        "${f.observed} when this floor was cut) — the sweep stopped asking, so its recall means nothing")
+                    continue
+                }
+                if (pct + 1e-9 < f.minPercent) {
+                    broken += f.bucket
+                    val notes = (if (f.bucket == "TOTAL") missNotes else notesByBucket[f.bucket])
+                        ?.top(3)?.joinToString("; ") { "${it.value}× \"${it.key}\"" } ?: "no notes recorded"
+                    println("  ✗ RATCHET FAIL ${f.bucket} recall fell from ${f.observed}% to %.0f%%".format(pct) +
+                        " (floor ${f.minPercent}%, $h/$n); the sidecar's own note on those misses: $notes")
+                } else {
+                    held += f.bucket
+                    println("  ✓ ${f.bucket.padEnd(16)} %3.0f%% ≥ ${f.minPercent}%%  n=$n  (cut from ${f.observed}%%)".format(pct))
+                }
+            }
+        } else println("  (recall floors skipped: AFIELD_LOWERING_SKIP_RECALL=1)")
+
         runCatching {
             jsonOut.parentFile?.mkdirs()
             val sb = StringBuilder("{\n")
@@ -422,6 +534,21 @@ object CompletionLoweringProbe {
             jsonOut.writeText(sb.toString())
             println()
             println("report → ${jsonOut.path}")
+        }
+
+        println()
+        if (broken.isEmpty()) {
+            println("RATCHET PASS: ${held.size} floors held")
+        } else if (gate) {
+            println("RATCHET FAIL: ${broken.size} of ${broken.size + held.size} floors broken — ${broken.joinToString(", ")}")
+            println("  (each ✗ above names what it fell from and the sidecar's own note on the misses;")
+            println("   a floor is raised when a fix moves its number, never lowered to make a run green)")
+            println("LOWERING PROBE DONE")
+            System.out.flush()
+            kotlin.system.exitProcess(1)
+        } else {
+            println("RATCHET (report-only): ${broken.size} of ${broken.size + held.size} floors broken — " +
+                broken.joinToString(", ") + "  [--report given, so exiting 0]")
         }
 
         println("LOWERING PROBE DONE")
