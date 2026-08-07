@@ -783,13 +783,26 @@ class AaCompleter(
         val before = body.substring(0, cursor)
         val after = body.substring(cursor)
         val prefix = Regex("[A-Za-z0-9_]*$").find(before)?.value ?: ""
+        // What KIND of position the caret is in is decided on CODE, not on prose. Read off the raw text,
+        // the last non-space character before the caret is whatever the previous line happened to end
+        // with — and a comment that ends in a full stop is how people write comments:
+        //
+        //     // …so `n` counts generations rather than pixels.
+        //     animateEvolution(‸                       <- read as a DOT position, of `pixels.`
+        //
+        // which took the dot path, found no `KtQualifiedExpression` (there is none), and returned "no
+        // qualified expr" with zero candidates — 19 of the caret sweep's misses, every one of them an
+        // ordinary call at the start of a statement. Worse than empty when the caret happens to sit
+        // inside an outer qualified expression: then it answers with the members of THAT receiver.
+        // Blanked in place, so every offset still means what the caller said.
+        val beforeCode = blankCommentsAndStrings(before)
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
-        val isDot = before.dropLast(prefix.length).trimEnd().endsWith(".")
+        val isDot = beforeCode.dropLast(prefix.length).trimEnd().endsWith(".")
         // At an untyped expression slot (`d.scheme = ‸`, `f(‸`) there is no expression at the caret to
         // ask the expected type of — and the parser doesn't even leave a hole: `d.scheme =` followed by
         // `display(…)` on the next line parses as `d.scheme = display(…)`. So splice a dummy name in,
         // the way IntelliJ does. See [wantsCaretMarker] for why this is limited to those slots.
-        val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(before)
+        val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(beforeCode)
         // …and the same trick for an EMPTY SELECTOR SLOT. `recv.‸` at the end of a line parses to no
         // `KtQualifiedExpression` at all, so the dot path had nothing to take a receiver from and bailed
         // with "no qualified expr" — 12 of the caret sweep's misses, and every one of them the most
@@ -916,6 +929,68 @@ class AaCompleter(
      * A typed prefix needs no marker at all — `d.scheme = SD‸` already *has* a name expression in the
      * slot, and its expected type resolves from that.
      */
+    /**
+     * [code] with every comment and string/char literal replaced by spaces — same length, so every offset
+     * still means what it meant. Used to decide the KIND of position the caret is in: prose is not code,
+     * and a comment ending in a full stop had been turning the next line into a dot position (see the
+     * comment at [lower]'s `isDot`). An unterminated literal — `"abc‸`, the normal state while typing — is
+     * blanked to end of line, which is how the lexer would recover.
+     *
+     * Deliberately a lexer-lite rather than a PSI walk: this runs before the file is built, on every
+     * keystroke, and the only question it answers is "what is the last real code character before here".
+     */
+    internal fun blankCommentsAndStrings(code: String): String {
+        val out = code.toCharArray()
+        fun blank(from: Int, to: Int) {
+            for (k in from until minOf(to, out.size)) if (out[k] != '\n') out[k] = ' '
+        }
+        // A string TEMPLATE is real code inside a literal: `"x(1.0) = ${fit.fitted.sample(1.0)}"`. Blanking
+        // it would hide the receiver from a caret inside the template, so blank the literal and then put
+        // every `${…}` span back (brace-counted, so a nested lambda or a `${if (a) "" else ""}` survives).
+        fun blankLiteral(from: Int, to: Int) {
+            blank(from, to)
+            var k = from
+            while (k < to - 1) {
+                if (code[k] == '$' && code[k + 1] == '{' && (k == from || code[k - 1] != '\\')) {
+                    var depth = 0
+                    var j = k + 1
+                    while (j < to) {
+                        if (code[j] == '{') depth++ else if (code[j] == '}') { depth--; if (depth == 0) break }
+                        j++
+                    }
+                    val end = minOf(j + 1, to)
+                    for (m in k until end) out[m] = code[m]
+                    k = end
+                } else k++
+            }
+        }
+        var i = 0
+        while (i < code.length) {
+            when {
+                code.startsWith("//", i) -> {
+                    val end = code.indexOf('\n', i).let { if (it < 0) code.length else it }
+                    blank(i, end); i = end
+                }
+                code.startsWith("/*", i) -> {
+                    val end = code.indexOf("*/", i + 2).let { if (it < 0) code.length else it + 2 }
+                    blank(i, end); i = end
+                }
+                code.startsWith("\"\"\"", i) -> {
+                    val end = code.indexOf("\"\"\"", i + 3).let { if (it < 0) code.length else it + 3 }
+                    blankLiteral(i, end); i = end
+                }
+                code[i] == '"' || code[i] == '\'' -> {
+                    val q = code[i]
+                    var j = i + 1
+                    while (j < code.length && code[j] != q && code[j] != '\n') { if (code[j] == '\\') j++; j++ }
+                    blankLiteral(i, minOf(j + 1, code.length)); i = minOf(j + 1, code.length)
+                }
+                else -> i++
+            }
+        }
+        return String(out)
+    }
+
     internal fun wantsCaretMarker(before: String): Boolean {
         val head = before.trimEnd()
         if (head.isEmpty()) return false
