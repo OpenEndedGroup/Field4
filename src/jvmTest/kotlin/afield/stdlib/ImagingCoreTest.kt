@@ -292,6 +292,62 @@ class ImagingCoreTest {
     }
 
     @Test
+    fun bilateralRangeLutMatchesTheDirectGaussianDefinition() {
+        fun direct(img: Img, sigmaSpace: Double, sigmaRange: Double, border: Border): Img {
+            val radius = maxOf(1, kotlin.math.ceil(sigmaSpace * 2.0).toInt())
+            val inv2ss = 1.0 / (2.0 * sigmaSpace * sigmaSpace)
+            val inv2sr = 1.0 / (2.0 * sigmaRange * sigmaRange)
+            val out = FloatArray(img.data.size)
+            for (y in 0 until img.height) for (x in 0 until img.width) for (c in 0 until img.channels) {
+                val centre = img.at(x, y, c)
+                var numerator = 0.0
+                var denominator = 0.0
+                for (dy in -radius..radius) for (dx in -radius..radius) {
+                    val sample = img.get(x + dx, y + dy, c, border)
+                    val difference = sample - centre
+                    val weight = kotlin.math.exp(
+                        -(dx * dx + dy * dy) * inv2ss - difference * difference * inv2sr
+                    )
+                    numerator += weight * sample
+                    denominator += weight
+                }
+                out[img.index(x, y, c)] = (numerator / denominator).toFloat()
+            }
+            return Img(img.width, img.height, img.channels, out)
+        }
+
+        val scalar = Img.generate(9, 7) { x, y ->
+            ((x * 17 + y * 31 + x * y * 7) % 101) / 100f
+        }
+        val rgb = Img.generateRGB(7, 6) { x, y ->
+            Triple(
+                ((x * 13 + y * 5) % 29) / 28f,
+                ((x * 3 + y * 19) % 37) / 36f,
+                ((x * 23 + y * 11) % 43) / 42f,
+            )
+        }
+        val cases = listOf(
+            Triple(scalar, 0.5 to 0.04, Border.CLAMP),  // radius 1, narrow range kernel
+            Triple(scalar, 1.4 to 0.12, Border.REFLECT), // radius 3, ordinary photographic range
+            Triple(rgb, 2.2 to 0.35, Border.WRAP),       // radius 5, RGB and a broad range kernel
+        )
+
+        for ((image, sigmas, border) in cases) {
+            val (sigmaSpace, sigmaRange) = sigmas
+            val expected = direct(image, sigmaSpace, sigmaRange, border)
+            val actual = image.bilateral(sigmaSpace, sigmaRange, border)
+            var worst = 0f
+            for (i in actual.data.indices) worst = maxOf(worst, abs(actual.data[i] - expected.data[i]))
+            assertTrue(
+                worst < 1e-5f,
+                "LUT drifted from direct bilateral by $worst at sigmaSpace=$sigmaSpace, " +
+                    "sigmaRange=$sigmaRange, radius=${maxOf(1, kotlin.math.ceil(sigmaSpace * 2.0).toInt())}, " +
+                    "border=$border, channels=${image.channels}"
+            )
+        }
+    }
+
+    @Test
     fun unsharpMaskIncreasesEdgeContrast() {
         val soft = stepEdge(32, 32, 16).gaussianBlur(2.0)
         val sharp = soft.unsharpMask(sigma = 2.0, amount = 1.0)
