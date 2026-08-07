@@ -373,14 +373,23 @@ internal object KotlinCompletionSupport {
             ?.takeIf { it.isNotBlank() }
             ?: metadata.text.substringBefore('<').substringBefore('(').substringAfterLast('.').trim()
 
+        // The docs index is keyed by symbol NAME, so with no source file to disambiguate it answers for
+        // whichever documented `set`/`pos`/`get` it happens to know — it filed a graphics preamble's
+        // `Mesh.pos` under Data and `Mesh.set` under Imaging. Where the candidate is actually declared is
+        // specific to THIS row, so it wins whenever the docs lookup would be a name-only guess; a lookup
+        // backed by a real source file is curated knowledge and still comes first.
+        val docsAreSourceBacked =
+            metadata.documentationSourceName.isNotBlank() || metadata.documentationSourcePath.isNotBlank()
         val category = normalizedCompletionCategory(metadata.category)
             ?: normalizedCompletionCategory(extraInfo["completionCategory"]?.toString())
             ?: normalizedCompletionCategory(extraInfo["category"]?.toString())
+            ?: declarationCategory(extraInfo).takeIf { !docsAreSourceBacked }
             ?: KotlinSourceIndex.getCompletionCategoryForSymbol(
                 symbolName = name,
                 sourceName = metadata.documentationSourceName.takeIf { it.isNotBlank() },
                 sourcePath = metadata.documentationSourcePath.takeIf { it.isNotBlank() }
             )?.let(::normalizedCompletionCategory)
+            ?: declarationCategory(extraInfo)
             ?: inferCompletionCategory(metadata, name, extraInfo)
             ?: return metadata
 
@@ -405,6 +414,7 @@ internal object KotlinCompletionSupport {
         simpleName: String,
         extraInfo: Map<String, Any?>
     ): String? {
+        val declaredIn = extraInfo[AaCompletionClient.DECLARED_IN]?.toString().orEmpty()
         val sourcePath = metadata.documentationSourcePath.lowercase()
         val sourceName = metadata.documentationSourceName.lowercase()
         val tail = metadata.tail.lowercase()
@@ -414,8 +424,9 @@ internal object KotlinCompletionSupport {
             metadata.displayText,
             metadata.tail,
             metadata.documentationSourceName,
-            extraInfo["receiverQualifiedName"]?.toString().orEmpty(),
-            extraInfo["receiverType"]?.toString().orEmpty(),
+            // The receiver is deliberately absent when the declaration is known — see above.
+            if (declaredIn.isBlank()) extraInfo["receiverQualifiedName"]?.toString().orEmpty() else "",
+            if (declaredIn.isBlank()) extraInfo["receiverType"]?.toString().orEmpty() else "",
             extraInfo["original"]?.toString().orEmpty()
         ).joinToString(" ").lowercase()
 
@@ -434,6 +445,32 @@ internal object KotlinCompletionSupport {
         return null
     }
 
+    /**
+     * The section a candidate belongs in judged by WHERE IT IS DECLARED, or null when the AA path told us
+     * nothing (a K1 result, a keyword, a snippet).
+     *
+     * This is the fix for section headers that described the receiver instead of the row: the fallback
+     * inference blends `receiverQualifiedName` into the text it matches on, so on a `ComputeMesh.` panel
+     * the receiver's own package (`afield.four`) matched first and `let`, `also`, `apply` and `equals` were
+     * all announced as GRAPHICS. Every row claiming to be graphics is no grouping at all.
+     */
+    private fun declarationCategory(extraInfo: Map<String, Any?>): String? {
+        val declaredIn = extraInfo[AaCompletionClient.DECLARED_IN]?.toString().orEmpty()
+        val proximity = extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]?.toString().orEmpty()
+        if (declaredIn.isNotBlank()) {
+            categoryFromQualifiedName(declaredIn)?.let { return it }
+            // A universal declaration we can't place by package is still worth separating: it applies to
+            // every receiver, so it belongs with the other generic helpers rather than among this type's.
+            if (proximity == "universal") return "Generic"
+            return null
+        }
+        // No declaring package at all, but it came back for a receiver: it was declared in the box's own
+        // preamble or body (a `prop<>` binding, a supermap's `Mesh.pos`, an `@exported` value). Those are
+        // the most specific names in the panel, and "Local" is both true and the client's top-weighted
+        // category.
+        return if (proximity.isNotBlank()) "Local" else null
+    }
+
     private fun normalizedCompletionCategory(raw: String?): String? {
         val value = raw?.trim()?.removeSurrounding("\"")?.takeIf { it.isNotEmpty() } ?: return null
         return when (value.lowercase().replace("_", " ").replace("-", " ")) {
@@ -445,6 +482,8 @@ internal object KotlinCompletionSupport {
             "data", "io", "files", "file", "json", "csv", "tables" -> "Data"
             "workspace", "document", "documents", "persistence" -> "Workspace"
             "kotlin", "language" -> "Kotlin"
+            "generic", "universal" -> "Generic"
+            "local", "box" -> "Local"
             "external", "library", "classpath" -> "External"
             "ai", "assistant" -> "AI"
             else -> value.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
@@ -469,13 +508,16 @@ internal object KotlinCompletionSupport {
 
     private fun categoryFromQualifiedName(value: String): String? = when {
         value.isBlank() -> null
-        value.startsWith("kotlin.") || value.contains(" defined in kotlin") -> "Kotlin"
+        // `also`/`let`/`apply` are declared in the ROOT `kotlin` package, whose fq name has no trailing
+        // dot — matching only "kotlin." filed every one of them as Generic instead.
+        value == "kotlin" || value.startsWith("kotlin.") || value.contains(" defined in kotlin") -> "Kotlin"
         value.startsWith("java.") || value.startsWith("javax.") || value.startsWith("org.") || value.startsWith("com.") -> {
             when {
                 value.contains("afield.stdlib.linalg") || value.contains("matrix") || value.contains("vector") || value.contains("quaternion") -> "Math"
                 else -> "External"
             }
         }
+        value.contains("synth") || value.contains("afield.audio") -> "Audio"
         value.contains("afield.math") -> "Math"
         value.contains("afield.visualization") || value.contains("plotly") || value.contains("visualizer") -> "Visualization"
         value.contains("afield.graphics") || value.contains("afield.four") || value.contains("fline") ||

@@ -38,6 +38,18 @@ const CATEGORY_WEIGHT = new Map([
   ["other", 0],
 ]);
 
+// How far a candidate's DECLARATION sits from the receiver's own type, as a ranking term. After a `.`
+// the panel is answering "what can this thing do", so a name declared on `Any` or on an unconstrained
+// `T` — `also`, `apply`, `let`, `equals`, `T.onBeat` — answers it for everything and carries the least
+// information about the receiver in hand. Demoted, not hidden: they stay one keystroke away, and their
+// own sections (Kotlin / Generic) keep them findable. Supplied by the server; see
+// `Metadata.declarationProximity`. An unknown/blank value scores 0, so K1 results are unaffected.
+const PROXIMITY_SCORE = new Map([
+  ["own", 0],
+  ["supertype", -20],
+  ["universal", -85],
+]);
+
 const LOW_VALUE_MEMBER_NAMES = new Set([
   "equals",
   "hashCode",
@@ -369,6 +381,7 @@ const normalizeRpcCompletion = (
     icon: m.icon || "",
     category: categoryFor(m, languageId, source),
     contextScore: Number(m.contextScore) || 0,
+    declarationProximity: m.declarationProximity || "",
     range,
     prefix: m.prefix || "",
     languageId,
@@ -696,6 +709,8 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
       const recency = recencyScoreFor(item, recencyStore, now);
       const aiLateBonus = item.source === "ai" ? 12 : 0;
       const memberScore = memberContextScore(item, memberContext);
+      const proximityScore =
+        PROXIMITY_SCORE.get(String(item.declarationProximity || "")) ?? 0;
       // Server-supplied context boost (e.g. type-matching operands after an infix function).
       const contextScore = Number(item.contextScore) || 0;
       const score =
@@ -704,6 +719,7 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
         recency +
         aiLateBonus +
         memberScore +
+        proximityScore +
         contextScore -
         originalIndex * 0.012;
       return {
@@ -713,6 +729,7 @@ const rankItems = (items, query, recencyStore, memberContext = false) => {
         recency,
         categoryScore,
         memberScore,
+        proximityScore,
         originalIndex,
       };
     })

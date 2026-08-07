@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolVisibility
 import org.jetbrains.kotlin.analysis.api.symbols.KaValueParameterSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
+import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
 import org.jetbrains.kotlin.analysis.api.types.KaErrorType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
@@ -125,8 +126,42 @@ data class AaCandidate(
      * row one. See `execution.kt`'s `typeFitFilterActive`.
      */
     val fitsExpected: Boolean = false,
+    /**
+     * Where this candidate is DECLARED — the containing class's fq name for a member, the declaring
+     * package for a top-level extension, `""` when unknown (a local, or a preamble declaration).
+     *
+     * Not the same question as [container], which says what the candidate hangs off in *this* panel. The
+     * distinction is load-bearing for sectioning: the server used to infer a candidate's category from
+     * the expression's receiver, so on a `ComputeMesh.` panel `let`, `also` and `apply` were all filed
+     * under GRAPHICS — a section header that described the receiver rather than the row. Categorising on
+     * the declaration puts `also` under Kotlin, `T.onBeat` (afield.four.synth) under Audio, and leaves
+     * GRAPHICS meaning what it says.
+     */
+    val declaredIn: String = "",
+    /**
+     * How close this candidate's declaration is to the receiver's own type — [Proximity].
+     *
+     * The panel's job after a `.` is to answer "what can this thing do", and a name declared on `Any` or
+     * on an unconstrained `T` answers that for every thing, so it carries the least information and
+     * should sit below the names that are actually about this type. This is the signal that lets the
+     * client rank on that principle instead of on a hardcoded list of low-value names (`equals`,
+     * `hashCode`, `toString` — which are simply members declared on `Any`, and fall out of the rule).
+     */
+    val proximity: Proximity = Proximity.UNKNOWN,
 ) {
     enum class Kind { MEMBER, EXTENSION, TOP_LEVEL, CLASSIFIER, PARAM }
+
+    /** Declaration distance from the receiver's own type. Ordered nearest-first. */
+    enum class Proximity {
+        /** Declared on the receiver's own class, or in the box itself (a preamble/local declaration). */
+        OWN,
+        /** Inherited from, or an extension on, a proper supertype of the receiver. */
+        SUPERTYPE,
+        /** Declared on `Any`/`Any?` or on an unconstrained type parameter: true of everything. */
+        UNIVERSAL,
+        /** Not a receiver-relative candidate at all (name position, classifier, parameter). */
+        UNKNOWN,
+    }
 
     /** Stable key so true duplicates collapse but distinct overloads don't. Includes [icon] so a
      *  property and a same-named/same-typed method (e.g. Vector3f's `var x: Float` and `fun x(): Float`)
@@ -1233,13 +1268,57 @@ class AaCompleter(
                 return expectedTypes.any { e -> runCatching { t.isSubtypeOf(e) }.getOrDefault(false) }
             }
 
-            fun asCandidate(sym: KaCallableSymbol, kind: AaCandidate.Kind, container: String?): AaCandidate? {
+            /**
+             * Where [sym] is declared, as an fq name: the containing class for a member, the package for a
+             * top-level callable, `""` for anything with no `CallableId` (a local, or a name a box's
+             * preamble declared into the synthetic file). See [AaCandidate.declaredIn].
+             */
+            fun declaredIn(sym: KaCallableSymbol): String = runCatching {
+                val id = sym.callableId ?: return ""
+                id.classId?.asFqNameString() ?: id.packageName.asString()
+            }.getOrDefault("")
+
+            /**
+             * [AaCandidate.Proximity] of [sym] relative to the receiver whose classifier is [receiverIds]
+             * (its own class id first, then its supertypes — the list [internalNamesOf] walks).
+             *
+             * For an EXTENSION the question is its receiver parameter: an unconstrained `T` (as in
+             * `fun <T> T.onBeat(…)`) or an `Any`/`Any?` receiver applies to everything and is therefore
+             * UNIVERSAL. For a MEMBER it is the declaring class: `Any`'s members (`equals`, `hashCode`,
+             * `toString`) are universal by the same rule, which is why no name list is needed.
+             */
+            fun proximityOf(sym: KaCallableSymbol, ownId: String?, superIds: Set<String>): AaCandidate.Proximity {
+                val declaring: String? = runCatching {
+                    val receiverType = sym.receiverParameter?.returnType
+                    when {
+                        receiverType != null && receiverType is KaTypeParameterType -> return AaCandidate.Proximity.UNIVERSAL
+                        receiverType != null -> (receiverType as? KaClassType)?.classId?.asFqNameString()
+                        else -> sym.callableId?.classId?.asFqNameString()
+                    }
+                }.getOrNull()
+                return when {
+                    declaring == null -> AaCandidate.Proximity.OWN   // local/preamble: about this box
+                    declaring == "kotlin.Any" || declaring == "java.lang.Object" -> AaCandidate.Proximity.UNIVERSAL
+                    declaring == ownId -> AaCandidate.Proximity.OWN
+                    declaring in superIds -> AaCandidate.Proximity.SUPERTYPE
+                    else -> AaCandidate.Proximity.SUPERTYPE
+                }
+            }
+
+            fun asCandidate(
+                sym: KaCallableSymbol,
+                kind: AaCandidate.Kind,
+                container: String?,
+                proximity: AaCandidate.Proximity = AaCandidate.Proximity.UNKNOWN,
+            ): AaCandidate? {
                 val nm = (sym as? KaNamedSymbol)?.name?.asString() ?: return null
                 if (!accessible(sym)) return null
                 val type = runCatching { sym.returnType }.getOrNull()
                 return AaCandidate(
                     nm, kind, runCatching { type?.toString() }.getOrNull(), container, iconFor(sym), paramsOf(sym),
                     fitsExpected = fits(type),
+                    declaredIn = declaredIn(sym),
+                    proximity = proximity,
                 )
             }
 
@@ -1578,11 +1657,23 @@ class AaCompleter(
                     return@analyze AaCompletionResult(emptyList(), "receiver type UNRESOLVED (error): ${recv.text}")
                 val typeStr = runCatching { type.toString() }.getOrDefault("?")
 
+                // The receiver's own classifier and its supertypes, as fq names — what [proximityOf] scores
+                // a declaration's distance against. Same walk the receiver-keyed extension index uses,
+                // read back as source-level names rather than ASM-internal ones.
+                val ownId = runCatching { (type as? KaClassType)?.classId?.asFqNameString() }.getOrNull()
+                val superIds = internalNamesOf(type).asSequence()
+                    .map { it.replace('/', '.').replace('$', '.') }.filter { it != ownId }.toSet()
+
                 // Substituted members of the receiver type.
                 val members = type.scope?.getCallableSignatures(match).orEmpty().mapNotNull { sig ->
                     val nm = (sig.symbol as? KaNamedSymbol)?.name?.asString() ?: return@mapNotNull null
                     if (!accessible(sig.symbol)) return@mapNotNull null
-                    AaCandidate(nm, AaCandidate.Kind.MEMBER, runCatching { sig.returnType.toString() }.getOrNull(), typeStr, iconFor(sig.symbol), paramsOf(sig.symbol))
+                    AaCandidate(
+                        nm, AaCandidate.Kind.MEMBER, runCatching { sig.returnType.toString() }.getOrNull(),
+                        typeStr, iconFor(sig.symbol), paramsOf(sig.symbol),
+                        declaredIn = declaredIn(sig.symbol),
+                        proximity = proximityOf(sig.symbol, ownId, superIds),
+                    )
                 }.toList()
 
                 // Applicable extensions: candidate extension callables from scope + implicit receivers +
@@ -1649,7 +1740,7 @@ class AaCompleter(
                     if (runCatching { type.isSubtypeOf(rt) }.getOrDefault(false)) return@filter true
                     val cid = (rt as? KaClassType)?.classId ?: return@filter false
                     runCatching { type.isSubtypeOf(cid) }.getOrDefault(false)
-                }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr) }
+                }.mapNotNull { asCandidate(it, AaCandidate.Kind.EXTENSION, typeStr, proximityOf(it, ownId, superIds)) }
 
                 // Object/companion scopes can expose nested classifiers (`THREE.Vector3`). They are
                 // not callables, so the member-only path used to make namespace-like head APIs blank.

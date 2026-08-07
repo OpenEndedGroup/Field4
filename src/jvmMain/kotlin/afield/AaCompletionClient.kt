@@ -23,6 +23,21 @@ object AaCompletionClient {
     /** `extraInfo` key marking a candidate whose type fits the type expected at the caret. */
     const val EXPECTED_TYPE_MATCH = "expectedTypeMatch"
 
+    /**
+     * Where a candidate is DECLARED (`kotlin.Any`, `afield.four.synth`, `afield.four.modules.ComputeMesh`).
+     * Read by `KotlinCompletionSupport.classifyMetadata` to categorise the row by its own declaration
+     * rather than by the receiver of the panel it appears in — see [DECLARATION_PROXIMITY].
+     */
+    const val DECLARED_IN = "declaredIn"
+
+    /**
+     * `own` | `supertype` | `universal`: how close the declaration is to the receiver's own type. The
+     * client (`fieldSuggest.js`) turns it into a ranking term, so `ComputeMesh`'s own members sort above
+     * inherited ones, which sort above the names declared on `Any`/`T` that are true of everything
+     * (`also`, `apply`, `let`, and `T.onBeat`).
+     */
+    const val DECLARATION_PROXIMITY = "declarationProximity"
+
     @Serializable
     private data class Req(
         val snippet: String,
@@ -64,6 +79,10 @@ object AaCompletionClient {
         val receiverQualifiedName: String = "",
         /** The candidate's type fits the type expected at the caret (AA's `expectedType`). */
         val expectedTypeMatch: Boolean = false,
+        /** See [DECLARED_IN]. */
+        val declaredIn: String = "",
+        /** See [DECLARATION_PROXIMITY]. */
+        val proximity: String = "",
     )
 
     @Serializable
@@ -187,6 +206,8 @@ object AaCompletionClient {
                         // only channel from the sidecar to the server's ranking, since a
                         // SourceCodeCompletionVariant has no field for it.
                         if (it.expectedTypeMatch) put(EXPECTED_TYPE_MATCH, "true")
+                        if (it.declaredIn.isNotBlank()) put(DECLARED_IN, it.declaredIn)
+                        if (it.proximity.isNotBlank()) put(DECLARATION_PROXIMITY, it.proximity)
                     }
                     if (info.isNotEmpty()) extraInfo = info
                 }

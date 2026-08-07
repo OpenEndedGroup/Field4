@@ -175,6 +175,11 @@ data class CompletionCandidate(
     /** This candidate's type fits the type expected at the caret ([AaCandidate.fitsExpected]). The
      *  server turns it into a ranking boost and, at an untyped caret, a filter. */
     val expectedTypeMatch: Boolean = false,
+    /** Where the candidate is declared ([AaCandidate.declaredIn]) — the server categorises on this, so a
+     *  `ComputeMesh.` panel files `also` under Kotlin instead of under the receiver's own section. */
+    val declaredIn: String = "",
+    /** `own` | `supertype` | `universal` | `` ([AaCandidate.proximity]); the client ranks on it. */
+    val proximity: String = "",
 )
 
 @Serializable
@@ -781,6 +786,19 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
      * `String.trimIndent`) — the API someone chose to write for this receiver.
      */
     private fun receiverProximity(c: AaCandidate): Int {
+        // Read from the symbol ([AaCandidate.proximity]: the declaration's own receiver parameter or
+        // containing class) rather than guessed from the rendered container text. The text heuristic below
+        // was this function's whole implementation and it could only ever approximate: `container` holds the
+        // type at the CARET, so an inherited member looked like an own member, and a generic receiver was
+        // identified by matching the rendered name against `[A-Z][0-9]?` — which reads `T` and `R` correctly
+        // and any single-letter class as generic. It stays as the fallback for the paths that don't set
+        // proximity (name-position candidates, classifiers), where its answer is only ever `3` anyway.
+        when (c.proximity) {
+            AaCandidate.Proximity.OWN -> return 0
+            AaCandidate.Proximity.SUPERTYPE -> return 1
+            AaCandidate.Proximity.UNIVERSAL -> return 2
+            AaCandidate.Proximity.UNKNOWN -> Unit
+        }
         val container = (c.container ?: "").trim().removeSuffix("?").substringBefore('<')
         val generic = container.isEmpty() || container == "Any" ||
             Regex("""[A-Z][0-9]?""").matches(container.substringAfterLast('.'))
@@ -900,6 +918,8 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
      *  Members carry the receiver type so the server can attach the member's KDoc / AI-draft docs. */
     private fun AaCandidate.toVariant(): CompletionCandidate {
         val type = shortenType(returnType ?: "")
+        val where = declaredIn
+        val prox = if (proximity == AaCandidate.Proximity.UNKNOWN) "" else proximity.name.lowercase()
         val recvQual = if (kind == AaCandidate.Kind.MEMBER || kind == AaCandidate.Kind.EXTENSION)
             (container ?: "").replace('/', '.').substringBefore('<').removeSuffix("?") else ""
         val recvSimple = recvQual.substringAfterLast('.')
@@ -907,13 +927,13 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         // An expected-type value is DISPLAYED bare and INSERTED qualified (`SD_COLLAPSED` →
         // `Scheme.SD_COLLAPSED`), which is the only case where the two differ for a non-method.
         insertText?.let {
-            return CompletionCandidate(it, name, type, icon, recvSimple, recvQual, fits)
+            return CompletionCandidate(it, name, type, icon, recvSimple, recvQual, fits, where, prox)
         }
         return when {
-            icon == "class" -> CompletionCandidate(name, name, shortenType(container ?: ""), "class", expectedTypeMatch = fits)
-            kind == AaCandidate.Kind.PARAM -> CompletionCandidate("$name = ", "$name = ", type, "var", expectedTypeMatch = fits)
-            icon == "method" -> CompletionCandidate("$name(", "$name${params ?: "(…)"}", type, "method", recvSimple, recvQual, fits)
-            else -> CompletionCandidate(name, name, type, icon, recvSimple, recvQual, fits)
+            icon == "class" -> CompletionCandidate(name, name, shortenType(container ?: ""), "class", expectedTypeMatch = fits, declaredIn = where, proximity = prox)
+            kind == AaCandidate.Kind.PARAM -> CompletionCandidate("$name = ", "$name = ", type, "var", expectedTypeMatch = fits, declaredIn = where, proximity = prox)
+            icon == "method" -> CompletionCandidate("$name(", "$name${params ?: "(…)"}", type, "method", recvSimple, recvQual, fits, where, prox)
+            else -> CompletionCandidate(name, name, type, icon, recvSimple, recvQual, fits, where, prox)
         }
     }
 

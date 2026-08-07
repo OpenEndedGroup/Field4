@@ -246,7 +246,17 @@ data class Metadata(
      * context-appropriate candidates to the top of the completion list — e.g. after an infix
      * function, the values whose type matches the operator's expected operand. 0 = no boost.
      */
-    val contextScore: Int = 0
+    val contextScore: Int = 0,
+    /**
+     * `own` | `supertype` | `universal` | `""`: how close this candidate's DECLARATION is to the type of
+     * the receiver it is being offered on (`AaCompletionClient.DECLARATION_PROXIMITY`).
+     *
+     * A separate field from [contextScore] rather than a negative boost, because `contextScore > 0` is
+     * also the type-fit *filter* signal (`execution.kt`'s `typeFitFilterActive`) — folding a penalty into
+     * it would make a candidate that both fits the expected type and is declared on `Any` disappear
+     * instead of merely ranking lower. `fieldSuggest.js` turns this into its own ranking term.
+     */
+    val declarationProximity: String = ""
 )
 
 

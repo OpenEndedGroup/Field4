@@ -3205,10 +3205,16 @@ class KotlinExecution : BoxExecution {
                 // sidecar from `KaExpressionTypeProvider.expectedType` and arrives as an extraInfo flag.
                 val typeFits = (infixExpectedTypes.isNotEmpty() && InfixCompletion.matchesOperandType(it, infixExpectedTypes)) ||
                     it.extraInfo[AaCompletionClient.EXPECTED_TYPE_MATCH] == "true"
+                // How far the candidate's declaration is from the receiver's own type, forwarded verbatim
+                // for the client to rank on: a name declared on `Any` or on an unconstrained `T` is true of
+                // every receiver, so it should sit below the names that are about THIS type.
+                val proximity = it.extraInfo[AaCompletionClient.DECLARATION_PROXIMITY]?.toString().orEmpty()
+                val withProximity = if (proximity.isBlank()) categorizedMetadata
+                    else categorizedMetadata.copy(declarationProximity = proximity)
                 if (typeFits) {
-                    categorizedMetadata.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
+                    withProximity.copy(contextScore = InfixCompletion.OPERAND_MATCH_BOOST)
                 } else {
-                    categorizedMetadata
+                    withProximity
                 }
             }
         }

@@ -214,6 +214,50 @@ object CompletionAaE2EProbe {
         check("preamble extension fun on its receiver", meshDot, meshDot.length, "set", "AA+context")
         val meshPos = "val m = Mesh()\nm.po"
         check("preamble extension property on its receiver", meshPos, meshPos.length, "pos", "AA+context")
+
+        // WHAT THE PANEL LEADS WITH. At an empty prefix every row fuzzy-scores alike and the popup's sort
+        // is stable, so the order the sidecar sends is the order a person reads (see
+        // `FieldSuggestPresentationTest`). A `Mesh.` panel therefore has to lead with what is about a Mesh
+        // — its own members and the preamble's extensions written for it — and not with `also`/`apply`/
+        // `let`, which are declared on `Any`/`T`, apply to every receiver in the language, and were sorting
+        // into the middle of the list by name.
+        val meshBare = "val m = Mesh()\nm."
+        run {
+            total++
+            val m = meta(runBlocking { runCatching { active.complete(meshBare, meshBare.length) }.getOrNull() })
+            fun rankOf(name: String) = m.indexOfFirst { it.text.trimEnd('(', ' ', '=') == name }
+            val own = rankOf("pos")
+            val universal = rankOf("also")
+            if (own in 0 until universal) {
+                pass++
+                println("  ✓ [AA+rank] the receiver's own names lead → pos #$own before also #$universal (of ${m.size})")
+            } else {
+                println("  ✗ [AA+rank] pos #$own is NOT before also #$universal (of ${m.size})")
+            }
+        }
+
+        // …and where each row is FILED. The category is the popup's section header, and it used to be
+        // inferred from the *receiver* of the panel, so on a graphics receiver `also` and `equals` were
+        // both announced as GRAPHICS — a header that described the thing being completed rather than the
+        // row. Categorising on the declaration is what separates them; `classifyMetadata` is the same
+        // function the server pipeline calls, asked here with the same metadata a browser would receive.
+        run {
+            val m = meta(runBlocking { runCatching { active.complete(meshBare, meshBare.length) }.getOrNull() })
+            fun categoryOf(name: String): String {
+                val row = m.firstOrNull { it.text.trimEnd('(', ' ', '=') == name } ?: return "<absent>"
+                return KotlinCompletionSupport.classifyMetadata(
+                    Metadata(icon = row.icon.orEmpty(), tail = row.tail.orEmpty(), text = row.text,
+                        displayText = row.displayText, category = ""),
+                    name, row.extraInfo,
+                ).category
+            }
+            for ((name, want) in listOf("also" to "Kotlin", "let" to "Kotlin", "pos" to "Local", "set" to "Local")) {
+                total++
+                val got = categoryOf(name)
+                if (got == want) { pass++; println("  ✓ [AA+section] $name is filed under $got") }
+                else println("  ✗ [AA+section] $name filed under '$got', expected '$want'")
+            }
+        }
         active = ki
 
         // The defect classes the 2026-08-07 caret sweep named, asserted through the LIVE chain rather than
