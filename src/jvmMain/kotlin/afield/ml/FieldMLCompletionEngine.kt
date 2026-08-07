@@ -798,6 +798,17 @@ object FieldMLCompletionEngine {
         "stroked",
         "pointed",
         "pointSize",
+        "draw",
+        "drawSized",
+        "animate",
+        "animateFor",
+        "dot",
+        "cross",
+        "mix",
+        "normalize",
+        "vlength",
+        "distance",
+        "polar",
     )
 
     private val pipePreferred = listOf(
@@ -811,6 +822,10 @@ object FieldMLCompletionEngine {
         "pointed",
         "pointSize",
         "close",
+        "draw",
+        "map",
+        "filter",
+        "fold",
     )
 
     private val snippets = listOf(
@@ -843,6 +858,41 @@ object FieldMLCompletionEngine {
         "hostStaticTap" to "Build a pipe-friendly static JVM call that substitutes hostInput and returns the piped value.",
         "hostInput" to "Placeholder for the piped value in hostStaticTap argument templates.",
         "thisBox" to "Current Field Box as a host value.",
+
+        // Helpers that transform one subject take it last, so they read as `value |> helper args`.
+        "mod" to "mod divisor value is the remainder, so `7 |> mod 4` is 3.",
+        "idiv" to "idiv divisor value is integer division, so `7 |> idiv 2` is 3.",
+        "fmod" to "fmod divisor value is the Float remainder, so `7.5 |> fmod 2.0` is 1.5.",
+        "pow" to "pow exponent value raises value, so `3.0 |> pow 2.0` is 9.0.",
+        "lerp" to "lerp from to amount interpolates, so `0.5 |> lerp 0.0 10.0` is 5.0.",
+        "clamp" to "clamp low high value keeps value inside a range.",
+        "toFloat" to "Convert an Int to a Float. FieldML never mixes them silently.",
+        "toInt" to "Truncate a Float to an Int.",
+        "not" to "Boolean negation. Combine conditions with && and ||.",
+        "range" to "range start end lists the Ints from start up to but not including end.",
+        "linspace" to "linspace start end count lists count Floats including both ends.",
+        "tabulate" to "tabulate f count builds a list by calling f with 0, 1, ... count - 1.",
+        "map" to "map f list transforms every element.",
+        "mapIndexed" to "mapIndexed f list transforms every element, passing its index first.",
+        "filter" to "filter predicate list keeps the elements the predicate accepts.",
+        "fold" to "fold f initial list reduces a list left to right, f accumulator element.",
+        "append" to "append suffix list puts the piped list first, so `[1] |> append [2]` is [1, 2].",
+        "zip" to "zip other list pairs elements, taking the first component from the piped list.",
+        "sortBy" to "sortBy key list orders by a Float key.",
+        "nth" to "nth index list reads one element and fails when the index is outside the list.",
+        "dot" to "Dot product of two vectors of the same width.",
+        "cross" to "Cross product of two Vec3 values.",
+        "vlength" to "Length of a vector. `length` is the list one.",
+        "distance" to "Distance between two vectors of the same width.",
+        "normalize" to "Scale a vector to length 1, leaving a zero vector alone.",
+        "mix" to "mix a b amount interpolates between two vectors.",
+        "polar" to "polar angle radius builds a Vec2 from an angle in radians.",
+        "draw" to "draw \"channel\" line draws an FLine into a Field output channel and returns the line.",
+        "drawSized" to "drawSized \"channel\" w h line draws into an output channel at a fixed size.",
+        "animate" to
+            "animate (fun t -> ...) returns a per-frame animation. Field steps it once per frame with the " +
+            "seconds since launch, until the box is stopped. Draw inside the function.",
+        "animateFor" to "animateFor seconds (fun t -> ...) is animate with a stopping time.",
     )
     private fun compatibleTypes(left: Type, right: Type): Boolean =
         left == right ||

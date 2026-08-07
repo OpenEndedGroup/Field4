@@ -114,7 +114,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                         inside.currentRunningStates.remove(strand)
                     }
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand, FIELDML_PENDING_LAUNCH_MODE)))
-                    inside.output.error(t.message ?: t.javaClass.simpleName, execute.property, execute.line)
+                    inside.output.error(fieldMLErrorMessage(t), execute.property, execute.line)
                 }
             }
         }
@@ -294,3 +294,15 @@ private class TrackingOutput(private val delegate: HasOutput) : HasOutput {
 
 internal fun renderInlineResult(value: String, type: String): String =
     if (type.isBlank()) value else "$value : $type"
+
+/**
+ * FieldML evaluates by walking the tree, so a runaway or merely deep recursion surfaces as a
+ * StackOverflowError with no message at all. Name it, and point at the iteration that does not grow
+ * the stack.
+ */
+internal fun fieldMLErrorMessage(t: Throwable): String =
+    when (t) {
+        is StackOverflowError ->
+            "Recursion went too deep. FieldML does not optimise tail calls — for long loops prefer range/tabulate with map or fold."
+        else -> t.message ?: t.javaClass.simpleName
+    }

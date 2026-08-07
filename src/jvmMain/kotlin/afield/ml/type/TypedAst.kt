@@ -38,6 +38,12 @@ data class TExprLet(
     val body: TExpr,
     override val range: SourceRange,
     override val type: Type,
+    /**
+     * True for the `let f x = ...` function form, whose own name is in scope inside its body.
+     * Plain `let x = ...` bindings stay non-recursive so that `let x = x + 1` still shadows an
+     * outer `x` rather than referring to itself.
+     */
+    val recursive: Boolean = false,
 ) : TExpr
 
 data class TExprLambda(
@@ -82,6 +88,13 @@ data class TPConstructor(
     override val type: Type,
 ) : TPattern
 
+data class TPCons(
+    val head: TPattern,
+    val tail: TPattern,
+    override val range: SourceRange,
+    override val type: Type,
+) : TPattern
+
 data class TMatchCase(
     val pattern: TPattern,
     val body: TExpr,
@@ -111,6 +124,12 @@ data class TExprBinary(
     val op: BinaryOp,
     val left: TExpr,
     val right: TExpr,
+    override val range: SourceRange,
+    override val type: Type,
+) : TExpr
+
+data class TExprNegate(
+    val value: TExpr,
     override val range: SourceRange,
     override val type: Type,
 ) : TExpr

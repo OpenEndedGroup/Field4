@@ -7,9 +7,55 @@ object FieldMLTypePrelude {
     val vec4 = THost("Vec4")
     val fline = THost("FLine")
 
+    private val vectorNames = setOf("Vec2", "Vec3", "Vec4")
+
+    /** True for `Vec2`/`Vec3`/`Vec4`, the host types that support arithmetic and `.x`/`.y`/`.z`/`.w`. */
+    fun isVectorType(type: Type): Boolean = type is THost && type.name in vectorNames
+
+    /** Component names readable off a vector type, in order. */
+    fun vectorComponents(type: Type): List<String> =
+        when ((type as? THost)?.name) {
+            "Vec2" -> listOf("x", "y")
+            "Vec3" -> listOf("x", "y", "z")
+            "Vec4" -> listOf("x", "y", "z", "w")
+            else -> emptyList()
+        }
+
     private val any = TVar(-1)
     private val hostAny = THost("Host")
     private fun number(id: Int): Type = TVar(id)
+
+    // Scheme builders for the polymorphic part of the prelude. Quantified ids are handed out from a
+    // single descending counter so that no two schemes accidentally share one.
+    private var nextSchemeId = -100
+
+    private fun freshSchemeId(): Int = nextSchemeId--
+
+    private fun poly(build: (Type) -> Type): Scheme {
+        val id = freshSchemeId()
+        return Scheme(setOf(id), build(TVar(id)))
+    }
+
+    private fun poly2(build: (Type, Type) -> Type): Scheme {
+        val first = freshSchemeId()
+        val second = freshSchemeId()
+        return Scheme(setOf(first, second), build(TVar(first), TVar(second)))
+    }
+
+    /** A scheme over one variable that must resolve to `Int` or `Float`. */
+    private fun overNumber(build: (Type) -> Type): Scheme {
+        val id = freshSchemeId()
+        return Scheme(setOf(id), build(TVar(id)), numeric = setOf(id))
+    }
+
+    /** A scheme over one variable that must resolve to `Vec2`, `Vec3` or `Vec4`. */
+    private fun overVector(build: (Type) -> Type): Scheme {
+        val id = freshSchemeId()
+        return Scheme(setOf(id), build(TVar(id)), vector = setOf(id))
+    }
+
+    private fun float1(): Scheme = Scheme(emptySet(), fn(TFloat, TFloat))
+    private fun float2(): Scheme = Scheme(emptySet(), fn(TFloat, TFloat, TFloat))
 
     val schemes: Map<String, Scheme> = linkedMapOf(
         "Unit" to Scheme(emptySet(), TUnit),
@@ -47,6 +93,74 @@ object FieldMLTypePrelude {
         "stroked" to Scheme(emptySet(), fn(TBool, fn(fline, fline))),
         "pointed" to Scheme(emptySet(), fn(TBool, fn(fline, fline))),
         "pointSize" to Scheme(emptySet(), fn(TFloat, fn(fline, fline))),
+
+        // Numbers. Every helper that transforms a single subject takes it last, so it reads well at
+        // the end of a pipe: `x |> pow 2.0` is x squared, `x |> mod 4` is x modulo 4.
+        "pi" to Scheme(emptySet(), TFloat),
+        "tau" to Scheme(emptySet(), TFloat),
+        "sin" to float1(),
+        "cos" to float1(),
+        "tan" to float1(),
+        "asin" to float1(),
+        "acos" to float1(),
+        "atan" to float1(),
+        "atan2" to float2(),
+        "sqrt" to float1(),
+        "exp" to float1(),
+        "log" to float1(),
+        "floor" to float1(),
+        "ceil" to float1(),
+        "round" to float1(),
+        "pow" to float2(),
+        "fmod" to float2(),
+        "lerp" to Scheme(emptySet(), fn(TFloat, TFloat, TFloat, TFloat)),
+        "abs" to overNumber { a -> fn(a, a) },
+        "sign" to overNumber { a -> fn(a, a) },
+        "min" to overNumber { a -> fn(a, a, a) },
+        "max" to overNumber { a -> fn(a, a, a) },
+        "clamp" to overNumber { a -> fn(a, a, a, a) },
+        "mod" to Scheme(emptySet(), fn(TInt, TInt, TInt)),
+        "idiv" to Scheme(emptySet(), fn(TInt, TInt, TInt)),
+        "toFloat" to Scheme(emptySet(), fn(TInt, TFloat)),
+        "toInt" to Scheme(emptySet(), fn(TFloat, TInt)),
+        "not" to Scheme(emptySet(), fn(TBool, TBool)),
+
+        // Lists.
+        "range" to Scheme(emptySet(), fn(TInt, TInt, TList(TInt))),
+        "linspace" to Scheme(emptySet(), fn(TFloat, TFloat, TInt, TList(TFloat))),
+        "tabulate" to poly { a -> fn(TFun(TInt, a), TInt, TList(a)) },
+        "map" to poly2 { a, b -> fn(TFun(a, b), TList(a), TList(b)) },
+        "mapIndexed" to poly2 { a, b -> fn(TFun(TInt, TFun(a, b)), TList(a), TList(b)) },
+        "filter" to poly { a -> fn(TFun(a, TBool), TList(a), TList(a)) },
+        "fold" to poly2 { a, b -> fn(TFun(b, TFun(a, b)), b, TList(a), b) },
+        "length" to poly { a -> fn(TList(a), TInt) },
+        "isEmpty" to poly { a -> fn(TList(a), TBool) },
+        "head" to poly { a -> fn(TList(a), a) },
+        "tail" to poly { a -> fn(TList(a), TList(a)) },
+        "nth" to poly { a -> fn(TInt, TList(a), a) },
+        "take" to poly { a -> fn(TInt, TList(a), TList(a)) },
+        "drop" to poly { a -> fn(TInt, TList(a), TList(a)) },
+        "reverse" to poly { a -> fn(TList(a), TList(a)) },
+        "append" to poly { a -> fn(TList(a), TList(a), TList(a)) },
+        "concat" to poly { a -> fn(TList(TList(a)), TList(a)) },
+        "zip" to poly2 { a, b -> fn(TList(b), TList(a), TList(TTuple(listOf(a, b)))) },
+        "sortBy" to poly { a -> fn(TFun(a, TFloat), TList(a), TList(a)) },
+        "sum" to Scheme(emptySet(), fn(TList(TFloat), TFloat)),
+
+        // Vectors. These work on any of Vec2/Vec3/Vec4, as long as both sides agree.
+        "dot" to overVector { v -> fn(v, v, TFloat) },
+        "vlength" to overVector { v -> fn(v, TFloat) },
+        "distance" to overVector { v -> fn(v, v, TFloat) },
+        "normalize" to overVector { v -> fn(v, v) },
+        "mix" to overVector { v -> fn(v, v, TFloat, v) },
+        "cross" to Scheme(emptySet(), fn(vec3, vec3, vec3)),
+        "polar" to Scheme(emptySet(), fn(TFloat, TFloat, vec2)),
+
+        // Drawing and animation.
+        "draw" to Scheme(emptySet(), fn(TString, fline, fline)),
+        "drawSized" to Scheme(emptySet(), fn(TString, TFloat, TFloat, fline, fline)),
+        "animate" to poly { a -> fn(TFun(TFloat, a), hostAny) },
+        "animateFor" to poly { a -> fn(TFloat, TFun(TFloat, a), hostAny) },
 
         "hostInput" to Scheme(emptySet(), hostAny),
         "hostClass" to Scheme(emptySet(), fn(TString, hostAny)),

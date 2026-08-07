@@ -6,6 +6,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8123", "--directory", "public"],
       "port": 8123
+    },
+    {
+      "name": "offline-viewer",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8124", "--directory", "dist/offline-viewer"],
+      "port": 8124
     }
   ]
 }

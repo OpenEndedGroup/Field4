@@ -13,6 +13,7 @@ import afield.ml.ast.ELambda
 import afield.ml.ast.ELet
 import afield.ml.ast.EList
 import afield.ml.ast.EMatch
+import afield.ml.ast.ENegate
 import afield.ml.ast.ERecord
 import afield.ml.ast.EString
 import afield.ml.ast.ETuple
@@ -21,6 +22,7 @@ import afield.ml.ast.EVar
 import afield.ml.ast.Expr
 import afield.ml.ast.MatchCase
 import afield.ml.ast.PBool
+import afield.ml.ast.PCons
 import afield.ml.ast.PConstructor
 import afield.ml.ast.PInt
 import afield.ml.ast.PList
@@ -198,6 +200,14 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parsePattern(): Pattern {
+        val head = parseAppliedPattern()
+        if (!match(TokenKind.COLONCOLON)) return head
+        // Right associative: `a :: b :: rest`.
+        val tail = parsePattern()
+        return PCons(head, tail, SourceRange(head.range.start, tail.range.end))
+    }
+
+    private fun parseAppliedPattern(): Pattern {
         val first = parsePatternAtom()
         if (first is PConstructor) {
             val arguments = mutableListOf<Pattern>()
@@ -255,16 +265,26 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parseBinary(minPrecedence: Int, stop: Stop): Expr {
-        var left = parseApplication(stop)
+        var left = parseUnary(stop)
         while (!stop.matches(current(), this)) {
             val op = binaryOp(current().kind) ?: break
             val precedence = precedence(op)
             if (precedence < minPrecedence) break
             advance()
-            val right = parseBinary(precedence + 1, stop)
+            // `::` is right associative so `a :: b :: rest` builds the list the way it reads.
+            val right = parseBinary(if (op == BinaryOp.CONS) precedence else precedence + 1, stop)
             left = EBinary(op, left, right, SourceRange.spanning(left.range, right.range))
         }
         return left
+    }
+
+    private fun parseUnary(stop: Stop): Expr {
+        if (!stop.matches(current(), this) && check(TokenKind.MINUS)) {
+            val start = advance()
+            val value = parseUnary(stop)
+            return ENegate(value, SourceRange(start.range.start, value.range.end))
+        }
+        return parseApplication(stop)
     }
 
     private fun parseApplication(stop: Stop): Expr {
@@ -370,23 +390,30 @@ class Parser(private val tokens: List<Token>) {
     private fun binaryOp(kind: TokenKind): BinaryOp? =
         when (kind) {
             TokenKind.PLUS -> BinaryOp.ADD
+            TokenKind.PLUSPLUS -> BinaryOp.CONCAT
             TokenKind.MINUS -> BinaryOp.SUB
             TokenKind.STAR -> BinaryOp.MUL
             TokenKind.SLASH -> BinaryOp.DIV
+            TokenKind.COLONCOLON -> BinaryOp.CONS
             TokenKind.LT -> BinaryOp.LT
             TokenKind.LTE -> BinaryOp.LTE
             TokenKind.GT -> BinaryOp.GT
             TokenKind.GTE -> BinaryOp.GTE
             TokenKind.EQEQ -> BinaryOp.EQ
             TokenKind.NEQ -> BinaryOp.NEQ
+            TokenKind.AMPAMP -> BinaryOp.AND
+            TokenKind.BARBAR -> BinaryOp.OR
             else -> null
         }
 
     private fun precedence(op: BinaryOp): Int =
         when (op) {
-            BinaryOp.MUL, BinaryOp.DIV -> 5
-            BinaryOp.ADD, BinaryOp.SUB -> 4
+            BinaryOp.MUL, BinaryOp.DIV -> 6
+            BinaryOp.ADD, BinaryOp.SUB, BinaryOp.CONCAT -> 5
+            BinaryOp.CONS -> 4
             BinaryOp.LT, BinaryOp.LTE, BinaryOp.GT, BinaryOp.GTE, BinaryOp.EQ, BinaryOp.NEQ -> 3
+            BinaryOp.AND -> 2
+            BinaryOp.OR -> 1
         }
 
     private fun decodeString(text: String): String {
