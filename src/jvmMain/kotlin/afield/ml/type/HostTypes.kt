@@ -332,12 +332,20 @@ object FieldMLHostTypes {
                 else -> objectish(boxedParameter, erased)
             }
             TUnit -> if (parameter.isPrimitive) null else OBJECT_COST
+            // A FieldML list crosses as the `ArrayList` that `Iterable.map` returns, so the parameter
+            // types it satisfies are the ones an `ArrayList` satisfies — including `ArrayList` itself,
+            // which a `List`-only rule refused even though the call worked.
             is TList -> when {
-                boxedParameter.isAssignableFrom(List::class.java) -> 0
+                parameter == Any::class.java -> OBJECT_COST
+                boxedParameter.isAssignableFrom(ArrayList::class.java) -> 0
                 parameter.isArray -> ARRAY_COST
                 else -> objectish(boxedParameter, erased)
             }
-            is TTuple -> if (boxedParameter.isAssignableFrom(List::class.java)) 0 else objectish(boxedParameter, erased)
+            is TTuple -> when {
+                parameter == Any::class.java -> OBJECT_COST
+                boxedParameter.isAssignableFrom(ArrayList::class.java) -> 0
+                else -> objectish(boxedParameter, erased)
+            }
             is TRecord -> if (boxedParameter.isAssignableFrom(Map::class.java)) 0 else objectish(boxedParameter, erased)
             is TFun -> if (FieldMLHostBridge.functionalMethod(parameter) != null) SAM_COST else objectish(boxedParameter, erased)
             is TAdt -> objectish(boxedParameter, erased)

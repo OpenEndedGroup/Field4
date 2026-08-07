@@ -31,6 +31,7 @@ let height = 25.0
 | Tuple | `(1, "a", true)` |
 | List | `[1, 2, 3]` |
 | Record | `{ x = 1.0, y = 2.0 }` |
+| Unit | `()` |
 | Field | `point.x` |
 | Comments | `// line` and `(* nested block *)` |
 
