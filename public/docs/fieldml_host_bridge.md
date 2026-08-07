@@ -111,12 +111,48 @@ hostStaticCall "max" ([5, 1, 9, 3], fun a b -> b - a) Collections
 
 `hostAsInt`, `hostAsFloat`, `hostAsBool` and `hostAsString` read a scalar out; `hostAs "SomeClass"` is a checked cast to a class, and doubles as the way FieldML names one.
 
+## Does it get the right answer?
+
+Reachability is not correctness. A bridge that chose the wrong overload, put an argument in the wrong slot, or lost precision converting a result would still report a high "callable" number — so the coverage measurement calls every method **twice**: once through the bridge, once through plain `Method.invoke` with argument values of exactly the right JVM types, and compares the results.
+
+```
+callable now:         344 / 362 (95.0%)
+reachable before:     166 / 362 (45.9%)
+calls run both ways:  341
+comparable:           324
+agreed:               324 / 324 (100.0%)
+no way to compare:    17    (a returned class with no value equality)
+input-independent:    2     (FLine.getUid/getRev read a global counter)
+```
+
+It earned its keep on the first run. `Vector2f` has both `void set(int, float)` and `Vector2f set(float, float)`; a FieldML `(3.0, 4.0)` fits both, they scored equal, and the winner was whatever the JVM happened to list first — so `hostCall "set" (3.0, 4.0)` set the wrong component and returned nothing. Overload scoring now prefers the parameter of the same *kind* (floating point for a FieldML `Float`, integral for an `Int`) and charges most for the lossy direction, and the type checker and the runtime share that scoring so they cannot disagree about which method a call means.
+
+## Reaching `afield.four`
+
+`afield.four` is Field's Vulkan layer and the reason this bridge exists — the live workspaces are hundreds of Kotlin boxes driving it. FieldML can now express most of it, and the honest accounting matters more than the headline.
+
+Taking `threebox-2`, the minimal complete `afield.four` scene (a window, a compute shader over 100 000 particles, a draw pass), **12 of its 19 statements are expressible in FieldML**. Five run headlessly and are checked against the same call in Kotlin — including `defaultBuffer { size = N.vec4s }`, whose argument is a Kotlin *receiver* lambda and whose `vec4s` is a member extension property that only exists inside it. Everything downstream of a Vulkan device is expressible but untested here, because a headless test JVM has no device and a demo that pretended otherwise would be worth nothing.
+
+The seven that are not expressible are worth knowing by name, because they are all the same kind of thing:
+
+| Statement | Why not |
+| --- | --- |
+| `prop<Window>(window)` | a **source macro**: it generates `var Box.window by Inheritance<Window>()` into the box's preamble. `prop` itself throws if it is ever really called |
+| `once.renderer { … }` | a **macro-generated property delegate** — the name does not exist until the generated preamble is compiled |
+| `moduleHere { … }`, `computeModuleHere { }`, `fieldProbeHere(…)` | source macros that also write shader source into box properties at expansion time |
+| `start(renderer::run)` | a **suspend** function type: it erases to a `Function2` taking a `Continuation`, which a dynamic proxy cannot satisfy |
+| `import …` | not needed — FieldML names every class in full |
+
+Macros are the whole story: nine of Field's box-code names are registered rewrites over Kotlin *source*, applied before the compiler runs, so there is no JVM member for reflection to find. What is reachable is what they are sugar *over* — `prop` is a named slot on a box, and `getPropertyRaw`/`setPropertyRaw` are ordinary methods, so a FieldML box can read an inherited property with a four-line recursive walk over `parents`. `once` is get-or-compute-and-store over the same pair. Both of those run today.
+
 ## What it still will not do
 
 Worth knowing before you fight it:
 
-- **Kotlin default arguments are invisible.** A reflective call has to spell every parameter. `hostTap` is the exception — it reads defaults out of Field's *source* index — and it remains the best tool when a Kotlin function is an effect in the middle of a pipe.
-- **A lambda's parameters have no inferred type.** The JVM calls back into FieldML with a value the checker knows nothing about, so `hostAs` is needed inside the lambda. Pushing the reflected parameter type into the lambda would need expected types threaded through inference, which FieldML does not have yet.
+- **Kotlin default arguments are invisible.** A reflective call has to spell every parameter — `Renderer(window)` becomes `hostNew (window, []) …`. `hostTap` is the exception, because it reads defaults out of Field's *source* index, and it remains the best tool when a Kotlin function is an effect in the middle of a pipe.
+- **Named arguments are invisible** for the same reason: a reflective call is positional.
+- **A lambda's parameters have no inferred type.** The JVM calls back into FieldML with a value the checker knows nothing about, so `hostAs` is needed inside the lambda. Pushing the reflected parameter type in would need expected types threaded through inference, which FieldML does not have yet.
+- **`suspend` function types cannot be satisfied.** They need coroutine machinery, not a proxy.
 - **`internal` Kotlin members are unreachable** under their source names, because the compiler mangles them.
 - **Buffers, kernels and anchors** — anything FieldML has no way to construct and no constructor to call — are still out of reach. In the coverage measurement those are most of the remaining 5%.
 
@@ -139,4 +175,4 @@ Things to change, in the order they are most likely to teach you something:
 
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet. `FieldMLHostBridgeTest` has one test per capability, and `FieldMLHostSurfaceCoverageTest` is the measurement.
+The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.

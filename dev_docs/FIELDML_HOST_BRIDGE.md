@@ -71,6 +71,35 @@ the Kotlin body fails its implicit cast. `samProxy` therefore takes the *paramet
 `genericParameterType`, maps the interface's type variables to the actual arguments, and coerces the
 result to the resolved return class. `Img.generate(w, h) { x, y -> … }` is the test that pins this.
 
+## `afield.four`: what blocks it, with citations
+
+This is the roadmap, and `FieldMLAfieldFourReachTest` is its executable form — it walks the 19
+statements of `~/Documents/AFieldWorkspace/threebox-2` (the minimal complete `afield.four` scene) and
+records a verdict and a reason for each. 12 are expressible; 5 of those run headlessly and are
+compared against the same call in Kotlin.
+
+The blockers are not a long tail. They are five mechanisms:
+
+| # | Mechanism | Evidence | Can the *effect* be reached? |
+| --- | --- | --- | --- |
+| A | **Source macros.** Nine box-code names are rewrites over Kotlin *source*, applied before the compiler runs: `moduleHere`, `meshModuleHere`, `computeModuleHere`, `fieldStatsHere`, `shadertoyHere`, `prop`, `rootProp`, `sourceBlock`, `print`/`println` | `MacroRegistry.callRewrite`, `macros.kt:338-374`. `Box.prop` throws `MacroNotExpandedException` if actually called, `props.kt:39` | Partly. `prop<T>(name)` expands to `var Box.<name> by Inheritance<T>()` (`props.kt:71`) — a *generated declaration*, so there is nothing to call. But `Inheritance.getValue` (`stdlib.kt:265`) is just `getPropertyRaw` plus a breadth-first walk over `parents`, and both of those are ordinary methods. FieldML does it in four lines, tested. `once` (`scratch.kt:15`, `Onceing.getValue` `scratch.kt:26`) is get-or-compute-and-store over the same pair, also tested |
+| B | **Kotlin default arguments** are invisible to reflection | `Renderer(Window, List)` (`Renderer.kt:147`) — `additionalWindows = emptyList()` must be written out. `ComputeMesh(Renderer)` (`ComputeMesh.kt:295`) — `renderer = fromContext()` likewise | Yes, by spelling every parameter. `hostNull` covers the nullable ones |
+| C | **Named arguments** are invisible for the same reason | `fieldProbeHere(samples = 100000)` | Yes, positionally |
+| D | **`suspend` function types** erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy | `start(a: suspend Frames.() -> Unit)`, `stdlib.kt:516` | Not with the current `samProxy`. Would need either a coroutine-aware adapter or a non-suspend entry point |
+| E | **A Vulkan device.** `Window`, `Renderer`, `.buffer`, `Mesh`, `Module` are expressible but cannot be *run* in a headless test JVM | — | Only in a graphics-context session; the docs runner has one (`graphics_context` mode) and that is where a live `afield.four` FieldML demo would have to be captured |
+
+Two smaller findings from the same walk, both fixed:
+
+- a JVM `Set` — `Box.parents` — had no FieldML shape at all, because `hostToFieldMLValue` only unwraps
+  a `List`. `hostAsList` is the way in, and it also handles arrays and maps;
+- `Int.vec4s` is a **member** extension property of `BufferParameters`, so it exists only inside the
+  `defaultBuffer { }` lambda. On the JVM it is `BufferParameters.getVec4s(int)`, which the bridge
+  reaches — this is the case that makes "extension properties are unreachable" false as a blanket
+  statement.
+
+The next night's highest-value item is D or the lambda-parameter typing below; A is a language design
+question (a FieldML macro layer) rather than a bridge one.
+
 ## Known holes, deliberate
 
 - **Kotlin default arguments are invisible** to a reflective call, so every parameter must be
@@ -100,7 +129,9 @@ result to the resolved return class. `Img.generate(w, h) { x, y -> … }` is the
 | Test | Guards |
 | --- | --- |
 | `FieldMLHostBridgeTest` | One capability per test — arity, SAM, overloads, widening, `hostNull`, varargs, arrays, statics, inferred types, type errors, the dynamic escape, nullable returns. A failure here is a capability regression. |
-| `FieldMLHostSurfaceCoverageTest` | The measurement, with floors three points under what it prints. It computes the "before" number in the same run, so the delta is measured rather than remembered. Raise the floors when the bridge learns something. |
+| `FieldMLHostSurfaceCoverageTest` | The measurement. Every method is called twice — through the bridge and through plain `Method.invoke` — and the results compared, so the headline number is *agreement*, not reachability. `disagreed.isEmpty()` is asserted outright, because a disagreement is a bug. It also computes the "before" number in the same run. Raise the floors when the bridge learns something. |
+| `FieldMLHostAgreementTest` | The semantically interesting calls, written beside the Kotlin they should equal. Covers what a synthesised constant-returning lambda cannot: arguments travelling *into* a FieldML function the JVM calls back, and bit-exact narrowing. |
+| `FieldMLAfieldFourReachTest` | The `threebox-2` survey above, plus the five `afield.four` calls that run headlessly. |
 | `FieldMLCompletionEngineTest` | The six host completion contexts. |
 | `FieldMLSmokeExamplesTest` | Every FieldML snippet on the public pages, **and** every box of the loadable demo document, compiled and evaluated. |
 | `FieldMLCheatsheetCoverageTest` | The cheatsheet lists every prelude name with its type. Adding a `host…` name without a row fails the build. |

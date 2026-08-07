@@ -234,6 +234,7 @@ linspace 0.0 tau 24
 | `hostAsFloat` | `'a -> Float` |
 | `hostAsBool` | `'a -> Bool` |
 | `hostAsString` | `'a -> String` |
+| `hostAsList` | `'a -> [Host]` |
 
 `hostCall name arguments target` takes as many arguments as the method does: a tuple, or a list written out in place, is spread; anything else is a single argument. `hostNew` is the same for constructors. The `hostCall0`/`hostCall1`/`hostCall2` forms remain, and `hostCall1` is the way to pass one list *as* a list rather than have it spread. A FieldML function passed where the JVM wants a functional interface — a Kotlin lambda parameter, `Runnable`, `Comparator` — is converted on the way in.
 

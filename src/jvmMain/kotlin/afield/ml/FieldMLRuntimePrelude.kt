@@ -9,6 +9,7 @@ import afield.ml.core.FieldMLHostBridge
 import afield.ml.core.FieldMLValue
 import afield.ml.core.applyFieldMLFunction
 import afield.ml.core.fieldMLValueToHost
+import afield.ml.core.hostToFieldMLValue
 import afield.ml.core.renderFieldMLValue
 import afield.ml.core.vectorComponents
 import afield.ml.core.vectorValue
@@ -413,6 +414,9 @@ object FieldMLRuntimePrelude {
             "hostAsFloat" to native1("hostAsFloat") { value -> FieldMLValue.FloatValue(value.coerceToDouble("hostAsFloat")) },
             "hostAsBool" to native1("hostAsBool") { value -> FieldMLValue.BoolValue(value.coerceToBool("hostAsBool")) },
             "hostAsString" to native1("hostAsString") { value -> FieldMLValue.StringValue(value.coerceToString()) },
+            // A JVM collection that is not a `List` — `Box.parents` is a `Set` — has no FieldML shape,
+            // because `hostToFieldMLValue` only unwraps lists. This is the way in for the rest.
+            "hostAsList" to native1("hostAsList") { value -> FieldMLValue.ListValue(value.coerceToElements()) },
         )
 
     /**
@@ -585,6 +589,21 @@ object FieldMLRuntimePrelude {
             is FieldMLValue.HostValue -> (value as? Boolean)
                 ?: error("$name expects a Bool, found ${renderFieldMLValue(this)}")
             else -> error("$name expects a Bool, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun FieldMLValue.coerceToElements(): List<FieldMLValue> =
+        when (this) {
+            is FieldMLValue.ListValue -> elements
+            is FieldMLValue.TupleValue -> elements
+            is FieldMLValue.HostValue -> when (val host = value) {
+                is Iterable<*> -> host.map { hostToFieldMLValue(it) }
+                is Array<*> -> host.map { hostToFieldMLValue(it) }
+                is Map<*, *> -> host.entries.map { (key, entry) ->
+                    FieldMLValue.TupleValue(listOf(hostToFieldMLValue(key), hostToFieldMLValue(entry)))
+                }
+                else -> error("hostAsList expects a collection, found ${host?.javaClass?.name}")
+            }
+            else -> error("hostAsList expects a collection, found ${renderFieldMLValue(this)}")
         }
 
     private fun FieldMLValue.coerceToString(): String =

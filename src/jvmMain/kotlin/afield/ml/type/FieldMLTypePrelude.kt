@@ -192,6 +192,7 @@ object FieldMLTypePrelude {
         "hostAsFloat" to Scheme(setOf(-47), fn(TVar(-47), TFloat)),
         "hostAsBool" to Scheme(setOf(-48), fn(TVar(-48), TBool)),
         "hostAsString" to Scheme(setOf(-49), fn(TVar(-49), TString)),
+        "hostAsList" to Scheme(setOf(-53), fn(TVar(-53), TList(hostAny))),
     )
 
     private fun fn(vararg parts: Type): Type {
