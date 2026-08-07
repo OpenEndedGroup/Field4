@@ -399,8 +399,11 @@ private fun escapeCaptionHtml(text: String): String = text
  *
  * The captions are drawn **into the raster**, not emitted alongside it, so the montage stays
  * self-describing wherever it ends up — a box output, a docs screenshot, a file. Tiles are scaled
- * to fit [cellSide] on their long edge, centred in their cell and top-aligned; anything outside
- * `0..1` (a gradient, a Laplacian) is normalised for display.
+ * to fit [cellSide] on their long edge, centred in their cell and top-aligned. Every panel is mapped
+ * through the same [displayRange] and clamped, so an overshoot in one image cannot silently put just
+ * that panel on a different scale. When no range is supplied, ordinary `0..1` imagery stays on that
+ * domain while out-of-range panels use one common range across the whole montage. Pass an explicit
+ * signed range such as `-1f..1f` when the domain itself carries meaning.
  *
  * Captions are drawn with a built-in 5x7 bitmap font, **not AWT** — see [drawLabels] for why that
  * matters inside a live Field box. A montage is display output, not analysis input; keep the float
@@ -408,24 +411,42 @@ private fun escapeCaptionHtml(text: String): String = text
  *
  * @param columns tiles per row
  * @param cellSide the longest edge a tile is allowed to occupy
+ * @param displayRange an optional sample domain shared by every panel and mapped to display values
+ *   `0..1`; `null` chooses `0..1` for ordinary imagery or one common range for out-of-range panels
  */
 fun montage(
     panels: List<Pair<String, Img>>,
     columns: Int = 2,
     cellSide: Int = 320,
     gap: Int = 10,
-    background: Float = 0.08f
+    background: Float = 0.08f,
+    displayRange: ClosedFloatingPointRange<Float>? = null
 ): Img {
     require(panels.isNotEmpty()) { "montage needs at least one panel" }
     require(columns >= 1) { "columns must be >= 1, got $columns" }
     val textScale = 2
     val captionH = GLYPH_HEIGHT * textScale + 8
-    val scaled = panels.map { (label, img) ->
+    val sized = panels.map { (label, img) ->
         val s = min(1.0, cellSide.toDouble() / max(img.width, img.height))
-        val small = if (s >= 1.0) img else img.scaleBy(s)
-        val lo = small.min()
-        val hi = small.max()
-        label to (if (lo < -1e-4f || hi > 1f + 1e-4f) small.normalized().toRGB() else small.toRGB())
+        label to if (s >= 1.0) img else img.scaleBy(s)
+    }
+    val effectiveRange = displayRange ?: run {
+        val lo = sized.minOf { it.second.min() }
+        val hi = sized.maxOf { it.second.max() }
+        when {
+            lo >= -1e-4f && hi <= 1f + 1e-4f -> 0f..1f
+            hi - lo < 1e-12f -> (lo - 0.5f)..(lo + 0.5f)
+            else -> lo..hi
+        }
+    }
+    val displayLo = effectiveRange.start
+    val displayHi = effectiveRange.endInclusive
+    require(displayLo.isFinite() && displayHi.isFinite() && displayHi > displayLo) {
+        "displayRange must be finite and increasing, got $effectiveRange"
+    }
+    val displayScale = 1f / (displayHi - displayLo)
+    val scaled = sized.map { (label, small) ->
+        label to small.map { ((it - displayLo) * displayScale).coerceIn(0f, 1f) }.toRGB()
     }
     val cols = min(columns, scaled.size)
     val cellW = scaled.maxOf { it.second.width }
@@ -667,13 +688,18 @@ fun Img.withLabel(
  * pipeline (source / blurred / gradient / edges) at a glance.
  *
  * @param columns images per row
+ * @param displayRange an optional sample domain shared by every panel; see [montage]
  */
 fun Box.showImgGrid(
     vararg panels: Pair<String, Img>,
     channel: String = "main",
     columns: Int = 2,
-    cellSide: Int = 320
+    cellSide: Int = 320,
+    displayRange: ClosedFloatingPointRange<Float>? = null,
 ) {
     require(panels.isNotEmpty()) { "showImgGrid needs at least one panel" }
-    display(channel, montage(panels.toList(), columns, cellSide).toPngBytes())
+    display(
+        channel,
+        montage(panels.toList(), columns, cellSide, displayRange = displayRange).toPngBytes(),
+    )
 }

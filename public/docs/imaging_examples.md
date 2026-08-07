@@ -90,8 +90,10 @@ println("Img ${card.width}x${card.height} x${card.channels} ch, mean ${"%.3f".fo
 ![](assets/imaging_examples/basics.png)
 
 `showImgGrid(...)` is the fastest way to see a whole pipeline: it lays captioned panels out side by
-side, normalises anything outside `0..1` for display, and pushes one PNG to the box output through
-`Img.toPngBytes()` → `PngEncoder` → `display(...)`. No AWT is involved, so it works anywhere.
+side, maps every panel through one shared display range, and pushes one PNG to the box output through
+`Img.toPngBytes()` → `PngEncoder` → `display(...)`. Ordinary images use `0..1`; out-of-range panels
+choose one common automatic range, or you can pass `displayRange = -1f..1f` (for example). No AWT is
+involved, so it works anywhere.
 
 ## Filters — and choosing the right one
 

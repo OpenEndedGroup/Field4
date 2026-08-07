@@ -466,9 +466,26 @@ class ImagingCoreTest {
     @Test
     fun montageNormalisesASignedPanelForDisplay() {
         val signed = Img.generate(20, 20) { x, _ -> x - 10f }   // range -10..9
-        val m = montage(listOf("signed" to signed), columns = 1, cellSide = 64)
+        val m = montage(listOf("signed" to signed), columns = 1, cellSide = 64, displayRange = -10f..10f)
         assertTrue(m.max() <= 1f + 1e-5f, "montage emitted out-of-range samples: ${m.max()}")
         assertTrue(m.min() >= 0f - 1e-5f, "montage emitted negative samples: ${m.min()}")
+    }
+
+    @Test
+    fun montageUsesOneRequestedDisplayRangeForEveryPanel() {
+        val ordinary = Img(2, 1, 1, floatArrayOf(0.2f, 0.8f))
+        val overshooting = Img(2, 1, 1, floatArrayOf(0.2f, 1.2f))
+        val m = montage(
+            listOf("ordinary" to ordinary, "overshoot" to overshooting),
+            columns = 2,
+            cellSide = 8,
+            gap = 1,
+            displayRange = 0f..1f,
+        )
+
+        assertEquals(0.2f, m.at(1, 1, 0), 1e-6f, "ordinary panel did not use the requested domain")
+        assertEquals(0.2f, m.at(1 + 2 + 1, 1, 0), 1e-6f, "overshooting panel was rescaled independently")
+        assertEquals(1f, m.at(1 + 2 + 1 + 1, 1, 0), 1e-6f, "requested domain should clamp overshoot")
     }
 
     @Test
