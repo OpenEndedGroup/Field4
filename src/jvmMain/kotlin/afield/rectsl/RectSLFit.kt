@@ -77,10 +77,27 @@ data class TrackFitResult(
     /** The input track with [parameters] substituted — a real track, samplable and renderable. */
     val fitted: Track<Double>,
     /** The lowered graph at the fitted parameters, for plotting or further composition. */
-    val fittedFn: Functions.Fn
+    val fittedFn: Functions.Fn,
+    /**
+     * Free parameters whose exact derivative was zero at *every* target when the fit started — the
+     * ones sitting under a `floor`, a gate or a hold track, which have no differentiable path to the
+     * value and therefore cannot have moved.
+     *
+     * A fit where **all** of them are stuck throws rather than returning; this set is for the partly
+     * stuck case, which does descend, and legitimately so, in the subspace it can reach. Without it
+     * that case is indistinguishable from a fit where everything moved, which is the one way this
+     * fitter could mislead.
+     */
+    val stuckParameters: Set<String> = emptySet()
 ) {
     /** True when the fit ended strictly closer to the targets than it started. */
     val improved: Boolean get() = finalResidual < initialResidual
+
+    /**
+     * True when some — not all — free parameters could not move. The fit is real; it just solved for
+     * fewer parameters than were named. Read [stuckParameters] for which.
+     */
+    val partlyStuck: Boolean get() = stuckParameters.isNotEmpty()
 
     /** How much of the starting residual was removed, in `0..1`. */
     val residualReduction: Double
@@ -153,9 +170,17 @@ fun Track<Double>.fitParameters(
 
     // A parameter can be *present* in the graph and still have no differentiable path to the value:
     // put one under a `floor`, a gate or a hold and its exact derivative is zero, which is the truth
-    // about a staircase rather than a bug. Descending on that would report convergence without ever
-    // having moved — the precise failure `FnNonDifferentiable` refuses `sign` to avoid — so it is
-    // refused here too, loudly, and per parameter so the message says which one is stuck.
+    // about a staircase rather than a bug. Descending on *only* such parameters would report
+    // convergence without ever having moved — the precise failure `FnNonDifferentiable` refuses
+    // `sign` to avoid — so an all-stuck mask is refused here too, loudly, and the message names the
+    // stuck parameters.
+    //
+    // The threshold is deliberately "every free parameter", not "any". A partly-stuck fit is a real
+    // fit: it descends in the subspace it can reach, which is why the gallery example that solves
+    // *beside* a gate reaches residual 6.2e-15 while the one *under* a floor is refused. Refusing on
+    // `any` would block the first case, and there is no principled way to solve for the second.
+    // What is *not* acceptable is doing that silently, so [TrackFitResult.stuckParameters] carries
+    // the set out either way and `TrackFitResult.partlyStuck` says so in one boolean.
     val startGradient = gradient(theta)
     val stuck = mask.filter { (_, index) -> startGradient[index] == 0.0 }.keys
     if (stuck.size == mask.size) {
@@ -207,7 +232,8 @@ fun Track<Double>.fitParameters(
         residuals = residuals,
         steps = steps,
         fitted = substituteParameters(solved),
-        fittedFn = fittedFn
+        fittedFn = fittedFn,
+        stuckParameters = stuck
     )
 }
 

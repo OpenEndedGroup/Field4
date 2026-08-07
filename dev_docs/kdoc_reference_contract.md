@@ -145,7 +145,36 @@ will not reach the page. The guard treats them as benign, annotated or not.
    matching close, and an inner `*/` ends the block early — a `"**/*.wav"` glob quoted in a comment
    broke a build on 2026-07-27. Say "the opening marker" instead.
 4. If you touch a summary in `afield.stdlib` or `afield.visualization`, run
-   `./gradlew generateCodebaseReference` and commit the regenerated pages.
+   `./gradlew generateCodebaseReference` and commit the regenerated pages. **And note that those two
+   packages are not the only input** — see below.
+
+### The reference also depends on every public docs page
+
+This is the part that surprises people, and it has already caused one confident misattribution. The
+generated pages carry `Used in:` back-links, and those are *derived from the docs pages themselves*,
+not from KDoc. `StdlibReferenceGenerator.buildEvidenceIndex` (`StdlibReferenceGenerator.kt:887-917`)
+lists **every** `public/docs/*.md` except the nine in `EVIDENCE_PAGE_BLOCKLIST`
+(`StdlibReferenceGenerator.kt:197-200`), reduces each to its *code* text only — fenced blocks plus
+inline code spans, with bare filename spans dropped (`codeTextOf`, `:932-937`) — and links a page to
+a source file when at least `MIN_EVIDENCE_HITS` = 2 (`:94`) tokens that are **uniquely owned** by
+that one file (ownership built at `:898-902`, applied at `:906`) match in it.
+
+Three consequences, in increasing order of nastiness:
+
+- **Editing a public page's code spans can change `public/docs/reference/`.** A page that starts
+  naming an API starts being linked from it. That is by design.
+- **The drift is not always additive.** Only `MAX_EVIDENCE_LINKS` = 3 pages are kept per source file
+  (`:97`, applied by the `.take(...)` at `:915`), ranked by hit count then filename. So a new page
+  with a higher count can **displace** an existing link, and `checkCodebaseReference` then reports a
+  removed line on a page nobody touched.
+- **Uniqueness is corpus-global.** Adding a public declaration whose *name* an already-documented
+  file also defines makes that token ambiguous and it stops counting for **both**
+  (`tokenOwners[it]?.size == 1`, `:906`), so links can vanish from a file you did not edit.
+
+Practically: if you are editing a public docs page and want to leave the reference alone, keep the
+edit **prose-only** — correct numbers, alt text and sentences, but do not add or remove backticks or
+fenced blocks. If you do change code spans, run `./gradlew generateCodebaseReference` and commit the
+regenerated pages in the same commit, exactly as for a KDoc change.
 5. Check your claims against the implementation. The reference is only as trustworthy as its worst
    row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.

@@ -108,8 +108,8 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-one of `OpRegistry`'s 123
-canonical ops, which `FnOpCoverageTest` prints as **25.2%** rather than asking you to trust it:
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-two of `OpRegistry`'s 124
+canonical ops, which `FnOpCoverageTest` prints as **25.8%** rather than asking you to trust it:
 
 | group | ops |
 | --- | --- |
@@ -120,11 +120,19 @@ canonical ops, which `FnOpCoverageTest` prints as **25.2%** rather than asking y
 | x-domain transforms | `shift scaleX warp` |
 | shapes and windows | `gaussian ramp remap smoothstep hannWindow hammingWindow` |
 | modulation | `amplitudeMod ringMod` |
+| the one exact step | `floor` |
 
-(This said "twenty-five ops" until 2026-07-31 while the table below it already listed twenty-eight —
-the count was stale, not the table. Nothing generates this page, so the number here is hand-kept:
-`./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest --rerun` prints the authoritative
-`OP COVERAGE:` line, and that is what to check it against.)
+`floor` (`autodiff_formula.kt:257`) is the odd one out and is here on purpose. Its derivative is zero
+on every open interval and undefined on the integers, so it is not *smooth* — but zero really is the
+derivative of a staircase, and having it as a first-class differentiable node is what lets RectSL's
+visibility gates, hold tracks and looped clocks lower exactly instead of being refused. See
+"One step, and most of the refusals go away" in `public/docs/rectsl_inverse_animation.md`.
+
+(This said "twenty-five ops" until 2026-07-31 while the table below it already listed twenty-eight,
+and "thirty-one of 123 / 25.2%" until 2026-08-07 while the table was missing `floor` — the hand-kept
+count and the hand-kept table have now drifted apart twice, in opposite directions. Nothing generates
+this page: `./gradlew jvmTest --tests afield.stdlib.FnOpCoverageTest --rerun` prints the authoritative
+`OP COVERAGE:` line, and that is what to check **both** the count and the table against.)
 
 Not covered — and honestly reported by name by `unsupportedOps` — are the piecewise oscillators
 (`saw`, `triangle`, `square`, `pulseTrain`), everything table- or data-backed (`piecewise`,

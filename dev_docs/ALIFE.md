@@ -43,8 +43,11 @@ stop.
 | `alife_animate.kt` | `Box.animateEvolution` and four "show a prefix of something" helpers |
 
 The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
-carry `@file:afield.CompletionCategory("ALife")` — without it a new file lands in a freshly-created
-`reference/uncategorised.md`, which is how `alife_field.kt` first failed the reference drift guard.
+carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
+`Uncategorised` (`StdlibReferenceGenerator.kt:456`) and **creates** a `public/docs/reference/uncategorised.md`
+that is not committed — which is how `alife_field.kt` first failed the reference drift guard. There is
+no such page today; commit `99a1a3f69` removed the last one by supplying the eleven annotations it was
+holding, so if you see it appear, a new file is missing its `CompletionCategory`.
 
 `alife_animate.kt` sits apart from the five simulation files for the same reason `alife_field.kt` does:
 those files name nothing from Field's box runtime and it is entirely about it (`Box`, `Frames`,

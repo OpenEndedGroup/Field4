@@ -185,7 +185,7 @@ building the tape costs about what the extra graph evaluations did. The exact pa
 are that it is exact, has no `fdStep` to tune, and costs one sweep per step whatever the parameter
 count, where finite differences costs `2n`.
 
-And the refusal line matters as much as the fit. Only 31 of `OpRegistry`'s 122 canonical ops have a
+And the refusal line matters as much as the fit. Only 32 of `OpRegistry`'s 124 canonical ops have a
 derivative; the piecewise oscillators, the seeded noise generators, the table-backed interpolants and
 the windowed numeric operators do not. `FnGradientMode.EXACT` throws with the reason,
 `FnGradientMode.AUTO` falls back to finite differences and `FnFitRun.usedExactGradient` tells you which
