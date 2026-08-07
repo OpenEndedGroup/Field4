@@ -101,9 +101,11 @@ class KeyframerCoverageTest {
             "Key::diff(Key, String, String)" to covered(),
             "Key::diffHtml(Key, String, String)" to covered(),
             "Key::diffText(Key, String, String)" to covered(),
-            "Key::update(Key.() -> Unit)" to covered(),
+            // Declared as `Key.() -> Unit`; reflection cannot see the receiver, so the ledger keys
+            // are the normalised arrow form (see readableType).
+            "Key::update((Key) -> Unit)" to covered(),
             "Key::applyKey()" to covered(),
-            "Key::updateAndApply(Key.() -> Unit)" to covered(),
+            "Key::updateAndApply((Key) -> Unit)" to covered(),
             "Key::save(Path, String?)" to covered(),
             "Key::updateCode(String, Boolean)" to covered(),
             "Key::copyUpdateCodeToClipboard(String, Boolean)" to
@@ -180,16 +182,59 @@ class KeyframerCoverageTest {
         )
     }
 
-    /** `Pair<kotlin.String, kotlin.Any?>` → `Pair<String, Any?>`, and `Function0<X>` → `() -> X`. */
+    /**
+     * `Pair<kotlin.String, kotlin.Any?>` → `Pair<String, Any?>`, and function types to arrow form.
+     *
+     * **Why this normalises instead of matching.** kotlin-reflect has rendered a function type two
+     * different ways across compiler versions: erased (`Function1<Key, Unit>`) and arrow
+     * (`(Key) -> Unit`). This build resolves a *mutable* `2.4.255-SNAPSHOT` Kotlin fork
+     * (`build.gradle.kts:896`), and that rendering flipped to arrow form underneath a green
+     * baseline — turning this ledger red with no change to `keyframer.kt` and no change to this
+     * test. An earlier version matched the literal `^Function1<Key, Unit>$`, i.e. it was pinned to
+     * one snapshot's formatting. So canonicalise *both* spellings onto the arrow form via
+     * [arrowForm], and assert that equivalence directly in
+     * [functionTypesNormaliseWhicheverWayReflectSpellsThem] so the next flip is caught by a test
+     * that names the cause rather than by an unclassified-declaration failure that does not.
+     *
+     * Neither spelling carries `@ExtensionFunctionType`, so a receiver-style `Key.() -> Unit` is
+     * not recoverable from reflection here; the ledger says `(Key) -> Unit` for those parameters.
+     */
     private fun readableType(raw: String): String {
         var t = raw
         Regex("""\bkotlin\.collections\.|\bkotlin\.reflect\.|\bkotlin\.|\bjava\.nio\.file\.|\bjava\.lang\.|\bafield\.stdlib\.linalg\.|\bafield\.stdlib\.|\bafield\.four\.buffers\.|\bafield\.four\.util\.|\bafield\.four\.modules\.""")
             .let { t = it.replace(t, "") }
         t = t.replace("KeyframeScope.Key", "Key")
-        // Function0<X> / Function1<Key, Unit> read far better as lambda types in a ledger.
-        Regex("""^Function0<(.*)>$""").find(t)?.let { return "() -> ${it.groupValues[1]}" }
-        Regex("""^Function1<Key, Unit>$""").find(t)?.let { return "Key.() -> Unit" }
-        return t
+        return arrowForm(t)
+    }
+
+    /**
+     * `FunctionN<A, …, R>` → `(A, …) -> R`. A type already in arrow form — or anything that is not
+     * a function type at all — comes back unchanged, so this is safe to run over every parameter.
+     */
+    private fun arrowForm(type: String): String {
+        val m = Regex("""^Function(\d+)<(.*)>(\??)$""").matchEntire(type) ?: return type
+        val args = splitTypeArguments(m.groupValues[2])
+        // Bail out rather than mangle if the arity and the argument list disagree.
+        if (args.size != m.groupValues[1].toInt() + 1) return type
+        val arrow = "(${args.dropLast(1).joinToString(", ")}) -> ${args.last()}"
+        return if (m.groupValues[3].isEmpty()) arrow else "($arrow)?"
+    }
+
+    /** Splits `A, Pair<B, C>, D` on the commas outside any `<…>`, so nested generics survive. */
+    private fun splitTypeArguments(args: String): List<String> {
+        val out = mutableListOf<String>()
+        val current = StringBuilder()
+        var depth = 0
+        for (c in args) {
+            when {
+                c == '<' -> { depth++; current.append(c) }
+                c == '>' -> { depth--; current.append(c) }
+                c == ',' && depth == 0 -> { out += current.toString().trim(); current.clear() }
+                else -> current.append(c)
+            }
+        }
+        if (current.isNotBlank()) out += current.toString().trim()
+        return out
     }
 
     private fun signatureOf(owner: String, name: String, params: List<String>?): String =
@@ -215,6 +260,39 @@ class KeyframerCoverageTest {
         }
         out += MANUAL
         return out
+    }
+
+    /**
+     * The ledger's keys must not depend on which spelling of a function type kotlin-reflect happens
+     * to emit. Both are pinned here so a compiler-fork bump that flips the rendering fails *this*
+     * test — which says what happened — rather than [everyPublicDeclarationIsClassified], which
+     * reports it as two unclassified declarations and reads like a code defect. That misreading is
+     * exactly what happened on 2026-08-07.
+     */
+    @Test
+    fun functionTypesNormaliseWhicheverWayReflectSpellsThem() {
+        // The two renderings actually observed from KType.toString() for `Key.() -> Unit`.
+        assertEquals(
+            "(Key) -> Unit",
+            readableType("kotlin.Function1<afield.stdlib.KeyframeScope.Key, kotlin.Unit>")
+        )
+        assertEquals(
+            "(Key) -> Unit",
+            readableType("(afield.stdlib.KeyframeScope.Key) -> kotlin.Unit")
+        )
+        // ... and for the `() -> Structure?` target overload.
+        assertEquals("() -> Structure?", readableType("kotlin.Function0<afield.stdlib.Structure?>"))
+        assertEquals("() -> Structure?", readableType("() -> afield.stdlib.Structure?"))
+        // Nested generics must not be split on their interior comma.
+        assertEquals(
+            "(Pair<String, Any?>) -> Unit",
+            readableType("kotlin.Function1<kotlin.Pair<kotlin.String, kotlin.Any?>, kotlin.Unit>")
+        )
+        // Non-function types pass through untouched.
+        assertEquals(
+            "Array<out Pair<String, Any?>>",
+            readableType("kotlin.Array<out kotlin.Pair<kotlin.String, kotlin.Any?>>")
+        )
     }
 
     @Test
