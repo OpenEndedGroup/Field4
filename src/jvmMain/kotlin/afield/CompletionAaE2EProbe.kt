@@ -216,6 +216,48 @@ object CompletionAaE2EProbe {
         check("preamble extension property on its receiver", meshPos, meshPos.length, "pos", "AA+context")
         active = ki
 
+        // The defect classes the 2026-08-07 caret sweep named, asserted through the LIVE chain rather than
+        // through the sweep's own harness. Each had a pre-fix failure mode that mattered here in particular,
+        // because AA answered NON-EMPTY and wrong — which tells `AaCompletionClient` that AA served the
+        // request and suppresses the K1 fallback that would have answered correctly. So each check below
+        // really did fail through `KotlinInterface2.complete()` before its fix; this is the whole
+        // production path bar the browser.
+        println("── the 2026-08-07 sweep's defect classes, through the live chain ──")
+        // A comment ending in a FULL STOP used to make the next line a dot position, so the request came
+        // back "no qualified expr" and empty. Asserted with a named argument, which the K1 delegate does
+        // not produce at all — so a hit here cannot be the fallback covering for AA.
+        val afterProse = "// a comment that ends in a period.\nVector3f("
+        check("name position after a prose comment", afterProse, afterProse.length, "x", "AA-only")
+        // …and the other direction, which the same blanking could plausibly break: a REAL dot must still be
+        // a dot when the text around it looks like prose or a literal. The sidecar module has no test source
+        // set, so these edge cases live here, where they run against the live chain.
+        for ((desc, snippet) in listOf(
+            "a // inside a string" to "val a = \"http://x.y\".len",
+            "a bare slash is not a comment" to "val a = 3 / 2\nval b = \"q\".len",
+            "KDoc, period and all, before the code" to "/** kdoc with a period. */\nval s = \"q\".len",
+            "a char literal holding a quote" to "val c = '\"'\nval s = \"q\".len",
+            "an unterminated literal (mid-typing)" to "val s = \"unterminated\nval t = \"q\".len",
+        )) check("a real dot survives: $desc", snippet, snippet.length, "length", "AA")
+        val rawStringThenArg = "val t = \"\"\"a.b\"\"\"\nVector3f("
+        check("a raw string's dot is not the caret's", rawStringThenArg, rawStringThenArg.length, "x", "AA-only")
+        // `Math.` — a qualifier in one of Kotlin's DEFAULT imports, which the package-guessing resolution
+        // could not see, so the value path answered with Object's members plus the `Any` extensions.
+        val math = "val a = Math."
+        check("java.lang static off a class qualifier", math, math.length, "toRadians", "AA")
+        absent("no Any-extension junk on a class qualifier", math, math.length, "also")
+        // The transport cap: a bare `s.` computes 299 candidates and used to ship the first 200 BY NAME, so
+        // the panel had nothing past `orEmpty(` — no `trim`, no `toInt`, no `uppercase`, no `zip`.
+        val str = "val s = \"x\"\ns."
+        check("late-alphabet member survives the cap", str, str.length, "uppercase", "AA")
+        check("…and the one after it", str, str.length, "zip", "AA")
+        // A fully-qualified path answered with sub-packages only, so `kotlin.math.‸sin` came back with one
+        // row and no `sin`; and the JDK's packages, being in modules rather than on the classpath, could
+        // not be enumerated at all.
+        val mathPkg = "val x = kotlin.math."
+        check("package path offers the package's members", mathPkg, mathPkg.length, "sin", "AA")
+        val javaPkg = "val r = java."
+        check("JDK sub-packages (modules, not classpath)", javaPkg, javaPkg.length, "util", "AA")
+
         // Latency over the warm session (first call already paid session/index build above).
         val times = mutableListOf<Long>()
         repeat(12) {

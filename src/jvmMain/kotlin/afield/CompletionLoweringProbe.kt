@@ -14,6 +14,12 @@ expect:
   exitCode: 0
   stdoutContains:
     - "LOWERING PROBE DONE"
+  # The ratchet. The numbers this probe prints were report-only for exactly one day, which meant any
+  # regression in the completion backend was silent. A broken floor exits 1 (below); the marker is
+  # asserted too, so a run that somehow prints the failure without exiting still fails here. Every
+  # threshold, and why it is where it is, is in FLOORS — raise one when a fix moves it.
+  stdoutNotContains:
+    - "RATCHET FAIL"
 */
 /**
  * Measures the two things completion quality actually rests on, over a corpus of REAL boxes.
@@ -46,17 +52,27 @@ expect:
  * `AFIELD_LOWERING_CORPUS` at an un-harvested directory and it reads the documents raw instead, which is
  * useful for a personal workspace but reports every macro-declared name as unresolved.
  *
- * Report-only by design: it prints numbers, not a verdict. Thresholds belong in a gate once the numbers
- * are known, and inventing them before measuring is how you get a gate that asserts today's bugs.
+ * **And it is a gate** (§3, [FLOORS]). It was report-only for one day — the right way round, since
+ * inventing thresholds before measuring is how you get a gate that asserts today's bugs — but a
+ * measurement nothing asserts leaves every regression in the completion backend silent. Each bucket has
+ * a floor cut a few points below what was measured, plus a floor on its *sample size* (a percentage over
+ * a bucket nobody sampled is not a measurement), and the hard invariants — every box lowers, no preamble
+ * dropped, zero injected-region errors — are absolute. A failure names the bucket, what it fell from, and
+ * the sidecar's own note on the misses. `--report` restores the exploration mode: same verdicts, exit 0.
+ *
+ * It lives in the SMOKE CATALOG rather than `./gradlew check` because it needs a live AA sidecar (a
+ * `check` task must be deterministic and offline); `field.sh` starts a checkout-local one, and the probe
+ * SKIPs cleanly where none is running.
  *
  * Knobs, all env vars (the runner passes the environment through):
  *   AFIELD_LOWERING_CORPUS        comma-separated dirs (default: starting points + templates)
  *   AFIELD_LOWERING_DOCS          max documents (default 200)
  *   AFIELD_LOWERING_CARETS        carets sampled per box (default 4)
- *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 400)
+ *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 4000 — i.e. the whole corpus)
  *   AFIELD_LOWERING_SEED          RNG seed (default 42)
  *   AFIELD_LOWERING_JSON          write the machine summary here (default build/completion-lowering/report.json)
  *   AFIELD_LOWERING_SKIP_RECALL   set to 1 to run the invariant only
+ *   AFIELD_LOWERING_GATE          set to 0 (or pass `--report`) for the report-only exploration mode
  */
 object CompletionLoweringProbe {
 
@@ -71,6 +87,14 @@ object CompletionLoweringProbe {
      * independent samples — which is the whole point, since the gap between them is the diagnosis.
      */
     private data class Site(val offset: Int, val truth: String, val kind: String)
+
+    /** One question the recall sweep will put to the sidecar: a [Site] of a box under one variant. */
+    private data class Ask(
+        val case: CompletionCorpus.Case,
+        val site: Site,
+        val typed: Int,
+        val mode: String,
+    )
 
     private val IDENT = Regex("""[A-Za-z_][A-Za-z0-9_]*""")
     /** Names that carry no information about scope — `it`, keywords, and the like. */
@@ -180,8 +204,67 @@ object CompletionLoweringProbe {
     private fun jsonEscape(s: String) = s.replace("\\", "\\\\").replace("\"", "\\\"")
         .replace("\n", "\\n").replace("\t", "\\t")
 
+    // ── the ratchet ─────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * One recall floor. [observed] is the number measured when the floor was last cut, so a failure can
+     * say what it fell FROM; [minPercent] sits a few points below it, and [minAttempts] guards the
+     * denominator (see the gate's own comment on why a bucket's sample size is a floor too).
+     *
+     * Every bucket is gated separately, and `blank` (typing) apart from `keep` (editing), because the
+     * two carry different diagnoses: a gap between them is a parse-recovery problem, a gap in both is a
+     * scope problem, and one aggregate number would hide which. Raise a floor when a fix moves its
+     * number — that is what makes this a ratchet rather than a rubber stamp.
+     */
+    private data class Floor(val bucket: String, val minAttempts: Int, val minPercent: Int, val observed: Int)
+
+    /**
+     * The floors, all cut **3 points** below the number measured over the whole harvested corpus (5277
+     * carets, 480–698 per bucket — the `n=` each verdict line prints is the honest statement of how much
+     * each floor rests on).
+     *
+     * 3 points, not 5, and not 1. The margin has to cover the ordering churn a candidate-set change causes
+     * near a truncation boundary, and nothing more: the buckets are deterministic given the same corpus and
+     * backend, and every regression this measurement has actually caught moved a bucket 8 to 40 points. At
+     * 480+ carets a single caret is 0.2 points, so 3 points is ~15 carets of headroom — where the first
+     * version of this table, cut when `dot` had only 61 carets, was buying 5 points that were worth about
+     * three carets. Widening the sample is what let the margin tighten; if a bucket's `n` ever falls back
+     * towards 60, widen the sample rather than the margin.
+     *
+     * `minAttempts` is ~90% of the sample size observed with the same corpus; it only falls if the corpus
+     * shrinks or the caret sweep stops recognising a kind of site.
+     */
+    private val FLOORS = listOf(
+        // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
+        // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
+        Floor("dot/0/blank", minAttempts = 432, minPercent = 94, observed = 97),
+        Floor("dot/0/keep", minAttempts = 432, minPercent = 93, observed = 96),
+        // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
+        Floor("dot/2/blank", minAttempts = 432, minPercent = 94, observed = 97),
+        Floor("dot/2/keep", minAttempts = 432, minPercent = 93, observed = 96),
+        // Name position: scope, the index, and implicit-receiver extensions.
+        Floor("name/2/blank", minAttempts = 628, minPercent = 91, observed = 94),
+        Floor("name/2/keep", minAttempts = 528, minPercent = 91, observed = 94),
+        // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
+        Floor("pkg/0/blank", minAttempts = 466, minPercent = 94, observed = 97),
+        Floor("pkg/0/keep", minAttempts = 466, minPercent = 93, observed = 96),
+        Floor("pkg/2/blank", minAttempts = 466, minPercent = 94, observed = 97),
+        Floor("pkg/2/keep", minAttempts = 466, minPercent = 94, observed = 97),
+        // The headline number, gated too — not because the buckets don't cover it, but because it is what
+        // gets quoted, and a change that trades one bucket off against another should have to say so.
+        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 96),
+    )
+
+    /** The sweep must have asked something like the whole corpus (5277 questions); a truncated sweep is
+     *  not a gate — and with the cap raised past what the corpus yields, a short run means something
+     *  stopped producing questions. */
+    private const val MIN_REQUESTS = 4800
+
     @JvmStatic
     fun main(args: Array<String>) {
+        // Gate by default, so the catalog entry asserts; `--report` keeps the exploration mode the
+        // measurement was built as (print every verdict, exit 0) for a run whose point is the residual.
+        val gate = !args.contains("--report") && System.getenv("AFIELD_LOWERING_GATE")?.trim() != "0"
         val url = (System.getProperty("afield.completion.sidecarUrl")?.trim()?.ifBlank { null }
             ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")?.trim()?.ifBlank { null }
             ?: File("build/completion-corpus/sidecar-url.txt").takeIf { it.exists() }?.readText()?.trim()
@@ -199,7 +282,11 @@ object CompletionLoweringProbe {
             .split(',').map { it.trim() }.filter { it.isNotEmpty() }.map(::File).filter { it.isDirectory }
         val maxDocs = env("AFIELD_LOWERING_DOCS", "200").toInt()
         val caretsPerBox = env("AFIELD_LOWERING_CARETS", "4").toInt()
-        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "400").toInt()
+        // High enough to sweep the whole corpus (~4.6k questions at 4 carets per kind per box, ~2 minutes
+        // at the measured p50): a cap that BINDS turns the report into a sample, and makes the numbers
+        // depend on how many questions the corpus happens to yield. It stays a knob so an exploration run
+        // can be quick — but the gate needs the whole sweep, which is why MIN_REQUESTS is a floor too.
+        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "8000").toInt()
         val seed = env("AFIELD_LOWERING_SEED", "42").toLong()
         val jsonOut = File(env("AFIELD_LOWERING_JSON", "build/completion-lowering/report.json"))
         val skipRecall = env("AFIELD_LOWERING_SKIP_RECALL", "0") == "1"
@@ -271,8 +358,9 @@ object CompletionLoweringProbe {
         println("  lowered ${lowered}/${cases.size} boxes (failed $loweringFailed), preambles dropped as unparseable: $preambleDropped")
         println("  errors by region: " + byRegion.counts.entries.joinToString(", ") { "${it.key}=${it.value}" }
             .ifBlank { "none" })
+        val injectedErrors = byRegion.counts.filterKeys { it in injectedRegions }.values.sum()
         println("  INVARIANT (injected regions must be clean): " +
-            "${worstBoxes.size} boxes with injected-region errors, ${byRegion.counts.filterKeys { it in injectedRegions }.values.sum()} errors")
+            "${worstBoxes.size} boxes with injected-region errors, $injectedErrors errors")
         worstBoxes.sortedByDescending { it.second }.take(12).forEach { (label, n, sample) ->
             println("    $label  $n  e.g. $sample")
         }
@@ -285,6 +373,7 @@ object CompletionLoweringProbe {
         val recall = Counter<String>()
         val attempts = Counter<String>()
         val missNotes = Counter<String>()
+        val notesByBucket = LinkedHashMap<String, Counter<String>>()
         val missedNames = Counter<String>()
         val missExamples = mutableListOf<String>()
         var requests = 0
@@ -293,11 +382,21 @@ object CompletionLoweringProbe {
             println()
             println("══ 2. CARET RECALL — is what the author wrote actually offered? ══")
             val rng = Random(seed)
-            outer@ for (c in cases) {
+            // Every question the sweep could ask, built before any of it is asked so the request cap
+            // truncates EVENLY across the corpus. Asked box-by-box (as this was), a 400-request cap only
+            // ever reached the first ~30 of 182 boxes — every reported miss came from `alife_*`, `dot` got
+            // 15 samples, and a floor set on 15 samples measures the sample, not the engine. Round-robin
+            // by caret index instead: request N of the run is caret N/182 of box N%182.
+            val perCase = cases.map { c ->
                 val all = targetsIn(c.code)
-                if (all.isEmpty()) continue
-                val picked = all.shuffled(rng).distinctBy { it.offset }.take(caretsPerBox)
-                for (site in picked) {
+                // Sampled PER KIND, not `take(n)` over the lot. Real box code is mostly name positions, so
+                // a flat sample follows that distribution: `dot` came out at 61 carets against `name`'s 531,
+                // and a floor cut 5 points under a 61-caret observation is three carets from a false red —
+                // which is how a gate gets deleted instead of repaired. Each bucket is measured on its own
+                // denominator anyway, so evening out the denominators costs nothing but requests.
+                val picked = all.shuffled(rng).distinctBy { it.offset }
+                    .groupBy { it.kind }.values.flatMap { it.take(caretsPerBox) }
+                picked.flatMap { site ->
                     // A bare `.` and two characters typed are different questions of the same caret; a
                     // name position with nothing typed is not asked at all (the AA path withholds
                     // star-import scopes there on purpose, so it would measure a decision, not a defect).
@@ -309,44 +408,59 @@ object CompletionLoweringProbe {
                     // was inflating the typing-vs-editing gap with an artifact of the sweep.
                     val suppliedNamedArg = site.kind == "name" &&
                         Regex("""^\s*=[^=]""").containsMatchIn(c.code.drop(site.offset + site.truth.length))
-                    for ((typed, mode) in typedVariants.flatMap { t -> listOf("blank", "keep").map { t to it } }) {
-                        if (requests >= maxRequests) break@outer
-                        if (typed > site.truth.length) continue
-                        if (mode == "keep" && suppliedNamedArg) continue
-                        val t = Site(site.offset + typed, site.truth, site.kind)
-                        val (snippet, cursor) = snippetFor(c.code, t.offset, mode)
-                        if (cursor > snippet.length) continue
-                        val key = "${site.kind}/$typed/$mode"
-                        attempts.add(key)
-                        requests++
-                        val t0 = System.nanoTime()
-                        val outcome = AaCompletionClient.complete(
-                            snippet, cursor, c.preamble, receivers, replImports = introImports,
-                        )
-                        times += (System.nanoTime() - t0) / 1_000_000
-                        val cands = (outcome.result as? CompletionResult.Success)?.metadata.orEmpty()
-                        val hit = cands.any {
-                            it.text.trimEnd('(', ' ', '=') == t.truth || it.displayText.startsWith(t.truth)
+                    typedVariants.flatMap { t -> listOf("blank", "keep").map { t to it } }
+                        .filter { (typed, mode) ->
+                            typed <= site.truth.length && !(mode == "keep" && suppliedNamedArg)
                         }
-                        if (hit) recall.add(key)
-                        else {
-                            // A histogram says WHAT is missed; it can't be reproduced. Keep a handful of
-                            // misses verbatim — the line the caret was on, and the note — so each bucket
-                            // in the summary leads to something that can be pasted into a box.
-                            if (missExamples.size < maxExamples) {
-                                val line = c.code.take(t.offset).substringAfterLast('\n') +
-                                    "‸" + c.code.drop(t.offset).substringBefore('\n')
-                                missExamples += "${c.label} $key .${t.truth}\n" +
-                                    "        line: ${line.trim().take(110)}\n" +
-                                    "        note: ${outcome.detail.take(110)}"
-                            }
-                            missedNames.add(t.truth)
-                            missNotes.add(outcome.detail.substringBefore(':').take(60).let {
-                                if (outcome.detail.startsWith("empty")) "empty: " + outcome.detail
-                                    .substringAfter("empty: ").substringBefore(':').take(40) else it
-                            })
-                        }
+                        .map { (typed, mode) -> Ask(c, Site(site.offset + typed, site.truth, site.kind), typed, mode) }
+                }
+            }
+            val queue = ArrayList<Ask>()
+            var round = 0
+            while (queue.size < maxRequests) {
+                val added = perCase.count { round < it.size }
+                if (added == 0) break
+                perCase.forEach { if (round < it.size) queue += it[round] }
+                round++
+            }
+            for (ask in queue.take(maxRequests)) {
+                val (c, t, typed, mode) = ask
+                val (snippet, cursor) = snippetFor(c.code, t.offset, mode)
+                if (cursor > snippet.length) continue
+                val key = "${t.kind}/$typed/$mode"
+                attempts.add(key)
+                requests++
+                val t0 = System.nanoTime()
+                val outcome = AaCompletionClient.complete(
+                    snippet, cursor, c.preamble, receivers, replImports = introImports,
+                )
+                times += (System.nanoTime() - t0) / 1_000_000
+                val cands = (outcome.result as? CompletionResult.Success)?.metadata.orEmpty()
+                val hit = cands.any {
+                    it.text.trimEnd('(', ' ', '=') == t.truth || it.displayText.startsWith(t.truth)
+                }
+                if (hit) recall.add(key)
+                else {
+                    // A histogram says WHAT is missed; it can't be reproduced. Keep a handful of
+                    // misses verbatim — the line the caret was on, and the note — so each bucket
+                    // in the summary leads to something that can be pasted into a box.
+                    if (missExamples.size < maxExamples) {
+                        val line = c.code.take(t.offset).substringAfterLast('\n') +
+                            "‸" + c.code.drop(t.offset).substringBefore('\n')
+                        missExamples += "${c.label} $key .${t.truth}\n" +
+                            "        line: ${line.trim().take(110)}\n" +
+                            "        note: ${outcome.detail.take(110)}"
                     }
+                    missedNames.add(t.truth)
+                    val note = outcome.detail.substringBefore(':').take(60).let {
+                        if (outcome.detail.startsWith("empty")) "empty: " + outcome.detail
+                            .substringAfter("empty: ").substringBefore(':').take(40) else it
+                    }
+                    missNotes.add(note)
+                    // Kept per bucket as well as overall, because that is what a ratchet failure has to
+                    // say: "bare-dot recall fell to 71%, and the sidecar's own note on those misses is X"
+                    // is a diagnosis; "recall fell" is a number to argue about.
+                    notesByBucket.getOrPut(key) { Counter() }.add(note)
                 }
             }
             println("  requests $requests   latency p50=${times.sorted().getOrNull(times.size / 2)}ms")
@@ -366,6 +480,54 @@ object CompletionLoweringProbe {
             println("  example misses (paste-able):")
             missExamples.forEach { println("    $it") }
         }
+
+        // ── 3. the ratchet ──────────────────────────────────────────────────────────────────────────
+        println()
+        println("══ 3. RATCHET — the floors this gate holds ══")
+        val broken = mutableListOf<String>()
+        val held = mutableListOf<String>()
+        fun hard(desc: String, ok: Boolean, detail: String) {
+            if (ok) { held += desc; println("  ✓ $desc — $detail") }
+            else { broken += desc; println("  ✗ RATCHET FAIL $desc — $detail") }
+        }
+        hard("every box lowers", lowered == cases.size, "$lowered/${cases.size} lowered, $loweringFailed failed")
+        hard("no preamble dropped as unparseable", preambleDropped == 0, "$preambleDropped dropped")
+        hard(
+            "injected regions type-check", injectedErrors == 0,
+            "$injectedErrors errors in ${worstBoxes.size} boxes" +
+                worstBoxes.sortedByDescending { it.second }.firstOrNull()?.let { " (worst: ${it.first} — ${it.third})" }.orEmpty(),
+        )
+        if (!skipRecall) {
+            hard("the sweep actually ran", requests >= MIN_REQUESTS, "$requests requests (floor $MIN_REQUESTS)")
+            for (f in FLOORS) {
+                val n = if (f.bucket == "TOTAL") attempts.counts.values.sum() else attempts.counts[f.bucket] ?: 0
+                val h = if (f.bucket == "TOTAL") recall.counts.values.sum() else recall.counts[f.bucket] ?: 0
+                val pct = if (n > 0) 100.0 * h / n else 0.0
+                // A recall percentage over a bucket nobody sampled is 0/0 — vacuously fine, or vacuously
+                // broken, and either way not a measurement. So the sample size is a floor too: a change
+                // that stops PRODUCING `dot` targets must fail here rather than quietly stop asking.
+                if (n < f.minAttempts) {
+                    broken += f.bucket
+                    println("  ✗ RATCHET FAIL ${f.bucket} sampled only $n carets (floor ${f.minAttempts}, " +
+                        "${f.observed} when this floor was cut) — the sweep stopped asking, so its recall means nothing")
+                    continue
+                }
+                if (pct + 1e-9 < f.minPercent) {
+                    broken += f.bucket
+                    val notes = (if (f.bucket == "TOTAL") missNotes else notesByBucket[f.bucket])
+                        ?.top(3)?.joinToString("; ") { "${it.value}× \"${it.key}\"" } ?: "no notes recorded"
+                    // `%%` everywhere, including in the interpolated numbers: a bare `%` followed by a space
+                    // is an invalid format conversion, so the FAILURE MESSAGE threw instead of printing.
+                    // The gate still exited nonzero — by exception — which is exactly the shape of bug that
+                    // only deliberately breaking a guarded fix can find, since the happy path never runs it.
+                    println("  ✗ RATCHET FAIL ${f.bucket} recall fell from ${f.observed}%% to %.0f%%".format(pct) +
+                        " (floor ${f.minPercent}%, $h/$n); the sidecar's own note on those misses: $notes")
+                } else {
+                    held += f.bucket
+                    println("  ✓ ${f.bucket.padEnd(16)} %3.0f%% ≥ ${f.minPercent}%%  n=$n  (cut from ${f.observed}%%)".format(pct))
+                }
+            }
+        } else println("  (recall floors skipped: AFIELD_LOWERING_SKIP_RECALL=1)")
 
         runCatching {
             jsonOut.parentFile?.mkdirs()
@@ -391,6 +553,21 @@ object CompletionLoweringProbe {
             jsonOut.writeText(sb.toString())
             println()
             println("report → ${jsonOut.path}")
+        }
+
+        println()
+        if (broken.isEmpty()) {
+            println("RATCHET PASS: ${held.size} floors held")
+        } else if (gate) {
+            println("RATCHET FAIL: ${broken.size} of ${broken.size + held.size} floors broken — ${broken.joinToString(", ")}")
+            println("  (each ✗ above names what it fell from and the sidecar's own note on the misses;")
+            println("   a floor is raised when a fix moves its number, never lowered to make a run green)")
+            println("LOWERING PROBE DONE")
+            System.out.flush()
+            kotlin.system.exitProcess(1)
+        } else {
+            println("RATCHET (report-only): ${broken.size} of ${broken.size + held.size} floors broken — " +
+                broken.joinToString(", ") + "  [--report given, so exiting 0]")
         }
 
         println("LOWERING PROBE DONE")

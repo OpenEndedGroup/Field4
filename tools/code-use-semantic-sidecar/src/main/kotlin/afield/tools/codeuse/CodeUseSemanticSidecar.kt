@@ -732,12 +732,64 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 jsTarget = req.jsTarget,
             )
         }
-        // Fitting values first, THEN the limit: the candidate list is sorted by name, so truncating at
-        // `limit` could drop the three enum entries that are the entire point of the request (`UD`,
-        // `SD_*` — late in the alphabet, behind every `Box` member). Stable, so nothing else reorders.
-        val candidates = result.candidates.sortedByDescending { it.fitsExpected }
-            .take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
+        // What survives the cap, in order of how badly the caller needs it. The candidate list is sorted
+        // BY NAME, so a plain `take(limit)` cuts the alphabet: at the old client limit of 200, `s.` on a
+        // String shipped everything up to `orEmpty(` and the live panel had no `substring`, `split`,
+        // `trim`, `toInt` or `uppercase`. 31 of the caret sweep's misses came back with exactly the note
+        // "200 candidates" — the right answer computed, then thrown away by the transport. So:
+        //   1. what the user has already TYPED — a candidate matching the prefix IS the request;
+        //   2. what FITS the expected type (`d.scheme = ‸` → the enum's entries, late in the alphabet and
+        //      behind every `Box` member);
+        //   3. name order, as before.
+        // Stable sorts, so nothing else reorders.
+        //
+        // "Ranking is the client's job" is true WITH A PREFIX and false without one. Measured, by running
+        // the shipped `fieldSuggest.js` verbatim over recorded payloads (`FieldSuggestRankTest`): at an
+        // empty prefix every row scores alike, the client's sort is stable, and `MAX_VISIBLE_ITEMS = 80`
+        // then keeps the first 80 — so THIS ORDER IS THE ORDER A HUMAN SEES at a bare dot. Leaving it
+        // alphabetical meant `f.` on an FLine showed `Close … byVariableRibboning` and `moveTo` — server
+        // index 159 of 249 — was not on screen at all, no matter how many candidates the transport shipped.
+        // Raising the cap was necessary and not sufficient: it moved the cut from 200-by-alphabet to
+        // 80-by-alphabet.
+        //
+        // So at an empty prefix, order by PROXIMITY TO THE RECEIVER, which is the one thing the client
+        // cannot recover (the wire carries the caret's receiver on every row, not the declaring container):
+        // the receiver's own members, then extensions declared on its own type, then the generic
+        // `Any`/type-variable extensions — `also`/`apply`/`let`/`takeIf`, which apply to everything and are
+        // therefore evidence of nothing — then classifiers and top-level names.
+        // These are stable sorts, so the LAST one applied is the primary key: what fits the expected type
+        // stays ahead of everything (`m.alphaMode = ‸` must lead with the enum's entries, which is what
+        // `expectedTypesAt` exists for), and proximity is the tie-break beneath it — not the reverse, which
+        // would have put an enum entry (a MEMBER) ahead of the parameter names at `Vector3f(‸`.
+        val prefix = prefixAt(req.snippet, req.cursor.coerceIn(0, req.snippet.length))
+        val ordered = if (prefix.isEmpty())
+            result.candidates.sortedBy(::receiverProximity).sortedByDescending { it.fitsExpected }
+        else result.candidates.sortedByDescending { it.fitsExpected }
+            .sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
+            .sortedByDescending { c -> c.name.startsWith(prefix) }
+        val candidates = ordered.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
+    }
+
+    /**
+     * How close a candidate is to the receiver the caret is on — the empty-prefix ordering key, lower first.
+     *
+     * A GENERIC extension receiver (`Any`, `Any?`, or a bare type variable like `T`/`R`, which is how
+     * `also`/`let`/`apply`/`takeIf`/`runCatching` arrive) applies to every receiver in the language, so its
+     * presence says nothing about what the user is holding; a member of the receiver's own type says
+     * everything. Between them sit extensions written FOR that type (`FLine.byThickening`,
+     * `String.trimIndent`) — the API someone chose to write for this receiver.
+     */
+    private fun receiverProximity(c: AaCandidate): Int {
+        val container = (c.container ?: "").trim().removeSuffix("?").substringBefore('<')
+        val generic = container.isEmpty() || container == "Any" ||
+            Regex("""[A-Z][0-9]?""").matches(container.substringAfterLast('.'))
+        return when {
+            c.kind == AaCandidate.Kind.MEMBER -> 0
+            c.kind == AaCandidate.Kind.EXTENSION && !generic -> 1
+            c.kind == AaCandidate.Kind.EXTENSION -> 2
+            else -> 3
+        }
     }
 
     /**

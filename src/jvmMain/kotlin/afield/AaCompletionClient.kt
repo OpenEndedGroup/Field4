@@ -38,7 +38,20 @@ object AaCompletionClient {
         val classpathRoots: List<String> = emptyList(),
         /** True for a KotlinJS box → the sidecar filters JVM-only stdlib members (no JS equivalent). */
         val jsTarget: Boolean = false,
-        val limit: Int = 200,
+        /**
+         * How many candidates to ship. RANKING IS CLIENT-SIDE (`fieldSuggest.js` orders by fuzzy match,
+         * category, recency and context), so a low limit here does not trim the tail of a ranked list — it
+         * deletes rows the ranker never sees, from a list the sidecar sorts BY NAME. At 200 that meant `s.`
+         * on a String stopped at `orEmpty(`: no `substring`, no `split`, no `trim`, no `toInt`, no
+         * `uppercase` in the panel, and 31 of the caret sweep's misses were exactly this (their note reads
+         * "200 candidates"). The candidates are already computed when the cap applies, so raising it costs
+         * serialization only — measured: `String.` 200 → 299 rows, 43KB → 63KB, 13ms either way.
+         *
+         * 1200 bounds a pathological receiver rather than budgeting a normal one: the richest real receiver
+         * measured (`Vec3`, whose generated swizzles alone are ~978 extensions) yields 337 rows after
+         * de-duplication, and the sidecar's own ceiling is 2000.
+         */
+        val limit: Int = 1200,
     )
 
     @Serializable

@@ -61,6 +61,68 @@ class FieldSuggestPresentationTest {
         runProbe("cases")
     }
 
+    /**
+     * **Recall at a rank a person can actually see.**
+     *
+     * Everything else that measures completion in this tree measures the *payload*:
+     * `completion.lowering-invariant.probe` reports 95% caret recall, meaning the answer the author wrote
+     * came back in the response. The popup renders at most `MAX_VISIBLE_ITEMS` (80) rows, so those are two
+     * different numbers and the second one is the user's. Measured 2026-08-07, they diverge hard: at a bare
+     * `f.` on an FLine, `moveTo` was in the response — index 159 of 249 — and **not on screen at all**.
+     *
+     * The mechanism, measured rather than assumed: at an EMPTY PREFIX every row scores alike in
+     * `fieldSuggest.js`, its sort is stable, and the 80-row cut then keeps whatever order the server sent.
+     * So "ranking is client-side" is true with a prefix and false without one, and at a bare dot the
+     * server's order IS the user-visible order. (Replaying the same payloads with the answer moved to the
+     * front puts every case at rank 1, which is what pins that down.) The sidecar therefore orders an
+     * empty-prefix response by proximity to the receiver — its own members, then extensions written for its
+     * type, then the `Any`/type-variable extensions that apply to everything — and this test holds it.
+     *
+     * Real payloads, real ranker, real categories: `rank-payloads.json` is recorded from the AA sidecar's
+     * own `/complete` (see `dev_docs/completion_aa_sidecar.md` for the recording command), every row is
+     * classified here through the server's own [KotlinCompletionSupport.classifyMetadata] so the categories
+     * — a ranking input — are the ones a browser would receive, and the ranking is done by the verbatim
+     * `fieldSuggest.js` staged off the classpath.
+     */
+    @Test
+    fun `the answer a person typed is among the rows a person can see`() {
+        runProbe("rank", classifiedRankSpec())
+    }
+
+    /**
+     * The recorded payloads, with each row's `category` filled in by the server's own classifier.
+     *
+     * The fixture holds what the *sidecar* sends (text/displayText/tail/icon); the browser receives those
+     * rows after `KotlinCompletionSupport.classifyMetadata`, and category is one of the popup's ranking
+     * inputs. Classifying here rather than baking a category into the fixture keeps the two in step: a
+     * change to the classifier moves this measurement, which is correct — it moves the real popup too.
+     */
+    private fun classifiedRankSpec(): String {
+        val raw = resource("/fieldSuggest/rank-payloads.json")
+        val cases = Regex("""\{\s*"label":""").findAll(raw).count()
+        assertTrue(cases >= 4, "the recorded rank payloads look empty (found $cases cases)")
+        // Deliberately a targeted rewrite rather than a JSON round-trip: this file has no JSON library on
+        // its test classpath, and the fixture is machine-written with one row object per `{"text":…}`.
+        val row = Regex("""\{"text":"((?:[^"\\]|\\.)*)","displayText":"((?:[^"\\]|\\.)*)","tail":"((?:[^"\\]|\\.)*)","icon":"([a-z]*)"}""")
+        var classified = 0
+        val filled = row.replace(raw) { m ->
+            val (text, displayText, tail, icon) = m.destructured
+            val category = KotlinCompletionSupport.classifyMetadata(
+                Metadata(icon = icon, tail = unescape(tail), text = unescape(text),
+                    displayText = unescape(displayText), category = ""),
+                unescape(text),
+            ).category
+            classified++
+            """{"text":"$text","displayText":"$displayText","tail":"$tail","icon":"$icon",""" +
+                """"category":${json(category)}}"""
+        }
+        assertTrue(classified >= 500, "expected to classify the recorded rows, classified only $classified")
+        return filled
+    }
+
+    private fun unescape(value: String): String =
+        value.replace("\\\"", "\"").replace("\\\\", "\\").replace("\\n", "\n")
+
     @Test
     fun `every completion category has a correct popup title`() {
         val categories = completionCategoryVocabulary()

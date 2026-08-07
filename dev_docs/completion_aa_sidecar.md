@@ -230,11 +230,12 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
     exactly 9 candidates and adds none; all 9 are `private`/`internal` on inspection.
   - **The expected type at the caret** — see below.
 
-#### Measuring it: `completion.lowering-invariant.probe`
+#### Measuring it — and gating it: `completion.lowering-invariant.probe`
 
 Two ground-truth measurements over a corpus of real boxes (`CompletionLoweringProbe`), so completion
-quality stops being a matter of opinion and reported screenshots. Report-only — it prints numbers, not a
-verdict; thresholds belong in a gate once the numbers are known.
+quality stops being a matter of opinion and reported screenshots. It was report-only for exactly one day —
+the right way round, since inventing thresholds before measuring is how you get a gate that asserts today's
+bugs — and it is now **also the gate**: see [The ratchet](#the-ratchet-what-the-numbers-assert) below.
 
 - **The lowering invariant.** `/lower` builds the same synthetic file `/complete` would (both go through
   `AaCompleter.lower`, so they cannot drift) and hands it to the compiler's own checkers. Each error is
@@ -267,13 +268,28 @@ it: it re-harvests, compares, and fails on `DRIFT` if a fixture no longer matche
 Not captured: `@exported` republication, which needs real evaluation of a parent box.
 
 Baselines on the 49 bundled starting points (182 Kotlin boxes, ~7.1k lines, 19 with a macro-expanded
-preamble of which 9 carry the `/*supermap*/` class), 2026-08-06: **182/182 boxes lower, 0 preambles dropped
+preamble of which 9 carry the `/*supermap*/` class), 2026-08-07: **182/182 boxes lower, 0 preambles dropped
 as unparseable, 0 injected-region errors.** 223 snippet-region errors, 116 of them unresolved references —
-all of them the box wanting runtime context, none of them the lowering. Caret recall **93% overall**:
-`dot` 89% at a bare dot / 95% with two characters typed, `name` 93% typing vs 92% editing, `pkg` 89% / 100%.
-p50 28ms.
+all of them the box wanting runtime context, none of them the lowering. Caret recall **96% overall** over
+**5277 carets**: `dot` 97% at a bare dot while typing / 96% editing, `dot` with two characters typed
+97% / 96%, `name` 94% / 94%, `pkg` 97% / 96% / 97% / 97%. p50 20ms, whole sweep 122s.
 
-Four rounds of findings from this sweep, each of which is a defect class rather than a single bug:
+> **The sample is the measurement.** Two sampling defects, both found by looking at the denominators rather
+> than the percentages:
+>
+> 1. The sweep asked its questions box by box and stopped at the request cap, so 400 requests only ever
+>    reached the first ~30 of 182 boxes — every miss it reported came from `alife_*`, and `dot` rested on 15
+>    carets. Questions are now built up front and walked **round-robin across boxes**, so a cap truncates
+>    evenly instead of alphabetically.
+> 2. Taking 4 carets per box *from the lot* inherits the corpus's own distribution, and real box code is
+>    mostly name positions: `dot` came out at 61 carets against `name`'s 531. Sampling **4 per kind per
+>    box** evens the denominators — `dot` 61 → 480, `pkg` 120 → 518, `name` 531/453 → 698/587, the sweep
+>    1708 → 5277 questions — which is what let the floors tighten from 5 points to 3.
+>
+> So read every earlier number in this file against its sample: the 2026-08-06 baselines are the same code
+> measured on a narrower and differently-shaped one.
+
+Six rounds of findings from this sweep, each of which is a defect class rather than a single bug:
 
 1. **Companion members off a class qualifier.** `Img.generate` was unreachable and `Img.` answered with the
    one useless row `Companion`, because the companion was hunted for in `declaredMemberScope`, which is
@@ -287,10 +303,186 @@ Four rounds of findings from this sweep, each of which is a defect class rather 
    reported as their own `pkg` kind — mixed into `dot`, a handful of fully-qualified type references were
    the largest single cluster of "misses" while saying nothing about member completion.
 
-Still open, in miss-count order: **client-side truncation** (16 misses are `200 candidates` — the answer is
-computed but cut by `AaCompletionClient`'s limit before the ranker sees it, and the sidecar sorts by name,
-not by relevance); 12 `0 candidates at name position`; 11 `no qualified expr` (all package paths in type
-positions); 3 residual `Img.` cases that need per-case triage rather than a mechanism.
+5. **Four things the residual named, 2026-08-07** — each found by reading the sweep's own miss notes and
+   each confirmed over the wire against `/complete` before a line was written. Together **91% → 95%**
+   overall (on the representative sample; see the note above):
+   - **A comment ending in a full stop was a dot position.** `isDot` was read off raw text, so the last
+     non-space character before the caret was whatever the previous line ended with — and people end
+     comments with full stops. `animateEvolution(‸` under `// …rather than pixels.` took the dot path,
+     found no `KtQualifiedExpression`, and returned `no qualified expr` with nothing: 19 misses, every one
+     an ordinary call at the start of a statement, and worse than empty when the caret sits inside an
+     enclosing qualified expression (then it answers with *that* receiver's members). The position's KIND is
+     now decided on comment/string-blanked text — with `${…}` template spans put back, since those are real
+     code and a caret inside one must still see its receiver.
+   - **A top-level property was indexed by its accessor.** The ASM scan recorded raw JVM method names, so
+     `val CYCLIC_LABYRINTH` appeared as `getCYCLIC_LABYRINTH` — which nobody types, and which
+     `findTopLevelCallables` (exact Kotlin name) was therefore never asked for. No top-level `val`/`var` in
+     a binary package was reachable at a name position. Two halves: record `kotlinNames(name)` as the
+     receiver index already did, *and* un-mangle to BOTH spellings, because `getPos` is `pos` but
+     `getCYCLIC_LABYRINTH` is `CYCLIC_LABYRINTH` — a SHOUTING_CASE property is not decapitalised, and
+     `cYCLIC_LABYRINTH` is exactly as unreachable as the accessor. Index 6547 → 7508 names.
+   - **Qualifier resolution guessed packages.** It built candidate `ClassId`s from the file's imports plus
+     two hardcoded `afield` ones, so Kotlin's DEFAULT imports were invisible: `Math.` resolved to no
+     qualifier, fell through to the value path, and answered with `equals`/`hashCode`/`toString` and the
+     `Any` extensions — 13 rows, no `abs`, no `toRadians`. It now asks `mainReference.resolveToSymbol()`
+     first, which resolves against the file's real import scope (`java.lang`, `as` aliases and all), and
+     keeps the text search as the mid-edit fallback. Same hole covered `System.`, `Integer.`, `Files.`.
+   - **The transport deleted the answer.** Ranking is client-side, so `limit` does not trim the tail of a
+     ranked list — it deletes rows the ranker never sees, from a list sorted BY NAME. At 200, a bare `s.`
+     dropped 52 members silently: every `toInt`/`toDouble`/`toList`/`toRegex`, `trim`, `trimIndent`,
+     `uppercase`, `zip`, `takeIf`. 31 misses read exactly `200 candidates`. The client now asks for 1200
+     (ceiling 2000; the richest real receiver measured, `Vec3` with ~978 swizzle extensions, yields 337
+     rows after de-duplication, and the cost is serialization only — 43KB → 63KB, 13ms either way), and
+     when the cap does bind it destroys the least useful rows: prefix match first, then expected-type fit,
+     then name order.
+6. **A package path can answer with the package's own members.** `kotlin.math.‸sin` came back with one row
+   and no `sin` — a package qualifier listed only sub-packages and classifiers, its callables gated behind a
+   typed prefix — and `java.‸util.Random` came back `0 matched in package java`, because the JDK's packages
+   are in modules, not on the classpath, and nothing could enumerate them. Now: callables are enumerated at
+   an empty prefix too, but only for a package that fits the receiver index's 800 cap (resolving 800 of
+   `afield.stdlib`'s 3877 names alphabetically is the same truncate-the-alphabet mistake and measured 233ms
+   of one keystroke; over the cap the note says "type a character"), and the package index is seeded with
+   the boot module layer's package names. `pkg/0` 86% → 97%.
+
+Still open, in miss-count order, and the diagnosis for each:
+
+- **Macro keywords are not symbols** (~20 misses: `strategy` 10, `choice`, `topdown`, `repeat`, plus
+  `rule`/`from`/`to` in the unresolved-name histogram). `strategy { bottomup("fg") }` is expanded by
+  `applyMacros`, and `afield.macros.strategy` is an `erased()` stub in a package no box imports — so AA is
+  right that nothing by that name is in scope. Offering them needs macro *vocabulary* in completion, which
+  is a feature rather than a lowering defect.
+- **Runtime-only receivers** (8 `receiver type UNRESOLVED (error)`, e.g. `cube.position` in a remoteAR box,
+  and `uniform`/`onFrame`/`onStart` in the visionOS ones). These are `@exported` republications and
+  JS-bridge values that only exist after a parent box has actually run — the limitation
+  `CompletionCorpus.harvest` documents, and the snippet-region error histogram's main content.
+- **JDK classifiers** (`java.util.‸Random`): the boot layer gives package names, not class names, so a JDK
+  package still lists only its sub-packages. Enumerating module contents with `ModuleReader.list()` would
+  fix it; nothing in the corpus needed it yet.
+- 5 `0 candidates at name position`, which now carry their own breakdown (`prefix=… index-names=…
+  resolved=… scope=… receivers=…`) so the next reader can tell "the index never held that name" from "it
+  held it and resolution came back empty" — opposite bugs with opposite fixes.
+
+#### The ratchet: what the numbers assert
+
+`CompletionLoweringProbe` §3 (`FLOORS`) turns the measurements into a verdict, and the FIELD_TEST block
+asserts both the exit code and the absence of `RATCHET FAIL`. `--report` (or `AFIELD_LOWERING_GATE=0`) keeps
+the exploration mode: same verdict lines, exit 0, for a run whose point is the residual.
+
+**Where it lives, and why.** The smoke catalog, not `./gradlew check`: it needs a live AA sidecar, and a
+`check` task has to be deterministic and offline. Where no sidecar is running the probe SKIPs (exit 0), so
+it never turns a sidecar-less machine red.
+
+**What is absolute.** Every box lowers; no preamble is dropped as unparseable; **zero injected-region
+errors**. Those are not "5 fewer than yesterday" numbers — an error in a region the lowering itself writes is
+our bug by construction, so the floor is 0.
+
+**What is a floor, and why there.** One floor per (kind × characters-typed × mode) bucket, each cut **3
+points** below the number measured over the whole corpus, on 480–698 carets per bucket. Every verdict line
+prints its own `n=`, so how much a floor rests on is visible where it is read. Reasons for each choice, so
+the next person raises them rather than deleting them:
+
+- **`blank` and `keep` are gated apart** — typing vs editing. The probe's own KDoc explains why: a gap
+  between them is a parse-recovery problem and a gap in both is a scope problem, so one aggregate number
+  would hide the diagnosis the measurement exists to give.
+- **3 points, not 1 and not 20 — and the margin is a function of the sample.** The buckets are
+  deterministic given the same corpus and backend, so any movement is a real change; the margin exists for
+  the ordering churn a candidate-set change causes near a truncation boundary, and every regression this
+  measurement has actually caught moved a bucket 8–40 points. At 480+ carets one caret is 0.2 points, so 3
+  points is ~15 carets of headroom. The first version of this table was cut at 5 points while `dot` had 61
+  carets — about three carets of headroom, three carets from a false red, and a false red is how a gate gets
+  deleted instead of repaired. **If a bucket's `n` ever falls back towards 60, widen the sample rather than
+  the margin.**
+- **`minAttempts` is a floor too**, at ~90% of the observed sample size. Recall over a bucket nobody
+  sampled is 0/0 — vacuously fine — so a change that stopped recognising `dot` sites would otherwise turn
+  the gate green by asking nothing. Same reasoning behind the 4800-request floor on the sweep itself, which
+  now sits below the 5277 the corpus yields rather than below a binding cap.
+- **`TOTAL` is gated as well**, not because the buckets don't cover it but because it is the number that
+  gets quoted, and a change trading one bucket against another should have to say so.
+- **No latency floor.** p50 is reported and is machine-dependent; a threshold on it would fail on a busy
+  laptop and teach people to ignore the gate.
+
+**A failure names the regression**, not just a number: the bucket, what it fell from, and the sidecar's own
+note on those misses. Verified by deliberately reverting the client's candidate cap to 200:
+
+```
+✗ RATCHET FAIL dot/0/blank recall fell from 98% to 89% (floor 93%, 54/61);
+  the sidecar's own note on those misses: 6× "200 candidates"
+✗ RATCHET FAIL pkg/0/blank recall fell from 97% to 88% (floor 92%, 106/120);
+  the sidecar's own note on those misses: 10× "200 candidates"
+RATCHET FAIL: 4 of 15 floors broken — dot/0/blank, dot/0/keep, pkg/0/blank, pkg/0/keep
+```
+
+Two things that exercise came with. The failure message itself was broken (`${observed}%` before a
+`.format(…)` is an invalid conversion, so the line threw and the run failed with no diagnosis) — a bug only
+reachable by breaking a guarded fix on purpose, which is the argument for doing it. And `TOTAL` fell just
+95% → 93% and stayed above its floor, so an aggregate-only gate would have passed that regression.
+
+**Raising a floor is part of a fix.** A ratchet that keeps yesterday's floors after the numbers improve
+protects nothing: the regression it would catch is the one that undoes the work that just landed. Each fix
+commit above moved its bucket and then raised its floor.
+
+#### Recall in the payload is not recall on the screen
+
+**Every number above measures the response. The popup renders 80 rows** (`MAX_VISIBLE_ITEMS`,
+`fieldSuggest.js:22`). Those are different measurements and the second one is the user's — and until
+2026-08-07 nothing in the tree measured it, which is how a bare `f.` on an FLine could score as a *hit* at
+96% recall while `moveTo` was nowhere on screen (present in the response, index 159 of 249).
+
+The mechanism, measured rather than assumed, by running the shipped `fieldSuggest.js` verbatim over recorded
+payloads: **at an empty prefix every row scores alike**, the client's sort is stable, and the 80-row cut
+then keeps whatever order the server sent. Replaying the same payloads with the answer moved to the front
+puts every case at rank 1, which is what pins it down. So "ranking is client-side" is true with a prefix and
+false without one, and at a bare dot **the server's order is the user-visible order**. Raising the transport
+cap from 200 was necessary and not sufficient: it moved the cut from 200-by-alphabet to 80-by-alphabet.
+
+So an empty-prefix response is ordered by **proximity to the receiver** (`receiverProximity`) — the one
+signal the client cannot recover, because the wire carries the caret's receiver on every row and never the
+declaring container: the receiver's own members, then extensions written for its type, then the
+`Any`/type-variable extensions (`also`/`apply`/`let`/`takeIf`) which apply to everything and therefore say
+nothing about what the user is holding.
+
+`FieldSuggestPresentationTest.the answer a person typed is among the rows a person can see` holds it, and is
+the only place in the repo where a *rank* is asserted: 6 real payloads recorded from `/complete` (1095 rows,
+`src/jvmTest/resources/fieldSuggest/rank-payloads.json`), each row classified through the server's own
+`KotlinCompletionSupport.classifyMetadata` so the categories are the ones a browser receives, ranked by the
+verbatim `fieldSuggest.js` staged off the classpath. Rank of the member the author wrote, of 80 visible rows:
+
+| case | rows sent | before | after |
+| --- | --- | --- | --- |
+| `FLine.` → `moveTo` | 249 | not shown | **10** |
+| `Math.` → `toRadians` | 110 | not shown | **52** |
+| `List.` → `filter` | 335 | 42 | 57 (worse, still visible — `filter` is an `Iterable` extension, so `List`'s own members now precede it) |
+| `s.up` → `uppercase` | 2 | 1 | 1 (a prefix was never the broken case) |
+| `String.` → `uppercase` | 299 | not shown | not shown |
+| `kotlin.math.` → `sin` | 100 | not shown | not shown |
+
+**What the two remaining "not shown" rows are, and what was deliberately NOT done.** Both are the standing
+`CATEGORY_WEIGHT` defect, now with a reproducible user-visible instance: that table keys the *old*
+client-side buckets (`local`, `graphics`, `functions`, …), so 11 of the 16 categories the server actually
+sends score **0** — `Math` among them — while an `(import)` row scores 10. `kotlin.math.sin` is off-screen
+for that reason and no other (uncategorised it ranks 73 of 80). Rebalancing that table changes the ranking
+of *every* completion, including the prefix path that is currently rank-1 correct, and a 6-case fixture is
+not enough evidence to do it on. So: not tonight, deliberately — but the harness it needs now exists, and
+the honest next step is to widen `rank-payloads.json` and then rebalance against it.
+
+Also measured, since it was the stated risk of raising the cap: **client ranking cost is flat in the
+candidate count** — 200 vs 1200 rows ranks in 11.6ms vs 12.2ms (median of 3, node 22), because the 80-row
+cut follows a single sort. The payload grows 40KB → 58–69KB (+45%, not 6×), and the truth's rank was
+*identical* at both caps in all 10 cases first measured. The cap was not the ranking problem; the order was.
+
+#### The index cache invalidates on its own bytecode
+
+`AaSymbolIndex.buildOrLoad` caches the ASM scan under `build/…/completion-index`, keyed by a fingerprint of
+the classpath. That fingerprint used to fold in a hand-maintained `FORMAT_VERSION`, which meant a change to
+*what the scan records* — the only reason to touch that code — left every cache file valid and the sidecar
+kept serving the old index. It cost an hour on 2026-08-07: a corrected `kotlinNames` looked to have no
+effect at all, through two rebuilds and two restarts. The fingerprint now includes a hash of the scan's own
+class files (`FacadeVisitor`, `MetadataVisitor`, the index companion), so the bytecode *is* the version; a
+class file that cannot be read fingerprints as `nanoTime`, bypassing the cache rather than trusting it.
+
+Same family as the stale-sidecar trap: when measuring the sidecar, confirm the process you are talking to
+is built from your checkout (`/health` reports `workspaceRoot`; `lsof -p <pid>` its cwd) **and** that no
+cache is answering for a previous build.
 
 #### The type expected at the caret (`expectedTypesAt` / `enumerableValuesOf`)
 

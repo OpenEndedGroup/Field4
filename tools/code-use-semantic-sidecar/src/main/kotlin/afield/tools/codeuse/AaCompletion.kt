@@ -297,8 +297,34 @@ data class AaSymbolIndex(
     }
 
     companion object {
-        /** Bump when the on-disk format or the scan semantics change, to invalidate stale caches. */
-        private const val FORMAT_VERSION = 4
+        /** Bump when the on-disk format changes. Scan SEMANTICS are covered by [scanCodeVersion]. */
+        private const val FORMAT_VERSION = 5
+
+        /**
+         * A hash of the scan's own bytecode, folded into the cache fingerprint.
+         *
+         * The fingerprint used to cover the classpath and a hand-maintained [FORMAT_VERSION], so a change
+         * to WHAT THE SCAN RECORDS — the whole point of touching this code — left every existing cache
+         * file valid and the sidecar happily served the old index. That cost an hour of a night's work
+         * exactly once: a fixed `kotlinNames` looked like it had no effect, while the cache under
+         * `build/…/completion-index` answered with the names the previous build had written. Nobody should
+         * have to remember a version bump for a behaviour change; the class files ARE the version.
+         *
+         * Costs two class-file reads per fingerprint, once per session build.
+         */
+        private val scanCodeVersion: String by lazy {
+            val md = MessageDigest.getInstance("SHA-256")
+            for (cls in listOf(FacadeVisitor::class.java, AaSymbolIndex::class.java, MetadataVisitor::class.java)) {
+                val resource = cls.name.replace('.', '/') + ".class"
+                val bytes = runCatching {
+                    cls.classLoader.getResourceAsStream(resource)?.use { it.readBytes() }
+                }.getOrNull()
+                // A missing resource must NOT silently fingerprint as "same": fall back to something that
+                // changes every run, so the cache is bypassed rather than trusted.
+                md.update(bytes ?: System.nanoTime().toString().toByteArray())
+            }
+            md.digest().joinToString("") { "%02x".format(it) }.take(12)
+        }
         private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
 
         val EMPTY = AaSymbolIndex(emptyMap(), emptyMap(), emptyMap())
@@ -338,6 +364,7 @@ data class AaSymbolIndex(
         private fun fingerprint(roots: List<Path>, packages: Set<String>): String {
             val md = MessageDigest.getInstance("SHA-256")
             md.update("v$FORMAT_VERSION".toByteArray())
+            md.update(scanCodeVersion.toByteArray())
             md.update(packages.sorted().joinToString(",").toByteArray())
             for (root in roots.sortedBy { it.toString() }) {
                 md.update(root.toString().toByteArray())
@@ -422,6 +449,15 @@ data class AaSymbolIndex(
                     }
                 }
             }
+            // The JDK's own packages are not on the classpath — they live in modules — so `java.‸` had
+            // nothing to list ("0 matched in package java", 12 of the caret sweep's misses) even though
+            // AA resolves `java` as a package perfectly well and `java.util.Random` is ordinary box code.
+            // The boot layer knows their names, which is all package completion needs: no bytes are read
+            // and nothing is resolved here. `jdk.internal.*` and `sun.*` come along; they are only ever
+            // listed under a path someone typed on purpose.
+            runCatching {
+                ModuleLayer.boot().modules().forEach { m -> allPackages.addAll(m.descriptor.packages()) }
+            }
             return AaSymbolIndex(
                 callables = callables.mapValues { it.value.toList() },
                 classifiers = classifiers.mapValues { it.value.toList() },
@@ -474,12 +510,15 @@ private class FacadeVisitor(
          * unreachable — the accessor name is not what anyone types. Both are offered; resolution decides.
          */
         fun kotlinNames(jvm: String): List<String> {
-            val stripped = when {
-                jvm.length > 3 && (jvm.startsWith("get") || jvm.startsWith("set")) && jvm[3].isUpperCase() ->
-                    jvm[3].lowercaseChar() + jvm.substring(4)
-                else -> null
-            }
-            return if (stripped == null) listOf(jvm) else listOf(jvm, stripped)
+            if (jvm.length <= 3 || !(jvm.startsWith("get") || jvm.startsWith("set")) || !jvm[3].isUpperCase())
+                return listOf(jvm)
+            val rest = jvm.substring(3)
+            // BOTH un-manglings, because the JVM name does not say which one it came from: `getPos` is
+            // `pos`, but `getCYCLIC_LABYRINTH` is `CYCLIC_LABYRINTH` — a SHOUTING_CASE property (every
+            // rule constant, every palette) is not decapitalised, and guessing `cYCLIC_LABYRINTH` left it
+            // as unreachable as indexing the raw accessor name did. Resolution decides which spelling
+            // exists; the cost of the other is one lookup that finds nothing.
+            return listOf(jvm, rest, rest[0].lowercaseChar() + rest.substring(1)).distinct()
         }
     }
 
@@ -493,7 +532,14 @@ private class FacadeVisitor(
         // gets indexed too and then resolves as private, where the use-site visibility check drops it —
         // one wasted lookup, versus a whole family of names being unreachable.
         if (stat && name != "<clinit>" && !name.contains('$')) {
-            onCallable(name)
+            // [kotlinNames], not the raw JVM name. A top-level PROPERTY compiles to `getCYCLIC_LABYRINTH()`,
+            // and `getCYCLIC_LABYRINTH` is not what anyone types — so indexing the JVM name alone made
+            // every top-level `val`/`var` in a binary package unreachable at a name position: the index
+            // had no name starting with `CY`, and `findTopLevelCallables` (which needs an EXACT Kotlin
+            // name) was never asked. `CYCLIC_LABYRINTH`, `GRAY_SCOTT_MAZE` and the `val Box.once` /
+            // `val Box.strategy` family were 33 of the caret sweep's misses. The receiver index below has
+            // always done this; the by-package index simply hadn't.
+            kotlinNames(name).forEach(onCallable)
             val receiver = desc?.let(::firstParameter)
             if (receiver != null) kotlinNames(name).forEach { onReceiver(receiver, it) }
         }
@@ -537,6 +583,16 @@ private class MetadataVisitor(private val onTypeAlias: (String) -> Unit) : Annot
         }
     }
 }
+
+/**
+ * The identifier characters already typed at [cursor] — the completion prefix.
+ *
+ * Shared rather than spelled out twice: the lowering decides which PATH a request takes from this, and
+ * the transport decides which candidates survive a cap from it (see `K2CompletionAnalyzer.complete`).
+ * Two copies of the rule would be two definitions of "what the user has typed".
+ */
+internal fun prefixAt(snippet: String, cursor: Int): String =
+    Regex("[A-Za-z0-9_]*$").find(snippet.substring(0, cursor.coerceIn(0, snippet.length)))?.value ?: ""
 
 /** A line that is nothing but an `import` — `import a.b.C`, `import a.b.*`, `import a.b.C as D`. */
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
@@ -745,14 +801,27 @@ class AaCompleter(
         val (body, snippetImports) = hoistImports(snippet, cursor)
         val before = body.substring(0, cursor)
         val after = body.substring(cursor)
-        val prefix = Regex("[A-Za-z0-9_]*$").find(before)?.value ?: ""
+        val prefix = prefixAt(before, before.length)
+        // What KIND of position the caret is in is decided on CODE, not on prose. Read off the raw text,
+        // the last non-space character before the caret is whatever the previous line happened to end
+        // with — and a comment that ends in a full stop is how people write comments:
+        //
+        //     // …so `n` counts generations rather than pixels.
+        //     animateEvolution(‸                       <- read as a DOT position, of `pixels.`
+        //
+        // which took the dot path, found no `KtQualifiedExpression` (there is none), and returned "no
+        // qualified expr" with zero candidates — 19 of the caret sweep's misses, every one of them an
+        // ordinary call at the start of a statement. Worse than empty when the caret happens to sit
+        // inside an outer qualified expression: then it answers with the members of THAT receiver.
+        // Blanked in place, so every offset still means what the caller said.
+        val beforeCode = blankCommentsAndStrings(before)
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
-        val isDot = before.dropLast(prefix.length).trimEnd().endsWith(".")
+        val isDot = beforeCode.dropLast(prefix.length).trimEnd().endsWith(".")
         // At an untyped expression slot (`d.scheme = ‸`, `f(‸`) there is no expression at the caret to
         // ask the expected type of — and the parser doesn't even leave a hole: `d.scheme =` followed by
         // `display(…)` on the next line parses as `d.scheme = display(…)`. So splice a dummy name in,
         // the way IntelliJ does. See [wantsCaretMarker] for why this is limited to those slots.
-        val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(before)
+        val spliceCaret = !isDot && prefix.isEmpty() && wantsCaretMarker(beforeCode)
         // …and the same trick for an EMPTY SELECTOR SLOT. `recv.‸` at the end of a line parses to no
         // `KtQualifiedExpression` at all, so the dot path had nothing to take a receiver from and bailed
         // with "no qualified expr" — 12 of the caret sweep's misses, and every one of them the most
@@ -879,6 +948,68 @@ class AaCompleter(
      * A typed prefix needs no marker at all — `d.scheme = SD‸` already *has* a name expression in the
      * slot, and its expected type resolves from that.
      */
+    /**
+     * [code] with every comment and string/char literal replaced by spaces — same length, so every offset
+     * still means what it meant. Used to decide the KIND of position the caret is in: prose is not code,
+     * and a comment ending in a full stop had been turning the next line into a dot position (see the
+     * comment at [lower]'s `isDot`). An unterminated literal — `"abc‸`, the normal state while typing — is
+     * blanked to end of line, which is how the lexer would recover.
+     *
+     * Deliberately a lexer-lite rather than a PSI walk: this runs before the file is built, on every
+     * keystroke, and the only question it answers is "what is the last real code character before here".
+     */
+    internal fun blankCommentsAndStrings(code: String): String {
+        val out = code.toCharArray()
+        fun blank(from: Int, to: Int) {
+            for (k in from until minOf(to, out.size)) if (out[k] != '\n') out[k] = ' '
+        }
+        // A string TEMPLATE is real code inside a literal: `"x(1.0) = ${fit.fitted.sample(1.0)}"`. Blanking
+        // it would hide the receiver from a caret inside the template, so blank the literal and then put
+        // every `${…}` span back (brace-counted, so a nested lambda or a `${if (a) "" else ""}` survives).
+        fun blankLiteral(from: Int, to: Int) {
+            blank(from, to)
+            var k = from
+            while (k < to - 1) {
+                if (code[k] == '$' && code[k + 1] == '{' && (k == from || code[k - 1] != '\\')) {
+                    var depth = 0
+                    var j = k + 1
+                    while (j < to) {
+                        if (code[j] == '{') depth++ else if (code[j] == '}') { depth--; if (depth == 0) break }
+                        j++
+                    }
+                    val end = minOf(j + 1, to)
+                    for (m in k until end) out[m] = code[m]
+                    k = end
+                } else k++
+            }
+        }
+        var i = 0
+        while (i < code.length) {
+            when {
+                code.startsWith("//", i) -> {
+                    val end = code.indexOf('\n', i).let { if (it < 0) code.length else it }
+                    blank(i, end); i = end
+                }
+                code.startsWith("/*", i) -> {
+                    val end = code.indexOf("*/", i + 2).let { if (it < 0) code.length else it + 2 }
+                    blank(i, end); i = end
+                }
+                code.startsWith("\"\"\"", i) -> {
+                    val end = code.indexOf("\"\"\"", i + 3).let { if (it < 0) code.length else it + 3 }
+                    blankLiteral(i, end); i = end
+                }
+                code[i] == '"' || code[i] == '\'' -> {
+                    val q = code[i]
+                    var j = i + 1
+                    while (j < code.length && code[j] != q && code[j] != '\n') { if (code[j] == '\\') j++; j++ }
+                    blankLiteral(i, minOf(j + 1, code.length)); i = minOf(j + 1, code.length)
+                }
+                else -> i++
+            }
+        }
+        return String(out)
+    }
+
     internal fun wantsCaretMarker(before: String): Boolean {
         val head = before.trimEnd()
         if (head.isEmpty()) return false
@@ -1136,6 +1267,7 @@ class AaCompleter(
              * root; callables are resolved through AA so the use-site visibility check can drop the
              * private ones the index deliberately keeps (see [FacadeVisitor.visitMethod]).
              */
+            var packageTruncated: String? = null
             fun packageCandidates(pkg: String, index: AaSymbolIndex): List<AaCandidate> {
                 val out = ArrayList<AaCandidate>()
                 index.allPackages.asSequence()
@@ -1150,11 +1282,25 @@ class AaCompleter(
                 index.typeAliases[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
-                // Only with a prefix: a bare `afield.stdlib.` would otherwise resolve every top-level
-                // function in the package, which is thousands of symbols for one keystroke.
-                if (prefix.isNotEmpty()) {
-                    index.callables[pkg].orEmpty().asSequence()
-                        .filter { it.startsWith(prefix) }
+                // At a BARE `kotlin.math.‸` too, capped rather than gated. This used to require a prefix,
+                // on the reasoning that `afield.stdlib.` would resolve thousands of symbols for one
+                // keystroke — but the consequence was that a fully-qualified call answered with
+                // sub-packages only: `kotlin.math.‸sin` came back with 1 candidate and no `sin`, and a bare
+                // path was 7 of the caret sweep's misses per mode. Writing a package path out by hand is a
+                // deliberate act, and the same cap the receiver index uses (800 resolutions, well inside
+                // the measured p50) bounds it. Truncation is reported in the note, as there.
+                val callableNames = index.callables[pkg].orEmpty()
+                    .filter { prefix.isEmpty() || it.startsWith(prefix) }
+                // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3877 top-level names in
+                // alphabetical order is the same "truncate the alphabet" mistake the transport used to
+                // make, and it costs 233ms of a keystroke to make it. So enumerate a package that fits the
+                // cap (`kotlin.math` — 100 rows, and `sin` among them), and otherwise say so in the note:
+                // one typed character brings any package back under the cap.
+                if (callableNames.size > RECEIVER_INDEX_CAP && prefix.isEmpty()) {
+                    packageTruncated = "$pkg has ${callableNames.size} top-level names — " +
+                        "not enumerated at an empty prefix; type a character"
+                } else {
+                    callableNames.asSequence()
                         .flatMap { nm -> findTopLevelCallables(FqName(pkg), Name.identifier(nm)) }
                         .take(RECEIVER_INDEX_CAP)
                         .forEach { sym -> asCandidate(sym, AaCandidate.Kind.TOP_LEVEL, pkg)?.let(out::add) }
@@ -1163,6 +1309,20 @@ class AaCompleter(
             }
 
             fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+                // ASK THE RESOLVER FIRST. Everything below guesses candidate packages from the file's
+                // imports plus two hardcoded `afield` ones, which cannot see Kotlin's DEFAULT imports —
+                // `java.lang` above all — so `Math.` resolved to no qualifier at all and fell through to
+                // the value path, where it answered with `equals`/`hashCode`/`toString` and the `Any`
+                // extensions: 13 rows, no `abs`, no `toRadians`, no `PI`. `Math.` and `System.` are in
+                // ordinary box code, and the same hole covered `Integer.`, `Thread.`, `Files.` and every
+                // `import x.Y as Z` alias. The reference knows the answer; the file's real import scope is
+                // exactly what it resolves against.
+                runCatching {
+                    val ref = (recv as? KtNameReferenceExpression)
+                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression
+                    val sym = ref?.mainReference?.resolveToSymbol()
+                    if (sym is org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol) return sym
+                }
                 val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
                     ?: return null
                 val parts = text.split('.')
@@ -1400,7 +1560,9 @@ class AaCompleter(
                     val out = packageCandidates(recvText, index).filterNot { it.isSynthetic }
                         .distinctBy { it.dedupKey }.sortedBy { it.name }
                     return@analyze AaCompletionResult(
-                        out, if (out.isEmpty()) "0 matched in package $recvText" else ""
+                        out,
+                        if (out.isEmpty()) "0 matched in package $recvText"
+                        else packageTruncated?.let { "truncated $it" }.orEmpty(),
                     )
                 }
 
@@ -1604,10 +1766,15 @@ class AaCompleter(
                 }.toList()
                 // Global symbols (index-backed) only once a prefix is typed — an empty prefix shouldn't
                 // flood the client with every class in the classpath (client owns ranking, not volume).
+                // Counted, not just collected: `0 candidates at name position` was the least informative
+                // note in the whole residual — it cannot distinguish "the index never held that name" from
+                // "it held it and resolution came back empty", which are opposite bugs with opposite fixes.
+                var indexNameHits = 0
                 val indexCallables: List<KaCallableSymbol> = if (prefix.isEmpty()) emptyList() else
                     index.callables.asSequence().flatMap { (pkg, names) ->
                         val fq = FqName(pkg)
                         names.asSequence().filter { it.startsWith(prefix) }
+                            .onEach { indexNameHits++ }
                             .flatMap { nm -> findTopLevelCallables(fq, Name.identifier(nm)) }
                     }.toList()
                 val topCallables = indexCallables.filter { !it.isExtension }
@@ -1647,7 +1814,12 @@ class AaCompleter(
                     .filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
                 AaCompletionResult(
                     out,
-                    if (out.isEmpty()) "0 candidates at name position"
+                    // The breakdown goes AFTER a colon on purpose: the probe's histogram keys on the text
+                    // before it, so the reason stays one bucket instead of fragmenting per prefix, while a
+                    // paste-able example still carries the numbers.
+                    if (out.isEmpty()) "0 candidates at name position: prefix=$prefix " +
+                        "index-names=$indexNameHits resolved=${indexCallables.size} scope=${fromScopes.size} " +
+                        "receivers=${fromReceivers.size} classifiers=${classifiers.size}"
                     else if (expectedTypes.isNotEmpty())
                         "expected=${expectedTypes.joinToString("|") { shortenType(runCatching { it.toString() }.getOrDefault("?")) }}" +
                             " values=${expectedValues.size} fits=${out.count { it.fitsExpected }}"
