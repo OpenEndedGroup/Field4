@@ -1275,6 +1275,20 @@ class AaCompleter(
             }
 
             fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+                // ASK THE RESOLVER FIRST. Everything below guesses candidate packages from the file's
+                // imports plus two hardcoded `afield` ones, which cannot see Kotlin's DEFAULT imports —
+                // `java.lang` above all — so `Math.` resolved to no qualifier at all and fell through to
+                // the value path, where it answered with `equals`/`hashCode`/`toString` and the `Any`
+                // extensions: 13 rows, no `abs`, no `toRadians`, no `PI`. `Math.` and `System.` are in
+                // ordinary box code, and the same hole covered `Integer.`, `Thread.`, `Files.` and every
+                // `import x.Y as Z` alias. The reference knows the answer; the file's real import scope is
+                // exactly what it resolves against.
+                runCatching {
+                    val ref = (recv as? KtNameReferenceExpression)
+                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression
+                    val sym = ref?.mainReference?.resolveToSymbol()
+                    if (sym is org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol) return sym
+                }
                 val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
                     ?: return null
                 val parts = text.split('.')
