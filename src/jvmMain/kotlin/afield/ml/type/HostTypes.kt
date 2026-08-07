@@ -325,8 +325,11 @@ object FieldMLHostTypes {
         val erased = generic is TypeVariable<*> || generic is WildcardType || parameter == Any::class.java
         return when (argument) {
             is TVar -> UNKNOWN_COST
-            TInt -> numeric(boxedParameter, exact = setOf(Int::class.javaObjectType, Long::class.javaObjectType)) ?: objectish(boxedParameter, erased)
-            TFloat -> numeric(boxedParameter, exact = setOf(Double::class.javaObjectType, Float::class.javaObjectType)) ?: objectish(boxedParameter, erased)
+            // A FieldML `Int` *is* a `Long` at run time and a `Float` *is* a `Double`, so scoring the
+            // natural class through the ladder the bridge uses is what keeps the overload the type
+            // checker predicts and the overload the runtime invokes the same one.
+            TInt -> numeric(parameter, Long::class.javaObjectType, erased)
+            TFloat -> numeric(parameter, Double::class.javaObjectType, erased)
             TBool -> if (boxedParameter == Boolean::class.javaObjectType) 0 else objectish(boxedParameter, erased)
             TString -> when {
                 boxedParameter == String::class.java -> 0
@@ -356,10 +359,17 @@ object FieldMLHostTypes {
         }
     }
 
-    private fun numeric(boxedParameter: Class<*>, exact: Set<Class<*>>): Int? = when {
-        boxedParameter in exact -> 0
-        Number::class.java.isAssignableFrom(boxedParameter) -> NUMERIC_COST
-        else -> null
+    /**
+     * The cost of a FieldML number reaching [parameter], where [natural] is the JVM class the value
+     * really has once it crosses. A parameter the natural class already satisfies — `Number`,
+     * `Comparable`, or the class itself — is exact; anything else numeric goes through the bridge's
+     * affinity ladder so that the two scorers cannot drift apart.
+     */
+    private fun numeric(parameter: Class<*>, natural: Class<*>, erased: Boolean): Int? {
+        val boxedParameter = FieldMLHostBridge.boxed(parameter)
+        if (parameter == Any::class.java) return OBJECT_COST
+        if (boxedParameter.isAssignableFrom(natural)) return 0
+        return FieldMLHostBridge.numericAffinity(parameter, natural) ?: objectish(boxedParameter, erased)
     }
 
     /** Anything reaches `Object` or an erased generic; nothing else reaches an unrelated class. */

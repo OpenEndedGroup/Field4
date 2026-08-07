@@ -253,7 +253,7 @@ object FieldMLHostBridge {
             return if (functionalMethod(parameter) != null) SAM_COST else INCOMPATIBLE
         }
         if (argument is Number && isNumeric(boxedParameter)) {
-            return if (boxedParameter == argument.javaClass) 0 else NUMERIC_COST
+            return numericAffinity(parameter, argument.javaClass) ?: NUMERIC_COST
         }
         if (argument is Number && boxedParameter == Char::class.javaObjectType) return NUMERIC_COST
         if (argument is CharSequence && boxedParameter == Char::class.javaObjectType) {
@@ -272,6 +272,43 @@ object FieldMLHostBridge {
     private const val ARRAY_COST = 3
     private const val SAM_COST = 3
     private const val OBJECT_COST = 5
+
+    private const val SAME_KIND_COST = 1
+    private const val WIDENING_COST = 2
+    private const val NARROWING_COST = 4
+
+    /**
+     * How well a numeric argument fits a numeric parameter, or null when either side is not numeric.
+     *
+     * The ladder exists because FieldML has exactly one integer type and one float type, so almost
+     * every call needs a conversion and "needs a conversion" cannot be one flat cost. `Vector2f` is
+     * the case that proved it: `set(int, float)` returns nothing and `set(float, float)` returns the
+     * vector, both take a FieldML `(1.0, 1.0)`, and with a single cost for "not the same class" the two
+     * tied and the winner was whatever `Class.getMethods` happened to list first. Preferring the
+     * parameter of the *same kind* — floating point for a FieldML `Float`, integral for an `Int` — and
+     * charging most for the lossy direction picks the one a reader means.
+     *
+     * Shared with `afield.ml.type.FieldMLHostTypes` on purpose: the overload the type checker predicts
+     * and the overload the runtime invokes have to be the same one, and the only way to be sure of
+     * that is for both to score with this function.
+     */
+    fun numericAffinity(parameter: Class<*>, argument: Class<*>): Int? {
+        val parameterType = boxed(parameter)
+        val argumentType = boxed(argument)
+        if (!isNumeric(parameterType) || !isNumeric(argumentType)) return null
+        if (parameterType == argumentType) return 0
+        val parameterIsFloating = parameterType in floatingPointTypes
+        val argumentIsFloating = argumentType in floatingPointTypes
+        return when {
+            parameterIsFloating == argumentIsFloating -> SAME_KIND_COST
+            // A float value into an integral slot silently drops the fraction; an integral value into
+            // a float slot does not. Only the first should be a last resort.
+            argumentIsFloating -> NARROWING_COST
+            else -> WIDENING_COST
+        }
+    }
+
+    private val floatingPointTypes = setOf(Double::class.javaObjectType, Float::class.javaObjectType)
 
     private fun inheritanceDepth(type: Class<*>): Int {
         var depth = 0

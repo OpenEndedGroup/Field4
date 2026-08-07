@@ -619,7 +619,9 @@ class Inferencer {
 
     private fun requireEquality(type: Type, range: SourceRange) {
         when (val pruned = prune(type)) {
-            TInt, TFloat, TBool, TString -> Unit
+            // `Unit` compares because it is a singleton, and because it is how a FieldML function
+            // called back by the JVM tests whether the argument it was handed was null.
+            TInt, TFloat, TBool, TString, TUnit -> Unit
             is TVar -> Unit
             else -> if (!isDynamicHost(pruned)) {
                 abort("Equality is not defined for ${TypePrinter().print(normalize(pruned))}", range)
