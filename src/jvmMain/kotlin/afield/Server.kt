@@ -3047,6 +3047,36 @@ class Server {
 
             fun createServer(bindPort: Int): EmbeddedServer<NettyApplicationEngine, NettyApplicationEngine.Configuration> {
                 return embeddedServer(Netty, configure = {
+                    // Serve HTTP/1.1 unless -Dafield.http2=true asks otherwise.
+                    //
+                    // Ktor's Netty engine used to wedge a whole h2 connection whenever a client
+                    // cancelled one stream. NettyHttp2Handler is @Sharable, so its activeRequests
+                    // counter is connection-global, and context.flush() is gated on that counter
+                    // reaching zero. A cancelled stream never ran the decrement, so from then on no
+                    // response on that connection was ever flushed — including the terminating
+                    // END_STREAM DATA frame. Compression strips Content-Length from gzipped replies,
+                    // so the browser could not tell the body was complete and held it open forever:
+                    // a document tab that commits its navigation and then stays black, parser still
+                    // parked on the plotly <script> in <head>. The welcome page triggers it readily,
+                    // cancelling an in-flight search on every keystroke. Captured in a NetLog as a
+                    // stream that took all 3,586,005 decompressed bytes and stopped, against a
+                    // healthy load on the same connection ending in {"fin": true, "size": 0}.
+                    //
+                    // That is KTOR-9711, which Ktor 3.5.2 claims to fix by decrementing in
+                    // respondWithFailure too. It is not enough for us. Measured on 3.5.2 with
+                    // -Dafield.http2=true, driving the real welcome page: 4 of 15 open-a-document
+                    // trials still wedged for the full 120s patience, and the split is exactly on
+                    // whether a search fetch was aborted in flight at click time (4/4 hangs had two
+                    // in flight, 11/11 successes had none). 3.5.2 also re-gated the flush on
+                    // activeRequests == streamingResponses, so the counters can still fail to meet.
+                    // The @Sharable connection-global state that produced the bug is untouched
+                    // upstream and KTOR-6151 (Netty + HTTPS + Compression hangs) is still open.
+                    //
+                    // So HTTP/1.1 stays the default on merit, not superstition. It also fails safe:
+                    // Content-Length and the chunked terminator turn a truncated response into an
+                    // error rather than a silent hang, and Field only ever serves loopback, where h2
+                    // multiplexing buys very little. Re-check with the flag if upstream moves.
+                    enableHttp2 = System.getProperty("afield.http2").toBoolean()
                     loopbackHttpPortFor(bindPort)?.let { localHttpPort ->
                         connector {
                             this.host = "127.0.0.1"

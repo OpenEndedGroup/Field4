@@ -31,6 +31,10 @@
     <link rel="stylesheet" href="/fieldSuggest.css">
     <link rel="stylesheet" href="/controllerMobile.css">
     <script src="/interact.min.js"></script>
+    <!-- Plotly must stay a parser-blocking script here, ahead of Monaco's AMD loader.js below.
+         It is a UMD bundle: once loader.js has defined `define.amd` it registers as an anonymous
+         AMD module and never sets `window.Plotly`, which is what PlotlyIntegration's emitted
+         output scripts look for. Deferring or async-ing it silently kills every plot output. -->
     <script src="/plotly-2.24.1.min.js"></script>
     <script src="/anime.iife.min.js"></script>
 

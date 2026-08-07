@@ -58,7 +58,7 @@ val kotlinExperimentalCompilerArgs = listOf(
     "-Xname-based-destructuring=only-syntax",
 )
 val serializationVersion = "1.6.0"
-val ktorVersion = "3.3.0"
+val ktorVersion = "3.5.2"
 val logbackVersion = "1.2.11"
 val imguiVersion = "1.90.0"
 val smileVersion = "5.0.1"
