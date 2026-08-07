@@ -1,0 +1,39 @@
+{:version 2
+ :boxes [{:id "fieldml-bridge-root"
+          :properties {:name "FieldML — the JVM bridge"
+                       :frame #afield/rect [40.0 40.0 260.0 90.0]
+                       :children #{#afield/box "fieldml-bridge-raster"
+                                   #afield/box "fieldml-bridge-warp"
+                                   #afield/box "fieldml-bridge-types"
+                                   #afield/box "fieldml-bridge-overloads"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "fieldml"
+                       :isFieldMLRoot true}}
+
+         {:id "fieldml-bridge-raster"
+          :properties {:name "A FieldML function, rasterised by Kotlin"
+                       :frame #afield/rect [360.0 40.0 420.0 320.0]
+                       :parents #{#afield/box "fieldml-bridge-root"}
+                       :children #{}
+                       :code "let Img = hostClass \"afield.stdlib.Img\"\nlet Imaging = hostClass \"afield.stdlib.Imaging_fieldKt\"\n\n// The whole picture is this function. Change 11.0 to change the ring\n// spacing; change \"viridis\" below to \"magma\" or \"coolwarm\".\nlet sample x y =\n  let u = (toFloat x - 120.0) / 120.0 in\n  let v = (toFloat y - 120.0) / 120.0 in\n  let r = sqrt (u * u + v * v) in\n  sin (r * 11.0) * cos (u * 5.0) * exp (0.0 - r * 1.1) * 0.5 + 0.5\n\nlet picture =\n  Img\n    |> hostGet \"Companion\"\n    |> hostCall \"generate\" (240, 240, sample)\n    |> hostExt Imaging \"colormap\" (\"viridis\", hostNull, hostNull)\n\nhostStaticCall \"showImg\" (thisBox, picture, \"main\", 480, \"Img.generate, driven by a FieldML function\") Imaging"}}
+
+         {:id "fieldml-bridge-warp"
+          :properties {:name "A FieldML lambda inside FLine.transform"
+                       :frame #afield/rect [820.0 40.0 420.0 260.0]
+                       :parents #{#afield/box "fieldml-bridge-root"}
+                       :children #{}
+                       :code "// FLine.transform takes a Kotlin (Vector3f) -> Vector3f. The value it\n// hands back has no static type, so hostAs is where it gets one.\n// Change 24.0 to change the wave height.\nlet wobble line =\n  line |> hostCall1 \"transform\" (fun raw ->\n    let p = hostAs \"Vec3\" raw in\n    vec3 p.x (p.y + 24.0 * sin (p.x / 22.0)) p.z\n  )\n\nlinspace 0.0 260.0 120\n  |> map (fun x -> vec2 x 60.0)\n  |> fold (fun line point -> line |> lineToV point) fline\n  |> wobble\n  |> stroked true\n  |> filled false\n  |> color (vec4 1.0 0.55 0.2 1.0)\n  |> thickness 2.5\n  |> drawSized \"main\" 300.0 160.0"}}
+
+         {:id "fieldml-bridge-types"
+          :properties {:name "Host members have real types now"
+                       :frame #afield/rect [360.0 400.0 420.0 240.0]
+                       :parents #{#afield/box "fieldml-bridge-root"}
+                       :children #{}
+                       :code "let Img = hostClass \"afield.stdlib.Img\"\nlet img = hostNew (8, 4, 1, tabulate (fun i -> toFloat i / 32.0) 32) Img\n\n// Try it: put the caret after the quote in hostGet \"\" and ask for\n// completion — it offers Img's members with their types. Then misspell\n// one (widht) and the box reports a type error before it runs.\n{\n  width = img.width\n  height = img.height\n  samples = img.pixelCount\n  scalar = img.isScalar\n  area = img.width * img.height\n  first = img |> hostCall \"at\" (0, 0, 0)\n  boxName = thisBox |> hostGet \"name\"\n}"}}
+
+         {:id "fieldml-bridge-overloads"
+          :properties {:name "Overloads, varargs, null"
+                       :frame #afield/rect [820.0 340.0 420.0 300.0]
+                       :parents #{#afield/box "fieldml-bridge-root"}
+                       :children #{}
+                       :code "let Math = hostClass \"java.lang.Math\"\nlet Strings = hostClass \"java.lang.String\"\nlet Collections = hostClass \"java.util.Collections\"\n\n// Every line here is a call the previous bridge could not make.\n{\n  // Math.max is declared four times; the argument widths choose one.\n  intMax = hostStaticCall \"max\" (3, 7) Math\n  floatMax = hostStaticCall \"max\" (3.5, 7.25) Math\n\n  // A Java vararg, filled from the spread tuple.\n  formatted = hostStaticCall \"format\" (\"%s has %d\", \"the bridge\", 3) Strings\n\n  // A FieldML function as a java.util.Comparator. The result is an erased\n  // generic, so it stays Host until hostAsInt says otherwise.\n  smallest = hostStaticCall \"max\" ([5, 1, 9, 3], fun a b -> b - a) Collections |> hostAsInt\n}"}}]}

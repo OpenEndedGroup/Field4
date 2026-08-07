@@ -323,6 +323,13 @@ class Parser(private val tokens: List<Token>) {
     }
 
     private fun parseParenthesizedOrTuple(open: Token): Expr {
+        // `()` is the unit value. It had no spelling until the host bridge needed one: `hostCall`'s
+        // n-ary form reads its arguments out of a tuple, and a call with no arguments at all has to be
+        // writable as something.
+        if (check(TokenKind.RPAREN)) {
+            val close = advance()
+            return EVar("Unit", SourceRange(open.range.start, close.range.end))
+        }
         val first = parseExpression(Stop.until(TokenKind.COMMA) + Stop.until(TokenKind.RPAREN))
         if (!match(TokenKind.COMMA)) {
             expect(TokenKind.RPAREN, "Expected ')'")

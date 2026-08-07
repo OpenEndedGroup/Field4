@@ -93,6 +93,6 @@ class TypePrinter {
             } else {
                 "${type.name} ${type.arguments.joinToString(" ") { print(it) }}"
             }
-            is THost -> type.name
+            is THost -> FieldMLHostTypes.display(type.name)
         }
 }

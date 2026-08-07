@@ -85,7 +85,11 @@ class Inferencer {
                 val argument = inferExpr(expr.argument, env)
                 val resultType = fresh()
                 unify(function.type, TFun(argument.type, resultType), expr.range)
-                TExprCall(function, argument, expr.range, resultType)
+                val call = TExprCall(function, argument, expr.range, resultType)
+                // The refinement *replaces* the result type rather than unifying with it: the prelude
+                // already unified `resultType` with the scheme's `Host`, and `Host` unifies with
+                // everything, so a unification here would quietly discard what reflection found.
+                refineHostIntrinsic(call, env)?.let { call.copy(type = it) } ?: call
             }
             is ELet -> inferLet(expr, env)
             is EIf -> {
@@ -113,14 +117,19 @@ class Inferencer {
                     }
                     is THost -> {
                         val components = FieldMLTypePrelude.vectorComponents(targetType)
-                        if (expr.field !in components) {
-                            abort(
+                        when {
+                            expr.field in components -> TFloat
+                            components.isNotEmpty() -> abort(
                                 "${TypePrinter().print(targetType)} has no field '${expr.field}'" +
-                                    if (components.isEmpty()) "" else " (expected one of ${components.joinToString(", ")})",
+                                    " (expected one of ${components.joinToString(", ")})",
                                 expr.range,
                             )
+                            // Dot access on a typed host value reads a JVM member, so `img.width`
+                            // works and is checked. An opaque `Host` resolves to Unknown and stays
+                            // dynamic, which is the behaviour a program written before this had.
+                            else -> resolved(FieldMLHostTypes.memberType(targetType, expr.field), expr.range)
+                                ?: FieldMLTypePrelude.host
                         }
-                        TFloat
                     }
                     else -> abort("Field access requires a record, found ${TypePrinter().print(normalize(targetType))}", expr.range)
                 }
@@ -134,6 +143,163 @@ class Inferencer {
                 TExprNegate(value, expr.range, prune(value.type))
             }
         }
+
+    /**
+     * The typed half of the JVM bridge: when a call is a *saturated* application of one of the
+     * `host…` intrinsics, ask reflection what it actually returns, and refuse it here if the member
+     * does not exist.
+     *
+     * Doing this in the inferencer rather than in the prelude's type schemes is what makes it
+     * possible at all — a scheme is one fixed type, but `hostCall "moveTo" (x, y) line` has a result
+     * that depends on the *value* of a string and the *type* of a receiver. The rules are:
+     *
+     * - only when the intrinsic's name still resolves to the prelude binding, so a program that
+     *   shadows `hostGet` with its own function is left alone;
+     * - only when the method name is a literal, since a computed name cannot be looked up;
+     * - [FieldMLHostTypes.Resolution.Unknown] means the receiver's class is not known, and then
+     *   nothing is claimed and nothing is refused — the call stays as dynamic as it was before;
+     * - [FieldMLHostTypes.Resolution.Refused] is a genuine type error, and it is reported where the
+     *   name was written rather than as a crash on the first run.
+     *
+     * Returns null when the type should be left as the scheme gave it.
+     */
+    private fun refineHostIntrinsic(call: TExprCall, env: TypeEnv): Type? {
+        val spine = hostSpine(call) ?: return null
+        val (name, arguments) = spine
+        if (env[name] !== FieldMLTypePrelude.schemes[name]) return null
+        return when (name) {
+            "hostClass" -> arguments.singleOrNull()?.let { argument ->
+                val className = literalString(argument) ?: return null
+                if (FieldMLHostTypes.loadClass(className) == null &&
+                    FieldMLHostTypes.loadClass(nestedSpelling(className)) == null
+                ) {
+                    abort("Unknown JVM class '$className'", argument.range)
+                }
+                FieldMLHostTypes.classHandleType(
+                    if (FieldMLHostTypes.loadClass(className) != null) className else nestedSpelling(className),
+                )
+            }
+            // `hostAs "Vec3" p` is both a checked cast and the way FieldML names a class: it is what
+            // gives a type to a value that arrived through an erased signature or as the parameter of
+            // a lambda the JVM called us with, and everything after it is checked normally.
+            "hostAs" -> arguments.takeIf { it.size == 2 }?.let { (className, _) ->
+                val requested = literalString(className) ?: return null
+                if (FieldMLHostTypes.jvmClassOf(THost(requested)) == null) {
+                    abort("hostAs does not know the class '$requested'", className.range)
+                }
+                FieldMLHostTypes.valueType(requested)
+            }
+            "hostNew0" -> arguments.singleOrNull()?.let { klass ->
+                resolved(FieldMLHostTypes.constructorResultType(pruned(klass), emptyList()), call.range)
+            }
+            "hostNew" -> arguments.takeIf { it.size == 2 }?.let { (argumentList, klass) ->
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(FieldMLHostTypes.constructorResultType(pruned(klass), argumentTypes), call.range)
+            }
+            "hostCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, target) ->
+                val methodName = literalString(method) ?: return null
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(FieldMLHostTypes.methodResultType(pruned(target), methodName, argumentTypes), method.range)
+            }
+            "hostCall0" -> arguments.takeIf { it.size == 2 }?.let { (method, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(FieldMLHostTypes.methodResultType(pruned(target), methodName, emptyList()), method.range)
+            }
+            "hostCall1" -> arguments.takeIf { it.size == 3 }?.let { (method, argument, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(
+                    FieldMLHostTypes.methodResultType(pruned(target), methodName, listOf(pruned(argument))),
+                    method.range,
+                )
+            }
+            "hostCall2" -> arguments.takeIf { it.size == 4 }?.let { (method, first, second, target) ->
+                val methodName = literalString(method) ?: return null
+                resolved(
+                    FieldMLHostTypes.methodResultType(pruned(target), methodName, listOf(pruned(first), pruned(second))),
+                    method.range,
+                )
+            }
+            "hostExt" -> arguments.takeIf { it.size == 4 }?.let { (klass, method, argumentList, receiver) ->
+                val methodName = literalString(method) ?: return null
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(
+                    FieldMLHostTypes.staticMethodResultType(
+                        pruned(klass),
+                        methodName,
+                        listOf(pruned(receiver)) + argumentTypes,
+                    ),
+                    method.range,
+                )
+            }
+            "hostStaticCall" -> arguments.takeIf { it.size == 3 }?.let { (method, argumentList, klass) ->
+                val methodName = literalString(method) ?: return null
+                val argumentTypes = spreadTypes(argumentList) ?: return null
+                resolved(
+                    FieldMLHostTypes.staticMethodResultType(pruned(klass), methodName, argumentTypes),
+                    method.range,
+                )
+            }
+            "hostGet" -> arguments.takeIf { it.size == 2 }?.let { (member, target) ->
+                val memberName = literalString(member) ?: return null
+                resolved(FieldMLHostTypes.memberType(pruned(target), memberName), member.range)
+            }
+            // `hostSet` returns its receiver so it chains; the member itself is deliberately not
+            // checked, because a Kotlin `var` with only a setter visible to reflection would
+            // otherwise be reported as missing.
+            "hostSet" -> arguments.takeIf { it.size == 3 }?.let { (_, _, target) -> pruned(target) }
+            else -> null
+        }
+    }
+
+    private fun resolved(resolution: FieldMLHostTypes.Resolution, range: SourceRange): Type? =
+        when (resolution) {
+            is FieldMLHostTypes.Resolution.Found -> resolution.type
+            is FieldMLHostTypes.Resolution.Refused -> abort(resolution.message, range)
+            FieldMLHostTypes.Resolution.Unknown -> null
+        }
+
+    /** `a.b.Img.Companion` as the class loader spells it: `a.b.Img$Companion`. */
+    private fun nestedSpelling(className: String): String {
+        if (!className.contains('.')) return className
+        val owner = className.substringBeforeLast('.')
+        return "$owner$${className.substringAfterLast('.')}"
+    }
+
+    /**
+     * The head name and arguments of a chain of applications, left to right. FieldML is curried and
+     * `|>` desugars to application, so `line |> hostCall "moveTo" args` and
+     * `hostCall "moveTo" args line` reach here as the same spine.
+     */
+    private fun hostSpine(call: TExprCall): Pair<String, List<TExpr>>? {
+        val arguments = mutableListOf<TExpr>()
+        var current: TExpr = call
+        while (current is TExprCall) {
+            arguments += current.argument
+            current = current.function
+        }
+        val head = current as? TExprVar ?: return null
+        if (!head.name.startsWith("host")) return null
+        return head.name to arguments.asReversed()
+    }
+
+    /**
+     * The argument types behind the tuple-or-list spread the `host…` family uses, or null when the
+     * arity cannot be known statically — a list whose elements were not written out, say, which has
+     * one FieldML type but any number of JVM arguments.
+     */
+    private fun spreadTypes(expr: TExpr): List<Type>? {
+        if (expr is TExprList) return expr.elements.map { pruned(it) }
+        return when (val type = pruned(expr)) {
+            is TTuple -> type.elements.map { prune(it) }
+            TUnit -> emptyList()
+            is TList -> null
+            else -> listOf(type)
+        }
+    }
+
+    private fun pruned(expr: TExpr): Type = prune(expr.type)
+
+    private fun literalString(expr: TExpr): String? = (expr as? TExprString)?.value
 
     private fun inferTypeDecl(expr: ETypeDecl, env: TypeEnv): TExprTypeDecl {
         val parameterTypes = expr.declaration.parameters.associateWith { fresh() as Type }
@@ -433,7 +599,11 @@ class Inferencer {
         when (val pruned = prune(type)) {
             TInt, TFloat -> Unit
             is TVar -> numericVariables += pruned.id
-            else -> abort("Expected Int or Float, found ${TypePrinter().print(normalize(pruned))}", range)
+            // An opaque `Host` is dynamic in every other position, so it has to be dynamic here too;
+            // refusing it would put a cast in front of every use of an erased host result.
+            else -> if (!isDynamicHost(pruned)) {
+                abort("Expected Int or Float, found ${TypePrinter().print(normalize(pruned))}", range)
+            }
         }
     }
 
@@ -442,16 +612,75 @@ class Inferencer {
         when {
             FieldMLTypePrelude.isVectorType(pruned) -> Unit
             pruned is TVar -> vectorVariables += pruned.id
+            isDynamicHost(pruned) -> Unit
             else -> abort("Expected Vec2, Vec3 or Vec4, found ${TypePrinter().print(normalize(pruned))}", range)
         }
     }
 
     private fun requireEquality(type: Type, range: SourceRange) {
         when (val pruned = prune(type)) {
-            TInt, TFloat, TBool, TString -> Unit
+            // `Unit` compares because it is a singleton, and because it is how a FieldML function
+            // called back by the JVM tests whether the argument it was handed was null.
+            TInt, TFloat, TBool, TString, TUnit -> Unit
             is TVar -> Unit
-            else -> abort("Equality is not defined for ${TypePrinter().print(normalize(pruned))}", range)
+            else -> if (!isDynamicHost(pruned)) {
+                abort("Equality is not defined for ${TypePrinter().print(normalize(pruned))}", range)
+            }
         }
+    }
+
+    private fun isDynamicHost(type: Type): Boolean = type is THost && type.name == FieldMLHostTypes.OPAQUE
+
+    /**
+     * Two host types. Equal names are the same class; an opaque `Host` on either side is the dynamic
+     * escape; and a class that is *assignable* from the other unifies too, because Field's linalg types
+     * are declared half against read-only interfaces (`Vector2f` where the signature says `Vector2fc`)
+     * and refusing that would report a sound call as an error. Two unrelated known classes are a type
+     * error — the whole point of a host value carrying its class.
+     */
+    private fun unifyHosts(a: THost, b: THost, range: SourceRange) {
+        if (a.name == b.name) return
+        if (a.name == FieldMLHostTypes.OPAQUE || b.name == FieldMLHostTypes.OPAQUE) return
+        val left = FieldMLHostTypes.jvmClassOf(a)
+        val right = FieldMLHostTypes.jvmClassOf(b)
+        // An unloadable class is unknown, not wrong: the same conservatism as everywhere else here.
+        if (left == null || right == null) return
+        if (left.isAssignableFrom(right) || right.isAssignableFrom(left)) return
+        abort(
+            "Type mismatch: ${TypePrinter().print(a)} is not ${TypePrinter().print(b)}" +
+                " (${left.name} and ${right.name} are unrelated)",
+            range,
+        )
+    }
+
+    /**
+     * The bound on `Host` as a dynamic type: it stands in for a value whose *class* is unknown, not for
+     * a value of unknown *shape*.
+     *
+     * A JVM value that reflection could only see as `Object` may well turn out to be a number, a
+     * string, a boolean, nothing at all, or another object — so `Host` unifies with all of those and an
+     * erased result can be used without a cast, which is the ergonomics this bridge exists for. It does
+     * *not* unify with a function or with a FieldML structure. Those are not things an opaque host value
+     * ever *is*: `hostToFieldMLValue` never produces a FieldML function from a JVM value, so applying a
+     * `Host` fails every time it runs, and reaching a list or a record needs `hostAsList` — which really
+     * converts, and therefore also works on the erased-`Object`-that-was-a-`List` case.
+     *
+     * So the trade is: one honest conversion at the boundary, in exchange for the class of mistake that
+     * used to type-check and then fail on the first run.
+     */
+    private fun requireDynamicallyReachable(other: Type, range: SourceRange) {
+        val advice = when (other) {
+            is TFun -> "call it with hostCall1 \"invoke\" instead"
+            is TList -> "convert it with hostAsList"
+            is TTuple -> "convert it with hostAsList, or read its parts with hostGet"
+            is TRecord -> "read its members with hostGet"
+            else -> return
+        }
+        abort(
+            "A Host cannot be used as ${TypePrinter().print(normalize(other))}:" +
+                " reflection could not type this value, so $advice",
+            range,
+        )
     }
 
     private fun unify(left: Type, right: Type, range: SourceRange) {
@@ -474,7 +703,11 @@ class Inferencer {
             a is TAdt && b is TAdt && a.name == b.name && a.arguments.size == b.arguments.size -> {
                 a.arguments.zip(b.arguments).forEach { (leftArg, rightArg) -> unify(leftArg, rightArg, range) }
             }
-            a is THost && b is THost && a.name == b.name -> Unit
+            a is THost && b is THost -> unifyHosts(a, b, range)
+            // `Host` is FieldML's one dynamic type — but a *bounded* one, see
+            // [requireDynamicallyReachable].
+            a is THost && a.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(b, range)
+            b is THost && b.name == FieldMLHostTypes.OPAQUE -> requireDynamicallyReachable(a, range)
             else -> abort(
                 "Type mismatch: ${TypePrinter().print(normalize(a))} is not ${TypePrinter().print(normalize(b))}",
                 range,
