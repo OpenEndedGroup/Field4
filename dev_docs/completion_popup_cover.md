@@ -103,6 +103,16 @@ Both were discovered by writing these cases, and both surprise people:
    a `Math` function. There is a case named `CHARACTERIZATION:` that pins this down; it is a record
    of today's behaviour, **not** an endorsement, and it is the expectation you came to change if you
    are rebalancing the weights.
+3. **The ranker can only rank what the server sent, and a cap upstream is invisible here.** "Unranked,
+   on purpose" is a contract with two sides, and the server's side of it was quietly broken:
+   `AaCompletionClient` asked the AA sidecar for 200 candidates, and the sidecar's list is sorted BY
+   NAME — so a bare `s.` on a String computed 299 candidates and shipped the first 200, and `trim`,
+   `toInt`, `uppercase` and `zip` never reached `fieldSuggest.js` at all. Every case in this file would
+   have stayed green throughout: they are handed a candidate list. So when a member is missing from the
+   popup, the first question is whether it was ever *sent* — `AaCompletionClient.Req.limit` (now 1200)
+   and `completion.lowering-invariant.probe`'s per-bucket recall, which is what caught this. The ranker
+   cannot demote what it never received. See
+   [`completion_aa_sidecar.md`](completion_aa_sidecar.md#the-ratchet-what-the-numbers-assert).
 
 ## What is deliberately NOT covered
 
