@@ -575,6 +575,16 @@ private class MetadataVisitor(private val onTypeAlias: (String) -> Unit) : Annot
     }
 }
 
+/**
+ * The identifier characters already typed at [cursor] — the completion prefix.
+ *
+ * Shared rather than spelled out twice: the lowering decides which PATH a request takes from this, and
+ * the transport decides which candidates survive a cap from it (see `K2CompletionAnalyzer.complete`).
+ * Two copies of the rule would be two definitions of "what the user has typed".
+ */
+internal fun prefixAt(snippet: String, cursor: Int): String =
+    Regex("[A-Za-z0-9_]*$").find(snippet.substring(0, cursor.coerceIn(0, snippet.length)))?.value ?: ""
+
 /** A line that is nothing but an `import` — `import a.b.C`, `import a.b.*`, `import a.b.C as D`. */
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
 
@@ -782,7 +792,7 @@ class AaCompleter(
         val (body, snippetImports) = hoistImports(snippet, cursor)
         val before = body.substring(0, cursor)
         val after = body.substring(cursor)
-        val prefix = Regex("[A-Za-z0-9_]*$").find(before)?.value ?: ""
+        val prefix = prefixAt(before, before.length)
         // What KIND of position the caret is in is decided on CODE, not on prose. Read off the raw text,
         // the last non-space character before the caret is whatever the previous line happened to end
         // with — and a comment that ends in a full stop is how people write comments:

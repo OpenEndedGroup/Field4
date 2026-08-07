@@ -732,11 +732,24 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                 jsTarget = req.jsTarget,
             )
         }
-        // Fitting values first, THEN the limit: the candidate list is sorted by name, so truncating at
-        // `limit` could drop the three enum entries that are the entire point of the request (`UD`,
-        // `SD_*` — late in the alphabet, behind every `Box` member). Stable, so nothing else reorders.
-        val candidates = result.candidates.sortedByDescending { it.fitsExpected }
-            .take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
+        // What survives the cap, in order of how badly the caller needs it. The candidate list is sorted
+        // BY NAME, so a plain `take(limit)` cuts the alphabet: at the old client limit of 200, `s.` on a
+        // String shipped everything up to `orEmpty(` and the live panel had no `substring`, `split`,
+        // `trim`, `toInt` or `uppercase`. 31 of the caret sweep's misses came back with exactly the note
+        // "200 candidates" — the right answer computed, then thrown away by the transport. So:
+        //   1. what the user has already TYPED — a candidate matching the prefix IS the request;
+        //   2. what FITS the expected type (`d.scheme = ‸` → the enum's entries, late in the alphabet and
+        //      behind every `Box` member);
+        //   3. name order, as before.
+        // Stable sorts, so nothing else reorders. This is not ranking — that stays the client's job
+        // (fieldSuggest.js) — it only decides what a truncation is allowed to destroy.
+        val prefix = prefixAt(req.snippet, req.cursor.coerceIn(0, req.snippet.length))
+        val ordered = result.candidates.sortedByDescending { it.fitsExpected }.let {
+            if (prefix.isEmpty()) it
+            else it.sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
+                .sortedByDescending { c -> c.name.startsWith(prefix) }
+        }
+        val candidates = ordered.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
     }
 
