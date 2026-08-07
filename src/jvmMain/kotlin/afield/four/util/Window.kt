@@ -27,6 +27,19 @@ var lastWindowToOpen: Window? = null
 private val openWindowsLock = Any()
 private val openWindows = linkedSetOf<Window>()
 
+internal fun <T : Any> requirePrimaryVideoMode(
+    primaryMonitor: () -> Long,
+    videoMode: (Long) -> T?,
+): T {
+    val monitor = primaryMonitor()
+    check(monitor != MemoryUtil.NULL) {
+        "No usable display: GLFW reported no primary monitor (the display may be asleep or disconnected)"
+    }
+    return checkNotNull(videoMode(monitor)) {
+        "No usable display: GLFW could not read the primary monitor's video mode (the display may be asleep or disconnected)"
+    }
+}
+
 fun openWindowsSnapshot(): List<Window> =
     synchronized(openWindowsLock) { openWindows.toList() }
 
@@ -133,8 +146,8 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
 
         check(GLFWVulkan.glfwVulkanSupported()) { "Cannot find a compatible Vulkan installable client driver (ICD)" }
 
-        val vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor())
-        width = vidMode!!.width()
+        val vidMode = requirePrimaryVideoMode(GLFW::glfwGetPrimaryMonitor, GLFW::glfwGetVideoMode)
+        width = vidMode.width()
         height = vidMode.height()
 
         initialDimensions?.let {
