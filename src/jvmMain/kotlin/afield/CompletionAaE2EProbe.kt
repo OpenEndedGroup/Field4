@@ -228,6 +228,18 @@ object CompletionAaE2EProbe {
         // not produce at all — so a hit here cannot be the fallback covering for AA.
         val afterProse = "// a comment that ends in a period.\nVector3f("
         check("name position after a prose comment", afterProse, afterProse.length, "x", "AA-only")
+        // …and the other direction, which the same blanking could plausibly break: a REAL dot must still be
+        // a dot when the text around it looks like prose or a literal. The sidecar module has no test source
+        // set, so these edge cases live here, where they run against the live chain.
+        for ((desc, snippet) in listOf(
+            "a // inside a string" to "val a = \"http://x.y\".len",
+            "a bare slash is not a comment" to "val a = 3 / 2\nval b = \"q\".len",
+            "KDoc, period and all, before the code" to "/** kdoc with a period. */\nval s = \"q\".len",
+            "a char literal holding a quote" to "val c = '\"'\nval s = \"q\".len",
+            "an unterminated literal (mid-typing)" to "val s = \"unterminated\nval t = \"q\".len",
+        )) check("a real dot survives: $desc", snippet, snippet.length, "length", "AA")
+        val rawStringThenArg = "val t = \"\"\"a.b\"\"\"\nVector3f("
+        check("a raw string's dot is not the caret's", rawStringThenArg, rawStringThenArg.length, "x", "AA-only")
         // `Math.` — a qualifier in one of Kotlin's DEFAULT imports, which the package-guessing resolution
         // could not see, so the value path answered with Object's members plus the `Any` extensions.
         val math = "val a = Math."
