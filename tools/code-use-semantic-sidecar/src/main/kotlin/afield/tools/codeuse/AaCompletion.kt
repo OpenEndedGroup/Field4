@@ -449,6 +449,15 @@ data class AaSymbolIndex(
                     }
                 }
             }
+            // The JDK's own packages are not on the classpath — they live in modules — so `java.‸` had
+            // nothing to list ("0 matched in package java", 12 of the caret sweep's misses) even though
+            // AA resolves `java` as a package perfectly well and `java.util.Random` is ordinary box code.
+            // The boot layer knows their names, which is all package completion needs: no bytes are read
+            // and nothing is resolved here. `jdk.internal.*` and `sun.*` come along; they are only ever
+            // listed under a path someone typed on purpose.
+            runCatching {
+                ModuleLayer.boot().modules().forEach { m -> allPackages.addAll(m.descriptor.packages()) }
+            }
             return AaSymbolIndex(
                 callables = callables.mapValues { it.value.toList() },
                 classifiers = classifiers.mapValues { it.value.toList() },
@@ -1258,6 +1267,7 @@ class AaCompleter(
              * root; callables are resolved through AA so the use-site visibility check can drop the
              * private ones the index deliberately keeps (see [FacadeVisitor.visitMethod]).
              */
+            var packageTruncated: String? = null
             fun packageCandidates(pkg: String, index: AaSymbolIndex): List<AaCandidate> {
                 val out = ArrayList<AaCandidate>()
                 index.allPackages.asSequence()
@@ -1272,11 +1282,25 @@ class AaCompleter(
                 index.typeAliases[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
-                // Only with a prefix: a bare `afield.stdlib.` would otherwise resolve every top-level
-                // function in the package, which is thousands of symbols for one keystroke.
-                if (prefix.isNotEmpty()) {
-                    index.callables[pkg].orEmpty().asSequence()
-                        .filter { it.startsWith(prefix) }
+                // At a BARE `kotlin.math.‸` too, capped rather than gated. This used to require a prefix,
+                // on the reasoning that `afield.stdlib.` would resolve thousands of symbols for one
+                // keystroke — but the consequence was that a fully-qualified call answered with
+                // sub-packages only: `kotlin.math.‸sin` came back with 1 candidate and no `sin`, and a bare
+                // path was 7 of the caret sweep's misses per mode. Writing a package path out by hand is a
+                // deliberate act, and the same cap the receiver index uses (800 resolutions, well inside
+                // the measured p50) bounds it. Truncation is reported in the note, as there.
+                val callableNames = index.callables[pkg].orEmpty()
+                    .filter { prefix.isEmpty() || it.startsWith(prefix) }
+                // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3877 top-level names in
+                // alphabetical order is the same "truncate the alphabet" mistake the transport used to
+                // make, and it costs 233ms of a keystroke to make it. So enumerate a package that fits the
+                // cap (`kotlin.math` — 100 rows, and `sin` among them), and otherwise say so in the note:
+                // one typed character brings any package back under the cap.
+                if (callableNames.size > RECEIVER_INDEX_CAP && prefix.isEmpty()) {
+                    packageTruncated = "$pkg has ${callableNames.size} top-level names — " +
+                        "not enumerated at an empty prefix; type a character"
+                } else {
+                    callableNames.asSequence()
                         .flatMap { nm -> findTopLevelCallables(FqName(pkg), Name.identifier(nm)) }
                         .take(RECEIVER_INDEX_CAP)
                         .forEach { sym -> asCandidate(sym, AaCandidate.Kind.TOP_LEVEL, pkg)?.let(out::add) }
@@ -1536,7 +1560,9 @@ class AaCompleter(
                     val out = packageCandidates(recvText, index).filterNot { it.isSynthetic }
                         .distinctBy { it.dedupKey }.sortedBy { it.name }
                     return@analyze AaCompletionResult(
-                        out, if (out.isEmpty()) "0 matched in package $recvText" else ""
+                        out,
+                        if (out.isEmpty()) "0 matched in package $recvText"
+                        else packageTruncated?.let { "truncated $it" }.orEmpty(),
                     )
                 }
 
