@@ -757,12 +757,16 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         // the receiver's own members, then extensions declared on its own type, then the generic
         // `Any`/type-variable extensions — `also`/`apply`/`let`/`takeIf`, which apply to everything and are
         // therefore evidence of nothing — then classifiers and top-level names.
+        // These are stable sorts, so the LAST one applied is the primary key: what fits the expected type
+        // stays ahead of everything (`m.alphaMode = ‸` must lead with the enum's entries, which is what
+        // `expectedTypesAt` exists for), and proximity is the tie-break beneath it — not the reverse, which
+        // would have put an enum entry (a MEMBER) ahead of the parameter names at `Vector3f(‸`.
         val prefix = prefixAt(req.snippet, req.cursor.coerceIn(0, req.snippet.length))
-        val ordered = result.candidates.sortedByDescending { it.fitsExpected }.let {
-            if (prefix.isEmpty()) it.sortedBy(::receiverProximity)
-            else it.sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
-                .sortedByDescending { c -> c.name.startsWith(prefix) }
-        }
+        val ordered = if (prefix.isEmpty())
+            result.candidates.sortedBy(::receiverProximity).sortedByDescending { it.fitsExpected }
+        else result.candidates.sortedByDescending { it.fitsExpected }
+            .sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
+            .sortedByDescending { c -> c.name.startsWith(prefix) }
         val candidates = ordered.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
     }
