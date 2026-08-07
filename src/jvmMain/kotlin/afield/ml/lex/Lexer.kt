@@ -45,10 +45,25 @@ class Lexer(private val source: String) {
                 ';' -> single(TokenKind.SEMICOLON, start)
                 '|' -> {
                     advance()
-                    if (match('>')) emit(TokenKind.PIPE_FORWARD, start) else emit(TokenKind.BAR, start)
+                    when {
+                        match('>') -> emit(TokenKind.PIPE_FORWARD, start)
+                        match('|') -> emit(TokenKind.BARBAR, start)
+                        else -> emit(TokenKind.BAR, start)
+                    }
+                }
+                '&' -> {
+                    advance()
+                    if (match('&')) emit(TokenKind.AMPAMP, start) else errorAt(start, "Unexpected character '&' (did you mean '&&'?)")
+                }
+                ':' -> {
+                    advance()
+                    if (match(':')) emit(TokenKind.COLONCOLON, start) else errorAt(start, "Unexpected character ':' (did you mean '::'?)")
                 }
                 '.' -> single(TokenKind.DOT, start)
-                '+' -> single(TokenKind.PLUS, start)
+                '+' -> {
+                    advance()
+                    if (match('+')) emit(TokenKind.PLUSPLUS, start) else emit(TokenKind.PLUS, start)
+                }
                 '*' -> single(TokenKind.STAR, start)
                 '/' -> single(TokenKind.SLASH, start)
                 '-' -> {

@@ -12,6 +12,7 @@ import afield.ml.type.TExprLambda
 import afield.ml.type.TExprLet
 import afield.ml.type.TExprList
 import afield.ml.type.TExprMatch
+import afield.ml.type.TExprNegate
 import afield.ml.type.TExprRecord
 import afield.ml.type.TExprString
 import afield.ml.type.TExprTuple
@@ -19,6 +20,7 @@ import afield.ml.type.TExprTypeDecl
 import afield.ml.type.TExprVar
 import afield.ml.type.TFun
 import afield.ml.type.TPBool
+import afield.ml.type.TPCons
 import afield.ml.type.TPConstructor
 import afield.ml.type.TPInt
 import afield.ml.type.TPList
@@ -44,7 +46,7 @@ class Lowerer {
                 lower(expr.body),
                 expr.type,
             )
-            is TExprLet -> CLet(expr.name, lower(expr.value), lower(expr.body), expr.type)
+            is TExprLet -> CLet(expr.name, lower(expr.value), lower(expr.body), expr.type, expr.recursive)
             is TExprLambda -> lowerLambda(expr)
             is TExprCall -> CApp(lower(expr.function), lower(expr.argument), expr.type)
             is TExprIf -> CIf(lower(expr.condition), lower(expr.thenBranch), lower(expr.elseBranch), expr.type)
@@ -56,6 +58,7 @@ class Lowerer {
             is TExprRecord -> CRecord(expr.fields.map { it.first to lower(it.second) }, expr.type)
             is TExprField -> CField(lower(expr.target), expr.field, expr.type)
             is TExprBinary -> CBinary(expr.op, lower(expr.left), lower(expr.right), expr.type)
+            is TExprNegate -> CNegate(lower(expr.value), expr.type)
         }
 
     private fun lowerLambda(expr: TExprLambda): CoreExpr {
@@ -84,5 +87,6 @@ class Lowerer {
             is TPTuple -> CPTuple(pattern.elements.map(::lowerPattern), pattern.type)
             is TPList -> CPList(pattern.elements.map(::lowerPattern), pattern.type)
             is TPConstructor -> CPConstructor(pattern.name, pattern.arguments.map(::lowerPattern), pattern.type)
+            is TPCons -> CPCons(lowerPattern(pattern.head), lowerPattern(pattern.tail), pattern.type)
         }
 }

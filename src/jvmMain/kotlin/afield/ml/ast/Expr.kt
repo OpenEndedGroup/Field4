@@ -88,6 +88,13 @@ data class PConstructor(
     override val range: SourceRange,
 ) : Pattern
 
+/** `head :: tail` — matches any non-empty list, binding its first element and the rest. */
+data class PCons(
+    val head: Pattern,
+    val tail: Pattern,
+    override val range: SourceRange,
+) : Pattern
+
 data class MatchCase(
     val pattern: Pattern,
     val body: Expr,
@@ -122,17 +129,27 @@ enum class BinaryOp(val text: String) {
     SUB("-"),
     MUL("*"),
     DIV("/"),
+    CONCAT("++"),
     LT("<"),
     LTE("<="),
     GT(">"),
     GTE(">="),
     EQ("=="),
     NEQ("!="),
+    AND("&&"),
+    OR("||"),
+    CONS("::"),
 }
 
 data class EBinary(
     val op: BinaryOp,
     val left: Expr,
     val right: Expr,
+    override val range: SourceRange,
+) : Expr
+
+/** Prefix `-` over numbers and vectors. */
+data class ENegate(
+    val value: Expr,
     override val range: SourceRange,
 ) : Expr

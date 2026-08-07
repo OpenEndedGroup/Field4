@@ -40,6 +40,8 @@ data class Scheme(
     val quantified: Set<Int>,
     val body: Type,
     val numeric: Set<Int> = emptySet(),
+    /** Quantified ids that may only be instantiated to `Vec2`/`Vec3`/`Vec4`. */
+    val vector: Set<Int> = emptySet(),
 )
 
 class TypePrinter {

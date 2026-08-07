@@ -12,6 +12,7 @@ import afield.ml.ast.ELambda
 import afield.ml.ast.ELet
 import afield.ml.ast.EList
 import afield.ml.ast.EMatch
+import afield.ml.ast.ENegate
 import afield.ml.ast.ERecord
 import afield.ml.ast.EString
 import afield.ml.ast.ETuple
@@ -19,6 +20,7 @@ import afield.ml.ast.ETypeDecl
 import afield.ml.ast.EVar
 import afield.ml.ast.Expr
 import afield.ml.ast.PBool
+import afield.ml.ast.PCons
 import afield.ml.ast.PConstructor
 import afield.ml.ast.PInt
 import afield.ml.ast.PList
@@ -45,6 +47,7 @@ class Inferencer {
     private val substitution = mutableMapOf<Int, Type>()
     private val diagnostics = mutableListOf<Diagnostic>()
     private val numericVariables = mutableSetOf<Int>()
+    private val vectorVariables = mutableSetOf<Int>()
 
     fun infer(expr: Expr): InferResult =
         try {
@@ -108,11 +111,28 @@ class Inferencer {
                         unify(targetType, TRecord(mapOf(expr.field to fieldType)), expr.range)
                         fieldType
                     }
+                    is THost -> {
+                        val components = FieldMLTypePrelude.vectorComponents(targetType)
+                        if (expr.field !in components) {
+                            abort(
+                                "${TypePrinter().print(targetType)} has no field '${expr.field}'" +
+                                    if (components.isEmpty()) "" else " (expected one of ${components.joinToString(", ")})",
+                                expr.range,
+                            )
+                        }
+                        TFloat
+                    }
                     else -> abort("Field access requires a record, found ${TypePrinter().print(normalize(targetType))}", expr.range)
                 }
                 TExprField(target, expr.field, expr.range, resolvedFieldType)
             }
             is EBinary -> inferBinary(expr, env)
+            is ENegate -> {
+                val value = inferExpr(expr.value, env)
+                val pruned = prune(value.type)
+                if (!FieldMLTypePrelude.isVectorType(pruned)) requireNumeric(pruned, expr.range)
+                TExprNegate(value, expr.range, prune(value.type))
+            }
         }
 
     private fun inferTypeDecl(expr: ETypeDecl, env: TypeEnv): TExprTypeDecl {
@@ -179,10 +199,17 @@ class Inferencer {
     }
 
     private fun inferLet(expr: ELet, env: TypeEnv): TExprLet {
-        val valueExpr = if (expr.parameters.isEmpty()) {
+        // `let f x = ...` is recursive: bind f monomorphically while inferring its own body. A plain
+        // `let x = ...` is not, so `let x = x + 1` keeps shadowing an outer binding.
+        val recursive = expr.parameters.isNotEmpty()
+        val valueExpr = if (!recursive) {
             inferExpr(expr.value, env)
         } else {
-            inferLambda(expr.parameters, expr.value, expr.value.range, env)
+            val selfType = fresh()
+            val selfEnv = env.bind(expr.name, Scheme(emptySet(), selfType))
+            val lambda = inferLambda(expr.parameters, expr.value, expr.value.range, selfEnv)
+            unify(selfType, lambda.type, expr.value.range)
+            lambda
         }
         val scheme = generalize(env, valueExpr.type)
         val bodyEnv = env.bind(expr.name, scheme)
@@ -191,7 +218,7 @@ class Inferencer {
             is TExprLambda -> valueExpr.parameters
             else -> emptyList()
         }
-        return TExprLet(expr.name, parameters, valueExpr, body, expr.range, body.type)
+        return TExprLet(expr.name, parameters, valueExpr, body, expr.range, body.type, recursive)
     }
 
     private fun inferMatch(expr: EMatch, env: TypeEnv): TExprMatch {
@@ -245,6 +272,13 @@ class Inferencer {
                 TPList(typedElements, pattern.range, TList(elementType)) to patternEnv
             }
             is PConstructor -> inferConstructorPattern(pattern, expected, env)
+            is PCons -> {
+                val elementType = fresh()
+                unify(expected, TList(elementType), pattern.range)
+                val (head, headEnv) = inferPattern(pattern.head, elementType, env)
+                val (tail, tailEnv) = inferPattern(pattern.tail, TList(elementType), headEnv)
+                TPCons(head, tail, pattern.range, TList(elementType)) to tailEnv
+            }
         }
 
     private fun inferConstructorPattern(pattern: PConstructor, expected: Type, env: TypeEnv): Pair<TPattern, TypeEnv> {
@@ -277,15 +311,62 @@ class Inferencer {
         val left = inferExpr(expr.left, env)
         val right = inferExpr(expr.right, env)
         val resultType = when (expr.op) {
-            BinaryOp.ADD, BinaryOp.SUB, BinaryOp.MUL -> {
-                unify(left.type, right.type, expr.range)
-                requireNumeric(left.type, expr.range)
-                left.type
+            BinaryOp.ADD, BinaryOp.SUB -> {
+                val vector = vectorOperand(left.type, right.type)
+                if (vector != null) {
+                    // Vectors add and subtract component by component, so both sides must match.
+                    unify(left.type, right.type, expr.range)
+                    vector
+                } else {
+                    unify(left.type, right.type, expr.range)
+                    requireNumeric(left.type, expr.range)
+                    left.type
+                }
+            }
+            BinaryOp.MUL -> {
+                val leftVector = FieldMLTypePrelude.isVectorType(prune(left.type))
+                val rightVector = FieldMLTypePrelude.isVectorType(prune(right.type))
+                when {
+                    // Vector times vector multiplies component by component; vector times a Float scales.
+                    leftVector && rightVector -> {
+                        unify(left.type, right.type, expr.range)
+                        prune(left.type)
+                    }
+                    leftVector -> {
+                        unify(right.type, TFloat, expr.right.range)
+                        prune(left.type)
+                    }
+                    rightVector -> {
+                        unify(left.type, TFloat, expr.left.range)
+                        prune(right.type)
+                    }
+                    else -> {
+                        unify(left.type, right.type, expr.range)
+                        requireNumeric(left.type, expr.range)
+                        left.type
+                    }
+                }
             }
             BinaryOp.DIV -> {
-                unify(left.type, TFloat, expr.left.range)
-                unify(right.type, TFloat, expr.right.range)
-                TFloat
+                if (FieldMLTypePrelude.isVectorType(prune(left.type))) {
+                    unify(right.type, TFloat, expr.right.range)
+                    prune(left.type)
+                } else {
+                    unify(left.type, TFloat, expr.left.range)
+                    unify(right.type, TFloat, expr.right.range)
+                    TFloat
+                }
+            }
+            BinaryOp.CONCAT -> {
+                unify(left.type, TString, expr.left.range)
+                unify(right.type, TString, expr.right.range)
+                TString
+            }
+            BinaryOp.CONS -> {
+                val element = fresh()
+                unify(left.type, element, expr.left.range)
+                unify(right.type, TList(element), expr.right.range)
+                TList(element)
             }
             BinaryOp.LT, BinaryOp.LTE, BinaryOp.GT, BinaryOp.GTE -> {
                 unify(left.type, right.type, expr.range)
@@ -297,8 +378,21 @@ class Inferencer {
                 requireEquality(left.type, expr.range)
                 TBool
             }
+            BinaryOp.AND, BinaryOp.OR -> {
+                unify(left.type, TBool, expr.left.range)
+                unify(right.type, TBool, expr.right.range)
+                TBool
+            }
         }
         return TExprBinary(expr.op, left, right, expr.range, resultType)
+    }
+
+    /** The vector type involved in an operand pair, or null when neither side is a vector. */
+    private fun vectorOperand(left: Type, right: Type): Type? {
+        val prunedLeft = prune(left)
+        if (FieldMLTypePrelude.isVectorType(prunedLeft)) return prunedLeft
+        val prunedRight = prune(right)
+        return if (FieldMLTypePrelude.isVectorType(prunedRight)) prunedRight else null
     }
 
     private fun instantiate(scheme: Scheme): Type {
@@ -306,6 +400,10 @@ class Inferencer {
         for (numeric in scheme.numeric) {
             val replacement = replacements[numeric]
             if (replacement is TVar) numericVariables += replacement.id
+        }
+        for (vector in scheme.vector) {
+            val replacement = replacements[vector]
+            if (replacement is TVar) vectorVariables += replacement.id
         }
         fun walk(type: Type): Type =
             when (val pruned = prune(type)) {
@@ -323,7 +421,12 @@ class Inferencer {
 
     private fun generalize(env: TypeEnv, type: Type): Scheme {
         val quantified = freeVars(type) - env.freeVars()
-        return Scheme(quantified, prune(type), numeric = quantified intersect numericVariables)
+        return Scheme(
+            quantified,
+            prune(type),
+            numeric = quantified intersect numericVariables,
+            vector = quantified intersect vectorVariables,
+        )
     }
 
     private fun requireNumeric(type: Type, range: SourceRange) {
@@ -331,6 +434,15 @@ class Inferencer {
             TInt, TFloat -> Unit
             is TVar -> numericVariables += pruned.id
             else -> abort("Expected Int or Float, found ${TypePrinter().print(normalize(pruned))}", range)
+        }
+    }
+
+    private fun requireVector(type: Type, range: SourceRange) {
+        val pruned = prune(type)
+        when {
+            FieldMLTypePrelude.isVectorType(pruned) -> Unit
+            pruned is TVar -> vectorVariables += pruned.id
+            else -> abort("Expected Vec2, Vec3 or Vec4, found ${TypePrinter().print(normalize(pruned))}", range)
         }
     }
 
@@ -383,6 +495,7 @@ class Inferencer {
         if (target == variable) return
         if (occurs(variable.id, target)) abort("Infinite type involving ${TypePrinter().print(variable)}", range)
         if (variable.id in numericVariables) requireNumeric(target, range)
+        if (variable.id in vectorVariables) requireVector(target, range)
         substitution[variable.id] = target
     }
 
@@ -418,10 +531,7 @@ class Inferencer {
         }
 
     private fun finalize(expr: TExpr): TExpr {
-        fun type(type: Type): Type {
-            val normalized = normalize(type)
-            return if (normalized is TVar && normalized.id in numericVariables) TFloat else normalized
-        }
+        fun type(type: Type): Type = defaultedType(type)
         return when (expr) {
             is TExprInt -> expr.copy(type = type(expr.type))
             is TExprFloat -> expr.copy(type = type(expr.type))
@@ -452,14 +562,12 @@ class Inferencer {
             is TExprRecord -> expr.copy(fields = expr.fields.map { it.first to finalize(it.second) }, type = type(expr.type))
             is TExprField -> expr.copy(target = finalize(expr.target), type = type(expr.type))
             is TExprBinary -> expr.copy(left = finalize(expr.left), right = finalize(expr.right), type = type(expr.type))
+            is TExprNegate -> expr.copy(value = finalize(expr.value), type = type(expr.type))
         }
     }
 
     private fun finalizePattern(pattern: TPattern): TPattern {
-        fun type(type: Type): Type {
-            val normalized = normalize(type)
-            return if (normalized is TVar && normalized.id in numericVariables) TFloat else normalized
-        }
+        fun type(type: Type): Type = defaultedType(type)
         return when (pattern) {
             is TPWildcard -> pattern.copy(type = type(pattern.type))
             is TPVar -> pattern.copy(type = type(pattern.type))
@@ -469,6 +577,25 @@ class Inferencer {
             is TPTuple -> pattern.copy(elements = pattern.elements.map(::finalizePattern), type = type(pattern.type))
             is TPList -> pattern.copy(elements = pattern.elements.map(::finalizePattern), type = type(pattern.type))
             is TPConstructor -> pattern.copy(arguments = pattern.arguments.map(::finalizePattern), type = type(pattern.type))
+            is TPCons -> pattern.copy(
+                head = finalizePattern(pattern.head),
+                tail = finalizePattern(pattern.tail),
+                type = type(pattern.type),
+            )
+        }
+    }
+
+    /**
+     * Normalizes a type for reporting, defaulting any still-unresolved constrained variable to the
+     * concrete type its constraint implies: numeric variables become `Float`, vector ones `Vec2`.
+     */
+    private fun defaultedType(type: Type): Type {
+        val normalized = normalize(type)
+        if (normalized !is TVar) return normalized
+        return when (normalized.id) {
+            in numericVariables -> TFloat
+            in vectorVariables -> FieldMLTypePrelude.vec2
+            else -> normalized
         }
     }
 

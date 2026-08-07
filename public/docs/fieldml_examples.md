@@ -63,6 +63,86 @@ Anonymous functions are useful for one-off transforms:
 )
 ```
 
+Helpers that transform a single subject take it last, so they read naturally at the end of a pipe. `7 |> mod 4` is 3, `3.0 |> pow 2.0` is 9, and `[1, 2] |> append [3]` is `[1, 2, 3]`.
+
+## Numbers
+
+`Int` and `Float` never mix silently, so conversion is explicit. `toFloat` and `toInt` are the two you reach for constantly when a loop counter has to become a coordinate.
+
+```diffstatic {data-lang=fieldml}
+let steps = 8
+
+range 0 steps
+  |> map (fun i -> toFloat i / toFloat steps)
+```
+
+The usual mathematics is in the prelude: `sin cos tan asin acos atan atan2 sqrt exp log floor ceil round abs sign min max clamp pow lerp`, plus the constants `pi` and `tau`. `mod`, `idiv` and `fmod` cover remainders and integer division.
+
+```diffstatic {data-lang=fieldml}
+let wave t = sin (t * tau) * 0.5 + 0.5
+
+linspace 0.0 1.0 5 |> map wave
+```
+
+Prefix `-` negates numbers and vectors. As in other ML languages it binds looser than application, so `f -1.0` is a subtraction — write `f (-1.0)` when you mean a negative argument.
+
+## Booleans
+
+`&&`, `||` and `not` combine conditions, and both operators short circuit.
+
+```diffstatic {data-lang=fieldml}
+let inside x y =
+  x > 0.0 && x < 100.0 && y > 0.0 && y < 100.0
+
+(inside 50.0 50.0, inside 150.0 50.0)
+```
+
+## Lists and iteration
+
+FieldML has no loop statement. Lists plus `range`, `linspace` and `tabulate` are how you iterate.
+
+```diffstatic {data-lang=fieldml}
+range 0 6
+  |> filter (fun i -> mod 2 i == 0)
+  |> map (fun i -> i * i)
+  |> fold (fun total x -> total + x) 0
+```
+
+`range start end` stops before `end`; `linspace start end count` includes both ends, which is usually what a parameter sweep wants. The rest of the list vocabulary is `map mapIndexed filter fold length isEmpty head tail nth take drop reverse append concat zip sortBy sum`.
+
+```diffstatic {data-lang=fieldml}
+let points = linspace 0.0 1.0 3 |> map (fun t -> (t, t * t))
+
+(length points, points |> nth 1)
+```
+
+`::` prepends to a list and also matches one, so a pattern can split a list into its head and the rest — the shape recursion over lists needs.
+
+```diffstatic {data-lang=fieldml}
+let firstTwo values =
+  match values with
+  | a :: b :: _ -> a + b
+  | a :: [] -> a
+  | [] -> 0
+
+(firstTwo [10, 20, 30], 1 :: [2, 3])
+```
+
+## Recursion
+
+A function defined with parameters can call itself: `let f x = ...` has `f` in scope inside its own body. A plain `let x = ...` does not, so `let x = x + 1` still refers to an outer `x`.
+
+```diffstatic {data-lang=fieldml}
+let countdown n =
+  match n with
+  | 0 -> []
+  | _ -> n :: countdown (n - 1)
+
+countdown 4
+```
+
+FieldML evaluates by walking the tree and does not optimise tail calls, so deep recursion runs out of stack. For long loops prefer `range`, `tabulate`, `map` and `fold`, which do not grow the stack.
+
 ## Output taps
 
 `print` and `println` write text output and return the value they were given. That makes them useful as taps in a pipe.
@@ -198,6 +278,81 @@ fline
   |> thickness 4.0
 ```
 
+## Vector arithmetic
+
+`Vec2`, `Vec3` and `Vec4` are ordinary values. They add and subtract component by component, multiply either by another vector or by a `Float`, and expose `.x`, `.y`, `.z` and `.w`.
+
+```diffstatic {data-lang=fieldml}
+let a = vec2 1.0 2.0
+let b = vec2 3.0 4.0
+
+{
+  sum = a + b
+  scaled = a * 10.0
+  halfway = mix a b 0.5
+  span = distance a b
+  unit = normalize (b - a)
+  first = (a + b).x
+}
+```
+
+`dot`, `cross`, `vlength`, `distance`, `normalize` and `mix` work at any width the operation makes sense for, and mixing widths is a type error rather than a surprise. `polar angle radius` builds a `Vec2` from an angle in radians, which is where most generated geometry starts.
+
+```diffstatic {data-lang=fieldml}
+let ring count radius =
+  range 0 count
+    |> map (fun i -> polar (tau * toFloat i / toFloat count) radius)
+
+ring 6 10.0 |> length
+```
+
+## Drawing generated geometry
+
+`draw "channel" line` sends an FLine to one of the box's output channels and returns the same line, so it drops into a pipe like the styling helpers. Combined with `range`, `map` and `fold`, geometry can be generated rather than typed out.
+
+```diffstatic_runner {data-lang=fieldml screenshot="assets/fieldml_examples/generated_spiral.png" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="fieldml-generated-spiral" w="760" h="320"}
+let spiral turns count =
+  range 0 count
+    |> map (fun i ->
+      let t = toFloat i / toFloat count in
+      polar (t * tau * turns) (20.0 + t * 120.0)
+    )
+    |> fold (fun line point -> line |> lineToV point) fline
+
+spiral 3.0 200
+  |> stroked true
+  |> filled false
+  |> color (vec4 0.2 0.85 1.0 1.0)
+  |> thickness 2.0
+  |> draw "main"
+```
+
+`fold` over `fline` is the idiom worth remembering: the accumulator is the line, each step adds one instruction, and the result is a single FLine built from a list of points.
+
+## Animation
+
+`animate` turns a function of time into a running animation. Field steps it once per frame, passing the seconds since the box was launched, until the box is stopped. The function runs for its effects, so draw inside it.
+
+```diffstatic_runner {data-lang=fieldml video="assets/fieldml_examples/animated_rose.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="240" w="760" embed=true name="fieldml-animated-rose" alt="a five-petalled rose curve drawn in orange, its petals slowly rolling around the centre and breathing in and out as the animation runs"}
+let rose t =
+  let petals = 5.0 in
+  linspace 0.0 tau 240
+    |> map (fun a ->
+      let radius = 110.0 * sin (a * petals) * (0.7 + 0.3 * sin (t * 1.5)) in
+      polar (a + t * 0.35) radius
+    )
+    |> fold (fun line point -> line |> lineToV point) fline
+    |> stroked true
+    |> filled false
+    |> color (vec4 1.0 0.55 0.2 1.0)
+    |> thickness 2.0
+    |> drawSized "main" 320.0 320.0
+
+animate rose
+```
+
+`animateFor seconds f` is the same thing with a stopping time. Because the whole frame is recomputed from `t`, there is no mutable state to keep in sync — the same property that makes a FieldML box cheap to re-run makes it straightforward to animate.
+
 ## JVM interop
 
 FieldML values can cross into JVM code as ordinary host values. The most direct path is to use curated helpers such as `fline`, `vec2`, `moveTo`, and `color`; they are typed, pipe-friendly, and keep the common graphics workflow compact.
@@ -288,7 +443,11 @@ FieldML is strict and typed. A few rules explain most surprises:
 | Rule | Consequence |
 | --- | --- |
 | Function application binds tighter than operators | `print x * 10` means `(print x) * 10`; use `print (x * 10)` for the product. |
-| `Int` and `Float` do not silently mix | `10 + 1.0` is a type error; make both sides the same numeric type. |
+| `Int` and `Float` do not silently mix | `10 + 1.0` is a type error; use `toFloat` to convert. |
+| Prefix `-` binds looser than application | `f -1.0` is a subtraction; write `f (-1.0)`. |
+| Single-subject helpers take the subject last | `7 |> mod 4` is 3, and `[1] |> append [2]` is `[1, 2]`. |
+| Only `let f x = ...` is recursive | A plain `let x = ...` refers to an outer `x`, so shadowing keeps working. |
+| Recursion is not tail-call optimised | Deep loops should use `range`/`tabulate` with `map`/`fold`. |
 | Lists are homogeneous | `[1, 2, 3]` is valid; `[1, true]` is not. |
 | Match branches must agree | Every branch of a `match` expression has the same result type. |
 | The last expression is the result | Leave an `FLine`, record, list, or scalar at the end of the box to return it to Field. |

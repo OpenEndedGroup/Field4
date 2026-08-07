@@ -39,7 +39,7 @@ define("bithero/fieldml", ["require", "vs/editor/editor.api"], function (require
     ];
 
     var typeKeywords = [
-        "Int", "Float", "Bool", "String"
+        "Int", "Float", "Bool", "String", "Unit", "Vec2", "Vec3", "Vec4", "FLine", "Host"
     ];
 
     monaco.languages.setMonarchTokensProvider(languageId, {
@@ -54,7 +54,7 @@ define("bithero/fieldml", ["require", "vs/editor/editor.api"], function (require
                 [/"([^"\\]|\\.)*$/, "string.invalid"],
                 [/"/, "string.quote", "@string"],
 
-                [/\|>|->|==|!=|<=|>=|[=+\-*\/<>]/, "operator"],
+                [/\|>|->|==|!=|<=|>=|&&|\|\||\+\+|::|[=+\-*\/<>]/, "operator"],
                 [/[{}\[\]()]/, "@brackets"],
                 [/[;,.:|]/, "delimiter"],
 

@@ -33,6 +33,8 @@ data class CLet(
     val value: CoreExpr,
     val body: CoreExpr,
     override val type: Type,
+    /** See [afield.ml.type.TExprLet.recursive]. */
+    val recursive: Boolean = false,
 ) : CoreExpr
 
 data class CLam(
@@ -73,6 +75,12 @@ data class CPConstructor(
     override val type: Type,
 ) : CorePattern
 
+data class CPCons(
+    val head: CorePattern,
+    val tail: CorePattern,
+    override val type: Type,
+) : CorePattern
+
 data class CMatchCase(
     val pattern: CorePattern,
     val body: CoreExpr,
@@ -99,5 +107,10 @@ data class CBinary(
     val op: BinaryOp,
     val left: CoreExpr,
     val right: CoreExpr,
+    override val type: Type,
+) : CoreExpr
+
+data class CNegate(
+    val value: CoreExpr,
     override val type: Type,
 ) : CoreExpr

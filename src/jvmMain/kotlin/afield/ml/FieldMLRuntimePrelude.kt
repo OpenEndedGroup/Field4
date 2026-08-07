@@ -4,11 +4,14 @@ import afield.Box
 import afield.HasOutput
 import afield.ai.KotlinSourceIndex
 import afield.graphics.FLine
+import afield.graphics.lines
 import afield.ml.core.FieldMLValue
 import afield.ml.core.applyFieldMLFunction
 import afield.ml.core.fieldMLValueToHost
 import afield.ml.core.hostToFieldMLValue
 import afield.ml.core.renderFieldMLValue
+import afield.ml.core.vectorComponents
+import afield.ml.core.vectorValue
 import afield.stdlib.color
 import afield.stdlib.filled
 import afield.stdlib.pointSize
@@ -108,6 +111,213 @@ object FieldMLRuntimePrelude {
                 FieldMLValue.HostValue(line.asFLine("pointSize").also { it.pointSize = amount.asDouble("amount") })
             },
 
+            "pi" to FieldMLValue.FloatValue(Math.PI),
+            "tau" to FieldMLValue.FloatValue(Math.PI * 2),
+            "sin" to float1("sin", Math::sin),
+            "cos" to float1("cos", Math::cos),
+            "tan" to float1("tan", Math::tan),
+            "asin" to float1("asin", Math::asin),
+            "acos" to float1("acos", Math::acos),
+            "atan" to float1("atan", Math::atan),
+            "sqrt" to float1("sqrt", Math::sqrt),
+            "exp" to float1("exp", Math::exp),
+            "log" to float1("log", Math::log),
+            "floor" to float1("floor", Math::floor),
+            "ceil" to float1("ceil", Math::ceil),
+            "round" to float1("round", { value -> Math.round(value).toDouble() }),
+            "atan2" to native2("atan2") { y, x ->
+                FieldMLValue.FloatValue(Math.atan2(y.asDouble("y"), x.asDouble("x")))
+            },
+            "pow" to native2("pow") { exponent, value ->
+                FieldMLValue.FloatValue(Math.pow(value.asDouble("value"), exponent.asDouble("exponent")))
+            },
+            "fmod" to native2("fmod") { divisor, value ->
+                FieldMLValue.FloatValue(value.asDouble("value").mod(divisor.asDouble("divisor")))
+            },
+            "mod" to native2("mod") { divisor, value ->
+                FieldMLValue.IntValue(value.asLong("value").mod(divisor.asLong("divisor")))
+            },
+            "idiv" to native2("idiv") { divisor, value ->
+                FieldMLValue.IntValue(value.asLong("value") / divisor.asLong("divisor"))
+            },
+            "lerp" to native3("lerp") { from, to, amount ->
+                val t = amount.asDouble("amount")
+                FieldMLValue.FloatValue(from.asDouble("from") * (1 - t) + to.asDouble("to") * t)
+            },
+            "abs" to native1("abs") { value -> value.mapNumber("abs", Math::abs, Math::abs) },
+            "sign" to native1("sign") { value ->
+                value.mapNumber("sign", { it.compareTo(0L).toLong() }, { Math.signum(it) })
+            },
+            "min" to native2("min") { a, b -> numeric2("min", a, b, Math::min, Math::min) },
+            "max" to native2("max") { a, b -> numeric2("max", a, b, Math::max, Math::max) },
+            "clamp" to native3("clamp") { low, high, value ->
+                numeric2("clamp", numeric2("clamp", value, low, Math::max, Math::max), high, Math::min, Math::min)
+            },
+            "toFloat" to native1("toFloat") { value -> FieldMLValue.FloatValue(value.asLong("value").toDouble()) },
+            "toInt" to native1("toInt") { value -> FieldMLValue.IntValue(value.asDouble("value").toLong()) },
+            "not" to native1("not") { value -> FieldMLValue.BoolValue(!value.asBool("value")) },
+
+            "range" to native2("range") { start, end ->
+                val from = start.asLong("start")
+                val until = end.asLong("end")
+                FieldMLValue.ListValue((from until until).map { FieldMLValue.IntValue(it) })
+            },
+            "linspace" to native3("linspace") { start, end, count ->
+                val from = start.asDouble("start")
+                val to = end.asDouble("end")
+                val steps = count.asLong("count").toInt()
+                if (steps <= 0) {
+                    FieldMLValue.ListValue(emptyList())
+                } else if (steps == 1) {
+                    FieldMLValue.ListValue(listOf(FieldMLValue.FloatValue(from)))
+                } else {
+                    FieldMLValue.ListValue(
+                        (0 until steps).map { index ->
+                            FieldMLValue.FloatValue(from + (to - from) * index / (steps - 1))
+                        },
+                    )
+                }
+            },
+            "tabulate" to native2("tabulate") { function, count ->
+                FieldMLValue.ListValue(
+                    (0 until count.asLong("count").toInt()).map { index ->
+                        applyFieldMLFunction(function, FieldMLValue.IntValue(index.toLong()))
+                    },
+                )
+            },
+            "map" to native2("map") { function, list ->
+                FieldMLValue.ListValue(list.asList("map").map { applyFieldMLFunction(function, it) })
+            },
+            "mapIndexed" to native2("mapIndexed") { function, list ->
+                FieldMLValue.ListValue(
+                    list.asList("mapIndexed").mapIndexed { index, element ->
+                        applyFieldMLFunction(applyFieldMLFunction(function, FieldMLValue.IntValue(index.toLong())), element)
+                    },
+                )
+            },
+            "filter" to native2("filter") { predicate, list ->
+                FieldMLValue.ListValue(
+                    list.asList("filter").filter { element ->
+                        (applyFieldMLFunction(predicate, element) as? FieldMLValue.BoolValue)?.value
+                            ?: error("filter expects a function returning Bool")
+                    },
+                )
+            },
+            "fold" to native3("fold") { function, initial, list ->
+                list.asList("fold").fold(initial) { accumulator, element ->
+                    applyFieldMLFunction(applyFieldMLFunction(function, accumulator), element)
+                }
+            },
+            "length" to native1("length") { list -> FieldMLValue.IntValue(list.asList("length").size.toLong()) },
+            "isEmpty" to native1("isEmpty") { list -> FieldMLValue.BoolValue(list.asList("isEmpty").isEmpty()) },
+            "head" to native1("head") { list ->
+                list.asList("head").firstOrNull() ?: error("head of an empty list")
+            },
+            "tail" to native1("tail") { list ->
+                val elements = list.asList("tail")
+                if (elements.isEmpty()) error("tail of an empty list")
+                FieldMLValue.ListValue(elements.drop(1))
+            },
+            "nth" to native2("nth") { index, list ->
+                val elements = list.asList("nth")
+                val at = index.asLong("index").toInt()
+                elements.getOrNull(at) ?: error("nth $at is outside a list of ${elements.size}")
+            },
+            "take" to native2("take") { count, list ->
+                FieldMLValue.ListValue(list.asList("take").take(count.asLong("count").toInt().coerceAtLeast(0)))
+            },
+            "drop" to native2("drop") { count, list ->
+                FieldMLValue.ListValue(list.asList("drop").drop(count.asLong("count").toInt().coerceAtLeast(0)))
+            },
+            "reverse" to native1("reverse") { list -> FieldMLValue.ListValue(list.asList("reverse").reversed()) },
+            "append" to native2("append") { suffix, list ->
+                FieldMLValue.ListValue(list.asList("append") + suffix.asList("suffix"))
+            },
+            "concat" to native1("concat") { list ->
+                FieldMLValue.ListValue(list.asList("concat").flatMap { it.asList("concat element") })
+            },
+            "zip" to native2("zip") { other, list ->
+                val right = other.asList("zip other")
+                FieldMLValue.ListValue(
+                    list.asList("zip").zip(right).map { (a, b) -> FieldMLValue.TupleValue(listOf(a, b)) },
+                )
+            },
+            "sortBy" to native2("sortBy") { key, list ->
+                FieldMLValue.ListValue(
+                    list.asList("sortBy").sortedBy { element ->
+                        applyFieldMLFunction(key, element).asDouble("sortBy key")
+                    },
+                )
+            },
+            "sum" to native1("sum") { list ->
+                FieldMLValue.FloatValue(list.asList("sum").sumOf { it.asDouble("sum element") })
+            },
+
+            "dot" to native2("dot") { a, b ->
+                val left = a.asVector("dot")
+                val right = b.asVector("dot")
+                requireSameWidth("dot", left, right)
+                FieldMLValue.FloatValue(left.indices.sumOf { (left[it] * right[it]).toDouble() })
+            },
+            "vlength" to native1("vlength") { value ->
+                FieldMLValue.FloatValue(magnitude(value.asVector("vlength")))
+            },
+            "distance" to native2("distance") { a, b ->
+                val left = a.asVector("distance")
+                val right = b.asVector("distance")
+                requireSameWidth("distance", left, right)
+                FieldMLValue.FloatValue(magnitude(FloatArray(left.size) { left[it] - right[it] }))
+            },
+            "normalize" to native1("normalize") { value ->
+                val parts = value.asVector("normalize")
+                val scale = magnitude(parts)
+                if (scale == 0.0) value else vectorValue(FloatArray(parts.size) { (parts[it] / scale).toFloat() })
+            },
+            "mix" to native3("mix") { a, b, amount ->
+                val left = a.asVector("mix")
+                val right = b.asVector("mix")
+                requireSameWidth("mix", left, right)
+                val t = amount.asFloat("amount")
+                vectorValue(FloatArray(left.size) { left[it] * (1 - t) + right[it] * t })
+            },
+            "cross" to native2("cross") { a, b ->
+                val left = a.asVector("cross")
+                val right = b.asVector("cross")
+                if (left.size != 3 || right.size != 3) error("cross expects two Vec3 values")
+                vectorValue(
+                    floatArrayOf(
+                        left[1] * right[2] - left[2] * right[1],
+                        left[2] * right[0] - left[0] * right[2],
+                        left[0] * right[1] - left[1] * right[0],
+                    ),
+                )
+            },
+            "polar" to native2("polar") { angle, radius ->
+                val theta = angle.asDouble("angle")
+                val r = radius.asDouble("radius")
+                FieldMLValue.HostValue(Vector2f((Math.cos(theta) * r).toFloat(), (Math.sin(theta) * r).toFloat()))
+            },
+
+            "draw" to native2("draw") { channel, line ->
+                val target = line.asFLine("draw")
+                requireBox(box, "draw").lines(listOf(target), channel = channel.asString("channel"))
+                FieldMLValue.HostValue(target)
+            },
+            "drawSized" to native4("drawSized") { channel, width, height, line ->
+                val target = line.asFLine("drawSized")
+                requireBox(box, "drawSized").lines(
+                    listOf(target),
+                    channel = channel.asString("channel"),
+                    w = width.asDouble("width"),
+                    h = height.asDouble("height"),
+                )
+                FieldMLValue.HostValue(target)
+            },
+            "animate" to native1("animate") { function -> FieldMLValue.HostValue(frameSequence(function, null)) },
+            "animateFor" to native2("animateFor") { duration, function ->
+                FieldMLValue.HostValue(frameSequence(function, duration.asDouble("duration")))
+            },
+
             "hostInput" to FieldMLValue.HostValue(HostInputPlaceholder),
             "hostClass" to native1("hostClass") { name -> FieldMLValue.HostValue(Class.forName(name.asString("class name"))) },
             "hostNew0" to native1("hostNew0") { klass ->
@@ -147,6 +357,61 @@ object FieldMLRuntimePrelude {
                 FieldMLValue.HostValue(host)
             },
         )
+
+    /**
+     * One frame of animation per step of the returned sequence: Field's launch machinery advances a
+     * returned `Sequence` once per run loop frame, so applying the FieldML function here is what makes
+     * a box animate. The function receives the seconds elapsed since launch and runs for its effects
+     * (`draw`, `display`, `hostTap`); its result is discarded. A null [durationSeconds] runs until the
+     * box is stopped.
+     */
+    private fun frameSequence(function: FieldMLValue, durationSeconds: Double?): Sequence<Long> {
+        val start = System.nanoTime()
+        var frame = 0L
+        return generateSequence {
+            val elapsed = (System.nanoTime() - start) / 1_000_000_000.0
+            if (durationSeconds != null && elapsed > durationSeconds) return@generateSequence null
+            applyFieldMLFunction(function, FieldMLValue.FloatValue(elapsed))
+            frame += 1
+            frame
+        }
+    }
+
+    private fun requireBox(box: Box?, name: String): Box =
+        box ?: error("'$name' needs a current Field box")
+
+    private fun magnitude(parts: FloatArray): Double =
+        Math.sqrt(parts.sumOf { (it * it).toDouble() })
+
+    private fun requireSameWidth(name: String, left: FloatArray, right: FloatArray) {
+        if (left.size != right.size) error("$name expects two vectors of the same width, found Vec${left.size} and Vec${right.size}")
+    }
+
+    private fun float1(name: String, block: (Double) -> Double): FieldMLValue.NativeFunctionValue =
+        native1(name) { value -> FieldMLValue.FloatValue(block(value.asDouble("value"))) }
+
+    /** Applies whichever of [ints]/[floats] matches the runtime number, preserving Int vs Float. */
+    private fun FieldMLValue.mapNumber(name: String, ints: (Long) -> Long, floats: (Double) -> Double): FieldMLValue =
+        when (this) {
+            is FieldMLValue.IntValue -> FieldMLValue.IntValue(ints(value))
+            is FieldMLValue.FloatValue -> FieldMLValue.FloatValue(floats(value))
+            else -> error("Expected numeric $name, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun numeric2(
+        name: String,
+        left: FieldMLValue,
+        right: FieldMLValue,
+        ints: (Long, Long) -> Long,
+        floats: (Double, Double) -> Double,
+    ): FieldMLValue =
+        when {
+            left is FieldMLValue.IntValue && right is FieldMLValue.IntValue ->
+                FieldMLValue.IntValue(ints(left.value, right.value))
+            left is FieldMLValue.FloatValue && right is FieldMLValue.FloatValue ->
+                FieldMLValue.FloatValue(floats(left.value, right.value))
+            else -> error("$name expects two Ints or two Floats, found ${renderFieldMLValue(left)} and ${renderFieldMLValue(right)}")
+        }
 
     private fun outputPayload(value: FieldMLValue): Any? =
         when (value) {
@@ -205,6 +470,19 @@ object FieldMLRuntimePrelude {
 
     private fun FieldMLValue.asString(name: String): String =
         (this as? FieldMLValue.StringValue)?.value ?: error("Expected String $name, found ${renderFieldMLValue(this)}")
+
+    private fun FieldMLValue.asLong(name: String): Long =
+        when (this) {
+            is FieldMLValue.IntValue -> value
+            is FieldMLValue.FloatValue -> value.toLong()
+            else -> error("Expected Int $name, found ${renderFieldMLValue(this)}")
+        }
+
+    private fun FieldMLValue.asList(name: String): List<FieldMLValue> =
+        (this as? FieldMLValue.ListValue)?.elements ?: error("Expected a list for $name, found ${renderFieldMLValue(this)}")
+
+    private fun FieldMLValue.asVector(name: String): FloatArray =
+        vectorComponents(this) ?: error("Expected Vec2, Vec3 or Vec4 for $name, found ${renderFieldMLValue(this)}")
 
     private fun FieldMLValue.asHost(name: String): Any =
         (this as? FieldMLValue.HostValue)?.value ?: error("Expected host $name, found ${renderFieldMLValue(this)}")
