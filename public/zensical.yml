@@ -68,6 +68,7 @@ nav:
         - StackSL Cheatsheet: stacksl_cheatsheet.md
         - StackSL Examples: stacksl_examples.md
         - Language Extensions: language_extensions.md
+        - Petri Cheatsheet: petri_cheatsheet.md
         - RectSL Cheatsheet: rectsl_cheatsheet.md
         - RectSL Examples: rectsl_examples.md
         - RectSL Inverse Animation: rectsl_inverse_animation.md
@@ -96,6 +97,7 @@ nav:
       - Networks and Dynamics:
         - Sorting Networks Examples: sorting_networks_examples.md
         - Interaction Nets Examples: interaction_nets_examples.md
+        - Petri Nets: petri_nets.md
         - Boolean Networks Examples: boolean_networks_examples.md
         - Boolean Network Music Examples: boolean_network_music_examples.md
         - Wave Function Collapse Examples: wfc_examples.md
