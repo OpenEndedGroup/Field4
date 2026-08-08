@@ -357,8 +357,39 @@ class Inferencer {
             if (argument !is ELambda) return@forEachIndexed
             val slot = parameters.getOrNull(index)
             val expected = slot?.let { FieldMLHostTypes.samParameterTypes(it) }
+            if (slot != null && expected != null) checkLambdaArity(argument, expected, slot, shape, ownerType)
             preInferred[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
         }
+    }
+
+    /**
+     * Knowing what the JVM wants is also worth something when the lambda cannot possibly be it.
+     *
+     * *Fewer* parameters than the interface takes is fine — FieldML functions are curried, so
+     * `fun x -> fun y -> …` is a two-argument callback and `fun ignored -> …` is how a `Runnable`
+     * with no arguments is written at all. *More* is fine too when the interface's result is itself
+     * a functional interface, because the proxy converts what comes back in its turn. Anything else
+     * hands the JVM a function where it wants a value, and that used to be a run-time failure inside
+     * a dynamic proxy with nothing in the message about the box that caused it.
+     */
+    private fun checkLambdaArity(
+        lambda: ELambda,
+        expected: List<Type>,
+        slot: FieldMLHostTypes.HostParameter,
+        shape: HostCallShape,
+        ownerType: Type,
+    ) {
+        if (expected.isEmpty() || lambda.parameters.size <= expected.size) return
+        if (FieldMLHostTypes.samResultAcceptsFunction(slot)) return
+        val owner = FieldMLHostTypes.jvmClassOf(ownerType)?.simpleName
+            ?: FieldMLHostTypes.classHandleName(ownerType)?.let { FieldMLHostTypes.display(it) }
+            ?: "this receiver"
+        val target = shape.method?.let { "$owner.$it" } ?: "$owner's constructor"
+        abort(
+            "$target calls this function with ${expected.size} argument(s), but it takes" +
+                " ${lambda.parameters.size} (${lambda.parameters.joinToString(", ")})",
+            lambda.range,
+        )
     }
 
     /** Infers [expr] once and remembers it for the ordinary walk to find. */

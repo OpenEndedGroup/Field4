@@ -221,6 +221,43 @@ class FieldMLLambdaExpectedTypeTest {
         )
     }
 
+    /**
+     * Knowing what the JVM wants is also worth something when the lambda cannot possibly be it. This
+     * used to be a run-time failure inside a dynamic proxy, with nothing in the message about which
+     * box caused it.
+     */
+    @Test
+    fun aLambdaWithMoreParametersThanTheCallbackTakesIsRefusedByName() {
+        assertRefused(
+            """fline |> hostCall1 "transform" (fun a b -> vec3 0.0 0.0 0.0)""",
+            "FLine.transform calls this function with 1 argument(s), but it takes 2 (a, b)",
+        )
+        assertRefused(
+            """
+            hostClass "afield.stdlib.Img" |> hostGet "Companion"
+              |> hostCall "generate" (4, 4, fun x y z -> 0.0)
+            """,
+            "calls this function with 2 argument(s), but it takes 3 (x, y, z)",
+        )
+    }
+
+    @Test
+    fun fewerParametersThanTheCallbackTakesIsFineBecauseFieldMLIsCurried() {
+        // `fun x -> fun y -> …` *is* a two-argument callback: `samProxy` feeds the arguments in one
+        // at a time. And `fun ignored -> …` is the only way to write a zero-argument one at all.
+        val curried = run(
+            """
+            hostClass "afield.stdlib.Img" |> hostGet "Companion"
+              |> hostCall "generate" (2, 2, fun x -> fun y -> toFloat (x + y))
+            """,
+        )
+        assertEquals(2f, assertIs<Img>(assertIs<FieldMLValue.HostValue>(curried).value).at(1, 1))
+        assertEquals(
+            "PersistentDouble",
+            typeOf("""hostNew (fun ignored -> 3.0) (hostClass "afield.PersistentDouble")"""),
+        )
+    }
+
     @Test
     fun aTypedParameterFlowsOnIntoTheRestOfTheProgram() {
         // Not just members: the parameter's type propagates through the prelude's vector operations,

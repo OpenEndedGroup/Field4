@@ -342,6 +342,24 @@ object FieldMLHostTypes {
         }
     }
 
+    /**
+     * Whether a lambda satisfying [parameter] may legitimately have *more* parameters than the
+     * interface takes.
+     *
+     * It may, exactly when the interface's own result is another functional interface: FieldML
+     * functions are curried, `samProxy` feeds the incoming arguments in one at a time, and `coerce`
+     * then turns the function that comes back into a proxy of the result interface in its turn. So
+     * `fun a b -> …` really is a `Function1<A, Function1<B, C>>`. When the result is *not* a
+     * functional interface, the extra parameter means the JVM is handed a function where it wants a
+     * value, and that fails on the first call — which is worth saying at compile time.
+     */
+    fun samResultAcceptsFunction(parameter: HostParameter): Boolean {
+        val method = FieldMLHostBridge.functionalMethod(parameter.jvmClass) ?: return true
+        val variables = samTypeArguments(parameter.jvmClass, parameter.generic)
+        val resolved = rawClassOf(substituteVariables(method.genericReturnType, variables)) ?: return true
+        return FieldMLHostBridge.functionalMethod(resolved) != null
+    }
+
     private fun samTypeArguments(
         iface: Class<*>,
         generic: java.lang.reflect.Type?,
