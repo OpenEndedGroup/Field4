@@ -53,6 +53,9 @@ internal fun isAllowedFieldAudioProxyRequest(method: HttpMethod, path: String): 
     else -> false
 }
 
+internal fun fieldAudioProxyTimeout(path: String): Duration =
+    if (representationWaveformPath.matches(path)) Duration.ofSeconds(20) else Duration.ofMinutes(2)
+
 /**
  * A deliberately narrow same-origin bridge for browser-facing Field Audio UI.
  *
@@ -82,7 +85,7 @@ private suspend fun io.ktor.server.application.ApplicationCall.proxyFieldAudioRe
 
     val query = requestUri.rawQuery?.let { "?$it" }.orEmpty()
     val target = URI.create("$fieldAudioServiceBase$upstreamPath$query")
-    val builder = HttpRequest.newBuilder(target).timeout(Duration.ofMinutes(2))
+    val builder = HttpRequest.newBuilder(target).timeout(fieldAudioProxyTimeout(upstreamPath))
     listOf(HttpHeaders.Accept, HttpHeaders.ContentType, HttpHeaders.Range, HttpHeaders.IfNoneMatch,
         HttpHeaders.IfModifiedSince).forEach { header ->
         request.headers[header]?.let { builder.header(header, it) }

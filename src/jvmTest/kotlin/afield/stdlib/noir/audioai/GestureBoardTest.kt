@@ -73,5 +73,7 @@ class GestureBoardTest {
         assertTrue("brass begins to press inward" in html)
         assertTrue("gb-cursor" in html)
         assertTrue("evaluative" in html)
+        assertTrue("data-afield-intrinsic-width=\"938\"" in html)
+        assertTrue("--board-width:938px" in html)
     }
 }

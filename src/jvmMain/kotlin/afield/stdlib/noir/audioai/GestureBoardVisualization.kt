@@ -90,7 +90,7 @@ object GestureBoardVisualization {
         """.trimIndent()
 
         return """
-        <section id="$id" class="gesture-board" style="--board-width:${width}px">
+        <section id="$id" class="gesture-board" data-afield-intrinsic-width="${width + 38}" style="--board-width:${width + 38}px">
           <style>
             #$id { width:min(100%,var(--board-width)); box-sizing:border-box; color:#dddfe5; background:linear-gradient(145deg,#181a1f,#121317); border:1px solid #343842; border-radius:12px; padding:16px 18px 18px; font:12px/1.35 Inter,system-ui,sans-serif; box-shadow:0 12px 30px #0005; }
             #$id * { box-sizing:border-box } #$id header { display:flex; align-items:flex-start; gap:14px; margin-bottom:9px } #$id h3 { margin:0; font-size:17px; font-weight:560; letter-spacing:.01em } #$id .gb-duration { color:#9ba1ad; font:11px ui-monospace,monospace; padding-top:4px }
