@@ -106,7 +106,8 @@ class PetriDrawing(
     /** The instant this frame shows, for the caption. */
     val at: PatQ = PatQ.ZERO,
     layout: PetriLayout = PetriLayout.AUTO,
-    /** Positions you would rather set yourself, by place or transition name. */
+    // Positions you would rather set yourself, by place or transition name. Not a `val`, so a
+    // KDoc block here would slide onto the next declaration — see KDocAttachmentGuard.
     pinned: Map<String, Vec2> = emptyMap(),
     val radius: Double = 240.0,
 ) {
@@ -157,17 +158,6 @@ private fun PatArc.contains(instant: PatQ): Boolean = instant >= start && instan
 // ── laying out ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Lays the net out, **one connected component at a time**, then packs the components side by side.
- *
- * Doing the whole net at once is the obvious implementation and it is badly wrong for exactly the
- * nets you most want to look at. A drum kit is two independent token rings; a spring model with no
- * edges between them has nothing to hold them apart, so the origin pull drags both into the same
- * space and a picture that should be two clean circles becomes one unreadable fan of overlapping
- * arcs. Laying out each piece on its own and *then* placing the pieces is what makes a multi-track
- * net legible — and it means a component that happens to be a cycle is still drawn as a cycle even
- * when the net as a whole is not one.
- */
-/**
  * Solved layouts, keyed on the structure they were solved for.
  *
  * A [PetriDrawing] computes its positions on construction, and an animation builds one per frame
@@ -202,6 +192,17 @@ private fun petriLayout(net: PetriNet, layout: PetriLayout, radius: Double): Map
     return solved
 }
 
+/**
+ * Lays the net out, **one connected component at a time**, then packs the components side by side.
+ *
+ * Doing the whole net at once is the obvious implementation and it is badly wrong for exactly the
+ * nets you most want to look at. A drum kit is two independent token rings; a spring model with no
+ * edges between them has nothing to hold them apart, so the origin pull drags both into the same
+ * space and a picture that should be two clean circles becomes one unreadable fan of overlapping
+ * arcs. Laying out each piece on its own and *then* placing the pieces is what makes a multi-track
+ * net legible — and it means a component that happens to be a cycle is still drawn as a cycle even
+ * when the net as a whole is not one.
+ */
 private fun petriLayoutUncached(net: PetriNet, layout: PetriLayout, radius: Double): Map<String, Vec2> {
     val components = petriComponents(net)
     if (components.isEmpty()) return emptyMap()

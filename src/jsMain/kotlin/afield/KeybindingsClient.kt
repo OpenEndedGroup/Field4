@@ -191,10 +191,6 @@ object Keybindings {
     // ── applying to an action ────────────────────────────────────────────────────
 
     /**
-     * Rewrites [action]'s `keybindings` and `canvasKeybinding` from its `keys` default and any user
-     * override. Idempotent — `keys` is never mutated, so this can run again after every reload.
-     */
-    /**
      * Narrows [declared] to canvas when any chord would type a character in a text field.
      *
      * A bare letter must not reach Monaco: `new-box` is `n`, and an editor binding for `n` swallows
@@ -208,6 +204,10 @@ object Keybindings {
     private fun effectiveScope(declared: String, chords: List<KeyChord>): String =
         if (chords.any { KeySpec.typesACharacter(it) }) KeyScope.canvas else declared
 
+    /**
+     * Rewrites [action]'s `keybindings` and `canvasKeybinding` from its `keys` default and any user
+     * override. Idempotent — `keys` is never mutated, so this can run again after every reload.
+     */
     fun installOnAction(action: dynamic) {
         if (action == null || action == undefined) return
         val id = (action.id as? String) ?: return

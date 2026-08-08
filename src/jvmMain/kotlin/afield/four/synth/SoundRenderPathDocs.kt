@@ -54,13 +54,17 @@ object SoundRenderPathDocs {
          */
         val pageLabel: String
     ) {
-        /** [patVoice]: no assets, works on a clean checkout, sounds like bursts of white noise. */
+        // Line comments, not KDoc: an enum entry that takes a constructor argument is not a form
+        // KDocExtractor.parseDeclaration can read, so a KDoc block here slides onto whatever parses
+        // next. A bare entry is fine; `STAND_IN("…")` is not. See KDocAttachmentGuard.
+
+        // patVoice: no assets, works on a clean checkout, sounds like bursts of white noise.
         STAND_IN("**Voice: the stand-in synth (`patVoice`).** No sample library was used."),
 
-        /** [patRenderStereoDirt] against a real Dirt-Samples install, every token matched. */
+        // patRenderStereoDirt against a real Dirt-Samples install, every token matched.
         DIRT_SAMPLES("**Voice: real Dirt-Samples one-shots, every token matched.**"),
 
-        /** Real samples where the library had them, [patVoice] per-event where it did not. */
+        // Real samples where the library had them, patVoice per-event where it did not.
         MIXED("**Voice: real Dirt-Samples where the library had the token, the stand-in synth per event where it did not.**"),
 
         ;
