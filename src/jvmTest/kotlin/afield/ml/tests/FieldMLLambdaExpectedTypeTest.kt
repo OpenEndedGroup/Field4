@@ -426,6 +426,73 @@ class FieldMLLambdaExpectedTypeTest {
         )
     }
 
+    // ---- the memo's one invariant ------------------------------------------------------------
+    //
+    // `preInferHostSpine` computes a result in one environment and hands it to a walk that consumes
+    // it somewhere else. That is only sound while the two environments are the same, and the way it
+    // is kept sound is structural: the memo is a *parameter* threaded only along the paths that leave
+    // `env` alone. These four tests are what that claim looks like from the outside — every shape in
+    // today's grammar where a name is rebound near a pre-inferred node, with the types it must have.
+
+    @Test
+    fun aCallbackParameterShadowsAnOuterBindingOfTheSameName() {
+        // `p` is an Int outside and a Vec3 inside. If the memo ever escaped into an environment where
+        // a name had been rebound, this is the shape that would show it.
+        val result = compileOk(
+            """
+            let p = 5 in
+            fline |> moveTo (toFloat p) 0.0
+              |> hostCall1 "transform" (fun p -> vec3 p.x p.y p.z)
+            """,
+        )
+        assertEquals(listOf("p: Vec3"), parameterSpellings(result))
+        assertEquals("FLine", TypePrinter().print(result.typed!!.type))
+    }
+
+    @Test
+    fun anOuterBindingIsStillItselfAfterTheCallbackThatShadowedIt() {
+        // The other direction: the shadowing must not leak back out. `nodes` and `n` are both read
+        // *after* the spine, in the environment the spine did not touch.
+        val value = run(
+            """
+            let n = 7 in
+            let warped =
+              fline |> moveTo 0.0 0.0 |> lineTo 10.0 0.0
+                |> hostCall1 "transform" (fun n -> vec3 n.x n.y n.z)
+            in (n + 1, warped |> hostGet "nodes" |> length)
+            """,
+        )
+        assertEquals("(8, 2)", renderFieldMLValue(value))
+    }
+
+    @Test
+    fun aLetInsideACallbackBodyDoesNotReachItsSiblingArguments() {
+        // A `let` is one of the forms the memo is deliberately not threaded into. Two arguments of one
+        // call, each binding `q`, each meaning something different.
+        val value = run(
+            """
+            let Img = hostClass "afield.stdlib.Img"
+            let a = hostNew (2, 2, 1, [1.0, 2.0, 3.0, 4.0]) Img
+            let b = a |> hostCall1 "map" (fun q -> let q = 10.0 in q)
+            b |> hostCall2 "zip" a (fun q r -> q + r) |> hostCall "at" (0, 0, 0)
+            """,
+        )
+        assertEquals("11.0", renderFieldMLValue(value))
+    }
+
+    @Test
+    fun aLambdaBehindALetGetsNoExpectedTypeAndSaysSo() {
+        // The expected type reaches a lambda *literal* in argument position, and only that. Behind a
+        // `let` the argument is an `ELet`, the memo is never built, and the parameter is on its own —
+        // which is the same residual as the function-parameter receiver, from the other end.
+        assertRefused(
+            """
+            fline |> hostCall1 "transform" (let scale = 2.0 in fun p -> vec3 (p.x * scale) p.y p.z)
+            """,
+            "Record is missing field 'y'",
+        )
+    }
+
     // ---- the measurement --------------------------------------------------------------------
 
     /**

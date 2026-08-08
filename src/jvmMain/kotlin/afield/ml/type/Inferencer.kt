@@ -49,14 +49,6 @@ class Inferencer {
     private val numericVariables = mutableSetOf<Int>()
     private val vectorVariables = mutableSetOf<Int>()
 
-    /**
-     * Sub-expressions already inferred out of order by [preInferHostSpine], keyed by *identity* —
-     * two structurally identical arguments of the same call are different nodes and must not share
-     * a result. Each entry is consumed exactly once, by the ordinary walk that follows, so every
-     * source node is still inferred exactly once and no second pass exists.
-     */
-    private val preInferred = java.util.IdentityHashMap<Expr, TExpr>()
-
     fun infer(expr: Expr): InferResult =
         try {
             val inferred = inferExpr(expr, TypeEnv(FieldMLTypePrelude.schemes))
@@ -66,12 +58,12 @@ class Inferencer {
             InferResult(null, diagnostics)
         }
 
-    private fun inferExpr(expr: Expr, env: TypeEnv): TExpr {
-        preInferred.remove(expr)?.let { return it }
-        return inferFresh(expr, env)
+    private fun inferExpr(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr {
+        memo?.take(expr, env)?.let { return it }
+        return inferFresh(expr, env, memo)
     }
 
-    private fun inferFresh(expr: Expr, env: TypeEnv): TExpr =
+    private fun inferFresh(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr =
         when (expr) {
             is EInt -> TExprInt(expr.value, expr.range, TInt)
             is EFloat -> TExprFloat(expr.value, expr.range, TFloat)
@@ -81,12 +73,14 @@ class Inferencer {
                 val scheme = env[expr.name] ?: abort("Unknown name '${expr.name}'", expr.range)
                 TExprVar(expr.name, expr.range, instantiate(scheme))
             }
+            // A tuple or list literal is the `host…` family's argument spread, so the memo has to
+            // reach its elements — and neither form touches `env`, which is what makes that safe.
             is ETuple -> {
-                val elements = expr.elements.map { inferExpr(it, env) }
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
                 TExprTuple(elements, expr.range, TTuple(elements.map { it.type }))
             }
             is EList -> {
-                val elements = expr.elements.map { inferExpr(it, env) }
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
                 val elementType = elements.firstOrNull()?.type ?: fresh()
                 elements.drop(1).forEach { unify(elementType, it.type, it.range) }
                 TExprList(elements, expr.range, TList(elementType))
@@ -96,10 +90,11 @@ class Inferencer {
             is ECall -> {
                 // Curried application is left-nested, so the ordinary walk reaches a lambda argument
                 // before it reaches the receiver that says what the lambda's parameters are. This is
-                // where that order is put right, for host calls only.
-                preInferHostSpine(expr, env)
-                val function = inferExpr(expr.function, env)
-                val argument = inferExpr(expr.argument, env)
+                // where that order is put right, for host calls only. An inherited memo means this
+                // call is an inner link of a spine whose outermost call already did the work.
+                val spine = memo ?: preInferHostSpine(expr, env)
+                val function = inferExpr(expr.function, env, spine)
+                val argument = inferExpr(expr.argument, env, spine)
                 val resultType = fresh()
                 unify(function.type, TFun(argument.type, resultType), expr.range)
                 val call = TExprCall(function, argument, expr.range, resultType)
@@ -337,15 +332,20 @@ class Inferencer {
      * (`FieldMLHostTypes.parametersOf`), and the reordering only happens when a lambda is present,
      * so no existing program even changes the order its diagnostics come out in.
      */
-    private fun preInferHostSpine(call: ECall, env: TypeEnv) {
-        val (head, arguments) = sourceSpine(call) ?: return
-        if (env[head.name] !== FieldMLTypePrelude.schemes[head.name]) return
-        val shape = hostCallShape(head.name, arguments) ?: return
-        if (shape.arguments.none { it is ELambda }) return
+    private fun preInferHostSpine(call: ECall, env: TypeEnv): SpineMemo? {
+        val (head, arguments) = sourceSpine(call) ?: return null
+        if (env[head.name] !== FieldMLTypePrelude.schemes[head.name]) return null
+        val shape = hostCallShape(head.name, arguments) ?: return null
+        if (shape.arguments.none { it is ELambda }) return null
 
-        val owner = preInfer(shape.owner, env)
+        val memo = SpineMemo(env)
+        val owner = preInfer(shape.owner, env, memo)
         val argumentTypes = shape.arguments.map { argument ->
-            if (argument is ELambda) placeholderFunction(argument.parameters.size) else pruned(preInfer(argument, env))
+            if (argument is ELambda) {
+                placeholderFunction(argument.parameters.size)
+            } else {
+                pruned(preInfer(argument, env, memo))
+            }
         }
         val ownerType = prune(owner.type)
         val parameters = when {
@@ -358,8 +358,9 @@ class Inferencer {
             val slot = parameters.getOrNull(index)
             val expected = slot?.let { FieldMLHostTypes.samParameterTypes(it) }
             if (slot != null && expected != null) checkLambdaArity(argument, expected, slot, shape, ownerType)
-            preInferred[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
+            memo[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
         }
+        return memo
     }
 
     /**
@@ -392,9 +393,13 @@ class Inferencer {
         )
     }
 
-    /** Infers [expr] once and remembers it for the ordinary walk to find. */
-    private fun preInfer(expr: Expr, env: TypeEnv): TExpr =
-        preInferred[expr] ?: inferFresh(expr, env).also { preInferred[expr] = it }
+    /**
+     * Infers [expr] once and remembers it for the ordinary walk to find. Deliberately *not* handed the
+     * memo it is filling: a spine argument is a fresh sub-tree, and if it is itself a host call with a
+     * lambda in it, it starts a memo of its own rather than sharing this one.
+     */
+    private fun preInfer(expr: Expr, env: TypeEnv, memo: SpineMemo): TExpr =
+        memo[expr] ?: inferFresh(expr, env).also { memo[expr] = it }
 
     /**
      * A stand-in for a lambda argument that has not been inferred yet. It has to be a [TFun] of the
@@ -1050,6 +1055,57 @@ class Inferencer {
 
     private fun abort(message: String, range: SourceRange): Nothing {
         throw CompileAbort(Diagnostic(Severity.Error, message, range))
+    }
+
+    /**
+     * Sub-expressions of one host call, inferred out of order by [preInferHostSpine] and picked up by
+     * the ordinary walk that follows. Keyed by *identity*: two structurally identical arguments of the
+     * same call are different nodes and must not share a result.
+     *
+     * **A cached result is only valid in the environment it was computed in.** That is enforced
+     * structurally, and the enforcement is the whole reason this is a *parameter* rather than a field
+     * on the inferencer: a memo is threaded only along the walk paths that leave `env` untouched — the
+     * two halves of an application, and the elements of a tuple or list literal. It is never passed
+     * into a lambda body, a `let` body or a match case, so there is no route by which an entry can
+     * reach a site where a name has been rebound.
+     *
+     * The invariant a future change must preserve: **an `Expr` form that both occurs inside a curried
+     * application spine and extends the environment must not be given the memo.** [take] is the
+     * tripwire for the day someone does it anyway — the entry is refused rather than trusted, so the
+     * node is re-inferred under the bindings it is actually used with (correct, just without the
+     * expected type), and [environmentMismatches] counts it so a test can see what a comment could
+     * not. `FieldMLSmokeExamplesTest` asserts that counter is zero over every FieldML program in the
+     * repository.
+     */
+    private class SpineMemo(private val env: TypeEnv) {
+        private val entries = java.util.IdentityHashMap<Expr, TExpr>()
+
+        operator fun get(expr: Expr): TExpr? = entries[expr]
+
+        operator fun set(expr: Expr, typed: TExpr) {
+            entries[expr] = typed
+        }
+
+        /** The result for [expr], but only if [at] is the environment it was computed in. */
+        fun take(expr: Expr, at: TypeEnv): TExpr? {
+            val typed = entries[expr] ?: return null
+            if (at !== env) {
+                environmentMismatches.incrementAndGet()
+                return null
+            }
+            entries.remove(expr)
+            return typed
+        }
+    }
+
+    companion object {
+        /**
+         * How many times a [SpineMemo] entry was reached under an environment other than the one it
+         * was computed in — which, as long as the invariant in [SpineMemo] holds, is never. It is a
+         * tripwire rather than a feature: nothing reads it except the test that asserts it is zero.
+         */
+        val environmentMismatches: java.util.concurrent.atomic.AtomicLong =
+            java.util.concurrent.atomic.AtomicLong()
     }
 
     private data class ConstructorInfo(

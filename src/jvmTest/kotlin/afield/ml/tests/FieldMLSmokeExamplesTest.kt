@@ -6,6 +6,7 @@ import afield.ml.CompilationResult
 import afield.ml.FieldMLRuntimePrelude
 import afield.ml.core.Evaluator
 import afield.ml.core.renderFieldMLValue
+import afield.ml.type.Inferencer
 import afield.ml.type.TypePrinter
 import java.nio.file.Path
 import kotlin.test.Test
@@ -129,6 +130,42 @@ class FieldMLSmokeExamplesTest {
             1,
             sources.count { marker in it },
             "expected exactly one box in $demo to document the residual case",
+        )
+    }
+
+    /**
+     * The inferencer's one caching invariant, checked over every FieldML program in the repository
+     * rather than argued about in a comment.
+     *
+     * `Inferencer.preInferHostSpine` computes a result in one environment and hands it to a walk that
+     * consumes it elsewhere; that is sound only while the two environments are the same, and it is
+     * kept sound structurally by threading the memo only along paths that leave the environment
+     * alone. `SpineMemo.take` counts every time it is reached under a different one. The count is
+     * absolute, not a delta, so this test does not care what order it runs in — and if it ever fails,
+     * the fix is in the inferencer, never here.
+     */
+    @Test
+    fun noHostSpineResultIsEverReusedUnderADifferentEnvironment() {
+        examples.forEach { FieldMLCompiler.compile(it.source.trimIndent()) }
+        errorExamples.forEach { FieldMLCompiler.compile(it.source.trimIndent()) }
+        listOf(
+            Path.of("public/docs/fieldml_examples.md"),
+            Path.of("public/docs/fieldml_cheatsheet.md"),
+            Path.of("public/docs/fieldml_host_bridge.md"),
+        ).forEach { page ->
+            fieldMLDocSnippets(page.toFile().readText()).forEach { FieldMLCompiler.compile(it) }
+        }
+        listOf(
+            Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn"),
+            Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn"),
+        ).forEach { demo ->
+            ednCodeStrings(demo.toFile().readText()).forEach { FieldMLCompiler.compile(it) }
+        }
+
+        assertEquals(
+            0L,
+            Inferencer.environmentMismatches.get(),
+            "a pre-inferred host-call argument was reused under an environment it was not computed in",
         )
     }
 
