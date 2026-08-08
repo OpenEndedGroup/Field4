@@ -105,19 +105,100 @@ data class PetriToken(val colour: Any? = null, val born: PatQ = PatQ.ZERO) {
 fun blackToken(at: PatQ = PatQ.ZERO): PetriToken = PetriToken(null, at)
 
 /**
+ * The tokens in one place: an immutable list that shares its storage with the list it was appended
+ * to.
+ *
+ * A marking is immutable and every [PetriStep] keeps one, so copying the target place's tokens on
+ * each [PetriMarking.add] made a net with an unbounded place cost O(n²) in the step count — copying
+ * a list that is one longer every time. Four thousand steps of a net that merely leaks one token per
+ * step was enough to exhaust a default heap, and a leaking net is precisely the one you want the
+ * analysis to survive long enough to *name*.
+ *
+ * So appends share. Every list is the window `0 until size` onto an array that only ever grows at
+ * its end, and appending writes past the end of the previous list instead of copying it. Three rules
+ * make that safe with no lock and no volatile on the read path:
+ *
+ * - a list only reads `elements[0 until size]`, and every one of those slots was written *before* it
+ *   was constructed, so [elements] being final is what publishes them (JLS 17.5, the final-field
+ *   freeze) to any thread that can see the list at all;
+ * - appending happens under the buffer's own monitor, and only ever writes past every existing
+ *   list's end, so no slot any list can already see is written twice;
+ * - appending to a list that is *not* the buffer's tip starts a fresh buffer, because two branches
+ *   cannot both own the next slot. That is what a search branching from an older marking does, and
+ *   it copies exactly as the old code did.
+ *
+ * Growing the buffer replaces its array rather than resizing one in place, and each list keeps the
+ * array it was built in, so an older list is never made to read an array published after its own
+ * freeze. The arrays a run leaves behind are then the doubling sequence, which sums to O(n) — which
+ * is the whole point.
+ */
+internal class SharedTokenList private constructor(
+    private val buffer: Buffer,
+    private val elements: Array<PetriToken?>,
+    override val size: Int,
+) : AbstractList<PetriToken>() {
+
+    /** The array behind one chain of appends, and how much of it is already spoken for. */
+    private class Buffer(var elements: Array<PetriToken?>, var fill: Int)
+
+    override fun get(index: Int): PetriToken {
+        if (index < 0 || index >= size) throw IndexOutOfBoundsException("index $index, size $size")
+        return elements[index]!!
+    }
+
+    /** This list with [tokens] on the end, sharing this list's storage when it can. */
+    fun append(tokens: List<PetriToken>): SharedTokenList {
+        if (tokens.isEmpty()) return this
+        val length = size + tokens.size
+        synchronized(buffer) {
+            if (buffer.fill == size) {
+                var array = buffer.elements
+                if (length > array.size) {
+                    array = array.copyOf(maxOf(MIN_CAPACITY, length * 2))
+                    buffer.elements = array
+                }
+                for ((offset, token) in tokens.withIndex()) array[size + offset] = token
+                buffer.fill = length
+                return SharedTokenList(buffer, array, length)
+            }
+        }
+        // Not the tip: another list already owns the next slot, so this branch needs its own array.
+        // Sized exactly, with no slack — a branch is usually a search's leaf and never appended to
+        // again, and there are a great many of them. The slack arrives on the first append that
+        // wants it, which is what keeps a *chain* of appends amortised.
+        val array = arrayOfNulls<PetriToken>(length)
+        for (index in 0 until size) array[index] = elements[index]
+        for ((offset, token) in tokens.withIndex()) array[size + offset] = token
+        return SharedTokenList(Buffer(array, length), array, length)
+    }
+
+    companion object {
+        private const val MIN_CAPACITY = 8
+
+        /** [tokens] as a list that can be appended to cheaply; already one, and it is its own answer. */
+        fun of(tokens: List<PetriToken>): SharedTokenList {
+            if (tokens is SharedTokenList) return tokens
+            val array = arrayOfNulls<PetriToken>(tokens.size)
+            for ((index, token) in tokens.withIndex()) array[index] = token
+            return SharedTokenList(Buffer(array, tokens.size), array, tokens.size)
+        }
+    }
+}
+
+/**
  * A marking: which tokens are in which place, in arrival order.
  *
  * Empty places are not stored, so two markings compare equal exactly when they hold the same
  * tokens in the same order — which is what the reachability search in `PetriAnalysis.kt` needs.
  */
-class PetriMarking private constructor(private val byPlace: Map<String, List<PetriToken>>) {
+class PetriMarking private constructor(private val byPlace: Map<String, SharedTokenList>) {
 
     companion object {
         val EMPTY = PetriMarking(emptyMap())
 
         /** A marking from place name to tokens; empty entries are dropped. */
         fun of(tokens: Map<String, List<PetriToken>>): PetriMarking =
-            PetriMarking(tokens.filterValues { it.isNotEmpty() })
+            PetriMarking(tokens.filterValues { it.isNotEmpty() }.mapValues { SharedTokenList.of(it.value) })
 
         /** A marking of black tokens only — `counts("kick" to 1, "hats" to 0)`. */
         fun counts(vararg counts: Pair<String, Int>, at: PatQ = PatQ.ZERO): PetriMarking =
@@ -139,10 +220,16 @@ class PetriMarking private constructor(private val byPlace: Map<String, List<Pet
     /** The colours in [place], in arrival order — `null` entries are black tokens. */
     fun colours(place: String): List<Any?> = this[place].map { it.colour }
 
-    /** A copy with [tokens] appended to the back of [place]. */
+    /**
+     * A copy with [tokens] appended to the back of [place].
+     *
+     * The one operation a running net does over and over, and the one that used to make an unbounded
+     * place quadratic — see [SharedTokenList] for what it shares and when it cannot.
+     */
     fun add(place: String, tokens: List<PetriToken>): PetriMarking {
         if (tokens.isEmpty()) return this
-        return PetriMarking(byPlace + (place to (this[place] + tokens)))
+        val grown = byPlace[place]?.append(tokens) ?: SharedTokenList.of(tokens)
+        return PetriMarking(byPlace + (place to grown))
     }
 
     /** A copy with exactly [tokens] removed from [place], matched by identity of position. */
@@ -150,13 +237,13 @@ class PetriMarking private constructor(private val byPlace: Map<String, List<Pet
         if (indices.isEmpty()) return this
         val remaining = this[place].filterIndexed { index, _ -> index !in indices }
         return if (remaining.isEmpty()) PetriMarking(byPlace - place)
-        else PetriMarking(byPlace + (place to remaining))
+        else PetriMarking(byPlace + (place to SharedTokenList.of(remaining)))
     }
 
     /** A copy with [place] set to exactly [tokens]. */
     fun withPlace(place: String, tokens: List<PetriToken>): PetriMarking =
         if (tokens.isEmpty()) PetriMarking(byPlace - place)
-        else PetriMarking(byPlace + (place to tokens))
+        else PetriMarking(byPlace + (place to SharedTokenList.of(tokens)))
 
     /** The whole marking as a plain map — a defensive copy, safe to keep. */
     fun toMap(): Map<String, List<PetriToken>> = LinkedHashMap(byPlace)
@@ -178,8 +265,34 @@ class PetriMarking private constructor(private val byPlace: Map<String, List<Pet
     fun signature(): String = byPlace.entries
         .sortedBy { it.key }
         .joinToString(";") { (place, tokens) ->
-            "$place=" + tokens.map { it.colour?.toString() ?: "•" }.sorted().joinToString(",")
+            "$place=" + tokens.map { colourKey(it) }.sorted().joinToString(",")
         }
+
+    /**
+     * [signature] as a 64-bit number.
+     *
+     * Recurrence detection asks "have I been here before?" once per step, and answering it with the
+     * signature *string* means keeping a string as long as the marking for every step — the same
+     * O(n²), now measured in characters. So the hash is what [PetriRun] keeps, and the string is
+     * built only to confirm a hit, of which there is at most one.
+     *
+     * Terms are mixed and then *summed* rather than hashed in sequence, because [signature] sorts the
+     * colours within a place and the places by name, and a sum does not care what order it is given
+     * its terms in. Equal signatures therefore always hash equally, which is the direction that has
+     * to hold; unequal ones almost always differ, and the caller checks rather than trusts.
+     */
+    fun signatureHash(): Long {
+        var total = 0L
+        for ((place, tokens) in byPlace) {
+            var here = 1L
+            for (token in tokens) here += splitmix64(colourKey(token).hashCode().toLong())
+            total += splitmix64(splitmix64(place.hashCode().toLong()) xor here)
+        }
+        return total
+    }
+
+    /** How [signature] and [signatureHash] both see a token: its colour rendered, birth time dropped. */
+    private fun colourKey(token: PetriToken): String = token.colour?.toString() ?: "•"
 
     override fun equals(other: Any?): Boolean = other is PetriMarking && other.byPlace == byPlace
 
@@ -396,8 +509,12 @@ class PetriNet(
      * Runs are cheap to make and expensive to keep filling, so hold one for as long as you want the
      * same performance and make a new one when the marking should reset.
      */
-    fun run(from: PetriMarking = initial, startAt: PatQ = PatQ.ZERO, maxUnroll: Int = DEFAULT_MAX_UNROLL): PetriRun =
-        PetriRun(this, from, startAt, maxUnroll)
+    fun run(
+        from: PetriMarking = initial,
+        startAt: PatQ = PatQ.ZERO,
+        maxUnroll: Int = DEFAULT_MAX_UNROLL,
+        maxTokens: Int = DEFAULT_MAX_TOKENS,
+    ): PetriRun = PetriRun(this, from, startAt, maxUnroll, maxTokens)
 
     override fun toString(): String = buildString {
         append("PetriNet(${places.size} places, ${transitions.size} transitions, $timing @$grid)\n")
@@ -408,6 +525,16 @@ class PetriNet(
     companion object {
         /** How many steps a run will replay before it refuses. See the file header on purity. */
         const val DEFAULT_MAX_UNROLL: Int = 200_000
+
+        /**
+         * How many tokens one place may hold before a run stops with [PetriHalt.FLOODED].
+         *
+         * Generous enough that no net anyone writes on purpose meets it — a place holding four
+         * thousand tokens is leaking, not counting — and small enough that the run stops while its
+         * markings are still cheap to hash, which is what keeps a runaway net from turning
+         * `maxUnroll` steps into quadratic work. Raise it per-run if you really are counting.
+         */
+        const val DEFAULT_MAX_TOKENS: Int = 4_096
     }
 }
 
@@ -500,6 +627,16 @@ enum class PetriHalt {
 
     /** The run hit its `maxUnroll` ceiling. Not a property of the net — a property of the query. */
     EXHAUSTED,
+
+    /**
+     * A place passed the run's `maxTokens` ceiling, and [PetriRun.floodedPlace] says which.
+     *
+     * Not a proof that the place is unbounded — that is a coverability question and this is a
+     * measurement. But a place holding thousands of tokens is leaking rather than accumulating, and
+     * a run that carries on pays for a marking that size on every step it has left, so stopping and
+     * naming the place is worth more than continuing.
+     */
+    FLOODED,
 }
 
 /**
@@ -526,6 +663,14 @@ data class PetriLasso(
         "PetriLasso(tail=$tailSteps steps, loop=$loopSteps steps = $duration cycles, $firingCounts)"
 }
 
+/**
+ * A run's state after one step, compressed enough to be worth keeping one of per step: the marking
+ * hashed, and whatever is still in flight written out in full because there is never much of it.
+ *
+ * See [PetriRun.lasso] for where the hash gets checked against the marking it came from.
+ */
+private class PetriStateKey(val markingHash: Long, val inFlight: String)
+
 /** A transition's outputs waiting to land, under [PetriTiming.TIMED]. */
 private class PetriPending(
     val due: PatQ,
@@ -550,29 +695,42 @@ class PetriRun internal constructor(
     val from: PetriMarking,
     val startAt: PatQ = PatQ.ZERO,
     val maxUnroll: Int = PetriNet.DEFAULT_MAX_UNROLL,
+    val maxTokens: Int = PetriNet.DEFAULT_MAX_TOKENS,
 ) {
     private val lock = Any()
     private val steps = mutableListOf<PetriStep>()
     private val pending = mutableListOf<PetriPending>()
 
     /**
-     * One key per materialised step: the marking, plus whatever is still in flight expressed as an
-     * offset from the instant the run has reached.
+     * One key per materialised step, index for index with [steps]: the marking, plus whatever is
+     * still in flight expressed as an offset from the instant the run has reached.
      *
      * Recorded as the run advances because it cannot be reconstructed afterwards — [pending] is
      * mutable state, not part of a [PetriStep], and a TIMED net with a token in flight has a
      * different future from the same marking with nothing in flight.
+     *
+     * The marking is hashed rather than spelled out so that a step costs a *constant* amount of
+     * retained memory whatever the marking's size. See [PetriMarking.signatureHash].
      */
-    private val stepKeys = mutableListOf<String>()
+    private val stepKeys = mutableListOf<PetriStateKey>()
 
     private var cursor: PatQ = startAt
     private var marking: PetriMarking = from
     private var firingCounter: Long = 0
     private var pendingCounter: Long = 0
     private var halted: PetriHalt = PetriHalt.RUNNING
+    private var flooded: String? = null
 
     /** Why the run stopped, or [PetriHalt.RUNNING] if it has not. Only meaningful after a query. */
     val halt: PetriHalt get() = synchronized(lock) { halted }
+
+    /**
+     * The place that passed [maxTokens], when that is why the run stopped, and null otherwise.
+     *
+     * The name of the leak, which is usually the whole answer: a place that only fills is a missing
+     * output arc.
+     */
+    val floodedPlace: String? get() = synchronized(lock) { flooded }
 
     /** How many steps have been materialised so far. */
     val materialised: Int get() = synchronized(lock) { steps.size }
@@ -651,12 +809,12 @@ class PetriRun internal constructor(
      * flight written as an offset from the instant the run has now reached, so the key is about
      * shape rather than absolute position.
      */
-    private fun stateKeyLocked(): String {
+    private fun stateKeyLocked(): PetriStateKey {
         val flight = pending
             .map { "${(it.due - cursor)}@${it.place}x${it.tokens.size}" }
             .sorted()
             .joinToString(",")
-        return marking.signature() + "|" + flight
+        return PetriStateKey(marking.signatureHash(), flight)
     }
 
     /** The last materialised step strictly before [instant], by binary search over `at`. */
@@ -687,14 +845,30 @@ class PetriRun internal constructor(
      * Returns null if the run neither repeats nor stops within [maxSteps] — which for a net that
      * keeps minting fresh colours it never will, since a marking it has never held before cannot
      * be one it is returning to.
+     *
+     * A [PetriStateKey] holds the marking as a hash, so a match is a *candidate*: it is confirmed
+     * against the real signatures before it is believed. There is at most one signature pair to
+     * build, because a confirmed match returns and an unconfirmed one is a hash collision, which
+     * over a 64-bit mix is not something that happens.
      */
     fun lasso(maxSteps: Int = 4_096): PetriLasso? = synchronized(lock) {
         val limit = minOf(maxSteps, maxUnroll)
         while (steps.size < limit && halted == PetriHalt.RUNNING) advanceLocked()
+        check(steps.size == stepKeys.size) { "a step was materialised without its recurrence key" }
 
-        val seen = HashMap<String, Int>()
+        val seen = HashMap<Long, MutableList<Int>>()
         for ((index, key) in stepKeys.withIndex()) {
-            val earlier = seen.putIfAbsent(key, index) ?: continue
+            val candidates = seen.getOrPut(key.markingHash) { mutableListOf() }
+            val earlier = if (candidates.isEmpty()) null else {
+                val signature = steps[index].after.signature()
+                candidates.firstOrNull { other ->
+                    stepKeys[other].inFlight == key.inFlight && steps[other].after.signature() == signature
+                }
+            }
+            if (earlier == null) {
+                candidates += index
+                continue
+            }
             return PetriLasso(
                 tailSteps = earlier + 1,
                 loopSteps = index - earlier,
@@ -719,6 +893,7 @@ class PetriRun internal constructor(
         firingCounter = 0
         pendingCounter = 0
         halted = PetriHalt.RUNNING
+        flooded = null
     }
 
     override fun toString(): String =
@@ -744,6 +919,12 @@ class PetriRun internal constructor(
             PetriTiming.STEP -> advanceGridLocked(maximal = true)
             PetriTiming.EVENT -> advanceGridLocked(maximal = false)
             PetriTiming.TIMED -> advanceTimedLocked()
+        }
+        // Checked after the step rather than before it, so that the marking which overflowed is the
+        // one you get to look at — that being the point of knowing.
+        if (halted == PetriHalt.RUNNING) {
+            flooded = marking.occupied.firstOrNull { marking.count(it) > maxTokens }
+            if (flooded != null) halted = PetriHalt.FLOODED
         }
     }
 

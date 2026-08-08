@@ -325,6 +325,123 @@ class PetriModelTest {
         assertEquals(PetriHalt.EXHAUSTED, run.halt)
     }
 
+    @Test
+    fun `a place that only fills stops the run and gets named, rather than filling the heap`() {
+        val net = petri {
+            place("run", tokens = 1)
+            t("make") { from("run"); to("run"); to("queue") }
+        }
+        val run = net.run(maxTokens = 32)
+        run.steps(10_000)
+        assertEquals(PetriHalt.FLOODED, run.halt)
+        assertEquals("queue", run.floodedPlace, "the name of the leak is the whole answer")
+        assertEquals(33, run.markingAt(cyc(1_000)).count("queue"), "it stops one past the ceiling, so you can see it")
+        assertNull(net.run().floodedPlace, "and a run that has not been asked anything has not flooded")
+    }
+
+    // ── shared token storage ──────────────────────────────────────────────────────────────
+
+    /*
+     Appending to a place shares the storage of the list it appended to (see [SharedTokenList]), so
+     the thing worth testing is that two markings grown from the *same* parent cannot see each
+     other's tokens — the one case where sharing has to give up and copy.
+    */
+
+    @Test
+    fun `a long trajectory through a filling place costs its length, not its length squared`() {
+        // A step keeps a marking and a marking used to copy the whole target place, so a net that
+        // leaks one token per step cost O(n²): sixteen thousand steps of this exhausted the heap,
+        // and four thousand — the default budget every analysis in `PetriAnalysis.kt` asks for —
+        // already cost seventy megabytes. Asking for four times the default is the assertion.
+        val net = petri {
+            place("run", tokens = 1)
+            t("make") { from("run"); to("run"); to("queue") }
+        }
+        val run = net.run(maxTokens = 100_000)
+        run.lasso(16_384)
+
+        assertEquals(16_384, run.materialised)
+        assertEquals(PetriHalt.RUNNING, run.halt, "it ran out of budget, not out of room")
+
+        // Every step's marking is still its own length, which is what says the sharing did not
+        // quietly hand every step the same list. Asked for by count, not by instant: `markingAt`
+        // would extend the trajectory rather than read the part of it already built.
+        val steps = run.steps(16_384)
+        assertEquals(1, steps.first().after.count("queue"))
+        assertEquals(4_096, steps[4_095].after.count("queue"))
+        assertEquals(16_384, steps.last().after.count("queue"))
+    }
+
+    @Test
+    fun `two markings grown from one parent do not see each other's tokens`() {
+        val parent = PetriMarking.counts("q" to 1)
+        val left = parent.add("q", listOf(PetriToken("L")))
+        val right = parent.add("q", listOf(PetriToken("R")))
+
+        assertEquals(listOf(null), parent.colours("q"), "the parent is immutable and stayed that way")
+        assertEquals(listOf(null, "L"), left.colours("q"))
+        assertEquals(listOf(null, "R"), right.colours("q"), "the second child branches rather than overwriting")
+
+        // And a branch is itself appendable, several deep, without disturbing its siblings.
+        val deeper = right.add("q", listOf(PetriToken("R2"))).add("q", listOf(PetriToken("R3")))
+        assertEquals(listOf(null, "R", "R2", "R3"), deeper.colours("q"))
+        assertEquals(listOf(null, "L"), left.colours("q"))
+    }
+
+    @Test
+    fun `a long chain of appends keeps every intermediate marking intact`() {
+        val history = mutableListOf(PetriMarking.EMPTY)
+        repeat(200) { index -> history += history.last().add("q", listOf(PetriToken(index))) }
+
+        // Every snapshot still reads as its own length, and a branch off the middle of the chain
+        // does not rewrite the tokens the chain already handed out.
+        history.forEachIndexed { length, marking ->
+            assertEquals(length, marking.count("q"))
+            assertEquals((0 until length).toList(), marking.colours("q"))
+        }
+        val branch = history[100].add("q", listOf(PetriToken("elsewhere")))
+        assertEquals("elsewhere", branch.colours("q").last())
+        assertEquals(100, history[101].colours("q").last(), "the original 101st is untouched")
+        assertEquals(200, history.last().count("q"))
+    }
+
+    @Test
+    fun `an appended token list is an ordinary list to everyone who reads it`() {
+        val marking = PetriMarking.EMPTY
+            .add("q", listOf(PetriToken("a")))
+            .add("q", listOf(PetriToken("b"), PetriToken("c")))
+        val tokens = marking["q"]
+
+        assertEquals(3, tokens.size)
+        assertEquals(listOf(PetriToken("a"), PetriToken("b"), PetriToken("c")), tokens, "equal to a plain list")
+        assertEquals(listOf(PetriToken("a"), PetriToken("b"), PetriToken("c")).hashCode(), tokens.hashCode())
+        assertEquals(listOf("b", "c"), tokens.drop(1).map { it.colour }, "and the stdlib works on it")
+        assertEquals(PetriMarking.of(mapOf("q" to tokens)), marking, "so markings still compare by content")
+    }
+
+    @Test
+    fun `the marking hash agrees with the signature it stands in for`() {
+        // Recurrence detection keeps the hash and not the string, so equal signatures must hash
+        // equally — the direction the search relies on. Birth times and colour order are the two
+        // things the signature deliberately ignores, and so must the hash.
+        val early = PetriMarking.of(mapOf("q" to listOf(PetriToken("a", cyc(1)), PetriToken("b", cyc(2)))))
+        val late = PetriMarking.of(mapOf("q" to listOf(PetriToken("b", cyc(9)), PetriToken("a", cyc(9)))))
+        assertEquals(early.signature(), late.signature())
+        assertEquals(early.signatureHash(), late.signatureHash())
+        assertNotEquals(early, late, "…while the markings themselves are still distinguishable")
+
+        val other = PetriMarking.of(mapOf("q" to listOf(PetriToken("a"), PetriToken("c"))))
+        assertNotEquals(early.signature(), other.signature())
+        assertNotEquals(early.signatureHash(), other.signatureHash())
+
+        // A place's name is part of the state, not just its contents.
+        val here = PetriMarking.counts("a" to 1, "b" to 2)
+        val swapped = PetriMarking.counts("a" to 2, "b" to 1)
+        assertNotEquals(here.signatureHash(), swapped.signatureHash())
+        assertNotEquals(here.signatureHash(), PetriMarking.counts("a" to 1).signatureHash())
+        assertEquals(PetriMarking.EMPTY.signatureHash(), PetriMarking.counts("a" to 0).signatureHash())
+    }
+
     // ── the memo ──────────────────────────────────────────────────────────────────────────
 
     @Test
