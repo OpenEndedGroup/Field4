@@ -73,8 +73,12 @@ the size of each of the three sets:
 
 ```
 <!-- transcript-index: totals -->
-All 52 transcripts are checked on every build … 35 of them are replayed end to end …
+All ⟨corpus⟩ transcripts are checked on every build … ⟨execute⟩ of them are replayed end to end …
 ```
+
+The placeholders are deliberate. This example carried real numbers twice and was stale both times —
+it is prose in a dev doc, so no guard sees it, while the paragraph it illustrates *is* guarded and
+therefore always right. Read the live numbers off `public/docs/agent_transcripts.md`, never off here.
 
 Adding a transcript makes exactly one of those wrong until somebody looks, which is the intent.
 
