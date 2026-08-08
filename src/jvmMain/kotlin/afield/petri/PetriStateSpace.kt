@@ -146,6 +146,27 @@ internal fun PetriNet.fireOne(marking: PetriMarking, transition: PetriTransition
 private fun PetriMarking.stateKey(): List<Pair<String, List<Any?>>> =
     toMap().entries.sortedBy { it.key }.map { (name, tokens) -> name to tokens.map { it.colour } }
 
+/**
+ * [stateKey] as a 64-bit number, for interning states without *keeping* a key per state.
+ *
+ * A key is as long as the marking, so a map from key to state id costs O(states × marking size) —
+ * which for a net with a filling place is quadratic in the budget, and is duplicated information
+ * besides, since the search already retains every marking it interned. So the map holds hashes and
+ * the search confirms a hit against the real [stateKey] of the state it collided with.
+ *
+ * Combined in *sequence* rather than commutatively, unlike [PetriMarking.signatureHash]: arrival
+ * order inside a place is exactly what [stateKey] refuses to throw away. Colours contribute their
+ * own `hashCode`, which is the hash that goes with the `equals` [stateKey] compares them by.
+ */
+private fun PetriMarking.stateKeyHash(): Long {
+    var hash = 1L
+    for (place in occupied.sorted()) {
+        hash = hash * 1_000_003L + place.hashCode()
+        for (token in this[place]) hash = hash * 1_000_003L + (token.colour?.hashCode() ?: 0)
+    }
+    return hash
+}
+
 // ── outcomes ───────────────────────────────────────────────────────────────────────────────
 
 /** Whether a search saw the whole space, and therefore whether its negative answers mean anything. */
@@ -622,21 +643,29 @@ fun PetriNet.stateSpace(
     val states = ArrayList<PetriMarking>()
     val parent = ArrayList<Int>()
     val parentVia = ArrayList<String?>()
-    val index = HashMap<List<Pair<String, List<Any?>>>, Int>()
+    val index = HashMap<Long, MutableList<Int>>()
     val edges = ArrayList<PetriStateEdge>()
     val expanded = ArrayList<Boolean>()
 
-    fun intern(marking: PetriMarking, key: List<Pair<String, List<Any?>>>, from: Int, via: String?): Int {
+    // Interning is by hash and then by confirmation: see [stateKeyHash] for why the map cannot
+    // afford to hold the keys themselves. A collision costs two key builds and no wrong answers.
+    fun lookup(marking: PetriMarking, hash: Long): Int? {
+        val candidates = index[hash] ?: return null
+        val key = marking.stateKey()
+        return candidates.firstOrNull { states[it].stateKey() == key }
+    }
+
+    fun intern(marking: PetriMarking, hash: Long, from: Int, via: String?): Int {
         val id = states.size
         states += marking
         parent += from
         parentVia += via
         expanded += false
-        index[key] = id
+        index.getOrPut(hash) { ArrayList(1) } += id
         return id
     }
 
-    intern(initial, initial.stateKey(), 0, null)
+    intern(initial, initial.stateKeyHash(), 0, null)
 
     var head = 0
     var truncated = false
@@ -648,10 +677,10 @@ fun PetriNet.stateSpace(
             moves.filter { it.first in fireable }
         }
         for ((transition, next) in chosen) {
-            val key = next.stateKey()
-            val to = index[key] ?: run {
+            val hash = next.stateKeyHash()
+            val to = lookup(next, hash) ?: run {
                 if (states.size >= budget) return@run null
-                intern(next, key, head, transition.name)
+                intern(next, hash, head, transition.name)
             }
             if (to == null) {
                 // Out of room mid-expansion. The state stays un-expanded, so it will not be

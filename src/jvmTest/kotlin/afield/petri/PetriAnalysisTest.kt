@@ -300,8 +300,34 @@ class PetriAnalysisTest {
         val net = petri {
             t("spawn") { to("pool") }
         }
-        assertNull(net.period(maxSteps = 64), "a place that only ever grows never returns to a marking")
-        assertFalse(net.willDeadlock(within = 64))
+        // At the default step budget, not a hand-picked small one: a marking per step used to cost
+        // a copy of the whole growing place, so the honest budget was the one thing this could not
+        // afford to ask for. See the report test below.
+        assertNull(net.period(), "a place that only ever grows never returns to a marking")
+        assertFalse(net.willDeadlock())
+    }
+
+    @Test
+    fun `a leaking net can be reported on at a budget four times the default`() {
+        // The regression. Every materialised step keeps a marking and every interned state keeps a
+        // key, and both used to hold a *copy* of the whole growing place — so a net that leaks one
+        // token per step cost O(n²) in the budget and ran out of heap somewhere past four thousand.
+        // The budgets here are deliberately larger than any default: the defaults were the largest
+        // numbers this could be asked for, which is the shape of the bug.
+        val net = petri {
+            place("run", tokens = 1)
+            t("make") { from("run"); to("run"); to("queue") }
+        }
+
+        val report = net.report(maxSteps = 16_384, stateBudget = 16_384)
+        assertTrue("period   not found" in report, report)
+        assertTrue("no T-invariants" in report, report)
+        assertTrue(
+            "unbounded, so the state space is infinite: queue" in report,
+            "coverability names the leaking place, and it is reached rather than died before: $report",
+        )
+        assertEquals(16_384, net.stateSpace(16_384).stateCount, "the state space walks its whole budget")
+        assertNull(net.period(maxSteps = 16_384))
     }
 
     @Test
