@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4327 of 6221 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4335 of 6290 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**119 undocumented entry points** (types, top-level functions and values) and 1617 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**135 undocumented entry points** (types, top-level functions and values) and 1662 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -14,6 +14,8 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
+| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, visualizers, audio_ai_gesture_board | 11 | 39 | 79% |
+| [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Uncategorised | audio_ai_gesture_board | 4 | 5 | 25% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
@@ -67,6 +69,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [JSONProcess.kt](../src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt) | Data | — | 2 | 11 | 0% |
 | [dirichlet.kt](../src/jvmMain/kotlin/afield/stdlib/dirichlet.kt) | Math | — | 1 | 10 | 0% |
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
+| [GestureBoardVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt) | Uncategorised | — | 1 | 1 | 33% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Solvers | — | 0 | 241 | 29% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
@@ -98,6 +101,20 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
+| `GestureBoardDsl` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:10` |
+| `GestureCurveBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:13` |
+| `GestureBoardBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:28` |
+| `GestureCurveKind` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:224` |
+| `GesturePoint` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:232` |
+| `GestureCurve` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:238` |
+| `GestureEvent` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:247` |
+| `GesturePromptRegion` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:256` |
+| `GestureBoard` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:265` |
+| `GestureBinding` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:275` |
+| `GestureCompileRequest` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:284` |
+| `GestureCompilation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:291` |
+| `GestureEvaluation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:300` |
+| `ModelOperation` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:307` |
 | `WfcOffset` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:35` |
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
@@ -113,6 +130,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `stepDynamicGraph` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:863` |
 | `stepDynamicGraphWithLinearDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:877` |
 | `stepDynamicGraphWithExponentialDecay` | fun | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:889` |
+| `validateGestureBoard` | fun | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:78` |
 | `BufferedImage.sliceIntoUniqueTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1490` |
 | `loadPngTiles` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1530` |
 | `BufferedImage.sliceIntoOverlappingPatterns` | fun | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:1533` |
@@ -185,21 +203,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `ControlOutput.namedAppliedParams` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:323` |
 | `ControlOutput.namedNominalParams` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:334` |
 | `main` | fun | `src/jvmMain/kotlin/afield/stdlib/modelling.kt:569` |
+| `gestureBoardHtml` | fun | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt:121` |
 | `smileCubicSpline` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:59` |
-| `smileGaussianProcess` | fun | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:67` |
-| `Number.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:139` |
-| `Expression.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:142` |
-| `Quantity.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:145` |
-| `Any.withUnit` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:148` |
-| `Number.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:161` |
-| `Number.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:164` |
-| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:167` |
-| `Number.div` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:170` |
-| `Expression.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:175` |
-| `Expression.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:178` |
-| `Expression.times` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:181` |
-| `Expression.div` | fun | `src/jvmMain/kotlin/afield/stdlib/units.kt:184` |
-| `registerH2Value` | fun | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:730` |
-| `Any.h2` | val | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:727` |
 
-That is all of them.
+…and **15 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
