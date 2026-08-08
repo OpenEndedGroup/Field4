@@ -1,0 +1,246 @@
+name: petri_state_space
+description: >
+  Loadable demo of the exhaustive Petri analysis in PetriStateSpace.kt — the classical questions,
+  answered exactly, with counterexamples. Five pure-compute boxes; no Window, no Renderer, no GPU,
+  no audio device.
+  The companion to petri_sound, which is the *musical* half of afield.petri. This is the half that
+  treats a net as a concurrency model: an exhaustive reachability graph over every interleaving, a
+  Karp-Miller coverability graph with omega-markings, and — the point — the shortest firing
+  sequence that breaks whatever you asked about, drawn over the state graph so you can see it.
+    1. philosophers  — the symmetric five-philosopher table. `willDeadlock()` answers about one
+                       interleaving; `stateSpace()` answers about all of them, finds the deadlock,
+                       and prints AND draws the five grabs that cause it.
+    2. asymmetric    — one philosopher reaching right first, *proved* deadlock-free over 70
+                       exhausted markings. Also the sharpest thing in the demo: `deadTransitions()`
+                       names a starved philosopher while `neverFires()` correctly names nobody,
+                       because starvation is a property of the conflict policy and deadness is a
+                       property of the net.
+    3. buffer        — the four-slot producer/consumer buffer from the docs page. Exactly five
+                       reachable markings, 4-bounded, live and reversible, plus an EF query for the
+                       shortest route to a full buffer.
+    4. unbounded     — a net that leaks. The exhaustive search runs out of budget and says so
+                       rather than reporting "safe"; Karp-Miller puts an omega on the leaking place
+                       and terminates.
+    5. exclusion     — two nets with *identical incidence matrices*, one of which enforces mutual
+                       exclusion with an inhibitor arc. The algebra cannot tell them apart because
+                       an inhibitor arc moves no token; the search asks the engine and can.
+  Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
+  document; then change any net and re-run that box. Each `execute` op omits inline code, so it runs
+  the box's stored `code` property. See public/docs/petri_nets.md and public/docs/petri_cheatsheet.md.
+operations:
+  # 1 ── the classical question, on the net everybody already knows the answer to.
+  - create:
+      box: petri_ss_philosophers
+      name: 1 — the table can wedge
+      frame: { x: 60.0, y: 60.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // Five philosophers, five forks, everybody left-handed. Whether this wedges depends on
+          // the order the grabs happen in, which is precisely what running it once cannot tell you.
+          fun table(reverseLast: Boolean) = petri {
+              conflict = PetriConflict.ORDER
+              grid = cyc(1, 4)
+              for (i in 0 until 5) place("fork.$i", tokens = 1)
+              for (i in 0 until 5) {
+                  val left = i
+                  val right = (i + 1) % 5
+                  val reversed = reverseLast && i == 4
+                  t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+                  t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+              }
+          }
+
+          val net = table(reverseLast = false)
+
+          // The deterministic question: does *this* net, played *this* way, stop?
+          println("willDeadlock()  = ${net.willDeadlock()}   (one interleaving, chosen by the policy)")
+
+          // The classical one: could *any* interleaving stop it? Exhaustive, so the answer is a fact
+          // about the net rather than about the way it happens to be being played.
+          val graph = net.stateSpace()
+          println(graph.report())
+
+          val trace = graph.deadlockTrace()!!
+          println("shortest counterexample (${trace.length} firings): $trace")
+          println(trace.describe(ending = "→ nothing is enabled; the table is wedged"))
+
+          // A counterexample that checks itself: re-fired through the engine's own enabling test.
+          println("verify() = ${trace.verify() ?: "checks out"}")
+
+          // BFS layers left to right, one dot per reachable marking, the counterexample in orange.
+          showPetriStateSpace(graph, w = 1100.0, h = 640.0)
+
+  # 2 ── the fix, proved rather than observed — and the fault that survives it.
+  - create:
+      box: petri_ss_asymmetric
+      name: 2 — proved, and the difference from starved
+      frame: { x: 320.0, y: 60.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          fun table(reverseLast: Boolean) = petri {
+              conflict = PetriConflict.ORDER
+              grid = cyc(1, 4)
+              for (i in 0 until 5) place("fork.$i", tokens = 1)
+              for (i in 0 until 5) {
+                  val left = i
+                  val right = (i + 1) % 5
+                  val reversed = reverseLast && i == 4
+                  t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+                  t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+              }
+          }
+
+          val net = table(reverseLast = true)
+          val graph = net.stateSpace()
+
+          // Not "it did not deadlock in the run we tried": every one of the 70 reachable markings
+          // was visited and every one of them enables something.
+          println(graph.report())
+
+          // The sharp bit. Two analyses, two answers, both correct, about different things:
+          println()
+          println("deadTransitions()  ${net.deadTransitions()}")
+          println("                   ^ this policy always gives the contested fork to the first")
+          println("                     claimant, so philosopher 4 never eats. That is STARVATION,")
+          println("                     and it is a property of the conflict policy.")
+          println("neverFires()       ${graph.neverFires()}")
+          println("                   ^ …but some interleaving does feed philosopher 4, so no")
+          println("                     transition is genuinely dead. That is a property of the NET.")
+
+          showPetriStateSpace(graph, w = 1100.0, h = 640.0)
+
+  # 3 ── an exact state count, and a query with a witness.
+  - create:
+      box: petri_ss_buffer
+      name: 3 — a buffer, counted exactly
+      frame: { x: 580.0, y: 60.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // The producer/consumer buffer from public/docs/petri_nets.md. Each worker holds a token
+          // it puts straight back, which is what makes it *one* worker rather than an unbounded
+          // supply of them.
+          val buffer = petri {
+              grid = cyc(1, 8)
+              place("free", tokens = 4)
+              place("items", capacity = 4)
+              place("producer", tokens = 1)
+              place("consumer", tokens = 1)
+              t("produce") { from("producer"); from("free"); to("items"); to("producer") }
+              t("consume") { from("consumer"); from("items"); to("free"); to("consumer") }
+          }
+
+          val graph = buffer.stateSpace()
+          println(graph.report())
+          println("bounds: " + graph.bounds)
+
+          // `witness` is EF with the route attached: the shortest way to reach a marking that
+          // satisfies the predicate, or null when nothing does.
+          val full = graph.witness { it.count("items") == 4 }!!
+          println("shortest route to a full buffer (${full.length} firings): $full")
+
+          // `invariant` is the same search on the negation, so a null *is* the proof.
+          val conserved = graph.invariant { it.count("items") + it.count("free") == 4 }
+          println("items + free == 4 always? " + (conserved?.let { "no — $it" } ?: "yes, over all ${graph.stateCount} markings"))
+
+          showPetriStateSpace(graph, w = 900.0, h = 320.0)
+
+  # 4 ── the net with no finite answer, and the two honest things to say about it.
+  - create:
+      box: petri_ss_unbounded
+      name: 4 — a leak, and an omega
+      frame: { x: 60.0, y: 200.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // `make` puts its token straight back and drops another one in `queue`, so `queue` grows
+          // forever and the state space is infinite.
+          val leak = petri {
+              place("run", tokens = 1)
+              t("make") { from("run"); to("run"); to("queue") }
+          }
+
+          // The exhaustive search cannot finish, and does not pretend to. Every accessor that would
+          // be a claim about markings nobody visited returns null — unknown — rather than false.
+          val graph = leak.stateSpace(budget = 500)
+          println("outcome     ${graph.outcome}")
+          println("canDeadlock ${graph.canDeadlock}   (null = unknown, NOT 'safe')")
+          println("bounds      ${graph.bounds}")
+          println("neverFires  ${graph.neverFires()}")
+          println()
+
+          // Karp-Miller accelerates the growth to omega and therefore always terminates. Two nodes
+          // is the whole answer.
+          val cover = leak.coverability()
+          println(cover.report())
+          println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not unknown)")
+          println("bound('run')   = ${cover.bound("run")}")
+
+          // The trade, stated: coverability terminates on everything and is only *valid* for plain
+          // place/transition nets. Add a capacity and it says so instead of guessing.
+          val capped = petri {
+              place("run", tokens = 1)
+              place("queue", capacity = 3)
+              t("make") { from("run"); to("run"); to("queue") }
+          }
+          println()
+          println(capped.coverability().report())
+          println("…so use the exhaustive search there: ${capped.stateSpace().report().lines().first()}")
+
+  # 5 ── the thing the incidence matrix structurally cannot see.
+  - create:
+      box: petri_ss_exclusion
+      name: 5 — what the algebra cannot see
+      frame: { x: 320.0, y: 200.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // Two processes and a critical section each. The only difference between these two nets
+          // is an inhibitor arc — "not while the other one is in there".
+          fun net(guarded: Boolean) = petri {
+              place("idle.a", tokens = 1)
+              place("idle.b", tokens = 1)
+              place("crit.a")
+              place("crit.b")
+              t("enter.a") { from("idle.a"); if (guarded) inhibit("crit.b"); to("crit.a") }
+              t("leave.a") { from("crit.a"); to("idle.a") }
+              t("enter.b") { from("idle.b"); if (guarded) inhibit("crit.a"); to("crit.b") }
+              t("leave.b") { from("crit.b"); to("idle.b") }
+          }
+
+          val safe = net(guarded = true)
+          val unsafe = net(guarded = false)
+
+          // An inhibitor arc moves no token, and the incidence matrix is a record of *change*. So
+          // the two nets have the same matrix, and no amount of algebra can distinguish them.
+          println("same incidence matrix? " +
+              (safe.incidence().map { it.toList() } == unsafe.incidence().map { it.toList() }))
+          println(safe.incidenceTable())
+          println("P-invariants: " + safe.pInvariants())
+          println("…none of which couples crit.a to crit.b, so the algebra cannot prove exclusion.")
+          println()
+
+          // The search asks the engine whether a transition is enabled, and the engine knows about
+          // inhibitor arcs. So it can.
+          println("guarded:   mutually exclusive? " + safe.stateSpace().mutuallyExclusive("crit.a", "crit.b") +
+              "   over ${safe.stateSpace().stateCount} reachable markings")
+          val breach = unsafe.stateSpace().mutualExclusionFailure("crit.a", "crit.b")!!
+          println("unguarded: broken in ${breach.length} firings — $breach")
+          println(breach.describe(ending = "→ both processes are inside the critical section"))
+
+          showPetriNet(safe, w = 760.0, h = 400.0, layout = PetriLayout.FORCE)
+
+  - execute: { box: petri_ss_philosophers }
+  - execute: { box: petri_ss_asymmetric }
+  - execute: { box: petri_ss_buffer }
+  - execute: { box: petri_ss_unbounded }
+  - execute: { box: petri_ss_exclusion }
