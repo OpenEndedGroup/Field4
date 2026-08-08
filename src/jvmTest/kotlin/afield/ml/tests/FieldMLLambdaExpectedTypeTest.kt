@@ -292,6 +292,41 @@ class FieldMLLambdaExpectedTypeTest {
         assertEquals("FLine", TypePrinter().print(result.typed!!.type))
     }
 
+    /**
+     * The biggest residual, written down because it is the one a reader will hit first.
+     *
+     * `let warp line = line |> hostCall1 "transform" (fun p -> …)` gets nothing: `line` is a function
+     * parameter, FieldML has no type annotations, and at the point the callback is checked there is
+     * no class to reflect on. The expected type flows from a *known receiver*, so it reaches a call
+     * written in a pipeline but not one tucked inside a helper. `hostAs` is still the answer there,
+     * which is one of several reasons it is not going away.
+     */
+    @Test
+    fun aReceiverThatIsAFunctionParameterHasNoClassToReadTheCallbackFrom() {
+        // With no type for `p`, `p.x` falls back to the record rule and pins `p` to a one-field
+        // record, so `p.y` is then genuinely missing. The diagnostic is honest — it just is not the
+        // one a reader wants, and `hostAs "Vec3" p` is what turns it into the other case.
+        assertRefused(
+            """
+            let warp line = line |> hostCall1 "transform" (fun p -> vec3 p.x p.y p.z) in
+            warp (fline |> moveTo 0.0 0.0 |> lineTo 1.0 1.0)
+            """,
+            "Record is missing field 'y'",
+        )
+        // Written against a receiver whose class *is* known, the very same body is typed.
+        assertEquals(
+            listOf("p: Vec3"),
+            parameterSpellings(
+                compileOk(
+                    """
+                    fline |> moveTo 0.0 0.0 |> lineTo 1.0 1.0
+                      |> hostCall1 "transform" (fun p -> vec3 p.x p.y p.z)
+                    """,
+                ),
+            ),
+        )
+    }
+
     @Test
     fun aCallWhoseReceiverIsUnknownStillCompilesAndClaimsNothing() {
         // `hostInput` has no class, so there is no method to reflect on and no parameter to read.

@@ -81,22 +81,55 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
-     * The loadable demo document is an artifact a human opens in a fresh Field, so a broken box in it
+     * A loadable demo document is an artifact a human opens in a fresh Field, so a broken box in one
      * is a broken promise. Every box's code is compiled and run here, the same guard the docs pages
-     * get — which is what makes the demo trustworthy without opening it.
+     * get — which is what makes the demos trustworthy without opening them.
      */
     @Test
-    fun hostBridgeDemoDocumentBoxesCompileAndEvaluate() {
-        val demo = Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn")
-        val sources = ednCodeStrings(demo.toFile().readText())
+    fun demoDocumentBoxesCompileAndEvaluate() {
+        val demos = listOf(
+            Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn"),
+            Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn"),
+        )
 
-        assertTrue(sources.size >= 4, "Expected at least four FieldML boxes in $demo, found ${sources.size}")
-        sources.forEachIndexed { index, source ->
-            val name = "$demo box ${index + 1}"
-            val result = compileOk(name, source)
-            val box = Box("fieldml-host-bridge-demo-$index")
-            Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+        demos.forEach { demo ->
+            val sources = ednCodeStrings(demo.toFile().readText())
+            assertTrue(sources.size >= 4, "Expected at least four FieldML boxes in $demo, found ${sources.size}")
+            sources.forEachIndexed { index, source ->
+                val name = "$demo box ${index + 1}"
+                val result = compileOk(name, source)
+                val box = Box("${demo.parent.fileName}-$index")
+                Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+            }
         }
+    }
+
+    /**
+     * The lambda demo's promise is specifically that it needs no `hostAs` — so if one drifts back in
+     * the demo has stopped showing the thing it exists to show, even though every box still runs.
+     *
+     * Exactly one box is allowed one, and it is the box whose subject *is* the case that still needs
+     * it: a receiver that is a function parameter has no known class, so the callback inside
+     * `let f line = …` is still on its own. That box marks itself with the sentence below.
+     */
+    @Test
+    fun theLambdaDemoContainsNoErasureEscapesExceptTheOneItDocuments() {
+        val demo = Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        val marker = "remains the way out of that one"
+
+        sources.forEachIndexed { index, source ->
+            if (marker in source) return@forEachIndexed
+            assertTrue(
+                "hostAs \"" !in source,
+                "$demo box ${index + 1} uses hostAs, which is the thing this demo shows is unnecessary",
+            )
+        }
+        assertEquals(
+            1,
+            sources.count { marker in it },
+            "expected exactly one box in $demo to document the residual case",
+        )
     }
 
     /** The `:code "…"` values of a saved Field document, with EDN's string escapes undone. */
