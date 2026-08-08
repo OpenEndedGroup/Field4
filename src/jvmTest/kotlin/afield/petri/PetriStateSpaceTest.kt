@@ -1,5 +1,6 @@
 package afield.petri
 
+import afield.four.synth.pat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -461,5 +462,252 @@ class PetriStateSpaceTest {
         val ys = drawn.flatMap { line -> line.nodes.mapNotNull { it.toOrNull?.y } }
         assertTrue(xs.max() - xs.min() > 900f, "the layers should fill the width, spanning ${xs.max() - xs.min()}")
         assertTrue(ys.max() - ys.min() > 500f, "the widest layer should fill the height, spanning ${ys.max() - ys.min()}")
+    }
+
+    // ── the nets the human actually writes ────────────────────────────────────────────────
+
+    /**
+     * The six boxes of `~/Documents/AFieldWorkspace/petri/document.md`, verbatim.
+     *
+     * The textbook nets above say the algorithm is right. These say it is *useful*: they are the
+     * nets this feature exists to be pointed at, they use the parts of the model the theory chapter
+     * does not (a `PatPattern` as a token colour, a read arc, a weighted arc, a capacity, three
+     * priority levels), and their sizes are the honest answer to "what happens when I try this on my
+     * own work".
+     */
+    private fun liveDocumentNets(): List<Pair<String, PetriNet>> = listOf(
+        "loop" to petri("#petri\n!grid 1/8\nkick : 1\nkick -[ hit @1/8 : bd ]-> hats\nhats -[ back @1/8 : sd ]-> kick"),
+        "tokens" to petriSong("verse" to (pat("bd ~ sd ~") to 4), "chorus" to (pat("bd*4 hh*8") to 4)),
+        "structure" to petri(
+            """
+            #petri
+            !grid 1/4
+            verse.a : 1
+            verse.a -[ v1 @1   ]-> verse.b
+            verse.b -[ v2 @1   ]-> chorus
+            chorus  -[ back @1 ]-> verse.a
+            beat : 1
+            &verse.a + beat -[ vbeat @1/4 : bd ]-> beat2
+            &verse.b + beat -[ vbeat2 @1/4 : bd ]-> beat2
+            &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
+            beat2 -[ off @1/4 : hh ]-> beat
+            """
+        ),
+        "polyrhythm" to petri(
+            """
+            #petri
+            !grid 1/15
+            a0 : 1
+            a0 -[ a0.go : bd ]-> a1
+            a1 -[ a1.go      ]-> a2
+            a2 -[ a2.go : bd ]-> a3
+            a3 -[ a3.go      ]-> a4
+            a4 -[ a4.go      ]-> a0
+            b0 : 1
+            b0 -[ b0.go : hh ]-> b1
+            b1 -[ b1.go      ]-> b2
+            b2 -[ b2.go : hh ]-> b0
+            """
+        ),
+        "philosophers" to table(reverseLast = false),
+        "playground" to petri(
+            """
+            #petri
+            !grid 1/8
+            !conflict priority
+            pulse : 1
+            fill  : 0 ^3
+            pulse  -[ a @1/8 pri=9 : bd ]-> mid
+            mid    -[ b @1/8 pri=9 : hh ]-> pulse
+            &mid   -[ build @1/8 pri=3      ]-> fill
+            3*fill -[ crash @1/8 pri=1 : sd ]->
+            """
+        ),
+    )
+
+    @Test
+    fun `every net in the live petri document is small enough to answer exactly`() {
+        val sizes = liveDocumentNets().associate { (name, net) ->
+            val graph = net.stateSpace()
+            assertEquals(PetriSearchOutcome.COMPLETE, graph.outcome, "$name did not finish")
+            name to graph.stateCount
+        }
+        // Exact, because "it fits" is not the interesting claim — *how much room is left* is.
+        assertEquals(
+            mapOf(
+                "loop" to 2, "tokens" to 2, "structure" to 6,
+                "polyrhythm" to 15, "philosophers" to 82, "playground" to 8,
+            ),
+            sizes,
+        )
+        // The whole document, every box, costs less than one percent of the default budget.
+        assertTrue(sizes.values.sum() < PETRI_STATE_BUDGET / 100, "total ${sizes.values.sum()}")
+    }
+
+    @Test
+    fun `the playground groove's read arc, weighted arc and capacity are all honoured`() {
+        // Box 6 is the one that uses every feature the incidence matrix cannot see. `build` reads
+        // `mid` without consuming it and `crash` drains three `fill` at once into nothing, and the
+        // net is claimed in the document to stay bounded and periodic. Now it is checked.
+        val net = liveDocumentNets().single { it.first == "playground" }.second
+        val graph = net.stateSpace()
+        assertTrue(net.usesTestArcs, "the read arc is the point of this net")
+        assertEquals(3, graph.bound("fill"), "the capacity `^3` really does cap it")
+        assertEquals(false, graph.canDeadlock, "the document claims this groove does not wedge")
+        assertEquals(true, graph.isLive)
+        assertEquals(true, graph.isReversible)
+        assertEquals(emptyList(), graph.neverFires(), "every voice is reachable")
+    }
+
+    @Test
+    fun `the deadTransitions fix changes nothing the live document prints`() {
+        // `deadTransitions` now stops at `within` instead of running to maxUnroll, which is a
+        // semantic change to a public function the human's boxes call through `report()`. This
+        // replays the old behaviour beside the new one on the nets those boxes build. If it ever
+        // starts differing, that is a fact somebody needs to be told rather than discover.
+        fun before(net: PetriNet, within: Int): List<String> {
+            val run = net.run()
+            run.lasso(within)
+            val fired = run.steps(Int.MAX_VALUE).flatMap { step -> step.firings.map { it.transition } }.toSet()
+            return net.transitionNames.filter { it !in fired }
+        }
+        val nets = liveDocumentNets() + listOf(
+            "philosophers asym" to table(reverseLast = true),
+            "philosophers fair" to table(reverseLast = true, fairly = true),
+        )
+        for ((name, net) in nets) for (within in listOf(2_048, 4_096)) {
+            assertEquals(before(net, within), net.deadTransitions(within), "$name at within=$within")
+        }
+    }
+
+    // ── partial-order reduction ───────────────────────────────────────────────────────────
+
+    private fun philosophers(n: Int, reverseLast: Boolean) = petri {
+        conflict = PetriConflict.ORDER
+        grid = cyc(1, 4)
+        for (i in 0 until n) place("fork.$i", tokens = 1)
+        for (i in 0 until n) {
+            val left = i
+            val right = (i + 1) % n
+            val reversed = reverseLast && i == n - 1
+            t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+            t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+            t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+        }
+    }
+
+    @Test
+    fun `the reduced search reaches the same verdict as the full one on every net here`() {
+        // The only verification a partial-order reduction can really be given: run both, and demand
+        // they agree. A reduction that is unsound shows up here as a `false` where the full search
+        // says `true`, and there is no amount of elegant argument that survives that.
+        val nets = liveDocumentNets() +
+            (2..9).map { "philosophers n=$it" to philosophers(it, reverseLast = false) } +
+            (2..9).map { "asymmetric n=$it" to philosophers(it, reverseLast = true) } +
+            listOf("buffer" to boundedBuffer(), "cliff" to cliff())
+
+        for ((name, net) in nets) {
+            val full = net.stateSpace()
+            val reduced = net.stateSpace(reduction = PetriReduction.STUBBORN)
+            assertEquals(full.canDeadlock, reduced.canDeadlock, "$name: the two searches disagree")
+            assertEquals(
+                full.deadlockTrace()?.length, reduced.deadlockTrace()?.length,
+                "$name: the reduced counterexample is a different length",
+            )
+            reduced.deadlockTrace()?.let { assertNull(it.verify(), "$name: $it does not re-fire") }
+            assertTrue(
+                reduced.stateCount <= full.stateCount,
+                "$name: the reduction made the graph bigger (${reduced.stateCount} > ${full.stateCount})",
+            )
+        }
+    }
+
+    @Test
+    fun `the reduction turns the philosophers' exponential into a quadratic`() {
+        // The full search grows like the companion Pell numbers, a(n) = 2a(n-1) + a(n-2), so about
+        // 2.41 times per philosopher. Both sequences are pinned exactly: a reduction that quietly
+        // stopped reducing, or a search that quietly stopped exploring, moves one of them.
+        val full = (2..9).map { philosophers(it, reverseLast = false).stateSpace().stateCount }
+        assertEquals(listOf(6, 14, 34, 82, 198, 478, 1154, 2786), full)
+        for (i in 2 until full.size) {
+            assertEquals(2 * full[i - 1] + full[i - 2], full[i], "the full growth is no longer Pell")
+        }
+
+        for (n in 2..12) {
+            val reduced = philosophers(n, reverseLast = false).stateSpace(reduction = PetriReduction.STUBBORN)
+            assertEquals(PetriSearchOutcome.COMPLETE, reduced.outcome)
+            assertEquals(2 * n * n - 2 * n + 2, reduced.stateCount, "reduced size at n=$n")
+        }
+
+        val eleven = philosophers(11, reverseLast = false)
+        val ratio = eleven.stateSpace().stateCount.toDouble() /
+            eleven.stateSpace(reduction = PetriReduction.STUBBORN).stateCount
+        assertTrue(ratio > 70.0, "expected better than a 70x reduction at eleven philosophers, got $ratio")
+    }
+
+    @Test
+    fun `the reduction answers a table the full search has to give up on`() {
+        // Twelve philosophers is past the wall: 20 000 markings is not enough to reach depth 12, so
+        // the full search returns BUDGET and — correctly — refuses to say anything. The reduced
+        // search finishes in 266 markings and produces the counterexample.
+        val net = philosophers(12, reverseLast = false)
+
+        val full = net.stateSpace()
+        assertEquals(PetriSearchOutcome.BUDGET, full.outcome)
+        assertNull(full.canDeadlock, "a truncated search must not answer")
+
+        val reduced = net.stateSpace(reduction = PetriReduction.STUBBORN)
+        assertEquals(PetriSearchOutcome.COMPLETE, reduced.outcome)
+        assertEquals(266, reduced.stateCount)
+        assertEquals(true, reduced.canDeadlock)
+        val trace = assertNotNull(reduced.deadlockTrace())
+        assertEquals(12, trace.length, "twelve philosophers, twelve grabs")
+        assertNull(trace.verify())
+    }
+
+    @Test
+    fun `a reduced graph refuses every property the theorem does not cover`() {
+        val reduced = table(reverseLast = true).stateSpace(reduction = PetriReduction.STUBBORN)
+
+        // Valmari's theorem is about terminal markings and nothing else, so this is all it may say.
+        assertTrue(reduced.complete)
+        assertFalse(reduced.exact, "a completed reduced search is still not the whole state space")
+        assertEquals(false, reduced.canDeadlock, "…but deadlock-freedom is exactly what it proves")
+
+        // Everything below would be a lower bound or a non-proof wearing the word "exact".
+        assertNull(reduced.bounds)
+        assertNull(reduced.bound("fork.0"))
+        assertNull(reduced.isSafe)
+        assertNull(reduced.isLive)
+        assertNull(reduced.liveTransitions)
+        assertNull(reduced.isReversible)
+        assertNull(reduced.homeMarkings)
+        assertNull(reduced.neverFires())
+        assertNull(reduced.mutuallyExclusive("eating.0", "eating.1"), "no witness found is not a proof here")
+        // …but a witness it *did* find is still real, because a positive is always sound: two
+        // forks on the table at once is a marking the reduced search actually visited.
+        assertEquals(false, reduced.mutuallyExclusive("fork.0", "fork.1"))
+        assertNull(assertNotNull(reduced.mutualExclusionFailure("fork.0", "fork.1")).verify())
+        assertNull(reduced.proves { it.size > 0 })
+        assertTrue("deadlock is exact here, nothing else is" in reduced.report(), reduced.report())
+
+        // The unreduced graph answers all of them, which is the trade being made.
+        val full = table(reverseLast = true).stateSpace()
+        assertTrue(full.exact)
+        assertEquals(true, full.isLive)
+        assertEquals(true, full.proves { marking -> (0 until 5).sumOf { marking.count("eating.$it") } <= 2 })
+    }
+
+    @Test
+    fun `a colour-dependent net declines the reduction rather than guessing at it`() {
+        // The closure reasons about arcs. A guard, an `enabledIf` or a colour-valued production is
+        // an arbitrary predicate it cannot see, so the search silently falls back to exploring
+        // everything — and records that it did, so `exact` stays true and nothing is lost.
+        val song = petriSong("verse" to (pat("bd ~ sd ~") to 4), "chorus" to (pat("bd*4 hh*8") to 4))
+        assertTrue(song.isColourDependent)
+        val graph = song.stateSpace(reduction = PetriReduction.STUBBORN)
+        assertEquals(PetriReduction.NONE, graph.reduction, "a coloured net must not be reduced")
+        assertTrue(graph.exact, "…and so it is still exact")
+        assertEquals(2, graph.stateCount)
     }
 }

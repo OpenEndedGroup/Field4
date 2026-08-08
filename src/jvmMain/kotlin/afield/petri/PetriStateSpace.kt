@@ -260,6 +260,8 @@ class PetriStateGraph internal constructor(
     val edges: List<PetriStateEdge>,
     val outcome: PetriSearchOutcome,
     val budget: Int,
+    /** Whether every interleaving was explored, or a deadlock-sufficient subset of them. */
+    val reduction: PetriReduction,
     private val parent: IntArray,
     private val parentVia: Array<String?>,
     private val expanded: BooleanArray,
@@ -272,6 +274,18 @@ class PetriStateGraph internal constructor(
 
     /** True when the whole space was visited, which is what every negative answer here depends on. */
     val complete: Boolean get() = outcome == PetriSearchOutcome.COMPLETE
+
+    /**
+     * True when this graph is the *whole* reachable state space, and therefore when a property other
+     * than deadlock can be read off it.
+     *
+     * [complete] and `exact` differ in exactly one case, and it is the case that would otherwise
+     * cause quiet nonsense: a [PetriReduction.STUBBORN] search that finished. It has visited every
+     * marking it needed to in order to settle deadlock, and a small fraction of the rest, so its
+     * bounds are lower bounds and its "nothing violates this" is not a proof. Every accessor below
+     * that would make such a claim tests `exact`, not `complete`.
+     */
+    val exact: Boolean get() = complete && reduction == PetriReduction.NONE
 
     private val outgoing: Array<MutableList<PetriStateEdge>> =
         Array(states.size) { mutableListOf<PetriStateEdge>() }.also { table ->
@@ -347,11 +361,11 @@ class PetriStateGraph internal constructor(
     fun observedBound(place: String): Int = states.maxOfOrNull { it.count(place) } ?: 0
 
     /** The exact bound on [place] — its maximum over all reachable markings — or null if unknown. */
-    fun bound(place: String): Int? = if (complete) observedBound(place) else null
+    fun bound(place: String): Int? = if (exact) observedBound(place) else null
 
-    /** Every place's exact bound, or null when the search was truncated. */
+    /** Every place's exact bound, or null when the search was truncated or reduced. */
     val bounds: Map<String, Int>?
-        get() = if (complete) net.placeNames.associateWith { observedBound(it) } else null
+        get() = if (exact) net.placeNames.associateWith { observedBound(it) } else null
 
     /** True when no place ever holds more than one token — the net is 1-bounded. Null if unknown. */
     val isSafe: Boolean? get() = bounds?.values?.all { it <= 1 }
@@ -377,7 +391,7 @@ class PetriStateGraph internal constructor(
      * everybody. Starvation is a property of the policy; deadness is a property of the net.
      */
     fun neverFires(): List<String>? =
-        if (complete) net.transitionNames.filter { it !in quasiLive } else null
+        if (exact) net.transitionNames.filter { it !in quasiLive } else null
 
     private val scc: IntArray by lazy { tarjanComponents(states.size, outgoing) }
 
@@ -409,7 +423,7 @@ class PetriStateGraph internal constructor(
      */
     val liveTransitions: Set<String>?
         get() {
-            if (!complete) return null
+            if (!exact) return null
             if (bottomComponents.isEmpty()) return emptySet()
             val perComponent = bottomComponents.map { component ->
                 edges.filter { scc[it.from] == component }.mapTo(HashSet()) { it.transition }
@@ -432,7 +446,7 @@ class PetriStateGraph internal constructor(
      */
     val isReversible: Boolean?
         get() {
-            if (!complete) return null
+            if (!exact) return null
             return reachesInitial().all { it }
         }
 
@@ -445,7 +459,7 @@ class PetriStateGraph internal constructor(
      */
     val homeMarkings: List<Int>?
         get() {
-            if (!complete) return null
+            if (!exact) return null
             if (bottomComponents.size != 1) return emptyList()
             val only = bottomComponents.single()
             return states.indices.filter { scc[it] == only }
@@ -491,6 +505,19 @@ class PetriStateGraph internal constructor(
     fun invariant(predicate: (PetriMarking) -> Boolean): PetriTrace? = witness { !predicate(it) }
 
     /**
+     * True when [predicate] holds in every reachable marking, false with a counterexample available
+     * from [invariant], and null when neither can be claimed — the search was truncated or reduced.
+     *
+     * The three-valued form of [invariant], for the same reason [canDeadlock] is three-valued: a
+     * null from `invariant` is only a *proof* when the graph is [exact].
+     */
+    fun proves(predicate: (PetriMarking) -> Boolean): Boolean? = when {
+        invariant(predicate) != null -> false
+        exact -> true
+        else -> null
+    }
+
+    /**
      * The shortest firing sequence that puts tokens in two or more of [places] at once, or null when
      * no reachable marking does.
      *
@@ -505,7 +532,7 @@ class PetriStateGraph internal constructor(
     /** True when [places] never hold tokens simultaneously; null when the search was truncated. */
     fun mutuallyExclusive(vararg places: String): Boolean? = when {
         mutualExclusionFailure(*places) != null -> false
-        complete -> true
+        exact -> true
         else -> null
     }
 
@@ -517,8 +544,15 @@ class PetriStateGraph internal constructor(
      *     println(net.stateSpace().report())
      */
     fun report(): String = buildString {
-        val scope = if (complete) "the whole state space" else "a $stateCount-state prefix (budget $budget)"
+        val scope = when {
+            !complete -> "a $stateCount-state prefix (budget $budget)"
+            reduction == PetriReduction.STUBBORN -> "a deadlock-sufficient subset (stubborn sets)"
+            else -> "the whole state space"
+        }
         append("state space: $stateCount markings, $edgeCount firings, $scope\n")
+        if (complete && reduction == PetriReduction.STUBBORN) {
+            append("  partial-order reduction: deadlock is exact here, nothing else is\n")
+        }
         if (!complete) {
             append("  BUDGET EXHAUSTED — every 'no' below is 'unknown'. Raise the budget or bound the net.\n")
         }
@@ -558,7 +592,7 @@ class PetriStateGraph internal constructor(
     }
 
     override fun toString(): String =
-        "PetriStateGraph($stateCount states, $edgeCount edges, $outcome)"
+        "PetriStateGraph($stateCount states, $edgeCount edges, $outcome, $reduction)"
 }
 
 /**
@@ -572,8 +606,18 @@ class PetriStateGraph internal constructor(
  * [PetriSearchOutcome.BUDGET] whose negative answers are all null; it never produces a wrong
  * "safe".
  */
-fun PetriNet.stateSpace(budget: Int = PETRI_STATE_BUDGET): PetriStateGraph {
+fun PetriNet.stateSpace(
+    budget: Int = PETRI_STATE_BUDGET,
+    reduction: PetriReduction = PetriReduction.NONE,
+): PetriStateGraph {
     require(budget >= 1) { "a state-space budget must be at least 1" }
+
+    // A colour-dependent net cannot be reduced: the closure reasons about arcs, and a guard or an
+    // `enabledIf` is an arbitrary predicate no arc analysis can see. Falling back to the full search
+    // is the only safe answer, and it is recorded on the graph rather than assumed by the caller.
+    @Suppress("NAME_SHADOWING")
+    val reduction = if (reduction == PetriReduction.STUBBORN && isColourDependent) PetriReduction.NONE else reduction
+    val arcs = if (reduction == PetriReduction.STUBBORN) PetriArcIndex(this) else null
 
     val states = ArrayList<PetriMarking>()
     val parent = ArrayList<Int>()
@@ -598,8 +642,12 @@ fun PetriNet.stateSpace(budget: Int = PETRI_STATE_BUDGET): PetriStateGraph {
     var truncated = false
     expansion@ while (head < states.size) {
         val marking = states[head]
-        for (transition in transitions) {
-            val next = fireOne(marking, transition) ?: continue
+        val moves = transitions.mapNotNull { transition -> fireOne(marking, transition)?.let { transition to it } }
+        val chosen = if (arcs == null) moves else {
+            val fireable = stubbornEnabled(arcs, marking, moves.map { it.first })
+            moves.filter { it.first in fireable }
+        }
+        for ((transition, next) in chosen) {
             val key = next.stateKey()
             val to = index[key] ?: run {
                 if (states.size >= budget) return@run null
@@ -623,6 +671,7 @@ fun PetriNet.stateSpace(budget: Int = PETRI_STATE_BUDGET): PetriStateGraph {
         edges = edges,
         outcome = if (truncated) PetriSearchOutcome.BUDGET else PetriSearchOutcome.COMPLETE,
         budget = budget,
+        reduction = reduction,
         parent = parent.toIntArray(),
         parentVia = parentVia.toTypedArray(),
         expanded = expanded.toBooleanArray(),
@@ -940,6 +989,181 @@ private fun PetriNet.omegaFire(marking: PetriOmegaMarking, transition: PetriTran
         counts[arc.place] = held + arc.weight
     }
     return PetriOmegaMarking(counts.filterValues { it != 0 })
+}
+
+// ── partial-order reduction ────────────────────────────────────────────────────────────────
+
+/**
+ * Whether the search explores every interleaving or a sufficient subset of them.
+ *
+ * The state space of a concurrent net is exponential in the number of *independent* components, and
+ * almost all of that size is the same few firings shuffled into a different order. Five philosophers
+ * reaching for their left fork is one event five times over; a full search visits all 5! = 120
+ * orderings of it. A **partial-order reduction** explores one ordering and proves that is enough.
+ */
+enum class PetriReduction {
+    /** Explore every interleaving. Every property in [PetriStateGraph] is exact. */
+    NONE,
+
+    /**
+     * Explore a *stubborn set* at each marking — a subset of the enabled transitions sufficient to
+     * preserve **deadlock reachability**, and nothing else.
+     *
+     * The theorem (Valmari) is about terminal markings only, so a graph built this way answers
+     * [PetriStateGraph.canDeadlock] and [PetriStateGraph.deadlockTrace] and refuses everything else:
+     * its state count is not the reachable state count, so a bound read off it would be a lower
+     * bound wearing the word "exact". [PetriStateGraph.exact] is false for such a graph and every
+     * accessor that would need exactness returns null.
+     *
+     * One thing the theorem does *not* promise is the shortest path. A reduced search reaches a
+     * deadlock that really is reachable, by a route that is at least as long as the true shortest
+     * one and possibly longer. Every trace it hands back is still a real firing sequence and still
+     * passes [PetriTrace.verify]; it is just not guaranteed minimal.
+     */
+    STUBBORN,
+}
+
+/**
+ * Which transitions can affect which places, precomputed once per net.
+ *
+ * The stubborn-set closure asks "who could enable this?" and "who could disable that?" once per
+ * transition per marking, and both questions are answered from the arcs alone. Computing the
+ * incidence relation once and reusing it is the difference between the reduction paying for itself
+ * and costing more than it saves.
+ */
+private class PetriArcIndex(net: PetriNet) {
+
+    /** Transitions with a consuming (NORMAL) input arc on this place — they can lower its count. */
+    val consumers: Map<String, List<PetriTransition>> = net.places.associate { place ->
+        place.name to net.transitions.filter { transition ->
+            transition.inputs.any { it.place == place.name && it.kind == PetriArcKind.NORMAL }
+        }
+    }
+
+    /** Transitions with an output arc on this place — they can raise its count. */
+    val producers: Map<String, List<PetriTransition>> = net.places.associate { place ->
+        place.name to net.transitions.filter { transition -> transition.outputs.any { it.place == place.name } }
+    }
+
+    /** Total tokens each transition consumes from each place — two arcs on one place add up. */
+    val needs: Map<String, Map<String, Int>> = net.transitions.associate { transition ->
+        transition.name to transition.inputs
+            .filter { it.kind == PetriArcKind.NORMAL }
+            .groupBy { it.place }
+            .mapValues { (_, arcs) -> arcs.sumOf { it.weight } }
+    }
+
+    /** The strongest read requirement per place. */
+    val reads: Map<String, Map<String, Int>> = net.transitions.associate { transition ->
+        transition.name to transition.inputs
+            .filter { it.kind == PetriArcKind.READ }
+            .groupBy { it.place }
+            .mapValues { (_, arcs) -> arcs.maxOf { it.weight } }
+    }
+
+    /** The tightest inhibitor limit per place — the count at or above which the transition is blocked. */
+    val inhibits: Map<String, Map<String, Int>> = net.transitions.associate { transition ->
+        transition.name to transition.inputs
+            .filter { it.kind == PetriArcKind.INHIBIT }
+            .groupBy { it.place }
+            .mapValues { (_, arcs) -> arcs.minOf { it.weight } }
+    }
+
+    /** Total tokens each transition produces into each capped place. */
+    val fills: Map<String, Map<String, Int>> = net.transitions.associate { transition ->
+        transition.name to transition.outputs
+            .filter { net.place(it.place)?.capacity != null }
+            .groupBy { it.place }
+            .mapValues { (_, arcs) -> arcs.sumOf { it.weight } }
+    }
+
+    /**
+     * Everything that could make [transition] stop being enabled: whoever can drain a place it
+     * consumes from or tests, whoever can arm a place that inhibits it, and whoever can fill a
+     * capped place it writes to.
+     *
+     * The classical condition only names the first of those, because the classical net has only the
+     * first kind of arc. The other two are this model's, and leaving them out would be exactly the
+     * kind of quiet unsoundness the rest of this file is written to avoid.
+     */
+    fun mayDisable(transition: PetriTransition): List<PetriTransition> = buildList {
+        for (arc in transition.inputs) when (arc.kind) {
+            PetriArcKind.NORMAL, PetriArcKind.READ -> consumers[arc.place]?.let { addAll(it) }
+            PetriArcKind.INHIBIT -> producers[arc.place]?.let { addAll(it) }
+        }
+        for (place in fills[transition.name].orEmpty().keys) producers[place]?.let { addAll(it) }
+    }
+
+    /**
+     * One reason [transition] cannot fire at [marking], expressed as the transitions that could
+     * remove that reason — or null when no single arc explains it, in which case the caller must
+     * not reduce.
+     *
+     * Returning null rather than guessing is the whole safety margin here. A disabled transition
+     * whose blocking place the closure cannot name is a transition the reduction cannot reason
+     * about, and the correct response is to explore everything at that marking.
+     */
+    fun mayEnable(transition: PetriTransition, marking: PetriMarking, net: PetriNet): List<PetriTransition>? {
+        for ((place, weight) in needs[transition.name].orEmpty()) {
+            if (marking.count(place) < weight) return producers[place].orEmpty()
+        }
+        for ((place, weight) in reads[transition.name].orEmpty()) {
+            if (marking.count(place) < weight) return producers[place].orEmpty()
+        }
+        for ((place, weight) in inhibits[transition.name].orEmpty()) {
+            if (marking.count(place) >= weight) return consumers[place].orEmpty()
+        }
+        for ((place, weight) in fills[transition.name].orEmpty()) {
+            val capacity = net.place(place)?.capacity ?: continue
+            if (marking.count(place) + weight > capacity) return consumers[place].orEmpty()
+        }
+        return null
+    }
+}
+
+/**
+ * A stubborn set's enabled members at [marking], or the whole enabled set when the net cannot be
+ * reduced safely here.
+ *
+ * The closure: seed with one enabled transition; for every enabled member add everything that could
+ * disable it, for every disabled member add everything that could remove one specific reason it is
+ * blocked, and repeat. The result is a strong stubborn set containing at least one enabled
+ * transition, which is exactly the hypothesis of the deadlock-preservation theorem.
+ *
+ * Every enabled transition is tried as the seed and the smallest answer wins, because the reduction
+ * is only worth its cost when the set it finds is small and which seed produces the small one is not
+ * predictable from the net.
+ */
+private fun PetriNet.stubbornEnabled(
+    index: PetriArcIndex,
+    marking: PetriMarking,
+    enabled: List<PetriTransition>,
+): List<PetriTransition> {
+    if (enabled.size <= 1) return enabled
+    val enabledNames = enabled.mapTo(HashSet()) { it.name }
+    var best: List<PetriTransition>? = null
+
+    for (seed in enabled) {
+        val closed = LinkedHashSet<PetriTransition>()
+        val work = ArrayDeque<PetriTransition>()
+        closed += seed
+        work += seed
+        var usable = true
+        while (work.isNotEmpty()) {
+            val transition = work.removeFirst()
+            val more = if (transition.name in enabledNames) {
+                index.mayDisable(transition)
+            } else {
+                index.mayEnable(transition, marking, this) ?: run { usable = false; null }
+            } ?: break
+            for (other in more) if (closed.add(other)) work += other
+        }
+        if (!usable) return enabled
+        val fireable = enabled.filter { it in closed }
+        if (best == null || fireable.size < best.size) best = fireable
+        if (best.size == 1) break
+    }
+    return best ?: enabled
 }
 
 // ── the three different statements ─────────────────────────────────────────────────────────
