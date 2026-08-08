@@ -208,6 +208,7 @@ The second is about the lambda parameters specifically — a warp with no `hostA
 | --- | --- | --- |
 | the warp box | `p.x` → `p.xx` | a type error naming `Vec3`'s components, before the box runs |
 | the warp box | `26.0` → `60.0` | a taller wave |
+| the warp box | put the caret after `p.` inside the lambda | completion lists `Vec3`'s components — the callback parameter has a type |
 | the raster box | `13.0` → `5.0` | fewer, wider rings |
 | the raster box | `"magma"` → `"viridis"` | the palette |
 | the limits box | delete `hostAs "Vec3"` from `scale` | a type error — that is the one case still on its own |

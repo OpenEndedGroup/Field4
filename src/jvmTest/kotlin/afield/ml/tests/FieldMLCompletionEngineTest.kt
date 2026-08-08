@@ -337,6 +337,23 @@ class FieldMLCompletionEngineTest {
         assertEquals("Int", item.tail)
     }
 
+    /**
+     * The shipped demo document's warp box, whose page tells a reader to put the caret after `p.` and
+     * ask. A multi-line pipe with an earlier lambda in it, which is the shape that actually occurs.
+     */
+    @Test
+    fun completesInsideTheLambdaOfAMultiLinePipeline() {
+        val code = """
+            linspace 0.0 280.0 140
+              |> map (fun x -> vec2 x 70.0)
+              |> fold (fun line point -> line |> lineToV point) fline
+              |> hostCall1 "transform" (fun p ->
+                   vec3 p.
+        """.trimIndent()
+
+        assertEquals("Float", assertHas(completeAt(code, code.length), "y").tail)
+    }
+
     /** A callback parameter reflection cannot type must stay out of the way, not become `Host`. */
     @Test
     fun offersNoMembersForACallbackParameterThatHasNoKnownType() {

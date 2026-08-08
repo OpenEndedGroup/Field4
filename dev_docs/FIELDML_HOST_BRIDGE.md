@@ -31,7 +31,7 @@ real Field types are callable now (95.0%), against 166 (45.9%) before.
 | `afield/ml/type/HostTypes.kt` | JVM types → FieldML types, member and overload resolution at *type-check* time, the member lists completion uses. |
 | `afield/ml/type/Inferencer.kt` | `refineHostIntrinsic` — the seam. `preInferHostSpine` — expected types into lambda parameters. Also the `Host`-is-dynamic unification rule. |
 | `afield/ml/FieldMLRuntimePrelude.kt` | The `host…` names themselves; thin wrappers over the bridge. |
-| `afield/ml/FieldMLCompletionEngine.kt` | Host member/method/class-name completion contexts. |
+| `afield/ml/FieldMLCompletionEngine.kt` | Host member/method/class-name completion contexts, and `enclosingCallbackParameters` — completion inside a lambda the JVM will call. |
 
 The two scoring functions — `FieldMLHostBridge.scoreArgument` (over values) and
 `FieldMLHostTypes.scoreArgument` (over types) — are deliberately parallel and must stay consistent.
@@ -133,6 +133,15 @@ ever touched:
 
 The reordering only happens when a lambda literal is present, so no program that worked before even
 changes the order its diagnostics come out in.
+
+Completion gets the same types, but it cannot read them off a typed tree: the source it is handed is
+half-written and does not parse. `FieldMLCompletionEngine.enclosingCallbackParameters` therefore
+*asks* — it finds the innermost unclosed bracket that has a `fun … ->` inside it (walking outward,
+because in `hostCall "generate" (4, 4, fun x y -> toFloat (x` the caret is two levels in), rebuilds
+that call with everything up to the arrow kept verbatim and the body replaced by a parameter name,
+compiles it, and reads the parameter types out. Asking rather than re-deriving is deliberate: the map
+from `hostCall2 "m" a f t` to a JVM parameter index lives in `preInferHostSpine`, and a second copy
+in the completion engine would be a second copy to keep in step.
 
 ## `afield.four`: what blocks it, with citations
 
