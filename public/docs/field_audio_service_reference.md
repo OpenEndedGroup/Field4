@@ -20,6 +20,7 @@ weights, and performs no inference.
 | `GET` | `/v1/candidate-sets/{candidate_set_id}` | `-` | `CandidateSet` |
 | `PUT` | `/v1/candidate-sets/{candidate_set_id}/candidates/{index}` | `CandidateJudgement` | `-` |
 | `GET` | `/v1/codec-results/{result_id}` | `-` | `CodecReconstructionResult` |
+| `POST` | `/v1/gesture-boards/compile` | `GestureCompileRequest` | `GestureCompilation` |
 | `GET` | `/v1/jobs` | `-` | `list[JobSummary]` |
 | `GET` | `/v1/jobs/{job_id}` | `-` | `JobRecord` |
 | `POST` | `/v1/jobs/{job_id}/cancel` | `-` | `JobRecord` |
@@ -44,6 +45,17 @@ Jobs also stream `ProgressEvent` objects over
 | `CandidateSet` | `id`, `operation_id`, `request_hash`, `candidates`, `created_at` |
 | `CodecReconstructionResult` | `id`, `operation_id`, `request_hash`, `source`, `model_input`, `tokens`, `reconstruction_native`, `reconstruction_proxy`, `metrics`, `codec`, `created_at` |
 | `ErrorCode` | - |
+| `GestureBinding` | `name`, `kind`, `delivery`, `target`, `explanation` |
+| `GestureBoard` | `duration_seconds` |
+| `GestureCompilation` | `board`, `operation`, `effective_prompt`, `parameters`, `bindings` |
+| `GestureCompileRequest` | `board` |
+| `GestureCurve` | `name`, `kind`, `points` |
+| `GestureCurveKind` | - |
+| `GestureDelivery` | - |
+| `GestureEvaluation` | `overall_score` |
+| `GestureEvent` | `time_seconds`, `label` |
+| `GesturePoint` | `time_seconds`, `value` |
+| `GesturePromptRegion` | `start_seconds`, `duration_seconds`, `text` |
 | `HTTPValidationError` | - |
 | `JobAccepted` | `job_id`, `state`, `request_hash`, `resolved_backend` |
 | `JobRecord` | `id`, `operation_id`, `request_hash`, `state`, `resolved_backend`, `progress`, `created_at`, `updated_at` |
@@ -57,11 +69,11 @@ Jobs also stream `ProgressEvent` objects over
 
 ## Job states
 
-`queued`, `loading_model`, `preparing_audio`, `encoding_source`, `analysing`, `decoding`, `generating`, `writing_assets`, `making_proxies`, `complete`, `cancel_requested`, `cancelled`, `cancel_unsupported`, `completed_before_cancellation`, `failed`
+`queued`, `loading_model`, `preparing_audio`, `encoding_source`, `analysing`, `decoding`, `generating`, `evaluating_gestures`, `writing_assets`, `making_proxies`, `complete`, `cancel_requested`, `cancelled`, `cancel_unsupported`, `completed_before_cancellation`, `failed`
 
 ## Structured error codes
 
-`ASSET_NOT_FOUND`, `INVALID_TIME_RANGE`, `UNSUPPORTED_OPERATION`, `MODEL_NOT_AVAILABLE`, `MODEL_LOAD_FAILED`, `MODEL_OUT_OF_MEMORY`, `GENERATION_FAILED`, `ENCODING_FAILED`, `DECODING_FAILED`, `ANALYSIS_FAILED`, `RESAMPLING_FAILED`, `JOB_CANCELLED`, `WORKER_UNAVAILABLE`, `PROTOCOL_VERSION_MISMATCH`, `CACHE_CORRUPTION`
+`ASSET_NOT_FOUND`, `INVALID_TIME_RANGE`, `UNSUPPORTED_OPERATION`, `MODEL_NOT_AVAILABLE`, `MODEL_LOAD_FAILED`, `MODEL_OUT_OF_MEMORY`, `GENERATION_FAILED`, `ENCODING_FAILED`, `DECODING_FAILED`, `ANALYSIS_FAILED`, `GESTURE_COMPILATION_FAILED`, `RESAMPLING_FAILED`, `JOB_CANCELLED`, `WORKER_UNAVAILABLE`, `PROTOCOL_VERSION_MISMATCH`, `CACHE_CORRUPTION`
 
 ## Verification lanes
 

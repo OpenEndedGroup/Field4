@@ -91,6 +91,7 @@ nav:
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
         - Patterns & Rhythm: pattern_language.md
+        - Audio AI Gesture Board: audio_ai_gesture_board.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md

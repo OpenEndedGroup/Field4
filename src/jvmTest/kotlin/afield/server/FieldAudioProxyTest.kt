@@ -1,11 +1,25 @@
 package afield.server
 
 import io.ktor.http.HttpMethod
+import java.time.Duration
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class FieldAudioProxyTest {
+    @Test
+    fun waveformSummaryRequestsHaveABoundedUpstreamDeadline() {
+        assertEquals(
+            Duration.ofSeconds(20),
+            fieldAudioProxyTimeout("/v1/representations/rep_abc-123/waveform"),
+        )
+        assertEquals(
+            Duration.ofMinutes(2),
+            fieldAudioProxyTimeout("/v1/representations/rep_abc-123/content"),
+        )
+    }
+
     @Test
     fun allowsOnlyBrowserCandidateMediaAndJudgements() {
         assertTrue(

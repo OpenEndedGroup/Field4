@@ -66,6 +66,8 @@ data class AudioVisualizerOptions(
     val waveformHeight: Int = 150,
     /** Draw the moving playhead while the audio plays. */
     val showPlayhead: Boolean = true,
+    /** Keep the view scrolled to the playhead as it moves. */
+    val followPlayhead: Boolean = true,
     /**
      * Allow wheel-zoom, drag-pan, click-to-seek and the keyboard shortcuts.
      *
@@ -124,15 +126,27 @@ object AudioVisualizer {
               data-window="${initialDuration?.let { "%.9f".format(Locale.US, it) }.orEmpty()}"
               data-position="${options.initialPositionSeconds?.let { "%.9f".format(Locale.US, it) }.orEmpty()}"
               data-playhead="${options.showPlayhead}"
+              data-follow-playhead="${options.followPlayhead}"
               data-interactive="${options.interactive}"
-              style="--fav-accent:${options.accent.audioHtmlEscaped()};max-width:${options.width}px">
+              data-afield-intrinsic-width="${options.width}"
+              style="--fav-accent:${options.accent.audioHtmlEscaped()};width:${options.width}px;max-width:100%;box-sizing:border-box">
               <style>
-                .field-audio-visualizer { color:#d9e2e9; font:12px/1.3 system-ui,sans-serif; width:100% }
+                .field-audio-visualizer { color:#d9e2e9; font:12px/1.3 system-ui,sans-serif }
                 .field-audio-visualizer .fav-title { color:#a9b9c5; margin:0 0 5px; font-weight:560 }
                 .field-audio-visualizer .fav-stage { position:relative; overflow:hidden; border:1px solid #303b45;
                   border-radius:5px; background:#080d12; touch-action:none; user-select:none }
                 .field-audio-visualizer canvas { display:block; width:100%; height:${options.waveformHeight}px;
                   cursor:${if (options.interactive) "crosshair" else "default"} }
+                .field-audio-visualizer .fav-busy { position:absolute; top:7px; right:7px; display:flex;
+                  align-items:center; gap:6px; padding:4px 7px; color:#aebdc8; background:#101820e8;
+                  border:1px solid #35434e; border-radius:12px; font-size:10px; opacity:0;
+                  transform:translateY(-2px); transition:opacity 90ms ease,transform 90ms ease;
+                  pointer-events:none }
+                .field-audio-visualizer.fav-loading .fav-busy { opacity:1; transform:translateY(0) }
+                .field-audio-visualizer .fav-spinner { width:13px; height:13px; box-sizing:border-box;
+                  border:1px solid #46545f; border-top-color:var(--fav-accent); border-radius:50%;
+                  animation:fav-spin 760ms linear infinite }
+                @keyframes fav-spin { to { transform:rotate(360deg) } }
                 .field-audio-visualizer .fav-toolbar { display:flex; align-items:center; gap:5px; min-height:22px;
                   color:#8193a1; margin-top:4px }
                 .field-audio-visualizer button { color:#aebdc8; background:#1a232b; border:1px solid #35434e;
@@ -144,7 +158,9 @@ object AudioVisualizer {
                   width:100%; height:30px; margin-top:4px }
               </style>
               $title
-              <div class="fav-stage"><canvas tabindex="${if (options.interactive) 0 else -1}"></canvas></div>
+              <div class="fav-stage"><canvas tabindex="${if (options.interactive) 0 else -1}"></canvas>
+                <div class="fav-busy" role="status" aria-live="polite" aria-hidden="true"><span class="fav-spinner" aria-hidden="true"></span><span>loading waveform</span></div>
+              </div>
               <div class="fav-toolbar">
                 <button class="fav-zoom-in" title="zoom in">+</button>
                 <button class="fav-zoom-out" title="zoom out">−</button>
@@ -228,15 +244,17 @@ object AudioVisualizer {
           const script=document.currentScript, root=script.closest('.field-audio-visualizer');
           if (!root || root.dataset.ready==='true') return;
           root.dataset.ready='true';
-          const canvas=root.querySelector('canvas'), audio=root.querySelector('audio');
+          const stage=root.querySelector('.fav-stage'), canvas=root.querySelector('canvas'), audio=root.querySelector('audio');
+          const busy=root.querySelector('.fav-busy');
           const range=root.querySelector('.fav-range'), status=root.querySelector('.fav-status');
           const interactive=root.dataset.interactive==='true', showPlayhead=root.dataset.playhead==='true';
+          const followPlayback=root.dataset.followPlayhead==='true';
           const remote=root.dataset.waveformUrl || null;
           const inlineWaveform=root.dataset.inlineWaveformWav || null;
           let total=Number(root.dataset.duration)||0, viewStart=Number(root.dataset.start)||0;
           let viewDuration=Number(root.dataset.window)||total||0;
           const initialPosition=Number(root.dataset.position);
-          let envelope=null, decoded=null, decoderPromise=null, request=null, timer=null, dragging=null;
+          let envelope=null, decoded=null, decoderPromise=null, request=null, timer=null, dragging=null, loadToken=0;
           let staticLayer=document.createElement('canvas'), raf=0;
 
           const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -263,6 +281,10 @@ object AudioVisualizer {
             range.textContent=(total>0)
               ? format(viewStart)+' – '+format(viewStart+viewDuration)+' / '+format(total)
               : 'loading duration…';
+          };
+          const setLoading=loading=>{
+            root.classList.toggle('fav-loading',loading);
+            busy.setAttribute('aria-hidden',String(!loading));
           };
           const drawStatic=()=>{
             const {dpr,w,h}=dimensions(), c=staticLayer.getContext('2d');
@@ -337,31 +359,59 @@ object AudioVisualizer {
             return {start_seconds:viewStart,duration_seconds:viewDuration,sample_rate:rate,
               channels:decoded.numberOfChannels,point_count:count,minimum,maximum};
           };
-          const loadEnvelope=async()=>{
-            if (!(total>0)) return;
+          const loadEnvelope=async(token=++loadToken)=>{
+            if (!(total>0)) {if(token===loadToken)setLoading(false);return}
             normalizeView(); updateRange();
             const points=clamp(Math.round(canvas.getBoundingClientRect().width),64,4096);
-            if (request) request.abort(); request=new AbortController(); status.textContent='loading waveform…';
+            if (request) request.abort();
+            const controller=new AbortController(); request=controller; setLoading(true); status.textContent='loading waveform…';
+            let timedOut=false, timeoutId=null;
+            const deadline=new Promise((_,reject)=>{
+              timeoutId=setTimeout(()=>{
+                timedOut=true; controller.abort(); reject(new Error('request timed out after 15 seconds'));
+              },15000);
+            });
+            const beforeDeadline=promise=>Promise.race([promise,deadline]);
             try {
               if (remote) {
                 const url=new URL(remote,document.baseURI);
                 url.searchParams.set('start_seconds',viewStart.toFixed(9));
                 url.searchParams.set('duration_seconds',viewDuration.toFixed(9));
                 url.searchParams.set('points',String(points));
-                const response=await fetch(url,{signal:request.signal});
+                const response=await beforeDeadline(fetch(url,{signal:controller.signal}));
                 if(!response.ok) throw new Error((await response.text())||('HTTP '+response.status));
-                envelope=await response.json();
-              } else envelope=await localEnvelope(points);
-              status.textContent=interactive?'wheel zoom · drag pan · click seek':''; drawStatic();
+                const nextEnvelope=await beforeDeadline(response.json());
+                if(request!==controller)return; envelope=nextEnvelope;
+              } else {
+                const nextEnvelope=await beforeDeadline(localEnvelope(points));
+                if(request!==controller)return; envelope=nextEnvelope;
+              }
+              status.textContent=interactive?'wheel zoom at playhead · drag pan · click seek':''; drawStatic();
             } catch(error) {
-              if(error.name!=='AbortError'){ status.textContent='waveform: '+error.message; drawStatic(); }
+              if(error.name!=='AbortError'||timedOut){
+                status.textContent='waveform: '+(timedOut?'request timed out after 15 seconds':error.message); drawStatic();
+              }
+            } finally {
+              if(timeoutId!==null)clearTimeout(timeoutId);
+              if(request===controller)request=null;
+              if(token===loadToken)setLoading(false);
             }
           };
-          const scheduleLoad=(delay=40)=>{ clearTimeout(timer); timer=setTimeout(loadEnvelope,delay); };
-          const zoom=(factor,anchor=.5)=>{
+          const scheduleLoad=(delay=40)=>{
+            clearTimeout(timer); const token=++loadToken; setLoading(true);
+            timer=setTimeout(()=>loadEnvelope(token),delay);
+          };
+          const zoomAnchor=(fallback=.5)=>{
+            if(!(viewDuration>0))return fallback;
+            const playhead=audio.currentTime;
+            return Number.isFinite(playhead)&&playhead>=viewStart&&playhead<=viewStart+viewDuration
+              ? clamp((playhead-viewStart)/viewDuration,0,1) : fallback;
+          };
+          const zoom=(factor,fallbackAnchor=.5)=>{
             if(!interactive||!(total>0))return;
+            const anchor=zoomAnchor(fallbackAnchor);
             const at=viewStart+viewDuration*anchor, next=clamp(viewDuration*factor,Math.max(.001,total/100000),total);
-            viewStart=at-next*anchor; viewDuration=next; normalizeView(); updateRange(); scheduleLoad();
+            viewStart=at-next*anchor; viewDuration=next; normalizeView(); updateRange(); drawFrame(); scheduleLoad();
           };
           root.querySelector('.fav-zoom-in').onclick=()=>zoom(.5,.5);
           root.querySelector('.fav-zoom-out').onclick=()=>zoom(2,.5);
@@ -397,7 +447,17 @@ object AudioVisualizer {
               viewStart+=(event.key==='ArrowLeft'?-1:1)*viewDuration*.1;normalizeView();scheduleLoad();event.preventDefault();
             }
           });
-          const animate=()=>{drawFrame(); if(!audio.paused&&!audio.ended)raf=requestAnimationFrame(animate)};
+          const followPlayhead=()=>{
+            if(!followPlayback||!(total>0)||!(viewDuration>0))return;
+            const playhead=audio.currentTime;
+            if(!Number.isFinite(playhead))return;
+            let nextStart=null;
+            if(playhead>viewStart+viewDuration) nextStart=playhead-viewDuration*.08;
+            else if(playhead<viewStart) nextStart=playhead-viewDuration*.92;
+            if(nextStart===null)return;
+            viewStart=nextStart; normalizeView(); updateRange(); drawFrame(); scheduleLoad(0);
+          };
+          const animate=()=>{followPlayhead();drawFrame();if(!audio.paused&&!audio.ended)raf=requestAnimationFrame(animate)};
           audio.addEventListener('play',()=>{cancelAnimationFrame(raf);animate()});
           audio.addEventListener('pause',drawFrame); audio.addEventListener('seeked',drawFrame);
           audio.addEventListener('loadedmetadata',()=>{
@@ -405,7 +465,10 @@ object AudioVisualizer {
             if(Number.isFinite(initialPosition)) audio.currentTime=clamp(initialPosition,0,total);
             if(!(viewDuration>0))viewDuration=total;normalizeView();updateRange();loadEnvelope();
           });
-          new ResizeObserver(()=>scheduleLoad(80)).observe(canvas);
+          // Observe the fixed-layout stage, not the canvas whose backing-store width we mutate
+          // for device-pixel resolution. Observing the canvas can form an intrinsic-size feedback
+          // loop in Field's shrink-to-fit output areas: 300 -> 600 -> ... -> max width.
+          new ResizeObserver(()=>scheduleLoad(80)).observe(stage);
           if(total>0){if(!(viewDuration>0))viewDuration=total;normalizeView();updateRange();loadEnvelope()}
           else updateRange();
         })();

@@ -921,9 +921,20 @@ the waveform itself as a navigator:
 
 - click to seek;
 - drag to pan;
-- use the mouse wheel or `+` / `−` to zoom around a point;
+- use the mouse wheel or `+` / `−` to zoom while keeping the visible playhead fixed on screen;
 - shift-wheel to pan;
 - double-click or press **all** to restore the complete clip.
+
+If the playhead is outside the visible interval, wheel zoom falls back to the pointer and button or
+keyboard zoom falls back to the center. Near the start or end of a recording, boundary clamping may
+move the playhead on screen. A completion-style spinner remains over the waveform while a newly
+zoomed or panned min/max envelope is loading, so the old waveform cannot be mistaken for the new
+view. During playback, crossing the right edge advances the visible interval and places the playhead
+slightly inside the new window; crossing the left edge after a backward seek mirrors that behavior.
+Set `followPlayhead = false` in `AudioVisualizerOptions` to keep a zoomed interval stationary.
+Waveform-envelope requests have a 15-second browser deadline; a stalled service clears the spinner
+and reports a timeout instead of leaving the view permanently busy. Any subsequent pan, zoom, or
+resize retries normally.
 
 Small arrays and documentation fixtures can be self-contained. This example starts in a zoomed
 window with the playhead parked inside it so both pieces of state remain visible in a still capture.

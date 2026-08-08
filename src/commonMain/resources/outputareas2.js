@@ -192,6 +192,19 @@ function disclosureInterface(container) {
                 const size = axis === "width" ? rect.width : rect.height;
                 if (size <= 0.5) return false;
 
+                const style = getComputedStyle(node);
+                const display = normalizedCssValue(style.display);
+                const position = normalizedCssValue(style.position);
+                const overflow = axisOverflows(node, axis);
+                const explicitSize = hasExplicitAxisSize(node, axis);
+
+                // A responsive child that currently fills the disclosure is not evidence that
+                // the disclosure itself should grow. Measuring it and then adding the parent's
+                // padding on every pass creates a slow 480 -> 504 -> ... feedback loop. Canvas
+                // backing-store dimensions are especially misleading here: they are resolution,
+                // not requested CSS layout size.
+                if (!overflow && fillsParentExtent(node, rect, axis)) return false;
+
                 if (
                         node instanceof SVGElement ||
                         node instanceof HTMLImageElement ||
@@ -201,12 +214,6 @@ function disclosureInterface(container) {
                 ) {
                         return true;
                 }
-
-                const style = getComputedStyle(node);
-                const display = normalizedCssValue(style.display);
-                const position = normalizedCssValue(style.position);
-                const overflow = axisOverflows(node, axis);
-                const explicitSize = hasExplicitAxisSize(node, axis);
 
                 if (overflow || explicitSize) return true;
                 if (position === "absolute" || position === "fixed" || position === "sticky") return true;
@@ -325,8 +332,12 @@ function disclosureInterface(container) {
                 }
 
                 const style = getComputedStyle(d.cw);
-                const paddingX = parsePixels(style.paddingLeft) + parsePixels(style.paddingRight);
-                const paddingY = parsePixels(style.paddingTop) + parsePixels(style.paddingBottom);
+                const paddingLeft = parsePixels(style.paddingLeft);
+                const paddingRight = parsePixels(style.paddingRight);
+                const paddingTop = parsePixels(style.paddingTop);
+                const paddingBottom = parsePixels(style.paddingBottom);
+                const paddingX = paddingLeft + paddingRight;
+                const paddingY = paddingTop + paddingBottom;
                 const box = d.cw.getBoundingClientRect();
                 const clientWidth = Math.ceil(d.cw.clientWidth || 0);
                 const clientHeight = Math.ceil(d.cw.clientHeight || 0);
@@ -345,12 +356,24 @@ function disclosureInterface(container) {
 
                 if (!hasIframeContent) {
                         const rangeSize = rangeContentSize(d.cw);
-                        width = Math.max(width, rangeSize.width);
-                        height = Math.max(height, rangeSize.height);
+                        // rangeContentSize is measured from the disclosure border edge, so it
+                        // already includes the leading padding. Remove that here; both sides are
+                        // added exactly once below.
+                        width = Math.max(width, Math.max(0, rangeSize.width - paddingLeft));
+                        height = Math.max(height, Math.max(0, rangeSize.height - paddingTop));
                 }
 
                 Array.from(d.cw.querySelectorAll("*")).forEach((node) => {
                         if (!(node instanceof Element) || !isElementVisible(node)) return;
+
+                        // Rich visualizers can state their preferred outer layout size while
+                        // remaining responsive with max-width:100%. This lets the disclosure jump
+                        // directly to the intended size instead of trying to infer it from a child
+                        // that is temporarily constrained to the current disclosure width.
+                        const intrinsicWidth = parsePixels(node.dataset?.afieldIntrinsicWidth || "");
+                        const intrinsicHeight = parsePixels(node.dataset?.afieldIntrinsicHeight || "");
+                        if (intrinsicWidth > 0) width = Math.max(width, intrinsicWidth);
+                        if (intrinsicHeight > 0) height = Math.max(height, intrinsicHeight);
 
                         const plotlyRoot = plotlyRootFor(node);
                         if (plotlyRoot) {
@@ -370,10 +393,10 @@ function disclosureInterface(container) {
 
                         const rect = node.getBoundingClientRect();
                         if (shouldUseRectExtent(node, rect, "width")) {
-                                width = Math.max(width, Math.ceil(rect.right - box.left));
+                                width = Math.max(width, Math.ceil(rect.right - box.left - paddingLeft));
                         }
                         if (shouldUseRectExtent(node, rect, "height")) {
-                                height = Math.max(height, Math.ceil(rect.bottom - box.top));
+                                height = Math.max(height, Math.ceil(rect.bottom - box.top - paddingTop));
                         }
 
                         if (node instanceof SVGElement) {

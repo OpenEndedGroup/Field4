@@ -7,6 +7,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.net.URI
@@ -253,6 +254,17 @@ class FieldAudioClient(
      */
     fun submit(operation: ModelOperation): CompletableFuture<JobAccepted> =
         postJson("/v1/operations", json.encodeToString(operation), JobAccepted.serializer())
+
+    /** Ask the authoritative service to expose exactly how a board reaches this backend. */
+    fun compileGesture(
+        board: GestureBoard,
+        operation: String = "generate.style",
+        parameters: JsonObject = JsonObject(emptyMap()),
+    ): CompletableFuture<GestureCompilation> = postJson(
+        "/v1/gesture-boards/compile",
+        json.encodeToString(GestureCompileRequest(board, operation, parameters)),
+        GestureCompilation.serializer(),
+    )
 
     /** The durable state of one job right now. This is the authority, not the progress stream. */
     fun inspect(jobId: String): CompletableFuture<JobRecord> =

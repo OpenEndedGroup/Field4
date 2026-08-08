@@ -25,11 +25,23 @@ class AudioVisualizerTest {
 
         assertContains(html, "data-waveform-url=\"/waveform/example\"")
         assertContains(html, "data-playhead=\"false\"")
+        assertContains(html, "data-follow-playhead=\"true\"")
         assertContains(html, "data-position=\"1.250000000\"")
-        assertContains(html, "wheel zoom · drag pan · click seek")
+        assertContains(html, "wheel zoom at playhead · drag pan · click seek")
         assertContains(html, "start_seconds")
         assertContains(html, "duration_seconds")
         assertContains(html, "points")
+        assertContains(html, "data-afield-intrinsic-width=\"960\"")
+        assertContains(html, "width:960px;max-width:100%;box-sizing:border-box")
+        assertContains(html, "observe(stage)")
+        assertFalse("observe(canvas)" in html)
+        assertContains(html, "class=\"fav-busy\"")
+        assertContains(html, "animation:fav-spin 760ms linear infinite")
+        assertContains(html, "const anchor=zoomAnchor(fallbackAnchor)")
+        assertContains(html, "setLoading(true)")
+        assertContains(html, "if(playhead>viewStart+viewDuration)")
+        assertContains(html, "request timed out after 15 seconds")
+        assertContains(html, "Promise.race([promise,deadline])")
     }
 
     @Test
