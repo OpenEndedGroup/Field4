@@ -283,19 +283,24 @@ fun PetriNet.deadlockMarking(within: Int = 4_096): PetriMarking? {
     val run = run()
     run.lasso(within)
     if (run.halt != PetriHalt.DEADLOCK) return null
-    return run.steps(Int.MAX_VALUE).lastOrNull()?.after ?: initial
+    return run.steps(within).lastOrNull()?.after ?: initial
 }
 
 /**
- * Transitions that never fire, however long the net runs.
+ * Transitions that never fire in [within] steps of the net's own trajectory.
  *
  * The most common thing wrong with a net that sounds thinner than it reads: an arc pointing at the
  * wrong place, and a whole voice silently doing nothing.
+ *
+ * Still the deterministic question. A transition can be perfectly fireable and never chosen — under
+ * [PetriConflict.PRIORITY] a lower-priority claimant of a contested token may never get it — and
+ * this will name it. [PetriStateGraph.neverFires] is the version that asks whether *any*
+ * interleaving fires it, and the two disagreeing is a diagnosis of starvation rather than a bug.
  */
 fun PetriNet.deadTransitions(within: Int = 2_048): List<String> {
     val run = run()
     run.lasso(within)
-    val fired = run.steps(Int.MAX_VALUE).flatMap { step -> step.firings.map { it.transition } }.toSet()
+    val fired = run.steps(within).flatMap { step -> step.firings.map { it.transition } }.toSet()
     return transitionNames.filter { it !in fired }
 }
 
