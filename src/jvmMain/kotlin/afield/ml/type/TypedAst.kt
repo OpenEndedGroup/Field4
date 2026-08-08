@@ -133,3 +133,28 @@ data class TExprNegate(
     override val range: SourceRange,
     override val type: Type,
 ) : TExpr
+
+/**
+ * Every node of a typed tree, parents before children.
+ *
+ * A `when` over [TExpr] belongs in one place: the hierarchy has fifteen cases, and a walker written
+ * out again at each call site is a walker that silently stops descending the day a sixteenth arrives.
+ */
+fun TExpr.walkTyped(visit: (TExpr) -> Unit) {
+    visit(this)
+    when (this) {
+        is TExprCall -> { function.walkTyped(visit); argument.walkTyped(visit) }
+        is TExprLambda -> body.walkTyped(visit)
+        is TExprLet -> { value.walkTyped(visit); body.walkTyped(visit) }
+        is TExprIf -> { condition.walkTyped(visit); thenBranch.walkTyped(visit); elseBranch.walkTyped(visit) }
+        is TExprTuple -> elements.forEach { it.walkTyped(visit) }
+        is TExprList -> elements.forEach { it.walkTyped(visit) }
+        is TExprRecord -> fields.forEach { it.second.walkTyped(visit) }
+        is TExprField -> target.walkTyped(visit)
+        is TExprBinary -> { left.walkTyped(visit); right.walkTyped(visit) }
+        is TExprNegate -> value.walkTyped(visit)
+        is TExprMatch -> { scrutinee.walkTyped(visit); cases.forEach { it.body.walkTyped(visit) } }
+        is TExprTypeDecl -> body.walkTyped(visit)
+        is TExprInt, is TExprFloat, is TExprBool, is TExprString, is TExprVar -> Unit
+    }
+}

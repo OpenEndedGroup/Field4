@@ -186,8 +186,8 @@ worth copying: an expression language wants to show its result, and a language w
 
 | what | site | anchor |
 | --- | --- | --- |
-| the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:34` | `fun complete(request: CompletionRequest)` |
-| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:77` | `fun describeSymbolContext` |
+| the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:41` | `fun complete(request: CompletionRequest)` |
+| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:85` | `fun describeSymbolContext` |
 | the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:149` | `FieldMLCompletionEngine.complete` |
 
 The engine answers from the *same type prelude the compiler uses*, so items carry their real inferred
@@ -471,7 +471,7 @@ Traced against FieldML, which is the only one that went the whole way.
    (`bootstrapMonaco.js:46`) and `DEFAULT_LANGUAGES` (`fieldSuggest.js:17`). Make your Monaco language
    id equal your `code_language` string, lower-cased.
 6. **Route completion into the compiler's own knowledge.** Override `complete` to call an engine that
-   reads the same prelude (`FieldMLInterface.kt:149` → `FieldMLCompletionEngine.kt:34`). This is the
+   reads the same prelude (`FieldMLInterface.kt:149` → `FieldMLCompletionEngine.kt:41`). This is the
    payoff and the reason for steps 1 and 2.
 7. **Write the page, then the guard, in that order and the same commit.** A cheatsheet whose rows are
    compared to the prelude in both directions (`FieldMLCheatsheetCoverageTest.kt:31-51`) and an

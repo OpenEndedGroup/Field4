@@ -6,6 +6,7 @@ import afield.ml.CompilationResult
 import afield.ml.FieldMLRuntimePrelude
 import afield.ml.core.Evaluator
 import afield.ml.core.renderFieldMLValue
+import afield.ml.type.Inferencer
 import afield.ml.type.TypePrinter
 import java.nio.file.Path
 import kotlin.test.Test
@@ -81,22 +82,116 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
-     * The loadable demo document is an artifact a human opens in a fresh Field, so a broken box in it
+     * A loadable demo document is an artifact a human opens in a fresh Field, so a broken box in one
      * is a broken promise. Every box's code is compiled and run here, the same guard the docs pages
-     * get — which is what makes the demo trustworthy without opening it.
+     * get — which is what makes the demos trustworthy without opening them.
      */
     @Test
-    fun hostBridgeDemoDocumentBoxesCompileAndEvaluate() {
-        val demo = Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn")
+    fun demoDocumentBoxesCompileAndEvaluate() {
+        val demos = listOf(
+            Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn"),
+            Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn"),
+        )
+
+        demos.forEach { demo ->
+            val sources = ednCodeStrings(demo.toFile().readText())
+            assertTrue(sources.size >= 4, "Expected at least four FieldML boxes in $demo, found ${sources.size}")
+            sources.forEachIndexed { index, source ->
+                val name = "$demo box ${index + 1}"
+                val result = compileOk(name, source)
+                val box = Box("${demo.parent.fileName}-$index")
+                Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+            }
+        }
+    }
+
+    /**
+     * The `afield.four` demo is the one document here that *cannot* be evaluated: it needs a Vulkan
+     * device, and a headless test JVM has none. So it is compiled and type-checked only — which is
+     * still worth doing, because everything that went wrong while it was being written went wrong at
+     * compile time (`Module has no method 'pointer'`, `Parameters has no member 'vertexx'`), and a
+     * silent rot in it would be exactly that kind of error.
+     *
+     * It was *run* on 2026-08-08 in a `field_backdoor.py --graphics-context` session and rendered a
+     * triangle into the native window; `triangle.png` beside it is that capture. Nothing here can
+     * check that, and nothing here pretends to.
+     */
+    @Test
+    fun theAfieldFourDemoTypeChecksEvenThoughItCannotRunHere() {
+        val demo = Path.of("public/docs/assets/fieldml_afield_four_demo/metadata.edn")
         val sources = ednCodeStrings(demo.toFile().readText())
 
-        assertTrue(sources.size >= 4, "Expected at least four FieldML boxes in $demo, found ${sources.size}")
+        assertEquals(1, sources.size, "expected one FieldML box in $demo")
+        val result = compileOk("$demo box 1", sources.single())
+        assertNotNull(result.core, "$demo box 1: core")
+        assertTrue(
+            "hostAs \"" !in sources.single(),
+            "$demo uses hostAs, which is the thing it exists to show is unnecessary",
+        )
+    }
+
+    /**
+     * The lambda demo's promise is specifically that it needs no `hostAs` — so if one drifts back in
+     * the demo has stopped showing the thing it exists to show, even though every box still runs.
+     *
+     * Exactly one box is allowed one, and it is the box whose subject *is* the case that still needs
+     * it: a receiver that is a function parameter has no known class, so the callback inside
+     * `let f line = …` is still on its own. That box marks itself with the sentence below.
+     */
+    @Test
+    fun theLambdaDemoContainsNoErasureEscapesExceptTheOneItDocuments() {
+        val demo = Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+        val marker = "remains the way out of that one"
+
         sources.forEachIndexed { index, source ->
-            val name = "$demo box ${index + 1}"
-            val result = compileOk(name, source)
-            val box = Box("fieldml-host-bridge-demo-$index")
-            Evaluator(FieldMLRuntimePrelude.values(box = box)).evaluate(result.core!!)
+            if (marker in source) return@forEachIndexed
+            assertTrue(
+                "hostAs \"" !in source,
+                "$demo box ${index + 1} uses hostAs, which is the thing this demo shows is unnecessary",
+            )
         }
+        assertEquals(
+            1,
+            sources.count { marker in it },
+            "expected exactly one box in $demo to document the residual case",
+        )
+    }
+
+    /**
+     * The inferencer's one caching invariant, checked over every FieldML program in the repository
+     * rather than argued about in a comment.
+     *
+     * `Inferencer.preInferHostSpine` computes a result in one environment and hands it to a walk that
+     * consumes it elsewhere; that is sound only while the two environments are the same, and it is
+     * kept sound structurally by threading the memo only along paths that leave the environment
+     * alone. `SpineMemo.take` counts every time it is reached under a different one. The count is
+     * absolute, not a delta, so this test does not care what order it runs in — and if it ever fails,
+     * the fix is in the inferencer, never here.
+     */
+    @Test
+    fun noHostSpineResultIsEverReusedUnderADifferentEnvironment() {
+        examples.forEach { FieldMLCompiler.compile(it.source.trimIndent()) }
+        errorExamples.forEach { FieldMLCompiler.compile(it.source.trimIndent()) }
+        listOf(
+            Path.of("public/docs/fieldml_examples.md"),
+            Path.of("public/docs/fieldml_cheatsheet.md"),
+            Path.of("public/docs/fieldml_host_bridge.md"),
+        ).forEach { page ->
+            fieldMLDocSnippets(page.toFile().readText()).forEach { FieldMLCompiler.compile(it) }
+        }
+        listOf(
+            Path.of("public/docs/assets/fieldml_host_bridge_demo/metadata.edn"),
+            Path.of("public/docs/assets/fieldml_lambda_demo/metadata.edn"),
+        ).forEach { demo ->
+            ednCodeStrings(demo.toFile().readText()).forEach { FieldMLCompiler.compile(it) }
+        }
+
+        assertEquals(
+            0L,
+            Inferencer.environmentMismatches.get(),
+            "a pre-inferred host-call argument was reused under an environment it was not computed in",
+        )
     }
 
     /** The `:code "…"` values of a saved Field document, with EDN's string escapes undone. */

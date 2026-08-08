@@ -58,7 +58,12 @@ class Inferencer {
             InferResult(null, diagnostics)
         }
 
-    private fun inferExpr(expr: Expr, env: TypeEnv): TExpr =
+    private fun inferExpr(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr {
+        memo?.take(expr, env)?.let { return it }
+        return inferFresh(expr, env, memo)
+    }
+
+    private fun inferFresh(expr: Expr, env: TypeEnv, memo: SpineMemo? = null): TExpr =
         when (expr) {
             is EInt -> TExprInt(expr.value, expr.range, TInt)
             is EFloat -> TExprFloat(expr.value, expr.range, TFloat)
@@ -68,12 +73,14 @@ class Inferencer {
                 val scheme = env[expr.name] ?: abort("Unknown name '${expr.name}'", expr.range)
                 TExprVar(expr.name, expr.range, instantiate(scheme))
             }
+            // A tuple or list literal is the `host…` family's argument spread, so the memo has to
+            // reach its elements — and neither form touches `env`, which is what makes that safe.
             is ETuple -> {
-                val elements = expr.elements.map { inferExpr(it, env) }
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
                 TExprTuple(elements, expr.range, TTuple(elements.map { it.type }))
             }
             is EList -> {
-                val elements = expr.elements.map { inferExpr(it, env) }
+                val elements = expr.elements.map { inferExpr(it, env, memo) }
                 val elementType = elements.firstOrNull()?.type ?: fresh()
                 elements.drop(1).forEach { unify(elementType, it.type, it.range) }
                 TExprList(elements, expr.range, TList(elementType))
@@ -81,8 +88,13 @@ class Inferencer {
             is ETypeDecl -> inferTypeDecl(expr, env)
             is ELambda -> inferLambda(expr.parameters, expr.body, expr.range, env)
             is ECall -> {
-                val function = inferExpr(expr.function, env)
-                val argument = inferExpr(expr.argument, env)
+                // Curried application is left-nested, so the ordinary walk reaches a lambda argument
+                // before it reaches the receiver that says what the lambda's parameters are. This is
+                // where that order is put right, for host calls only. An inherited memo means this
+                // call is an inner link of a spine whose outermost call already did the work.
+                val spine = memo ?: preInferHostSpine(expr, env)
+                val function = inferExpr(expr.function, env, spine)
+                val argument = inferExpr(expr.argument, env, spine)
                 val resultType = fresh()
                 unify(function.type, TFun(argument.type, resultType), expr.range)
                 val call = TExprCall(function, argument, expr.range, resultType)
@@ -282,6 +294,181 @@ class Inferencer {
         return head.name to arguments.asReversed()
     }
 
+    // ---- expected types for lambda arguments -----------------------------------------------------
+
+    /**
+     * A host call as the JVM sees it: who it is called on, which member, and the arguments in JVM
+     * order — with the tuple-or-list spread the `host…` family uses already flattened.
+     */
+    private class HostCallShape(
+        val owner: Expr,
+        /** Null for a constructor. */
+        val method: String?,
+        /** True when [owner] is a `hostClass` handle rather than a receiver value. */
+        val static: Boolean,
+        val arguments: List<Expr>,
+    )
+
+    /**
+     * Infers a host call's sub-expressions in *dependency* order rather than in spine order, so that
+     * a lambda literal in argument position can be checked against the JVM parameter it is going to
+     * satisfy.
+     *
+     * The problem this solves is structural. FieldML is curried, so `hostCall1 "transform" f line`
+     * is `((hostCall1 "transform") f) line` and the ordinary [inferFresh] walk types `f` before it
+     * has ever looked at `line` — but `line` is the only thing that says which JVM method, and
+     * therefore which parameter type, is meant. `refineHostIntrinsic` runs late enough to know, and
+     * by then `f`'s parameters are already anonymous type variables.
+     *
+     * So: flatten the *source* spine at its outermost call, infer the receiver first, then the
+     * non-lambda arguments, then the lambdas with their parameters bound to what reflection says the
+     * JVM will hand them. Everything inferred here is stashed in [preInferred] and picked up by the
+     * ordinary walk, which means each source node is still inferred exactly **once**. A second pass
+     * would be the obvious alternative and is the wrong one: `abort` is a throw, so a body that only
+     * type-checks *with* the expected type — `fun p -> p.x` — would never survive its first pass.
+     *
+     * Nothing here can narrow the language. A slot reflection cannot pin down keeps the fresh
+     * variable it has today (see [inferLambda]), an overload set that ties keeps its silence
+     * (`FieldMLHostTypes.parametersOf`), and the reordering only happens when a lambda is present,
+     * so no existing program even changes the order its diagnostics come out in.
+     */
+    private fun preInferHostSpine(call: ECall, env: TypeEnv): SpineMemo? {
+        val (head, arguments) = sourceSpine(call) ?: return null
+        if (env[head.name] !== FieldMLTypePrelude.schemes[head.name]) return null
+        val shape = hostCallShape(head.name, arguments) ?: return null
+        if (shape.arguments.none { it is ELambda }) return null
+
+        val memo = SpineMemo(env)
+        val owner = preInfer(shape.owner, env, memo)
+        val argumentTypes = shape.arguments.map { argument ->
+            if (argument is ELambda) {
+                placeholderFunction(argument.parameters.size)
+            } else {
+                pruned(preInfer(argument, env, memo))
+            }
+        }
+        val ownerType = prune(owner.type)
+        val parameters = when {
+            shape.method == null -> FieldMLHostTypes.constructorParameters(ownerType, argumentTypes)
+            shape.static -> FieldMLHostTypes.staticParameters(ownerType, shape.method, argumentTypes)
+            else -> FieldMLHostTypes.instanceParameters(ownerType, shape.method, argumentTypes)
+        }
+        shape.arguments.forEachIndexed { index, argument ->
+            if (argument !is ELambda) return@forEachIndexed
+            val slot = parameters.getOrNull(index)
+            val expected = slot?.let { FieldMLHostTypes.samParameterTypes(it) }
+            if (slot != null && expected != null) checkLambdaArity(argument, expected, slot, shape, ownerType)
+            memo[argument] = inferLambda(argument.parameters, argument.body, argument.range, env, expected)
+        }
+        return memo
+    }
+
+    /**
+     * Knowing what the JVM wants is also worth something when the lambda cannot possibly be it.
+     *
+     * *Fewer* parameters than the interface takes is fine — FieldML functions are curried, so
+     * `fun x -> fun y -> …` is a two-argument callback and `fun ignored -> …` is how a `Runnable`
+     * with no arguments is written at all. *More* is fine too when the interface's result is itself
+     * a functional interface, because the proxy converts what comes back in its turn. Anything else
+     * hands the JVM a function where it wants a value, and that used to be a run-time failure inside
+     * a dynamic proxy with nothing in the message about the box that caused it.
+     */
+    private fun checkLambdaArity(
+        lambda: ELambda,
+        expected: List<Type>,
+        slot: FieldMLHostTypes.HostParameter,
+        shape: HostCallShape,
+        ownerType: Type,
+    ) {
+        if (expected.isEmpty() || lambda.parameters.size <= expected.size) return
+        if (FieldMLHostTypes.samResultAcceptsFunction(slot)) return
+        val owner = FieldMLHostTypes.jvmClassOf(ownerType)?.simpleName
+            ?: FieldMLHostTypes.classHandleName(ownerType)?.let { FieldMLHostTypes.display(it) }
+            ?: "this receiver"
+        val target = shape.method?.let { "$owner.$it" } ?: "$owner's constructor"
+        abort(
+            "$target calls this function with ${expected.size} argument(s), but it takes" +
+                " ${lambda.parameters.size} (${lambda.parameters.joinToString(", ")})",
+            lambda.range,
+        )
+    }
+
+    /**
+     * Infers [expr] once and remembers it for the ordinary walk to find. Deliberately *not* handed the
+     * memo it is filling: a spine argument is a fresh sub-tree, and if it is itself a host call with a
+     * lambda in it, it starts a memo of its own rather than sharing this one.
+     */
+    private fun preInfer(expr: Expr, env: TypeEnv, memo: SpineMemo): TExpr =
+        memo[expr] ?: inferFresh(expr, env).also { memo[expr] = it }
+
+    /**
+     * A stand-in for a lambda argument that has not been inferred yet. It has to be a [TFun] of the
+     * right arity rather than a bare variable, because that is what tells overload resolution this
+     * argument is a lambda at all — the same thing a first-pass-inferred lambda used to say.
+     */
+    private fun placeholderFunction(parameterCount: Int): Type {
+        var type: Type = fresh()
+        repeat(maxOf(parameterCount, 1)) { type = TFun(fresh(), type) }
+        return type
+    }
+
+    /** The head name and arguments of a chain of source applications, left to right. */
+    private fun sourceSpine(call: ECall): Pair<EVar, List<Expr>>? {
+        val arguments = mutableListOf<Expr>()
+        var current: Expr = call
+        while (current is ECall) {
+            arguments += current.argument
+            current = current.function
+        }
+        val head = current as? EVar ?: return null
+        if (!head.name.startsWith("host")) return null
+        return head to arguments.asReversed()
+    }
+
+    /**
+     * The JVM shape of a saturated `host…` application, or null when this is not one. `hostCall0`
+     * takes no arguments and `hostTap`/`hostStaticTap` read Field's source index rather than
+     * reflection, so neither appears here.
+     */
+    private fun hostCallShape(name: String, arguments: List<Expr>): HostCallShape? =
+        when (name) {
+            "hostCall" -> arguments.takeIf { it.size == 3 }?.let { (method, spread, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, spreadExprs(spread)) }
+            }
+            "hostCall1" -> arguments.takeIf { it.size == 3 }?.let { (method, argument, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, listOf(argument)) }
+            }
+            "hostCall2" -> arguments.takeIf { it.size == 4 }?.let { (method, first, second, target) ->
+                sourceString(method)?.let { HostCallShape(target, it, static = false, listOf(first, second)) }
+            }
+            "hostStaticCall" -> arguments.takeIf { it.size == 3 }?.let { (method, spread, klass) ->
+                sourceString(method)?.let { HostCallShape(klass, it, static = true, spreadExprs(spread)) }
+            }
+            // An extension function is a static whose first parameter is the piped receiver.
+            "hostExt" -> arguments.takeIf { it.size == 4 }?.let { (klass, method, spread, receiver) ->
+                sourceString(method)?.let { HostCallShape(klass, it, static = true, listOf(receiver) + spreadExprs(spread)) }
+            }
+            "hostNew" -> arguments.takeIf { it.size == 2 }?.let { (spread, klass) ->
+                HostCallShape(klass, method = null, static = true, arguments = spreadExprs(spread))
+            }
+            else -> null
+        }
+
+    /**
+     * The spread the `host…` family does at run time, as far as it is visible in the *source*: a
+     * tuple or list literal is its elements, anything else is one argument. An expression that only
+     * turns out to be a tuple when it runs therefore gets the wrong arity here — which costs nothing,
+     * because the wrong arity simply matches no candidate and no claim is made.
+     */
+    private fun spreadExprs(expr: Expr): List<Expr> =
+        when (expr) {
+            is ETuple -> expr.elements
+            is EList -> expr.elements
+            else -> listOf(expr)
+        }
+
+    private fun sourceString(expr: Expr): String? = (expr as? EString)?.value
+
     /**
      * The argument types behind the tuple-or-list spread the `host…` family uses, or null when the
      * arity cannot be known statically — a list whose elements were not written out, say, which has
@@ -350,10 +537,30 @@ class Inferencer {
             }
         }
 
-    private fun inferLambda(parameters: List<String>, body: Expr, range: SourceRange, env: TypeEnv): TExprLambda {
+    /**
+     * [expected] is what the JVM parameter this lambda satisfies says its arguments will be, when
+     * there is such a parameter and reflection could read it — see [preInferHostSpine].
+     *
+     * A slot is only taken when reflection was *confident*. An erased generic reads back as `Host`,
+     * and putting `Host` where a fresh inference variable used to be would narrow the language
+     * rather than widen it: `Host` deliberately refuses to unify with a function, a list, a tuple or
+     * a record, so `hostStaticCall "max" ([…], fun a b -> b - a) Collections` — whose `Comparator<?
+     * super T>` has no readable argument — would start failing. Unknown must stay unknown.
+     *
+     * The lambda's *result* is deliberately left alone. `samProxy` coerces whatever comes back to the
+     * interface's return type, so a FieldML `Int` body already satisfies a `Function2<…, Float>`
+     * parameter; unifying the result would turn that into a type error for no gain.
+     */
+    private fun inferLambda(
+        parameters: List<String>,
+        body: Expr,
+        range: SourceRange,
+        env: TypeEnv,
+        expected: List<Type>? = null,
+    ): TExprLambda {
         var localEnv = env
-        val typedParams = parameters.map { parameter ->
-            val type = fresh()
+        val typedParams = parameters.mapIndexed { index, parameter ->
+            val type = expected?.getOrNull(index)?.takeIf { !isDynamicHost(it) } ?: fresh()
             localEnv = localEnv.bind(parameter, Scheme(emptySet(), type))
             parameter to type
         }
@@ -848,6 +1055,57 @@ class Inferencer {
 
     private fun abort(message: String, range: SourceRange): Nothing {
         throw CompileAbort(Diagnostic(Severity.Error, message, range))
+    }
+
+    /**
+     * Sub-expressions of one host call, inferred out of order by [preInferHostSpine] and picked up by
+     * the ordinary walk that follows. Keyed by *identity*: two structurally identical arguments of the
+     * same call are different nodes and must not share a result.
+     *
+     * **A cached result is only valid in the environment it was computed in.** That is enforced
+     * structurally, and the enforcement is the whole reason this is a *parameter* rather than a field
+     * on the inferencer: a memo is threaded only along the walk paths that leave `env` untouched — the
+     * two halves of an application, and the elements of a tuple or list literal. It is never passed
+     * into a lambda body, a `let` body or a match case, so there is no route by which an entry can
+     * reach a site where a name has been rebound.
+     *
+     * The invariant a future change must preserve: **an `Expr` form that both occurs inside a curried
+     * application spine and extends the environment must not be given the memo.** [take] is the
+     * tripwire for the day someone does it anyway — the entry is refused rather than trusted, so the
+     * node is re-inferred under the bindings it is actually used with (correct, just without the
+     * expected type), and [environmentMismatches] counts it so a test can see what a comment could
+     * not. `FieldMLSmokeExamplesTest` asserts that counter is zero over every FieldML program in the
+     * repository.
+     */
+    private class SpineMemo(private val env: TypeEnv) {
+        private val entries = java.util.IdentityHashMap<Expr, TExpr>()
+
+        operator fun get(expr: Expr): TExpr? = entries[expr]
+
+        operator fun set(expr: Expr, typed: TExpr) {
+            entries[expr] = typed
+        }
+
+        /** The result for [expr], but only if [at] is the environment it was computed in. */
+        fun take(expr: Expr, at: TypeEnv): TExpr? {
+            val typed = entries[expr] ?: return null
+            if (at !== env) {
+                environmentMismatches.incrementAndGet()
+                return null
+            }
+            entries.remove(expr)
+            return typed
+        }
+    }
+
+    companion object {
+        /**
+         * How many times a [SpineMemo] entry was reached under an environment other than the one it
+         * was computed in — which, as long as the invariant in [SpineMemo] holds, is never. It is a
+         * tripwire rather than a feature: nothing reads it except the test that asserts it is zero.
+         */
+        val environmentMismatches: java.util.concurrent.atomic.AtomicLong =
+            java.util.concurrent.atomic.AtomicLong()
     }
 
     private data class ConstructorInfo(

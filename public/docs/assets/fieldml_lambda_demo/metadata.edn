@@ -1,0 +1,40 @@
+{:version 2
+ :boxes [{:id "fieldml-lambda-root"
+          :properties {:name "FieldML — lambdas with types"
+                       :frame #afield/rect [40.0 40.0 270.0 90.0]
+                       :children #{#afield/box "fieldml-lambda-warp"
+                                   #afield/box "fieldml-lambda-raster"
+                                   #afield/box "fieldml-lambda-types"
+                                   #afield/box "fieldml-lambda-limits"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "fieldml"
+                       :isFieldMLRoot true}}
+
+         {:id "fieldml-lambda-warp"
+          :properties {:name "A lambda the JVM calls, with no cast"
+                       :frame #afield/rect [360.0 40.0 430.0 270.0]
+                       :parents #{#afield/box "fieldml-lambda-root"}
+                       :children #{}
+                       :code "// FLine.transform takes a Kotlin (Vec3) -> Vec3. The type checker reads that\n// signature off the receiver and gives `p` a type, so `p.x` is a checked Vec3\n// component and there is no `hostAs` anywhere in this box. Misspell `p.x` as\n// `p.xx` and the box says so before it runs.\n//\n// Change 26.0 for the wave height, 20.0 for its wavelength.\nlinspace 0.0 280.0 140\n  |> map (fun x -> vec2 x 70.0)\n  |> fold (fun line point -> line |> lineToV point) fline\n  |> hostCall1 \"transform\" (fun p ->\n       vec3 p.x (p.y + 26.0 * sin (p.x / 20.0)) p.z\n     )\n  |> stroked true\n  |> filled false\n  |> color (vec4 0.35 0.8 1.0 1.0)\n  |> thickness 2.5\n  |> drawSized \"main\" 320.0 170.0"}}
+
+         {:id "fieldml-lambda-raster"
+          :properties {:name "Six typed callback parameters"
+                       :frame #afield/rect [920.0 40.0 430.0 270.0]
+                       :parents #{#afield/box "fieldml-lambda-root"}
+                       :children #{}
+                       :code "let Img = hostClass \"afield.stdlib.Img\"\nlet Imaging = hostClass \"afield.stdlib.Imaging_fieldKt\"\n\n// Two callbacks, six typed parameters, no casts.\n//\n// Img.Companion.generate wants a Kotlin (Int, Int) -> Float, and Img.mapIndexed\n// wants an (Int, Int, Int, Float) -> Float. Those shapes exist only on the\n// *use site's* generic type — `Function4.invoke` itself erases to Objects — so\n// reading them there is what makes `x + y` below integer arithmetic.\nlet flat = Img |> hostGet \"Companion\" |> hostCall \"generate\" (220, 220, fun x y -> 0.0)\n\nlet rings =\n  flat |> hostCall1 \"mapIndexed\" (fun x y c v ->\n    let u = (toFloat x - 110.0) / 110.0 in\n    let w = (toFloat y - 110.0) / 110.0 in\n    let r = sqrt (u * u + w * w) in\n    sin (r * 13.0 - toFloat ((x + y) |> mod 9) * 0.2) * exp (0.0 - r * 1.2) * 0.5 + 0.5\n  )\n\nlet coloured = rings |> hostExt Imaging \"colormap\" (\"magma\", hostNull, hostNull)\n\nhostStaticCall \"showImg\" (thisBox, coloured, \"main\", 330, \"Img.mapIndexed, four typed parameters\") Imaging"}}
+
+         {:id "fieldml-lambda-types"
+          :properties {:name "What the checker knows inside a lambda"
+                       :frame #afield/rect [360.0 540.0 430.0 300.0]
+                       :parents #{#afield/box "fieldml-lambda-root"}
+                       :children #{}
+                       :code "// Everything below is inferred. Put the caret inside a lambda body and ask for\n// completion, or misspell a member, and the box answers from the JVM signature\n// the callback is going to satisfy.\nlet Img = hostClass \"afield.stdlib.Img\"\n\n// `x` and `y` are Ints because Function2's type arguments say so, so `x * 4 + y`\n// is integer arithmetic and `toFloat` is needed to leave it.\nlet img = Img |> hostGet \"Companion\" |> hostCall \"generate\" (8, 4, fun x y -> toFloat (x * 4 + y) / 32.0)\n\n// `p` is a Vec3, so `normalize` and `vlength` are checked vector operations\n// rather than dynamic calls that would only fail on the first run.\nlet unit =\n  fline |> moveTo 0.0 0.0 |> lineTo 3.0 4.0\n    |> hostCall1 \"transform\" (fun p -> normalize p * (vlength p / 5.0))\n\n{\n  nodes = unit |> hostGet \"nodes\" |> length\n  width = img.width\n  height = img.height\n  sample = img |> hostCall \"at\" (3, 1, 0)\n}"}}
+
+         {:id "fieldml-lambda-limits"
+          :properties {:name "Where it still says nothing"
+                       :frame #afield/rect [920.0 700.0 430.0 340.0]
+                       :parents #{#afield/box "fieldml-lambda-root"}
+                       :children #{}
+                       :code "// The other half of the story, and the honest half. Reflection cannot always\n// say what a callback will be handed, and where it cannot the parameter keeps\n// the open type variable it has always had — claiming a type there would\n// refuse programs that work today.\nlet Collections = hostClass \"java.util.Collections\"\n\n{\n  // Comparator<? super T>: T is erased at the use site, so `a` and `b` stay\n  // open. They are still perfectly usable — inferred from the body, as before.\n  reversedMax = hostStaticCall \"max\" ([5, 1, 9, 3], fun a b -> b - a) Collections |> hostAsInt\n\n  // FLine.byFiltering((Vec3?, Node) -> Boolean). The first parameter really can\n  // arrive null, so it stays open; the second is not nullable and is typed.\n  kept =\n    fline |> moveTo 0.0 0.0 |> lineTo 10.0 0.0 |> lineTo 20.0 8.0\n      |> hostCall1 \"byFiltering\" (fun previous node -> true)\n      |> hostGet \"nodes\" |> length\n\n  // And the third case: a receiver that is a *function parameter* has no known\n  // class yet, so neither the callback inside `let f line = ...` nor the result\n  // of calling it gets a type. `hostAs` remains the way out of that one, and it\n  // is needed twice here — once going in, once coming out.\n  viaHelper =\n    let scale line =\n      line |> hostCall1 \"transform\" (fun raw ->\n        let p = hostAs \"Vec3\" raw in\n        vec3 (p.x * 0.5) p.y p.z\n      )\n    in scale (fline |> moveTo 0.0 0.0 |> lineTo 10.0 0.0)\n         |> hostAs \"FLine\" |> hostGet \"nodes\" |> length\n}"}}
+]}

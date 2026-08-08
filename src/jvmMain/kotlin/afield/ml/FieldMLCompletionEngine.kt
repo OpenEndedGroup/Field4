@@ -18,15 +18,21 @@ import afield.ml.type.FieldMLHostTypes
 import afield.ml.type.FieldMLTypePrelude
 import afield.ml.type.Scheme
 import afield.ml.type.TExpr
+import afield.ml.type.TExprLambda
 import afield.ml.type.TExprLet
 import afield.ml.type.TExprRecord
 import afield.ml.type.TExprTypeDecl
+import afield.ml.type.TBool
+import afield.ml.type.TFloat
 import afield.ml.type.TFun
 import afield.ml.type.THost
+import afield.ml.type.TInt
 import afield.ml.type.TRecord
+import afield.ml.type.TString
 import afield.ml.type.TVar
 import afield.ml.type.Type
 import afield.ml.type.TypePrinter
+import afield.ml.type.walkTyped
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -344,7 +350,8 @@ object FieldMLCompletionEngine {
     }
 
     private fun typedVisibleNames(code: String, cursor: Int): Map<String, Type> {
-        val fallback = typedVisibleNameFallback(code, cursor)
+        // Callback parameters come last: inside `fun p -> …`, `p` shadows whatever is above it.
+        val fallback = typedVisibleNameFallback(code, cursor) + callbackParameterTypes(code, cursor)
         val typed = FieldMLCompiler.compile(code).typed ?: return fallback
         val out = linkedMapOf<String, Type>()
         fun visit(expr: TExpr) {
@@ -416,7 +423,12 @@ object FieldMLCompletionEngine {
     private fun typeOfExpressionEndingAt(code: String, end: Int): Type? {
         val segment = expressionSegmentEndingAt(code, end)
         if (segment.isBlank()) return null
-        val prelude = compilingScopePreludeSource(code, end)
+        // The segment walk stops at the enclosing `->`, so a receiver that is a callback parameter
+        // would otherwise be a free name. Binding them here is what makes `fun p -> p |> hostCall "…`
+        // complete against `Vec3` rather than against nothing.
+        val prelude = listOf(compilingScopePreludeSource(code, end), callbackParameterBindings(code, end))
+            .filter { it.isNotBlank() }
+            .joinToString("\n")
         val source = if (prelude.isBlank()) segment else "$prelude\n$segment"
         return FieldMLCompiler.compile(source).takeIf { it.errorFree }?.typed?.type
     }
@@ -618,6 +630,123 @@ object FieldMLCompletionEngine {
         }
         return masked
     }
+
+    // ---- callback parameters -------------------------------------------------------------------
+    //
+    // A lambda handed to a JVM method has typed parameters now — `Inferencer.preInferHostSpine` reads
+    // them off the method's signature. Completion cannot simply read them back, because the source it
+    // is given is half-written and does not parse, so instead it *asks*: rebuild the enclosing host
+    // call with the lambda closed off at its arrow, compile that, and take the parameter types out of
+    // the result.
+    //
+    // Asking rather than re-deriving is the point. The mapping from `hostCall2 "m" a f t` to a JVM
+    // parameter index lives in the inferencer, and a second copy of it here would be a second copy to
+    // keep in step. This costs one small compile per keystroke, memoised on the rebuilt program.
+
+    /** The types of the parameters of the lambda the caret sits inside, or empty when it does not. */
+    private fun callbackParameterTypes(code: String, cursor: Int): Map<String, Type> =
+        enclosingCallbackParameters(code, cursor)
+            .filterValues { it is THost || it in scalarWitnesses.keys }
+
+    /**
+     * The same thing as `let` statements, for the paths that rebuild a *program* rather than consult a
+     * map. A host value is reconstructed with `hostAs`, which is exactly what a FieldML author would
+     * have had to write here before this existed.
+     */
+    private fun callbackParameterBindings(code: String, cursor: Int): String =
+        enclosingCallbackParameters(code, cursor)
+            .mapNotNull { (name, type) -> witnessFor(type)?.let { "let $name = $it" } }
+            .joinToString("\n")
+
+    private val scalarWitnesses: Map<Type, String> = mapOf(
+        TInt to "0",
+        TFloat to "0.0",
+        TBool to "true",
+        TString to "\"\"",
+    )
+
+    /** An expression of [type], or null when there is no way to write one — in which case: no binding. */
+    private fun witnessFor(type: Type): String? {
+        scalarWitnesses[type]?.let { return it }
+        val host = type as? THost ?: return null
+        if (FieldMLHostTypes.jvmClassOf(host) == null) return null
+        return """hostAs "${host.name}" hostInput"""
+    }
+
+    /**
+     * The parameters of the innermost `fun … ->` the caret is inside, with the types the JVM signature
+     * behind it gives them.
+     *
+     * The rebuild is deliberately literal: everything from the opening bracket up to the lambda's
+     * arrow is kept verbatim — which is what carries the tuple spread in
+     * `hostCall "generate" (4, 4, fun x y -> …` — and the body is replaced by the first parameter so
+     * that the result parses no matter how half-finished the real body is.
+     */
+    private fun enclosingCallbackParameters(code: String, cursor: Int): Map<String, Type> {
+        val lambda = enclosingLambda(code, cursor) ?: return emptyMap()
+        val call = expressionSegmentEndingAt(code, lambda.open)
+        if (call.isBlank()) return emptyMap()
+        val head = code.substring(lambda.open + 1, lambda.arrow)
+        val probe = "$call($head-> ${lambda.parameters.first()})"
+        val prelude = compilingScopePreludeSource(code, lambda.open)
+        val source = if (prelude.isBlank()) probe else "$prelude\n$probe"
+        callbackProbeCache[source]?.let { return it.value }
+
+        val typed = FieldMLCompiler.compile(source).takeIf { it.errorFree }?.typed
+        var found = emptyMap<String, Type>()
+        typed?.walkTyped { node ->
+            if (node is TExprLambda && node.parameters.map { it.first } == lambda.parameters) {
+                found = node.parameters.toMap()
+            }
+        }
+        synchronized(callbackProbeCache) {
+            if (callbackProbeCache.size > 32) callbackProbeCache.clear()
+            callbackProbeCache[source] = CachedParameters(found)
+        }
+        return found
+    }
+
+    private class CachedParameters(val value: Map<String, Type>)
+
+    private val callbackProbeCache = java.util.Collections.synchronizedMap(
+        linkedMapOf<String, CachedParameters>(),
+    )
+
+    private class EnclosingLambda(val open: Int, val arrow: Int, val parameters: List<String>)
+
+    /**
+     * The innermost unclosed `(` before the caret that has a `fun … ->` written inside it, plus that
+     * lambda's parameters. Null when the caret is not inside a lambda argument at all, which is the
+     * common case and has to cost nothing.
+     *
+     * Outward, not just innermost: in `hostCall "generate" (4, 4, fun x y -> toFloat (x` the caret is
+     * inside the `(x`, and the bracket that carries the lambda is two levels out.
+     */
+    private fun enclosingLambda(code: String, cursor: Int): EnclosingLambda? {
+        val mask = maskedForScanning(code)
+        var depth = 0
+        var index = (cursor - 1).coerceAtMost(mask.length - 1)
+        while (index >= 0) {
+            when (mask[index]) {
+                ')', ']', '}' -> depth++
+                '(' -> if (depth == 0) lambdaOpenedAt(mask, index, cursor)?.let { return it } else depth--
+                '[', '{' -> if (depth > 0) depth--
+            }
+            index--
+        }
+        return null
+    }
+
+    private fun lambdaOpenedAt(mask: String, open: Int, cursor: Int): EnclosingLambda? {
+        val header = lambdaHeader.findAll(mask.substring(open + 1, cursor)).lastOrNull() ?: return null
+        val parameters = header.groupValues[1].trim().split(Regex("""\s+""")).filter { it.isNotBlank() }
+        if (parameters.isEmpty()) return null
+        // `header.range.last` indexes the arrow's `>` within the substring that starts at `open + 1`,
+        // so the `-` before it is at `open + last`. The rebuild wants everything up to there.
+        return EnclosingLambda(open, open + header.range.last, parameters)
+    }
+
+    private val lambdaHeader = Regex("""\bfun\s+((?:[a-z_][A-Za-z0-9_']*\s+)+)->""")
 
     private val CompilationResult.errorFree: Boolean
         get() = typed != null && diagnostics.none { it.severity == afield.ml.diag.Severity.Error }
