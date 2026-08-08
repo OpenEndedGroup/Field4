@@ -565,8 +565,16 @@ class PetriStateSpaceTest {
         // semantic change to a public function the human's boxes call through `report()`. This
         // replays the old behaviour beside the new one on the nets those boxes build. If it ever
         // starts differing, that is a fact somebody needs to be told rather than discover.
+        //
+        // `maxUnroll` is capped at 20 000 rather than left at the default 200 000, and the reason is
+        // itself part of the argument: replaying the old behaviour at its real ceiling exhausts the
+        // heap when this runs inside the full suite. `PetriRun` keeps every step and `PetriMarking.add`
+        // copies a place's token list, so a long replay costs quadratic memory — which is exactly the
+        // trap the fix removes from `report()`. So this proves the narrower, affordable claim: no
+        // transition in these nets first fires between `within` and 20 000 steps, so nothing the
+        // document prints moves.
         fun before(net: PetriNet, within: Int): List<String> {
-            val run = net.run()
+            val run = net.run(maxUnroll = 20_000)
             run.lasso(within)
             val fired = run.steps(Int.MAX_VALUE).flatMap { step -> step.firings.map { it.transition } }.toSet()
             return net.transitionNames.filter { it !in fired }
