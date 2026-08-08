@@ -64,6 +64,7 @@ object PetriSmokeTest {
         testAMarkingDrivesAControlValue()
         testTheLiveRuntimeAgreesWithThePureOne()
         testTheDrawingDrawsSomething(dir)
+        testTheStateSpaceAnswersTheClassicalQuestion(dir)
         testItActuallyMakesASound(dir)
         printReport()
 
@@ -259,6 +260,56 @@ object PetriSmokeTest {
         check(moving.enabled.isNotEmpty()) { "nothing is enabled a quarter of the way through a running kit" }
         File(dir, "petri-kit.svg").writeText(moving.toSvg(1100.0, 700.0))
         println("  drew ${lines.size} lines; a cycle laid out on a circle of radius ${radii.first().toInt()}")
+    }
+
+    /**
+     * The classical questions, end to end, on the one net whose answers everybody already knows.
+     *
+     * A symmetric five-philosopher table deadlocks and an asymmetric one cannot: that is a fact
+     * about dining philosophers, not about this code, so it is the right thing to check this code
+     * against. The counterexample is re-fired through the engine before it is believed, and then
+     * drawn — because the picture is the artifact a person can actually judge, and a state graph
+     * that renders blank or as a hairball would pass every assertion above it.
+     */
+    private fun testTheStateSpaceAnswersTheClassicalQuestion(dir: File) {
+        fun table(reverseLast: Boolean) = petri {
+            conflict = PetriConflict.ORDER
+            grid = cyc(1, 4)
+            for (i in 0 until 5) place("fork.$i", tokens = 1)
+            for (i in 0 until 5) {
+                val left = i
+                val right = (i + 1) % 5
+                val reversed = reverseLast && i == 4
+                t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+                t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+                t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+            }
+        }
+
+        val symmetric = table(reverseLast = false).stateSpace()
+        check(symmetric.outcome == PetriSearchOutcome.COMPLETE) { "82 markings is not a budget problem" }
+        check(symmetric.stateCount == 82) { "the symmetric table has 82 markings, not ${symmetric.stateCount}" }
+        val trace = symmetric.deadlockTrace() ?: error("a symmetric table must be able to wedge")
+        check(trace.length == 5) { "the shortest wedge is five grabs, not ${trace.length}" }
+        check(trace.verify() == null) { trace.verify()!! }
+
+        val asymmetric = table(reverseLast = true).stateSpace()
+        check(asymmetric.canDeadlock == false) { "one philosopher reaching right first removes the deadlock" }
+        check(asymmetric.isLive == true) { "and leaves every philosopher able to eat again" }
+
+        // The disagreement that the whole layer exists for: the deterministic analysis says
+        // philosopher 4 never eats (starvation, under this conflict policy) and the exhaustive one
+        // says every transition is fireable (the *net* is fine).
+        check("eat.4" in table(reverseLast = true).deadTransitions()) { "ORDER should starve the reversed philosopher" }
+        check(asymmetric.neverFires() == emptyList<String>()) { "…but no transition is genuinely dead" }
+
+        val svg = symmetric.toSvg(highlight = trace, w = 1400.0, h = 820.0)
+        check(svg.length > 20_000) { "the state graph drew almost nothing (${svg.length} chars)" }
+        File(dir, "petri-state-space.svg").writeText(svg)
+        println(
+            "  state space: ${symmetric.stateCount} markings, ${symmetric.edgeCount} firings, " +
+                "wedges after ${trace.length} — $trace"
+        )
     }
 
     /**

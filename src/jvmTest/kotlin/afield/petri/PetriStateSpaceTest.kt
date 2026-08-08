@@ -396,4 +396,57 @@ class PetriStateSpaceTest {
 
         assertFalse("state space" in table(reverseLast = true).report(stateBudget = 0), "budget 0 opts out")
     }
+
+    // ── the picture ───────────────────────────────────────────────────────────────────────
+
+    @Test
+    fun `the state graph draws itself with the counterexample laid over it`() {
+        val graph = table(reverseLast = false).stateSpace()
+        val trace = assertNotNull(graph.deadlockTrace())
+
+        assertEquals(5, graph.diameterFound, "six BFS layers, and the deadlock is in the last one")
+
+        // One line per edge, one per node, and a ring each for the initial marking and the single
+        // deadlock. Pinned exactly, because the failure this is here for is a drawing that quietly
+        // stops emitting geometry and still returns a plausible-looking list.
+        val bare = graph.toFLines(highlight = null, labels = false)
+        assertEquals(graph.edgeCount + graph.stateCount + 2, bare.size)
+        assertEquals(349, bare.size)
+
+        val highlighted = graph.toFLines(highlight = trace, labels = false)
+        assertEquals(bare.size, highlighted.size, "highlighting recolours lines; it does not add any")
+
+        // Labels are glyph outlines and need a font, which a headless build may not have — the
+        // drawing is designed to survive that rather than throw. Where there *is* a font, the five
+        // transition names plus 'start' and 'stuck' must actually be drawn, because a picture whose
+        // counterexample is unlabelled is the failure mode this whole rendering exists to avoid.
+        val labelled = graph.toFLines(highlight = trace, labels = true)
+        assertTrue(labelled.size >= highlighted.size)
+        val hasFont = runCatching { afield.stdlib.typeface(java.awt.Font.MONOSPACED, 13.0) }.isSuccess
+        if (hasFont) {
+            assertTrue(
+                labelled.size >= highlighted.size + 30,
+                "expected glyph outlines for grab.0…grab.4, start and stuck; got ${labelled.size - highlighted.size}",
+            )
+        }
+
+        val svg = graph.toSvg(trace, w = 1400.0, h = 820.0)
+        assertTrue("<svg" in svg && svg.length > 20_000, "the SVG is suspiciously small (${svg.length} chars)")
+    }
+
+    @Test
+    fun `the layered layout separates the depths and spreads each of them out`() {
+        // A collapsed layout draws every node on top of every other and still returns the right
+        // number of lines, so the count assertions above cannot catch it. Positions can.
+        val graph = boundedBuffer().stateSpace()
+        val svg = graph.toSvg(w = 900.0, h = 380.0)
+        assertTrue("<path" in svg, svg.take(400))
+
+        val table = table(reverseLast = false).stateSpace()
+        val drawn = table.toFLines(labels = false)
+        val xs = drawn.flatMap { line -> line.nodes.mapNotNull { it.toOrNull?.x } }
+        val ys = drawn.flatMap { line -> line.nodes.mapNotNull { it.toOrNull?.y } }
+        assertTrue(xs.max() - xs.min() > 900f, "the layers should fill the width, spanning ${xs.max() - xs.min()}")
+        assertTrue(ys.max() - ys.min() > 500f, "the widest layer should fill the height, spanning ${ys.max() - ys.min()}")
+    }
 }

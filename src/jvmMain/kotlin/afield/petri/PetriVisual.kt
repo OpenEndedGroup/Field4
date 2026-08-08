@@ -935,3 +935,343 @@ fun PetriRun.asciiTimeline(steps: Int = 16): String {
         }
     }
 }
+
+// ── the state space, drawn ─────────────────────────────────────────────────────────────────
+
+/*
+ A net has a standard picture and a state space does not, which is most of the reason the classical
+ properties feel abstract when the net they are about does not. The drawing below is an attempt at
+ the missing picture, and it is built round one decision: the *counterexample* is the subject, and
+ everything else is context for it.
+
+ So the graph is laid out in breadth-first layers — depth left to right, which reads as elapsed
+ firings — and the shortest path to the deadlock runs across it as a bright line with its transition
+ names written on it. The rest of the space is drawn thin and quiet. What you should be able to see
+ at a glance is: how wide the net's future is, how few steps it takes to ruin it, and which way.
+*/
+
+private val STATE_DEAD = hsl(0.01, 0.80, 0.58, 0.98)
+private val STATE_EDGE = hsl(0.58, 0.22, 0.52, 0.34)
+private val STATE_BACK = hsl(0.52, 0.30, 0.50, 0.30)
+private val STATE_NODE = hsl(0.58, 0.28, 0.60, 0.75)
+
+/**
+ * The state graph as a picture: BFS layers left to right, one dot per reachable marking, and the
+ * shortest route to a deadlock drawn over the top of them.
+ *
+ * [highlight] defaults to [PetriStateGraph.deadlockTrace], which is the trace you almost always
+ * want; pass any other trace — a [PetriStateGraph.witness] of some property — to draw that instead,
+ * or null for the bare graph.
+ *
+ * Labels are the transition names *along the highlighted path only*. Writing the marking on every
+ * node was tried and is unreadable at eighty states: a dining table's marking is fifteen places
+ * long and the labels overlap into a grey band. The path names are the part a reader can act on,
+ * and the summary card next to the drawing has the numbers.
+ */
+fun PetriStateGraph.toFLines(
+    highlight: PetriTrace? = deadlockTrace(),
+    w: Double = 1200.0,
+    h: Double = 700.0,
+    labels: Boolean = true,
+    labelSize: Double = 13.0,
+): List<FLine> {
+    if (stateCount == 0) return emptyList()
+    val position = layeredPositions(w, h)
+    val radius = nodeRadius(w, h)
+    val out = mutableListOf<FLine>()
+
+    // Which nodes and which edges the highlighted trace runs through. Matching by marking rather
+    // than by remembering indices keeps a hand-built trace drawable.
+    val idOf = HashMap<PetriMarking, Int>()
+    states.forEachIndexed { id, marking -> idOf.putIfAbsent(marking, id) }
+    val pathNodes = highlight?.markings?.mapNotNull { idOf[it] } ?: emptyList()
+    val pathEdges = HashSet<Triple<Int, String, Int>>()
+    if (highlight != null && pathNodes.size == highlight.markings.size) {
+        for ((step, name) in highlight.transitions.withIndex()) {
+            pathEdges += Triple(pathNodes[step], name, pathNodes[step + 1])
+        }
+    }
+
+    // Arrowheads are dropped on a dense graph. Two hundred heads at three pixels each are not
+    // direction, they are texture, and they cost more than they say.
+    val heads = edgeCount <= 140 && radius >= 4.0
+
+    for (edge in edges) {
+        val hot = Triple(edge.from, edge.transition, edge.to) in pathEdges
+        if (edge.from == edge.to) {
+            out += selfLoop(position[edge.from], radius, hot)
+            continue
+        }
+        val from = position[edge.from]
+        val to = position[edge.to]
+        val dx = (to.x - from.x).toDouble()
+        val dy = (to.y - from.y).toDouble()
+        val length = hypot(dx, dy)
+        if (length < 1e-6) continue
+        val a = vec(from.x + dx / length * radius, from.y + dy / length * radius)
+        val b = vec(to.x - dx / length * (radius + if (heads) 2.0 else 0.0), to.y - dy / length * radius)
+        val backward = depth(edge.to) <= depth(edge.from)
+        val tint = if (hot) LIVE else if (backward) STATE_BACK else STATE_EDGE
+        // An edge that goes *back* a layer is drawn bowed, because it otherwise lands exactly on
+        // top of the forward edge between the same two states and the picture says "one way" about
+        // a net that can return. On the four-slot buffer that is the difference between a chain and
+        // a cycle, which is the whole property being illustrated.
+        out += if (backward) {
+            bowedEdge(a, b, min(44.0, length * 0.28), tint, if (hot) 3.0 else 0.9)
+        } else if (heads) {
+            arrow(Vec2(a), Vec2(b), color = tint, thickness = if (hot) 3.0 else 1.0, headLength = 8.0, headWidth = 5.0)
+        } else {
+            fline {
+                moveTo(a); lineTo(b)
+                stroked = true; filled = false
+                thickness = if (hot) 3.0 else 0.8
+                color = tint
+            }
+        }
+    }
+
+    for (id in states.indices) {
+        val centre = position[id]
+        val dead = id in deadMarkings
+        val onPath = id in pathNodes
+        out += fline {
+            circle(centre.x.toDouble(), centre.y.toDouble(), radius, 20)
+            filled = true; stroked = false
+            color = when {
+                dead -> STATE_DEAD
+                onPath -> LIVE
+                id == 0 -> READY
+                else -> STATE_NODE
+            }
+        }
+        // The initial marking and every deadlock get a ring, so they are findable in a thicket of
+        // otherwise identical dots even when the picture is shrunk into a docs page.
+        if (dead || id == 0) {
+            out += fline {
+                circle(centre.x.toDouble(), centre.y.toDouble(), radius + 3.5, 24)
+                filled = false; stroked = true
+                thickness = 1.6
+                color = if (dead) STATE_DEAD else READY
+            }
+        }
+    }
+
+    if (labels && highlight != null && pathEdges.isNotEmpty()) {
+        for ((step, name) in highlight.transitions.withIndex()) {
+            val a = position[pathNodes[step]]
+            val b = position[pathNodes[step + 1]]
+            val mid = vec((a.x + b.x) / 2.0, (a.y + b.y) / 2.0 - labelSize * 0.9)
+            out += label(name, mid, labelSize, LIVE)
+        }
+        out += label("start", vec(position[0].x, position[0].y - radius - labelSize), labelSize, READY)
+        pathNodes.lastOrNull()?.let { last ->
+            if (last in deadMarkings) {
+                out += label("stuck", vec(position[last].x, position[last].y - radius - labelSize), labelSize, STATE_DEAD)
+            }
+        }
+    }
+
+    return out.filter { it.nodes.isNotEmpty() }
+}
+
+/** The drawing as a standalone SVG string — for docs, for a file, for anywhere without a box. */
+fun PetriStateGraph.toSvg(
+    highlight: PetriTrace? = deadlockTrace(),
+    w: Double = 1200.0,
+    h: Double = 700.0,
+    labels: Boolean = true,
+): String = drawToSVG(toFLines(highlight, w, h, labels), w, h)
+
+/**
+ * How big a dot can be before the widest layer collides with itself.
+ *
+ * Derived from the layout rather than fixed, because the same function draws a five-state buffer
+ * and an eighty-state dining table and neither should be told what the other needed.
+ */
+private fun PetriStateGraph.nodeRadius(w: Double, h: Double): Double {
+    val widest = layerSizes().maxOrNull() ?: 1
+    val deepest = max(1, diameterFound)
+    val vertical = (h - 2.0 * STATE_MARGIN) / max(1, widest)
+    val horizontal = (w - 2.0 * STATE_MARGIN) / deepest
+    return min(11.0, max(2.0, min(vertical, horizontal) * 0.28))
+}
+
+private fun PetriStateGraph.layerSizes(): List<Int> {
+    val counts = IntArray(diameterFound + 1)
+    for (id in states.indices) counts[depth(id)]++
+    return counts.toList()
+}
+
+private const val STATE_MARGIN = 46.0
+
+/** How many barycentre sweeps to run. Eight is where the crossing count stops moving on the table. */
+private const val STATE_ORDER_SWEEPS = 8
+
+/**
+ * BFS depth across, and within each layer an ordering chosen to keep the edges from crossing.
+ *
+ * The ordering is the classical barycentre heuristic: sweep down the layers putting each node at
+ * the average position of its predecessors, then sweep up doing the same with its successors, and
+ * repeat. It is not optimal and does not need to be — [PetriLayoutSolver] exists for the small
+ * exact case, and a state graph is the large approximate one. Without any ordering at all the
+ * picture is genuinely a hairball; with this it is a fan, which is what a state space looks like.
+ */
+private fun PetriStateGraph.layeredPositions(w: Double, h: Double): Array<Vec2> {
+    val count = stateCount
+    val depths = IntArray(count) { depth(it) }
+    val layers = Array(depths.maxOrNull()!! + 1) { mutableListOf<Int>() }
+    for (id in 0 until count) layers[depths[id]] += id
+    val slot = IntArray(count)
+    for (layer in layers) layer.forEachIndexed { position, id -> slot[id] = position }
+
+    val before = Array(count) { mutableListOf<Int>() }
+    val after = Array(count) { mutableListOf<Int>() }
+    for (edge in edges) {
+        if (edge.from == edge.to || depths[edge.from] == depths[edge.to]) continue
+        before[edge.to] += edge.from
+        after[edge.from] += edge.to
+    }
+
+    repeat(STATE_ORDER_SWEEPS) { pass ->
+        val downward = pass % 2 == 0
+        val neighbours = if (downward) before else after
+        val order = if (downward) layers.indices.toList() else layers.indices.reversed().toList()
+        for (level in order) {
+            val sorted = layers[level].sortedBy { id ->
+                val seen = neighbours[id]
+                if (seen.isEmpty()) slot[id].toDouble() else seen.sumOf { slot[it].toDouble() } / seen.size
+            }
+            layers[level].clear()
+            layers[level] += sorted
+            sorted.forEachIndexed { position, id -> slot[id] = position }
+        }
+    }
+
+    val widest = layers.maxOf { it.size }
+    val across = if (layers.size > 1) (w - 2.0 * STATE_MARGIN) / (layers.size - 1) else 0.0
+    val down = if (widest > 1) (h - 2.0 * STATE_MARGIN) / (widest - 1) else 0.0
+    val out = arrayOfNulls<Vec2>(count)
+    for ((level, layer) in layers.withIndex()) {
+        layer.forEachIndexed { position, id ->
+            out[id] = vec(
+                STATE_MARGIN + level * across,
+                h / 2.0 + (position - (layer.size - 1) / 2.0) * down,
+            )
+        }
+    }
+    @Suppress("UNCHECKED_CAST")
+    return out as Array<Vec2>
+}
+
+/** How many segments a bowed edge is flattened into. Twelve is smooth at any size these are drawn. */
+private const val STATE_BOW_STEPS = 12
+
+/** One quadratic bow from [a] to [b], bulging [bow] pixels to the left of the direction of travel. */
+private fun bowedEdge(a: Vec2, b: Vec2, bow: Double, tint: afield.stdlib.Vec4, weight: Double): FLine {
+    val ax = a.x.toDouble()
+    val ay = a.y.toDouble()
+    val bx = b.x.toDouble()
+    val by = b.y.toDouble()
+    val length = hypot(bx - ax, by - ay).coerceAtLeast(1e-6)
+    val controlX = (ax + bx) / 2.0 - (by - ay) / length * bow
+    val controlY = (ay + by) / 2.0 + (bx - ax) / length * bow
+    return fline {
+        moveTo(a)
+        for (step in 1..STATE_BOW_STEPS) {
+            val t = step.toDouble() / STATE_BOW_STEPS
+            val u = 1.0 - t
+            lineTo(
+                vec(
+                    u * u * ax + 2.0 * u * t * controlX + t * t * bx,
+                    u * u * ay + 2.0 * u * t * controlY + t * t * by,
+                )
+            )
+        }
+        stroked = true; filled = false
+        thickness = weight
+        color = tint
+    }
+}
+
+/** A self-loop: a small ring perched above the node, because a zero-length arrow draws nothing. */
+private fun selfLoop(centre: Vec2, radius: Double, hot: Boolean): List<FLine> = listOf(
+    fline {
+        circle(centre.x.toDouble(), centre.y.toDouble() - radius * 1.6, radius * 0.9, 16)
+        filled = false; stroked = true
+        thickness = if (hot) 2.4 else 0.9
+        color = if (hot) LIVE else STATE_EDGE
+    }
+)
+
+/**
+ * Draws the state space into a box, with the classical properties as a card beside it.
+ *
+ *     val graph = net.stateSpace()
+ *     showPetriStateSpace(graph)
+ */
+fun Box.showPetriStateSpace(
+    graph: PetriStateGraph,
+    highlight: PetriTrace? = graph.deadlockTrace(),
+    channel: String = "statespace",
+    summaryChannel: String? = "$channel-summary",
+    w: Double = 1200.0,
+    h: Double = 700.0,
+    labels: Boolean = true,
+): List<FLine> {
+    val rendered = graph.toFLines(highlight, w, h, labels)
+    lines(rendered, channel = channel, w = w, h = h, fitToSize = true)
+    summaryChannel?.let { display(it, graph.summaryHtml(highlight)) }
+    return rendered
+}
+
+/** [showPetriStateSpace] for a net, searched at the default budget. */
+fun Box.showPetriStateSpace(
+    net: PetriNet,
+    channel: String = "statespace",
+    summaryChannel: String? = "$channel-summary",
+    w: Double = 1200.0,
+    h: Double = 700.0,
+    budget: Int = PETRI_STATE_BUDGET,
+): List<FLine> = showPetriStateSpace(net.stateSpace(budget), channel = channel, summaryChannel = summaryChannel, w = w, h = h)
+
+/**
+ * The card beside the picture: how big the space is, what the search proved, and — when there is
+ * one — the counterexample written out as a firing sequence.
+ */
+fun PetriStateGraph.summaryHtml(highlight: PetriTrace? = deadlockTrace()): String {
+    fun chip(text: String, tint: String) =
+        """<span style="display:inline-block;margin:2px 4px 2px 0;padding:2px 7px;border-radius:9px;background:$tint;color:#eee;font-size:11px">${escape(text)}</span>"""
+
+    val verdicts = buildList {
+        add(
+            when (canDeadlock) {
+                true -> "can deadlock" to "#5a1010"
+                false -> "deadlock-free" to "#123a1c"
+                null -> "deadlock unknown" to "#4a3a10"
+            }
+        )
+        isSafe?.let { add((if (it) "safe (1-bounded)" else "bounded") to "#1b3444") }
+        isLive?.let { add((if (it) "live" else "not live") to if (it) "#123a1c" else "#4a2010") }
+        isReversible?.let { add((if (it) "reversible" else "not reversible") to "#242424") }
+        if (!complete) add("BUDGET EXHAUSTED — every 'no' above is 'unknown'" to "#5a1010")
+    }.joinToString("") { (text, tint) -> chip(text, tint) }
+
+    val counterexample = highlight?.let { trace ->
+        """
+        <div style="margin-top:8px;color:#8a8a8a;font-size:11px">shortest counterexample — ${trace.length} firings</div>
+        <div style="color:#e2a06a;font-size:12px;word-break:break-word">${escape(trace.toString())}</div>
+        <div style="color:#8a8a8a;font-size:11px;margin-top:3px">ends at ${escape(trace.end.toString())}</div>
+        """.trimIndent()
+    } ?: ""
+
+    return """
+        <div style="font-family:Iosevka Web, IBM Plex Mono, monospace;background:#0a0a0a;color:#d8d8d8;border:1px solid #2c2c2c;padding:10px 12px;max-width:1200px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <strong style="font-size:13px">state space</strong>
+            <span style="color:#8a8a8a;font-size:11px">$stateCount markings · $edgeCount firings · depth $diameterFound</span>
+          </div>
+          <div style="margin-top:7px">$verdicts</div>
+          $counterexample
+        </div>
+    """.trimIndent()
+}
