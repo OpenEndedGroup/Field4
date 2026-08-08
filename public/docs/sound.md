@@ -37,8 +37,8 @@ One kick-and-snare and eight hats, stacked. Two cycles.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/sound_render_path/the-beat-roll.png" wait="2" capture="box" open-outputs="true" name="sound-doc-beat-roll"}
 :::static
-// The same pattern every audio figure on this page renders. Nothing here is audio yet —
-// these are the events, and both voices are handed exactly this list.
+// The pattern the two A/B figures below render. Nothing here is audio yet — these are
+// the events, and both voices are handed exactly this list.
 showPatRollOf(
     "bd ~ sd ~" to pat("bd ~ sd ~"),
     "hh*8" to pat("hh*8"),
@@ -53,9 +53,8 @@ displayOpen("main")
 
 ![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
 
-Ten events a cycle — the two `~` are rests and produce nothing — at exact rational
-positions. Nothing so far has an opinion about what
-a kick drum sounds like.
+Ten events a cycle — the two `~` are rests and produce nothing at all — at exact rational
+positions. Nothing so far has an opinion about what a kick drum sounds like.
 
 ---
 
@@ -63,7 +62,7 @@ a kick drum sounds like.
 
 `patVoice` is that opinion, and it is a deliberately small one: **one oscillator, one
 one-pole lowpass, one exponential-decay envelope**, per event. Pitch comes from the event's
-value when it parses as a MIDI number, and otherwise from a drum map that is nine lines long:
+value when it parses as a MIDI number, and otherwise from a drum map with five entries in it:
 
 | token | what `patVoice` plays |
 | --- | --- |
@@ -185,8 +184,8 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ## What this means for the audio elsewhere in these docs
 
-Every other audio figure Field publishes — the eight scenes on
-[Patterns & Rhythm](pattern_language.md), the primitives on
+Every other audio figure Field publishes — the three clips on
+[Patterns & Rhythm](pattern_language.md), the six on
 [DoughDSP Sound Examples](dough_dsp_sound.md) — is rendered through a synthesised voice, not
 through samples. They are not recordings of a drum machine and were never meant to be: they
 are the shortest honest thing that turns a schedule into a waveform, chosen so the figure
@@ -212,10 +211,11 @@ val played = showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
 println(played.describe())          // say which voice you actually got
 ```
 
-Both put a player in the box's output and both return the rendered audio, so you can plot or
-measure it as well as listen to it. `showDirtAudio` additionally returns `usedSamples`,
-`matched` and `unmatched` — print `describe()` and your box tells you which voice it found
-rather than leaving you to guess from the sound.
+Both put a player in the box's output. `showPatAudio` hands back the rendered
+`PatSoundDocs.Stereo` so you can plot or measure it as well as listen to it;
+`showDirtAudio` hands back a `DirtRenderResult`, which carries the same audio in `.audio`
+plus `usedSamples`, `matched` and `unmatched`. Print `describe()` and the box tells you
+which voice it found rather than leaving you to guess from the sound.
 
 If you want to be sure, force it:
 
@@ -224,7 +224,8 @@ FIELD_DIRT_SAMPLES=/path/to/Dirt-Samples ./field.sh
 ```
 
 A loadable Field document with all of this side by side is committed at
-`public/docs/assets/sound_render_path/` — open that folder as a workspace and run the boxes.
+`public/docs/assets/sound_render_path/`. Open `public/docs/assets` as the workspace and
+`sound_render_path` as the document, then play box 1 and box 2 back to back.
 
 ---
 
