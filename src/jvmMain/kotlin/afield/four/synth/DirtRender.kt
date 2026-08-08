@@ -12,8 +12,13 @@ import kotlin.math.sqrt
  *
  * [patRenderStereo] renders through [patVoice] — a sine for `bd` and filtered white noise for
  * `sd` and `hh`. That is a deliberate stand-in: it needs no assets, so it works in CI and on a
- * clean checkout, and every audio figure in the documentation uses it. It also sounds like bursts
- * of white noise, because it *is* bursts of white noise.
+ * clean checkout. It also sounds like bursts of white noise, because it *is* bursts of white
+ * noise.
+ *
+ * This used to read "and every audio figure in the documentation uses it". [DocsAudioProvenance]
+ * swept the published corpus and measured each clip, and it is not true: of the twelve, four are
+ * [patVoice] and **six** come from [DoughDspSoundDocs], which never reaches this voice at all.
+ * `public/docs/sound.md` has the breakdown and `DocsAudioProvenanceGuardTest` pins the counts.
  *
  * This file is the other half. [DirtSamples] could already play the genuine Tidal sample set, but
  * only *live* — [playDirt] drives a polyphonic player through `respondAhead`, a clock and an audio

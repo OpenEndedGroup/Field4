@@ -14,6 +14,11 @@ offline (exactly like the audio engine renders them, minus the sound card) and w
 are `showSignals` Plotly figures of the same run. Rebuild the page and the sound regenerates
 from the code.
 
+These six clips are the primitives themselves, driven by real signals — they are *not* the
+`patVoice` drum stand-in used by the pattern pages, and `DoughDspSoundDocs` never calls it.
+[Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and states
+which of the three production paths made each one.
+
 Each runner block below shows the *real* code that produces its plot: the interesting part —
 constructing and driving the primitive — is in focus, and the render-and-plot boilerplate is
 folded behind a `+ …` pill you can click to reveal. The offline `dough*` helpers it calls

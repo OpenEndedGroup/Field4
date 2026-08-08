@@ -184,15 +184,32 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ## What this means for the audio elsewhere in these docs
 
-Every other audio figure Field publishes — the three clips on
-[Patterns & Rhythm](pattern_language.md), the six on
-[DoughDSP Sound Examples](dough_dsp_sound.md) — is rendered through a synthesised voice, not
-through samples. They are not recordings of a drum machine and were never meant to be: they
-are the shortest honest thing that turns a schedule into a waveform, chosen so the figure
-regenerates anywhere and so its claims can be *measured* in the audio rather than asserted in
-a caption.
+`DirtRender`'s KDoc says that "every audio figure in the documentation" uses `patVoice`, and
+the first draft of this page repeated it. **It is not true.** The audit described at the
+bottom of this page swept every published clip and measured each one; the corpus is twelve
+clips across three pages and it breaks down like this:
 
-That is a good default and a bad secret. Hence this page, and hence the check below.
+| how many | family | where |
+| --- | --- | --- |
+| 4 | the stand-in synth (`patVoice`) | 3 on [Patterns & Rhythm](pattern_language.md), 1 here |
+| 1 | real Dirt-Samples one-shots | here |
+| 1 | real samples + the stand-in per unmatched event | here |
+| 6 | a **DoughDSP primitive** on a real signal | [DoughDSP Sound Examples](dough_dsp_sound.md) |
+
+So half the published corpus never touches `patVoice` at all — and "stand-in" is the wrong
+word for that half twice over. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant
+lowpass and a soft clipper on real signals; a plate reverb ringing down is not standing in
+for anything, it *is* the thing that page is about.
+
+Where the stand-in genuinely is the voice — the four clips in the first row — the reason is
+the one given above: it needs no assets, so the figure regenerates anywhere, and its claims
+can be measured in the audio rather than asserted in a caption. That is a good default and a
+bad secret. Hence this page.
+
+One more piece of audio ships with the site, and a sweep for "figures" misses it: the
+homepage banner loop carries a 49.5-second soundtrack. No reader ever hears it — the player
+sets `muted` and exposes no controls — so it is published bytes rather than published sound.
+It is also the only audio here that no code can regenerate.
 
 ---
 
@@ -248,3 +265,25 @@ The correlation needs no sample library, which is the reason it is worth having:
 machine with no 400MB third-party download can still catch the day a "real drums" figure
 quietly becomes bursts of white noise. Which, at that point, is the one thing nobody would
 notice by reading the page.
+
+### And the same question, asked of every clip in the docs
+
+`DocsAudioProvenance` widens all of that to the whole corpus, and
+`DocsAudioProvenanceGuardTest` runs it in `check`. It sweeps every page for `audio=` fences,
+re-renders each asset through the *same* `renderWav(name, path)` contract the docs build
+drives over the backdoor, and correlates the result against the committed bytes. Three
+assertions:
+
+* **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
+  until somebody states which family it belongs to;
+* **every committed clip still matches what its producer renders today** — all twelve
+  currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation;
+* **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
+  cannot quietly become a place to put problems. It has one entry, the banner loop.
+
+That middle assertion is the one with a track record. Three days before this page was
+written, `56b124131` had to repair two published figures that the code had stopped
+producing — caught by a human running an audit by hand. This is that audit, in the build.
+
+The corpus audit prints its whole table:
+`run_field_tests.py --id synth.docs.audio.provenance`.
