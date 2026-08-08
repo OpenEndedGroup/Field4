@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 6 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory"]}
 ```
 
 ## 1. 4 — a leak, and an omega
@@ -195,12 +195,82 @@ println("                     transition is genuinely dead. That is a property o
 showPetriStateSpace(graph, w = 1100.0, h = 640.0)
 ```
 
-## 5. 3 — a buffer, counted exactly
+## 5. 6 — the wall, and stubborn sets
 
-<!-- field-box id="petri_ss_buffer" index="4" -->
+<!-- field-box id="petri_ss_reduction" index="4" -->
+
+```edn [field-box id="petri_ss_reduction" role="properties"]
+{"id" "petri_ss_reduction" "index" 4 "name" "6 — the wall, and stubborn sets" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — the wall, and stubborn sets" "_tombstone" false "frame" #afield/rect [580.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_reduction_code_.kt" "lines" 59 "characters" 2774 "sha256" "54a1334b2f37c7aaccc27f010940ced8620351f07c2788221f8ced1803d33f87"}]}
+```
+
+```kotlin [field-property box="petri_ss_reduction" name="code" path="petri_ss_reduction_code_.kt"]
+import afield.petri.*
+
+fun philosophers(n: Int) = petri {
+    conflict = PetriConflict.ORDER
+    grid = cyc(1, 4)
+    for (i in 0 until n) place("fork.$i", tokens = 1)
+    for (i in 0 until n) {
+        val left = i
+        val right = (i + 1) % n
+        t("grab.$i") { from("fork.$left"); to("holding.$i") }
+        t("eat.$i") { from("holding.$i"); from("fork.$right"); to("eating.$i") }
+        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+    }
+}
+
+// An exhaustive search is exponential in how much is happening at once, so the useful
+// question is not "does this work" but "how far does it get". Measure it rather than
+// guess: the answer is a fact about your net and your machine, and it is worth knowing
+// before you trust a green tick.
+println(" n   full         reduced   speed-up   verdict     ms(full) ms(red)")
+for (n in 2..12) {
+    val net = philosophers(n)
+    val t0 = System.nanoTime()
+    val full = net.stateSpace()
+    val fullMs = (System.nanoTime() - t0) / 1_000_000
+
+    // The same search, exploring a *stubborn set* at each marking instead of every
+    // enabled transition — one ordering of five independent grabs rather than all 120.
+    val t1 = System.nanoTime()
+    val red = net.stateSpace(reduction = PetriReduction.STUBBORN)
+    val redMs = (System.nanoTime() - t1) / 1_000_000
+
+    println("%2d   %-11s  %-7d   %-8s   %-9s   %5d    %5d".format(
+        n,
+        if (full.complete) "${full.stateCount}" else "BUDGET(${full.stateCount})",
+        red.stateCount,
+        if (full.complete) "%.1fx".format(full.stateCount.toDouble() / red.stateCount) else "—",
+        "${full.canDeadlock}/${red.canDeadlock}",
+        fullMs, redMs))
+}
+
+// The full sequence is the companion Pell numbers, a(n) = 2a(n-1) + a(n-2); the reduced
+// one is 2n^2 - 2n + 2. Twelve philosophers is past the default budget for the full
+// search — which says BUDGET and refuses to answer — and 266 markings for the reduced one.
+val twelve = philosophers(12)
+val reduced = twelve.stateSpace(reduction = PetriReduction.STUBBORN)
+println()
+println("full   : " + twelve.stateSpace().report().trim().lines().joinToString(" | "))
+println("reduced: " + reduced.report().trim().lines().joinToString(" | "))
+println("counterexample: " + reduced.deadlockTrace()!! + "   verify=" +
+    (reduced.deadlockTrace()!!.verify() ?: "checks out"))
+
+// The reduction answers deadlock and refuses everything else, because that is all the
+// theorem covers. `exact` is the flag that keeps the two apart.
+println()
+println("reduced.complete=${reduced.complete}  reduced.exact=${reduced.exact}")
+println("reduced.bounds=${reduced.bounds}  isLive=${reduced.isLive}  isReversible=${reduced.isReversible}")
+
+showPetriStateSpace(reduced, w = 1100.0, h = 600.0)
+```
+
+## 6. 3 — a buffer, counted exactly
+
+<!-- field-box id="petri_ss_buffer" index="5" -->
 
 ```edn [field-box id="petri_ss_buffer" role="properties"]
-{"id" "petri_ss_buffer" "index" 4 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [580.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1244 "sha256" "383a496135c05360a28ac15436aa95b208b22dcf5d8a483d6c84991862709533"}]}
+{"id" "petri_ss_buffer" "index" 5 "name" "3 — a buffer, counted exactly" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 — a buffer, counted exactly" "_tombstone" false "frame" #afield/rect [580.0 60.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_buffer_code_.kt" "lines" 29 "characters" 1244 "sha256" "383a496135c05360a28ac15436aa95b208b22dcf5d8a483d6c84991862709533"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_buffer" name="code" path="petri_ss_buffer_code_.kt"]

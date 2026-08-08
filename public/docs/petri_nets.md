@@ -473,6 +473,72 @@ halves, and says which of four things it means: *this configuration wedged*, *so
 wedges and here is the sequence*, *proved deadlock-free over N exhausted markings*, or *the budget
 ran out and the answer is unknown*.
 
+#### Where the wall is
+
+An exhaustive search is exponential in the number of things happening at once, so the useful
+question is not "does this work" but "how far does it get before it stops working". Measured, at the
+default 20 000-marking budget:
+
+| net | markings | note |
+| --- | --- | --- |
+| every net in `petri/document.md` | 2 – 82 | the whole document costs under 1 % of the budget |
+| an *N*-slot buffer | *N* + 1 | linear; 1 024 slots is 1 025 markings in 35 ms |
+| an *N*-section `petriSong` | *N* | linear, even though every token carries a `PatPattern` |
+| *N* philosophers | 6, 14, 34, 82, 198, 478, 1154, 2786 … | `a(n) = 2a(n-1) + a(n-2)` — about **2.41× per philosopher** |
+
+So a musical net is nowhere near the wall and a concurrency puzzle can be. Eleven philosophers is
+16 238 markings in 230 ms and `COMPLETE`; **twelve is past the budget**, and the search says
+`BUDGET` and returns `null` from `canDeadlock` rather than guessing.
+
+The coloured-token row is the one worth pausing on, because the strict state key could have gone
+badly there. A `petriSong` carries a whole `PatPattern` in each token's colour, and a strict key
+distinguishes colours that `signature()` would have merged — but the sections live in separate
+places and exactly one token circulates, so the space stays linear. Colour multiplies the state space
+only when the same place can hold different colours; a net that mints a *fresh* colour per firing has
+no finite state space at all, and gets `BUDGET`.
+
+#### Moving the wall: stubborn sets
+
+Almost all of that 2.41ⁿ is the same firings shuffled. Five philosophers each reaching for their left
+fork is one event five times over, and a full search dutifully visits all 5! orderings of it. A
+**partial-order reduction** explores one ordering and proves that is enough:
+
+```kotlin
+net.stateSpace(reduction = PetriReduction.STUBBORN)
+```
+
+At each marking it explores a *stubborn set* rather than every enabled transition — seed with an
+enabled transition, add everything that could disable an enabled member, add everything that could
+unblock one specific reason a disabled member is stuck, repeat, and take the smallest set any seed
+produces. On the philosophers the exponential becomes a quadratic:
+
+| philosophers | full | reduced | speed-up |
+| ---: | ---: | ---: | ---: |
+| 5 | 82 | 42 | 2.0× |
+| 8 | 1 154 | 114 | 10× |
+| 11 | 16 238 | 222 | **73×** (227 ms → 5 ms) |
+| 12 | *budget exhausted* | 266 | answered, at 12 firings |
+
+`2n² − 2n + 2` reduced markings against `2.41ⁿ` full ones. The groove in box 6 of the live document
+reduces 4×, `polyrhythm` 3×, `structure` 2×; the bounded buffer reduces not at all, which is correct
+— a sequential net has no independence to exploit and the reduction finds none rather than inventing
+some.
+
+Three limits, and they are the whole reason to trust it:
+
+- **It answers deadlock and refuses everything else.** The theorem is about terminal markings. A
+  reduced graph's state count is not the reachable state count, so a bound read off it would be a
+  lower bound wearing the word "exact". `graph.exact` is `complete && reduction == NONE`, and
+  `bounds`, `isSafe`, `isLive`, `isReversible`, `homeMarkings`, `neverFires()`, `mutuallyExclusive`
+  and `proves { }` all return `null` on a reduced graph. `canDeadlock` and `deadlockTrace` do not.
+- **It is not a shortest path.** The reduced search reaches a deadlock that really is reachable, by a
+  route at least as long as the true shortest. Every trace still passes `verify()`; it is just not
+  guaranteed minimal. (On every net tested here the two lengths are in fact equal.)
+- **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
+  `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
+  on such a net quietly returns an unreduced — and therefore still `exact` — graph, with
+  `graph.reduction == PetriReduction.NONE` saying so.
+
 #### When the state space is infinite
 
 An unbounded net has infinitely many markings, so the exhaustive search can only ever report

@@ -166,6 +166,10 @@ every accessor that would otherwise have said "safe", while Karp–Miller puts a
 and terminates in two nodes. And *what the algebra cannot see* prints two nets with byte-identical
 incidence matrices, one of which enforces mutual exclusion with an inhibitor arc: no P-invariant
 couples the two critical sections, and the search proves the exclusion over all three markings anyway.
+Finally *the wall* measures the thing a green tick hides: the philosophers' state space grows like the
+companion Pell numbers, about 2.41× per philosopher, so eleven is 16 238 markings in 230 ms and twelve
+is past the budget — and a stubborn-set partial-order reduction turns that into `2n²−2n+2`, a **73×**
+speed-up at eleven and an answer at twelve, while refusing every property the theorem does not cover.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_state_space/metadata.edn)
 
 **mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
