@@ -136,7 +136,7 @@ prelude in two halves, one `BoxExecution`, one Monaco module, and two coverage g
 | every intermediate form is kept, one field per stage | `src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt:14` | `data class CompilationResult` |
 | 1. lex | `src/jvmMain/kotlin/afield/ml/lex/Lexer.kt:20` | `fun lex()` |
 | 2. parse | `src/jvmMain/kotlin/afield/ml/parse/Parser.kt:54` | `fun parse()` |
-| 3. infer | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:60` | `fun infer(expr: Expr)` |
+| 3. infer | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:52` | `fun infer(expr: Expr)` |
 | 4. lower to core | `src/jvmMain/kotlin/afield/ml/core/Lowerer.kt:34` | `fun lower(expr: TExpr)` |
 | 5. evaluate | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:42` | `fun evaluate(expr: CoreExpr)` |
 
@@ -154,7 +154,7 @@ agree name for name:
 | --- | --- | --- |
 | types, consumed by the inferencer | `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt:67` | `val schemes: Map<String, Scheme>` |
 | values, consumed by the evaluator | `src/jvmMain/kotlin/afield/ml/FieldMLRuntimePrelude.kt:33` | `fun values(` |
-| where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:62` | `FieldMLTypePrelude.schemes` |
+| where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:54` | `FieldMLTypePrelude.schemes` |
 | where the value half enters | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:43` | `RuntimeEnv()` |
 
 The runtime half takes `output: HasOutput?` and `box: Box?` (`FieldMLRuntimePrelude.kt:33`) — that is
