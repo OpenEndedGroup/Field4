@@ -858,6 +858,13 @@ fun PetriNet.coverability(budget: Int = PETRI_STATE_BUDGET): PetriCoverabilityGr
                         val lifted = HashMap(next.counts)
                         var grew = false
                         for (place in placeNames) {
+                            // A place with a capacity is bounded by it, whatever the pumping
+                            // argument says — the firing that would overflow is simply refused. So
+                            // ω is never assigned there, which makes the answer for that place
+                            // right even on a net the construction is otherwise unsound for. The
+                            // caveat still stands for its neighbours: a blocked repetition can stop
+                            // some *other* place growing too, and this cannot see that.
+                            if (place(place)?.capacity != null) continue
                             if (next[place] != PETRI_OMEGA && next[place] > seen[place]) {
                                 lifted[place] = PETRI_OMEGA
                                 grew = true

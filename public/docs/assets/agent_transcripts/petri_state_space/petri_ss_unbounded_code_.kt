@@ -24,7 +24,9 @@ println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not 
 println("bound('run')   = ${cover.bound("run")}")
 
 // The trade, stated: coverability terminates on everything and is only *valid* for plain
-// place/transition nets. Add a capacity and it says so instead of guessing.
+// place/transition nets. Add a capacity and it says so rather than guessing — even here,
+// where it happens to get the right answer anyway, because a capped place is bounded by
+// its capacity whatever the pumping argument says and so is never given an ω.
 val capped = petri {
     place("run", tokens = 1)
     place("queue", capacity = 3)
@@ -32,4 +34,5 @@ val capped = petri {
 }
 println()
 println(capped.coverability().report())
-println("…so use the exhaustive search there: ${capped.stateSpace().report().lines().first()}")
+println("the caveat is conservative, not a wrong answer — the exhaustive search agrees:")
+println("  " + capped.stateSpace().report().lines().first())

@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="petri_ss_unbounded" index="0" -->
 
 ```edn [field-box id="petri_ss_unbounded" role="properties"]
-{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 35 "characters" 1457 "sha256" "c76840ef7d22a0bb73110b2c137f4a69ee9d86798b69d7450e882ada79f39a77"}]}
+{"id" "petri_ss_unbounded" "index" 0 "name" "4 — a leak, and an omega" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 — a leak, and an omega" "_tombstone" false "frame" #afield/rect [60.0 200.0 220.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "petri_ss_unbounded_code_.kt" "lines" 38 "characters" 1693 "sha256" "5260fccc075482de19d532f1f8ef8d11b161c40d458cb940dbd31acc1240987f"}]}
 ```
 
 ```kotlin [field-property box="petri_ss_unbounded" name="code" path="petri_ss_unbounded_code_.kt"]
@@ -41,7 +41,9 @@ println("bound('queue') = ${cover.bound("queue")}   (null here means omega, not 
 println("bound('run')   = ${cover.bound("run")}")
 
 // The trade, stated: coverability terminates on everything and is only *valid* for plain
-// place/transition nets. Add a capacity and it says so instead of guessing.
+// place/transition nets. Add a capacity and it says so rather than guessing — even here,
+// where it happens to get the right answer anyway, because a capped place is bounded by
+// its capacity whatever the pumping argument says and so is never given an ω.
 val capped = petri {
     place("run", tokens = 1)
     place("queue", capacity = 3)
@@ -49,7 +51,8 @@ val capped = petri {
 }
 println()
 println(capped.coverability().report())
-println("…so use the exhaustive search there: ${capped.stateSpace().report().lines().first()}")
+println("the caveat is conservative, not a wrong answer — the exhaustive search agrees:")
+println("  " + capped.stateSpace().report().lines().first())
 ```
 
 ## 2. 1 — the table can wedge

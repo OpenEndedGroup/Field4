@@ -223,6 +223,19 @@ class PetriStateSpaceTest {
         assertTrue(coloured.isColourDependent)
         assertTrue(coloured.coverability().caveats.single().contains("colour"))
 
+        // A capacity is the one of the three the construction can still be exact about, because a
+        // capped place is bounded by its capacity whatever the pumping argument says. ω is never
+        // assigned there, so the answer for that place is right even though the caveat stands.
+        val capped = petri {
+            place("run", tokens = 1)
+            place("queue", capacity = 3)
+            t("make") { from("run"); to("run"); to("queue") }
+        }
+        assertFalse(capped.coverability().sound)
+        assertEquals(3, capped.coverability().bound("queue"), "a capped place is never ω")
+        assertTrue(capped.coverability().isBounded)
+        assertEquals(4, capped.stateSpace().stateCount, "and the exhaustive search agrees: 0..3 in the queue")
+
         // …and the exhaustive search handles all three exactly, which is the trade the file makes.
         assertEquals(PetriSearchOutcome.COMPLETE, inhibited.stateSpace().outcome)
         assertEquals(PetriSearchOutcome.COMPLETE, coloured.stateSpace().outcome)

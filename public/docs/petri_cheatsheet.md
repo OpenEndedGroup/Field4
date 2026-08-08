@@ -131,5 +131,15 @@ Not notation — the API around it.
 | `net.willDeadlock()` | whether it wedges — the check to run before committing an edit |
 | `net.deadTransitions()` | the voices that silently never fire |
 | `net.report()` | all of the above, as a paragraph |
+| `net.stateSpace()` | every marking reachable by **any** interleaving — the classical answers |
+| `graph.deadlockTrace()` | the shortest firing sequence that wedges it, or null |
+| `graph.witness { … }` | `EF`: the shortest route to a marking satisfying the predicate |
+| `graph.invariant { … }` | `AG`: the shortest violation, or null when the property holds |
+| `graph.mutuallyExclusive("a", "b")` | true / false / null — null means the search was truncated |
+| `graph.bound(place)`, `graph.isSafe`, `graph.isLive` | exact, or null when the budget ran out |
+| `graph.neverFires()` | fireable in *no* interleaving — the honest `deadTransitions()` |
+| `trace.verify()` | re-fires the counterexample through the engine; null means it holds up |
+| `net.coverability()` | Karp-Miller with ω — terminates even when the state space does not |
+| `box.showPetriStateSpace(graph)` | the state graph, with the counterexample drawn over it |
 | `box.showPetriNet(live)` | the picture, clickable: click a place to inject, a transition to fire |
 | `live.play(cps = 2.0) { … }` | plays a live net in a box, on the beat |
