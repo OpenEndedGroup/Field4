@@ -386,6 +386,187 @@ someone, and `willDeadlock()` correctly says no while `deadTransitions()` says w
 Two different faults, two different fixes. The asymmetry fixes one; a fair conflict policy fixes
 the other.
 
+### Every interleaving, exactly — and the sequence that breaks it
+
+Read the last two paragraphs again and notice what they are careful not to claim. `willDeadlock()`
+runs the net forward **under its own conflict policy** and reports whether *that one* interleaving
+wedged; `deadTransitions()` names the transitions that did not fire in *that one* run. Both are the
+deterministic question, and for a live coder the deterministic question is usually the right one,
+because the conflict policy is part of the instrument.
+
+It is not the question a dinner party asks. A symmetric table deadlocks under *some* schedules and
+not others, so running it once and finding it still going proves nothing at all — which is why the
+`reverseLast` flag above had to be written by hand. `net.stateSpace()` computes the other answer:
+every marking reachable by **any** interleaving, breadth-first, and the classical properties read
+straight off the graph.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/petri_nets/state_space.png" wait="2.0" capture="box" open-outputs="true" embed=true name="petri-state-space" w="1240" padding="12"}
+:::static
+import afield.petri.*
+
+fun table(reverseLast: Boolean) = petri {
+    conflict = PetriConflict.ORDER
+    grid = cyc(1, 4)
+    for (i in 0 until 5) place("fork.$i", tokens = 1)
+    for (i in 0 until 5) {
+        val left = i
+        val right = (i + 1) % 5
+        val reversed = reverseLast && i == 4
+        t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+        t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+        t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+    }
+}
+
+val graph = table(reverseLast = false).stateSpace()
+val trace = graph.deadlockTrace()!!
+
+:::fold draw the state space with the counterexample on it
+showPetriStateSpace(graph, w = 1080.0, h = 560.0)
+markdown("main", """
+    #### ${graph.stateCount} reachable markings, and the ${trace.length} firings that ruin them
+
+    ~~~
+${graph.report().trimEnd()}
+    ~~~
+
+    The counterexample, re-fired through the engine's own enabling test:
+    **${trace.verify() ?: "it checks out"}**. Breaking the symmetry (`reverseLast = true`)
+    leaves **${table(reverseLast = true).stateSpace().stateCount}** markings and *proves*
+    there is no deadlock among them.
+""")
+displayOpen("main")
+:::endfold
+```
+
+The picture is the state space itself: breadth-first depth left to right, one dot per reachable
+marking, the shortest route to the deadlock in orange with its transitions written on it, and a red
+ring on the marking it gets stuck in. Every philosopher picking up one fork — five firings, and
+there is nothing shorter.
+
+Three things follow that the deterministic analysis cannot say:
+
+- **A "no" means something.** `canDeadlock` is `true`, `false` or `null`, and `null` means the
+  search hit its budget. Nothing here reports an unfinished search as safe: every accessor that
+  would be a claim about markings nobody visited returns `null` instead of `false`.
+- **The counterexample is the deliverable.** `graph.witness { … }` is `EF` with the shortest route
+  attached and `graph.invariant { … }` is `AG` returning the shortest violation, so
+  `mutuallyExclusive("crit.a", "crit.b")` either proves the property or hands you the two firings
+  that break it. `PetriTrace.verify()` re-fires the whole sequence through the engine, so a
+  counterexample proves itself rather than restating the search that produced it.
+- **Read and inhibitor arcs are visible again.** The invariants cannot see them because the
+  incidence matrix is a record of *change*; the search asks the engine whether a transition is
+  enabled, and the engine knows. Two nets with identical incidence matrices, one of which enforces
+  mutual exclusion with an inhibitor arc, are told apart by `stateSpace()` and by nothing else here.
+
+Applied to the table above, the two analyses disagree in a way that is a diagnosis rather than a
+bug:
+
+```kotlin
+val net = table(reverseLast = true)      // asymmetric, PetriConflict.ORDER
+net.deadTransitions()                    // [grab.4, eat.4, done.4]  ← starved by the policy
+net.stateSpace().neverFires()            // []                       ← the *net* is fine
+```
+
+Starvation belongs to the conflict policy; deadness belongs to the net. `report()` prints both
+halves, and says which of four things it means: *this configuration wedged*, *some interleaving
+wedges and here is the sequence*, *proved deadlock-free over N exhausted markings*, or *the budget
+ran out and the answer is unknown*.
+
+#### Where the wall is
+
+An exhaustive search is exponential in the number of things happening at once, so the useful
+question is not "does this work" but "how far does it get before it stops working". Measured, at the
+default 20 000-marking budget:
+
+| net | markings | note |
+| --- | --- | --- |
+| every net in `petri/document.md` | 2 – 82 | the whole document costs under 1 % of the budget |
+| an *N*-slot buffer | *N* + 1 | linear; 1 024 slots is 1 025 markings in 35 ms |
+| an *N*-section `petriSong` | *N* | linear, even though every token carries a `PatPattern` |
+| *N* philosophers | 6, 14, 34, 82, 198, 478, 1154, 2786 … | `a(n) = 2a(n-1) + a(n-2)` — about **2.41× per philosopher** |
+
+So a musical net is nowhere near the wall and a concurrency puzzle can be. Eleven philosophers is
+16 238 markings in 230 ms and `COMPLETE`; **twelve is past the budget**, and the search says
+`BUDGET` and returns `null` from `canDeadlock` rather than guessing.
+
+The coloured-token row is the one worth pausing on, because the strict state key could have gone
+badly there. A `petriSong` carries a whole `PatPattern` in each token's colour, and a strict key
+distinguishes colours that `signature()` would have merged — but the sections live in separate
+places and exactly one token circulates, so the space stays linear. Colour multiplies the state space
+only when the same place can hold different colours; a net that mints a *fresh* colour per firing has
+no finite state space at all, and gets `BUDGET`.
+
+#### Moving the wall: stubborn sets
+
+Almost all of that 2.41ⁿ is the same firings shuffled. Five philosophers each reaching for their left
+fork is one event five times over, and a full search dutifully visits all 5! orderings of it. A
+**partial-order reduction** explores one ordering and proves that is enough:
+
+```kotlin
+net.stateSpace(reduction = PetriReduction.STUBBORN)
+```
+
+At each marking it explores a *stubborn set* rather than every enabled transition — seed with an
+enabled transition, add everything that could disable an enabled member, add everything that could
+unblock one specific reason a disabled member is stuck, repeat, and take the smallest set any seed
+produces. On the philosophers the exponential becomes a quadratic:
+
+| philosophers | full | reduced | speed-up |
+| ---: | ---: | ---: | ---: |
+| 5 | 82 | 42 | 2.0× |
+| 8 | 1 154 | 114 | 10× |
+| 11 | 16 238 | 222 | **73×** (227 ms → 5 ms) |
+| 12 | *budget exhausted* | 266 | answered, at 12 firings |
+
+`2n² − 2n + 2` reduced markings against `2.41ⁿ` full ones. The groove in box 6 of the live document
+reduces 4×, `polyrhythm` 3×, `structure` 2×; the bounded buffer reduces not at all, which is correct
+— a sequential net has no independence to exploit and the reduction finds none rather than inventing
+some.
+
+Three limits, and they are the whole reason to trust it:
+
+- **It answers deadlock and refuses everything else.** The theorem is about terminal markings. A
+  reduced graph's state count is not the reachable state count, so a bound read off it would be a
+  lower bound wearing the word "exact". `graph.exact` is `complete && reduction == NONE`, and
+  `bounds`, `isSafe`, `isLive`, `isReversible`, `homeMarkings`, `neverFires()`, `mutuallyExclusive`
+  and `proves { }` all return `null` on a reduced graph. `canDeadlock` and `deadlockTrace` do not.
+- **It is not a shortest path.** The reduced search reaches a deadlock that really is reachable, by a
+  route at least as long as the true shortest. Every trace still passes `verify()`; it is just not
+  guaranteed minimal. (On every net tested here the two lengths are in fact equal.)
+- **A colour-dependent net is not reduced.** The closure reasons about arcs, and a guard or an
+  `enabledIf` is an arbitrary predicate no arc analysis can see, so `stateSpace(reduction = STUBBORN)`
+  on such a net quietly returns an unreduced — and therefore still `exact` — graph, with
+  `graph.reduction == PetriReduction.NONE` saying so.
+
+#### When the state space is infinite
+
+An unbounded net has infinitely many markings, so the exhaustive search can only ever report
+`BUDGET` on one — true, and not what you wanted to know. `net.coverability()` is the Karp–Miller
+construction: a marking that can be pumped is written with an **ω** in the growing place, which
+makes the graph finite for *every* net.
+
+```kotlin
+val leak = petri {
+    place("run", tokens = 1)
+    t("make") { from("run"); to("run"); to("queue") }
+}
+
+leak.stateSpace(budget = 500).outcome    // BUDGET — and bounds, isSafe, neverFires() are all null
+leak.coverability().unboundedPlaces      // [queue]
+leak.coverability().bound("queue")       // null — which here means ω, not "unknown"
+```
+
+The two are complements, and the trade is worth stating plainly. **The exhaustive search handles
+every feature of the model exactly — read arcs, inhibitor arcs, colour guards, `enabledIf`,
+capacities — and may not terminate. Karp–Miller always terminates and is only valid for a plain
+place/transition net.** Inhibitor arcs, place capacities and colour-dependent behaviour each break
+the monotonicity argument that ω rests on, so each adds a line to `coverability().caveats` and flips
+`sound` to false rather than being quietly ignored.
+
+`petri_state_space` in the [transcript gallery](agent_transcripts.md) is all of this as five
+runnable boxes.
+
 ### A bounded buffer, and a proof that it cannot leak
 
 A *P-invariant* is a weighted sum of token counts that no transition can change — a conservation
@@ -443,10 +624,13 @@ Three limits, stated once rather than discovered later:
 
 - **Invariants are structural.** They read arc weights and nothing else, so read and inhibitor arcs
   are invisible to them — neither changes the marking, and the incidence matrix is a record of
-  change. `net.report()` says so itself when a net uses them.
+  change. `net.report()` says so itself when a net uses them, and points at `stateSpace()`, which
+  asks the engine instead and therefore does see them.
 - **Recurrence compares colours by name.** Two different patterns both render as `PatPattern(...)`,
   so a section swap looks, to the loop detector, like nothing happening. That is usually the right
-  coarseness for a *structural* period and occasionally not what you want.
+  coarseness for a *structural* period and occasionally not what you want. `stateSpace()`
+  deliberately does **not** use that key — a coarse key merges markings with different futures
+  and can hide a deadlock — so a net that mints fresh colours exhausts its budget there instead.
 - **Editor diagnostics are lexical.** `petri.js` can see that `@1/0` is not a duration and that
   `=> wobble` is not a combinator. It cannot see that a transition will never fire — that is a
   property of the graph, and the Kotlin parser reports it with the whole graph in front of it.

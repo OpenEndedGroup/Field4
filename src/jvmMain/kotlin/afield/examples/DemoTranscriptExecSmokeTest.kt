@@ -96,6 +96,9 @@ object DemoTranscriptExecSmokeTest {
         // Six pure-compute Petri boxes. showPetriNet is FLines -> display and showPatAudio renders
         // through the same offline CPU voice, so this plays without an audio device.
         "petri_sound",
+        // Five pure-compute boxes over the exhaustive state-space analysis. showPetriStateSpace is
+        // FLines -> display like showPetriNet, and nothing here makes a sound.
+        "petri_state_space",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",

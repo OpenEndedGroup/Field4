@@ -283,19 +283,24 @@ fun PetriNet.deadlockMarking(within: Int = 4_096): PetriMarking? {
     val run = run()
     run.lasso(within)
     if (run.halt != PetriHalt.DEADLOCK) return null
-    return run.steps(Int.MAX_VALUE).lastOrNull()?.after ?: initial
+    return run.steps(within).lastOrNull()?.after ?: initial
 }
 
 /**
- * Transitions that never fire, however long the net runs.
+ * Transitions that never fire in [within] steps of the net's own trajectory.
  *
  * The most common thing wrong with a net that sounds thinner than it reads: an arc pointing at the
  * wrong place, and a whole voice silently doing nothing.
+ *
+ * Still the deterministic question. A transition can be perfectly fireable and never chosen — under
+ * [PetriConflict.PRIORITY] a lower-priority claimant of a contested token may never get it — and
+ * this will name it. [PetriStateGraph.neverFires] is the version that asks whether *any*
+ * interleaving fires it, and the two disagreeing is a diagnosis of starvation rather than a bug.
  */
 fun PetriNet.deadTransitions(within: Int = 2_048): List<String> {
     val run = run()
     run.lasso(within)
-    val fired = run.steps(Int.MAX_VALUE).flatMap { step -> step.firings.map { it.transition } }.toSet()
+    val fired = run.steps(within).flatMap { step -> step.firings.map { it.transition } }.toSet()
     return transitionNames.filter { it !in fired }
 }
 
@@ -305,8 +310,27 @@ fun PetriNet.deadTransitions(within: Int = 2_048): List<String> {
  * Everything above, in a paragraph — the thing to print at a net while writing it.
  *
  *     println(net.report())
+ *
+ * ### Three different statements about deadlock
+ *
+ * The report deliberately never says "this net cannot deadlock" without saying how it knows,
+ * because there are three genuinely different things it might mean and they are not
+ * interchangeable:
+ *
+ * - **"DEADLOCK at …"** — *this* configuration, run under its own conflict policy, wedged. A fact
+ *   about the instrument as it is currently set up.
+ * - **"some interleaving wedges"** — the net is fine as played, but the state space contains a
+ *   reachable dead marking and here is the shortest firing sequence that reaches it. The symmetric
+ *   dining table is exactly this, which is why the deterministic check alone was never enough.
+ * - **"no deadlock in N reachable markings"** — proved, by exhausting the state space.
+ *
+ * A fourth outcome is possible and is stated rather than rounded down: the search hit its budget,
+ * and the answer is unknown.
+ *
+ * [stateBudget] caps that search; pass `0` to skip it and get the pre-state-space report, which is
+ * what you want when the net is enormous and you only came for the period.
  */
-fun PetriNet.report(maxSteps: Int = 4_096): String = buildString {
+fun PetriNet.report(maxSteps: Int = 4_096, stateBudget: Int = 4_096): String = buildString {
     append("${places.size} places, ${transitions.size} transitions, $timing at grid $grid\n")
     append("marking  $initial\n")
 
@@ -338,6 +362,20 @@ fun PetriNet.report(maxSteps: Int = 4_096): String = buildString {
     }
     if (usesTestArcs) {
         append("note: this net uses read or inhibitor arcs, which the invariants cannot see\n")
+        append("      (the state space below does see them — it asks the engine, not the matrix)\n")
     }
     checkLoopIsInvariant(maxSteps)?.let { append("WARNING: $it\n") }
+
+    // The classical half. Everything above this line is about the one trajectory the net's own
+    // conflict policy chooses; everything below is about every trajectory it could have chosen.
+    if (stateBudget > 0) {
+        val graph = stateSpace(stateBudget)
+        append(graph.report())
+        if (!graph.complete) {
+            val cover = coverability(stateBudget)
+            if (cover.sound && !cover.isBounded) {
+                append("  unbounded, so the state space is infinite: ${cover.unboundedPlaces.joinToString(", ")}\n")
+            }
+        }
+    }
 }

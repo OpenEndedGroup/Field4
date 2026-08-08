@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 55 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 38 of them are
+All 56 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 39 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
@@ -146,6 +146,31 @@ by the transport — behind a `live` flag that defaults to false, because `audio
 device and this file is replayed end to end in CI; the flag rather than a comment is what keeps
 those lines compiling.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_sound/metadata.edn)
+
+**petri_state_space** — The other half of `afield.petri`: the same engine as an exact concurrency
+checker, in five boxes. Where `petri_sound` asks what a net *plays*, this asks what it can *do* —
+[the classical questions](petri_nets.md) over every interleaving rather than the one the conflict
+policy picks. The first box is the argument: on the symmetric five-philosopher table `willDeadlock()`
+prints `true` for that one trajectory, and `stateSpace()` exhausts all **82** reachable markings, all
+**265** firings between them, and hands back the shortest sequence that wedges it — `grab.0, grab.1,
+grab.2, grab.3, grab.4`, five firings, each of the markings along the way re-fired through the
+engine's own enabling test by `verify()` before it is believed. It is drawn, too: BFS depth left to
+right, one dot per marking, the counterexample in orange across the top into a red-ringed `stuck`.
+*Asymmetric* is the fix and the fault that survives it — 70 markings, deadlock-free *proved* rather
+than observed, and then `deadTransitions()` naming a starved philosopher on the same net where
+`neverFires()` correctly names nobody, because starvation belongs to the conflict policy and deadness
+belongs to the net. *Buffer* counts the four-slot producer/consumer buffer at exactly five reachable
+markings, 4-bounded, live and reversible, and asks an `EF` query for the shortest route to a full one.
+*A leak* is the honest one: the exhaustive search reports `BUDGET` and returns `null` — unknown — from
+every accessor that would otherwise have said "safe", while Karp–Miller puts an ω on the leaking place
+and terminates in two nodes. And *what the algebra cannot see* prints two nets with byte-identical
+incidence matrices, one of which enforces mutual exclusion with an inhibitor arc: no P-invariant
+couples the two critical sections, and the search proves the exclusion over all three markings anyway.
+Finally *the wall* measures the thing a green tick hides: the philosophers' state space grows like the
+companion Pell numbers, about 2.41× per philosopher, so eleven is 16 238 markings in 230 ms and twelve
+is past the budget — and a stubborn-set partial-order reduction turns that into `2n²−2n+2`, a **73×**
+speed-up at eleven and an answer at twelve, while refusing every property the theorem does not cover.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_state_space/metadata.edn)
 
 **mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
 independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
