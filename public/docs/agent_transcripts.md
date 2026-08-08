@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 54 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 37 of them are
+All 55 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 38 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
@@ -601,6 +601,8 @@ three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one some
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
 
 ## Service-backed composition scenes
+
+<!-- transcript-index: verified-by = execute -->
 
 These are complete, editable starting points whose first view works without model weights. Their
 generation boxes deliberately remain explicit about the companion service or hardware they need.
