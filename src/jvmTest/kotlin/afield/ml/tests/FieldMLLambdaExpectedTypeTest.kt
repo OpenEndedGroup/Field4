@@ -178,6 +178,34 @@ class FieldMLLambdaExpectedTypeTest {
         }
     }
 
+    /**
+     * A Kotlin *receiver* lambda, which is the shape half of `afield.four`'s builder surface takes.
+     * `BufferParameters.() -> Unit` compiles to `Function1<BufferParameters, Unit>`, so the receiver
+     * is argument zero and reads exactly like any other parameter — which means `defaultBuffer { … }`
+     * from `FieldMLAfieldFourReachTest` now has a typed `p` and its members are checked rather than
+     * resolved on the first run.
+     */
+    @Test
+    fun aKotlinReceiverLambdaHasItsReceiverTyped() {
+        val result = compileOk(
+            """
+            hostStaticCall "defaultBuffer" (hostNull, "inData", fun p ->
+              p |> hostSet "size" (p |> hostCall1 "getVec4s" 100000)
+            ) (hostClass "afield.four.buffers.MagicKt")
+            """,
+        )
+        assertEquals(listOf("p: BufferParameters"), parameterSpellings(result))
+        // And because it is typed, a member that is not there is now a compile error.
+        assertRefused(
+            """
+            hostStaticCall "defaultBuffer" (hostNull, "inData", fun p ->
+              p |> hostCall1 "getVec5s" 100000
+            ) (hostClass "afield.four.buffers.MagicKt")
+            """,
+            "has no method 'getVec5s'",
+        )
+    }
+
     @Test
     fun aMisspelledMemberOnALambdaParameterIsACompileErrorRatherThanACrash() {
         // The whole payoff of a typed parameter: `.zz` is refused where it is written, and the

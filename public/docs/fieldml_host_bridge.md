@@ -2,7 +2,7 @@
 
 FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it deliberately stops short.
 
-The short version: **a FieldML box can call a Kotlin method with any number of arguments, pass a FieldML function where Kotlin wants a lambda, and get a real type back.** The measurement in `FieldMLHostSurfaceCoverageTest` puts that at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%. The narrower bridge this replaced reached 166 of them.
+The short version: **a FieldML box can call a Kotlin method with any number of arguments, pass a FieldML function where Kotlin wants a lambda, and get a real type back — on both sides of that lambda.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
 
 ## The one that proves it
 
@@ -68,13 +68,21 @@ fline
   |> moveTo 0.0 0.0
   |> lineTo 100.0 0.0
   |> lineTo 100.0 60.0
-  |> hostCall1 "transform" (fun raw ->
-       let p = hostAs "Vec3" raw in
+  |> hostCall1 "transform" (fun p ->
        vec3 (p.x) (p.y + 20.0 * sin (p.x / 25.0)) (p.z)
      )
 ```
 
-The value the JVM passes in is, from FieldML's point of view, a value of unknown class — so `hostAs "Vec3"` is where it gets a type, and from there `.x`, `.y` and `.z` are ordinary checked vector components. A function taking no arguments (`Runnable`) is written `fun ignored -> …`.
+**`p` is a `Vec3`, and nothing above says so.** `FLine.transform` takes a Kotlin `(Vec3) -> Vec3`, the type checker reads that signature off the receiver, and the lambda's parameters are bound to what the JVM is going to hand them — so `.x`, `.y` and `.z` are ordinary checked vector components, `p.xx` is an error before the box runs, and completion works inside the body. Six parameters get typed in `Img.generate(w, h) { x, y -> … }` plus `Img.mapIndexed { x, y, c, v -> … }`; `x` and `y` really are `Int`s, so `x + y` is integer arithmetic. A Kotlin *receiver* lambda (`BufferParameters.() -> Unit`) gets its receiver typed the same way, because the receiver is simply argument zero.
+
+Two cases keep the old behaviour, and keep it on purpose:
+
+- **An erased generic.** `Collections.max(collection, Comparator<? super T>)` has no `T` at the use site, so `fun a b -> b - a` keeps ordinary inferred parameters. That is better than a type: `Host` would refuse the subtraction.
+- **A nullable Kotlin parameter.** `FLine.byFiltering((Vec3?, Node) -> Boolean)` really is handed a null for the first node's predecessor, so that parameter stays open while the second — not nullable — is typed `Node`.
+
+And one case where you still need `hostAs`: the receiver has to be known *where the call is written*. Inside `let warp line = line |> hostCall1 "transform" (fun p -> …)` there is no class to read, because `line` is just a function parameter. Written as part of a pipeline, it is typed.
+
+A function taking no arguments (`Runnable`) is written `fun ignored -> …`.
 
 ## Types
 
@@ -167,14 +175,17 @@ Worth knowing before you fight it:
 
 - **Kotlin default arguments are invisible.** A reflective call has to spell every parameter — `Renderer(window)` becomes `hostNew (window, []) …`. `hostTap` is the exception, because it reads defaults out of Field's *source* index, and it remains the best tool when a Kotlin function is an effect in the middle of a pipe.
 - **Named arguments are invisible** for the same reason: a reflective call is positional.
-- **A lambda's parameters have no inferred type.** The JVM calls back into FieldML with a value the checker knows nothing about, so `hostAs` is needed inside the lambda. Pushing the reflected parameter type in would need expected types threaded through inference, which FieldML does not have yet.
+- **A callback written inside a helper has untyped parameters.** The expected type comes from the receiver, so `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed and the same call inside `let warp line = …` is not — `line` is a function parameter and there is no class to reflect on. `hostAs "Vec3"` is still the way through that one. The same is true of anything whose type reflection genuinely cannot read: an erased generic, a nullable Kotlin parameter.
+- **A lambda's *result* is not checked** against what the JVM wants. The proxy coerces it, which is why `fun x y -> 0` satisfies a `Function2<…, Float>` — but a body that returns the wrong shape entirely still fails at run time.
 - **`suspend` function types cannot be satisfied.** They need coroutine machinery, not a proxy.
 - **`internal` Kotlin members are unreachable** under their source names, because the compiler mangles them.
 - **Buffers, kernels and anchors** — anything FieldML has no way to construct and no constructor to call — are still out of reach. In the coverage measurement those are most of the remaining 5%.
 
 ## Open it
 
-There is a Field document for this page. It has four boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, and one that exercises overload resolution, varargs and `hostNull`.
+There are two Field documents for this page.
+
+The first has four boxes: the raster above, a line warped by a FieldML lambda through `FLine.transform`, a box whose host member types are all inferred, and one that exercises overload resolution, varargs and `hostNull`.
 
 [Open ↗](/offline.html?file=/field4/assets/fieldml_host_bridge_demo/metadata.edn) — or open `public/docs/assets/fieldml_host_bridge_demo/metadata.edn` from a Field workspace.
 
@@ -189,6 +200,18 @@ Things to change, in the order they are most likely to teach you something:
 | the types box | `img.width` → `img.widht` | a type error, before the box runs |
 | the types box | put the caret inside `hostGet ""` | completion lists `Img`'s members with their types |
 
+The second is about the lambda parameters specifically — a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_lambda_demo/metadata.edn) — or open `public/docs/assets/fieldml_lambda_demo/metadata.edn` from a Field workspace.
+
+| In | Change | What happens |
+| --- | --- | --- |
+| the warp box | `p.x` → `p.xx` | a type error naming `Vec3`'s components, before the box runs |
+| the warp box | `26.0` → `60.0` | a taller wave |
+| the raster box | `13.0` → `5.0` | fewer, wider rings |
+| the raster box | `"magma"` → `"viridis"` | the palette |
+| the limits box | delete `hostAs "Vec3"` from `scale` | a type error — that is the one case still on its own |
+
 ## Where to look
 
-The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.
+The reflection lives in `afield.ml.core.FieldMLHostBridge` (candidates, scoring, coercion, SAM proxies) and `afield.ml.type.FieldMLHostTypes` (JVM types to FieldML types, member and overload resolution at type-check time). `Inferencer.refineHostIntrinsic` is where the two meet, and `Inferencer.preInferHostSpine` is what threads a JVM parameter type into a lambda's parameters. `FieldMLHostBridgeTest` has one test per capability, `FieldMLHostSurfaceCoverageTest` is the reachability-and-agreement measurement, `FieldMLHostAgreementTest` holds the semantically interesting calls beside the Kotlin they should equal, `FieldMLLambdaExpectedTypeTest` covers the typed callback parameters and the cases that deliberately stay untyped, and `FieldMLAfieldFourReachTest` is the `threebox-2` survey with its citations.
