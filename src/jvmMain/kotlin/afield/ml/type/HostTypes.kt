@@ -6,6 +6,7 @@ import java.lang.reflect.Modifier
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.TypeVariable
 import java.lang.reflect.WildcardType
+import kotlin.reflect.KParameter
 import kotlin.reflect.jvm.kotlinFunction
 
 /**
@@ -214,6 +215,159 @@ object FieldMLHostTypes {
         when (executable) {
             is java.lang.reflect.Method -> resultTypeOf(executable)
             else -> valueType(executable.declaringClass)
+        }
+
+    // ---- expected argument types -----------------------------------------------------------------
+
+    /**
+     * One parameter slot of a resolved overload: the erased class the JVM will check, the generic
+     * type written at the use site — the only place a functional interface's type arguments survive
+     * — and, when the slot is a Kotlin function type, which of *its* arguments are nullable.
+     */
+    data class HostParameter(
+        val jvmClass: Class<*>,
+        val generic: java.lang.reflect.Type?,
+        val nullableFunctionArguments: Set<Int> = emptySet(),
+    )
+
+    /**
+     * The parameter slots a call's arguments will land in, one per argument, or an empty list when
+     * nothing can be said. This is what lets a lambda literal be checked *against* the JVM
+     * signature instead of being inferred blind — see `Inferencer.preInferHostSpine`.
+     *
+     * [arguments] may contain placeholders for the positions not yet inferred; a `TVar` scores as
+     * unknown and so never narrows the candidate set on its own.
+     */
+    fun instanceParameters(receiver: Type, name: String, arguments: List<Type>): List<HostParameter?> {
+        val owner = jvmClassOf(receiver) ?: return emptyList()
+        return parametersOf(FieldMLHostBridge.instanceMethods(owner, name, arguments.size), arguments)
+    }
+
+    fun staticParameters(classType: Type, name: String, arguments: List<Type>): List<HostParameter?> {
+        val owner = classHandleName(classType)?.let { loadClass(it) } ?: return emptyList()
+        return parametersOf(FieldMLHostBridge.staticMethods(owner, name, arguments.size), arguments)
+    }
+
+    fun constructorParameters(classType: Type, arguments: List<Type>): List<HostParameter?> {
+        val owner = classHandleName(classType)?.let { loadClass(it) } ?: return emptyList()
+        return parametersOf(FieldMLHostBridge.constructors(owner, arguments.size), arguments)
+    }
+
+    /**
+     * The slots of the best-scoring candidate — but only when the candidates that tie for best all
+     * have the *same* signature. Two equally good overloads with different parameters is exactly the
+     * case where claiming one would be a guess, and [resolve] already degrades the result type the
+     * same way. An empty list means "no claim", which leaves inference exactly as it was.
+     */
+    private fun parametersOf(candidates: List<Executable>, arguments: List<Type>): List<HostParameter?> {
+        val scored = candidates.mapNotNull { candidate -> scoreCandidate(candidate, arguments)?.let { candidate to it } }
+        if (scored.isEmpty()) return emptyList()
+        val best = scored.minOf { it.second }
+        val tied = scored.filter { it.second == best }.map { it.first }
+        val signatures = tied.map { it.parameterTypes.toList() to it.genericParameterTypes.toList() }.distinct()
+        if (signatures.size != 1) return emptyList()
+        val chosen = tied.first()
+        val raw = chosen.parameterTypes
+        val generics = chosen.genericParameterTypes
+        if (!chosen.isVarArgs) {
+            if (raw.size != arguments.size) return emptyList()
+            return raw.indices.map { slotOf(chosen, it, raw[it], generics.getOrNull(it)) }
+        }
+        // A vararg tail: the fixed prefix is positional, and everything after it lands in the
+        // component type. The "the last argument *is* the array" case cannot be a lambda, which is
+        // the only kind of slot this list is read for.
+        val fixed = raw.size - 1
+        val component = raw[fixed].componentType ?: return emptyList()
+        return arguments.indices.map { index ->
+            if (index < fixed) slotOf(chosen, index, raw[index], generics.getOrNull(index)) else HostParameter(component, null)
+        }
+    }
+
+    private fun slotOf(owner: Executable, index: Int, raw: Class<*>, generic: java.lang.reflect.Type?): HostParameter =
+        HostParameter(raw, generic, nullableFunctionArguments(owner, index))
+
+    private val nullableCallbackArguments =
+        java.util.concurrent.ConcurrentHashMap<Pair<Executable, Int>, Set<Int>>()
+
+    /**
+     * Which arguments of a Kotlin function-typed parameter are declared nullable — read from
+     * `kotlin-reflect`, for the same reason [resultTypeOf] reaches for it and with the same caching.
+     *
+     * `FLine.byFiltering((Vec3?, Node) -> Boolean)` is the case: the JVM really does hand that
+     * callback a null, the runtime conversion turns a null into `Unit`, so binding the parameter to
+     * `Vec3` would be a type the very first run violates. A slot named here degrades to [OPAQUE],
+     * which is exactly "no claim".
+     *
+     * The instance receiver is dropped so that the remaining Kotlin parameters line up with the JVM
+     * ones — including the extension receiver, which really is JVM parameter zero of the static
+     * Kotlin generates for it.
+     */
+    private fun nullableFunctionArguments(owner: Executable, index: Int): Set<Int> =
+        nullableCallbackArguments.getOrPut(owner to index) {
+            runCatching {
+                val function = when (owner) {
+                    is java.lang.reflect.Method -> owner.kotlinFunction
+                    is java.lang.reflect.Constructor<*> -> owner.kotlinFunction
+                    else -> null
+                } ?: return@runCatching emptySet()
+                val positional = function.parameters.filter { it.kind != KParameter.Kind.INSTANCE }
+                val type = positional.getOrNull(index)?.type ?: return@runCatching emptySet()
+                // The last type argument of a Kotlin function type is its return.
+                type.arguments.dropLast(1)
+                    .withIndex()
+                    .filter { it.value.type?.isMarkedNullable == true }
+                    .mapTo(mutableSetOf()) { it.index }
+            }.getOrNull() ?: emptySet()
+        }
+
+    /**
+     * The FieldML types the JVM will hand a lambda that satisfies [parameter], or null when
+     * [parameter] is not a functional interface.
+     *
+     * This is the type-level twin of `FieldMLHostBridge.samProxy`, and it has to read the same thing
+     * the proxy reads: `Function1.invoke` erases to `(Object) -> Object`, so the shapes only exist on
+     * the *use site's* generic type. A slot whose type cannot be resolved, or which is declared
+     * nullable, comes back [OPAQUE] — and the caller is expected to leave such a slot alone rather
+     * than claim it, because turning an inference variable into `Host` would narrow the language
+     * rather than widen it.
+     */
+    fun samParameterTypes(parameter: HostParameter): List<Type>? {
+        val method = FieldMLHostBridge.functionalMethod(parameter.jvmClass) ?: return null
+        val variables = samTypeArguments(parameter.jvmClass, parameter.generic)
+        return method.genericParameterTypes.mapIndexed { index, jvm ->
+            if (index in parameter.nullableFunctionArguments) opaque else fieldMLTypeOf(substituteVariables(jvm, variables))
+        }
+    }
+
+    private fun samTypeArguments(
+        iface: Class<*>,
+        generic: java.lang.reflect.Type?,
+    ): Map<String, java.lang.reflect.Type> {
+        val parameterized = generic as? ParameterizedType ?: return emptyMap()
+        if (parameterized.rawType != iface) return emptyMap()
+        val names = iface.typeParameters.map { it.name }
+        val actual = parameterized.actualTypeArguments
+        return names.indices.filter { it < actual.size }.associate { names[it] to actual[it] }
+    }
+
+    /**
+     * Substitutes a functional interface's type variables with the arguments written at the use
+     * site. A wildcard in a *contravariant* position — `Function1<? super Vec3, …>`, which is what
+     * Kotlin emits for a `(Vec3) -> Vec3` parameter — carries its information in the *lower* bound:
+     * that is the class the JVM will actually hand the callback. `? extends X` has no lower bound and
+     * the upper one is the informative end. A variable with nothing to substitute stays unresolved,
+     * which [fieldMLTypeOf] maps to [OPAQUE], i.e. "no claim".
+     */
+    private fun substituteVariables(
+        type: java.lang.reflect.Type?,
+        variables: Map<String, java.lang.reflect.Type>,
+    ): java.lang.reflect.Type? =
+        when (type) {
+            is TypeVariable<*> -> variables[type.name]?.let { substituteVariables(it, emptyMap()) }
+            is WildcardType ->
+                (type.lowerBounds.firstOrNull() ?: type.upperBounds.firstOrNull())
+                    ?.let { substituteVariables(it, variables) }
+            else -> type
         }
 
     /**
