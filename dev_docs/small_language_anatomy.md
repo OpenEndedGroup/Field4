@@ -136,7 +136,7 @@ prelude in two halves, one `BoxExecution`, one Monaco module, and two coverage g
 | every intermediate form is kept, one field per stage | `src/jvmMain/kotlin/afield/ml/FieldMLCompiler.kt:14` | `data class CompilationResult` |
 | 1. lex | `src/jvmMain/kotlin/afield/ml/lex/Lexer.kt:20` | `fun lex()` |
 | 2. parse | `src/jvmMain/kotlin/afield/ml/parse/Parser.kt:54` | `fun parse()` |
-| 3. infer | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:52` | `fun infer(expr: Expr)` |
+| 3. infer | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:60` | `fun infer(expr: Expr)` |
 | 4. lower to core | `src/jvmMain/kotlin/afield/ml/core/Lowerer.kt:34` | `fun lower(expr: TExpr)` |
 | 5. evaluate | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:42` | `fun evaluate(expr: CoreExpr)` |
 
@@ -154,7 +154,7 @@ agree name for name:
 | --- | --- | --- |
 | types, consumed by the inferencer | `src/jvmMain/kotlin/afield/ml/type/FieldMLTypePrelude.kt:67` | `val schemes: Map<String, Scheme>` |
 | values, consumed by the evaluator | `src/jvmMain/kotlin/afield/ml/FieldMLRuntimePrelude.kt:33` | `fun values(` |
-| where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:54` | `FieldMLTypePrelude.schemes` |
+| where the type half enters | `src/jvmMain/kotlin/afield/ml/type/Inferencer.kt:62` | `FieldMLTypePrelude.schemes` |
 | where the value half enters | `src/jvmMain/kotlin/afield/ml/core/Evaluator.kt:43` | `RuntimeEnv()` |
 
 The runtime half takes `output: HasOutput?` and `box: Box?` (`FieldMLRuntimePrelude.kt:33`) — that is
@@ -186,8 +186,8 @@ worth copying: an expression language wants to show its result, and a language w
 
 | what | site | anchor |
 | --- | --- | --- |
-| the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:34` | `fun complete(request: CompletionRequest)` |
-| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:77` | `fun describeSymbolContext` |
+| the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:41` | `fun complete(request: CompletionRequest)` |
+| the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:85` | `fun describeSymbolContext` |
 | the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:149` | `FieldMLCompletionEngine.complete` |
 
 The engine answers from the *same type prelude the compiler uses*, so items carry their real inferred
@@ -471,7 +471,7 @@ Traced against FieldML, which is the only one that went the whole way.
    (`bootstrapMonaco.js:46`) and `DEFAULT_LANGUAGES` (`fieldSuggest.js:17`). Make your Monaco language
    id equal your `code_language` string, lower-cased.
 6. **Route completion into the compiler's own knowledge.** Override `complete` to call an engine that
-   reads the same prelude (`FieldMLInterface.kt:149` → `FieldMLCompletionEngine.kt:34`). This is the
+   reads the same prelude (`FieldMLInterface.kt:149` → `FieldMLCompletionEngine.kt:41`). This is the
    payoff and the reason for steps 1 and 2.
 7. **Write the page, then the guard, in that order and the same commit.** A cheatsheet whose rows are
    compared to the prelude in both directions (`FieldMLCheatsheetCoverageTest.kt:31-51`) and an

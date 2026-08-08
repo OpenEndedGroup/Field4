@@ -299,6 +299,58 @@ class FieldMLCompletionEngineTest {
         assertTrue(labels.none { it.displayText == "with" }, labels.map { it.displayText }.toString())
     }
 
+    // ---- inside a callback the JVM will call ---------------------------------------------------
+    //
+    // A lambda handed to a JVM method has typed parameters, so the popup has something to offer inside
+    // the body — which is the ergonomic half of that work. Before, the only way to get here was to
+    // write `hostAs "Vec3" raw` first and complete on *that*.
+
+    @Test
+    fun completesMembersOfALambdaParameterTypedFromTheJvmSignature() {
+        val code = """fline |> hostCall1 "transform" (fun p -> p."""
+        val completion = completeAt(code, code.length)
+
+        assertEquals("Float", assertHas(completion, "x").tail)
+        assertEquals("Float", assertHas(completion, "z").tail)
+    }
+
+    @Test
+    fun completesJvmMethodsOnALambdaParameterTypedFromTheJvmSignature() {
+        val code = """
+            fline
+              |> moveTo 0.0 0.0
+              |> hostCall1 "transform" (fun p -> p |> hostCall "norm
+        """.trimIndent()
+
+        assertHas(completeAt(code, code.length), "normalize")
+    }
+
+    /** The lambda inside a tuple-literal spread: the rebuild has to carry the earlier arguments. */
+    @Test
+    fun completesInsideALambdaThatArrivedThroughASpread() {
+        val code = """
+            let Img = hostClass "afield.stdlib.Img"
+            Img |> hostGet "Companion" |> hostCall "generate" (4, 4, fun x y -> toFloat (x
+        """.trimIndent()
+
+        val item = assertHas(completeAt(code, code.length), "x")
+        assertEquals("Int", item.tail)
+    }
+
+    /** A callback parameter reflection cannot type must stay out of the way, not become `Host`. */
+    @Test
+    fun offersNoMembersForACallbackParameterThatHasNoKnownType() {
+        val code = """
+            let Collections = hostClass "java.util.Collections"
+            hostStaticCall "max" ([5, 1, 9, 3], fun a b -> a.
+        """.trimIndent()
+
+        assertTrue(
+            completeAt(code, code.length).metadata.isEmpty(),
+            completeAt(code, code.length).metadata.map { it.displayText }.toString(),
+        )
+    }
+
     /**
      * An empty answer still has to be an answer. The popup is waiting on this reply and cannot tell
      * silence from slowness, so returning nothing left it spinning until the RPC timed out.
