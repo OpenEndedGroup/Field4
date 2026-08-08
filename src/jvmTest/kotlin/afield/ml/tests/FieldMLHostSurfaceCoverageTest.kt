@@ -119,7 +119,10 @@ class FieldMLHostSurfaceCoverageTest {
             appendLine()
             appendLine("  reachability")
             appendLine("    callable now:         $callable / $total (%.1f%%)".format(callablePercent))
-            appendLine("    reachable before:     $reachableBefore / $total (%.1f%%)".format(beforePercent))
+            appendLine(
+                "    reachable before:     $reachableBefore / $total (%.1f%%)  — modelled, not re-run"
+                    .format(beforePercent),
+            )
             appendLine("    refused:              ${total - callable}")
             appendLine()
             appendLine("  agreement with the same call made directly in Kotlin")
@@ -154,13 +157,18 @@ class FieldMLHostSurfaceCoverageTest {
         }
         println(report)
 
-        // Floors a few points under what this run measured, so the numbers above are the claim and
+        // Floors a point or so under what this run measured, so the numbers above are the claim and
         // these are the guard. Raise them when the bridge learns something new.
         assertTrue(total > 340, "expected a surface of at least 340 methods, found $total\n$report")
-        assertTrue(callablePercent >= 92.0, "callable fell to %.1f%%\n%s".format(callablePercent, report))
+        assertTrue(callablePercent >= 94.0, "callable fell to %.1f%%\n%s".format(callablePercent, report))
+        // A *modelled* delta, and worth saying so plainly: `reachableBeforeThisBridge` is a
+        // hand-written description of what the old bridge could reach, not the old bridge itself. It
+        // is accurate about the shapes that were unreachable — arity three and up, statics, lambdas,
+        // constructors with arguments — but it is still a description, so read this as "the shapes
+        // this bridge added cover at least 45 points of the surface", not as a re-run of the old code.
         assertTrue(
             callablePercent - beforePercent >= 45.0,
-            "the bridge only added %.1f points over what FieldML could already reach\n%s"
+            "the bridge only added %.1f points over the *modelled* reach of the old one\n%s"
                 .format(callablePercent - beforePercent, report),
         )
         assertTrue(ran >= 300, "only $ran calls were run both ways\n$report")

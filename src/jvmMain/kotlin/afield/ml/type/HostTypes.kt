@@ -286,6 +286,10 @@ object FieldMLHostTypes {
     private fun slotOf(owner: Executable, index: Int, raw: Class<*>, generic: java.lang.reflect.Type?): HostParameter =
         HostParameter(raw, generic, nullableFunctionArguments(owner, index))
 
+    /** The parameter slot at [index] of [owner], for a caller that already knows which member it means. */
+    fun parameterSlot(owner: Executable, index: Int): HostParameter =
+        slotOf(owner, index, owner.parameterTypes[index], owner.genericParameterTypes.getOrNull(index))
+
     private val nullableCallbackArguments =
         java.util.concurrent.ConcurrentHashMap<Pair<Executable, Int>, Set<Int>>()
 
@@ -308,7 +312,6 @@ object FieldMLHostTypes {
                 val function = when (owner) {
                     is java.lang.reflect.Method -> owner.kotlinFunction
                     is java.lang.reflect.Constructor<*> -> owner.kotlinFunction
-                    else -> null
                 } ?: return@runCatching emptySet()
                 val positional = function.parameters.filter { it.kind != KParameter.Kind.INSTANCE }
                 val type = positional.getOrNull(index)?.type ?: return@runCatching emptySet()
