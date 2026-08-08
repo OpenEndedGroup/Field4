@@ -134,6 +134,14 @@ ever touched:
 The reordering only happens when a lambda literal is present, so no program that worked before even
 changes the order its diagnostics come out in.
 
+The same knowledge pays in the negative direction. `checkLambdaArity` refuses a lambda that cannot
+be the callback it is passed to, naming the method and both counts — but only in the one case that
+is genuinely wrong. *Fewer* parameters than the interface takes is legitimate, because FieldML is
+curried and `fun ignored -> …` is the only way to write a zero-argument `Runnable` at all; *more* is
+legitimate when the interface's result is itself a functional interface, because `coerce` proxies
+what comes back in its turn (`samResultAcceptsFunction`). Only extra parameters against a plain
+result are refused.
+
 Completion gets the same types, but it cannot read them off a typed tree: the source it is handed is
 half-written and does not parse. `FieldMLCompletionEngine.enclosingCallbackParameters` therefore
 *asks* — it finds the innermost unclosed bracket that has a `fun … ->` inside it (walking outward,
