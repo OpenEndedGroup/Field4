@@ -14,8 +14,14 @@ below.
 
 Everything on this page is produced by running the real code at docs-build time. The piano
 rolls are drawn from live `PatPattern.events(...)` queries, and the audio is rendered
-offline through the same voice the language uses — no hand-drawn figures, no pre-baked
-recordings.
+offline — no hand-drawn figures, no pre-baked recordings.
+
+All three audio clips below are the **stand-in synth** (`patVoice`): a sine for `bd`,
+filtered noise for `sd` and `hh`. It needs no assets, so these figures regenerate on a clean
+checkout — but it is not a drum machine and does not sound like one. Field can render the
+same patterns through the real Tidal sample library instead;
+[Sound: the Pattern → Audio Path](sound.md) puts the two voices side by side and says which
+clip in these docs is which.
 
 ---
 
