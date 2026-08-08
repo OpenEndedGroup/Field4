@@ -91,7 +91,8 @@ nav:
         - Voronoi, Contours & Clusters: spatial_geometry_examples.md
         - DoughDSP Sound Examples: dough_dsp_sound.md
         - Patterns & Rhythm: pattern_language.md
-        - Sound: the pattern to audio path: sound.md
+        # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
+        - "Sound: the Pattern → Audio Path": sound.md
         - Audio AI Gesture Board: audio_ai_gesture_board.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md
