@@ -1,0 +1,308 @@
+name: petri_sound
+description: >
+  Loadable demo of Petri nets as a sequencer (afield.petri) — the model and firing engine in
+  PetriNets.kt, the `PatPattern` bridge in PetriMusic.kt, the notation in PetriNotation.kt, the
+  structural analysis in PetriAnalysis.kt and the drawing in PetriVisual.kt. Seven pure-compute
+  boxes; no Window, no Renderer, no GPU, no audio device.
+  Every box draws its net with `showPetriNet` and renders what the net plays with `showDirtAudio`
+  (DirtRender.kt) — mixed *offline* from the real Tidal Dirt-Samples library if it is installed on
+  this machine, and from the synthetic `patVoice` if it is not, saying which in its output either
+  way. So you SEE the token move and HEAR actual drums in the same output, with no audio device
+  anywhere. A net emits a `PatPattern<String>`, which is why one call is enough — a Petri net is a
+  pattern like any other:
+    1. smallest loop   — one token, two transitions, alternating bd/sd. The net-as-clock in eight
+                         lines, drawn and played.
+    2. polyrhythm      — five against three. Nothing in the source says fifteen; `settle()` finds it
+                         and four cycles of audio let you hear the two rings drift apart and come
+                         back.
+    3. structure       — a section token walking verse -> verse -> chorus while a separate ring plays
+                         the bar. Petri nets as medium-term song form, not just rhythm.
+    4. tokens          — tokens carrying `euclid` patterns as their colour, so what a transition
+                         plays depends on which token reached it.
+    5. philosophers    — the non-musical one, for contrast: the same engine finding a deadlock, then
+                         a starvation, then neither. Silent on purpose.
+    6. playground      — a whole groove in the `#petri` notation, drawn, analysed and played. This is
+                         the box to edit.
+    7. live            — the other playback path: the real polyphonic Dirt player through the
+                         transport, tempo-synced and interruptible, behind a `live` flag that is
+                         false by default because `audio { }` opens a real output device.
+  Replay into a fresh Field with the agent backdoor (field_run_transcript) or open the materialized
+  document; then change any net and re-run that box. Each `execute` op omits inline code, so it runs
+  the box's stored `code` property. See public/docs/petri_nets.md and public/docs/petri_cheatsheet.md.
+operations:
+  # 1 ── the smallest thing that plays: a token going round.
+  - create:
+      box: petri_demo_loop
+      name: 1 — the smallest loop
+      frame: { x: 60.0, y: 60.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // A place holds tokens; a transition fires when all its inputs have one. Give a
+          // transition a sound after the `:` and firing it plays that sound. That is the whole
+          // idea — everything else is more of it.
+          val net = petri("""
+              #petri
+              !timing step
+              !grid 1/8
+              !conflict order
+
+              kick : 1
+              kick -[ hit  @1/8 : bd ]-> hats
+              hats -[ back @1/8 : sd ]-> kick
+          """)
+
+          showPetriNet(net, w = 640.0, h = 300.0)
+
+          // `emits()` is a PatPattern<String>, exactly like `pat("bd sd")` is. So every pattern
+          // combinator applies, and so does the pattern-language's own audio renderer.
+          println(showDirtAudio(net.emits(), cycles = 4, cps = 1.0, channel = "sound").describe())
+
+          println("plays: " + net.emits().events(PatArc(PatQ.ZERO, PatQ.ONE))
+              .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value })
+          println("period: ${net.period()} cycles")
+
+          displayOpen("sound")
+
+  # 2 ── the reason to use a net at all: a bar length nobody wrote down.
+  - create:
+      box: petri_demo_polyrhythm
+      name: 2 — five against three
+      frame: { x: 60.0, y: 160.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // Two independent rings, one five long and one three long, sharing a clock. Nothing in
+          // this source says "fifteen" — that is a property of the net, and the net can tell you.
+          val net = petri("""
+              #petri
+              !grid 1/15
+
+              a0 : 1
+              a0 -[ a0.go : bd ]-> a1
+              a1 -[ a1.go      ]-> a2
+              a2 -[ a2.go : bd ]-> a3
+              a3 -[ a3.go      ]-> a4
+              a4 -[ a4.go      ]-> a0
+
+              b0 : 1
+              b0 -[ b0.go : hh ]-> b1
+              b1 -[ b1.go      ]-> b2
+              b2 -[ b2.go : hh ]-> b0
+          """)
+
+          showPetriNet(net, w = 700.0, h = 340.0)
+
+          val lasso = net.settle()!!
+          println("settles after ${lasso.loopSteps} steps = ${lasso.duration} cycles")
+          println("${net.tInvariants().size} T-invariants — one per independent ring")
+
+          // Four cycles, so you can hear the two rings pull apart and line back up.
+          println(showDirtAudio(net.emits(), cycles = 4, cps = 0.75, channel = "sound").describe())
+          displayOpen("sound")
+
+  # 3 ── the medium timescale: a token that is the arrangement.
+  - create:
+      box: petri_demo_structure
+      name: 3 — song structure
+      frame: { x: 60.0, y: 260.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // Two nets in one. The fast ring plays the bar; the slow ring is the arrangement, one
+          // token walking verse -> verse -> chorus and back. Same mechanism at both timescales,
+          // which is the argument for using a net rather than a sequencer and a separate song mode.
+          val net = petri("""
+              #petri
+              !grid 1/4
+
+              verse.a : 1
+              verse.a -[ v1 @1     ]-> verse.b
+              verse.b -[ v2 @1     ]-> chorus
+              chorus  -[ back @1   ]-> verse.a
+
+              beat : 1
+              &verse.a + beat -[ vbeat @1/4 : bd ]-> beat2
+              &verse.b + beat -[ vbeat2 @1/4 : bd ]-> beat2
+              &chorus + beat  -[ cbeat @1/4 : sd ]-> beat2
+              beat2 -[ off @1/4 : hh ]-> beat
+          """)
+
+          showPetriNet(net, w = 760.0, h = 420.0)
+
+          // Eight cycles: two verses, a chorus, and round again — audibly.
+          println(showDirtAudio(net.emits(), cycles = 8, cps = 2.0, channel = "sound").describe())
+          println("bar length: ${net.period()} cycles")
+          displayOpen("sound")
+
+  # 4 ── what a token can be: not a dot, a rhythm.
+  - create:
+      box: petri_demo_tokens
+      name: 4 — tokens that are rhythms
+      frame: { x: 60.0, y: 360.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+          import afield.four.synth.*
+
+          // A token's colour can be anything, including a whole PatPattern. So a place is a
+          // *section*, one circulating token is "which section is sounding", and the net enforces
+          // that exactly one of them is — no scheduler required.
+          val song = petriSong(
+              "verse"  to (pat("bd ~ sd ~") to 4),
+              "chorus" to (pat("bd*4 hh*8") to 4),
+          )
+
+          showPetriNet(song, w = 660.0, h = 340.0)
+
+          // `unfold` plays whatever pattern each firing consumed, across that firing's whole arc:
+          // the slow net schedules the fast one, and both are the same mechanism.
+          val notes = song.pattern().unfold<String>()
+
+          fun bar(c: Long) = notes.events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
+              .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value }
+          for (c in 0L..7L) println("cycle %d   %s".format(c, bar(c)))
+
+          // Eight cycles: four bars of verse, four of chorus, and audibly round again.
+          println(showDirtAudio(notes, cycles = 8, cps = 2.0, channel = "sound").describe())
+          displayOpen("sound")
+
+  # 5 ── the same engine, no music at all.
+  - create:
+      box: petri_demo_philosophers
+      name: 5 — dining philosophers (silent)
+      frame: { x: 60.0, y: 460.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // Nothing in the model knows what a note is. Here is the same engine as a concurrency
+          // checker: five philosophers, five forks, and the shape of the net computed in a loop —
+          // which is the one thing the `#petri` notation cannot do.
+          fun table(reverseLast: Boolean, fairly: Boolean) = petri {
+              conflict = if (fairly) PetriConflict.ROUND_ROBIN else PetriConflict.ORDER
+              grid = cyc(1, 4)
+              for (i in 0 until 5) place("fork.$i", tokens = 1)
+              for (i in 0 until 5) {
+                  val left = i
+                  val right = (i + 1) % 5
+                  val reversed = reverseLast && i == 4
+                  t("grab.$i") { from("fork.${if (reversed) right else left}"); to("holding.$i") }
+                  t("eat.$i") { from("holding.$i"); from("fork.${if (reversed) left else right}"); to("eating.$i") }
+                  t("done.$i") { from("eating.$i"); to("fork.$left"); to("fork.$right") }
+              }
+          }
+
+          val naive = table(reverseLast = false, fairly = false)
+          showPetriNet(naive, w = 760.0, h = 460.0)
+
+          for ((label, net) in listOf(
+              "all left-handed" to naive,
+              "one reaches right first" to table(reverseLast = true, fairly = false),
+              "…and round-robin conflict" to table(reverseLast = true, fairly = true),
+          )) {
+              val stuck = net.deadTransitions()
+              println("%-26s deadlocks=%-5s never fires: %s".format(
+                  label, net.willDeadlock(), stuck.ifEmpty { listOf("—") }.joinToString(", ")))
+          }
+
+          // The middle line is the interesting one: breaking the symmetry removes the deadlock and
+          // leaves a starvation behind it. Two faults, two different fixes.
+
+  # 6 ── the box to edit.
+  - create:
+      box: petri_demo_playground
+      name: 6 — playground
+      frame: { x: 60.0, y: 560.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+
+          // A groove with a bit of everything: a read arc, a weighted arc, a capacity and
+          // priorities. `bd hh` goes round fast; meanwhile `build` watches `mid` without
+          // consuming it, and every third time it has counted, the weighted arc drains all
+          // three at once and you get a snare — `crash` has no output side, so it is a drain and
+          // the net stays bounded and periodic. Change a number and run the box again.
+          val net = petri("""
+              #petri
+              !grid 1/8
+              !conflict priority
+
+              pulse : 1
+              fill  : 0 ^3
+
+              pulse  -[ a @1/8 pri=9 : bd ]-> mid
+              mid    -[ b @1/8 pri=9 : hh ]-> pulse
+
+              &mid   -[ build @1/8 pri=3      ]-> fill
+              3*fill -[ crash @1/8 pri=1 : sd ]->
+          """)
+
+          showPetriNet(net, w = 760.0, h = 400.0)
+
+          println("period: ${net.period()}   deadlocks: ${net.willDeadlock()}")
+          for (c in 0L..3L) println("cycle %d   %s".format(c, net.emits()
+              .events(PatArc(PatQ.of(c), PatQ.of(c + 1)))
+              .filter { it.hasOnset }.sortedBy { it.arc.start }.joinToString(" ") { it.value }))
+          println(net.report())
+
+          println(showDirtAudio(net.emits(), cycles = 8, cps = 1.5, channel = "sound").describe())
+          displayOpen("sound")
+
+  # 7 ── the live path: the same net, through the speakers, in time.
+  - create:
+      box: petri_demo_live
+      name: 7 — play it live
+      frame: { x: 60.0, y: 660.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.petri.*
+          import afield.four.synth.*
+
+          // Boxes 1-6 render *offline* — they mix a wav and hand you a player, which needs no
+          // audio device and so works in a docs build and in CI. This is the other path: the real
+          // polyphonic Dirt player, driven by the transport, tempo-synced and interruptible.
+          val root = DirtRender.dirtSampleRoot()
+          println(root?.let { "samples: $it" }
+              ?: "no Dirt-Samples found — set ${DirtRender.ENV_VAR}, or install the SuperCollider quark")
+
+          val net = petri("""
+              #petri
+              !grid 1/8
+              !conflict priority
+
+              pulse : 1
+              fill  : 0 ^3
+
+              pulse  -[ a @1/8 pri=9 : bd ]-> mid
+              mid    -[ b @1/8 pri=9 : hh ]-> pulse
+              &mid   -[ build @1/8 pri=3      ]-> fill
+              3*fill -[ crash @1/8 pri=1 : sd ]->
+          """)
+          showPetriNet(net, w = 700.0, h = 360.0)
+
+          // Flip to true to hear it. It is false by default because `audio { }` opens a real
+          // output device, and this transcript is replayed end to end in CI on machines that have
+          // none — everything below still compiles either way, which is the point of the flag
+          // rather than a comment.
+          val live = false
+
+          if (live && root != null) {
+              val kit = dirtPlayer(library = dirt(root.toString()))
+              audio { kit }
+              net.emits().playDirt(kit, cps = 1.5)
+              println("playing — stop the box to stop the sound")
+          } else {
+              println("set `live = true` and run again to hear this through the speakers")
+          }
+
+  - execute: { box: petri_demo_loop }
+  - execute: { box: petri_demo_polyrhythm }
+  - execute: { box: petri_demo_structure }
+  - execute: { box: petri_demo_tokens }
+  - execute: { box: petri_demo_philosophers }
+  - execute: { box: petri_demo_playground }
+  - execute: { box: petri_demo_live }

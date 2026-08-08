@@ -93,6 +93,9 @@ object DemoTranscriptExecSmokeTest {
         // Eight pure-compute pattern boxes; showPatRoll is drawToSVG -> display, so no Window, no
         // Renderer, no GPU and no audio device.
         "pattern_language_composition",
+        // Six pure-compute Petri boxes. showPetriNet is FLines -> display and showPatAudio renders
+        // through the same offline CPU voice, so this plays without an audio device.
+        "petri_sound",
         // Deterministic synthesised audio and token fixtures through the real CodecVisualization
         // renderer; it deliberately does not reach for EnCodec's GPU service, so it completes here.
         "audio_ai_codec",

@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 53 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 36 of them are
+All 54 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 37 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
@@ -119,6 +119,33 @@ boolean; and *playground* is the box to edit. `showPatRoll` is SVG into `display
 renders through a deterministic CPU voice into an inline player, so there is no audio device and no
 window anywhere in this file.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/pattern_language_composition/metadata.edn)
+
+**petri_sound** — [Petri nets as a sequencer](petri_nets.md) as seven independent boxes, each
+drawing its net with `showPetriNet` and playing it with `showDirtAudio` — a net's `emits()` is a
+`PatPattern<String>`, so the audio path takes it with no adapter, which is the point. The audio is
+mixed *offline* from the real Tidal Dirt-Samples library when it is installed (`DirtRender.kt`
+auto-discovers the SuperCollider quark, `FIELD_DIRT_SAMPLES` overrides) and from the synthetic
+`patVoice` when it is not, and each box prints which one it used — so this file sounds like actual
+drums on a machine that has the samples and still runs, silently degraded but honest, on one that
+does not. *The smallest loop* is one token going round two transitions and prints
+`bd sd bd sd bd sd bd sd` at a period of `1/4`. *Five against three* is the one that earns the model:
+nothing in its source says fifteen, and `settle()` prints that it settles after 15 steps into 2
+T-invariants — one per independent ring — with four cycles of audio so you can hear the rings drift
+and re-align. *Song structure* and *tokens that are rhythms* are the medium timescale: the second
+carries a whole `PatPattern` as a token's colour, so `unfold` prints four bars of `bd sd` followed by
+four of `bd bd bd bd hh hh…` — an arrangement enforced by the net rather than by a scheduler, because
+only one place is marked. *Dining philosophers* is deliberately silent and is the contrast: the same
+engine as a concurrency checker, printing `deadlocks=true` for the naive table, then
+`deadlocks=false … never fires: grab.4, eat.4, done.4` for the asymmetric one — a starvation, not a
+deadlock, which is why the third line adds a fair conflict policy and nothing is left over. And
+*playground* is the box to edit: a read arc counting a fast `bd hh` ring, a weighted arc draining
+three at once, and a snare that consequently walks backwards through the bar (`bd hh bd hh bd hh bd
+sd hh` becoming `bd sd hh bd hh bd hh bd sd hh`), which is a 3-against-8 nobody wrote down. A
+seventh box is the *live* path rather than the offline one — the real polyphonic Dirt player driven
+by the transport — behind a `live` flag that defaults to false, because `audio { }` opens an output
+device and this file is replayed end to end in CI; the flag rather than a comment is what keeps
+those lines compiling.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/petri_sound/metadata.edn)
 
 **mesh_geometry_examples** — The [mesh and 3D geometry worked example](mesh_examples.md) as seven
 independent boxes, one per stage of the family. *Primitives* builds a cube, an icosphere, a torus and a
