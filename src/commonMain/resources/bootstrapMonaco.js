@@ -1477,6 +1477,11 @@ window.addEventListener("keydown", (e) => {
                 : ((e.ctrlKey || e.metaKey) && (e.key === "/" || e.key === "÷"))
         if (!isToggleDocs) return
 
+        // Cmd+/ is Monaco's comment-line, and this listener preventDefaults unconditionally — so
+        // toggling the docs from inside an editor cost you the ability to comment code at all. Let the
+        // editor keep the chord; the docs still toggle from the canvas, the palette, or a rebind.
+        if (isMonacoTextFocused()) return
+
         e.preventDefault()
         e.stopImmediatePropagation()
 
