@@ -187,4 +187,44 @@ class KeySpecTest {
         assertEquals(KeyScope.both, KeyScope.normalize(null))
         assertEquals(KeyScope.both, KeyScope.normalize("nonsense"))
     }
+
+    /**
+     * A chord that types a character must be recognizable as such, because an editor binding for one
+     * swallows the keystroke: `new-box` is bare `n`, and binding that inside Monaco made `n`
+     * impossible to type. Cmd or Alt makes it a shortcut; Shift alone does not, since Shift+N types N.
+     */
+    @Test
+    fun knowsWhichChordsWouldTypeACharacter() {
+        for (spec in listOf("n", "shift+n", "1", ",", "/", "?", "[", "'", "-", "=", "`")) {
+            assertTrue(
+                KeySpec.typesACharacter(assertNotNull(KeySpec.parse(spec))),
+                "'$spec' types a character, so it must never become an editor binding"
+            )
+        }
+        for (spec in listOf("cmd+n", "alt+n", "cmd+shift+n", "cmd+,", "alt+]", "f1", "f12", "enter",
+                            "escape", "tab", "up", "down", "backspace", "delete", "space", "home",
+                            "pageup", "shift+f4")) {
+            assertTrue(
+                !KeySpec.typesACharacter(assertNotNull(KeySpec.parse(spec))),
+                "'$spec' types nothing, so it is safe to bind in the editor"
+            )
+        }
+    }
+
+    /**
+     * Every editor-scoped default Field ships must be safe to bind there. If someone adds a bare-letter
+     * editor shortcut, this fails rather than shipping an unusable letter.
+     */
+    @Test
+    fun noShippedEditorDefaultTypesACharacter() {
+        val editorDefaults = listOf(
+            "alt+shift+p", "cmd+3", "cmd+4", "f12", "alt+o", "alt+shift+o", "cmd+'", "cmd+.", "cmd+,",
+            "alt+enter", "alt+shift+enter", "alt+0", "alt+1", "alt+up", "alt+shift+up", "alt+down",
+            "alt+shift+down"
+        )
+        for (spec in editorDefaults) {
+            val chord = assertNotNull(KeySpec.parse(spec))
+            assertTrue(!KeySpec.typesACharacter(chord), "editor default '$spec' would eat a keystroke")
+        }
+    }
 }

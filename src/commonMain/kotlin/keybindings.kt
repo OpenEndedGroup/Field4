@@ -273,6 +273,21 @@ object KeySpec {
         return shiftedChars.entries.firstOrNull { it.value == chord.key }?.key ?: chord.key.uppercase()
     }
 
+    /**
+     * True when pressing [chord] in a text field would type a character — a printable key with no
+     * Cmd or Alt held. Shift does not count: Shift+N still types `N`.
+     *
+     * Such a chord must never become an editor binding, or it eats the keystroke and you cannot type
+     * that letter. This is a property of the chord, not of the command, so it holds for a shortcut the
+     * *user* wrote too: `execute-all: j` in keybindings.yaml would otherwise make `j` untypable.
+     */
+    fun typesACharacter(chord: KeyChord): Boolean {
+        if (chord.ctrlCmd || chord.alt) return false
+        // Single-character canonical tokens are exactly the printable ones (`a`-`z`, `0`-`9` and the
+        // punctuation keys); everything else is named (`enter`, `f7`, `up`, …) and types nothing.
+        return chord.key.length == 1
+    }
+
     /** A human-facing label ("Cmd+Shift+D" / "Ctrl+Shift+D"), used by the palette and cheatsheet. */
     fun label(chord: KeyChord, mac: Boolean): String {
         val parts = mutableListOf<String>()

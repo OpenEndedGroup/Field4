@@ -194,13 +194,27 @@ object Keybindings {
      * Rewrites [action]'s `keybindings` and `canvasKeybinding` from its `keys` default and any user
      * override. Idempotent — `keys` is never mutated, so this can run again after every reload.
      */
+    /**
+     * Narrows [declared] to canvas when any chord would type a character in a text field.
+     *
+     * A bare letter must not reach Monaco: `new-box` is `n`, and an editor binding for `n` swallows
+     * the keystroke, so the letter cannot be typed at all. The narrowing lives here rather than in a
+     * `keyScope: 'canvas'` on each command because it has to hold for user-authored specs too — the
+     * file lets anyone bind any command to a bare letter.
+     *
+     * It overrides even an explicit `keyScope: 'editor'`. That combination is contradictory, and of
+     * the two ways to resolve it, keeping the letter typable is the only tolerable one.
+     */
+    private fun effectiveScope(declared: String, chords: List<KeyChord>): String =
+        if (chords.any { KeySpec.typesACharacter(it) }) KeyScope.canvas else declared
+
     fun installOnAction(action: dynamic) {
         if (action == null || action == undefined) return
         val id = (action.id as? String) ?: return
 
         val defaults = declaredSpecs(action.keys)
         val chords = chordsFor(id, defaults)
-        val scope = KeyScope.normalize(action.keyScope as? String)
+        val scope = effectiveScope(KeyScope.normalize(action.keyScope as? String), chords)
 
         action.keybindings = if (scope == KeyScope.canvas) {
             emptyArray<Int>()
@@ -240,7 +254,12 @@ object Keybindings {
             label = label,
             detail = (action.detail as? String) ?: "",
             defaults = defaults,
-            scope = KeyScope.normalize(action.keyScope as? String),
+            // The effective scope, so a bare-letter command is written `#scope canvas` rather than
+            // claiming a reach into the editor that [effectiveScope] has already taken away.
+            scope = effectiveScope(
+                KeyScope.normalize(action.keyScope as? String),
+                defaults.mapNotNull { KeySpec.parse(it) }
+            ),
             group = group
         )
     }
