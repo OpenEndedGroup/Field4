@@ -4,7 +4,7 @@
 when — but a schedule makes no sound. Something has to turn each event into samples.
 
 Field has **two** things that do, offline, with no audio device and no realtime engine, and
-they sound nothing alike. One is a forty-line synthesiser that ships in the source tree. The
+they sound nothing alike. One is a tiny synthesiser that ships in the source tree. The
 other is the genuine Tidal drum library, if you happen to have it. This page follows one
 pattern all the way down both, and — because this is the whole point — **every audio figure
 below says which of the two produced it.**
@@ -53,7 +53,8 @@ displayOpen("main")
 
 ![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
 
-Twelve events a cycle, at exact rational positions. Nothing so far has an opinion about what
+Ten events a cycle — the two `~` are rests and produce nothing — at exact rational
+positions. Nothing so far has an opinion about what
 a kick drum sounds like.
 
 ---
@@ -104,7 +105,7 @@ than a sampled kick.
 `playDirt` needs `respondAhead`, a clock and an audio device, none of which exist in a docs
 build or a headless box. `patRenderStereoDirt` mixes the same library straight into a buffer.
 
-The same beat, the same twelve events a cycle, the same `gain` / `pan` / `speed` annotations:
+The same beat, the same ten events a cycle, the same `gain` / `pan` / `speed` annotations:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/sound_render_path/beat-dirt.wav" audio-spec="beat-dirt" audio-renderer="afield.four.synth.SoundRenderPathDocs" embed=true hidden=true name="sound-doc-beat-dirt"}
 // showDirtAudio(pat("bd ~ sd ~, hh*8") with gain(0.9))
