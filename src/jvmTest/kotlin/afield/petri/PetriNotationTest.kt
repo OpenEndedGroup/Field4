@@ -272,7 +272,7 @@ class PetriNotationTest {
         )
         assertTrue(result.errors.isNotEmpty())
         assertNotNull(result.net, "a half-typed source must still yield a playable net")
-        assertEquals("bd", result.net!!.transition("good")!!.emit)
+        assertEquals("bd", result.net.transition("good")!!.emit)
     }
 
     @Test

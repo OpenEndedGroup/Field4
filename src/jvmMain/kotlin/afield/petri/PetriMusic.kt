@@ -553,7 +553,7 @@ class PetriLive internal constructor(
                 index = firingCounter++,
             )
         }
-        firing?.let { fired -> listeners.forEach { it(fired) } }
+        listeners.forEach { it(firing) }
         return firing
     }
 

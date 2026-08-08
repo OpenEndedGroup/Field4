@@ -2,7 +2,6 @@ package afield.petri
 
 import afield.four.physics.OctreeBarnesHut
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max

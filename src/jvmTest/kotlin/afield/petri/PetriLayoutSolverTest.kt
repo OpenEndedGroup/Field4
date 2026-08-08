@@ -177,8 +177,8 @@ class PetriLayoutSolverTest {
         val ms = (System.nanoTime() - t0) / 1e6
         val names = positions.keys.toList()
         val index = names.withIndex().associate { (i, n) -> n to i }
-        val x = FloatArray(names.size) { positions.getValue(names[it]).x.toFloat() }
-        val y = FloatArray(names.size) { positions.getValue(names[it]).y.toFloat() }
+        val x = FloatArray(names.size) { positions.getValue(names[it]).x }
+        val y = FloatArray(names.size) { positions.getValue(names[it]).y }
         val edges = LinkedHashSet<PetriLayoutSolver.Edge>()
         for (tr in net.transitions) {
             val ti = index.getValue(tr.name)
