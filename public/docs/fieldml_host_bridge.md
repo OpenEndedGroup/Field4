@@ -2,7 +2,7 @@
 
 FieldML is a small language with a large host. The prelude covers geometry — `fline`, `vec3`, `draw`, `animate` — but Field itself is thousands of Kotlin functions, and the bridge is how a FieldML box reaches them. This page is that bridge: what it can do, what it refuses, and where it deliberately stops short.
 
-The short version: **a FieldML box can call a Kotlin method with any number of arguments, pass a FieldML function where Kotlin wants a lambda, and get a real type back — on both sides of that lambda.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
+The short version: **a FieldML box can call a Kotlin method with any number of arguments, pass a FieldML function where Kotlin wants a lambda, and get a real type back — on both sides of that lambda.** The measurement in `FieldMLHostSurfaceCoverageTest` puts the first part at 344 of the 362 public methods of `FLine`, `Img`, the three linalg vectors and Field's two imaging extension files — 95%, against a modelled 166 for the narrower bridge this replaced. The second part is 21 of the 23 callback argument slots across the same types — 91.3%: a lambda handed to a JVM method has its parameters typed from that method's signature, and the two that stay untyped are one erased generic and one nullable Kotlin parameter, both of which would be lies.
 
 ## The one that proves it
 
@@ -177,7 +177,7 @@ Worth knowing before you fight it:
 - **Named arguments are invisible** for the same reason: a reflective call is positional.
 - **A callback written inside a helper has untyped parameters.** The expected type comes from the receiver, so `line |> hostCall1 "transform" (fun p -> …)` in a pipeline is typed and the same call inside `let warp line = …` is not — `line` is a function parameter and there is no class to reflect on. `hostAs "Vec3"` is still the way through that one. The same is true of anything whose type reflection genuinely cannot read: an erased generic, a nullable Kotlin parameter.
 - **A lambda's *result* is not checked** against what the JVM wants. The proxy coerces it, which is why `fun x y -> 0` satisfies a `Function2<…, Float>` — but a body that returns the wrong shape entirely still fails at run time.
-- **`suspend` function types cannot be satisfied.** They need coroutine machinery, not a proxy.
+- **`suspend` function types cannot be satisfied.** They need coroutine machinery, not a proxy. This is now the largest single thing between FieldML and the rest of `afield.four`: the geometry and the shader modules are reachable, the per-frame loop is not.
 - **`internal` Kotlin members are unreachable** under their source names, because the compiler mangles them.
 - **Buffers, kernels and anchors** — anything FieldML has no way to construct and no constructor to call — are still out of reach. In the coverage measurement those are most of the remaining 5%.
 
@@ -199,6 +199,10 @@ Things to change, in the order they are most likely to teach you something:
 | the warp box | `24.0` → `60.0` | a taller wave |
 | the types box | `img.width` → `img.widht` | a type error, before the box runs |
 | the types box | put the caret inside `hostGet ""` | completion lists `Img`'s members with their types |
+
+And a third, for a machine with a GPU: **a whole `afield.four` scene described from FieldML**, with no `hostAs` in it. One box walks up to a live `Renderer`, builds a shader module out of two GLSL strings through `parameters(renderer) { vertex = …; fragment = … }` — the receiver lambda whose `p` is now a typed `Parameters` — attaches a three-vertex mesh, and registers it with the render target. It needs a running Vulkan device, so it does nothing in an ordinary box; connect it to whichever box owns your renderer.
+
+[Open ↗](/offline.html?file=/field4/assets/fieldml_afield_four_demo/metadata.edn) — or open `public/docs/assets/fieldml_afield_four_demo/metadata.edn` from a Field workspace.
 
 The second is about the lambda parameters specifically — a warp with no `hostAs` in it, a raster whose two callbacks have six typed parameters between them, a box of inferred types, and a box that says where the inference still declines to say anything.
 

@@ -106,6 +106,31 @@ class FieldMLSmokeExamplesTest {
     }
 
     /**
+     * The `afield.four` demo is the one document here that *cannot* be evaluated: it needs a Vulkan
+     * device, and a headless test JVM has none. So it is compiled and type-checked only — which is
+     * still worth doing, because everything that went wrong while it was being written went wrong at
+     * compile time (`Module has no method 'pointer'`, `Parameters has no member 'vertexx'`), and a
+     * silent rot in it would be exactly that kind of error.
+     *
+     * It was *run* on 2026-08-08 in a `field_backdoor.py --graphics-context` session and rendered a
+     * triangle into the native window; `triangle.png` beside it is that capture. Nothing here can
+     * check that, and nothing here pretends to.
+     */
+    @Test
+    fun theAfieldFourDemoTypeChecksEvenThoughItCannotRunHere() {
+        val demo = Path.of("public/docs/assets/fieldml_afield_four_demo/metadata.edn")
+        val sources = ednCodeStrings(demo.toFile().readText())
+
+        assertEquals(1, sources.size, "expected one FieldML box in $demo")
+        val result = compileOk("$demo box 1", sources.single())
+        assertNotNull(result.core, "$demo box 1: core")
+        assertTrue(
+            "hostAs \"" !in sources.single(),
+            "$demo uses hostAs, which is the thing it exists to show is unnecessary",
+        )
+    }
+
+    /**
      * The lambda demo's promise is specifically that it needs no `hostAs` — so if one drifts back in
      * the demo has stopped showing the thing it exists to show, even though every box still runs.
      *

@@ -206,6 +206,32 @@ class FieldMLLambdaExpectedTypeTest {
         )
     }
 
+    /**
+     * The `afield.four` case that matters most, because it is the one that does *not* need the source
+     * macro layer: `parameters(renderer) { vertex = …; fragment = … }` (`Module.kt:197`) takes plain
+     * GLSL strings, and its receiver lambda now arrives with `p : Parameters`. That is a whole shader
+     * module described from FieldML with the members checked.
+     */
+    @Test
+    fun theAfieldFourShaderParameterBuilderHasATypedReceiver() {
+        val result = compileOk(
+            """
+            hostStaticCall "parameters" (hostInput, fun p ->
+              p |> hostSet "vertex" "#version 450"
+                |> hostSet "fragment" "#version 450"
+            ) (hostClass "afield.four.modules.ModuleKt")
+            """,
+        )
+        assertEquals(listOf("p: Parameters"), parameterSpellings(result))
+        assertRefused(
+            """
+            hostStaticCall "parameters" (hostInput, fun p -> p |> hostGet "vertexx")
+              (hostClass "afield.four.modules.ModuleKt")
+            """,
+            "Parameters has no member 'vertexx'",
+        )
+    }
+
     @Test
     fun aMisspelledMemberOnALambdaParameterIsACompileErrorRatherThanACrash() {
         // The whole payoff of a typed parameter: `.zz` is refused where it is written, and the

@@ -160,13 +160,16 @@ compared against the same call in Kotlin.
 
 The blockers are not a long tail. They are five mechanisms:
 
-| # | Mechanism | Evidence | Can the *effect* be reached? |
-| --- | --- | --- | --- |
-| A | **Source macros.** Nine box-code names are rewrites over Kotlin *source*, applied before the compiler runs: `moduleHere`, `meshModuleHere`, `computeModuleHere`, `fieldStatsHere`, `shadertoyHere`, `prop`, `rootProp`, `sourceBlock`, `print`/`println` | `MacroRegistry.callRewrite`, `macros.kt:338-374`. `Box.prop` throws `MacroNotExpandedException` if actually called, `props.kt:39` | Partly. `prop<T>(name)` expands to `var Box.<name> by Inheritance<T>()` (`props.kt:71`) — a *generated declaration*, so there is nothing to call. But `Inheritance.getValue` (`stdlib.kt:265`) is just `getPropertyRaw` plus a breadth-first walk over `parents`, and both of those are ordinary methods. FieldML does it in four lines, tested. `once` (`scratch.kt:15`, `Onceing.getValue` `scratch.kt:26`) is get-or-compute-and-store over the same pair, also tested |
-| B | **Kotlin default arguments** are invisible to reflection | `Renderer(Window, List)` (`Renderer.kt:147`) — `additionalWindows = emptyList()` must be written out. `ComputeMesh(Renderer)` (`ComputeMesh.kt:295`) — `renderer = fromContext()` likewise | Yes, by spelling every parameter. `hostNull` covers the nullable ones |
-| C | **Named arguments** are invisible for the same reason | `fieldProbeHere(samples = 100000)` | Yes, positionally |
-| D | **`suspend` function types** erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy | `start(a: suspend Frames.() -> Unit)`, `stdlib.kt:516` | Not with the current `samProxy`. Would need either a coroutine-aware adapter or a non-suspend entry point |
-| E | **A Vulkan device.** `Window`, `Renderer`, `.buffer`, `Mesh`, `Module` are expressible but cannot be *run* in a headless test JVM | — | Only in a graphics-context session; the docs runner has one (`graphics_context` mode) and that is where a live `afield.four` FieldML demo would have to be captured |
+**Status as of 2026-08-08.** One column per row says what changed tonight, so the next night can
+diff this table rather than re-derive it.
+
+| # | Mechanism | Status 2026-08-08 | Evidence | Can the *effect* be reached? |
+| --- | --- | --- | --- | --- |
+| A | **Source macros.** Nine box-code names are rewrites over Kotlin *source*, applied before the compiler runs: `moduleHere`, `meshModuleHere`, `computeModuleHere`, `fieldStatsHere`, `shadertoyHere`, `prop`, `rootProp`, `sourceBlock`, `print`/`println` | **UNCHANGED.** A language-design question, not a bridge one | `MacroRegistry.callRewrite`, `macros.kt:338-374`. `Box.prop` throws `MacroNotExpandedException` if actually called, `props.kt:39` | Partly. `prop<T>(name)` expands to `var Box.<name> by Inheritance<T>()` (`props.kt:71`) — a *generated declaration*, so there is nothing to call. But `Inheritance.getValue` (`stdlib.kt:265`) is just `getPropertyRaw` plus a breadth-first walk over `parents`, and both of those are ordinary methods. FieldML does it in four lines, tested. `once` (`scratch.kt:15`, `Onceing.getValue` `scratch.kt:26`) is get-or-compute-and-store over the same pair, also tested |
+| B | **Kotlin default arguments** are invisible to reflection | **UNCHANGED** | `Renderer(Window, List)` (`Renderer.kt:147`) — `additionalWindows = emptyList()` must be written out. `ComputeMesh(Renderer)` (`ComputeMesh.kt:295`) — `renderer = fromContext()` likewise | Yes, by spelling every parameter. `hostNull` covers the nullable ones |
+| C | **Named arguments** are invisible for the same reason | **UNCHANGED** | `fieldProbeHere(samples = 100000)` | Yes, positionally |
+| D | **`suspend` function types** erase to a `Function` taking a `Continuation`, which a dynamic proxy cannot satisfy | **UNCHANGED — and now the top bridge item** | `start(a: suspend Frames.() -> Unit)`, `stdlib.kt:516` | Not with the current `samProxy`. Would need either a coroutine-aware adapter or a non-suspend entry point |
+| E | **A Vulkan device.** `Window`, `Renderer`, `.buffer`, `Mesh`, `Module` cannot be *run* in a headless test JVM | **DONE, 2026-08-08** | `public/docs/assets/fieldml_afield_four_demo/` — captured, and the capture is `triangle.png` beside it | **Yes, and it was.** A FieldML box in a `field_backdoor.py --graphics-context` session built `parameters(renderer) { vertex = …; fragment = … }`, a `Module`, a `ModulePointer`, a `Mesh` resized on the device, and attached it to `renderer.renderTargetFor(0)`. A light blue triangle came out of the native window. No `hostAs` anywhere |
 
 Two smaller findings from the same walk, both fixed:
 
@@ -180,6 +183,30 @@ Two smaller findings from the same walk, both fixed:
 The lambda-parameter typing that used to sit beside these is **done** — see decision 4 above and the
 "Known holes" entry below for what is left of it. That makes D the next bridge item; A is a language
 design question (a FieldML macro layer) rather than a bridge one.
+
+**E is done, and it is worth saying what "done" means.** `public/docs/assets/fieldml_afield_four_demo/`
+is one FieldML box that, in a `field_backdoor.py --graphics-context` session, walks up its parents to
+the live `Renderer`, calls `parameters(renderer) { vertex = …; fragment = … }` with plain GLSL
+strings, constructs a `Module`, takes its `ModulePointer` through the `Module.pointer()` *extension*
+(`hostExt`, not `hostCall0` — that was the first thing that went wrong), attaches a `Mesh` resized to
+three vertices **on the device**, and registers the module with `renderer.renderTargetFor(0)`. A
+light blue triangle comes out of the native window; `triangle.png` beside the document is that
+capture.
+
+Three things that cost time and are worth writing down:
+
+- `Renderer.renderTarget` is not readable reflectively — use `renderTargetFor(0)`, which is;
+- `RenderTarget`'s three `plusAssign` overloads carry `@JvmName`, so from FieldML they are
+  `plusAssign`, `plusAssign_mp` and `plusAssign_module`, and you must pick the right spelling;
+- `module.meshes` is a `Map`, and the runtime turns a JVM `Map` into a FieldML **record**, so
+  `hostCall2 "put"` on it fails with `Expected host target, found {}`. Go through
+  `ModulePointer.plusAssign(Pair<String, Mesh>)` instead. That mismatch is the "`Map`-returning
+  members are typed `Host` but the runtime hands back a `RecordValue`" hole below, biting for real
+  for the first time.
+
+What is *not* done: the demo builds a pipeline whose vertex shader needs no inputs. Anything that
+feeds vertex buffers still runs into the mesh-writing surface, and anything that wants a per-frame
+update still runs into D.
 
 One thing decision 4 changes about *this* table: a Kotlin **receiver** lambda arrives with its
 receiver typed, because `BufferParameters.() -> Unit` compiles to `Function1<BufferParameters, Unit>`
@@ -206,8 +233,9 @@ error rather than a first-run one. Asserted in
     diagnostic it produces today, which is `Record is missing field 'y'` — honest, but not the
     message a reader wants.
   - **An erased or nullable callback argument still says nothing**, on purpose. See decision 4.
-    Measured: 21 of 23 callback argument slots across the coverage test's types are typed, and the
-    two that are not are exactly one erased and one nullable.
+    Measured 91.3% — 21 of 23 callback argument slots across the coverage test's types — and floored
+    at 88.0%, which is under one slot of slack (20/23 is 87.0% and fails). The two that are not typed
+    are exactly one erased and one nullable.
   - **The lambda's result is unconstrained**, also on purpose. A body returning the wrong shape is
     still a run-time failure inside `samProxy`'s coercion. Constraining it would refuse `fun x y -> 0`
     against a `Function2<…, Float>`, which works, so this one probably wants a *coercion-aware*
