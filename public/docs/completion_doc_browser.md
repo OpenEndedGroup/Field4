@@ -91,6 +91,19 @@ The underlying autocomplete is covered in the
 [Survival Guide](survivalGuide.md#autocomplete). Conversational code search is
 a separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
 
+## Local completion history
+
+Field keeps a local, append-only history of autocomplete interactions so the completion helper can be
+measured and improved against what actually happened. A record includes the complete unsaved source,
+the edited and related code properties, caret position, each distinct completion ordering shown in the
+popup, and whether a row was accepted or the popup was dismissed. Accepted rows retain their visible
+rank and the resulting source.
+
+The files live under `~/.afield/logs/completion_interactions/`, one JSONL file per UTC day. They are not
+uploaded by this feature. Because they contain full source, treat them with the same privacy and backup
+care as the Field documents themselves. `AFIELD_COMPLETION_INTERACTION_LOG_PATH` can redirect the log
+directory.
+
 ## Browsing, rather than resolving
 
 The one thing this panel cannot do is answer a question you cannot yet name: it

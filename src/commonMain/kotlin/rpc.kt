@@ -280,6 +280,66 @@ data class CompletionRequest(
     val property: String = "code",
 )
 
+/**
+ * One completion exactly as Field's popup presented it. This is intentionally a client report,
+ * rather than a copy of the server response: `fieldSuggest.js` merges quick, language, compiler,
+ * and AI candidates, then applies fuzzy/category/context/recency ranking and grouping before the
+ * user sees anything. [key] is stable within an interaction and lets an accepted outcome point
+ * back to the corresponding row in a particular presentation revision.
+ */
+@Serializable
+data class CompletionInteractionCandidate(
+    val key: String,
+    val source: String,
+    val displayText: String,
+    val insertText: String,
+    val detail: String = "",
+    val documentation: String = "",
+    val category: String = "",
+    val icon: String = "",
+    val score: Double = 0.0,
+    val contextScore: Int = 0,
+    val declarationProximity: String = "",
+    val prefix: String = ""
+)
+
+/**
+ * Append-only completion-observability event emitted by the popup.
+ *
+ * `requested` carries the complete unsaved source and caret. `presented` carries the exact row
+ * order visible in the popup; there may be several revisions as compiler and AI answers arrive.
+ * `outcome` is terminal and records either the accepted row or why no row was selected. The JVM
+ * enriches every event with the box's other completion-relevant properties and effective inherited
+ * preamble before writing it to a dated JSONL file under
+ * `~/.afield/logs/completion_interactions/`.
+ */
+@Serializable
+data class CompletionInteractionEvent(
+    val schemaVersion: Int = 1,
+    val interactionId: String,
+    val event: String,
+    val uid: String,
+    val property: String,
+    val languageId: String = "",
+    val allCode: String = "",
+    val line: Int = -1,
+    val column: Int = -1,
+    val position: Int = -1,
+    val manual: Boolean = false,
+    val query: String = "",
+    val memberContext: Boolean = false,
+    val presentationRevision: Int = -1,
+    val candidates: List<CompletionInteractionCandidate> = emptyList(),
+    val outcome: String = "",
+    val reason: String = "",
+    val selectedIndex: Int = -1,
+    val selected: CompletionInteractionCandidate? = null,
+    val sourceAfter: String = "",
+    val lineAfter: Int = -1,
+    val columnAfter: Int = -1,
+    val positionAfter: Int = -1
+)
+
 @Serializable
 data class CompletionResolveRequest(
     val uid: String,

@@ -1,4 +1,5 @@
 import {
+  send,
   sendWithReply,
   clearReplyHandler,
   aiChatMarkdownToHtml,
@@ -115,6 +116,18 @@ const loadingMarkup = () =>
   `<div class="afield-suggest-loading" aria-label="Completing"><span class="afield-suggest-spinner" aria-hidden="true"></span></div>`;
 
 let completionReplySequence = 0;
+let completionInteractionSequence = 0;
+
+const nextCompletionInteractionId = () => {
+  if (
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+  completionInteractionSequence += 1;
+  return `completion-${Date.now().toString(36)}-${completionInteractionSequence.toString(36)}`;
+};
 
 const nextCompletionReplyName = (baseName) => {
   completionReplySequence += 1;
@@ -427,6 +440,25 @@ const completionKeyFor = (item) =>
       .trim()
       .slice(0, 160),
   ].join("\u001f");
+
+// The exact row shape persisted for self-improvement. Keep this at the UI boundary: `score` and
+// order do not exist on the server, and `source` distinguishes quick/local/compiler/AI candidates.
+const completionInteractionCandidate = (item) => ({
+  key: completionKeyFor(item),
+  source: String(item.source || ""),
+  displayText: String(item.displayText || item.label || item.insertText || ""),
+  insertText: String(item.insertText || item.displayText || item.label || ""),
+  detail: String(item.detail || ""),
+  documentation: String(item.documentation || ""),
+  category: String(item.category || ""),
+  icon: String(item.icon || ""),
+  score: Number.isFinite(Number(item.score)) ? Number(item.score) : 0,
+  contextScore: Number.isFinite(Number(item.contextScore))
+    ? Math.trunc(Number(item.contextScore))
+    : 0,
+  declarationProximity: String(item.declarationProximity || ""),
+  prefix: String(item.prefix || ""),
+});
 
 const completionNameFor = (item) => {
   const raw = String(item.displayText || item.label || item.insertText || "")
@@ -988,6 +1020,9 @@ class FieldSuggestController {
     this.navStack = [];
     this.navIndex = -1;
     this.suppressOpenUntil = 0;
+    this.interaction = null;
+    this.presentationRevision = 0;
+    this.lastPresentationSignature = null;
     this.root = this.createRoot();
     this.install();
   }
@@ -1134,17 +1169,42 @@ class FieldSuggestController {
     this.lastQuery = word.word || "";
     this.memberContext = isMemberCompletionPosition(model, position);
     this.openPosition = position;
+    const languageId = getLanguageId(model);
+    const target = getCompletionTarget(editor, model);
+    if (!target.uid) {
+      this.hide({ reason: "missing-target" });
+      return false;
+    }
+
+    // Content/caret changes can request a fresh completion while the previous popup is visible.
+    // Close the old interaction explicitly before replacing it so "no completion picked" is data,
+    // not an inference made later from a dangling request.
+    this.finishInteraction("dismissed", "superseded");
+    const request = completionPayloadFor(editor, model, position, target);
+    this.interaction = {
+      interactionId: nextCompletionInteractionId(),
+      uid: target.uid,
+      property: target.property,
+      languageId,
+      request,
+    };
+    this.presentationRevision = 0;
+    this.lastPresentationSignature = null;
+    this.sendInteraction({
+      event: "requested",
+      allCode: request.allCode,
+      line: request.line,
+      column: request.column,
+      position: request.position,
+      manual: !!options.manual,
+      query: this.lastQuery,
+      memberContext: this.memberContext,
+    });
+
     this.requestGeneration += 1;
     const generation = this.requestGeneration;
     this.renderLoading();
     this.reposition();
-
-    const languageId = getLanguageId(model);
-    const target = getCompletionTarget(editor, model);
-    if (!target.uid) {
-      this.renderItems([]);
-      return false;
-    }
 
     const quickItems = this.quickItems(model, position, languageId);
     const localItems = this.localItems(model, position, languageId);
@@ -1303,6 +1363,7 @@ class FieldSuggestController {
         ? `<div class="afield-suggest-doc-empty"></div>`
         : `<div class="afield-suggest-doc-empty"></div>`;
       this.reposition();
+      if (!waiting) this.recordPresentation();
       return;
     }
     if (options.preserveActiveKey) {
@@ -1316,6 +1377,71 @@ class FieldSuggestController {
     this.renderList();
     this.renderDoc();
     this.reposition();
+    this.recordPresentation();
+  }
+
+  sendInteraction(fields) {
+    if (!this.interaction || typeof send !== "function") return;
+    try {
+      send("completion-interaction", {
+        schemaVersion: 1,
+        interactionId: this.interaction.interactionId,
+        uid: this.interaction.uid,
+        property: this.interaction.property,
+        languageId: this.interaction.languageId,
+        ...fields,
+      });
+    } catch (_) {
+      // Completion must remain usable even if the observability channel is unavailable. The
+      // requested event already gives the server a detectable incomplete interaction in the usual
+      // disconnect/crash case.
+    }
+  }
+
+  recordPresentation() {
+    if (!this.interaction) return;
+    const candidates = this.items.map(completionInteractionCandidate);
+    const signature = JSON.stringify(
+      candidates.map((candidate) => [
+        candidate.key,
+        candidate.source,
+        candidate.score,
+      ]),
+    );
+    if (signature === this.lastPresentationSignature) return;
+    this.lastPresentationSignature = signature;
+    this.presentationRevision += 1;
+    this.sendInteraction({
+      event: "presented",
+      query: this.lastQuery,
+      memberContext: this.memberContext,
+      presentationRevision: this.presentationRevision,
+      candidates,
+    });
+  }
+
+  finishInteraction(outcome, reason, selected = null, selectedIndex = -1) {
+    if (!this.interaction) return;
+    const model = this.editor.getModel && this.editor.getModel();
+    const position = this.editor.getPosition && this.editor.getPosition();
+    const positionAfter =
+      model && position && typeof model.getOffsetAt === "function"
+        ? model.getOffsetAt(position)
+        : -1;
+    this.sendInteraction({
+      event: "outcome",
+      outcome,
+      reason,
+      presentationRevision: this.presentationRevision,
+      selectedIndex,
+      selected: selected ? completionInteractionCandidate(selected) : null,
+      sourceAfter: model && typeof model.getValue === "function" ? model.getValue() : "",
+      lineAfter: position ? position.lineNumber : -1,
+      columnAfter: position ? position.column : -1,
+      positionAfter,
+    });
+    this.interaction = null;
+    this.lastPresentationSignature = null;
   }
 
   dedupeItems(items) {
@@ -1709,11 +1835,12 @@ class FieldSuggestController {
       },
     ]);
     touchRecency(item);
+    this.finishInteraction("accepted", "selected", item, this.activeIndex);
     const shouldShowSignature =
       itemLooksCallable(item) &&
       String(item.insertText || item.displayText || "").includes("(");
     this.suppressOpenUntil = Date.now() + 2500;
-    this.hide();
+    this.hide({ reason: "accepted" });
     if (shouldShowSignature) {
       requestAnimationFrame(() => this.showSignatureBadge(item));
     }
@@ -1757,7 +1884,7 @@ class FieldSuggestController {
       this.accept();
     } else if (code === monaco.KeyCode.Escape) {
       consume();
-      this.hide();
+      this.hide({ reason: "escape" });
     }
   }
 
@@ -1786,6 +1913,7 @@ class FieldSuggestController {
 
   hide(options = {}) {
     clearTimeout(this.refreshTimer);
+    this.finishInteraction("dismissed", options.reason || "closed");
     if (options.invalidate !== false) this.requestGeneration += 1;
     this.root.style.display = "none";
     this.items = [];

@@ -406,6 +406,71 @@ const CASES = {
     );
   },
 
+  "observability records the exact presented order and accepted visible rank": async () => {
+    const opened = await openPopup({
+      code: "val v = ve|",
+      // Server order is deliberately not display order. This asserts telemetry reads the popup's
+      // post-ranking list rather than echoing the RPC response.
+      metadata: [
+        candidate("valueContainer", { category: "Math" }),
+        candidate("vecLength", { category: "Math", tail: ": Double" }),
+        candidate("vec", { category: "Math", tail: ": Vec3" }),
+      ],
+    });
+
+    const observations = requests.filter((r) => r.name === "completion-interaction");
+    const requested = observations.find((r) => r.payload.event === "requested");
+    ok(requested, `no requested observation: ${JSON.stringify(observations)}`);
+    eq(requested.payload.allCode, "val v = ve", "observed unsaved source");
+    eq(requested.payload.position, opened.caret, "observed caret offset");
+    eq(requested.payload.line, opened.position.lineNumber, "observed caret line");
+    eq(requested.payload.column, opened.position.column, "observed caret column");
+
+    const presentations = observations.filter((r) => r.payload.event === "presented");
+    ok(presentations.length >= 1, `no presentation observation: ${JSON.stringify(observations)}`);
+    const visible = presentations.at(-1).payload;
+    eq(
+      visible.candidates.map((candidate) => candidate.displayText),
+      ["vec", "vecLength", "valueContainer"],
+      "telemetry candidate order is the row order the user sees",
+    );
+
+    opened.press(opened.monaco.KeyCode.DownArrow);
+    opened.press(opened.monaco.KeyCode.Enter);
+    await settle();
+    const outcome = requests
+      .filter((r) => r.name === "completion-interaction" && r.payload.event === "outcome")
+      .at(-1)?.payload;
+    ok(outcome, "no terminal completion observation");
+    eq(outcome.interactionId, requested.payload.interactionId, "one correlated interaction");
+    eq(outcome.outcome, "accepted", "terminal outcome");
+    eq(outcome.selectedIndex, 1, "accepted row's visible zero-based rank");
+    eq(outcome.selected.displayText, "vecLength", "accepted candidate");
+    eq(outcome.sourceAfter, "val v = vecLength", "source after acceptance");
+    eq(outcome.presentationRevision, visible.presentationRevision, "accepted presentation revision");
+  },
+
+  "closing autocomplete records that no completion was picked": async () => {
+    const opened = await openPopup({
+      code: "val v = ve|",
+      metadata: [candidate("vec", { category: "Math" })],
+    });
+    const requested = requests.find(
+      (r) => r.name === "completion-interaction" && r.payload.event === "requested",
+    );
+    opened.press(opened.monaco.KeyCode.Escape);
+    const outcome = requests.find(
+      (r) =>
+        r.name === "completion-interaction" &&
+        r.payload.event === "outcome" &&
+        r.payload.interactionId === requested.payload.interactionId,
+    )?.payload;
+    ok(outcome, "no dismissed terminal observation");
+    eq(outcome.outcome, "dismissed", "no candidate was picked");
+    eq(outcome.reason, "escape", "dismissal reason");
+    eq(outcome.selected, null, "dismissal has no selected candidate");
+  },
+
   "only Kotlin pays for the AI round trip": async () => {
     await openPopup({
       code: "void main() { vec3 c = te| }",

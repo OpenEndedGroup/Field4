@@ -2197,6 +2197,22 @@ class Server {
                 Handled.yes
             })
 
+            // The browser owns the final completion ordering, so it reports request, presentation,
+            // and outcome events after ranking/merging rather than asking this server to guess what
+            // was visible. Enrich those events with server-only box context before appending them.
+            handlers["completion-interaction"] = mutableSetOf({ message, _ ->
+                val event = Json.decodeFromJsonElement<CompletionInteractionEvent>(message.payload!!)
+                val target = box(event.uid)
+                val info = thisSessionInfo.get()
+                CompletionInteractionLogger.record(
+                    event = event,
+                    box = target,
+                    documentName = info.documentName,
+                    documentPath = info.filename
+                )
+                Handled.yes
+            })
+
             handlers["symbol-context"] = mutableSetOf({ message, reply ->
                 val exec = Json.decodeFromJsonElement<SymbolContextRequest>(message.payload!!)
                 val box = box(exec.uid)

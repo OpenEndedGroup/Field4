@@ -21,6 +21,10 @@ grouping, the category titles and the documentation pane; see
 sidecar is absent, slow, erroring, or returns nothing, the request transparently falls back to the
 compiler-grade **K1** delegate — so AA is never *worse* than K1 in coverage.
 
+The popup also records the actual request → presented-order revisions → accepted/dismissed outcome for
+completion self-improvement. See [`completion_interaction_logs.md`](completion_interaction_logs.md) for
+the JSONL contract and why server response order is not a valid training target.
+
 ```
 browser editor
    │  "complete" RPC (CompletionRequest: code, cursor, box uid, property)
