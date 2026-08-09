@@ -3292,7 +3292,12 @@ def runner_code_expects_svg(code: str) -> bool:
     expects_svg_override = parse_codegen_expectation(code=code, key="FIELD_DOCS_EXPECT_SVG")
     if expects_svg_override is not None:
         return expects_svg_override
-    return re.search(r"\blines\s*\(", code) is not None
+    # NOT r"\blines\s*\(": that also matches Kotlin's String.lines(), which is everywhere, and a
+    # snippet that splits a string into lines was then required to emit an <svg> it never promised.
+    # Only a bare call to Field's own `lines(...)` FLine renderer counts, so a member call is excluded.
+    # The cost is that an explicit `someBox.lines(...)` no longer implies SVG; a snippet written that way
+    # can say so with a FIELD_DOCS_EXPECT_SVG codegen expectation.
+    return re.search(r"(?<![.\w])lines\s*\(", code) is not None
 
 
 def runner_code_expects_output_area(code: str) -> bool:

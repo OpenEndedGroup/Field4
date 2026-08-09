@@ -319,10 +319,17 @@ private fun FLine.applyFit(transform: FitTransform?): FLine {
 
 /**
  * Draw a single [FLine] to a Skia [Canvas], honoring stroke, fill, and point settings.
+ *
+ * @param antiAlias smooth the path's edges. Off by default, which is Skia's own default and what the
+ * SVG outputs have always used — an SVG is rasterised by the viewer, so asking Skia to antialias one
+ * only fattens the emitted geometry. Turn it on when the canvas is a **raster** surface and the
+ * result is the final image, as `afield.rect`'s PNG figures are; without it a diagonal roof edge
+ * comes out as a staircase.
  */
-fun outputTo(f: FLine, s: Canvas) {
+fun outputTo(f: FLine, s: Canvas, antiAlias: Boolean = false) {
     val p = Path()
     val paint = Paint()
+    paint.isAntiAlias = antiAlias
     var circ: Path? = null
     try {
         var first = true

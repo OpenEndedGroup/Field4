@@ -612,6 +612,47 @@ class AgentMemoryState {
     }
 }
 
+// ---- Tool results that carry pictures -------------------------------------
+
+/**
+ * One image for the model to look at, as a `data:image/…;base64,…` URL.
+ *
+ * [caption] is what to look *for*: a bare picture in a conversation is much less useful than one that
+ * says what question it answers.
+ */
+data class ToolImage(
+    val dataUrl: String,
+    val caption: String = "",
+)
+
+/**
+ * A tool result that has something for the model to see, not just to read.
+ *
+ * # Why this exists
+ *
+ * Field's agent loop has been multimodal in one direction for a while — a person can attach an image,
+ * and `ReloadShaders` can attach a GPU window screenshot — but a *tool* had no general way to answer in
+ * pictures. That mattered as soon as tools started producing geometry: the only honest way for a model
+ * to check that a house it just edited looks right is to look at it.
+ *
+ * Implement this on a result class and the bridge appends the images to the conversation as a user-role
+ * message after the function-call output, with [ToolImage.caption] as the text.
+ *
+ * # The one thing to get right
+ *
+ * [toolImages] is annotated `@get:JsonIgnore`, and any implementation must keep it that way — which is
+ * why this is an interface with the annotation on it rather than a convention. A tool result is
+ * serialised to JSON and sent to the model as the function-call output; a base64 PNG that reaches *that*
+ * path is spent as text tokens, invisibly, and buys nothing, because the model cannot see an image
+ * encoded in a JSON string. The image has to travel as an image.
+ */
+interface CarriesToolImages {
+
+    /** The pictures, excluded from this result's JSON on purpose — see the interface docs. */
+    @get:JsonIgnore
+    val toolImages: List<ToolImage>
+}
+
 /** Example tool (optional) ------------------------------------------------- */
 @JsonClassDescription("Looks up symbols in the IDE workspace index. Results may include relatedGuides and relatedExamples paths.")
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25)

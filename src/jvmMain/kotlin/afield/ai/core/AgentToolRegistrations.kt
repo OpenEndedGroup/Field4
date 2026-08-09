@@ -9,6 +9,14 @@ import afield.ai.RelatedContextDiscovery
  * so both OpenAiIdeCodexBridge and AnthropicBridge populate identical registries from here.
  */
 internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
+        // ---- code outside core -------------------------------------------------------------
+        // Whatever registered itself through AgentToolExtensions: personal packages, a document's own
+        // boxes, anything. Core deliberately does not name a domain cluster here — it used to name one
+        // directly, and moving that cluster into src/personal made the compiler reject the reference.
+        // Inverting it was the right fix independent of the move; see AgentToolExtensions.
+        AgentToolExtensions.applyTo(tools)
+
+
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.
         tools.register(Commentary::class.java) { _, _ -> mapOf("ok" to true) }
 
