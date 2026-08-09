@@ -147,7 +147,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WFC_VON_NEUMANN_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:156` |
 | `WFC_MOORE_NEIGHBOURHOOD` | val | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:157` |
 | `Any.h` | val | `src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt:2484` |
-| `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:37` |
+| `JSONProcess` | class | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:38` |
 | `LeastSquaresOptions` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:31` |
 | `LeastSquaresResult` | class | `src/jvmMain/kotlin/afield/stdlib/LeastSquares.kt:53` |
 | `SemanticSearchResult` | class | `src/jvmMain/kotlin/afield/stdlib/SemanticSearchManager.kt:32` |
@@ -180,13 +180,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SmileGaussianProcess1D` | class | `src/jvmMain/kotlin/afield/stdlib/smile_interpolation_regression.kt:45` |
 | `TuioListener` | interface | `src/jvmMain/kotlin/afield/stdlib/tuio.kt:29` |
 | `H2ValueSnapshot` | class | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:46` |
-| `JSONLineServers` | object | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:352` |
+| `JSONLineServers` | object | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:353` |
 | `CircularDirichlet` | object | `src/jvmMain/kotlin/afield/stdlib/dirichlet.kt:25` |
 | `H2ValueRegistry` | object | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:52` |
 | `LazyValueVisualizer` | object | `src/jvmMain/kotlin/afield/visualization/LazyValueVisualizer.kt:112` |
-| `jsonl` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:374` |
-| `registerJSONLineServerReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:378` |
-| `registerJSONProcessReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:203` |
+| `jsonl` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:375` |
+| `registerJSONLineServerReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:379` |
+| `registerJSONProcessReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:204` |
 | `PointRef.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1432` |
 | `PointRef.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1436` |
 | `PointRef.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1438` |

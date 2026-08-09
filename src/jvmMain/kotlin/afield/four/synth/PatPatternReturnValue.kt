@@ -6,16 +6,19 @@ import kotlin.math.absoluteValue
 
 @RunsAt(returnValueRegistration, priority = 11)
 fun registerPatPatternReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val spec = returnValue as? PatResponseSpec<*> ?: return@handler false
 
         @Suppress("UNCHECKED_CAST")
         val typed = spec as PatResponseSpec<Any?>
 
         CoroutineScope(Dispatchers.Default + Box.boxContextElement(inside)).launch {
-            notify(true, strand, generation)
             val job = coroutineContext[Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                notify(false, strand, generation)
+                return@launch
+            }
+            notify(true, strand, generation)
 
             val scope = PatResponseScope(
                 box = inside,
@@ -92,6 +95,7 @@ fun registerPatPatternReturnValue() {
                     }
                 }
             } finally {
+                inside.jobs.remove(job)
                 notify(false, strand, generation)
             }
         }

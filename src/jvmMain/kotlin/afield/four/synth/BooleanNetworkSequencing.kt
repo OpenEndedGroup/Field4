@@ -374,13 +374,16 @@ fun BooleanNetwork.respondAhead(
 
 @RunsAt(returnValueRegistration, priority = 10)
 fun registerBooleanNetworkResponseReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val spec = returnValue as? BooleanNetworkResponseSpec ?: return@handler false
 
         CoroutineScope(Dispatchers.Default + Box.boxContextElement(inside)).launch {
-            notify(true, strand, generation)
             val job = coroutineContext[Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                notify(false, strand, generation)
+                return@launch
+            }
+            notify(true, strand, generation)
 
             val scope = BooleanNetworkResponseScope(
                 box = inside,
@@ -425,6 +428,7 @@ fun registerBooleanNetworkResponseReturnValue() {
                     }
                 }
             } finally {
+                inside.jobs.remove(job)
                 notify(false, strand, generation)
             }
         }

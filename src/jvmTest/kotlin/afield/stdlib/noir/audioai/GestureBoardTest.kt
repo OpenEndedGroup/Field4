@@ -1,10 +1,10 @@
 package afield.stdlib.noir.audioai
 
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GestureBoardTest {
@@ -41,12 +41,13 @@ class GestureBoardTest {
         val operation = gestureCandidates(
             AssetRegion("sha256:source", 18.0, 4.5), board, seeds = 3L..4L
         )
-        val encoded = Json { encodeDefaults = true }.encodeToString(operation)
+        val encoded = FieldAudioClient.json.encodeToString(operation)
 
         assertTrue("\"gesture_board\"" in encoded)
         assertTrue("\"time_seconds\":7.2" in encoded)
         assertTrue("\"candidate_count\":2" in encoded)
         assertTrue("\"delivery\":\"evaluative\"" in encoded)
+        assertFalse("\"backend_preference\":null" in encoded)
     }
 
     @Test

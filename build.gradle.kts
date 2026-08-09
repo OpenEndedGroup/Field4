@@ -1220,6 +1220,16 @@ tasks.register<JavaExec>("checkAgentTranscriptIndex") {
     mainClass.set("afield.docs.AgentTranscriptIndexGuard")
 }
 
+tasks.register<JavaExec>("checkCompletionCorpusFixtures") {
+    group = "verification"
+    description = "Fails if tools/completion-corpus/boxes no longer matches the transcript and template corpus after real macro expansion."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.CompletionCorpusHarvest")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<JavaExec>("regenerateAgentTranscriptStartingPoints") {
     group = "documentation"
     description = "Rewrites the committed public/docs/assets/agent_transcripts/ bundle from dev_docs/agents/transcripts/*.yaml — the fix for a checkAgentTranscripts failure."
@@ -1330,6 +1340,7 @@ tasks.named("check") {
     dependsOn("checkPythonTools")
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkCompletionCorpusFixtures")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {

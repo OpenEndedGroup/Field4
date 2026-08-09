@@ -17,6 +17,7 @@ typealias ReturnValueHandler = (
     returnValue: Any,
     strand: String,
     generation: Int,
+    launchEpoch: Int,
     notify: (running: Boolean, strand: String, watermark: Int) -> Unit
 ) -> Boolean
 
@@ -47,9 +48,21 @@ object ReturnValueRegistry {
         returnValue: Any?,
         strand: String = "default",
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
-    ) {
+    ): Boolean {
+        val launchEpoch = inside.captureLaunchEpoch()
+        return launchPrepared(inside, returnValue, strand, launchEpoch, notify)
+    }
+
+    internal fun launchPrepared(
+        inside: Box,
+        returnValue: Any?,
+        strand: String,
+        launchEpoch: Int,
+        notify: (running: Boolean, strand: String, watermark: Int) -> Unit
+    ): Boolean {
+        if (!inside.isLaunchEpochCurrent(launchEpoch)) return false
         val generation = inside.runGeneration.incrementAndGet(strand)
-        launchWithGeneration(inside, returnValue, strand, generation, notify)
+        return launchWithGeneration(inside, returnValue, strand, generation, launchEpoch, notify)
     }
 
     internal fun launchWithGeneration(
@@ -57,14 +70,16 @@ object ReturnValueRegistry {
         returnValue: Any?,
         strand: String,
         generation: Int,
+        launchEpoch: Int = inside.captureLaunchEpoch(),
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ): Boolean {
+        if (!inside.isLaunchEpochCurrent(launchEpoch)) return false
         if (returnValue == null) {
             notify(false, strand, generation)
             return true
         }
-        if (launchCompositeIfPresent(inside, returnValue, strand, generation, notify)) return true
-        if (dispatch(inside, returnValue, strand, generation, notify)) return true
+        if (launchCompositeIfPresent(inside, returnValue, strand, generation, launchEpoch, notify)) return true
+        if (dispatch(inside, returnValue, strand, generation, launchEpoch, notify)) return true
         // no handler matched
         notify(false, strand, generation)
         return false
@@ -75,10 +90,11 @@ object ReturnValueRegistry {
         returnValue: Any,
         strand: String,
         generation: Int,
+        launchEpoch: Int,
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ): Boolean {
         for (handler in handlers) {
-            if (handler(inside, returnValue, strand, generation, notify)) return true
+            if (handler(inside, returnValue, strand, generation, launchEpoch, notify)) return true
         }
         return false
     }
@@ -88,6 +104,7 @@ object ReturnValueRegistry {
         returnValue: Any,
         strand: String,
         generation: Int,
+        launchEpoch: Int,
         notify: (running: Boolean, strand: String, watermark: Int) -> Unit
     ): Boolean {
         val items = when (returnValue) {
@@ -120,7 +137,7 @@ object ReturnValueRegistry {
 
         for (item in items) {
             activeChildren.incrementAndGet()
-            val consumed = dispatch(inside, item, strand, generation, compositeNotify)
+            val consumed = dispatch(inside, item, strand, generation, launchEpoch, compositeNotify)
             if (consumed) {
                 launchedAny.set(true)
             } else {
@@ -157,12 +174,16 @@ private fun MutableMap<String, Int>.incrementAndGet(name: String): Int {
 
 @RunsAt(returnValueRegistration, priority = 0)
 fun registerSequenceReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Sequence<*>) return@handler false
         val a = returnValue.iterator()
         inMain {
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) {
+                notify(false, strand, generation)
+                return@inMain
+            }
             notify(true, strand, generation)
-            while (inside.runGeneration[strand] == generation && a.hasNext()) {
+            while (inside.isLaunchEpochCurrent(launchEpoch) && inside.runGeneration[strand] == generation && a.hasNext()) {
                 a.next()
                 yield()
             }
@@ -174,7 +195,7 @@ fun registerSequenceReturnValue() {
 
 @RunsAt(returnValueRegistration, priority = 1)
 fun registerFramesReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Frames) return@handler false
         returnValue.shouldend = {
             inside.runGeneration[strand] != generation
@@ -183,12 +204,12 @@ fun registerFramesReturnValue() {
         returnValue.atEnd = {
             original()
         }
-        returnValue.onAtEndStart = { endJob ->
+        returnValue.onAtEndStart = onAtEndStart@{ endJob ->
             val endingGeneration = inside.runGeneration[strand] ?: (generation + 1)
             returnValue.shouldCancelAtEnd = {
                 inside.runGeneration[strand] != endingGeneration
             }
-            inside.jobs += endJob
+            if (!inside.registerLaunchJob(endJob, launchEpoch)) return@onAtEndStart
             inside.currentRunningStates[strand] = RunningState(generation, "ending")
             send(Message("is-running").payload(IsRunning(inside.id, true, generation, strand, "ending")))
         }
@@ -198,33 +219,38 @@ fun registerFramesReturnValue() {
         }
         inMain {
             Box.withBoxContext(inside) {
-            notify(true, strand, generation)
-            returnValue.job = kotlin.coroutines.coroutineContext[Job]!!
-            inside.jobs += returnValue.job!!
-            try {
-                returnValue.body()
-            } catch (e: CancellationException) {
-            } catch (t: Throwable) {
-                lprintln("error,execution", t.stackTraceToString())
-                var fallbackFirstLine = -1
-                var firstLineInThisBox = -1
-                t.stackTrace.forEach { e ->
-                    if (fallbackFirstLine == -1) {
-                        fallbackFirstLine = e.lineNumber
-                    }
-                    if (e.fileName?.contains(inside.id) == true && firstLineInThisBox == -1) {
-                        firstLineInThisBox = e.lineNumber
-                    }
+                val job = kotlin.coroutines.coroutineContext[Job]!!
+                returnValue.job = job
+                if (!inside.registerLaunchJob(job, launchEpoch)) {
+                    notify(false, strand, generation)
+                    return@withBoxContext
                 }
-                val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
-                val message = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.name
-                inside.error(message, line = firstLine)
-            } finally {
-                if (inside.currentRunningStates[strand]?.watermark == generation) {
-                    inside.currentRunningStates.remove(strand)
+                notify(true, strand, generation)
+                try {
+                    returnValue.body()
+                } catch (e: CancellationException) {
+                } catch (t: Throwable) {
+                    lprintln("error,execution", t.stackTraceToString())
+                    var fallbackFirstLine = -1
+                    var firstLineInThisBox = -1
+                    t.stackTrace.forEach { e ->
+                        if (fallbackFirstLine == -1) {
+                            fallbackFirstLine = e.lineNumber
+                        }
+                        if (e.fileName?.contains(inside.id) == true && firstLineInThisBox == -1) {
+                            firstLineInThisBox = e.lineNumber
+                        }
+                    }
+                    val firstLine = if (firstLineInThisBox != -1) firstLineInThisBox else fallbackFirstLine
+                    val message = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.name
+                    inside.error(message, line = firstLine)
+                } finally {
+                    inside.jobs.remove(job)
+                    if (inside.currentRunningStates[strand]?.watermark == generation) {
+                        inside.currentRunningStates.remove(strand)
+                    }
+                    notify(false, strand, generation)
                 }
-                notify(false, strand, generation)
-            }
             }
         }
         true

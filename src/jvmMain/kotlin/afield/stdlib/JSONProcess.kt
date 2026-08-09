@@ -6,6 +6,7 @@ import afield.Box
 import afield.ReturnValueRegistry
 import afield.RunsAt
 import afield.logger.lprintln
+import afield.registerLaunchJob
 import afield.returnValueRegistration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -201,17 +202,21 @@ class JSONProcess(
 
 @RunsAt(returnValueRegistration, priority = 12)
 fun registerJSONProcessReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val process = returnValue as? JSONProcess ?: return@handler false
 
         CoroutineScope(Dispatchers.Default + Box.boxContextElement(inside)).launch {
-            notify(true, strand, generation)
             val job = coroutineContext[Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                notify(false, strand, generation)
+                return@launch
+            }
+            notify(true, strand, generation)
             try {
                 process.runForBox(inside, strand, generation)
             } finally {
                 process.stop()
+                inside.jobs.remove(job)
                 notify(false, strand, generation)
             }
         }

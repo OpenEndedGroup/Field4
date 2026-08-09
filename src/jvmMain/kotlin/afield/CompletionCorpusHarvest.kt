@@ -98,5 +98,8 @@ object CompletionCorpusHarvest {
                 "${fixtures.count { it.preamble.isNotBlank() }} with a preamble")
         }
         println("HARVEST DONE")
+        check(drift.isEmpty() && differing.isEmpty()) {
+            "completion-corpus fixtures drifted; regenerate with AFIELD_HARVEST_WRITE=1"
+        }
     }
 }

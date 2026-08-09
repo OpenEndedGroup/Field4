@@ -54,6 +54,45 @@ class BoxReferenceTests(unittest.TestCase):
         self.assertNotIn("box-from-an-earlier-process", self.client.boxes)
 
 
+class RunningStateOrderingTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.01, logger=_Logger())
+
+    def apply(self, *, running: bool, watermark: int) -> None:
+        self.client._apply_event(
+            {
+                "name": "is-running",
+                "uid": "box",
+                "payload": {
+                    "uid": "box",
+                    "strand": "__jobs__",
+                    "watermark": watermark,
+                    "isRunning": running,
+                },
+            }
+        )
+
+    def test_late_true_cannot_resurrect_a_stopped_strand(self) -> None:
+        self.apply(running=True, watermark=3)
+        self.apply(running=False, watermark=4)
+        self.apply(running=True, watermark=3)
+
+        self.assertEqual(self.client.boxes["box"]["runningStrands"], {})
+
+    def test_false_wins_over_late_true_at_the_same_watermark(self) -> None:
+        self.apply(running=True, watermark=7)
+        self.apply(running=False, watermark=7)
+        self.apply(running=True, watermark=7)
+
+        self.assertEqual(self.client.boxes["box"]["runningStrands"], {})
+
+    def test_newer_launch_can_start_after_stop(self) -> None:
+        self.apply(running=False, watermark=7)
+        self.apply(running=True, watermark=8)
+
+        self.assertEqual(self.client.boxes["box"]["runningStrands"], {"__jobs__": 8})
+
+
 class MacroAliasTests(unittest.TestCase):
     def test_macro_and_transcript_are_exact_parser_aliases(self) -> None:
         macro = parse_command("macro run demo --scope project --project-name example")

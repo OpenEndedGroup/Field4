@@ -353,6 +353,7 @@ class FieldBackdoor:
         self.scratch = False
         self.session_key: str | None = None
         self.boxes: dict[str, dict[str, Any]] = {}
+        self._running_state_seen: dict[tuple[str, str], tuple[int, bool]] = {}
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
         self.playwright_state: dict[str, Any] | None = None
@@ -730,7 +731,18 @@ class FieldBackdoor:
             watermark = payload.get("watermark")
             running = box.setdefault("runningStrands", {})
             current = running.get(strand)
-            if payload.get("isRunning"):
+            is_running = bool(payload.get("isRunning"))
+            if isinstance(uid, str) and isinstance(watermark, int):
+                key = (uid, strand)
+                seen = self._running_state_seen.get(key)
+                if seen is not None:
+                    seen_watermark, seen_running = seen
+                    if watermark < seen_watermark or (
+                        watermark == seen_watermark and not seen_running and is_running
+                    ):
+                        return
+                self._running_state_seen[key] = (watermark, is_running)
+            if is_running:
                 running[strand] = watermark
             else:
                 if current is None or (watermark is not None and current <= watermark):
@@ -743,6 +755,7 @@ class FieldBackdoor:
         self.scratch = bool(snapshot.get("scratch"))
         self.session_key = snapshot.get("sessionKey")
         self.boxes = {}
+        self._running_state_seen = {}
         for box in snapshot.get("boxes", []):
             if isinstance(box, dict):
                 if self._truthy(box.get("_tombstone")):
@@ -781,6 +794,9 @@ class FieldBackdoor:
 
     def _drop_box(self, uid: str) -> None:
         self.boxes.pop(uid, None)
+        self._running_state_seen = {
+            key: value for key, value in self._running_state_seen.items() if key[0] != uid
+        }
         self.box_aliases = {
             alias: target
             for alias, target in self.box_aliases.items()

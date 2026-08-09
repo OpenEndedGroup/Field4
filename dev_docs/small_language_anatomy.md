@@ -42,7 +42,7 @@ call to `registerMainLanguageRuntime`:
 | `nano` | `NanoExecution` | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:48` | `class NanoExecution` |
 | `clojure` | `ClojureExecution` | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:410` | `class ClojureExecution` |
 | `python` | `PythonExecution` | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:195` | `class PythonExecution` |
-| `fieldml` | `FieldMLExecution` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:43` | `class FieldMLExecution` |
+| `fieldml` | `FieldMLExecution` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
 | `kotlinjs` | `KotlinJsExecution` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:73` | `class KotlinJsExecution` |
 | `forth` | `ForthExecution` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:23` | `class ForthExecution` |
 | `remotejs` | `RemoteJSExectution` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:446` | `class RemoteJSExectution` |
@@ -55,7 +55,7 @@ and the `registerMainLanguageRuntime` call each one makes:
 | `nano` | `src/jvmMain/kotlin/afield/nano/NanoInterface.kt:505` | `id = "nano"` |
 | `clojure` | `src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt:554` | `id = "clojure"` |
 | `python` | `src/jvmMain/kotlin/afield/python/PythonInterface.kt:160` | `id = "python"` |
-| `fieldml` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:242` | `id = "fieldml"` |
+| `fieldml` | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:244` | `id = "fieldml"` |
 | `kotlinjs` | `src/jvmMain/kotlin/afield/remotejs/KotlinJs.kt:64` | `id = "kotlinjs"` |
 | `forth` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:264` | `id = "forth"` |
 | `remotejs` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:145` | `id = "remotejs"` |
@@ -169,16 +169,16 @@ Multi-argument natives are nested single-argument closures (`native1`/`native2`/
 
 | what | site | anchor |
 | --- | --- | --- |
-| the execution | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:43` | `class FieldMLExecution` |
-| the name the editor sees | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:157` | `languageName` |
-| the `@RunsAt(early)` installer | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:238` | `fun installFieldML` |
-| the topology watcher it starts | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:251` | `installFieldMLPlugin` |
-| prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:66` | `FieldMLRuntimePrelude.values` |
-| the `value : Type` inline result | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:295` | `fun renderInlineResult` |
-| only print it if the program printed nothing | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:172` | `output.printed` |
-| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:201` | `reportDiagnostics` |
+| the execution | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:45` | `class FieldMLExecution` |
+| the name the editor sees | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:159` | `languageName` |
+| the `@RunsAt(early)` installer | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:240` | `fun installFieldML` |
+| the topology watcher it starts | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:254` | `installFieldMLPlugin` |
+| prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:70` | `FieldMLRuntimePrelude.values` |
+| the `value : Type` inline result | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:297` | `fun renderInlineResult` |
+| only print it if the program printed nothing | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:174` | `output.printed` |
+| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `reportDiagnostics` |
 
-`TrackingOutput` (`FieldMLInterface.kt:268`) exists only to answer "did the program print anything",
+`TrackingOutput` (`FieldMLInterface.kt:270`) exists only to answer "did the program print anything",
 so the automatic `value : Type` line does not duplicate a program's own output. That is a small idea
 worth copying: an expression language wants to show its result, and a language with effects does not.
 
@@ -188,7 +188,7 @@ worth copying: an expression language wants to show its result, and a language w
 | --- | --- | --- |
 | the engine | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:41` | `fun complete(request: CompletionRequest)` |
 | the hover/doc-panel sibling | `src/jvmMain/kotlin/afield/ml/FieldMLCompletionEngine.kt:85` | `fun describeSymbolContext` |
-| the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:149` | `FieldMLCompletionEngine.complete` |
+| the `BoxExecution` override that routes into it | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:153` | `FieldMLCompletionEngine.complete` |
 
 The engine answers from the *same type prelude the compiler uses*, so items carry their real inferred
 types, and after a `|>` it ranks the functions whose last argument accepts the piped type. No
@@ -463,7 +463,7 @@ Traced against FieldML, which is the only one that went the whole way.
    painful to split later, and it is what makes step 6 possible.
 3. **Take host effects as prelude parameters, not as language features.** `values(output, box)` —
    `display` and `draw` are natives closed over the box (`FieldMLRuntimePrelude.kt:45`, `:301`).
-4. **Implement `BoxExecution` and register it.** `class FieldMLExecution` (`FieldMLInterface.kt:43`),
+4. **Implement `BoxExecution` and register it.** `class FieldMLExecution` (`FieldMLInterface.kt:45`),
    `registerMainLanguageRuntime` in an `@RunsAt(early)` installer (`:238-248`), a `TopologyWatcher` in a
    `@RunsAt(plugins)` one (`:251`). Reuse `applyRuntimeToggle`; do not write your own root propagation.
 5. **Ship the Monaco module and add it to two lists.** One `.js` under
@@ -471,7 +471,7 @@ Traced against FieldML, which is the only one that went the whole way.
    (`bootstrapMonaco.js:46`) and `DEFAULT_LANGUAGES` (`fieldSuggest.js:17`). Make your Monaco language
    id equal your `code_language` string, lower-cased.
 6. **Route completion into the compiler's own knowledge.** Override `complete` to call an engine that
-   reads the same prelude (`FieldMLInterface.kt:149` → `FieldMLCompletionEngine.kt:41`). This is the
+   reads the same prelude (`FieldMLInterface.kt:153` → `FieldMLCompletionEngine.kt:41`). This is the
    payoff and the reason for steps 1 and 2.
 7. **Write the page, then the guard, in that order and the same commit.** A cheatsheet whose rows are
    compared to the prelude in both directions (`FieldMLCheatsheetCoverageTest.kt:31-51`) and an

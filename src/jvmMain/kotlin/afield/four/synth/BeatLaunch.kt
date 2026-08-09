@@ -155,13 +155,16 @@ fun <T> T.onNextBeat(
 
 @RunsAt(returnValueRegistration, priority = 9)
 fun registerBeatLaunchReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val spec = returnValue as? BeatLaunchSpec ?: return@handler false
 
         CoroutineScope(Dispatchers.Default + Box.boxContextElement(inside)).launch {
-            notify(true, strand, generation)
             val job = coroutineContext[Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                notify(false, strand, generation)
+                return@launch
+            }
+            notify(true, strand, generation)
 
             var handedOff = false
 
@@ -181,16 +184,17 @@ fun registerBeatLaunchReturnValue() {
                 )
                 if (!isActive || inside.runGeneration[strand] != generation) return@launch
 
-                ReturnValueRegistry.launchWithGeneration(
+                handedOff = ReturnValueRegistry.launchWithGeneration(
                     inside = inside,
                     returnValue = spec.value,
                     strand = strand,
-                    generation = generation
+                    generation = generation,
+                    launchEpoch = launchEpoch,
                 ) { running, innerStrand, watermark ->
                     if (!running) notify(false, innerStrand, watermark)
                 }
-                handedOff = true
             } finally {
+                inside.jobs.remove(job)
                 if (!handedOff) notify(false, strand, generation)
             }
         }
