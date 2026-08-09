@@ -26,6 +26,7 @@ import afield.python.PythonInterface
 import afield.python.PythonSettingsRequest
 import afield.server.refreshFileProxyBoxes
 import afield.server.installFieldAudioProxyRoutes
+import afield.server.installDocsAnnotationRoutes
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -3166,6 +3167,7 @@ class Server {
                         }
 
                         installFieldAudioProxyRoutes()
+                        installDocsAnnotationRoutes()
 
                         installControllerRoutes(::currentFieldPreferences)
 

@@ -1527,7 +1527,7 @@ window.continueAll = monacoContinueAll
 // Documentation iframe support
 let docsIframeAnimationGeneration = 0
 
-const defaultDocsIframeUrl = "https://openendedgroup.com/field4/"
+const defaultDocsIframeUrl = "/field-docs/"
 const historyBaseUrl = new URL("/history", window.location.href).toString()
 
 const normalizeIframeUrl = (url) => {
