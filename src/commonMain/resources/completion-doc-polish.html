@@ -411,6 +411,10 @@
             <span class="activity-label">cache path</span>
             <span id="cache-path" class="status-value"></span>
         </div>
+        <div class="status-line">
+            <span class="activity-label">run log</span>
+            <span id="run-log-path" class="status-value"></span>
+        </div>
     </section>
 
     <section class="activity">
@@ -772,6 +776,7 @@
         document.getElementById("message").textContent = latestStatus.message || cache.message || "";
         document.getElementById("message").className = `status-value ${state}`;
         document.getElementById("cache-path").textContent = cache.cachePath || "";
+        document.getElementById("run-log-path").textContent = latestStatus.logPath || "No persisted run yet.";
 
         const runButton = document.getElementById("run-polish");
         runButton.disabled = !!latestStatus.running || docs <= 0;

@@ -156,6 +156,12 @@ data class RunningState(
     val mode: String
 )
 
+/**
+ * Hierarchical Field object identified by a stable [id] and backed by [output].
+ *
+ * A box owns properties, topology links, execution state, and display/error output; [output]
+ * supplies the [HasOutput] implementation that rendering and logging helpers delegate to.
+ */
 open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : HasOutput by output, HasProperties,
     HasHierarchy {
 
@@ -218,6 +224,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     var code by Delegation<String>()
     var customization by Delegation<String>()
 
+    /** This receiver as an explicit [Box] value, useful where the implicit box context is hidden. */
     val thisBox: Box
         get() = this
 
@@ -683,6 +690,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         return "box[$name]"
     }
 
+    /**
+     * Queues every non-null UI-resyncable property on this box for the next resync pass.
+     */
     fun resyncAll() {
         properties.filter { (name, _) -> uiResyncProperties.any { it.matches(name) } }.forEach { (name, value) ->
             if (value != null)

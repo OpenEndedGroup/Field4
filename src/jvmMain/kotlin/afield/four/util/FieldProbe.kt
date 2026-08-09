@@ -583,6 +583,7 @@ class ShaderFieldProbe(
         return this
     }
 
+    /** Set the box output channel that receives probe summaries, and return this probe for chaining. */
     fun display(channel: String = "probe"): ShaderFieldProbe {
         displayChannel = channel
         return this

@@ -37,6 +37,15 @@ The detail page shows the current state, cache path and counts, task output, and
 activity while the process runs. Updates arrive through the same
 `/welcome-events` WebSocket used by the dashboard.
 
+Each run's complete terminal/tool trace is appended to a timestamped log under
+`~/.afield/logs/completion_doc_polish/`. The same directory contains
+`latest.json`, an atomic snapshot of the latest run's state and log path. Field
+reloads that state and the most recent 180,000 characters for the detail page
+after a restart; the timestamped log itself is not truncated. If Field restarts
+mid-run, the restored run is marked failed with an explicit interruption note.
+Set `AFIELD_COMPLETION_DOC_POLISH_LOG_DIR` or the JVM property
+`afield.completionDocPolish.logDir` to move these files.
+
 ## Dry runs
 
 The dashboard button starts an in-place run. For a preview that writes no

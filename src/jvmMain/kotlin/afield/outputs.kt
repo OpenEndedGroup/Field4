@@ -24,7 +24,11 @@ interface HasOutput {
 
     /** Emits [message] followed by a newline. */
     fun println(message: Any?)
+
+    /** Displays [message] on the default output channel for this output target. */
     fun display(message: Any?)
+
+    /** Displays [message] on the named output [channel]. */
     fun display(channel: String, message: Any?)
 
     // an error of null,,-1 means 'clear errors'
@@ -62,6 +66,7 @@ private fun Box.sendOutputControl(action: String, channel: String? = null) {
     send(Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
 }
 
+/** Opens the named output [channel] by sending an output-control message to this box. */
 fun Box.displayOpen(channel: String) {
     sendOutputControl("open", channel)
 }

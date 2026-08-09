@@ -738,6 +738,11 @@ private fun buildStringPatFunction(
     )
 }
 
+/**
+ * Creates a Gaussian-shaped PAT function atom centered on a constant [value].
+ *
+ * [sigma] controls the spread and [weight] scales this atom when overlapping atoms are averaged.
+ */
 fun gaussianAtom(value: Number, sigma: Number, weight: Number = 1.0): PatFunctionAtomSpec =
     gaussianAtom(sigma = sigma, weight = weight) { value.toDouble() }
 

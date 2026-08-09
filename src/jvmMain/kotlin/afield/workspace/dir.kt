@@ -170,6 +170,7 @@ data class CompletionDocPolishStatus(
     val finishedAtEpochMs: Long = 0,
     val exitCode: Int? = null,
     val message: String = "",
+    val logPath: String = "",
     val logTail: String = ""
 )
 

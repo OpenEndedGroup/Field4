@@ -111,6 +111,13 @@ class Mesh(var renderer: Renderer = fromContext()) {
         this.inside = pointer
     }
 
+    /**
+     * Module pointer supplying the mesh's shader inputs and push-constant layout.
+     *
+     * The module-aware constructor initializes it. For a mesh built with the primary constructor,
+     * pass an explicit pointer to the first [resize] call; that method's default reads this
+     * `lateinit` property and therefore requires prior initialization.
+     */
     lateinit var inside: ModulePointer
 
     var v = mutableMapOf<Int, VertexBuffer>()
@@ -163,6 +170,12 @@ class Mesh(var renderer: Renderer = fromContext()) {
     }
 
 
+    /**
+     * Returns the vertex buffer for the named mesh input.
+     *
+     * The [name] must match an input declared by the current module. If the mesh has not yet been
+     * resized, the exception points callers at [resize] so buffers are created before lookup.
+     */
     fun input(name: String): VertexBuffer {
         if (name !in vn && notInitialized) throw IllegalArgumentException("Input '$name' is not in mesh. Call .resize(numVert, numTriangle) with a valid size first inside the context of a module.")
         if (name !in vn) throw IllegalArgumentException("Input '$name' is not in mesh. Valid names are $vn")

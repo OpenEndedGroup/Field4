@@ -28,8 +28,9 @@ object CompletionDocPolishMonitor {
         "filestore",
         "generated_completion_docs.json"
     )
+    private val runStore = CompletionDocPolishRunStore(completionDocPolishLogDir(), MAX_LOG_CHARS)
 
-    private var runState = MutableRunState()
+    private var runState = restoreRunState()
     private var process: Process? = null
     @Volatile
     private var lastBroadcastEpochMs = 0L
@@ -46,24 +47,27 @@ object CompletionDocPolishMonitor {
 
             val cache = cacheSummary()
             if (!cache.exists || cache.pendingDocCount <= 0) {
-                runState = MutableRunState(
-                    status = "idle",
+                runState = runState.copy(
                     message = cache.message.ifBlank { "No generated completion docs are ready to polish." }
                 )
                 return runState.toStatus(cache)
             }
 
             val taskName = if (dryRun) "polishCompletionDocsDryRun" else "polishCompletionDocs"
+            val runId = UUID.randomUUID().toString()
+            val startedAtEpochMs = Instant.now().toEpochMilli()
             runState = MutableRunState(
                 running = true,
                 status = "running",
-                runId = UUID.randomUUID().toString(),
+                runId = runId,
                 taskName = taskName,
                 dryRun = dryRun,
-                startedAtEpochMs = Instant.now().toEpochMilli(),
-                message = "Starting $taskName..."
+                startedAtEpochMs = startedAtEpochMs,
+                message = "Starting $taskName...",
+                logPath = runStore.newLogPath(startedAtEpochMs, runId).absolutePathString()
             )
             process = null
+            persistStateLocked()
             appendLogLocked("Starting ./gradlew $taskName --args=\"${if (dryRun) "--dry-run --verbose" else "--verbose"}\"\n")
             if (!dryRun) {
                 appendLogLocked("The task will regenerate the committed codebase reference after source polishing.\n")
@@ -88,6 +92,7 @@ object CompletionDocPolishMonitor {
             synchronized(lock) {
                 process = startedProcess
                 runState = runState.copy(message = "$taskName is running.")
+                persistStateLocked()
             }
             broadcastWelcomeEvent("completion-doc-polish")
 
@@ -111,6 +116,7 @@ object CompletionDocPolishMonitor {
                     message = if (exitCode == 0) "$taskName finished." else "$taskName exited with $exitCode."
                 )
                 trimLogLocked()
+                persistStateLocked()
             }
         } catch (t: Throwable) {
             synchronized(lock) {
@@ -123,6 +129,7 @@ object CompletionDocPolishMonitor {
                     exitCode = -1,
                     message = "Could not start $taskName: ${t.message.orEmpty()}"
                 )
+                persistStateLocked()
             }
         } finally {
             broadcastWelcomeEvent("completion-doc-polish")
@@ -142,6 +149,10 @@ object CompletionDocPolishMonitor {
     }
 
     private fun appendLogLocked(text: String) {
+        runCatching { runStore.append(runState.logPath, text) }
+            .onFailure { error ->
+                runState.log.append("\n[completion-doc-polish] Could not persist task output: ${error.message.orEmpty()}\n")
+            }
         runState.log.append(text)
     }
 
@@ -201,6 +212,54 @@ object CompletionDocPolishMonitor {
             "./gradlew"
         }
 
+    private fun restoreRunState(): MutableRunState {
+        val restored = runStore.restore() ?: return MutableRunState()
+        val saved = restored.state
+        var state = MutableRunState(
+            running = saved.running,
+            status = saved.status,
+            runId = saved.runId,
+            taskName = saved.taskName,
+            dryRun = saved.dryRun,
+            startedAtEpochMs = saved.startedAtEpochMs,
+            finishedAtEpochMs = saved.finishedAtEpochMs,
+            exitCode = saved.exitCode,
+            message = saved.message,
+            logPath = saved.logPath,
+            log = StringBuilder(restored.logTail)
+        )
+        if (state.running) {
+            val interruptedMessage =
+                "Field restarted while ${state.taskName.ifBlank { "the completion-doc polish task" }} was running."
+            runCatching { runStore.append(state.logPath, "\n$interruptedMessage\n") }
+            state.log.append("\n$interruptedMessage\n")
+            state = state.copy(
+                running = false,
+                status = "failed",
+                finishedAtEpochMs = Instant.now().toEpochMilli(),
+                exitCode = -1,
+                message = interruptedMessage
+            )
+            runCatching { runStore.save(state.toPersisted()) }
+        }
+        return state
+    }
+
+    private fun persistStateLocked() {
+        runCatching { runStore.save(runState.toPersisted()) }
+            .onFailure { error ->
+                runState.log.append("\n[completion-doc-polish] Could not persist run state: ${error.message.orEmpty()}\n")
+            }
+    }
+
+    private fun completionDocPolishLogDir(): Path {
+        val configured = System.getProperty("afield.completionDocPolish.logDir")
+            ?.takeIf(String::isNotBlank)
+            ?: System.getenv("AFIELD_COMPLETION_DOC_POLISH_LOG_DIR")?.takeIf(String::isNotBlank)
+        return configured?.let(Paths::get)
+            ?: Paths.get(System.getProperty("user.home"), ".afield", "logs", "completion_doc_polish")
+    }
+
     private data class MutableRunState(
         val running: Boolean = false,
         val status: String = "idle",
@@ -211,8 +270,23 @@ object CompletionDocPolishMonitor {
         val finishedAtEpochMs: Long = 0,
         val exitCode: Int? = null,
         val message: String = "",
+        val logPath: String = "",
         val log: StringBuilder = StringBuilder()
     ) {
+        fun toPersisted(): PersistedCompletionDocPolishRun =
+            PersistedCompletionDocPolishRun(
+                running = running,
+                status = status,
+                runId = runId,
+                taskName = taskName,
+                dryRun = dryRun,
+                startedAtEpochMs = startedAtEpochMs,
+                finishedAtEpochMs = finishedAtEpochMs,
+                exitCode = exitCode,
+                message = message,
+                logPath = logPath
+            )
+
         fun toStatus(cache: CompletionDocPolishCacheSummary): CompletionDocPolishStatus =
             CompletionDocPolishStatus(
                 cache = cache,
@@ -225,6 +299,7 @@ object CompletionDocPolishMonitor {
                 finishedAtEpochMs = finishedAtEpochMs,
                 exitCode = exitCode,
                 message = message,
+                logPath = logPath,
                 logTail = log.toString()
             )
     }

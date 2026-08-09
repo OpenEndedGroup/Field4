@@ -37,6 +37,9 @@ object Vector2fSerializer : KSerializer<Vector2f> {
     }
 }
 
+/**
+ * JSON serializer for Field's mutable [Vector3f], encoded as `[x, y, z]` floats.
+ */
 object Vector3fSerializer : KSerializer<Vector3f> {
     override val descriptor: SerialDescriptor = FloatArraySerializer().descriptor
 

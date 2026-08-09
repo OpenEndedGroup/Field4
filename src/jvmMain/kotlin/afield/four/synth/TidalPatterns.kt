@@ -943,6 +943,13 @@ enum class ArpMode {
     UP, DOWN, UPDOWN, DOWNUP, RANDOM, PINGPONG
 }
 
+/**
+ * Turns each event into an arpeggio over [notes].
+ *
+ * Each input event is subdivided into at least one, and otherwise [speed], steps and mapped through
+ * [mode]; an empty note list produces silence. After the first traversal, [hold] keeps using
+ * `notes.last()` instead of wrapping, and [seed] makes random mode repeatable.
+ */
 fun <A> PatPattern<A>.arp(
     notes: List<A>,
     mode: ArpMode = ArpMode.UP,

@@ -26,6 +26,10 @@ internal val fieldKotlinJvmCompilerOptions = listOf("-jvm-target", "24") + field
  */
 interface KotlinScriptEngine {
 
+    /**
+     * The mutable Kotlin REPL context for this engine: tracked variables and functions, its
+     * generation counter, and debug-script history.
+     */
     val context: KotlinContext
     var associatedBox: Any?
     var compilerConfig: ScriptCompilationConfiguration
@@ -305,6 +309,12 @@ abstract class CompletionResult(private val status: CompletionStatus) {
 data class CompletionTokenBounds(val start: Int, val end: Int)
 
 
+/**
+ * Mutable bookkeeping for one Kotlin scripting context.
+ *
+ * [vars] and [functions] are lookup tables populated from declarations introduced or exported during
+ * script execution; [generation] changes when the visible context is updated.
+ */
 class KotlinContext(
     val vars: HashMap<String, KotlinVariableInfo> = HashMap(),
     val functions: HashMap<String, KotlinFunctionInfo> = HashMap(),
