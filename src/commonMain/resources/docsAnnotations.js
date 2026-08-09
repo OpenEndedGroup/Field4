@@ -4,6 +4,7 @@
         window.__fieldDocsAnnotationsInstalled = true;
 
     const upstream = new URL(window.__FIELD_DOCS_UPSTREAM__ || location.href);
+    const proxyRoot = window.__FIELD_DOCS_PROXY__ || "/field-docs/";
     const canonicalPage = `${upstream.origin}${upstream.pathname}`;
     const state = { annotations: [], visible: true, tag: "", from: "", to: "", selected: null };
 
@@ -198,7 +199,7 @@
     panel.querySelectorAll("[data-filter]").forEach(input => input.addEventListener("input", () => { state[input.dataset.filter] = input.value; render(); }));
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]"); if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
-        const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = `/field-docs/${target.pathname.slice(8)}${target.search}${target.hash}`; }
+        const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = new URL(`${proxyRoot}${target.pathname.slice(8)}${target.search}${target.hash}`, window.location.origin).toString(); }
     });
         addEventListener("resize", syncResponsiveVisibility); syncResponsiveVisibility(); load().catch(error => { panel.querySelector('[data-role="list"]').textContent = error.message; });
     };
