@@ -780,8 +780,10 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
         if (first) {
                 // Track the highest watermark per strand to ignore stale stop signals
                 first.latestWatermark = first.latestWatermark ?? new Map()
+                first.latestRunningState = first.latestRunningState ?? new Map()
                 first.runningEntries = first.runningEntries ?? new Map()
                 const lastWatermark = first.latestWatermark.get(strand) ?? -Infinity
+                const lastRunningState = first.latestRunningState.get(strand)
 
                 const parseRunningEntry = (entryName) => {
                         const separatorIndex = entryName.indexOf("--")
@@ -796,15 +798,20 @@ const setBoxRunning = (uid, isRunning, watermark, strand, mode = "launch") => {
                 if (isRunning) {
                         // Ignore delayed start events for a strand when we have already seen a newer watermark.
                         if (watermark < lastWatermark) return
+                        // A terminal event wins if a delayed start has the same generation.
+                        if (watermark === lastWatermark && lastRunningState === false) return
 
                         first.runningEntries.set(name, mode)
                         if (watermark > lastWatermark) first.latestWatermark.set(strand, watermark)
+                        first.latestRunningState.set(strand, true)
                         syncBoxRunningClass(first)
                         window.setStatusForExecutionMarker?.(strand, true, mode)
 
                 } else {
                         // Ignore stop messages that are older than the latest start we saw
                         if (watermark < lastWatermark) return
+                        first.latestWatermark.set(strand, watermark)
+                        first.latestRunningState.set(strand, false)
 
                         window.setStatusForExecutionMarker?.(strand, false, mode)
 

@@ -1231,6 +1231,7 @@ class KotlinExecution : BoxExecution {
             val normalizedCode: String,
             val strand: String,
             val pendingWatermark: Int,
+            val launchEpoch: Int,
             val originSession: WebSocketSession?
         )
 
@@ -1266,6 +1267,7 @@ class KotlinExecution : BoxExecution {
             requests.map { (box, exec) ->
                 val strand = exec.strand
                 val normalizedCode = normalizedLaunchCodeFor(exec)
+                val launchEpoch = box.captureLaunchEpoch()
 
                 resetLaunchSetupState(box)
 
@@ -1277,7 +1279,7 @@ class KotlinExecution : BoxExecution {
                     )
                 )
 
-                BatchLaunchRequest(box, exec, normalizedCode, strand, watermark, originSession)
+                BatchLaunchRequest(box, exec, normalizedCode, strand, watermark, launchEpoch, originSession)
             }
 
         private suspend fun runPreparedBatchLaunches(
@@ -1316,6 +1318,7 @@ class KotlinExecution : BoxExecution {
         ) {
             val box = request.box
             clearPendingLaunch(request)
+            if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
             Box.withBoxContext(box) {
                 box.resetStdlibRandom()
@@ -1467,7 +1470,8 @@ class KotlinExecution : BoxExecution {
                             printedSize = printedSize,
                             line = request.exec.line + request.normalizedCode.lines().size,
                             code = request.normalizedCode,
-                            strand = request.strand
+                            strand = request.strand,
+                            launchEpoch = request.launchEpoch,
                         )
                     }
                 } else {
@@ -1773,12 +1777,13 @@ class KotlinExecution : BoxExecution {
             printedSize: Int,
             line: Int,
             code: String,
-            strand: String
+            strand: String,
+            launchEpoch: Int,
         ) {
             when (returnValue) {
                 is ResultValue.Unit -> {
                     if (printedSize == 0) reportOk(box, reply, originSession, line)
-                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                    launchPreparedReturnValue(box, null, strand, code, launchEpoch, reply, originSession)
                 }
 
                 is ResultValue.NotEvaluated -> {}
@@ -1796,7 +1801,7 @@ class KotlinExecution : BoxExecution {
                         ),
                         originSession = originSession
                     )
-                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                    launchPreparedReturnValue(box, null, strand, code, launchEpoch, reply, originSession)
                 }
 
                 is ResultValue.Value -> {
@@ -1804,7 +1809,7 @@ class KotlinExecution : BoxExecution {
                     if (printedSize == 0) {
                         if (returnValue.value == null) {
                             reportOk(box, reply, originSession, line)
-                            launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                            launchPreparedReturnValue(box, null, strand, code, launchEpoch, reply, originSession)
                             return
                         }
                         val type = simplifyTypeForOutput(returnValue.type)
@@ -1832,12 +1837,12 @@ class KotlinExecution : BoxExecution {
                         audioPatch?.inlineSummaryTarget = null
                     }
 
-                    launchPreparedReturnValue(box, returnValue.value, strand, code, reply, originSession)
+                    launchPreparedReturnValue(box, returnValue.value, strand, code, launchEpoch, reply, originSession)
                 }
 
                 null -> {
                     if (printedSize == 0) reportOk(box, reply, originSession, line)
-                    launchPreparedReturnValue(box, null, strand, code, reply, originSession)
+                    launchPreparedReturnValue(box, null, strand, code, launchEpoch, reply, originSession)
                 }
             }
         }
@@ -1867,9 +1872,14 @@ class KotlinExecution : BoxExecution {
             returnValue: Any?,
             strand: String,
             code: String,
+            launchEpoch: Int,
             reply: (Message) -> Unit,
             originSession: WebSocketSession?
         ) {
+            if (!box.isLaunchEpochCurrent(launchEpoch)) {
+                box.cachedLaunchReturns.remove(strand)
+                return
+            }
             if (returnValue == null) {
                 box.cachedLaunchReturns.remove(strand)
             } else {
@@ -1877,7 +1887,7 @@ class KotlinExecution : BoxExecution {
             }
 
             configureOutputProxies(box, reply, originSession)
-            ReturnValueRegistry.launch(box, returnValue, strand) { isRunning, notifiedStrand, watermark ->
+            ReturnValueRegistry.launchPrepared(box, returnValue, strand, launchEpoch) { isRunning, notifiedStrand, watermark ->
                 if (isRunning) {
                     box.currentRunningStates[notifiedStrand] = RunningState(watermark, ACTIVE_LAUNCH_MODE)
                 } else if (box.currentRunningStates[notifiedStrand]?.watermark == watermark) {
@@ -2008,6 +2018,7 @@ class KotlinExecution : BoxExecution {
 
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: ((Message) -> Unit)) {
         val originSession = thisSession.get()
+        val launchEpoch = inside.captureLaunchEpoch()
 
         resetLaunchSetupState(inside)
 
@@ -2069,7 +2080,7 @@ class KotlinExecution : BoxExecution {
                         watermark = pendingWatermark
                     )
                 }
-            ) { returnValue ->
+            ) handleReturn@{ returnValue ->
                 if (inside.currentRunningStates[strand]?.watermark == pendingWatermark) {
                     inside.currentRunningStates.remove(strand)
                     send(
@@ -2086,10 +2097,14 @@ class KotlinExecution : BoxExecution {
                     watermark = pendingWatermark,
                     returnType = returnValue?.javaClass?.name.orEmpty()
                 )
+                if (!inside.isLaunchEpochCurrent(launchEpoch)) {
+                    inside.cachedLaunchReturns.remove(strand)
+                    return@handleReturn
+                }
                 cacheLaunchReturnValue(inside, strand, normalizedCode, returnValue)
                 configureOutputProxies(inside, reply, originSession)
 
-                launchReturnValue(inside, returnValue, strand = strand) { isRunning, strand, watermark ->
+                ReturnValueRegistry.launchPrepared(inside, returnValue, strand, launchEpoch) { isRunning, strand, watermark ->
                     if (isRunning) {
                         inside.currentRunningStates[strand] = RunningState(watermark, launchMode)
                     } else if (inside.currentRunningStates[strand]?.watermark == watermark) {
@@ -2129,6 +2144,7 @@ class KotlinExecution : BoxExecution {
 
         val originSession = thisSession.get()
         val launchMode = "continue"
+        val launchEpoch = inside.captureLaunchEpoch()
         lprintln("debug,execution", "continuing cached return value for ${inside.id} on strand $strand")
         val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
         val telemetryContext = CodeUseTelemetryService.captureBoxContext(
@@ -2145,8 +2161,9 @@ class KotlinExecution : BoxExecution {
             returnType = cached.returnValue.javaClass.name
         )
         inMain {
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) return@inMain
             configureOutputProxies(inside, reply, originSession)
-            launchReturnValue(inside, cached.returnValue, strand = strand) { isRunning, notifiedStrand, watermark ->
+            ReturnValueRegistry.launchPrepared(inside, cached.returnValue, strand, launchEpoch) { isRunning, notifiedStrand, watermark ->
                 if (isRunning) {
                     inside.currentRunningStates[notifiedStrand] = RunningState(watermark, launchMode)
                 } else if (inside.currentRunningStates[notifiedStrand]?.watermark == watermark) {
@@ -2582,11 +2599,7 @@ class KotlinExecution : BoxExecution {
     }
 
     override fun stop(inside: Box) {
-        inside.runGeneration.incrementAndGet("default")
-        val jobsToCancel = inside.jobs.toList()
-        inside.jobs.clear()
-        inside.clearRunningStates()
-        jobsToCancel.forEach { it.cancel() }
+        inside.stopTrackedJobs()
     }
 
     private fun completeYamlMetadata(box: Box, allCode: String, position: Int, line: Int, column: Int): Completion {

@@ -115,20 +115,8 @@ class FieldAudioClient(
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
-    /**
-     * The exact JSON configuration this client speaks, exposed so a caller can decode a payload the
-     * same way.
-     *
-     * `ignoreUnknownKeys` is what lets an older Field talk to a newer service; `explicitNulls =
-     * false` omits nulls on the way out, which matters because the service *forbids* unknown fields
-     * and treats an explicit null differently from an absent one.
-     */
-    val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-        explicitNulls = false
-        prettyPrint = false
-    }
+    /** The shared Field Audio wire format. Prefer [FieldAudioClient.json] when no client is needed. */
+    val json: Json = Companion.json
 
     /** Liveness only: the raw body of `GET /health`. It starts nothing and loads no model. */
     fun health(): CompletableFuture<String> =
@@ -500,6 +488,21 @@ class FieldAudioClient(
     }
 
     companion object {
+        /**
+         * The exact JSON configuration Field Audio speaks, available without constructing an HTTP
+         * client.
+         *
+         * `ignoreUnknownKeys` is what lets an older Field talk to a newer service; `explicitNulls =
+         * false` omits nulls on the way out, which matters because the service *forbids* unknown
+         * fields and treats an explicit null differently from an absent one.
+         */
+        val json = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            explicitNulls = false
+            prettyPrint = false
+        }
+
         private val DEFAULT_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor()
     }
 }

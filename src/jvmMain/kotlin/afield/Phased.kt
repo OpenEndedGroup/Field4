@@ -198,8 +198,8 @@ fun Box.launchFrames(
     reportRunning: Boolean = true
 ): Job {
     val box = this
-    val generation = (box.runGeneration[strand] ?: -1) + 1
-    box.runGeneration[strand] = generation
+    val launchEpoch = box.captureLaunchEpoch()
+    val generation = box.runGeneration.compute(strand) { _, current -> (current ?: -1) + 1 }!!
 
     val previousShouldEnd = frames.shouldend
     frames.shouldend = {
@@ -210,13 +210,13 @@ fun Box.launchFrames(
     val previousAtEndFinish = frames.onAtEndFinish
     val previousShouldCancelAtEnd = frames.shouldCancelAtEnd
 
-    frames.onAtEndStart = { endJob ->
+    frames.onAtEndStart = onAtEndStart@{ endJob ->
+        if (!box.registerLaunchJob(endJob, launchEpoch)) return@onAtEndStart
         previousAtEndStart(endJob)
         val endingGeneration = box.runGeneration[strand] ?: generation
         frames.shouldCancelAtEnd = {
             previousShouldCancelAtEnd() || box.runGeneration[strand] != endingGeneration
         }
-        box.jobs += endJob
         box.currentRunningStates[strand] = RunningState(generation, "ending")
         if (reportRunning) {
             send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, "ending")))
@@ -230,6 +230,7 @@ fun Box.launchFrames(
 
     val launchJob = inMain {
         Box.withBoxContext(box) {
+            if (!box.isLaunchEpochCurrent(launchEpoch)) return@withBoxContext
             box.currentRunningStates[strand] = RunningState(generation, mode)
             if (reportRunning) {
                 send(Message("is-running").payload(IsRunning(box.id, true, generation, strand, mode)))
@@ -254,7 +255,7 @@ fun Box.launchFrames(
             }
         }
     }
-    box.jobs += launchJob
+    box.registerLaunchJob(launchJob, launchEpoch)
     launchJob.invokeOnCompletion {
         box.jobs.remove(launchJob)
     }

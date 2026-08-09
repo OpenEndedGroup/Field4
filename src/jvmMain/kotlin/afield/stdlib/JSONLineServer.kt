@@ -6,6 +6,7 @@ import afield.Box
 import afield.ReturnValueRegistry
 import afield.RunsAt
 import afield.logger.lprintln
+import afield.registerLaunchJob
 import afield.returnValueRegistration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -376,17 +377,21 @@ fun jsonl(port: Int = 7777, bindHost: String = "0.0.0.0", backlog: Int = 4): JSO
 
 @RunsAt(returnValueRegistration, priority = 12)
 fun registerJSONLineServerReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val server = returnValue as? JSONLineServer ?: return@handler false
 
         CoroutineScope(Dispatchers.Default + Box.boxContextElement(inside)).launch {
-            notify(true, strand, generation)
             val job = coroutineContext[Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                notify(false, strand, generation)
+                return@launch
+            }
+            notify(true, strand, generation)
             try {
                 server.runForBox(inside, strand, generation)
             } finally {
                 server.stop()
+                inside.jobs.remove(job)
                 notify(false, strand, generation)
             }
         }

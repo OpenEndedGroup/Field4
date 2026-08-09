@@ -16,7 +16,6 @@ import afield.Runloop
 import afield.RunsAt
 import afield.SymbolContextRequest
 import afield.SymbolContextResponse
-import afield.clearRunningStates
 import afield.configureOutputProxies
 import afield.dispatchExecutionOutput
 import afield.early
@@ -32,6 +31,9 @@ import afield.runtime.applyRuntimeToggle
 import afield.runtime.isMainLanguage
 import afield.runtime.registerMainLanguageRuntime
 import afield.send
+import afield.captureLaunchEpoch
+import afield.isLaunchEpochCurrent
+import afield.stopTrackedJobs
 import afield.stdlib.Delegation
 import afield.thisSession
 import io.ktor.websocket.WebSocketSession
@@ -51,7 +53,9 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
 
     override fun launchAll(inside: Box, execute: Execute, code: String, strand: String, reply: (Message) -> Unit) {
         val originSession = thisSession.get()
+        val launchEpoch = inside.captureLaunchEpoch()
         inMain {
+            if (!inside.isLaunchEpochCurrent(launchEpoch)) return@inMain
             configureOutputProxies(inside, reply, originSession)
             val compileResult = FieldMLCompiler.compile(code)
             if (!reportDiagnostics(inside, execute, compileResult, originSession, reply)) {
@@ -93,7 +97,13 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                         inside.cachedLaunchReturns[strand] = CachedLaunchReturn(code, hostValue)
                     }
 
-                    val consumed = ReturnValueRegistry.launchWithGeneration(inside, hostValue, strand, generation) { isRunning, notifiedStrand, watermark ->
+                    val consumed = ReturnValueRegistry.launchWithGeneration(
+                        inside,
+                        hostValue,
+                        strand,
+                        generation,
+                        launchEpoch,
+                    ) { isRunning, notifiedStrand, watermark ->
                         if (isRunning) {
                             inside.currentRunningStates[notifiedStrand] = RunningState(watermark, FIELDML_ACTIVE_LAUNCH_MODE)
                         } else if (inside.currentRunningStates[notifiedStrand]?.watermark == watermark) {
@@ -136,13 +146,7 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
     }
 
     override fun stop(inside: Box) {
-        inside.runGeneration.keys.toList().forEach { strand ->
-            inside.runGeneration[strand] = (inside.runGeneration[strand] ?: 0) + 1
-        }
-        val jobsToCancel = inside.jobs.toList()
-        inside.jobs.clear()
-        inside.clearRunningStates()
-        jobsToCancel.forEach { it.cancel() }
+        inside.stopTrackedJobs()
     }
 
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {

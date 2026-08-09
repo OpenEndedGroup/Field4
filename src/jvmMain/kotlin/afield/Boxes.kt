@@ -17,6 +17,7 @@ import kotlinx.serialization.json.Json
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.script.experimental.api.KotlinType
 
@@ -235,6 +236,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         }
     val cachedLaunchReturns: MutableMap<String, CachedLaunchReturn> = ConcurrentHashMap()
     val currentRunningStates: MutableMap<String, RunningState> = ConcurrentHashMap()
+    internal val launchEpoch = AtomicInteger(0)
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -1086,6 +1088,49 @@ internal fun Box.clearRunningStates() {
     states.forEach { (strand, state) ->
         send(Message("is-running").payload(IsRunning(id, false, state.watermark, strand, state.mode)))
     }
+}
+
+/** Snapshot used to reject work that belongs to a launch superseded by [stopTrackedJobs]. */
+internal fun Box.captureLaunchEpoch(): Int = launchEpoch.get()
+
+internal fun Box.isLaunchEpochCurrent(epoch: Int): Boolean = launchEpoch.get() == epoch
+
+/**
+ * Register one asynchronous launch job without leaving a gap in which [stopTrackedJobs] can miss it.
+ *
+ * The checks on both sides of `jobs.add` close both possible orderings: either stop sees and cancels
+ * the job, or the second check sees that stop already advanced the epoch and cancels it here.
+ */
+internal fun Box.registerLaunchJob(job: Job, epoch: Int): Boolean {
+    if (!isLaunchEpochCurrent(epoch)) {
+        job.cancel()
+        return false
+    }
+    jobs.add(job)
+    if (!isLaunchEpochCurrent(epoch)) {
+        jobs.remove(job)
+        job.cancel()
+        return false
+    }
+    return true
+}
+
+/** Stop is a barrier: invalidate every strand before snapshotting jobs that are already registered. */
+internal fun Box.stopTrackedJobs() {
+    launchEpoch.incrementAndGet()
+    val strands = buildSet {
+        add("default")
+        addAll(runGeneration.keys)
+        addAll(currentRunningStates.keys)
+    }
+    strands.forEach { strand ->
+        val activeWatermark = currentRunningStates[strand]?.watermark ?: -1
+        runGeneration.compute(strand) { _, current -> maxOf(current ?: -1, activeWatermark) + 1 }
+    }
+    val jobsToCancel = jobs.toList()
+    jobs.clear()
+    clearRunningStates()
+    jobsToCancel.forEach { it.cancel() }
 }
 
 fun syncExecutionStatus() {

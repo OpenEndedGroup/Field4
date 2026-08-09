@@ -14,7 +14,7 @@ private fun Box.pushInlineExecutionOutput(output: Output) {
 
 @RunsAt(returnValueRegistration, priority = 10)
 fun registerAudioReturnValue() {
-    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, notify ->
+    ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val spec = when (returnValue) {
             is AudioPatchSpec -> returnValue
             is Signal -> AudioPatchSpec.from(returnValue)
@@ -25,9 +25,13 @@ fun registerAudioReturnValue() {
         val handle = FieldAudioEngine.shared().register(spec)
 
         inMain {
-            notify(true, strand, generation)
             val job = kotlin.coroutines.coroutineContext[kotlinx.coroutines.Job]!!
-            inside.jobs += job
+            if (!inside.registerLaunchJob(job, launchEpoch)) {
+                handle.close()
+                notify(false, strand, generation)
+                return@inMain
+            }
+            notify(true, strand, generation)
             val inlineTarget = spec.inlineSummaryTarget
             val refreshIntervalNs = (1_000_000_000.0 / INLINE_AUDIO_SUMMARY_REFRESH_HZ).toLong().coerceAtLeast(1L)
             var nextInlineRefreshAt = System.nanoTime() + INLINE_AUDIO_SUMMARY_INITIAL_DELAY_MS * 1_000_000L
@@ -51,6 +55,7 @@ fun registerAudioReturnValue() {
                 }
             } finally {
                 handle.close()
+                inside.jobs.remove(job)
                 notify(false, strand, generation)
             }
         }
