@@ -30,6 +30,11 @@ from fabricate_docs_scenes import (  # noqa: E402  (path set up just above)
 
 DEFAULT_ROOTS = [
     "src/jvmMain/kotlin/afield",
+    # src/personal is gitignored and absent for everyone but its owner, so this root usually contributes
+    # nothing. It is here because a FIELD_TEST block in a personal package is otherwise undiscoverable,
+    # which silently drops whole suites: moving one cluster out of jvmMain took 700-odd assertions out of
+    # CI without a single test turning red.
+    "src/personal/kotlin",
     "dev_docs",
     "public/docs",
     "metadata_store",

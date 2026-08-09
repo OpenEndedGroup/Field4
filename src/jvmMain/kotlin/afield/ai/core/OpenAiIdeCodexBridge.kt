@@ -358,7 +358,13 @@ class OpenAiIdeCodexBridge(
                         "toolName" to call.name(),
                         "callId" to call.callId(),
                         "summary" to toolResultSummary,
-                        "result" to toolResultJson
+                        "result" to toolResultJson,
+                        // The images are @JsonIgnore'd out of `result` on purpose, so without this the
+                        // log cannot tell whether the model was shown a picture — which is exactly the
+                        // variable the tool-use improvement loop needs when a geometry tool is involved.
+                        "imageCount" to ((toolResult as? CarriesToolImages)?.toolImages?.size ?: 0),
+                        "imageCaptions" to
+                            ((toolResult as? CarriesToolImages)?.toolImages?.map { it.caption } ?: emptyList())
                     )
                 )
                 onProgress?.invoke(
@@ -419,6 +425,48 @@ class OpenAiIdeCodexBridge(
                         )
                         .build()
                     toolOutputs += ResponseInputItem.ofMessage(visualMessage)
+                }
+
+                // The general form of the block above: any tool result may carry images. Kept separate
+                // from the ReloadShaders path rather than folded into it, because that path has a
+                // settle-delay contract and prompt wording of its own that nothing else wants.
+                val carried = (toolResult as? CarriesToolImages)?.toolImages
+                    .orEmpty()
+                    .filter { it.dataUrl.isNotBlank() }
+                if (carried.isNotEmpty()) {
+                    conversationAdditions += buildString {
+                        appendLine("<<ai>>")
+                        carried.forEachIndexed { index, image ->
+                            if (index > 0) appendLine()
+                            if (image.caption.isNotBlank()) {
+                                appendLine("_${image.caption}_")
+                                appendLine()
+                            }
+                            append("![tool image](")
+                            append(image.dataUrl)
+                            append(")")
+                            appendLine()
+                        }
+                    }
+                    val builder = ResponseInputItem.Message.builder()
+                        .role(ResponseInputItem.Message.Role.USER)
+                        .addInputTextContent(
+                            "The ${call.name()} tool returned ${carried.size} image(s): " +
+                                carried.mapIndexed { index, image ->
+                                    "(${index + 1}) ${image.caption.ifBlank { "no caption" }}"
+                                }.joinToString("; ") +
+                                ". Inspect them against what the user asked for. If what you see is not " +
+                                "what was asked for, fix it before finalizing."
+                        )
+                    carried.forEach { image ->
+                        builder.addContent(
+                            ResponseInputImage.builder()
+                                .imageUrl(image.dataUrl)
+                                .detail(ResponseInputImage.Detail.HIGH)
+                                .build()
+                        )
+                    }
+                    toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
 
@@ -1041,6 +1089,10 @@ class OpenAiIdeCodexBridge(
                 "string=${truncate(toolResult.stringValue.ifBlank { toolResult.message }, 200)}"
         is EditFileResponse ->
             "success=${toolResult.success}" + (toolResult.message?.let { " message=${truncate(it, 200)}" } ?: "")
+        // Anything outside core that can describe itself. This used to be a `when` branch naming one
+        // domain cluster's result type, which put a reference to that cluster in the AI plumbing; the
+        // interface inverts it, and now any tool result gets a useful log line by implementing it.
+        is SummarisesForToolLog -> truncate(toolResult.toolLogSummary(), 400)
         is Map<*, *> ->
             "keys=${toolResult.keys.joinToString(",") { it.toString() }}"
         else -> "type=${toolResult::class.java.simpleName}"

@@ -901,9 +901,20 @@ private suspend fun runCapturedProcess(
 }
 
 private suspend fun runJvmMainViaSubprocess(request: AgentRunJvmMainRequest): AgentRunJvmMainResponse {
-    val classpath = System.getProperty("java.class.path")
+    val inherited = System.getProperty("java.class.path")
         ?.takeIf { it.isNotBlank() }
         ?: error("java.class.path is blank")
+
+    // The personal jar is deliberately OFF this server's `java.class.path` — PersonalLayer loads it into a
+    // child classloader so it can be swapped without a restart (see PersonalLayer's docs). A subprocess
+    // inheriting only `java.class.path` therefore cannot see personal code at all, and a `jvm-main`
+    // entrypoint living in src/personal fails with ClassNotFoundException.
+    //
+    // A one-shot subprocess has nothing to gain from the swappable layer: it runs, it exits. So it gets
+    // personal flat on its own `-cp`, which is the whole fix and is why an entrypoint under src/personal
+    // is testable at all.
+    val classpath = (listOf(inherited) + PersonalLayer.roots.map { it.absolutePath })
+        .joinToString(File.pathSeparator)
     val timeoutMs = max(1_000L, (request.timeoutSec * 1000.0).roundToLong())
     val command = buildList {
         add(currentJavaExecutable())
