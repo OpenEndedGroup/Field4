@@ -10,7 +10,11 @@ import afield.stdlib.linalg.Vector4f
 import afield.stdlib.linalg.Vector4fc
 import afield.graphics.FLine
 import afield.stdlib.Functions
+import afield.stdlib.Quantity
+import afield.stdlib.formatExpression
+import afield.stdlib.formatQuantityDisplay
 import afield.stdlib.linalg.*
+import eu.sirotin.kotunil.core.Expression
 import space.kscience.plotly.Plot
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -265,6 +269,11 @@ object ValueVisualizer {
         visited: MutableSet<Any>,
         respectDepthLimit: Boolean
     ): String = when (value) {
+        // Physical quantities. These precede the generic object fallback so a unit-bearing
+        // spreadsheet result reads as a value, not as `Quantity 3 mm`.
+        is Quantity -> formatQuantity(value)
+        is Expression -> formatUnitExpression(value)
+
         // Primitives
         is Boolean -> "<span style='color: #f88;'>${value}</span>"
         is Number -> formatNumber(value)
@@ -319,6 +328,26 @@ object ValueVisualizer {
             } else {
                 formatFallbackObject(value)
             }
+    }
+
+    private fun formatQuantity(value: Quantity): String {
+        val (number, symbol) = formatQuantityDisplay(value)
+        return formatUnitValue(number, symbol)
+    }
+
+    private fun formatUnitExpression(value: Expression): String {
+        val (number, symbol) = formatExpression(value)
+        return formatUnitValue(number, symbol)
+    }
+
+    private fun formatUnitValue(number: Double, symbol: String): String = buildString {
+        append(formatNumber(number))
+        if (symbol.isNotBlank()) {
+            append("<span style='color:#777;'> </span>")
+            append("<span class='afield-unit-symbol' style='color:#9ac;'>")
+            append(escape(symbol))
+            append("</span>")
+        }
     }
 
     private fun formatDepthLimitedValue(value: Any?): String = when (value) {

@@ -4,6 +4,10 @@ package afield
 
 import afield.server.Browsable
 import afield.server.Inspector
+import afield.stdlib.Quantity
+import afield.stdlib.formatExpression
+import afield.stdlib.formatQuantityDisplay
+import eu.sirotin.kotunil.core.Expression
 import java.nio.FloatBuffer
 import java.nio.IntBuffer
 import java.util.LinkedHashMap
@@ -147,8 +151,10 @@ object LazyValueVisualizer {
     private fun summary(value: Any?): String = when (value) {
         null -> "null"
         is Map<*, *> -> "${value::class.simpleName ?: "Map"} (size=${value.size})"
-        is List<*> -> "${value::class.simpleName ?: "List"} (size=${value.size})"
-        is Array<*> -> "${value::class.simpleName ?: "Array"} (size=${value.size})"
+        is List<*> -> unitCollectionSummary(value, value::class.simpleName ?: "List")
+            ?: "${value::class.simpleName ?: "List"} (size=${value.size})"
+        is Array<*> -> unitCollectionSummary(value.asList(), value::class.simpleName ?: "Array")
+            ?: "${value::class.simpleName ?: "Array"} (size=${value.size})"
         is IntArray -> "IntArray (size=${value.size})"
         is LongArray -> "LongArray (size=${value.size})"
         is FloatArray -> "FloatArray (size=${value.size})"
@@ -156,6 +162,19 @@ object LazyValueVisualizer {
         is FloatBuffer -> "FloatBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         is IntBuffer -> "IntBuffer (pos=${value.position()}, limit=${value.limit()}, capacity=${value.capacity()})"
         else -> value::class.simpleName ?: value::class.java.simpleName
+    }
+
+    private fun unitCollectionSummary(values: List<*>, kind: String): String? {
+        if (values.isEmpty()) return null
+        val symbols = values.mapNotNull {
+            when (it) {
+                is Quantity -> formatQuantityDisplay(it).second
+                is Expression -> formatExpression(it).second
+                else -> return null
+            }
+        }.distinct()
+        val suffix = if (symbols.size == 1 && symbols.single().isNotBlank()) " · ${symbols.single()}" else " · mixed units"
+        return "$kind (size=${values.size})$suffix"
     }
 
     private fun isHeavyStructure(value: Any?): Boolean {
@@ -252,6 +271,8 @@ internal fun lazyInlineExpanderHtml(
 private fun wrapForInspector(value: Any?, title: String? = null): Any? {
     return when (value) {
         null -> null
+        is Quantity -> QuantityBrowsable(value)
+        is Expression -> UnitExpressionBrowsable(value)
         is PagedListBrowsable -> value
         is PagedMapBrowsable -> value
         is FloatBufferBrowsable -> value
@@ -271,6 +292,34 @@ private fun wrapForInspector(value: Any?, title: String? = null): Any? {
         is IntBuffer -> IntBufferBrowsable(value, title = title)
         else -> value
     }
+}
+
+private class QuantityBrowsable(private val quantity: Quantity) : Browsable {
+    override fun heading(): String = quantity.toString()
+
+    override fun dir(): Map<String, Any?> = linkedMapOf(
+        "display value" to quantity.displayValue,
+        "display unit" to quantity.displaySymbol,
+        "SI value" to quantity.value,
+        "SI unit" to quantity.unitSymbols.trim()
+    )
+
+    override fun html(): String = ValueVisualizer.visualize(quantity)
+}
+
+private class UnitExpressionBrowsable(private val expression: Expression) : Browsable {
+    private val formatted by lazy { formatExpression(expression) }
+
+    override fun heading(): String = formatted.let { (value, symbol) ->
+        if (symbol.isBlank()) value.toString() else "$value $symbol"
+    }
+
+    override fun dir(): Map<String, Any?> = linkedMapOf(
+        "SI value" to expression.value,
+        "SI unit" to expression.unitSymbols().trim()
+    )
+
+    override fun html(): String = ValueVisualizer.visualize(expression)
 }
 
 private fun rangeLabel(start: Int, endExclusive: Int): String {

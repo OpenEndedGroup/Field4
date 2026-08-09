@@ -49,7 +49,8 @@ class Quantity(
 
     /** The unit symbol string for display purposes. */
     val displaySymbol: String
-        get() = (displayUnit ?: expression).unitSymbols().trim()
+        get() = displayUnit?.let { formatExpression(it).second }
+            ?: formatExpression(expression).second
 
     /** The raw SI-normalized numeric value. */
     val value: Double get() = expression.value
