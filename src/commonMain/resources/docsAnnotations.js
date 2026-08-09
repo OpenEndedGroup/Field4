@@ -9,11 +9,12 @@
 
     const css = document.createElement("style");
     css.textContent = `
-      :root { --f4a-bg:#090909; --f4a-fg:#e8e8e8; --f4a-dim:#8b8b8b; --f4a-line:#333; --f4a-accent:#fff176; }
+      :root { --f4a-bg:#090909; --f4a-fg:#e8e8e8; --f4a-dim:#8b8b8b; --f4a-line:#333; --f4a-accent:#fff176; --f4a-cyan:rgb(72,201,255); }
       #f4-annotations { position:fixed; z-index:2147483600; right:16px; bottom:16px; width:330px; max-height:70vh; overflow:auto; color:var(--f4a-fg); background:var(--f4a-bg); border:1px solid var(--f4a-line); box-shadow:0 8px 30px #0009; padding:12px; font:12px/1.45 Iosevka,monospace; }
       #f4-annotations * { box-sizing:border-box; font:inherit; } #f4-annotations header { display:flex; align-items:center; gap:8px; }
       #f4-annotations header strong { flex:1; letter-spacing:.05em; } #f4-annotations button,#f4-annotations input,#f4-annotations textarea { color:inherit; background:#111; border:1px solid var(--f4a-line); padding:5px; }
       #f4-annotations button { cursor:pointer; } #f4-annotations textarea { width:100%; min-height:70px; resize:vertical; margin-top:8px; }
+      #f4-annotations textarea:focus { outline:none; border-color:var(--f4a-cyan); box-shadow:none; }
       #f4-annotations .f4a-filters { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin:8px 0; } #f4-annotations .f4a-filters input:first-child { grid-column:1/-1; }
       #f4-annotations .f4a-actions { display:flex; gap:5px; margin-top:5px; } #f4-annotations .f4a-actions button:first-child { flex:1; }
       #f4-annotations .f4a-count { color:var(--f4a-dim); font-size:10px; } #f4-annotations .f4a-note { border-top:1px solid var(--f4a-line); padding:10px 0; cursor:pointer; } #f4-annotations .f4a-note:hover { background:#141414; } #f4-annotations .f4a-meta { color:var(--f4a-dim); font-size:10px; }
