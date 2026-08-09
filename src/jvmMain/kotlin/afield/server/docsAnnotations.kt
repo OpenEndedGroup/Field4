@@ -220,7 +220,8 @@ private suspend fun ApplicationCall.proxyFieldDocs() {
     val contentType = upstream.headers().firstValue(HttpHeaders.ContentType).orElse("application/octet-stream")
     if (contentType.lowercase().contains("text/html")) {
         var html = upstream.body().toString(StandardCharsets.UTF_8)
-        val sauce = """<script>window.__FIELD_DOCS_UPSTREAM__=${Json.encodeToString(target.toString())};window.__FIELD_DOCS_PROXY__='$PROXY_ROOT';const fieldDocsAnnotationsScript=document.createElement('script');fieldDocsAnnotationsScript.src=window.location.origin+'/docsAnnotations.js';document.head.appendChild(fieldDocsAnnotationsScript);</script><base href="$DOCS_ORIGIN$DOCS_ROOT">"""
+        val pageBase = target.resolve(".")
+        val sauce = """<script>window.__FIELD_DOCS_UPSTREAM__=${Json.encodeToString(target.toString())};window.__FIELD_DOCS_PROXY__='$PROXY_ROOT';const fieldDocsAnnotationsScript=document.createElement('script');fieldDocsAnnotationsScript.src=window.location.origin+'/docsAnnotations.js';document.head.appendChild(fieldDocsAnnotationsScript);</script><base href="$pageBase">"""
         val head = Regex("<head[^>]*>", RegexOption.IGNORE_CASE)
         val headMatch = head.find(html)
         html = if (headMatch != null) html.substring(0, headMatch.range.last + 1) + sauce + html.substring(headMatch.range.last + 1) else sauce + html
