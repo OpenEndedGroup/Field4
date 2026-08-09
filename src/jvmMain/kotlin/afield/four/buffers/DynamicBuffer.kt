@@ -66,6 +66,12 @@ class DynamicBuffer(var target: FloatBuffer, var onOverrun: (FloatBuffer, Int) -
         return this
     }
 
+    /**
+     * Returns a callback that appends a line record as `x, y, z, breakFlag`.
+     *
+     * `breakBefore` is encoded as `1f` when a polyline break should precede
+     * `v`, otherwise `0f`.
+     */
     fun lines(): (Boolean, Vec3) -> Unit {
         return { breakBefore, v ->
             put(v.x, v.y, v.z, if (breakBefore) 1f else 0f)

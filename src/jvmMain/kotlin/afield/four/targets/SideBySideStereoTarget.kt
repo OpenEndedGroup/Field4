@@ -832,6 +832,10 @@ class MultiviewSideBySideStereoTarget(
  */
 class StereoCamera(val base: Camera = Camera()) {
     var ipd: Float = 0.064f
+    /**
+     * Distance multiplier for the stereo convergence point, measured from the
+     * base camera toward its target along the forward vector.
+     */
     var convergenceDistance: Float = 1f
     var asymmetricFrustumOffset: Double = 0.0
 

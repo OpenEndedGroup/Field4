@@ -2369,12 +2369,18 @@ tasks.register<JavaExec>("runfilestore") {
 tasks.register<JavaExec>("polishCompletionDocs") {
     javaLauncher.set(javaToolchains.fieldLauncher())
     group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI"
+    description = "Runs AI4 completion-doc cache/source polishing CLI and regenerates the codebase reference"
 
     classpath = sourceSets["jvmMain"].runtimeClasspath
 
     mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
     standardInput = System.`in`
+
+    // Source KDoc is the input to the committed codebase reference and KDoc
+    // worklist. Keep those derived files synchronized before the /welcome
+    // monitor reports the polish task as finished. A finalizer also repairs the
+    // reference after a failed AI run that managed to write a partial batch.
+    finalizedBy("generateCodebaseReference")
 }
 
 tasks.register<JavaExec>("polishCompletionDocsDryRun") {

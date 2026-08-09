@@ -4,13 +4,13 @@
 
 Field's standard library is large and, until now, invisible: the only ways to read it were to open the source or to already know the name you wanted. This section is a browsable map of it — every public declaration in `afield.stdlib` and `afield.visualization`, with the KDoc that sits next to it in the source.
 
-**6290 public symbols across 127 source files**, 4335 of them (68%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
+**6290 public symbols across 127 source files**, 4336 of them (68%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses.
 
 The "documented" column is the honest one: it is a coverage report on Field's own KDoc, not a claim about this page. Where a summary is blank the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Math](math.md) | 18 | 1575 | 1189 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 18 | 1575 | 1190 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 17 | 675 | 325 (48%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 22 | 973 | 818 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
@@ -152,7 +152,7 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 2 | A minimal TUIO receiver. |  |
 | [typography.kt](graphics.md#typography-kt) | Graphics | 103 | 73 | Text as geometry: a string becomes contours, and from there everything Field already does to geometry applies to letters. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [typography_field.kt](graphics.md#typography-field-kt) | Graphics | 31 | 24 | The bridges out of a `TextLayout` and into the four families Field already has. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
-| [units.kt](math.md#units-kt) | Math | 47 | 12 | Physical units for Field's spreadsheet-style numbers. |  |
+| [units.kt](math.md#units-kt) | Math | 47 | 13 | Physical units for Field's spreadsheet-style numbers. |  |
 | [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [voronoi.kt](graphics.md#voronoi-kt) | Graphics | 63 | 63 | Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi ("CircularDirichlet") for Kotlin + Field linalg. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Meshes and 3D geometry](../mesh_examples.md) |
 | [wfc.kt](data.md#wfc-kt) | Data | 118 | 36 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |

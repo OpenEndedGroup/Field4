@@ -5,6 +5,12 @@ import kotlin.uuid.Uuid
 
 private val copyRegex = Regex("""^(.*) \(copy(?: (\d+))?\)$""")
 
+/**
+ * Returns the next copy-style name for [name].
+ *
+ * Existing suffixes like `" (copy)"` or `" (copy 3)"` are advanced; otherwise
+ * `" (copy)"` is appended.
+ */
 fun nextCopyName(name: String): String {
     val match = copyRegex.matchEntire(name)
 

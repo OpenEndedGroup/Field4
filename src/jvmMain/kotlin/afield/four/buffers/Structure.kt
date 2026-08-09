@@ -191,6 +191,13 @@ open class Structure(
         proxyTo(p)
     }
 
+    /**
+     * Forwards this structure's buffer access to [p] and returns this structure
+     * for chaining.
+     *
+     * When [p] is a [FrameBufferGroup], it is also recorded as the active proxy
+     * target for direct member writes.
+     */
     fun proxyTo(p: HasBuffer): Structure {
         rootStructure().proxyBuffer = p
         if (p is FrameBufferGroup) rootStructure().proxying = p

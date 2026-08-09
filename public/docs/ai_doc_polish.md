@@ -27,6 +27,12 @@ The cache is preserved after a normal run. Entries disappear or change only if
 the polishing agent explicitly edits them; the CLI does not clear the cache as
 a blanket post-processing step.
 
+After the agent process ends, the Gradle task runs `generateCodebaseReference`
+as its final step. This keeps `public/docs/reference/` and
+`dev_docs/kdoc_worklist.md` synchronized with any KDoc that reached source,
+including a partial batch written before an agent failure. A reference-generation
+failure makes the overall polish task fail and is shown in the same task output.
+
 The detail page shows the current state, cache path and counts, task output, and
 activity while the process runs. Updates arrive through the same
 `/welcome-events` WebSocket used by the dashboard.

@@ -136,6 +136,10 @@ class Quantity(
 
 // ── withUnit: powers the  `| unit`  spreadsheet syntax ──────────────────
 
+/**
+ * Converts this numeric magnitude into a [Quantity] using [unit] as both the
+ * SI scaling expression and preferred display unit.
+ */
 fun Number.withUnit(unit: Expression): Quantity =
     Quantity(this.toDouble() * unit, displayUnit = unit)
 

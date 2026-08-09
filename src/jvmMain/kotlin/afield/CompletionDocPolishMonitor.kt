@@ -65,6 +65,9 @@ object CompletionDocPolishMonitor {
             )
             process = null
             appendLogLocked("Starting ./gradlew $taskName --args=\"${if (dryRun) "--dry-run --verbose" else "--verbose"}\"\n")
+            if (!dryRun) {
+                appendLogLocked("The task will regenerate the committed codebase reference after source polishing.\n")
+            }
             broadcastWelcomeEvent("completion-doc-polish")
             thread(name = "completion-doc-polish-monitor", isDaemon = true) {
                 runProcess(taskName, dryRun)

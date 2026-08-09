@@ -10,6 +10,12 @@ import kotlin.reflect.KProperty
 import kotlin.math.PI
 import kotlin.math.pow
 
+/**
+ * Binds keyboard camera controls into the current renderer poll loop.
+ *
+ * By default the [renderer] and [camera] come from context, and [name] is used as
+ * the stable registration key for the window poll callback.
+ */
 class KeyCamera(
     val renderer: Renderer = fromContext(),
     val camera: Camera = fromContext(),

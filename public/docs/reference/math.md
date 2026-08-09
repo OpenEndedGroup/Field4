@@ -4,7 +4,7 @@
 
 Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. Everything here is plain `Double`/`Float` Kotlin with no GPU and no window, so it runs in a box, a test or a headless docs capture equally well.
 
-18 source file(s), 1575 public symbol(s), 1189 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+18 source file(s), 1575 public symbol(s), 1190 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2888,7 +2888,7 @@ the derived-unit table is a fixed list, so anything outside it falls back to raw
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">withUnit</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Expression</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quantity</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nc">Number</span><span class="p">.</span><span class="nf">withUnit</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Expression</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quantity</span></code> | Converts this numeric magnitude into a [`Quantity`](math.md#units-kt-quantity) using `unit` as both the SI scaling expression and preferred display unit. |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Expression</span><span class="p">.</span><span class="nf">withUnit</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Expression</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quantity</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Quantity</span><span class="p">.</span><span class="nf">withUnit</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Expression</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quantity</span></code> |  |
 | <code class="highlight"><span class="k">fun</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="nf">withUnit</span><span class="p">(</span><span class="n">unit</span><span class="p">:</span> <span class="nc">Expression</span><span class="p">)</span><span class="p">:</span> <span class="nc">Quantity</span></code> |  |
