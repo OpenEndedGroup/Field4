@@ -1,6 +1,7 @@
 (() => {
-    if (window.__fieldDocsAnnotationsInstalled) return;
-    window.__fieldDocsAnnotationsInstalled = true;
+    const install = () => {
+        if (window.__fieldDocsAnnotationsInstalled) return;
+        window.__fieldDocsAnnotationsInstalled = true;
 
     const upstream = new URL(window.__FIELD_DOCS_UPSTREAM__ || location.href);
     const canonicalPage = `${upstream.origin}${upstream.pathname}`;
@@ -17,7 +18,10 @@
       #f4-annotations .f4a-actions { display:flex; gap:5px; margin-top:5px; } #f4-annotations .f4a-actions button:first-child { flex:1; }
       #f4-annotations .f4a-count { color:var(--f4a-dim); font-size:10px; } #f4-annotations .f4a-note { border-top:1px solid var(--f4a-line); padding:10px 0; cursor:pointer; } #f4-annotations .f4a-note:hover { background:#141414; } #f4-annotations .f4a-meta { color:var(--f4a-dim); font-size:10px; }
       #f4-annotations .f4a-quote { border-left:2px solid var(--f4a-accent); padding-left:6px; color:#bbb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .f4a-marker { position:absolute; z-index:2147483500; pointer-events:none; background:#fff17655; border-bottom:2px solid #fff176; }
+      ::highlight(field-doc-annotations) { background-color:rgba(255,241,118,.16); text-decoration:underline 1.5px rgba(255,241,118,.9); text-underline-offset:.16em; }
+      .f4a-marker { position:absolute; z-index:2147483500; pointer-events:none; }
+      .f4a-marker-range { background:rgba(255,241,118,.16); border-bottom:1.5px solid rgba(255,241,118,.9); }
+      .f4a-marker-position { width:7px; height:7px; border-radius:50%; background:var(--f4a-accent); box-shadow:0 0 0 3px rgba(255,241,118,.14); transform:translate(-50%,-50%); }
       #f4-annotations-launcher { position:fixed; z-index:2147483600; right:16px; bottom:16px; color:var(--f4a-fg); background:var(--f4a-bg); border:1px solid var(--f4a-line); padding:8px 11px; font:11px/1 Iosevka,monospace; cursor:pointer; letter-spacing:.04em; }
       #f4-annotations[hidden] { display:none; }
       #f4-annotations-launcher[hidden] { display:none; }
@@ -32,9 +36,9 @@
 
     const panel = document.createElement("aside");
     panel.id = "f4-annotations";
-    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then add a note">+ selection</button><button data-act="hide">×</button></header>
+    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then press Ctrl+Shift+A">+ selection</button><button data-act="hide">×</button></header>
       <div class="f4a-filters"><input data-filter="tag" placeholder="@tag"><input data-filter="from" type="date" title="from"><input data-filter="to" type="date" title="to"></div>
-      <div data-role="editor" hidden><div class="f4a-quote" data-role="selection"></div><textarea placeholder="Note — use @tags to direct improvement"></textarea><div class="f4a-actions"><button data-act="save">Save locally</button><button data-act="cancel">Cancel</button></div></div>
+      <div data-role="editor" hidden><div class="f4a-quote" data-role="selection"></div><textarea aria-label="Annotation note. Enter saves, Shift+Enter inserts a line, Escape cancels." placeholder="Note — use @tags to direct improvement"></textarea></div>
       <div data-role="list"></div>`;
     document.body.appendChild(panel);
     const launcher = document.createElement("button");
@@ -43,6 +47,8 @@
     launcher.textContent = "notes · 0";
     launcher.hidden = true;
     document.body.appendChild(launcher);
+    const editorRegion = panel.querySelector('[data-role="editor"]');
+    const noteEditor = panel.querySelector("textarea");
 
     const syncResponsiveVisibility = () => {
         const narrow = !matchMedia("(min-width:1180px)").matches;
@@ -59,6 +65,43 @@
     const esc = value => String(value || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const tags = note => [...note.matchAll(/(?:^|[^\w@])@([A-Za-z][\w-]{0,63})/g)].map(m => m[1].toLowerCase());
 
+    const searchableText = () => {
+        const root = document.querySelector("article") || document.querySelector("main") || document.body;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: node => {
+                const parent = node.parentElement;
+                if (!parent || !node.nodeValue || panel.contains(parent) || launcher.contains(parent) || parent.closest("script,style,noscript,template")) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+        const nodes = []; let text = ""; let node;
+        while ((node = walker.nextNode())) { nodes.push({ node, start:text.length, end:text.length + node.nodeValue.length }); text += node.nodeValue; }
+        return { nodes, text };
+    };
+    const rangeAt = (nodes, start, end) => {
+        const first = nodes.find(value => value.end > start);
+        const last = [...nodes].reverse().find(value => value.start < end);
+        if (!first || !last) return null;
+        const range = document.createRange();
+        range.setStart(first.node, Math.max(0, start - first.start));
+        range.setEnd(last.node, Math.min(last.node.nodeValue.length, end - last.start));
+        return range;
+    };
+    const annotationRange = item => {
+        const exact = item.anchor.exact;
+        if (!exact) return null;
+        const { nodes, text } = searchableText();
+        const candidates = []; let index = text.indexOf(exact);
+        while (index >= 0) {
+            const range = rangeAt(nodes, index, index + exact.length);
+            if (range) candidates.push(range);
+            index = text.indexOf(exact, index + 1);
+        }
+        if (candidates.length < 2) return candidates[0] || null;
+        const expectedY = (item.anchor.yRatio || 0) * document.documentElement.scrollHeight;
+        return candidates.reduce((best, range) => Math.abs(range.getBoundingClientRect().top + scrollY - expectedY) < Math.abs(best.getBoundingClientRect().top + scrollY - expectedY) ? range : best);
+    };
+
     const capture = () => {
         const selection = getSelection();
         if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
@@ -74,14 +117,15 @@
     const openEditor = () => {
         state.selected = capture() || { exact:"", xRatio:.5, yRatio:(scrollY+innerHeight/2)/Math.max(1,document.documentElement.scrollHeight) };
         panel.querySelector('[data-role="selection"]').textContent = state.selected.exact || "Position note";
-        panel.querySelector('[data-role="editor"]').hidden = false;
-        panel.querySelector("textarea").focus();
+        editorRegion.hidden = false;
+        noteEditor.focus();
     };
+    const cancelEditor = () => { noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; };
     const save = async () => {
-        const textarea = panel.querySelector("textarea"), note = textarea.value.trim();
+        const note = noteEditor.value.trim();
         if (!note) return;
         await api("/api/docs-annotations", { method:"POST", body:JSON.stringify({ annotation:{ pageUrl:canonicalPage, note, tags:tags(note), anchor:state.selected || {} } }) });
-        textarea.value = ""; panel.querySelector('[data-role="editor"]').hidden = true; await load();
+        noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; await load();
     };
     const filtered = item => {
         const tag = state.tag.replace(/^@/,"").toLowerCase();
@@ -91,15 +135,26 @@
         return true;
     };
     const renderMarkers = () => {
+        if (window.CSS?.highlights) CSS.highlights.delete("field-doc-annotations");
         document.querySelectorAll(".f4a-marker").forEach(n => n.remove());
         if (!state.visible) return;
-        const bodyText = document.body.innerText;
+        const ranges = [];
         state.annotations.filter(filtered).forEach(item => {
-            const marker = document.createElement("div"); marker.className = "f4a-marker"; marker.title = item.note;
-            const y = (item.anchor.yRatio || 0) * document.documentElement.scrollHeight;
-            marker.style.cssText += `left:${Math.max(0,(item.anchor.xRatio||.5)*document.documentElement.scrollWidth)}px;top:${y}px;width:${item.anchor.exact ? 120 : 12}px;height:${item.anchor.exact ? 8 : 12}px`;
+            const range = annotationRange(item);
+            if (range && window.CSS?.highlights && window.Highlight) { ranges.push(range); return; }
+            if (range) {
+                [...range.getClientRects()].forEach(rect => {
+                    const marker = document.createElement("div"); marker.className = "f4a-marker f4a-marker-range"; marker.title = item.note;
+                    marker.style.cssText += `left:${rect.left+scrollX}px;top:${rect.top+scrollY}px;width:${rect.width}px;height:${rect.height}px`;
+                    document.body.appendChild(marker);
+                });
+                return;
+            }
+            const marker = document.createElement("div"); marker.className = "f4a-marker f4a-marker-position"; marker.title = item.note;
+            marker.style.cssText += `left:${Math.max(0,(item.anchor.xRatio||.5)*document.documentElement.scrollWidth)}px;top:${(item.anchor.yRatio||0)*document.documentElement.scrollHeight}px`;
             document.body.appendChild(marker);
         });
+        if (ranges.length && window.CSS?.highlights && window.Highlight) CSS.highlights.set("field-doc-annotations", new Highlight(...ranges));
     };
     const render = () => {
         const visible = state.annotations.filter(filtered);
@@ -115,8 +170,6 @@
         const action = button.dataset.act, id = button.closest("[data-id]")?.dataset.id;
         if (action === "new") openEditor();
         if (action === "hide") { panel.hidden = true; launcher.hidden = false; state.visible = false; renderMarkers(); }
-        if (action === "cancel") panel.querySelector('[data-role="editor"]').hidden = true;
-        if (action === "save") await save();
         if (action === "resolve" && id) { await api(`/api/docs-annotations/${id}/resolve`, {method:"PUT",body:JSON.stringify({resolved:true,resolution:"Resolved by user"})}); await load(); }
         if (action === "delete" && id && confirm("Delete this annotation?")) { await api(`/api/docs-annotations/${id}`, {method:"DELETE"}); await load(); }
     });
@@ -126,13 +179,28 @@
         const id = event.target.closest("[data-id]")?.dataset.id;
         const item = state.annotations.find(value => value.id === id);
         if (!item) return;
-        const y = (item.anchor.yRatio || 0) * document.documentElement.scrollHeight;
+        const rect = annotationRange(item)?.getBoundingClientRect();
+        const y = rect ? rect.top + scrollY : (item.anchor.yRatio || 0) * document.documentElement.scrollHeight;
         scrollTo({ top: Math.max(0, y - innerHeight * .25), behavior:"smooth" });
     });
+    noteEditor.addEventListener("keydown", async event => {
+        if (event.isComposing) return;
+        if (event.key === "Escape") { event.preventDefault(); cancelEditor(); }
+        else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); await save(); }
+    });
+    document.addEventListener("keydown", event => {
+        if (event.ctrlKey && !event.metaKey && event.shiftKey && event.key.toLowerCase() === "a") {
+            event.preventDefault(); event.stopPropagation();
+            panel.hidden = false; launcher.hidden = true; state.visible = true; openEditor(); renderMarkers();
+        }
+    }, true);
     panel.querySelectorAll("[data-filter]").forEach(input => input.addEventListener("input", () => { state[input.dataset.filter] = input.value; render(); }));
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]"); if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
         const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = `/field-docs/${target.pathname.slice(8)}${target.search}${target.hash}`; }
     });
-    addEventListener("resize", syncResponsiveVisibility); syncResponsiveVisibility(); load().catch(error => { panel.querySelector('[data-role="list"]').textContent = error.message; });
+        addEventListener("resize", syncResponsiveVisibility); syncResponsiveVisibility(); load().catch(error => { panel.querySelector('[data-role="list"]').textContent = error.message; });
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once:true });
+    else install();
 })();
