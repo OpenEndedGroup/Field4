@@ -6445,11 +6445,41 @@ suspend fun main() {
         rememberEditorOverlayForCurrentViewport()
     }
 
+    // Capture from pointer-down, before a fast first move can cross into the iframe and steal the gesture.
+    val docsResizeContainer = document.querySelector(".docs-iframe-container") as? HTMLElement
+    var docsResizePointerId: Int? = null
+    val clearDocsResizeShield = {
+        docsResizeContainer?.classList?.remove("is-resizing")
+        docsResizePointerId?.let { pointerId ->
+            try {
+                docsResizeContainer?.asDynamic()?.releasePointerCapture?.invoke(pointerId)
+            } catch (_: dynamic) {
+            }
+        }
+        docsResizePointerId = null
+    }
+    docsResizeContainer?.addEventListener("pointerdown", { rawEvent ->
+        val event = rawEvent.asDynamic()
+        if (event.target === docsResizeContainer) {
+            docsResizePointerId = (event.pointerId as Number).toInt()
+            docsResizeContainer.classList.add("is-resizing")
+            try {
+                docsResizeContainer.asDynamic().setPointerCapture(event.pointerId)
+            } catch (_: dynamic) {
+            }
+        }
+    }, true)
+    window.addEventListener("pointerup", { clearDocsResizeShield() }, true)
+    window.addEventListener("pointercancel", { clearDocsResizeShield() }, true)
+    window.addEventListener("blur", { clearDocsResizeShield() })
+
     // Allow docs iframe container to be resized like Monaco, and propagate new size back to Monaco/editor
     val docsResizing = interact(".docs-iframe-container")
     docsResizing.resizable(
         json("edges" to json("top" to true, "bottom" to true, "left" to true, "right" to true))
-    ).on("resizemove") { event: dynamic ->
+    ).on("resizestart") { event: dynamic ->
+        (event.target as? HTMLElement)?.classList?.add("is-resizing")
+    }.on("resizemove") { event: dynamic ->
         val target: dynamic = event.target
         val targetElement = target as HTMLElement
         ensureAbsolutePosition(targetElement)
@@ -6478,6 +6508,7 @@ suspend fun main() {
             editor.layout(dims)
         }
     }.on("resizeend") { _: dynamic ->
+        clearDocsResizeShield()
         rememberEditorOverlayForCurrentViewport()
     }
 

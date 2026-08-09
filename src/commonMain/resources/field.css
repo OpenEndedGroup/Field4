@@ -2363,6 +2363,11 @@ body {
     background: var(--field-editor-bg);
 }
 
+.docs-iframe-container.is-resizing iframe {
+    pointer-events: none;
+    user-select: none;
+}
+
 .docs-iframe-back {
     position: absolute;
     bottom: 12px;
