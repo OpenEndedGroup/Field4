@@ -73,7 +73,10 @@ browser presents them alongside listening and human ratings. A future JASCO work
 chords, drum gestures and melodic salience model-native without changing the board's data model.
 
 Start with the executable [gesture board](audio_ai_gesture_board.md), then use source-window motion,
-parameter sweeps, candidate comparison, beat/pitch analysis and token surgery around it.
+parameter sweeps and candidate comparison around it. The complete
+[beat and pitch analysis workflow](audio_ai_analysis.md) shows source lookup, submission, live
+progress, cached result retrieval and synchronized librosa/pYIN/Basic Pitch views without hiding
+the job boundary.
 
 Continue with the [EnCodec reconstruction microscope](audio_ai_codec.md) and the
 [recorded-audio visualizers](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation).

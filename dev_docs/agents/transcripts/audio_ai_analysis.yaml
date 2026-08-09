@@ -1,0 +1,146 @@
+name: audio_ai_analysis
+description: >
+  A complete Field Audio analysis starting point. It contains a model-free synchronized gallery,
+  an embedded durable-job monitor, and a live box that resolves a source by filename, submits
+  librosa beat and pYIN jobs plus a Basic Pitch job, follows progress, awaits all three durable
+  results, and renders them on one shared timeline.
+operations:
+  - create:
+      box: analysis_guide
+      name: 1 · analysis guide and jobs
+      frame: { x: 60.0, y: 60.0, w: 1120.0, h: 680.0 }
+      properties:
+        code: |
+          import afield.stdlib.noir.audioai.*
+
+          display("guide", """
+          <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
+            <h2 style="margin:0 0 8px;color:#7fcbd7">Beat and pitch analysis</h2>
+            <p><b>librosa</b> supplies the onset envelope, multi-scale tempograms, beat grid and monophonic pYIN track. <b>Basic Pitch</b> supplies polyphonic note events, activations, pitch bends and MIDI. Essentia is not loaded by this worker.</p>
+            <p>Run box 2 for a model-free visualizer tour. Run box 3 for the complete live path: filename lookup → source window → three submitted jobs → WebSocket progress → durable results → synchronized analysis board. The source player and every analysis lane share hover, zoom and playback time; click any plot to seek the recording. Re-running unchanged requests is a cache hit.</p>
+          </section>
+          """.trimIndent())
+          display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
+  - create:
+      box: analysis_visualizer_gallery
+      name: 2 · synchronized visualizer gallery
+      frame: { x: 1220.0, y: 60.0, w: 1160.0, h: 940.0 }
+      properties:
+        code: |
+          import afield.stdlib.*
+          import afield.stdlib.noir.audioai.*
+
+          val gallerySync = "analysis-gallery"
+          val galleryRate = 8_000
+          val galleryAudio = FloatArray(galleryRate * 18) { i ->
+              val t = i / galleryRate.toDouble()
+              val pulse = 0.32 * kotlin.math.exp(-18.0 * (t % 0.5))
+              (0.38 * kotlin.math.sin(2.0 * Math.PI * (174.0 + 22.0 * kotlin.math.sin(t * 0.34)) * t) + pulse).toFloat()
+          }
+          display("source", AudioVisualizer.renderSamplesHtml(
+              galleryAudio, galleryRate,
+              AudioVisualizerOptions(width = 1100, waveformHeight = 105, syncGroup = gallerySync),
+              label = "model-free synchronized source · play or seek here",
+          ))
+
+          val times = (0..180).map { it / 10.0 }
+          fun series(name: String, label: String, values: List<Double>, unit: String? = null) =
+              AnalysisSeries(name, label, unit, times.map { it as Double? }, values.map { it as Double? })
+
+          val onset = times.map { t -> 0.08 + 0.82 * Math.pow(kotlin.math.max(0.0, kotlin.math.sin(t * 2.4)), 8.0) }
+          val beats = (1..35).map { it * 0.5 }
+          val beatPreview = AnalysisPreview(
+              operation = "analysis.beats", durationSeconds = 18.0,
+              series = listOf(
+                  series("onset_strength", "onset strength", onset),
+                  series("tempo_0_bpm", "tempo · 2 s", times.map { 116.0 + 13.0 * kotlin.math.sin(it * 0.72) }, "bpm"),
+                  series("tempo_1_bpm", "tempo · 8 s", times.map { 112.0 + 5.0 * kotlin.math.sin(it * 0.23) }, "bpm"),
+                  series("tempo_0_confidence", "confidence · 2 s", times.map { 0.45 + 0.35 * kotlin.math.sin(it * 0.41) }),
+                  series("tempo_1_confidence", "confidence · 8 s", times.map { 0.72 + 0.16 * kotlin.math.sin(it * 0.19) }),
+              ), beatTimesSeconds = beats,
+          )
+          val monoPreview = AnalysisPreview(
+              operation = "analysis.pitch_mono", durationSeconds = 18.0,
+              series = listOf(
+                  series("frequency_hz", "pYIN F0", times.map { 174.0 * Math.pow(2.0, (7.0 * kotlin.math.sin(it * 0.34) + 3.0 * kotlin.math.sin(it * 1.1)) / 12.0) }, "Hz"),
+                  series("voiced_probability", "voiced probability", times.map { 0.55 + 0.42 * kotlin.math.sin(it * 0.57) }),
+              ),
+          )
+          val notes = (0 until 28).map { i ->
+              val start = i * 0.62
+              AnalysisNote(start, start + 0.34 + (i % 4) * 0.13, 48 + (i * 5) % 25, 0.42 + (i % 6) * 0.09)
+          }
+          val polyPreview = AnalysisPreview(
+              operation = "analysis.pitch_poly", durationSeconds = 18.0,
+              series = listOf(
+                  series("maximum_note_activation", "maximum note activation", times.map { 0.38 + 0.5 * kotlin.math.abs(kotlin.math.sin(it * 1.7)) }),
+                  series("active_pitch_count", "active pitch count", times.map { 1.0 + kotlin.math.floor(4.0 * kotlin.math.abs(kotlin.math.sin(it * 0.52))) }),
+              ), notes = notes,
+          )
+          display("analysis board", analysisPreviewDashboardHtml(
+              listOf(beatPreview, monoPreview, polyPreview),
+              width = 1100, panelHeight = 230, syncGroup = gallerySync,
+          ))
+  - create:
+      box: analyse_nancy
+      name: 3 · submit, monitor, await, visualize Nancy
+      frame: { x: 60.0, y: 780.0, w: 1120.0, h: 980.0 }
+      properties:
+        code: |
+          import afield.stdlib.AudioVisualizerOptions
+          import afield.stdlib.noir.audioai.*
+          import java.util.concurrent.CompletableFuture
+
+          val client = FieldAudioClient()
+          val start = 18.0
+          val duration = 24.0
+          val timeSync = "nancy-analysis"
+          display("job monitor", fieldAudioJobMonitor(heightPixels = 330))
+
+          client.assetByFilename("*Nancy*").thenCompose { source ->
+              val region = AssetRegion(source.id, startSeconds = start, durationSeconds = duration)
+              val canonical = source.representations.first { it.role == "canonical_project" }
+              display("source", canonical.audioVisualizerHtml(
+                  label = "Henry Mancini · Nancy · analysis window",
+                  options = AudioVisualizerOptions(
+                      width = 1040, waveformHeight = 150,
+                      initialStartSeconds = start, initialDurationSeconds = duration,
+                      initialPositionSeconds = start,
+                      syncGroup = timeSync,
+                  ),
+              ))
+
+              val requests = listOf(
+                  "beats" to multiScaleBeatAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
+                  "monophonic pitch" to monophonicPitchAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
+                  "polyphonic pitch" to polyphonicPitchAnalysis(region, requestedBy = "field:audio-analysis/nancy"),
+              )
+              val results = requests.map { (label, request) ->
+                  client.submit(request).thenCompose { accepted ->
+                      display("$label job", fieldAudioJobStatusHtml(accepted))
+                      client.watch(
+                          accepted.jobId,
+                          onEvent = { event -> display("$label job", fieldAudioJobStatusHtml(accepted, event)) },
+                          onError = { error -> display("$label job stream", "progress stream: ${error.message}") },
+                      )
+                      client.awaitAnalysis(accepted).thenApply { result ->
+                          client.inspect(accepted.jobId).thenAccept { job -> display("$label job", fieldAudioJobStatusHtml(job)) }
+                          result
+                      }
+                  }
+              }
+              CompletableFuture.allOf(*results.toTypedArray()).thenApply {
+                  results.map { it.join() }
+              }
+          }.thenAccept { results ->
+              display("synchronized analysis", analysisDashboardHtml(
+                  results, width = 1040, panelHeight = 250,
+                  syncGroup = timeSync, timeOffsetSeconds = start,
+              ))
+          }.exceptionally { error ->
+              val message = error.cause?.message ?: error.message ?: error.toString()
+              display("analysis error", """<pre style="color:#f1aaaa;background:#28191b;padding:12px;white-space:pre-wrap">$message</pre>""")
+              null
+          }
+  - execute: { box: analysis_guide }
+  - execute: { box: analysis_visualizer_gallery }

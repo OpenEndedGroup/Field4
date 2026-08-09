@@ -165,7 +165,7 @@ The consolidated testing guide is `dev_docs/testing/TESTING_STRATEGY.md`.
 
 ## License
 
-Field 4 is licensed under the GNU Affero General Public License, version 3.0.
+Field 4 is licensed under the GNU Affero General Public License, version 3.0 or later.
 See `LICENSE`.
 
 ## Repository Map

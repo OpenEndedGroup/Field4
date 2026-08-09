@@ -20,6 +20,8 @@ class AudioVisualizerTest {
                 showPlayhead = false,
                 initialDurationSeconds = 3.0,
                 initialPositionSeconds = 1.25,
+                syncGroup = "take-a",
+                syncOffsetSeconds = 18.0,
             ),
         )
 
@@ -27,6 +29,8 @@ class AudioVisualizerTest {
         assertContains(html, "data-playhead=\"false\"")
         assertContains(html, "data-follow-playhead=\"true\"")
         assertContains(html, "data-position=\"1.250000000\"")
+        assertContains(html, "data-time-sync=\"take-a\"")
+        assertContains(html, "data-time-offset=\"18.000000000\"")
         assertContains(html, "wheel zoom at playhead · drag pan · click seek")
         assertContains(html, "start_seconds")
         assertContains(html, "duration_seconds")
@@ -42,6 +46,10 @@ class AudioVisualizerTest {
         assertContains(html, "if(playhead>viewStart+viewDuration)")
         assertContains(html, "request timed out after 15 seconds")
         assertContains(html, "Promise.race([promise,deadline])")
+        assertContains(html, "field-time-cursor")
+        assertContains(html, "field-time-seek")
+        assertContains(html, "field-time-window")
+        assertContains(html, "timeBus.dispatchEvent")
     }
 
     @Test

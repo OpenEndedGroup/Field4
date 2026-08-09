@@ -102,6 +102,9 @@ object DemoTranscriptExecSmokeTest {
         // The first box draws the real typed gesture-board renderer. The service-backed second box
         // remains inert until a user runs it with Field Audio available.
         "audio_ai_gesture_board",
+        // The guide and synchronized preview gallery use deterministic embedded data. The third
+        // box contains the complete service-backed analysis workflow but remains inert in CI.
+        "audio_ai_analysis",
         // Six independent pure-CPU WFC boxes; nothing opens a Window or a Renderer.
         "wfc_worked_example",
         // Five independent pure-CPU plane-geometry boxes; showPlaneGrid is drawToSVG -> display,
