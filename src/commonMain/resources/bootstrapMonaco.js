@@ -1539,6 +1539,21 @@ const normalizeIframeUrl = (url) => {
 	}
 }
 
+const proxyDocsIframeUrl = (url) => {
+	const normalized = normalizeIframeUrl(url)
+	if (!normalized) return normalized
+	try {
+		const parsed = new URL(normalized)
+		if (parsed.hostname.toLowerCase() !== "openendedgroup.com" || !parsed.pathname.toLowerCase().startsWith("/field4")) {
+			return normalized
+		}
+		const relativePath = parsed.pathname.replace(/^\/field4\/?/i, "")
+		return new URL(`/field-docs/${relativePath}${parsed.search}${parsed.hash}`, window.location.href).toString()
+	} catch (_) {
+		return normalized
+	}
+}
+
 const historyUrlForFile = (filename) => {
 	const filePart = filename ? encodeURIComponent(filename) : "default"
 	return `${historyBaseUrl}?file=${filePart}`
@@ -1599,9 +1614,15 @@ const ensureDocsIframeHasContent = () => {
 	if (!iframe) return
 	wireDocsIframeKeyForwarding()
 	const dataset = iframe.dataset || {}
-	if (dataset.docsLoadedOnce === "true") return
 
 	const currentSrc = iframe.getAttribute("src") || ""
+	const proxiedCurrentSrc = proxyDocsIframeUrl(currentSrc)
+	if (currentSrc && proxiedCurrentSrc && normalizeIframeUrl(currentSrc) !== proxiedCurrentSrc) {
+		iframe.dataset.docsLoadedOnce = "false"
+		setDocsIframeContent(proxiedCurrentSrc)
+		return
+	}
+	if (dataset.docsLoadedOnce === "true") return
 	const isBlank = !currentSrc || currentSrc === "about:blank" || currentSrc === window.location.href
 	if (isBlank) {
 		setDocsIframeContent(defaultDocsIframeUrl)
@@ -1641,7 +1662,7 @@ const hideDocsIframe = () => {
 const setDocsIframeContent = (url) => {
 	const iframe = document.getElementById('docs-iframe')
 	if (iframe) {
-		const normalizedUrl = normalizeIframeUrl(url)
+		const normalizedUrl = proxyDocsIframeUrl(url)
 		if (!normalizedUrl) return
 		const alreadyLoaded = iframe.dataset.docsLoadedOnce === "true"
 		const currentSrc = normalizeIframeUrl(iframe.getAttribute("src") || "") || ""

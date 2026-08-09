@@ -32,7 +32,7 @@
 
     const panel = document.createElement("aside");
     panel.id = "f4-annotations";
-    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Ctrl+Shift+A">+ selection</button><button data-act="hide">×</button></header>
+    panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then add a note">+ selection</button><button data-act="hide">×</button></header>
       <div class="f4a-filters"><input data-filter="tag" placeholder="@tag"><input data-filter="from" type="date" title="from"><input data-filter="to" type="date" title="to"></div>
       <div data-role="editor" hidden><div class="f4a-quote" data-role="selection"></div><textarea placeholder="Note — use @tags to direct improvement"></textarea><div class="f4a-actions"><button data-act="save">Save locally</button><button data-act="cancel">Cancel</button></div></div>
       <div data-role="list"></div>`;
@@ -130,7 +130,6 @@
         scrollTo({ top: Math.max(0, y - innerHeight * .25), behavior:"smooth" });
     });
     panel.querySelectorAll("[data-filter]").forEach(input => input.addEventListener("input", () => { state[input.dataset.filter] = input.value; render(); }));
-    document.addEventListener("keydown", event => { if (event.ctrlKey && !event.metaKey && event.shiftKey && event.key.toLowerCase() === "a") { event.preventDefault(); panel.hidden = false; launcher.hidden = true; state.visible = true; openEditor(); } });
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]"); if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
         const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = `/field-docs/${target.pathname.slice(8)}${target.search}${target.hash}`; }
