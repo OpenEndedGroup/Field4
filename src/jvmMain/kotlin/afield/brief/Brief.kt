@@ -429,8 +429,12 @@ internal class BriefLexer(private val source: String) {
                 when {
                     ch == '#' -> i = rawLine.length
                     ch.isWhitespace() -> i++
-                    ch.isDigit() || (ch == '-' && i + 1 < rawLine.length && rawLine[i + 1].isDigit() &&
-                        out.lastOrNull()?.let { it.kind == TokKind.EOL || it.text == "(" || it.text == "," } != false) -> {
+                    // A '-' immediately before a digit is always part of the number. Brief has no
+                    // subtraction operator at statement level — an identifier's internal hyphens are
+                    // consumed by the word branch below, because a word always starts with a letter —
+                    // so there is nothing for it to be ambiguous with, and the alternative (only after
+                    // '(' or ',') silently refused `dihedral(e, a, b) = -1`.
+                    ch.isDigit() || (ch == '-' && i + 1 < rawLine.length && rawLine[i + 1].isDigit()) -> {
                         val start = i
                         if (rawLine[i] == '-') i++
                         while (i < rawLine.length && (rawLine[i].isDigit() || rawLine[i] == '.')) i++

@@ -432,7 +432,7 @@ internal class BriefResolver(
                 }
             }
             "along" -> {
-                requireSubjects(predicate, 1, 1, BriefElementKind.LINE)
+                requireSubjects(predicate, 1, 0, BriefElementKind.LINE)
                 val v = predicate.vector ?: return
                 if (v.first == 0.0 && v.second == 0.0 && v.third == 0.0) {
                     err(predicate.at, "'along' needs a direction, and (0, 0, 0) is not one")
@@ -443,7 +443,7 @@ internal class BriefResolver(
                 expect(objects[0], BriefElementKind.POINT)
             }
             "faces" -> {
-                requireSubjects(predicate, 1, 1, BriefElementKind.PLANE)
+                requireSubjects(predicate, 1, 0, BriefElementKind.PLANE)
                 val v = predicate.vector ?: return
                 if (v.first == 0.0 && v.second == 0.0 && v.third == 0.0) {
                     err(predicate.at, "'faces' needs a direction, and (0, 0, 0) is not one")
