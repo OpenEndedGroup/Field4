@@ -63,8 +63,8 @@ and the `registerMainLanguageRuntime` call each one makes:
 Kotlin is the ninth and is the *absence* of an entry: `mainLanguage = null` means Kotlin
 (`MainLanguageRegistry.kt:51-56`), so there is no `KotlinExecution` runtime registered here.
 
-**RectSL and StackSL are not on this list**, and that is the single most useful fact on this page.
-Neither is a main language. Neither has a `BoxExecution`. They are Route A extensions with a Kotlin
+**RectSL, StackSL and Brief are not on this list**, and that is the single most useful fact on this
+page. None is a main language. None has a `BoxExecution`. They are Route A extensions with a Kotlin
 compiler behind them, which is a third shape the two-route story does not quite predict — see
 "The third shape" below.
 
@@ -261,10 +261,11 @@ rank; it returns everything and `rankItems` scores by fuzzy match, category weig
 server-supplied `contextScore` (`fieldSuggest.js:734-783`). So a server-side engine's leverage is in
 what it *knows*, not in what order it answers.
 
-Field's suggest widget serves **13** languages: `bend`, `clojure`, `fieldml`, `forth`, `glsl`,
+Field's suggest widget serves **14** languages: `bend`, `brief`, `clojure`, `fieldml`, `forth`, `glsl`,
 `kotlin`, `kotlinjs`, `nano`, `python`, `rectsl`, `slang`, `stacksl`, `yaml`
-(`fieldSuggest.js:7-20`). Note `rectsl` and `stacksl` are in that set despite being Route A — being in
-`DEFAULT_LANGUAGES` is about *which widget* handles the caret, not about where the items come from.
+(`fieldSuggest.js:7-21`). Note `rectsl`, `stacksl` and `brief` are in that set despite being Route A —
+being in `DEFAULT_LANGUAGES` is about *which widget* handles the caret, not about where the items come
+from.
 
 And note the two exceptions, because "everything goes through FieldSuggest" is *almost* true: `msl` and
 `morpho` have editor modules but are **not** in `DEFAULT_LANGUAGES`, so the gate at
@@ -280,13 +281,13 @@ write a Monarch grammar for a language Monaco already knows.
 
 ### The editor's language modules
 
-**13** editor language modules load at boot (`bootstrapMonaco.js:45-49`): `bithero/glsl`,
+**14** editor language modules load at boot (`bootstrapMonaco.js:45-49`): `bithero/glsl`,
 `bithero/slang`, `bithero/msl`, `bithero/forth`, `bithero/fieldml`, `bithero/languageExtensions`,
 `bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/nano`, `bithero/kotlinjs`,
-`bithero/morpho`, `bithero/petri`.
+`bithero/morpho`, `bithero/petri`, `bithero/brief`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
-main-language list: `msl`, `stacksl`, `rectsl` and `fnrewrite` have editor modules and no
+main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite` and `brief` have editor modules and no
 `BoxExecution`; `clojure`, `python` and `remotejs` have a `BoxExecution` and no module of their own.
 Neither asymmetry is a bug — it is what "small language" covers here.
 
@@ -316,8 +317,22 @@ box.
 | StackSL's Monaco language | `src/commonMain/resources/stacksl.js:7` | `monaco.languages.register` |
 | StackSL's Monarch grammar | `src/commonMain/resources/stacksl.js:2134` | `setMonarchTokensProvider` |
 | StackSL's document formatter | `src/commonMain/resources/stacksl.js:2194` | `registerDocumentFormattingEditProvider` |
-| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:455` | `"stackSL" to "stacksl"` |
+| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:464` | `"stackSL" to "stacksl"` |
 | StackSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt:53` | `object StackSLGalleryHarness` |
+| Brief's compile entry point | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:89` | `fun compileBrief` |
+| Brief's one vocabulary table | `src/jvmMain/kotlin/afield/brief/Brief.kt:350` | `object BriefVerbs` |
+| Brief's weight ladder | `src/jvmMain/kotlin/afield/brief/Brief.kt:134` | `enum class BriefStrength` |
+| Brief's lowering into the Kotlin DSL | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:624` | `fun BriefProgram.toGeometryModel` |
+| Brief's extension object | `src/commonMain/resources/brief.js:394` | `const extension = {` |
+| its standalone `.brief` Monaco language | `src/commonMain/resources/brief.js:429` | `registerBriefLanguage` |
+| the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/brief/BriefEditorExtension.kt:18` | `fun javascript()` |
+| the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/brief/BriefEditorExtensionWorkout.kt:50` | `runNodeProbe` |
+
+**Brief is the third member of this shape and the newest**, so it is the one to read if you are adding
+one: a weighted constraint notation whose programs lower to `afield.stdlib.ceres.ConstraintScope`. It
+was built after this page existed and followed it, which makes it a fair test of the page — the two
+things it needed that the page did not predict are recorded in `dev_docs/brief_notation.md`
+("What the anatomy page did not warn about").
 
 Four things are worth copying from this shape.
 
@@ -417,10 +432,10 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | where every fence attribute is parsed | `public/docs_hooks.py:2121` | `def parse_runner_options` |
 | where `data-lang=` is read | `public/docs_hooks.py:2311` | `def fence_language_key` |
 | **per-language wrapping of the fence body** | `public/docs_hooks.py:2316` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:3835` | `elif language == "fieldml":` |
+| **per-language box construction** | `public/docs_hooks.py:3840` | `elif language == "fieldml":` |
 | the accepted `capture=` modes | `public/docs_hooks.py:2144` | `if capture not in` |
 | `capture="ui"` drives the live editor | `public/docs_hooks.py:1564` | `drive the live editor` |
-| the still capture for `capture="box"` | `public/docs_hooks.py:4026` | `screenshot-box` |
+| the still capture for `capture="box"` | `public/docs_hooks.py:4031` | `screenshot-box` |
 
 `diffstatic {data-lang=x}` is highlighted and not executed; `diffstatic_runner {…}` is executed in a
 real box in a real Field and its screenshot, video or audio is captured. There are **6** `capture=`
@@ -524,7 +539,14 @@ which for a Route A language it always is, because the word table exists twice.
 Shapes 1 and 3 are complements, not alternatives: shape 1 says the page lists the right names, shape 3
 says the page's code still runs. A language with only one of them has a known hole.
 
-There are **7** coverage guards over these languages' pages and vocabularies:
+**Shape 1 has a second use that is not about a page at all.** `BriefCoverageTest` applies it between two
+*implementations*: it reflects over `ConstraintScope`'s declared members and requires the notation's
+table to classify every one, then asserts a floor on the covered fraction (31 of 37 relations, 83.8%,
+floor 82%). The failure it catches is the one a page-oriented guard cannot see — a verb added to the
+Kotlin DSL and not to the notation breaks nothing, because the Kotlin caller is fine and the notation
+merely cannot say the new thing. Reach for this whenever one surface is meant to cover another.
+
+There are **9** coverage guards over these languages' pages and vocabularies:
 
 | guard | shape | site | anchor |
 | --- | --- | --- | --- |
@@ -535,6 +557,8 @@ There are **7** coverage guards over these languages' pages and vocabularies:
 | the RectSL operator scrape has not silently broken | 2 | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt:448` | `operators.size > 100` |
 | fnrewrite's editor op list ↔ `OpRegistry`, both ways | 4 | `src/jvmTest/kotlin/afield/stdlib/FunctionsGraphRewriteTest.kt:105` | `editorOpVocabularyMirrorsTheRegistryInBothDirections` |
 | this page's own citations | 1 | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt:34` | `class SmallLanguageAnatomyTest` |
+| Brief's constructs ↔ `ConstraintScope`'s members | 1 | `src/jvmTest/kotlin/afield/brief/BriefCoverageTest.kt:35` | `class BriefCoverageTest` |
+| `brief.js`'s vocabulary ↔ `BriefVerbs`, both ways | 4 | `src/jvmTest/kotlin/afield/brief/BriefEditorExtensionTest.kt:39` | `theEditorVocabularyMirrorsBriefVerbsInBothDirections` |
 
 RectSL's guard runs as a `FIELD_TEST` catalog entry rather than a JUnit test —
 `RectSLExamples.kt:13-23` declares `id: rectsl.examples.smoke`, `runner: jvm-main` — so it is invoked
@@ -577,18 +601,18 @@ headless check disagrees with an interactive one about your `.js`, suspect this 
 precisely, because they bound what "this page is checked" means.
 
 1. **Citations.** Every table row whose last two cells are `` `path:line` `` and `` `anchor` `` is
-   re-checked: the anchor must occur within ±2 lines of the cited line. There are **124** checked
+   re-checked: the anchor must occur within ±2 lines of the cited line. There are **134** checked
    citations. The slack is deliberate — reformatting inside a function should not fail, moving a
    function should. A `|` in an anchor is written `\|` and unescaped by the test.
 2. **Derived counts.** Four numbers on this page are computed from the code and compared to the prose:
-   the **8** main languages (scraped from `registerMainLanguageRuntime` call sites), the **12** editor
-   language modules (from `FIELD_LANGUAGE_MODULES`), the **13** languages the suggest widget serves
+   the **8** main languages (scraped from `registerMainLanguageRuntime` call sites), the **14** editor
+   language modules (from `FIELD_LANGUAGE_MODULES`), the **14** languages the suggest widget serves
    (from `DEFAULT_LANGUAGES`), and the **8** optional hooks (from `callExtension` calls). Each also
    asserts the individual names appear on the page, so adding a language fails the build until it is
    documented here.
 3. **The Monaco-provider claim.** `msl.js` must remain the only editor resource registering a Monaco
    completion provider.
-4. **Table sizes.** **124** checked citations and **7** coverage guards, both asserted, so deleting a
+4. **Table sizes.** **134** checked citations and **9** coverage guards, both asserted, so deleting a
    ledger row is as loud as breaking one.
 
 What it does **not** check, stated so nobody assumes otherwise:

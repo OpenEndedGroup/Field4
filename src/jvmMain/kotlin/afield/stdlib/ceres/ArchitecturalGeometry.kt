@@ -286,6 +286,26 @@ class GeometryModelScope {
     private var syntheticPointCounter = 0
     private var defaultInteractivePriors = true
     private var defaultInteractivePriorWeight = 1e-6
+    private var loss = RobustLoss.DEFAULT
+
+    /**
+     * Choose the loss every residual is wrapped in. Read this before tuning a single weight.
+     *
+     * The default is [RobustLoss.DEFAULT] — `Huber(1e-3)` — inherited from the native wrapper, and it
+     * is *not* plain least squares. Beyond a scaled residual of `1e-3`, which on a model measured in
+     * metres is essentially everywhere, Huber's cost is linear rather than quadratic. So two statements
+     * pulling one unknown in different directions settle at the weighted **median** of their targets,
+     * not the weighted mean: at weights `1` and `1000` the answer is not `(1·a + 1000·b)/1001`, it is
+     * `b` to within a rounding error. The heavier statement simply wins.
+     *
+     * That is a reasonable default for interactive editing — one badly-placed point should not drag the
+     * model — and it is the wrong one whenever the weights are meant to *trade off*, which includes
+     * every case where somebody wrote two weights expecting a compromise. For those, say
+     * `robustLoss(RobustLoss.NONE)`. Until this existed the DSL had no way to say it at all.
+     */
+    fun robustLoss(loss: RobustLoss) {
+        this.loss = loss
+    }
 
     fun point(name: String, x: Double, y: Double, z: Double): PointRef = point(x, y, z, name)
 
@@ -526,7 +546,7 @@ class GeometryModelScope {
         return GeometryModel(
             pointNames = pointNames.toList(),
             initialValues = pointValues.toDoubleArray(),
-            program = CeresProgram(finalConstraints),
+            program = CeresProgram(finalConstraints, loss),
             traces = traces.toList(),
             bindings = bindings.toList(),
         )
@@ -550,6 +570,41 @@ class ConstraintScope internal constructor(private val model: GeometryModelScope
     /** Add a raw [GeometryConstraint] — the escape hatch to anything this scope has no verb for. */
     fun add(constraint: GeometryConstraint) {
         model.add(constraint)
+    }
+
+    /**
+     * A residual written here in Kotlin and differentiated exactly by Ceres
+     * ([CeresExpressionResidual]) — the way past this scope's vocabulary without a native rebuild.
+     *
+     * [build] receives one [CeresExprVec] per entry of [points], in order, and returns one expression
+     * per residual component. So "this point is a third of the way from `u` to `v`", which no opcode
+     * encodes, is three residuals:
+     *
+     * ```kotlin
+     * expression(listOf(p, u, v), weight = 10.0) { (pe, ue, ve) ->
+     *     val want = ue * (1.0 - f) + ve * f
+     *     listOf(pe.x - want.x, pe.y - want.y, pe.z - want.z)
+     * }
+     * ```
+     *
+     * Why this exists next to [ceq]. An affine relation stated with a [PointExpr] goes through
+     * [GeometryModelScope.materialize], which introduces a *trace* point recomputed between solves and
+     * held only by a `1e-6` prior — so within a solve the minimiser can satisfy the relation by moving
+     * the trace point rather than the geometry, and the weight is fixed at `1.0` besides. An expression
+     * residual is two-sided, carries the [weight] you give it, and adds no parameters. Prefer it
+     * wherever the relation is meant to push back.
+     *
+     * The costs are [CeresExpressionResidual]'s: the VM interprets rather than specialising the way a
+     * fixed-arity functor does, and Ceres forbids one residual block naming the same point twice, so
+     * [points] must be distinct.
+     */
+    fun expression(
+        points: List<PointRef>,
+        weight: Double = 1.0,
+        build: (List<CeresExprVec>) -> List<CeresExpr>,
+    ) {
+        val bound = points.indices.map { CeresExprVec(ExprParam(it, 0), ExprParam(it, 1), ExprParam(it, 2)) }
+        add(CeresExpressionResidual(points.map { it.id }, build(bound), weight))
     }
 
     val Vector3fc.c: PointRef get() = model.point(this)
