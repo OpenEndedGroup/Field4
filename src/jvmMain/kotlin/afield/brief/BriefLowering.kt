@@ -12,9 +12,12 @@ import afield.stdlib.ceres.ConstraintScope
 import afield.stdlib.ceres.c
 import afield.stdlib.ceres.GeometryModel
 import afield.stdlib.ceres.GeometryModelScope
+import afield.stdlib.ceres.GeometrySolveSession
+import afield.stdlib.ceres.InteractionPolicy
 import afield.stdlib.ceres.LineRef
 import afield.stdlib.ceres.PanelRef
 import afield.stdlib.ceres.PlaneRef
+import afield.stdlib.ceres.PointId
 import afield.stdlib.ceres.PointRef
 import afield.stdlib.ceres.RobustLoss
 import afield.stdlib.ceres.SolveOptions
@@ -1247,3 +1250,112 @@ private fun planarityDeviation(points: List<Vec3>): Double {
 
 private fun spread(values: List<Double>): Double =
     if (values.isEmpty()) 0.0 else (values.max() - values.min())
+
+// ---------------------------------------------------------------------------------------------
+// Dragging a brief
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A brief held open for interaction: the compiled model, a live point cloud, and the gesture verbs
+ * addressed **by the names the brief used**.
+ *
+ * The reason this exists rather than "call `solve` again with different numbers": compiling is the
+ * expensive half and `GeometrySolveSession` builds the native problem once, so a drag re-solves without
+ * rebuilding anything. The reason it is a wrapper rather than the session itself is that a
+ * `GeometrySolveSession` speaks `PointRef`, and a brief's author only ever wrote names — asking them to
+ * carry around handles to points they declared in text would give the notation a second, worse API.
+ *
+ * What a drag *means* here is worth stating, because it is the notation's own vocabulary applied to a
+ * gesture: [drag] gives the point a heavy prior at the target and re-solves, so the answer is the
+ * weighted compromise between where you are pulling and everything the brief says — exactly as if the
+ * gesture were one more statement, at a strength you choose. A `demand` in the text will fight a
+ * default drag and win; that is not a bug to be worked around, it is the brief being believed.
+ *
+ * Owns native memory. Close it, or open it with `use`.
+ */
+class BriefSession internal constructor(
+    val program: BriefProgram,
+    private val session: GeometrySolveSession,
+    private val refs: Map<String, PointRef>,
+) : AutoCloseable {
+
+    /** The current position of a named point. Overwritten by every solve. */
+    operator fun get(name: String): Vec3 = session.get(ref(name))
+
+    /** Every named point's current position, hidden anchors excluded. */
+    fun positions(): Map<String, Vec3> =
+        refs.filterKeys { !it.startsWith("_at:") }.mapValues { session.get(it.value) }
+
+    private fun ref(name: String): PointRef =
+        refs[name] ?: error(
+            "this brief has no point '$name'; it declares " +
+                refs.keys.filterNot { it.startsWith("_at:") }.sorted().joinToString(", ")
+        )
+
+    /**
+     * Pull a named point towards [target] at [strength] and re-solve — one frame of a gesture.
+     *
+     * [strength] is on the same ladder the notation writes, so `BriefStrength.INSIST.weight` here means
+     * what `insist` means there. It stays heavy afterwards, so a gesture built out of these ends with
+     * [release].
+     */
+    fun drag(name: String, target: Vec3, strength: Double = BriefStrength.INSIST.weight): Boolean =
+        session.drag(ref(name), target, strength)
+
+    /** End a gesture: drop the point's prior back to resting and settle. */
+    fun release(name: String): Boolean = session.release(ref(name))
+
+    /** Hold a point where it is now, re-asserted before every solve — stronger than a heavy prior. */
+    fun pin(name: String) = session.pin(ref(name))
+
+    fun unpin(name: String) = session.unpin(ref(name))
+
+    /** Re-solve from the current state. */
+    fun solve(iterations: Int = 64): Boolean = session.solve(maxIterations = iterations, metrics = true)
+
+    /** Every statement's residual, measured off the current geometry the way [BriefSolution] does. */
+    fun residuals(): List<BriefResidual> = measure(program, positions() + hiddenPositions())
+
+    private fun hiddenPositions(): Map<String, Vec3> =
+        refs.filterKeys { it.startsWith("_at:") }.mapValues { session.get(it.value) }
+
+    override fun close() = session.close()
+}
+
+/**
+ * Open a [BriefSession] over this program — the transition from "what has to be true" to "and now let
+ * me push on it".
+ *
+ * Note the deliberate asymmetry with [solve]: a session runs the *interactive* `SolveOptions`, because
+ * that is what a session is for, and so its answers are not the machine-epsilon ones [settleOptions]
+ * produces. Ask a session for meaning and you will get a figure a fraction of a percent off; ask it for
+ * a gesture and it is right. Call [solve] when the question is what the brief means.
+ */
+fun BriefProgram.openSession(
+    bindings: Map<String, Vector3f> = emptyMap(),
+    dragWeight: Double = BriefStrength.INSIST.weight,
+): BriefSession {
+    // `settle none` and dragging are incompatible, and the failure is silent, so refuse it here.
+    //
+    // A drag is expressed by raising one point's entry in `MutablePriorWeights`, and those weights
+    // *override the weights of the model's `WeakPosition` constraints*. They do not add a constraint.
+    // So a program with no whole-cloud prior has nothing for the drag to modulate: `drag` returns true,
+    // the solve succeeds, and the point does not move. That cost an hour to find, and a caller with a
+    // brief that happens to say `settle none` would have found it the same way.
+    require(syntax.settle?.let { it.weight != null } != false) {
+        "this brief says `settle none`, so it has no whole-cloud prior — and a drag is a *raised prior*, " +
+            "not an added constraint, so there would be nothing for it to raise and the point would " +
+            "not move. Give it a `settle <weight>` (the default, 1e-6, is invisible except where the " +
+            "geometry leaves a point free), or call solve() instead of openSession()."
+    }
+    val model = toGeometryModel(bindings)
+    val session = model.openSession(
+        policy = InteractionPolicy(
+            preserveWeight = 1e-6,
+            releaseWeight = 1e-6,
+            dragWeight = dragWeight,
+        ),
+    )
+    val refs = pointNames.mapIndexed { index, name -> name to PointRef(PointId(index), name) }.toMap()
+    return BriefSession(this, session, refs)
+}

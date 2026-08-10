@@ -3,7 +3,10 @@ package afield.examples.brief
 import afield.brief.BriefException
 import afield.brief.checkBrief
 import afield.brief.compileBrief
+import afield.brief.BriefStrength
+import afield.brief.openSession
 import afield.brief.solve
+import afield.stdlib.ceres.Vec3
 import afield.stdlib.linalg.Vector3f
 import kotlin.math.abs
 
@@ -35,6 +38,7 @@ fun main() {
     threeWayCompromiseOnHeight()
     theSameFigureThreeWays()
     hostValuesRoundTrip()
+    aDragIsOneMoreWeightedStatement()
     diagnosticsAreLocated()
     println("ok brief")
 }
@@ -233,4 +237,77 @@ private fun diagnosticsAreLocated() {
         if (e.diagnostics.isEmpty()) error("BriefException carried no diagnostics")
         println("  ok  compileBrief threw BriefException with ${e.diagnostics.size} diagnostic(s)")
     }
+}
+
+/**
+ * A gesture, and the claim it has to satisfy: a drag is one more weighted statement.
+ *
+ * This one is checked by *ordering* rather than a closed form, and deliberately. A `BriefSession` runs
+ * the interactive `SolveOptions` — a handful of iterations, `functionTolerance` 1e-6 — because that is
+ * what an interactive session is for, so its answers are a fraction of a percent off the minimum and
+ * pinning one to nine digits would pin the iteration budget instead of the semantics. What interaction
+ * actually has to guarantee is monotonicity: pull harder, move further, and never past what you asked
+ * for. That is what is asserted.
+ */
+private fun aDragIsOneMoreWeightedStatement() {
+    // Note the absence of `settle none`, which every other case here uses: a drag is a *raised prior*
+    // over the model's WeakPosition weights, not an added constraint, so a brief with no whole-cloud
+    // prior has nothing for a drag to raise and the point silently does not move. `openSession` now
+    // refuses that outright, which is checked below.
+    val source = """
+        #brief
+        point west  at (0, 0, 0)
+        point east  at (9, 0, 0)
+        point spine at (3, 0, 0)
+        1e10 fix west east
+        1e10 fix spine in yz
+        insist spine at 1/3 along (west, east)
+    """.trimIndent()
+    val program = compileBrief(source)
+
+    val refusal = runCatching { compileBrief("settle none\n$source").openSession() }.exceptionOrNull()
+    check(refusal != null && "settle none" in (refusal.message ?: "")) {
+        "openSession must refuse a brief that cannot be dragged, said: ${refusal?.message}"
+    }
+    println("  ok  openSession refuses `settle none`: a drag would not have moved anything")
+
+    val landings = listOf(
+        BriefStrength.WHISPER.weight,
+        BriefStrength.PREFER.weight,
+        BriefStrength.INSIST.weight,
+        BriefStrength.DEMAND.weight,
+    ).map { strength ->
+        program.openSession().use { session ->
+            check(abs(session["spine"].x - 3.0) < 1e-2) { "the brief should settle at 3, got ${session["spine"].x}" }
+            // `drag` solves. Deliberately no second solve afterwards: a drag is a raised
+            // `WeakPosition` weight, and a WeakPosition's target is *refreshed from the current
+            // position on every solve*, so re-solving while still holding the drag re-anchors the pull
+            // to wherever the point now is and the brief wins back a little each time. Measured: a
+            // second 200-iteration solve moves the `insist` case from 6.0 to 4.5. That is correct and
+            // documented behaviour, and it is not what "how far does this strength pull" means.
+            session.drag("spine", Vec3(9.0, 0.0, 0.0), strength)
+            strength to session["spine"].x
+        }
+    }
+    landings.forEach { (strength, x) ->
+        println("  ok  drag at strength %-8s -> spine x = %.4f".format(strength, x))
+    }
+    // Monotone in the drag strength, and bracketed by the two things being negotiated: never behind
+    // where the brief wants it, never past where the gesture is pulling.
+    landings.zipWithNext().forEach { (weaker, stronger) ->
+        check(stronger.second > weaker.second) {
+            "a heavier drag has to move the point further: ${weaker} then ${stronger}"
+        }
+    }
+    check(landings.first().second > 3.0 - 1e-6) { "a drag must not move the point backwards" }
+    check(landings.last().second < 9.0 + 1e-6) { "a drag must not overshoot its target" }
+    // A whisper against an insisted statement barely moves it; a demand nearly wins outright. Those are
+    // the two ends of the ladder doing what the notation's own table says they do.
+    check(landings.first().second < 3.05) { "a whisper should barely move an insisted statement" }
+    check(landings.last().second > 8.9) { "a demand should nearly win against an insisted statement" }
+    // And the middle of the ladder against its own equal: an insisted drag against an insisted
+    // statement is the midpoint of 3 and 9, which is the same weighted-mean arithmetic as the text.
+    val evenFight = landings.single { it.first == BriefStrength.INSIST.weight }.second
+    check(abs(evenFight - 6.0) < 0.05) { "an even fight should land near 6, got $evenFight" }
+    println("  ok  a drag is a weighted statement: monotone across the whole ladder, bracketed by both ends")
 }

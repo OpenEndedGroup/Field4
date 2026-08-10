@@ -331,6 +331,7 @@ The box needs the native solver once: `./gradlew buildCeresRedistributable`.
 | the coverage ratchet | same | 31/37, floor 82% |
 | `brief.js` ↔ `BriefVerbs`, both directions | same | 9 word sets, exact set equality |
 | `brief.js` executed for real | `python3 tools/run_field_tests.py --id brief.editor-extension.workout` | pass |
+| the drag, across the whole strength ladder | `smokeBrief` | monotone, and the same weighted-mean arithmetic |
 | the demo in a real Field box | `tools/field_backdoor.py` on a real document | prints `spine wall x = 119.940` |
 | the figure | rasterised from the box's own SVG output and inspected | correct at all three strengths |
 
@@ -339,6 +340,40 @@ says the solver ran; it says nothing about whether the model means what it reads
 least-squares compromise, by contrast, is a closed form — the minimum of `wa(x-ta)² + wb(x-tb)²` is
 `(wa·ta + wb·tb)/(wa+wb)` — so the assertion is a statement about the notation's semantics, and it
 moves if a weight is dropped anywhere in the lowering.
+
+## Dragging a brief
+
+`BriefProgram.openSession()` gives a `BriefSession`: the compiled model held open, with the gesture verbs
+addressed by **the names the brief used** rather than by `PointRef`s the author never saw.
+
+```kotlin
+compileBrief(source).openSession().use { session ->
+    session.drag("spine", Vec3(9.0, 0.0, 0.0), BriefStrength.INSIST.weight)
+    println(session["spine"])
+    session.release("spine")
+}
+```
+
+The claim, and it is measured: **a drag is one more weighted statement.** Against a brief that insists
+the spine sits at x = 3, pulling it toward x = 9 lands at
+
+| drag strength | lands at | which is |
+| --- | --- | --- |
+| `whisper` 1e-3 | 3.0000 | the brief, essentially untouched |
+| `prefer` 1e0 | 3.0060 | `(1·9 + 1000·3) / 1001` |
+| `insist` 1e3 | 6.0003 | the midpoint — an even fight |
+| `demand` 1e6 | 8.9940 | `(1e6·9 + 1e3·3) / 1.001e6` |
+
+The same arithmetic as the text, from the same ladder. A `demand` written in the brief will beat a
+default drag, and that is the brief being believed rather than a bug to work around.
+
+Two things to know. **`drag` solves; do not solve again while still holding it.** A `WeakPosition`'s
+target is refreshed from the current position on every solve, so re-solving re-anchors the pull to
+wherever the point now is and the brief wins back a little each time — measured, a second 200-iteration
+solve moves the even-fight case from 6.0 to 4.5. That is correct and documented behaviour and it is not
+what "how hard does this pull" means. **And a session runs the interactive `SolveOptions`,** not
+`settleOptions`, because that is what a session is for; ask it for meaning and you get a figure a
+fraction of a percent off. Call `solve()` when the question is what the brief means.
 
 ## Known limits
 
@@ -351,9 +386,12 @@ moves if a weight is dropped anywhere in the lowering.
 - **`p.z = 3` is implemented with a hidden anchor point** locked at `1e9` and a `SameCoordinate` tie,
   because no opcode ties a coordinate to a number. It shows up in `BriefProgram.pointNames` as
   `_at:p.z:0`. Sound, and worth knowing before you count points.
-- **No interactive drag.** `GeometrySolveSession` and `liveGeometry` are right there and a brief does
-  not reach them yet; `BriefProgram.solve` runs one settle. Binding a brief to a drag session is the
-  obvious next thing.
+- **`liveGeometry` is still out of reach.** `BriefSession` covers the drag; what a brief cannot yet do
+  is track host `Vector3f`s across frames the way `LiveGeometryProgram.step` does.
+- **A brief that says `settle none` cannot be dragged**, and `openSession` refuses it by name. A drag is
+  a *raised prior* over the model's `WeakPosition` weights, not an added constraint, so with no
+  whole-cloud prior there is nothing to raise: `drag` returns true, the solve succeeds, and the point
+  does not move. Silent, and it cost an hour.
 - **The box output panel did not render in the headless page** during verification, which is why the
   figure above was rasterised from the box's SVG rather than screenshotted from the UI. The `lines()`
   idiom is used throughout `public/docs/` so it is expected to be fine interactively, but that is an
