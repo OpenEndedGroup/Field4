@@ -316,7 +316,7 @@ box.
 | StackSL's Monaco language | `src/commonMain/resources/stacksl.js:7` | `monaco.languages.register` |
 | StackSL's Monarch grammar | `src/commonMain/resources/stacksl.js:2134` | `setMonarchTokensProvider` |
 | StackSL's document formatter | `src/commonMain/resources/stacksl.js:2194` | `registerDocumentFormattingEditProvider` |
-| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:455` | `"stackSL" to "stacksl"` |
+| StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:464` | `"stackSL" to "stacksl"` |
 | StackSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt:53` | `object StackSLGalleryHarness` |
 
 Four things are worth copying from this shape.
@@ -417,10 +417,10 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | where every fence attribute is parsed | `public/docs_hooks.py:2121` | `def parse_runner_options` |
 | where `data-lang=` is read | `public/docs_hooks.py:2311` | `def fence_language_key` |
 | **per-language wrapping of the fence body** | `public/docs_hooks.py:2316` | `def wrap_runnable_code_for_language` |
-| **per-language box construction** | `public/docs_hooks.py:3835` | `elif language == "fieldml":` |
+| **per-language box construction** | `public/docs_hooks.py:3840` | `elif language == "fieldml":` |
 | the accepted `capture=` modes | `public/docs_hooks.py:2144` | `if capture not in` |
 | `capture="ui"` drives the live editor | `public/docs_hooks.py:1564` | `drive the live editor` |
-| the still capture for `capture="box"` | `public/docs_hooks.py:4026` | `screenshot-box` |
+| the still capture for `capture="box"` | `public/docs_hooks.py:4031` | `screenshot-box` |
 
 `diffstatic {data-lang=x}` is highlighted and not executed; `diffstatic_runner {…}` is executed in a
 real box in a real Field and its screenshot, video or audio is captured. There are **6** `capture=`
