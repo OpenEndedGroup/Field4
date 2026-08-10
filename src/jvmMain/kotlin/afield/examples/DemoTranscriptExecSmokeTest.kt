@@ -81,6 +81,12 @@ object DemoTranscriptExecSmokeTest {
         "imaging_vector_kernels",
         "imaging_visualizers_demo",
         "mesh_geometry_examples",
+        // Three pure-compute boxes that read geometry off disk: a committed GLB through Assimp, an
+        // OBJ/STL round trip via a temp directory, and an ASCII PLY written and read back. Every
+        // picture is showMesh — CPU rasterizer -> display — so no Window and no Renderer. The GLB box
+        // is deliberately in CI: it is what makes "Field can look at what its back ends produce" a
+        // checked claim rather than a page's assertion.
+        "geometry_from_disk",
         "vision_metal_cube",
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.

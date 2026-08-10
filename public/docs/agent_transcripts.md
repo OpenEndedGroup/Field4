@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 56 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 39 of them are
+All 57 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 40 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
@@ -185,6 +185,23 @@ inside* queries a torus through the BVH and prints correctly-signed Gaussian cur
 code at all: it evaluates a `TriMesh` and lets its own `ToHTML` draw it — a shaded render beside the
 counts, χ, genus, area, volume and bounds. Every box is pure CPU and runs on its own.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/mesh_geometry_examples/metadata.edn)
+
+**geometry_from_disk** — [Geometry from disk](geometry_from_disk.md) as three boxes, all of them
+starting from a file rather than a generator. The first reads the committed 5.4 MB Khronos ToyCar GLB
+through `meshFromAnyFile` and renders it with `showMesh`: **77,429 vertices, 108,936 triangles** over
+three mesh/material buckets, each baked through its own node transform so the car arrives sitting on
+its draped cloth rather than heaped at the origin — and extent **0.073 × 0.029 × 0.074**, because the
+file is in metres and it is a 7 cm toy. It reports **χ = 1909, open, 2782 boundary loops**, which is
+not a defect but what an artist's shell always looks like once every UV seam is counted as the cut it
+really is. The second writes one coloured sphere out as OBJ and as binary STL and reads both back,
+printing the row that matters: OBJ returns **642 verts, watertight, χ = 2** with its normals and
+without its colours, STL returns **3840 unshared verts, χ = 1280, open** and welds back to 642 without
+its normals — while the volume stays **4.152741** down every route, which is the check that the
+coordinates themselves survived. The third writes a four-corner coloured ASCII PLY and reads it with
+`PlySupport.loadPly`, which needs no renderer at all, then bridges it to a `TriMesh` with the colours
+intact and the loader's invented `(0, 0, 1)` normal correctly dropped. Change the path in the first box
+to a mesh file of your own; boxes two and three clean up the temp files they write.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/geometry_from_disk/metadata.edn)
 
 **typography_worked_example** — [Typography as geometry](typography_examples.md) as eight boxes, and
 the interesting thing about it is that there is no AWT rasteriser anywhere in the file: AWT is touched

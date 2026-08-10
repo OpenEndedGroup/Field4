@@ -24,7 +24,7 @@ same shaped gap the imaging family filled, in the other one.
 | `mesh_sdf.kt` | `ScalarField3D = (Vec3) -> Float`, the SDF primitives and combinators, and `marchingCubes`. |
 | `mesh_process.kt` | `withVertexNormals` / `flatShaded` / `shadedNormals`, `loopSubdivide`, `laplacianSmooth`, `taubinSmooth`, `decimate` (QEM), `quality`. |
 | `mesh_measure.kt` | area, signed volume, surface and solid centroids, mixed Voronoi areas, Gaussian and mean curvature, `MeshBvh` (rays, closest point, inside test, signed distance), `convexHullMesh`, `deviationFrom` / `maxDeviation`, `samplePoints`. |
-| `mesh_io.kt` | OBJ and STL (ASCII + binary), read and write, plus `meshFromFile`. |
+| `mesh_io.kt` | OBJ and STL (ASCII + binary), read and write, plus `meshFromFile`. PLY / glTF / GLB read through `afield/four/modules/MeshFromDisk.kt` — see [ply_loader.md](ply_loader.md) and `public/docs/geometry_from_disk.md`. |
 | `mesh_field.kt` | the Field bridges — `toFLines`, `tubeMesh(FLine)`, `VoronoiCell3`/`VoronoiLattice` → `TriMesh`, `coloredByScalar`, `MeshView` / `renderPng` / `toFigureHtml`, `Box.showMesh` / `showMeshGrid` / `showMeshTurntable`, `summary`. |
 
 Tests: `src/jvmTest/kotlin/afield/stdlib/Mesh{Core,Marching,Process,Query,Io}Test.kt`.
@@ -220,11 +220,18 @@ with `field_backdoor.py run-jvm-main afield.examples.AgentTranscriptMaterializer
   triangle scheme and it is the one here.
 - **Mesh booleans on the meshes.** Do them in the field (`sdfSubtract` and friends) and re-march. A
   robust polygonal boolean is its own project.
-- **PLY and glTF.** `afield.four` has loaders (`simplePLYSupport.kt`, `simpleGLTFSupport.kt`), but they
-  return renderer buffers; bridging them would mean reading their formats again here, so `meshFromFile`
-  says what it does not read rather than half-doing it.
-- **A public `public/docs/` page.** The dev guide, the gallery and the demo came first. The imaging
-  family's `public/docs/imaging_examples.md` is the template if someone wants one.
+- **PLY and glTF, *in `mesh_io.kt`*.** Still absent here, and still deliberately: `mesh_io.kt` is
+  dependency-free and those loaders need LWJGL. **But they are no longer unreachable** — the reason
+  this bullet used to give ("they return renderer buffers; bridging them would mean reading their
+  formats again here") was wrong on both counts. Both loaders produce plain host memory, and the
+  bridge unpacks what they already produced rather than re-parsing anything: 2026-08-10 added
+  `afield/four/modules/MeshFromDisk.kt` — `PlyModel.toTriMesh()`, `assimpToTriMesh(path)`,
+  `meshFromAnyFile(path)` and `Box.showMesh(path)` — on the `afield.four` side of the line, so
+  `mesh_io.kt` keeps its property and a box can still read a GLB in one call. See
+  `public/docs/geometry_from_disk.md`.
+- **STEP / IGES / BREP.** Genuinely absent, everywhere in the tree, and the one on this list that is
+  actually expensive: a STEP reader is an ISO-10303-21 parser *plus* a trimmed-rational-surface
+  tessellator, realistically an OpenCASCADE binding. Convert outside Field and read the STL.
 
 ## Known limits
 

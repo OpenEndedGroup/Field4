@@ -31,6 +31,9 @@ import java.nio.ByteOrder
  * File("/tmp/ball.stl").writeBytes(mesh.toStlBinary())
  * val back = objToTriMesh(File("/tmp/ball.obj").readText())
  * ```
+ *
+ * These two formats, and no others — see [meshFromFile] for where to go for PLY, glTF and GLB, and
+ * `public/docs/geometry_from_disk.md` for the measured account of what each format loses.
  */
 
 // ==============================================================================================
@@ -298,9 +301,14 @@ fun triMeshFromStl(file: File): TriMesh = stlToTriMesh(file.readBytes())
 /**
  * Load a mesh from a path, choosing the reader by extension (`.obj`, `.stl`).
  *
- * @throws IllegalArgumentException for an extension this family does not read. PLY and glTF exist in
- *   `afield.four` (`simplePLYSupport.kt`, `simpleGLTFSupport.kt`) as renderer loaders; bridging them
- *   here is deliberately not attempted, because those loaders return renderer buffers.
+ * Deliberately narrow, and deliberately dependency-free: these two readers are a few hundred lines of
+ * plain Kotlin with no native library behind them. For **any other format** — PLY, glTF, GLB, FBX,
+ * DAE, 3DS — reach for `afield.four.modules.meshFromAnyFile`, which handles these two as well and
+ * routes the rest through the loaders in `simplePLYSupport.kt` and `simpleGLTFSupport.kt`. The whole
+ * route from a file to pixels, and what each format loses on the way, is
+ * `public/docs/geometry_from_disk.md`.
+ *
+ * @throws IllegalArgumentException for an extension this family does not read.
  */
 fun meshFromFile(path: String): TriMesh {
     val file = File(path)

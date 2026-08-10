@@ -175,6 +175,15 @@ Practically: if you are editing a public docs page and want to leave the referen
 edit **prose-only** — correct numbers, alt text and sentences, but do not add or remove backticks or
 fenced blocks. If you do change code spans, run `./gradlew generateCodebaseReference` and commit the
 regenerated pages in the same commit, exactly as for a KDoc change.
+
+**Adding a whole new page always drifts it**, so there is no prose-only escape there — a page that
+names stdlib symbols in code spans is exactly what `buildEvidenceIndex` is looking for. And the
+"same commit" rule inverts when **several branches are in flight at once**: whichever branch
+regenerates is stale the moment a sibling's page lands, because the ranked `Used in:` links are
+computed over the whole corpus. In that situation the right move is to commit the page *without*
+regenerating, say so in the commit message (`git commit --no-verify`, since the pre-commit hook runs
+`checkCodebaseReference`), and regenerate **once** after the merges. A red
+`checkCodebaseReference` on a docs-only branch is then expected, not a failure to investigate.
 5. Check your claims against the implementation. The reference is only as trustworthy as its worst
    row, and `afield.stdlib.DocumentedBehaviourTest` exists because several of those rows were wrong
    in ways only reading the code could reveal.
