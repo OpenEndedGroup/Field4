@@ -351,6 +351,63 @@ scaffolding, which is a day rather than an hour. Assimp can export, but LWJGL's 
 `aiExportScene`, and building an `AIScene` by hand from a `TriMesh` is more work than emitting the
 text.
 
+## When it does not look right
+
+Six symptoms, in the order they actually happen, each with the one-line diagnosis. `summary()` answers
+five of the six, which is the argument for printing it before drawing anything.
+
+| symptom | almost always | what to do |
+|---|---|---|
+| a blank black panel | **an empty mesh** — a file whose *contents* are not what its extension says parses to `TriMesh.empty` with no exception at all | `println(mesh.summary())`; an empty mesh prints exactly `TriMesh(empty)` |
+| holes, or whole faces missing | **inside-out winding** on an *open* mesh. Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark — it is *gone* | `fixWinding()`, then check `topology().isConsistentlyOriented` |
+| looks fine, but every measurement is negative | **inside-out winding on a closed solid.** The silhouette is unchanged and the rasterizer flips inward normals rather than shading them black, so the picture is no help | `signedVolume() < 0` is the only tell; `fixWinding()` |
+| flat, faceted, or oddly uniform shading | the file had **no normals**, or normals the loader invented. A mesh with none is crease-shaded for you; one with wrong ones is not | recompute: `shadedNormals(35.0)`. To drop them entirely, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, since `null` there means "unchanged" |
+| `isWatertight()` false on something you know is closed | it came through **STL**, or it was `flatShaded()` before it was written | `weld(1e-5)` — and `meanEdgeLength()` is the scale that tells you 1e-5 is safe |
+| the vertex count is exactly 3× what you expect | STL again, or `flatShaded()`. Both un-weld every triangle | `weld`, then `shadedNormals` if you want the hard edges back |
+
+The first row is the one that costs an hour, so it is worth being concrete: a file called `thing.obj`
+that is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and
+raises nothing. `meshFromFile` is loud about a *missing* file and about an extension it does not read,
+and silent about a file whose contents make no sense. `println(mesh.summary())` before `showMesh` costs
+nothing and turns that hour into a second.
+
+An inside-out open mesh really is *invisible*, not dark: a flipped 128-triangle plane patch renders
+**zero** non-background pixels, with all 128 triangles reported as culled. Both halves of that are
+asserted, along with the empty-parse behaviour above.
+
+## What it costs
+
+Reading a mesh off disk is cheap enough to do in a live box on every re-run. Measured on an M-series
+laptop, five reads after two warm-up reads:
+
+| | file | triangles | time | rate |
+|---|---|---|---|---|
+| `ToyCar.glb` via Assimp | 5.4 MB binary | 108,936 | **83 ms** | 1310 k tri/s |
+| `big.obj` via `meshFromFile` | 9.4 MB text | 132,488 | **337 ms** | 393 k tri/s |
+| `big.stl` via `meshFromFile` | 6.6 MB binary | 132,488 | **185 ms** | 718 k tri/s |
+| `big.obj` via `assimpToTriMesh` | the same 9.4 MB | 132,488 | **223 ms** | 595 k tri/s |
+
+Two things fall out of that table. **Binary beats text by about 2×** for the same mesh, which is the
+argument for STL over OBJ when the file is an intermediate nobody reads. And **Assimp's OBJ reader is
+about 1.5× faster than the one in `mesh_io.kt`** — it is native, and the Kotlin one splits strings.
+`meshFromAnyFile` still routes `.obj` to the Kotlin reader, because its corner-triple handling makes a
+round trip index-for-index and 100 ms on a 9 MB file is not the bottleneck. If you are reading
+hundreds of OBJs in a loop, `assimpToTriMesh` on them directly is the faster call.
+
+Looking at it costs more than reading it, and not where you would guess:
+
+| | on 108,936 triangles |
+|---|---|
+| `renderPng(560×420, wireframe = false)` | 51 ms |
+| `renderPng(560×420, wireframe = true)` | 114 ms |
+| `toFigureHtml(…)` — what `showMesh` calls | **419 ms** |
+
+The raster is 51 ms; the depth-tested wireframe doubles it; and the figure costs **four times the
+render**, because the caption's `χ`, genus, watertightness and boundary-loop count need a full topology
+pass — edge map, vertex stars, boundary walk — over the whole mesh. On a model with 2782 boundary
+loops that is the expensive part of `showMesh`, not the picture. If you are re-rendering in a loop and
+do not need the numbers, call `renderPng` and `display` the base64 yourself.
+
 ## Writing back out
 
 ```diffstatic {data-lang=kotlin}

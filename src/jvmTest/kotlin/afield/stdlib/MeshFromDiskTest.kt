@@ -323,6 +323,76 @@ class MeshFromDiskTest {
         }
     }
 
+    // ==========================================================================================
+    // The troubleshooting table
+    // ==========================================================================================
+
+    @Test
+    fun aFileWhoseContentsAreNotWhatItsExtensionSaysParsesToNothingWithoutComplaining() {
+        // The page's first troubleshooting row, and the one that costs an hour: meshFromFile is loud
+        // about a missing file and about an extension it does not read, and *silent* about a file whose
+        // contents make no sense. That is why the page says to print summary() before drawing.
+        withTempDir { dir ->
+            for (name in listOf("notreally.obj", "notreally.stl")) {
+                val f = File(dir, name).also { it.writeText("this is not a mesh at all\n") }
+                val mesh = meshFromAnyFile(f.path)
+                assertTrue(mesh.isEmpty, "$name should parse to an empty mesh, got ${mesh.summary()}")
+                assertEquals(0, mesh.vertexCount)
+                assertEquals(0, mesh.triangleCount)
+            }
+        }
+        // And the diagnosis the page tells you to reach for really is that exact string.
+        assertEquals("TriMesh(empty)", TriMesh.empty.summary())
+        // showMesh on an empty mesh does not throw; it renders a blank panel, which is the symptom.
+        assertTrue(TriMesh.empty.toFigureHtml().contains("<img"), "an empty mesh still produces a figure")
+    }
+
+    @Test
+    fun anInsideOutOpenMeshIsInvisibleRatherThanDark() {
+        // The page states this as a number: a flipped open patch paints *zero* non-background pixels
+        // with every triangle culled. That is what makes "holes" the symptom of bad winding.
+        val patch = planeMesh(8, 8, 2.0, 2.0)
+        val view = MeshView(width = 120, height = 90)
+        val background = 0xFF101318.toInt()
+        val right = patch.renderPixels(view)
+        val wrong = patch.flipped().renderPixels(view)
+        assertTrue(right.pixels.count { it != background } > 1000, "the correctly-wound patch must be visible")
+        assertEquals(0, right.culled, "and nothing culled")
+        assertEquals(0, wrong.pixels.count { it != background }, "the flipped patch must paint nothing at all")
+        assertEquals(0, wrong.drawn)
+        assertEquals(patch.triangleCount, wrong.culled, "every triangle culled")
+        // A closed solid is the opposite case: the render is unchanged and only the sign of the volume
+        // tells you, which is why the page says the picture is no help there.
+        val solid = icosphereMesh(2)
+        assertTrue(solid.signedVolume() > 0.0)
+        assertEquals(-solid.signedVolume(), solid.flipped().signedVolume(), 1e-9)
+    }
+
+    @Test
+    fun copyWithANullAttributeKeepsItWhichIsWhyThePageSaysWithoutAttributes() {
+        // A correction the audit made to its own first draft: copy(normals = null) does NOT drop them.
+        val ball = icosphereMesh(2).withColor(0.4, 0.6, 0.9)
+        assertTrue(ball.hasNormals && ball.hasColors)
+        assertTrue(ball.copy(normals = null).hasNormals, "null means 'unchanged' in copy(), not 'drop'")
+        assertTrue(!ball.withoutAttributes().hasNormals, "withoutAttributes is the one that drops")
+        assertTrue(!ball.withoutAttributes().hasColors)
+        assertEquals(ball.triangleCount, ball.withoutAttributes().triangleCount)
+    }
+
+    @Test
+    fun readingAMeshOffDiskStaysWellUnderAnyPlausibleBudget() {
+        val glb = toyCar() ?: return
+        // A deliberately loose ceiling: ToyCar measures ~83 ms on an M-series laptop, so this catches a
+        // 60x regression (a re-parse per mesh, a per-vertex allocation storm) and will not flake on a
+        // loaded CI box. The page quotes the measured number and says which machine it came from.
+        repeat(2) { assimpToTriMesh(glb.path) }
+        val start = System.nanoTime()
+        val mesh = assimpToTriMesh(glb.path)
+        val millis = (System.nanoTime() - start) / 1e6
+        assertEquals(108936, mesh.triangleCount)
+        assertTrue(millis < 5000.0, "reading ToyCar.glb took ${millis.toInt()} ms; expected well under 5 s")
+    }
+
     @Test
     fun thereIsNoStepReaderAndTheErrorSaysSoUsefully() {
         // The page's "what genuinely does not exist" list, asserted so it cannot quietly become wrong.
