@@ -47,10 +47,10 @@ class SmallLanguageAnatomyTest {
          * Every citation row on the page. Ratcheted so that deleting the ledger — the cheapest way to
          * make this whole test class pass — fails instead.
          */
-        const val EXPECTED_CITATIONS = 124
+        const val EXPECTED_CITATIONS = 134
 
         /** Rows in the "coverage-guard pattern" table. */
-        const val EXPECTED_GUARD_ROWS = 7
+        const val EXPECTED_GUARD_ROWS = 9
     }
 
     private fun repoRoot(): File {
