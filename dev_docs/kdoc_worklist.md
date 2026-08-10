@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4336 of 6290 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4351 of 6305 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **134 undocumented entry points** (types, top-level functions and values) and 1662 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -187,11 +187,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `jsonl` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:375` |
 | `registerJSONLineServerReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONLineServer.kt:379` |
 | `registerJSONProcessReturnValue` | fun | `src/jvmMain/kotlin/afield/stdlib/JSONProcess.kt:204` |
-| `PointRef.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1432` |
-| `PointRef.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1436` |
-| `PointRef.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1438` |
-| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1440` |
-| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1442` |
+| `PointRef.plus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1492` |
+| `PointRef.minus` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1496` |
+| `PointRef.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1498` |
+| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1500` |
+| `Number.times` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/ArchitecturalGeometry.kt:1502` |
 | `exp` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:188` |
 | `cos` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:196` |
 | `tan` | fun | `src/jvmMain/kotlin/afield/stdlib/ceres/CeresExpression.kt:197` |

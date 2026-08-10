@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-22 source file(s), 973 public symbol(s), 818 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 986 public symbol(s), 831 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -26,7 +26,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt`
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Neighbors & graph connectivity to FLine examples](../graph_connectivity_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
@@ -61,18 +61,45 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 | <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span></code> | Size of the dots `pointed` draws, 1.0 by default, overridable node by node with `FLine.Node.pointSize`. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="nc">Node</span><span class="p">.</span><span class="n">pointSize</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> | Per-node override of the line's `FLine.pointSize`, under the same `* 3` radius convention. `null` — the default, and unlike the line-level property this one is not written back on read — means "follow the line". |
 | <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">onClick</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">FLineIntersection</span><span class="p">)</span> <span class="p">-</span></code> | Callback invoked when this FLine is clicked in an interactive output. |
+| <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | A human name for this line, reported back as `FLineIntersection.label` when it is clicked and used as the heading by `afield.graphics.inspect`. |
 | <code class="highlight"><span class="k">var</span> <span class="nc">FLine</span><span class="p">.</span><span class="n">hoverColor</span><span class="p">:</span> <span class="nc">Vec4</span><span class="o">?</span></code> | Color to show when the pointer hovers over this FLine in an interactive SVG output. When null no hover color change is applied. |
+
+### FLineHitKind { #standarddrawing-kt-flinehitkind }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FLineHitKind</span></code>
+
+What kind of thing on a figure a click landed on — the same three-way distinction the editable FLine widget already draws its hit targets with (`data-fline-hit-kind` in `sliders.js`), now reported to `FLine.onClick` as well.
+
+Constants: `and`, `with`.
+
+### FLineFaceCoordinates { #standarddrawing-kt-flinefacecoordinates }
+
+<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">FLineFaceCoordinates</span></code>
+
+Which convention `FLineIntersection.u` and `v` follow for a `FLineHitKind.FACE` hit — because there is no one right answer for a face nobody chose, and a plausible wrong number is worse than a labelled one.
+
+Constants: `or`, `so`, `and`, `monotone`.
 
 ### FLineIntersection { #standarddrawing-kt-flineintersection }
 
-<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FLineIntersection</span><span class="p">(</span><span class="k">val</span> <span class="n">closestVertexIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">)</span></code>
+<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FLineIntersection</span><span class="p">(</span><span class="k">val</span> <span class="n">closestVertexIndex</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">FLineHitKind</span> <span class="o">=</span> <span class="nc">FLineHitKind</span><span class="p">.</span><span class="nc">UNKNOWN</span><span class="p">,</span> <span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">nodeIndex</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">subPathIndex</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">elementIndex</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="p">-</span><span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="nc">Double</span><span class="p">.</span><span class="nc">NaN</span><span class="p">,</span> <span class="k">val</span> <span class="n">faceCoordinates</span><span class="p">:</span> <span class="nc">FLineFaceCoordinates</span> <span class="o">=</span> <span class="nc">FLineFaceCoordinates</span><span class="p">.</span><span class="nc">NONE</span><span class="p">,</span> <span class="k">val</span> <span class="n">onElement</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>
 
-Hit information passed to `FLine.onClick` from the interactive line renderers.
+Hit information passed to `FLine.onClick` from the interactive line renderers — what a click on a figure *returns*.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">closestVertexIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Index into the line's `nodes` of the node nearest the click, or `-1` when the client did not work one out. |
-| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Where the click landed, in the line's own coordinate space. The three.js output fills in all three components; the 2D SVG output leaves `z` at 0. |
+| <code class="highlight"><span class="k">val</span> <span class="n">position</span><span class="p">:</span> <span class="nc">Vec3</span></code> | Where the click landed, in the line's own coordinate space. The three.js output fills in all three components; the 2D SVG output leaves `z` at 0 — `onElement` is the one to read for a depth, because it interpolates `z` along the element that was hit. |
+| <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">FLineHitKind</span></code> | Which kind of element was hit. `FLineHitKind.UNKNOWN` when the output does not distinguish. |
+| <code class="highlight"><span class="k">val</span> <span class="n">lineIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Index of the clicked line within the lines passed to that one `lines(...)` call, or `-1` when unknown. The point of it: one shared `onClick` closure can serve a whole figure, instead of one closure per part. |
+| <code class="highlight"><span class="k">val</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> | The clicked line's `FLine.label`, if it had one. |
+| <code class="highlight"><span class="k">val</span> <span class="n">nodeIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Index into the line's `nodes` of the node that *is* this element: the node itself for a `FLineHitKind.POINT`, the node that draws the segment for an `FLineHitKind.EDGE`, the `Close` for a `FLineHitKind.FACE`. `-1` when unknown. Unlike `closestVertexIndex` this is the element, not the nearest dot. |
+| <code class="highlight"><span class="k">val</span> <span class="n">subPathIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Which subpath (`moveTo`-delimited piece) of the line the element belongs to, or `-1`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">elementIndex</span><span class="p">:</span> <span class="nc">Int</span></code> | Ordinal of the element among its own kind within the line — edge 0, 1, 2…; face 0, 1… Or `-1`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">u</span><span class="p">:</span> <span class="nc">Double</span></code> | Where on the element the click landed, `0..1`, or `NaN` when it does not apply. |
+| <code class="highlight"><span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span></code> | The second face coordinate for an `FLineHitKind.FACE`, `NaN` otherwise. See `faceCoordinates`. |
+| <code class="highlight"><span class="k">val</span> <span class="n">faceCoordinates</span><span class="p">:</span> <span class="nc">FLineFaceCoordinates</span></code> | Which convention `u` and `v` follow for a face hit — bilinear on a four-corner face, its bounding box otherwise, or a refusal. Always `FLineFaceCoordinates.NONE` for a non-face hit. |
+| <code class="highlight"><span class="k">val</span> <span class="n">onElement</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span></code> | The point *on* the element nearest the click, in the line's own coordinate space, or `null`. |
 
 ## colors.kt { #colors-kt }
 
@@ -836,7 +863,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Polytopes: topology first, coordinates later](../polytope_examples.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 
@@ -926,7 +953,7 @@ facing `+y` — the difference is deliberate, a plane is a wall and a heightfiel
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md)
 
 ### Top-level functions { #mesh-generate-kt-functions }
 
@@ -979,9 +1006,12 @@ File("/tmp/ball.stl").writeBytes(mesh.toStlBinary())
 val back = objToTriMesh(File("/tmp/ball.obj").readText())
 ```
 
+These two formats, and no others — see `meshFromFile` for where to go for PLY, glTF and GLB, and
+`public/docs/geometry_from_disk.md` for the measured account of what each format loses.
+
 `src/jvmMain/kotlin/afield/stdlib/mesh_io.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md)
 
 ### Top-level functions { #mesh-io-kt-functions }
 
@@ -1134,7 +1164,7 @@ quads. Loop is the triangle scheme, and it is the one here.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_process.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md)
 
 ### Top-level functions { #mesh-process-kt-functions }
 
@@ -1220,7 +1250,7 @@ corrupt the march.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Geometry from disk](../geometry_from_disk.md)
 
 ### Top-level functions { #mesh-sdf-kt-functions }
 
@@ -1296,7 +1326,7 @@ println("${topo.eulerCharacteristic} χ, genus ${topo.genus}, watertight ${topo.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md), [Spatial artificial life](../alife_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Geometry from disk](../geometry_from_disk.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #mesh-topology-kt-functions }
 
