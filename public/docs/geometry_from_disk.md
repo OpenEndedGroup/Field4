@@ -356,14 +356,14 @@ text.
 Six symptoms, in the order they actually happen, each with the one-line diagnosis. `summary()` answers
 five of the six, which is the argument for printing it before drawing anything.
 
-| symptom | almost always | what to do |
+| symptom | cause | what to do |
 |---|---|---|
-| a blank black panel | **an empty mesh** — a file whose *contents* are not what its extension says parses to `TriMesh.empty` with no exception at all | `println(mesh.summary())`; an empty mesh prints exactly `TriMesh(empty)` |
-| holes, or whole faces missing | **inside-out winding** on an *open* mesh. Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark — it is *gone* | `fixWinding()`, then check `topology().isConsistentlyOriented` |
-| looks fine, but every measurement is negative | **inside-out winding on a closed solid.** The silhouette is unchanged and the rasterizer flips inward normals rather than shading them black, so the picture is no help | `signedVolume() < 0` is the only tell; `fixWinding()` |
-| flat, faceted, or oddly uniform shading | the file had **no normals**, or normals the loader invented. A mesh with none is crease-shaded for you; one with wrong ones is not | recompute: `shadedNormals(35.0)`. To drop them entirely, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, since `null` there means "unchanged" |
-| `isWatertight()` false on something you know is closed | it came through **STL**, or it was `flatShaded()` before it was written | `weld(1e-5)` — and `meanEdgeLength()` is the scale that tells you 1e-5 is safe |
-| the vertex count is exactly 3× what you expect | STL again, or `flatShaded()`. Both un-weld every triangle | `weld`, then `shadedNormals` if you want the hard edges back |
+| a blank black panel | an empty mesh | A file whose *contents* are not what its extension says parses to `TriMesh.empty` with **no exception at all**. `println(mesh.summary())` — an empty one prints exactly `TriMesh(empty)`. |
+| holes, or whole faces missing | inside-out winding, open mesh | Back faces are culled exactly as a GPU culls them, so a wrongly-wound patch is not dark, it is *gone*. `fixWinding()`, then check `topology().isConsistentlyOriented`. |
+| looks fine, every measurement negative | inside-out winding, closed solid | The silhouette is unchanged and the rasterizer flips inward normals rather than shading them black, so the picture is no help at all. `signedVolume() < 0` is the only tell; `fixWinding()` is the fix. |
+| flat, faceted or oddly uniform shading | no normals, or invented ones | A mesh with *none* is crease-shaded for you; one with wrong ones is not. Recompute with `shadedNormals(35.0)`. To drop them, `withoutAttributes()` — note that `copy(normals = null)` **keeps** them, because `null` there means "unchanged". |
+| `isWatertight()` false on a closed solid | it came through STL | Or it was `flatShaded()` before it was written. `weld(1e-5)` recovers the topology, and `meanEdgeLength()` is the scale that tells you 1e-5 is safe rather than a guess. |
+| the vertex count is exactly 3× | STL, or `flatShaded()` | Both un-weld every triangle, and the reader on the other side will not weld it back. `weld`, then `shadedNormals` if you want the hard edges again. |
 
 The first row is the one that costs an hour, so it is worth being concrete: a file called `thing.obj`
 that is actually a ZIP, a glTF, or an HTML error page parses to zero vertices and zero triangles and
