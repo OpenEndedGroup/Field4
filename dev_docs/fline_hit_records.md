@@ -40,7 +40,7 @@ quietly mis-calibrated.**
 | the browser reconstructs the hit | `__flineIntersectionFromSvg` (`sliders.js`) | kind, line, node, subpath, element, `u`, `v`, the point on the element |
 | the browser posts it | `sendFLineClick` → `afield.send('fline-click', …)` | `FLineClick` (`rpc.kt`) |
 | the server dispatches it | `fline-click` handler (`Server.kt`), `FLineClick.toIntersection()` (`outputs.kt`) | `FLineIntersection` |
-| three.js does the same | `installThreeJsHandler`, `buildThreeGeometryPayload` (`ThreeJsViewer.kt`), `intersectionForHit` (`threejs_viewer.html`) | point + nearest vertex only — `kind` stays `UNKNOWN` |
+| three.js does the same | `installThreeJsHandler`, `buildThreeGeometryPayload` (`ThreeJsViewer.kt`), `intersectionForHit` + the `fline-hit-picking` region (`threejs_viewer.html`) | the same record: kind, line, label, node, subpath, element, `u`/`v`, the point on the element |
 
 ### What the renderer sends, and in whose coordinates
 
@@ -56,6 +56,10 @@ Two lists:
 
 `data-fline-pick` is the picking policy, in line units: how close counts as a node, and as a segment.
 Chosen in screen pixels and divided by the fit scale, because that is where the finger is.
+
+The three.js viewer receives the **same** `flineTopologyJson` string — as `ThreeInteractiveObject.topology`,
+and on `ThreeEditableLine.topology` in editable mode — so the two clickable outputs cannot describe the
+same line differently. Only the picking differs; see below.
 
 ### How the browser decides
 
@@ -74,6 +78,62 @@ Node → segment → face, first match wins, and then:
 
 `onElement` is the point *on* the element. Its `z` is interpolated along the element, which is the one
 way a 3D line drawn into a 2D SVG can report a depth at all.
+
+### How the three.js viewer decides
+
+It has it easier in exactly one respect, and that respect is the kind. three.js has already told the
+click handler *which geometry* the ray hit — the `LineSegments`, the fill `Mesh`, or the `Points` — so
+`flineRoleForObject` reads the kind off `isLineSegments`/`isMesh`/`isPoints` (which also works in
+editable mode, where one entry owns several meshes) and no tolerance is involved. What is left is
+*which* element of that kind, and where on it, and that is a nearest-search in 3D over the same
+topology:
+
+- **edge** — nearest segment to `hit.pointOnLine` (three.js's own nearest point on the picked segment,
+  which is closer to the geometry than the point on the ray), `u` by projection or by the same
+  sampled-then-bisected search.
+- **face** — the face whose *own plane* the hit is closest to and whose polygon contains its projection.
+  The frame is Newell's normal plus the first usable edge, so a slightly non-planar or concave polygon
+  still gets its area-weighted plane; `(u, v)` are then computed in that frame, which is what makes them
+  comparable with the 2D path's.
+- **point** — nearest anchor in 3D.
+
+The maths is a marked region, `// [viewer-region fline-hit-picking]`, which is how a test can execute it:
+`ViewerJavaScript` lifts the text and `ThreeJsHitRecordDifferentialTest` runs it on GraalJS against
+topology from the real Kotlin producer. Registering it in `ViewerJavaScript.KNOWN_REGIONS` also enrols it
+in `ViewerJavaScriptRegionTest`'s health rules — found, unique, declares its exports, evaluable.
+
+### What `u` means, and what `(u, v)` means
+
+**`u` on a cubic is the Bézier parameter, not arc length.** A reader will assume arc length, so the
+difference is measured rather than described: on the lopsided cubic in `FLineHitRecordProbeTest` — both
+controls crowded against the start — parameter `0.5` sits at **16.8%** of the curve's length, and the
+test asserts that gap exceeds 0.3. The parameter is the right choice because it is the number that
+indexes back into the curve the author wrote; if arc length is ever wanted it should be a *second*
+field, and the test above will fail rather than let `u` change meaning silently.
+
+**`(u, v)` on a face says which convention it followed**, via `FLineIntersection.faceCoordinates`:
+
+| convention | when | what it is |
+| --- | --- | --- |
+| `BILINEAR` | a four-corner face whose bilinear map inverts *and* passes a check | `u` corner 0 → 1, `v` corner 0 → 3: a position on a panel |
+| `BOUNDING_BOX` | any other closed subpath, or a quad whose solve fails the check | the point in the face's own bounding box (in its plane, for three.js) — monotone, and not a parameterisation |
+| `NONE` | a face with no plane at all, or a non-face hit | `u` and `v` are `NaN`: a refusal |
+
+The check is what makes `BILINEAR` a measurement: the Newton solve has to converge, the answer has to
+land inside the patch, and the forward map has to reproduce the click to within `1e-6` of the face's
+diagonal. Without it a non-convex quad returns a coordinate off the fold that looks perfectly ordinary.
+
+That said, the adversarial case corrected the assumption behind it, and the correction is worth stating:
+the checked solve is **robust**, not fragile. Over the 941 interior points of a 2-unit grid on a dart
+(one corner pulled back past the diagonal) **939 verify** and two fall back — both in the extreme corners
+either side of the notch, and in the 2D path those two are within the edge tolerance and are reported as
+edges anyway. So on that figure the fallback is unreachable by clicking, and the place it gets exercised
+is the function-level differential.
+
+Both implementations of that rule — `flineFaceCoords` in `sliders.js` (a click in the plane) and
+`flinePickFaceCoords` in the viewer region (a hit projected into a face's plane) — are executed against
+each other on six faces in `FLineHitRecordProbeTest`, in the `z = 0` plane so they receive identical
+numbers, and must agree to `1e-9` including on `NaN`.
 
 ### Calibration, and why it is a rectangle
 
@@ -114,7 +174,9 @@ line names that instead, with `u` along its length.
 
 | cover | runs | does not run |
 | --- | --- | --- |
-| `FLineHitRecordProbeTest` (`jvmTest`) | the **verbatim** `sliders.js` under node, against SVG the real `buildInteractiveSVG` emitted; then the payloads it posted, decoded as `FLineClick` and dispatched through `getFLineClickCallback` | a browser — no layout, no hit-testing, no z-order |
+| `FLineHitRecordProbeTest` (`jvmTest`) | the **verbatim** `sliders.js` under node, against SVG the real `buildInteractiveSVG` emitted; then the payloads it posted, decoded as `FLineClick` and dispatched through `getFLineClickCallback`; plus the six-face differential against the lifted viewer region | a browser — no layout, no hit-testing, no z-order |
+| `ThreeJsHitRecordDifferentialTest` | the viewer's `fline-hit-picking` region on GraalJS, against topology from the real Kotlin producer: a 3D segment at `u = 0.3`, a tilted quad's bilinear `(0.25, 0.75)`, a point sprite, a 28-gon's `bbox`, a planeless face's refusal, and 57 interior points of a dart | three.js itself — no raycast, no camera |
+| `ThreeInteractivePayloadTest` | that `buildThreeGeometryPayload` sends the topology, the label and the line index, byte-identical to the SVG's string, and that a hover-only line carries none | the transport |
 | `graphics.fline-hit-records.smoke` | `FLineHitInspectorFigure`: the emitted SVG has a callback, a label and a face per panel, and still carries the wall's own `z` | anything client-side |
 | `tools/fline_hit_proof.py` | Chromium, real mouse clicks on the real emitted SVG next to the real `sliders.js`, six cases checked against the geometry | the socket, the server, the callback |
 | the live check recorded below | all of it, in a running Field | nothing — but it is a manual run, not a gate |
@@ -144,10 +206,12 @@ python3 tools/fline_hit_proof.py --svg /tmp/panel_wall.svg --out /tmp/fline-proo
 
 ## Left undone
 
-- **The three.js path still reports `UNKNOWN`.** Its raycast already knows whether it hit the line
-  mesh, the fill or the points, and `hit.faceIndex` would give a face — the wire type and the JVM
-  mapping are ready for it, and only `intersectionForHit` in `threejs_viewer.html` needs to fill the
-  fields in.
+- **The three.js raycast itself is not executed by any test.** Its picking maths is (GraalJS, against
+  the real producer) and its payload is (`ThreeInteractivePayloadTest`), but the step in between — a
+  real camera, a real ray, `hit.pointOnLine`, and which of an entry's meshes the ray chose — needs a
+  browser with WebGL and the viewer's CDN `THREE`. The 2D path has that cover
+  (`tools/fline_hit_proof.py`); the 3D path does not, and a click in a live three.js viewer has not been
+  observed end to end. That is the next thing to do, and the honest state of it today.
 - **Hit-testing across overlapping lines** is the browser's, so the topmost `<g>` wins. A click on a
   shared corner of four panels is reported by whichever of them the browser picked; the hit says
   *which* line answered, which is at least honest about it.
