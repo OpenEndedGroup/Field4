@@ -66,9 +66,9 @@ class CloseNodeCitationDriftTest {
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 2605, "fun intersectX"),
         Triple("src/jvmMain/kotlin/afield/graphics/FLinesAndJavaShapes.kt", 2636, "fun intersectY"),
 
-        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 363, "fun arrow"),
-        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 393, "fun appendHead"),
-        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 406, "target.close()"),
+        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 396, "fun arrow"),
+        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 426, "fun appendHead"),
+        Triple("src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt", 439, "target.close()"),
 
         Triple("src/jvmMain/kotlin/afield/stdlib/spatial_field.kt", 341, "fun planeFigureHtml"),
         Triple("src/jvmMain/kotlin/afield/stdlib/spatial_field.kt", 351, "fitInto"),

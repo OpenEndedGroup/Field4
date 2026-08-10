@@ -58,9 +58,9 @@ a `MoveTo`, which neither branch matches. `FLine().lineTo(...)` is legal, and it
 outline arriving from a `java.awt.Shape` has **no `Close` node at all**. Pinned at four shapes,
 including a two-contour ring, by `InteriorCloseNodeTest.awtNeverEmitsACloseNode`.
 
-**From `afield.stdlib.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:363`)
-calls `appendHead` (`:393`) twice, and `appendHead` ends each arrowhead with `target.close()`
-(`:406`). So a double-headed arrow is
+**From `afield.stdlib.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:396`)
+calls `appendHead` (`:426`) twice, and `appendHead` ends each arrowhead with `target.close()`
+(`:439`). So a double-headed arrow is
 
 ```
 MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
