@@ -47,6 +47,10 @@ import java.io.File
  * `public/docs/geometry_from_disk.md` for the honest list.
  */
 
+// ==============================================================================================
+// PLY
+// ==============================================================================================
+
 /**
  * This PLY model's packed vertex buffer, unpacked into a [TriMesh].
  *
@@ -100,6 +104,10 @@ fun PlySupport.PlyModel.toTriMesh(keepNormals: Boolean = true, keepColors: Boole
     }
     return builder.build()
 }
+
+// ==============================================================================================
+// Everything Assimp reads — glTF, GLB, FBX, DAE, 3DS, …
+// ==============================================================================================
 
 /**
  * Read any file [Assimp][org.lwjgl.assimp.Assimp] can import — glTF, GLB, FBX, DAE, 3DS, OBJ, STL,
@@ -189,6 +197,10 @@ fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
     }
 }
 
+// ==============================================================================================
+// Dispatch, and the one-liner
+// ==============================================================================================
+
 /**
  * Load a mesh from a path, in **any** format Field can read, and return it as a [TriMesh] you can
  * render, measure, weld, decimate or write back out.
@@ -231,11 +243,31 @@ fun meshFromAnyFile(path: String): TriMesh {
  * Read a mesh file and push a rendered view of it to one of this box's output channels — the one-liner
  * for "I have a mesh on disk, show me".
  *
+ * ```kotlin
+ * showMesh("/path/to/thing.glb")
+ * ```
+ *
  * Every format [meshFromAnyFile] handles, through the same CPU z-buffer renderer
  * [afield.stdlib.showMesh] uses: perspective, back-face culling, two-light lambert, depth-tested
- * wireframe, and the mesh's measurements printed beside the picture.
+ * wireframe, and the mesh's measurements printed beside the picture. `MeshView.distance` is measured
+ * in bounding-sphere radii, so a model in millimetres and a model in metres both frame correctly with
+ * no scaling on your part.
  *
  * @param title defaults to the file's name, so a grid of these labels itself.
+ */
+fun Box.showMesh(
+    path: String,
+    channel: String = "main",
+    view: MeshView = MeshView(),
+    caption: String? = null,
+    title: String? = File(path).name,
+) {
+    showMesh(meshFromAnyFile(path), channel, view, caption, title)
+}
+
+/**
+ * [showMesh] from a [File] rather than a path string. `java.io` is not in a box's default imports, so
+ * inside a box the [String] overload is usually the one you want.
  */
 fun Box.showMesh(
     file: File,
