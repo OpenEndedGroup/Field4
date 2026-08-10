@@ -107,7 +107,11 @@ data class ThreeEditableLine(
     val pointSize: Float,
     val callbackId: String = "",
     val hoverColor: FloatArray? = null,
-    val nodes: List<ThreeEditableNode>
+    val nodes: List<ThreeEditableNode>,
+    /** The line's [FLine.label], so an editable figure's hits name themselves too. */
+    val label: String? = null,
+    /** [flineTopologyJson] for this line — the same string the non-editable path sends. */
+    val topology: String = ""
 )
 
 @Serializable
@@ -133,7 +137,18 @@ data class ThreeInteractiveObject(
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
     val points: ThreeGeometryData? = null,
-    val vertices: List<ThreeInteractiveVertex> = emptyList()
+    val vertices: List<ThreeInteractiveVertex> = emptyList(),
+    /** Index of this FLine among the lines the viewer was given, reported back as `lineIndex`. */
+    val lineIndex: Int = -1,
+    /** The line's [FLine.label], reported back with a hit so one closure can serve a whole figure. */
+    val label: String? = null,
+    /**
+     * The line's segments and closed subpaths as [flineTopologyJson] writes them — the *same* string
+     * the interactive SVG puts in `data-fline-elements`, so the two clickable outputs cannot describe
+     * the same line differently. Only their picking differs, which it must: one has a click in a plane,
+     * the other a raycast hit that already knows whether it landed on a line, a fill or a point.
+     */
+    val topology: String = ""
 ) {
     override fun toString(): String = prettySummary(
         "ThreeInteractiveObject",
@@ -142,7 +157,9 @@ data class ThreeInteractiveObject(
         "lines" to (lines != null),
         "fills" to (fills != null),
         "points" to (points != null),
-        "vertices" to vertices.size
+        "vertices" to vertices.size,
+        "lineIndex" to lineIndex,
+        "label" to label
     )
 }
 
@@ -558,7 +575,11 @@ internal fun buildThreeGeometryPayload(
                     lines = lineGeometryOrNull(localLinePositions, localLineColors, localLineAlphas),
                     fills = fillGeometryOrNull(localMeshPositions, localMeshColors, localMeshAlphas, localMeshIndices),
                     points = pointGeometryOrNull(localPointPositions, localPointColors, localPointAlphas, localPointSizes),
-                    vertices = interactiveVertices(f)
+                    vertices = interactiveVertices(f),
+                    lineIndex = lineIndex,
+                    label = f.label,
+                    // Only a clickable line needs it; hover has nothing to say about which element.
+                    topology = if (callbackId.isNotEmpty()) flineTopologyJson(f) else ""
                 )
             } else {
                 appendFLineGeometry(
@@ -601,6 +622,8 @@ internal fun buildThreeGeometryPayload(
                 pointSize = line.pointSize.toFloat(),
                 callbackId = callbackIds[lineIndex],
                 hoverColor = hoverColors[lineIndex],
+                label = line.label,
+                topology = if (callbackIds[lineIndex].isNotEmpty()) flineTopologyJson(line) else "",
                 nodes = line.nodes.mapIndexed { nodeIndex, node ->
                     when (node) {
                         is FLine.MoveTo -> {

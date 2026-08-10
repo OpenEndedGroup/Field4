@@ -1156,7 +1156,27 @@ function addInteractiveObject(obj) {
         }
     }
     if (meshes.length) {
-        interactiveObjects.push({ callbackId: obj.callbackId || '', hoverColor, meshes, hovering: false, vertices: obj.vertices || [] });
+        interactiveObjects.push({
+            callbackId: obj.callbackId || '',
+            hoverColor,
+            meshes,
+            hovering: false,
+            vertices: obj.vertices || [],
+            lineIndex: Number.isFinite(obj.lineIndex) ? obj.lineIndex : -1,
+            label: typeof obj.label === 'string' ? obj.label : null,
+            topology: parseFLineTopology(obj.topology)
+        });
+    }
+}
+
+/** The line's segments and closed subpaths, as the server serialised them. Never throws. */
+function parseFLineTopology(text) {
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        console.warn('unparsable FLine topology', error);
+        return null;
     }
 }
 
@@ -1175,8 +1195,360 @@ function makeInteractiveEntry(line, meshes) {
         hoverColor: line.hoverColor || null,
         meshes,
         hovering: false,
-        vertices: verticesForLine(line)
+        vertices: verticesForLine(line),
+        lineIndex: Number.isFinite(line.lineIndex) ? line.lineIndex : -1,
+        label: typeof line.label === 'string' ? line.label : null,
+        topology: parseFLineTopology(line.topology)
     };
+}
+
+// [viewer-region fline-hit-picking] BEGIN
+// Naming a clicked element from a raycast hit — the three.js half of the FLine hit record.
+//
+// The server sends each clickable line's topology as the *same* string the interactive SVG puts in
+// `data-fline-elements` (`flineTopologyJson`, someSkiko.kt), so the two outputs cannot describe a line
+// differently. What differs is the picking, and it differs in the viewer's favour: three.js has already
+// told us *which* geometry was hit — the line segments, the fill, or the point sprites — so the element
+// kind needs no tolerance, and only the element itself has to be found. Which is a nearest-search in 3D
+// over the topology, plus a plane projection for a face.
+//
+// Pure arithmetic, no THREE and no DOM, so `ViewerJavaScript` can lift it and
+// `ThreeJsHitRecordDifferentialTest` can execute it against the same figures the 2D probe uses — and
+// assert that the two implementations agree on a planar face rather than assuming it.
+const FLINE_PICK_CUBIC_SAMPLES = 32;
+const FLINE_PICK_DEGENERATE_EPS = 1e-9;
+
+function flinePickCubicAt(seg, t) {
+    const mt = 1 - t;
+    const a = mt * mt * mt;
+    const b = 3 * mt * mt * t;
+    const c = 3 * mt * t * t;
+    const d = t * t * t;
+    const out = [];
+    for (let i = 0; i < 3; i += 1) {
+        out.push(a * seg.a[i] + b * seg.c1[i] + c * seg.c2[i] + d * seg.b[i]);
+    }
+    return out;
+}
+
+/** The point on a segment at parameter `t`, in 3D. */
+function flinePickSegmentAt(seg, t) {
+    if (seg.k === 'c' && seg.c1 && seg.c2) return flinePickCubicAt(seg, t);
+    const out = [];
+    for (let i = 0; i < 3; i += 1) out.push(seg.a[i] + (seg.b[i] - seg.a[i]) * t);
+    return out;
+}
+
+/**
+ * Nearest point on one segment to `p`, as `{ t, d2, point }`, all three dimensions this time.
+ *
+ * `u` is therefore the **Bézier parameter** of a cubic, not its arc length — the same quantity the 2D
+ * path reports, deliberately, because it is the number that indexes back into the curve the author
+ * wrote. See `dev_docs/fline_hit_records.md`.
+ */
+function flinePickNearestOnSegment(seg, p) {
+    function at(t) {
+        const q = flinePickSegmentAt(seg, t);
+        const dx = p[0] - q[0];
+        const dy = p[1] - q[1];
+        const dz = p[2] - q[2];
+        return { t: t, d2: dx * dx + dy * dy + dz * dz, point: q };
+    }
+    if (seg.k !== 'c' || !seg.c1 || !seg.c2) {
+        const vx = seg.b[0] - seg.a[0];
+        const vy = seg.b[1] - seg.a[1];
+        const vz = seg.b[2] - seg.a[2];
+        const lengthSquared = vx * vx + vy * vy + vz * vz;
+        const raw = lengthSquared > 0
+            ? ((p[0] - seg.a[0]) * vx + (p[1] - seg.a[1]) * vy + (p[2] - seg.a[2]) * vz) / lengthSquared
+            : 0;
+        return at(Math.min(1, Math.max(0, raw)));
+    }
+    let best = at(0);
+    for (let i = 1; i <= FLINE_PICK_CUBIC_SAMPLES; i += 1) {
+        const candidate = at(i / FLINE_PICK_CUBIC_SAMPLES);
+        if (candidate.d2 < best.d2) best = candidate;
+    }
+    let span = 1 / FLINE_PICK_CUBIC_SAMPLES;
+    for (let round = 0; round < 12; round += 1) {
+        span *= 0.5;
+        const lower = at(Math.max(0, best.t - span));
+        const upper = at(Math.min(1, best.t + span));
+        if (lower.d2 < best.d2) best = lower;
+        if (upper.d2 < best.d2) best = upper;
+    }
+    return best;
+}
+
+/**
+ * An orthonormal frame for a face's own plane, or `null` when the polygon has no plane at all.
+ *
+ * Newell's normal, so a slightly non-planar or a concave polygon still gets the area-weighted average
+ * plane rather than whatever the first three corners happened to say. `null` — a zero-length normal or
+ * no usable first edge — is the honest answer for a degenerate face (all corners coincident, or
+ * collinear), and the callers turn it into "no face coordinates" rather than into a plausible number.
+ */
+function flinePickFaceFrame(pts) {
+    let nx = 0;
+    let ny = 0;
+    let nz = 0;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        nx += (pts[j][1] - pts[i][1]) * (pts[j][2] + pts[i][2]);
+        ny += (pts[j][2] - pts[i][2]) * (pts[j][0] + pts[i][0]);
+        nz += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]);
+    }
+    const nLength = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (!(nLength > FLINE_PICK_DEGENERATE_EPS)) return null;
+    const normal = [nx / nLength, ny / nLength, nz / nLength];
+
+    let axisU = null;
+    for (let i = 1; i < pts.length; i += 1) {
+        const ex = pts[i][0] - pts[0][0];
+        const ey = pts[i][1] - pts[0][1];
+        const ez = pts[i][2] - pts[0][2];
+        const length = Math.sqrt(ex * ex + ey * ey + ez * ez);
+        if (length > FLINE_PICK_DEGENERATE_EPS) {
+            axisU = [ex / length, ey / length, ez / length];
+            break;
+        }
+    }
+    if (!axisU) return null;
+    const axisV = [
+        normal[1] * axisU[2] - normal[2] * axisU[1],
+        normal[2] * axisU[0] - normal[0] * axisU[2],
+        normal[0] * axisU[1] - normal[1] * axisU[0]
+    ];
+    return { origin: pts[0], u: axisU, v: axisV, normal: normal };
+}
+
+/** A 3D point in the frame's plane coordinates, plus its signed distance off that plane. */
+function flinePickToPlane(frame, p) {
+    const dx = p[0] - frame.origin[0];
+    const dy = p[1] - frame.origin[1];
+    const dz = p[2] - frame.origin[2];
+    return {
+        s: dx * frame.u[0] + dy * frame.u[1] + dz * frame.u[2],
+        t: dx * frame.v[0] + dy * frame.v[1] + dz * frame.v[2],
+        off: dx * frame.normal[0] + dy * frame.normal[1] + dz * frame.normal[2]
+    };
+}
+
+/** Even-odd point-in-polygon, on a polygon already flattened into `[s, t]` pairs. */
+function flinePickPointInPolygon(flat, s, t) {
+    let inside = false;
+    for (let i = 0, j = flat.length - 1; i < flat.length; j = i++) {
+        const si = flat[i][0];
+        const ti = flat[i][1];
+        const sj = flat[j][0];
+        const tj = flat[j][1];
+        if ((ti > t) !== (tj > t) && s < (sj - si) * (t - ti) / (tj - ti) + si) inside = !inside;
+    }
+    return inside;
+}
+
+/**
+ * Where inside a face a point landed, as `{ u, v, mode }` — and `mode` is the point of it.
+ *
+ * `bilinear` for a four-corner face whose bilinear map actually inverts at this point: `u` runs corner
+ * 0 → 1 and `v` corner 0 → 3, which is what makes them a position *on a panel*. The Newton solve is
+ * **checked** rather than trusted — the forward map has to reproduce the point, and the result has to
+ * land inside the patch — because on a non-convex quad it can converge to the fold, and a plausible
+ * wrong coordinate is worse than an honest fallback.
+ *
+ * `bbox` for every other closed subpath: the point's position in the face's own bounding box, in the
+ * face's plane. Well defined, monotone, and *not* a parameterisation, which is why it says so.
+ *
+ * `none`, with `u` and `v` NaN, for a face with no plane (degenerate) — a refusal.
+ */
+function flinePickFaceCoords(flat, s, t) {
+    if (flat.length === 4) {
+        const p0 = flat[0];
+        const p1 = flat[1];
+        const p2 = flat[2];
+        const p3 = flat[3];
+        let u = 0.5;
+        let v = 0.5;
+        let converged = false;
+        for (let round = 0; round < 24; round += 1) {
+            const fs = (1 - u) * (1 - v) * p0[0] + u * (1 - v) * p1[0] + u * v * p2[0] + (1 - u) * v * p3[0] - s;
+            const ft = (1 - u) * (1 - v) * p0[1] + u * (1 - v) * p1[1] + u * v * p2[1] + (1 - u) * v * p3[1] - t;
+            const dsdu = (1 - v) * (p1[0] - p0[0]) + v * (p2[0] - p3[0]);
+            const dtdu = (1 - v) * (p1[1] - p0[1]) + v * (p2[1] - p3[1]);
+            const dsdv = (1 - u) * (p3[0] - p0[0]) + u * (p2[0] - p1[0]);
+            const dtdv = (1 - u) * (p3[1] - p0[1]) + u * (p2[1] - p1[1]);
+            const det = dsdu * dtdv - dsdv * dtdu;
+            if (!isFinite(det) || Math.abs(det) < 1e-12) break;
+            const du = (fs * dtdv - ft * dsdv) / det;
+            const dv = (ft * dsdu - fs * dtdu) / det;
+            u -= du;
+            v -= dv;
+            if (!isFinite(u) || !isFinite(v)) break;
+            if (Math.abs(du) < 1e-9 && Math.abs(dv) < 1e-9) {
+                converged = true;
+                break;
+            }
+        }
+        if (converged && u >= -1e-6 && u <= 1 + 1e-6 && v >= -1e-6 && v <= 1 + 1e-6) {
+            // The check that makes it a measurement rather than a hope: does the map come back?
+            const bs = (1 - u) * (1 - v) * p0[0] + u * (1 - v) * p1[0] + u * v * p2[0] + (1 - u) * v * p3[0];
+            const bt = (1 - u) * (1 - v) * p0[1] + u * (1 - v) * p1[1] + u * v * p2[1] + (1 - u) * v * p3[1];
+            let diagonal = 0;
+            for (let i = 0; i < 4; i += 1) {
+                for (let j = i + 1; j < 4; j += 1) {
+                    diagonal = Math.max(diagonal, Math.hypot(flat[i][0] - flat[j][0], flat[i][1] - flat[j][1]));
+                }
+            }
+            const tolerance = Math.max(1e-9, diagonal * 1e-6);
+            if (Math.hypot(bs - s, bt - t) <= tolerance) {
+                return { u: Math.min(1, Math.max(0, u)), v: Math.min(1, Math.max(0, v)), mode: 'bilinear' };
+            }
+        }
+    }
+    let minS = Infinity;
+    let maxS = -Infinity;
+    let minT = Infinity;
+    let maxT = -Infinity;
+    for (let i = 0; i < flat.length; i += 1) {
+        minS = Math.min(minS, flat[i][0]);
+        maxS = Math.max(maxS, flat[i][0]);
+        minT = Math.min(minT, flat[i][1]);
+        maxT = Math.max(maxT, flat[i][1]);
+    }
+    if (!(maxS > minS) && !(maxT > minT)) return { u: NaN, v: NaN, mode: 'none' };
+    return {
+        u: maxS > minS ? (s - minS) / (maxS - minS) : 0,
+        v: maxT > minT ? (t - minT) / (maxT - minT) : 0,
+        mode: 'bbox'
+    };
+}
+
+/**
+ * The element a raycast hit landed on.
+ *
+ * `role` is what three.js already knows — `edge`, `face` or `point` — so this never has to guess a
+ * kind. `point3` is the hit position in the line's own coordinate space. Returns the fields of the hit
+ * record that describe the element, or nulls when there is no topology to name it with.
+ */
+function flinePickClassify(topology, role, point3) {
+    const empty = {
+        kind: role || '',
+        nodeIndex: -1,
+        subPathIndex: -1,
+        elementIndex: -1,
+        u: NaN,
+        v: NaN,
+        faceCoordinates: 'none',
+        onElement: null
+    };
+    if (!topology) return empty;
+    const segments = topology.segments || [];
+    const faces = topology.faces || [];
+
+    if (role === 'point') {
+        let best = null;
+        for (let i = 0; i < segments.length; i += 1) {
+            const seg = segments[i];
+            const ends = [[seg.a, seg.na], [seg.b, seg.nb]];
+            for (let e = 0; e < ends.length; e += 1) {
+                const q = ends[e][0];
+                if (!q) continue;
+                const d2 = (point3[0] - q[0]) * (point3[0] - q[0]) +
+                    (point3[1] - q[1]) * (point3[1] - q[1]) +
+                    (point3[2] - q[2]) * (point3[2] - q[2]);
+                if (!best || d2 < best.d2) best = { d2: d2, node: ends[e][1], p: seg.p, point: q };
+            }
+        }
+        if (!best) return empty;
+        return {
+            kind: 'point',
+            nodeIndex: best.node,
+            subPathIndex: best.p,
+            elementIndex: best.node,
+            u: NaN,
+            v: NaN,
+            faceCoordinates: 'none',
+            onElement: best.point
+        };
+    }
+
+    if (role === 'face') {
+        let best = null;
+        for (let i = 0; i < faces.length; i += 1) {
+            const pts = faces[i].pts || [];
+            if (pts.length < 3) continue;
+            const frame = flinePickFaceFrame(pts);
+            if (!frame) {
+                if (!best) best = { face: faces[i], frame: null, off: Infinity, flat: null, at: null };
+                continue;
+            }
+            const at = flinePickToPlane(frame, point3);
+            const flat = pts.map((q) => {
+                const projected = flinePickToPlane(frame, q);
+                return [projected.s, projected.t];
+            });
+            const inside = flinePickPointInPolygon(flat, at.s, at.t);
+            const score = Math.abs(at.off) + (inside ? 0 : 1e6);
+            if (!best || score < best.score) best = { face: faces[i], frame: frame, flat: flat, at: at, score: score };
+        }
+        if (!best) return empty;
+        if (!best.frame) {
+            return {
+                kind: 'face',
+                nodeIndex: best.face.n,
+                subPathIndex: best.face.p,
+                elementIndex: best.face.e,
+                u: NaN,
+                v: NaN,
+                faceCoordinates: 'none',
+                onElement: point3
+            };
+        }
+        const coords = flinePickFaceCoords(best.flat, best.at.s, best.at.t);
+        // The point *on* the face: the hit projected onto the face's own plane.
+        const onElement = [
+            point3[0] - best.frame.normal[0] * best.at.off,
+            point3[1] - best.frame.normal[1] * best.at.off,
+            point3[2] - best.frame.normal[2] * best.at.off
+        ];
+        return {
+            kind: 'face',
+            nodeIndex: best.face.n,
+            subPathIndex: best.face.p,
+            elementIndex: best.face.e,
+            u: coords.u,
+            v: coords.v,
+            faceCoordinates: coords.mode,
+            onElement: onElement
+        };
+    }
+
+    let best = null;
+    for (let i = 0; i < segments.length; i += 1) {
+        const near = flinePickNearestOnSegment(segments[i], point3);
+        if (!best || near.d2 < best.near.d2) best = { seg: segments[i], near: near };
+    }
+    if (!best) return empty;
+    return {
+        kind: 'edge',
+        nodeIndex: best.seg.n,
+        subPathIndex: best.seg.p,
+        elementIndex: best.seg.e,
+        u: best.near.t,
+        v: NaN,
+        faceCoordinates: 'none',
+        onElement: best.near.point
+    };
+}
+// [viewer-region fline-hit-picking] END
+
+/** Which of an interactive object's three geometries three.js says the ray hit. */
+function flineRoleForObject(object) {
+    if (!object) return '';
+    if (object.userData && object.userData.flineRole) return object.userData.flineRole;
+    if (object.isPoints) return 'point';
+    if (object.isMesh) return 'face';
+    if (object.isLineSegments || object.isLine) return 'edge';
+    return '';
 }
 
 function intersectionForHit(entry, hit) {
@@ -1194,11 +1566,31 @@ function intersectionForHit(entry, hit) {
             closestVertexIndex = vertex.index;
         }
     });
+
+    // `pointOnLine` is three.js's own nearest point on the picked segment, which is closer to the
+    // geometry than the point on the ray; for a fill or a point sprite there is only `point`.
+    const on = hit && hit.pointOnLine ? hit.pointOnLine : p;
+    const role = flineRoleForObject(hit && hit.object);
+    const element = flinePickClassify(entry.topology || null, role, [on.x, on.y, on.z]);
+    const onElement = element.onElement || null;
+
     return {
         closestVertexIndex,
         x: p.x,
         y: p.y,
-        z: p.z
+        z: p.z,
+        kind: element.kind,
+        lineIndex: Number.isFinite(entry.lineIndex) ? entry.lineIndex : -1,
+        label: typeof entry.label === 'string' ? entry.label : null,
+        nodeIndex: element.nodeIndex,
+        subPathIndex: element.subPathIndex,
+        elementIndex: element.elementIndex,
+        faceCoordinates: element.faceCoordinates || 'none',
+        u: Number.isFinite(element.u) ? element.u : null,
+        v: Number.isFinite(element.v) ? element.v : null,
+        ex: onElement ? onElement[0] : null,
+        ey: onElement ? onElement[1] : null,
+        ez: onElement ? onElement[2] : null
     };
 }
 

@@ -4,6 +4,7 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import afield.stdlib.FLineFaceCoordinates
 import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
@@ -894,6 +895,11 @@ internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
     elementIndex = elementIndex,
     u = u ?: Double.NaN,
     v = v ?: Double.NaN,
+    faceCoordinates = when (faceCoordinates.lowercase()) {
+        "bilinear" -> FLineFaceCoordinates.BILINEAR
+        "bbox", "bounding_box" -> FLineFaceCoordinates.BOUNDING_BOX
+        else -> FLineFaceCoordinates.NONE
+    },
     onElement = if (ex != null && ey != null) afield.stdlib.vec(ex, ey, ez ?: 0.0) else null
 )
 

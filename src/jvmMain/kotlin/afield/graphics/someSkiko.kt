@@ -469,7 +469,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
                 sb.append(""" data-fline-vertices='${flineVertexData(original)}'""")
                 sb.append(""" data-fline-index="$lineIndex"""")
                 original.label?.let { sb.append(""" data-fline-label="${svgAttr(it)}"""") }
-                sb.append(""" data-fline-elements='${flineElementData(original)}'""")
+                sb.append(""" data-fline-elements='${flineTopologyJson(original)}'""")
                 sb.append(""" data-fline-pick='${flinePickData(original, fit)}'""")
                 if (fit != null) {
                     sb.append(""" data-fit-scale="${jsonN(fit.scale)}" data-fit-offset-x="${jsonN(fit.offsetX)}" data-fit-offset-y="${jsonN(fit.offsetY)}"""")
@@ -526,6 +526,12 @@ private fun svgAttr(value: String): String = value
 /**
  * The line's topology, for a browser that has to name the element a click landed on.
  *
+ * **One producer for both clickable outputs.** The interactive SVG puts this in
+ * `data-fline-elements` and the three.js viewer gets the same string in
+ * [ThreeInteractiveObject.topology], so the two front ends cannot describe the same line differently —
+ * only their *picking* differs, which it must, because one has a click in a plane and the other has a
+ * raycast hit that already knows whether it landed on a line, a fill or a point.
+ *
  * Two lists, both in the line's own coordinates:
  *
  *  - `segments`, one per drawn segment, in draw order. `k` is `l` (straight), `c` (cubic) or `z` (the
@@ -542,7 +548,7 @@ private fun svgAttr(value: String): String = value
  * as [flinePathData] and [outputTo] treat it — otherwise the browser would name segments the renderer
  * never drew.
  */
-private fun flineElementData(f: FLine): String {
+internal fun flineTopologyJson(f: FLine): String {
     val segments = StringBuilder()
     val faces = StringBuilder()
     var segmentCount = 0

@@ -18,6 +18,10 @@ import fs from 'node:fs';
 
 const CASES = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const POSTED_OUT = process.argv[3];
+// The `fline-hit-picking` region lifted verbatim out of `threejs_viewer.html`, when the caller staged
+// it: the face-coordinate rule is written twice — once for a click in a plane, once for a raycast hit in
+// a face's plane — and the differential at the bottom of this file requires the two to agree.
+const VIEWER_REGION = process.argv[4] ? fs.readFileSync(process.argv[4], 'utf8') : null;
 
 // ---------------------------------------------------------------- a very small SVG DOM
 
@@ -202,8 +206,11 @@ globalThis.document = documentStub;
 
 const slidersSource = fs.readFileSync('sliders.js', 'utf8');
 // A classic script, not a module: evaluate it with `window`/`document` in scope, exactly as a page
-// would, so nothing in it has to be edited to be testable.
-new Function('window', 'document', slidersSource)(windowStub, documentStub);
+// would, so nothing in it has to be edited to be testable. The one epilogue line is the harness's,
+// not the file's — `flineFaceCoords` is module-private in the shipped script and the differential
+// below has to be able to call it directly on the same inputs the viewer's copy gets.
+const EXPORT_INTERNALS = '\nwindow.__flineFaceCoords = flineFaceCoords;\n';
+new Function('window', 'document', slidersSource + EXPORT_INTERNALS)(windowStub, documentStub);
 
 for (const name of ['sendFLineClick', '__flineIntersectionFromSvg', '__flineHoverIn', '__flineHoverOut']) {
     if (typeof windowStub[name] !== 'function') {
@@ -288,7 +295,8 @@ for (const testCase of CASES.cases) {
 }
 
 function fmt(value) {
-    return value === null || value === undefined ? '-' : Number(value).toFixed(4);
+    if (value === null || value === undefined) return '-';
+    return Number.isNaN(value) ? 'NaN' : Number(value).toFixed(4);
 }
 
 // ---------------------------------------------------------------- the hover pair, same file
@@ -325,6 +333,39 @@ for (const hoverCase of CASES.hover || []) {
     console.log(`  ${hoverCase.name}: ${painted.length} painted children hovered to ${hoverColor} and back`);
 }
 
+// ---------------------------------------------------------------- the two implementations, compared
+//
+// `flineFaceCoords` (sliders.js, a click in the plane of a 2D figure) and `flinePickFaceCoords` (the
+// `fline-hit-picking` region of threejs_viewer.html, a raycast hit projected into a face's own plane)
+// are the same rule written twice. For a face in the z = 0 plane both take the same numbers, so they
+// have to return the same `{ u, v, mode }` — including on the awkward faces, where "the same" is the
+// only way to know that a fallback in one is a fallback in the other.
+if (VIEWER_REGION && (CASES.differential || []).length) {
+    const region = new Function(
+        VIEWER_REGION + '\nreturn { flinePickFaceCoords: flinePickFaceCoords };'
+    )();
+    for (const face of CASES.differential) {
+        const svgSide = windowStub.__flineFaceCoords(face.pts, face.at[0], face.at[1]);
+        const viewerSide = region.flinePickFaceCoords(face.pts, face.at[0], face.at[1]);
+        check(face.name, 'both implementations report the same mode',
+            svgSide.mode === viewerSide.mode,
+            `sliders.js says ${svgSide.mode}, the viewer region says ${viewerSide.mode}`);
+        if (face.expectMode) {
+            check(face.name, 'mode', svgSide.mode === face.expectMode,
+                `expected ${face.expectMode}, got ${svgSide.mode}`);
+        }
+        const same = (a, b) => (Number.isNaN(a) && Number.isNaN(b)) || Math.abs(a - b) < 1e-9;
+        check(face.name, 'both implementations report the same u', same(svgSide.u, viewerSide.u),
+            `${svgSide.u} vs ${viewerSide.u}`);
+        check(face.name, 'both implementations report the same v', same(svgSide.v, viewerSide.v),
+            `${svgSide.v} vs ${viewerSide.v}`);
+        if (face.expectU !== undefined) closeTo(face.name, 'u', svgSide.u, face.expectU, face.tol || 1e-6);
+        if (face.expectV !== undefined) closeTo(face.name, 'v', svgSide.v, face.expectV, face.tol || 1e-6);
+        console.log(`  ${face.name}: ${svgSide.mode} u=${fmt(svgSide.u)} v=${fmt(svgSide.v)} ` +
+            `(viewer region agrees: ${viewerSide.mode} ${fmt(viewerSide.u)} ${fmt(viewerSide.v)})`);
+    }
+}
+
 fs.writeFileSync(POSTED_OUT, JSON.stringify(record, null, 1));
 
 if (failures.length) {
@@ -332,4 +373,5 @@ if (failures.length) {
     failures.forEach((failure) => console.log(`  - ${failure}`));
     process.exit(1);
 }
-console.log(`fline hit record probe passed (${CASES.cases.length} clicks, ${(CASES.hover || []).length} hovers)`);
+console.log(`fline hit record probe passed (${CASES.cases.length} clicks, ${(CASES.hover || []).length} hovers, ` +
+    `${(VIEWER_REGION ? (CASES.differential || []).length : 0)} faces compared against the viewer region)`);

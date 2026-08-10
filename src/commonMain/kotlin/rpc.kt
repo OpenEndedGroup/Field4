@@ -1219,6 +1219,8 @@ data class FLineClick(
     val nodeIndex: Int = -1,
     val subPathIndex: Int = -1,
     val elementIndex: Int = -1,
+    /** `bilinear`, `bbox`, `none` or empty — which convention `u`/`v` follow for a face hit. */
+    val faceCoordinates: String = "",
     /** `null` rather than `NaN`: JSON has no NaN, and a browser that sends one cannot be parsed. */
     val u: Double? = null,
     val v: Double? = null,

@@ -77,6 +77,7 @@ window.sendFLineClick = function(callbackId, intersection) {
         nodeIndex: int(hit.nodeIndex, -1),
         subPathIndex: int(hit.subPathIndex, -1),
         elementIndex: int(hit.elementIndex, -1),
+        faceCoordinates: typeof hit.faceCoordinates === 'string' ? hit.faceCoordinates : '',
         u: real(hit.u),
         v: real(hit.v),
         ex: real(hit.ex),
@@ -186,17 +187,31 @@ function flineFaceZ(pts, x, y) {
 }
 
 /**
- * Where inside a face the click landed, as `{ u, v }`.
+ * Where inside a face the click landed, as `{ u, v, mode }` — and `mode` is the point of it.
  *
- * Four corners — a panel — get true bilinear coordinates by Newton iteration, so u runs corner 0 → 1
- * and v runs corner 0 → 3 however the quad is skewed or projected. Anything else gets its position
- * within the face's bounding box, which is monotone and nothing more.
+ * `bilinear` for a four-corner face whose bilinear map actually inverts here: `u` runs corner 0 to
+ * corner 1 and `v` corner 0 to corner 3, which is what makes them a position *on a panel* however the
+ * quad is skewed. The Newton solve is **checked** rather than trusted — the forward map has to
+ * reproduce the click and the answer has to land inside the patch — because on a non-convex quad it
+ * converges onto the fold, and a plausible wrong coordinate is worse than an honest fallback.
+ *
+ * `bbox` for every other closed subpath: the click's position in the face's own bounding box. Well
+ * defined, monotone, and not a parameterisation, which is why the record says so rather than leaving
+ * the caller to assume. `none`, with NaN, for a face with no extent at all.
+ *
+ * Written twice, here and as `flinePickFaceCoords` in the `fline-hit-picking` region of
+ * `threejs_viewer.html` (which works in a face's own plane, since its faces are 3D).
+ * `ThreeJsHitRecordDifferentialTest` executes both and requires them to agree on a planar face.
  */
 function flineFaceCoords(pts, x, y) {
     if (pts.length === 4) {
-        var p0 = pts[0], p1 = pts[1], p2 = pts[2], p3 = pts[3];
+        var p0 = pts[0];
+        var p1 = pts[1];
+        var p2 = pts[2];
+        var p3 = pts[3];
         var u = 0.5;
         var v = 0.5;
+        var converged = false;
         for (var round = 0; round < 24; round++) {
             var fx = (1 - u) * (1 - v) * p0[0] + u * (1 - v) * p1[0] + u * v * p2[0] + (1 - u) * v * p3[0] - x;
             var fy = (1 - u) * (1 - v) * p0[1] + u * (1 - v) * p1[1] + u * v * p2[1] + (1 - u) * v * p3[1] - y;
@@ -210,9 +225,25 @@ function flineFaceCoords(pts, x, y) {
             var dv = (fy * dxdu - fx * dydu) / det;
             u -= du;
             v -= dv;
-            if (Math.abs(du) < 1e-9 && Math.abs(dv) < 1e-9) break;
+            if (!Number.isFinite(u) || !Number.isFinite(v)) break;
+            if (Math.abs(du) < 1e-9 && Math.abs(dv) < 1e-9) {
+                converged = true;
+                break;
+            }
         }
-        if (Number.isFinite(u) && Number.isFinite(v)) return { u: u, v: v };
+        if (converged && u >= -1e-6 && u <= 1 + 1e-6 && v >= -1e-6 && v <= 1 + 1e-6) {
+            var bx = (1 - u) * (1 - v) * p0[0] + u * (1 - v) * p1[0] + u * v * p2[0] + (1 - u) * v * p3[0];
+            var by = (1 - u) * (1 - v) * p0[1] + u * (1 - v) * p1[1] + u * v * p2[1] + (1 - u) * v * p3[1];
+            var diagonal = 0;
+            for (var i = 0; i < 4; i++) {
+                for (var j = i + 1; j < 4; j++) {
+                    diagonal = Math.max(diagonal, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]));
+                }
+            }
+            if (Math.hypot(bx - x, by - y) <= Math.max(1e-9, diagonal * 1e-6)) {
+                return { u: Math.min(1, Math.max(0, u)), v: Math.min(1, Math.max(0, v)), mode: 'bilinear' };
+            }
+        }
     }
     var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     pts.forEach(function(p) {
@@ -221,9 +252,11 @@ function flineFaceCoords(pts, x, y) {
         minY = Math.min(minY, p[1]);
         maxY = Math.max(maxY, p[1]);
     });
+    if (!(maxX > minX) && !(maxY > minY)) return { u: NaN, v: NaN, mode: 'none' };
     return {
         u: maxX > minX ? (x - minX) / (maxX - minX) : 0,
-        v: maxY > minY ? (y - minY) / (maxY - minY) : 0
+        v: maxY > minY ? (y - minY) / (maxY - minY) : 0,
+        mode: 'bbox'
     };
 }
 
@@ -324,6 +357,7 @@ window.__flineIntersectionFromSvg = function(event, groupEl) {
         nodeIndex: -1,
         subPathIndex: -1,
         elementIndex: -1,
+        faceCoordinates: 'none',
         u: NaN,
         v: NaN,
         ex: NaN,
@@ -339,8 +373,9 @@ window.__flineIntersectionFromSvg = function(event, groupEl) {
     var segments = topology.segments || [];
     var faces = topology.faces || [];
 
-    function place(kind, nodeIndex, subPathIndex, elementIndex, u, v, point) {
+    function place(kind, nodeIndex, subPathIndex, elementIndex, u, v, point, faceCoordinates) {
         hit.kind = kind;
+        hit.faceCoordinates = faceCoordinates || 'none';
         hit.nodeIndex = nodeIndex;
         hit.subPathIndex = subPathIndex;
         hit.elementIndex = elementIndex;
@@ -395,7 +430,7 @@ window.__flineIntersectionFromSvg = function(event, groupEl) {
         var pts = face.pts || [];
         if (pts.length < 3 || !flinePointInFace(pts, x, y)) continue;
         var uv = flineFaceCoords(pts, x, y);
-        return place('face', face.n, face.p, face.e, uv.u, uv.v, [x, y, flineFaceZ(pts, x, y)]);
+        return place('face', face.n, face.p, face.e, uv.u, uv.v, [x, y, flineFaceZ(pts, x, y)], uv.mode);
     }
 
     // 4. the click hit this line's `<g>` but landed on none of the above (a fill rule, a stroke wider

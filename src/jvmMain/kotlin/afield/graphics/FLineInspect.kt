@@ -3,6 +3,7 @@
 package afield.graphics
 
 import afield.Box
+import afield.stdlib.FLineFaceCoordinates
 import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
 import afield.stdlib.Vec4
@@ -111,7 +112,11 @@ fun FLineIntersection.describe(): String {
     return when (kind) {
         FLineHitKind.POINT -> "$name · point $elementIndex (node $nodeIndex) · $at"
         FLineHitKind.EDGE -> "$name · edge $elementIndex · u ${fmt(u)} · $at"
-        FLineHitKind.FACE -> "$name · face $elementIndex · u ${fmt(u)} v ${fmt(v)} · $at"
+        FLineHitKind.FACE -> {
+            // Say which convention the numbers follow when it is not the one a reader would assume.
+            val convention = if (faceCoordinates == FLineFaceCoordinates.BOUNDING_BOX) " (bbox)" else ""
+            "$name · face $elementIndex · u ${fmt(u)} v ${fmt(v)}$convention · $at"
+        }
         FLineHitKind.UNKNOWN -> "somewhere on $name · nearest node $closestVertexIndex · $at"
     }
 }

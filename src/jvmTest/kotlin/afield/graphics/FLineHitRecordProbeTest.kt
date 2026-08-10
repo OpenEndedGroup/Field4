@@ -2,6 +2,7 @@ package afield.graphics
 
 import afield.FLineClick
 import afield.getFLineClickCallback
+import afield.stdlib.FLineFaceCoordinates
 import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
 import afield.stdlib.Vec3
@@ -130,6 +131,48 @@ class FLineHitRecordProbeTest {
             hoverColor = vec(0.2, 1.0, 0.6, 0.4)
         }
 
+    /**
+     * A deliberately lopsided cubic: both controls crowded against the start, so its Bézier parameter
+     * and its arc length disagree by a lot. `u = 0.5` is most of the way along it by length.
+     */
+    private fun lopsided(): FLine = fline {
+        moveTo(LOPSIDED[0])
+        cubicTo(LOPSIDED[1], LOPSIDED[2], LOPSIDED[3])
+        label = "lopsided"
+        thickness = 2.0
+        color = vec(0.9, 0.6, 1.0, 1.0)
+    }
+
+    /** A non-convex quad — one corner pulled back past the diagonal, folding the bilinear patch. */
+    private fun dart(): FLine = fline {
+        moveTo(20.0, 20.0)
+        lineTo(120.0, 20.0)
+        lineTo(60.0, 60.0)
+        lineTo(20.0, 120.0)
+        close()
+        label = "dart"
+        filled = true
+        stroked = true
+        thickness = 1.5
+        color = vec(0.9, 0.4, 0.4, 0.8)
+    }
+
+    /** Five corners: there is no bilinear patch to have. */
+    private fun pentagon(): FLine = fline {
+        val cx = 250.0
+        val cy = 60.0
+        for (i in 0 until 5) {
+            val a = -Math.PI / 2 + 2.0 * Math.PI * i / 5
+            if (i == 0) moveTo(cx + 40 * cos(a), cy + 40 * sin(a)) else lineTo(cx + 40 * cos(a), cy + 40 * sin(a))
+        }
+        close()
+        label = "pentagon"
+        filled = true
+        stroked = true
+        thickness = 1.5
+        color = vec(0.5, 0.7, 0.5, 0.8)
+    }
+
     private fun cubicAt(p0: Vec3, c1: Vec3, c2: Vec3, p1: Vec3, t: Double): Vec3 {
         val mt = 1 - t
         val a = mt * mt * mt
@@ -154,13 +197,17 @@ class FLineHitRecordProbeTest {
         val rail = rail()
         val curve = curve()
         val place = place()
+        val lopsided = lopsided()
+        val dart = dart()
+        val pentagon = pentagon()
         val figureA: String
         val figureB: String
+        val figureC: String
         val cases = StringBuilder()
         private var caseCount = 0
 
         init {
-            listOf(panel, rail, curve, place).forEach { it.onClick = onClick }
+            listOf(panel, rail, curve, place, lopsided, dart, pentagon).forEach { it.onClick = onClick }
             figureA = buildInteractiveSVG(
                 listOf(panel, rail, curve).map { it to it },
                 300.0,
@@ -172,6 +219,12 @@ class FLineHitRecordProbeTest {
                 220.0,
                 220.0,
                 FIT
+            )
+            figureC = buildInteractiveSVG(
+                listOf(lopsided, dart, pentagon).map { it to it },
+                320.0,
+                200.0,
+                null
             )
         }
 
@@ -198,9 +251,10 @@ class FLineHitRecordProbeTest {
             caseCount++
         }
 
-        fun casesJson(hover: String): String =
+        fun casesJson(hover: String, differential: String): String =
             """{"ctm": {"scale": $CTM_SCALE, "tx": $CTM_TX, "ty": $CTM_TY},""" + "\n" +
-                """ "cases": [""" + "\n$cases\n ],\n \"hover\": [$hover]}\n"
+                """ "cases": [""" + "\n$cases\n ],\n \"hover\": [$hover],\n" +
+                " \"differential\": [$differential]}\n"
     }
 
     /** The `to` of an anchor node, which is the only kind of node these figures start with. */
@@ -237,7 +291,7 @@ class FLineHitRecordProbeTest {
             "panel face at (0.25, 0.75)", "figureA.svg", 0, vec(faceX, faceY, 0.0), null,
             """"kind": "face", "lineIndex": 0, "label": "panel", "nodeIndex": 4, "subPathIndex": 0,
                 "elementIndex": 0, "u": $u, "v": $v, "ex": $faceX, "ey": $faceY, "ez": ${0.1 * faceX},
-                "closestVertexIndex": 3""".trimIndent().replace("\n", " "),
+                "faceCoordinates": "bilinear", "closestVertexIndex": 3""".trimIndent().replace("\n", " "),
             tolerance = 1e-3
         )
         // Within picking distance of corner 1 — a node beats the face it belongs to.
@@ -274,7 +328,7 @@ class FLineHitRecordProbeTest {
         click(
             "place face at its centre", "figureB.svg", 0, vec(100.0, 100.0, 0.0), FIT,
             """"kind": "face", "lineIndex": 0, "label": "place", "subPathIndex": 0, "elementIndex": 0,
-                "u": 0.5, "v": 0.5, "ex": 100.0, "ey": 100.0""".trimIndent().replace("\n", " "),
+                "u": 0.5, "v": 0.5, "ex": 100.0, "ey": 100.0, "faceCoordinates": "bbox"""".trimIndent().replace("\n", " "),
             tolerance = 1e-3
         )
         // The midpoint of one 5.8-unit rim segment. Both its ends are inside the 8-line-unit point
@@ -286,6 +340,33 @@ class FLineHitRecordProbeTest {
             """"kind": "edge", "lineIndex": 0, "nodeIndex": 1, "subPathIndex": 0, "elementIndex": 0,
                 "u": 0.5""".trimIndent().replace("\n", " "),
             tolerance = 1e-2
+        )
+        // `u` on a cubic is the BÉZIER PARAMETER, not arc length, and this is the case that says so out
+        // loud. The lopsided cubic in figure C piles both controls up against its start, so parameter and
+        // length diverge hard: the point at t = 0.5 is far past halfway along the curve. The assertion is
+        // that `u` is the parameter — to 2e-3 — and [theCubicParameterIsNotArcLength] below asserts the
+        // size of the disagreement, so a future change that quietly switched to arc length would fail
+        // one of the two.
+        click(
+            "lopsided cubic at t = 0.5", "figureC.svg", 0, cubicAt(LOPSIDED[0], LOPSIDED[1], LOPSIDED[2], LOPSIDED[3], 0.5), null,
+            """"kind": "edge", "lineIndex": 0, "label": "lopsided", "nodeIndex": 1, "elementIndex": 0,
+                "u": 0.5""".trimIndent().replace("\n", " "),
+            tolerance = 2e-3
+        )
+        // A non-convex face, in the 2D path this time. Measured rather than assumed (see the
+        // differential list below): the checked bilinear solve *does* invert over almost all of a dart's
+        // interior, so this deep-interior click is a verified `bilinear`, and the handful of interior
+        // points where it does not invert all lie within the edge tolerance and are reported as edges
+        // anyway. Which is the honest shape of the answer: on this figure the fallback is unreachable by
+        // clicking, and the function-level differential is where it gets exercised.
+        click(
+            "dart face, deep interior", "figureC.svg", 1, vec(35.0, 35.0, 0.0), null,
+            """"kind": "face", "label": "dart", "faceCoordinates": "bilinear"""".trimIndent().replace("\n", " ")
+        )
+        // Five corners: no bilinear patch exists at all, and the record says bbox rather than inventing one.
+        click(
+            "pentagon face", "figureC.svg", 2, vec(250.0, 60.0, 0.0), null,
+            """"kind": "face", "label": "pentagon", "faceCoordinates": "bbox"""".trimIndent().replace("\n", " ")
         )
     }
 
@@ -318,7 +399,7 @@ class FLineHitRecordProbeTest {
         val posted = run(fixture) ?: return
 
         val payloads = Json.parseToJsonElement(posted).jsonArray
-        assertEquals(7, payloads.size, "expected one posted payload per click")
+        assertEquals(10, payloads.size, "expected one posted payload per click")
 
         val byName = LinkedHashMap<String, FLineIntersection>()
         payloads.forEach { entry ->
@@ -364,9 +445,18 @@ class FLineHitRecordProbeTest {
 
         assertEquals(
             setOf(0, 1, 2),
-            byName.values.filter { it.label != "place" }.map { it.lineIndex }.toSet(),
+            byName.values.filter { it.label in setOf("panel", "rail", "curve") }.map { it.lineIndex }.toSet(),
             "one shared closure should have been able to tell the three lines of figure A apart"
         )
+
+        val pentagon = byName.getValue("pentagon face")
+        assertEquals(FLineHitKind.FACE, pentagon.kind)
+        assertEquals(
+            FLineFaceCoordinates.BOUNDING_BOX, pentagon.faceCoordinates,
+            "a five-cornered face has no bilinear patch, and the record has to say which convention it used"
+        )
+        assertEquals(FLineFaceCoordinates.BILINEAR, face.faceCoordinates)
+        assertEquals(FLineFaceCoordinates.NONE, edge.faceCoordinates, "an edge hit has no face convention")
     }
 
     /**
@@ -449,15 +539,27 @@ class FLineHitRecordProbeTest {
         dir.resolve("package.json").writeText("{\"type\": \"module\"}\n")
         dir.resolve("figureA.svg").writeText(fixture.figureA)
         dir.resolve("figureB.svg").writeText(fixture.figureB)
+        dir.resolve("figureC.svg").writeText(fixture.figureC)
         dir.resolve("cases.json").writeText(
             fixture.casesJson(
                 """{"name": "panel hover", "svg": "figureA.svg", "lineIndex": 0},""" +
-                    """{"name": "place hover", "svg": "figureB.svg", "lineIndex": 0}"""
+                    """{"name": "place hover", "svg": "figureB.svg", "lineIndex": 0}""",
+                differentialFaces()
             )
         )
         val posted = dir.resolve("posted.json")
+        // The viewer's own face-coordinate rule, lifted verbatim, so the probe can hold the two
+        // implementations to each other rather than to a description of each other.
+        val region = dir.resolve("viewerRegion.js")
+        region.writeText(ViewerJavaScript.regionSource("fline-hit-picking"))
 
-        val process = ProcessBuilder(node, dir.resolve("probe.mjs").toString(), dir.resolve("cases.json").toString(), posted.toString())
+        val process = ProcessBuilder(
+            node,
+            dir.resolve("probe.mjs").toString(),
+            dir.resolve("cases.json").toString(),
+            posted.toString(),
+            region.toString()
+        )
             .directory(dir.toFile())
             .redirectErrorStream(true)
             .start()
@@ -473,6 +575,72 @@ class FLineHitRecordProbeTest {
         return posted.readText()
     }
 
+    /**
+     * The faces both implementations of the face-coordinate rule are made to answer for.
+     *
+     * All in the `z = 0` plane, so the viewer region's plane projection is the identity and the two
+     * functions receive *identical* numbers — which is what makes disagreement mean disagreement rather
+     * than a different frame. A convex quad, the same quad's fold, a pentagon and a degenerate face: the
+     * four outcomes the record can report.
+     */
+    private fun differentialFaces(): String {
+        fun face(name: String, pts: String, at: Pair<Double, Double>, mode: String, extra: String = "") =
+            """{"name": ${json(name)}, "pts": [$pts], "at": [${at.first}, ${at.second}], """ +
+                """"expectMode": ${json(mode)}$extra}"""
+        val square = "[0,0,0],[100,0,0],[100,100,0],[0,100,0]"
+        val skewed = "[0,0,0],[100,20,0],[80,120,0],[10,90,0]"
+        val dartPoints = "[20,20,0],[120,20,0],[60,60,0],[20,120,0]"
+        val pentagonPoints = "[0,0,0],[100,0,0],[130,80,0],[50,130,0],[-30,80,0]"
+        val degenerate = "[7,7,0],[7,7,0],[7,7,0]"
+        return listOf(
+            face("unit square, dead centre", square, 25.0 to 75.0, "bilinear", ""","expectU": 0.25, "expectV": 0.75"""),
+            face("skewed quad", skewed, 40.0 to 40.0, "bilinear"),
+            // Measured, not guessed: of the 941 interior points of a 2-unit grid over this dart, exactly
+            // two fail the checked solve, and both sit in the extreme corners where the patch folds.
+            face("dart, the corner where the patch folds", dartPoints, 116.0 to 22.0, "bbox"),
+            face("dart, deep interior", dartPoints, 30.0 to 30.0, "bilinear"),
+            face("pentagon", pentagonPoints, 40.0 to 40.0, "bbox"),
+            face("a face with no extent", degenerate, 7.0 to 7.0, "none")
+        ).joinToString(",\n  ")
+    }
+
+    /**
+     * **What `u` means on a curve**, asserted rather than assumed.
+     *
+     * A reader seeing `u = 0.5` on a cubic will assume half way along it. It is the **Bézier parameter**,
+     * and on [LOPSIDED] — both controls crowded against the start — the two are nowhere near each other:
+     * parameter 0.5 is 16.8% of the way along by length.
+     * This measures the gap with a Kotlin oracle (2000-step polyline arc length) so that the claim in
+     * `FLineIntersection.u`'s KDoc and in `dev_docs/fline_hit_records.md` is a measured fact, and so that
+     * a future change to arc-length parameterisation fails a test instead of silently redefining a field.
+     */
+    @Test
+    fun `u on a cubic is the Bezier parameter, and that is measurably not arc length`() {
+        val steps = 2000
+        var total = 0.0
+        val lengths = DoubleArray(steps + 1)
+        var previous = cubicAt(LOPSIDED[0], LOPSIDED[1], LOPSIDED[2], LOPSIDED[3], 0.0)
+        for (i in 1..steps) {
+            val here = cubicAt(LOPSIDED[0], LOPSIDED[1], LOPSIDED[2], LOPSIDED[3], i.toDouble() / steps)
+            total += kotlin.math.hypot((here.x - previous.x).toDouble(), (here.y - previous.y).toDouble())
+            lengths[i] = total
+            previous = here
+        }
+        val atHalf = lengths[steps / 2] / total
+        // Measured 2026-08-10: the point at parameter 0.5 is only **16.8%** of the way along by length —
+        // the controls crowd the start, so the curve creeps and then bolts. The floor is set just under
+        // that gap of 0.332: a loose floor like 0.01 would pass for almost any curve and prove nothing,
+        // and the direction matters too, which is why this is not an `abs`.
+        assertTrue(
+            0.5 - atHalf > 0.3,
+            "the lopsided cubic is not lopsided enough to make the point: parameter 0.5 sits at " +
+                "${"%.4f".format(atHalf)} of its arc length"
+        )
+        println("lopsided cubic: parameter 0.5 is at ${"%.4f".format(atHalf)} of arc length")
+    }
+
+    private fun json(value: String): String = "\"" + value.replace("\"", "\\\"") + "\""
+
     private fun resource(path: String): String =
         javaClass.getResource(path)?.readText()
             ?: fail("$path is not on the test classpath (expected it in commonMain or jvmTest resources)")
@@ -482,6 +650,14 @@ class FLineHitRecordProbeTest {
 
         /** The fit a `lines(fitToSize = true)` call would apply — scale and offset, both non-trivial. */
         val FIT = FitTransform(0.5f, 10f, 6f)
+
+        /** start, both controls, end — the controls crowded against the start on purpose. */
+        val LOPSIDED = listOf(
+            vec(20.0, 160.0, 0.0),
+            vec(28.0, 150.0, 0.0),
+            vec(36.0, 140.0, 0.0),
+            vec(300.0, 120.0, 0.0)
+        )
 
         // The page's own transform from SVG units to client pixels, so `getScreenCTM` is not identity.
         const val CTM_SCALE = 2.0

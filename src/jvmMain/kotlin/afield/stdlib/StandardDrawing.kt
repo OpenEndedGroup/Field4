@@ -154,6 +154,34 @@ enum class FLineHitKind {
 }
 
 /**
+ * Which convention [FLineIntersection.u] and `v` follow for a [FLineHitKind.FACE] hit — because there
+ * is no one right answer for a face nobody chose, and a plausible wrong number is worse than a
+ * labelled one.
+ *
+ * The output does not pick the convention; the *face* does.
+ */
+enum class FLineFaceCoordinates {
+    /** Not a face hit, or a face this output refused to parameterise. `u` and `v` are `NaN`. */
+    NONE,
+    /**
+     * True bilinear coordinates on a four-corner face: `u` runs corner 0 -> 1, `v` corner 0 -> 3, so
+     * `(u, v)` is a position *on a panel* however the quad is skewed or projected.
+     *
+     * Only reported when the solve is **checked** and passes: the forward map has to reproduce the
+     * click, and the answer has to land inside the patch. On a non-convex quad it can do neither — the
+     * Newton iteration converges onto the fold — and then the hit says [BOUNDING_BOX] instead of a
+     * number that looks fine and is not.
+     */
+    BILINEAR,
+    /**
+     * The click's position within the face's own bounding box (in the face's plane, for the three.js
+     * output): `0..1` per axis, monotone, and **not** a parameterisation of the surface. What a face
+     * with three, or five, or twenty-eight corners gets.
+     */
+    BOUNDING_BOX
+}
+
+/**
  * Hit information passed to [FLine.onClick] from the interactive line renderers — what a click on a
  * figure *returns*.
  *
@@ -200,19 +228,24 @@ data class FLineIntersection(
     /**
      * Where on the element the click landed, `0..1`, or `NaN` when it does not apply.
      *
-     * Along the segment for an [FLineHitKind.EDGE] (0 at the segment's start node, 1 at its end; for a
-     * cubic it is the curve parameter). The first face coordinate for a [FLineHitKind.FACE].
+     * For an [FLineHitKind.EDGE], along the segment: 0 at the segment's start node, 1 at its end. On a
+     * cubic this is the **Bézier parameter**, not arc length, and the two are not interchangeable — on
+     * an unevenly-controlled curve `u = 0.5` can be two thirds of the way along by length. It is the
+     * parameter on purpose, because that is the number that indexes back into the curve the author
+     * wrote; `FLineHitRecordProbeTest` pins the size of the disagreement on a deliberately lopsided
+     * cubic so that nobody has to take this paragraph's word for it.
+     *
+     * For an [FLineHitKind.FACE], the first face coordinate — and [faceCoordinates] says what that
+     * means.
      */
     val u: Double = Double.NaN,
-    /**
-     * The second face coordinate for a [FLineHitKind.FACE], `NaN` otherwise.
-     *
-     * For a face with exactly four corners `(u, v)` are true bilinear coordinates — `u` runs from
-     * corner 0 to corner 1, `v` from corner 0 to corner 3 — which is what makes them usable as a
-     * position *on a panel*. For any other closed subpath they are the click's position within the
-     * face's own bounding box.
-     */
+    /** The second face coordinate for an [FLineHitKind.FACE], `NaN` otherwise. See [faceCoordinates]. */
     val v: Double = Double.NaN,
+    /**
+     * Which convention [u] and [v] follow for a face hit — bilinear on a four-corner face, its bounding
+     * box otherwise, or a refusal. Always [FLineFaceCoordinates.NONE] for a non-face hit.
+     */
+    val faceCoordinates: FLineFaceCoordinates = FLineFaceCoordinates.NONE,
     /**
      * The point *on* the element nearest the click, in the line's own coordinate space, or `null`.
      *
