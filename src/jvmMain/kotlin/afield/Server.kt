@@ -32,7 +32,6 @@ import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
 import afield.server.recordControllerSelection
 import afield.server.writeFileProxyContents
-import afield.stdlib.FLineIntersection
 import afield.stdlib.begin
 import com.sun.management.GarbageCollectionNotificationInfo
 import com.aallam.openai.api.BetaOpenAI
@@ -63,7 +62,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import afield.stdlib.linalg.Vector2f
-import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 import java.awt.Desktop
 import java.io.File
@@ -2673,10 +2671,7 @@ class Server {
 
                 val callback = getFLineClickCallback(click.callbackId)
                 if (callback != null) {
-                    val intersection = FLineIntersection(
-                        closestVertexIndex = click.closestVertexIndex,
-                        position = Vector3f(click.x.toFloat(), click.y.toFloat(), click.z.toFloat())
-                    )
+                    val intersection = click.toIntersection()
                     GlobalScope.launch {
                         try {
                             callback(intersection)

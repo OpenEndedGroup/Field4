@@ -230,12 +230,51 @@ The two viewers are deliberately close in spirit. If you learn one, the other sh
 
 ```diffstatic {data-lang=kotlin}
 :::static
-data class FLineIntersection(val closestVertexIndex: Int, val position: Vec3)
+enum class FLineHitKind { POINT, EDGE, FACE, UNKNOWN }
+
+data class FLineIntersection(
+    val closestVertexIndex: Int,
+    val position: Vec3,
+    val kind: FLineHitKind = FLineHitKind.UNKNOWN,
+    val lineIndex: Int = -1,          // which line of the ones you drew
+    val label: String? = null,        // that line's FLine.label
+    val nodeIndex: Int = -1,          // the node that IS the element
+    val subPathIndex: Int = -1,
+    val elementIndex: Int = -1,       // edge 0, 1, 2... / face 0, 1...
+    val u: Double = Double.NaN,       // along the edge, or across the face
+    val v: Double = Double.NaN,       // up the face
+    val onElement: Vec3? = null       // the point on the element, z included
+)
+
+enum class FLineFaceCoordinates { NONE, BILINEAR, BOUNDING_BOX }
+
 var FLine.onClick: ((FLineIntersection) -> Unit)?
 var FLine.hoverColor: Vec4?
+var FLine.label: String?
 ```
 
-This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer. The callback receives the closest FLine vertex index and the clicked 3D position. The usual pattern is simple: draw something, assign `onClick`, and update another output area when it gets picked.
+This works in both the 2D `lines(...)` renderer and the Three.js `threeLines(...)` renderer.
+
+**What the record tells you.** Both renderers fill all of it in: which element you hit (a node, one
+segment, or the inside of a closed subpath), which line of the several you may have drawn, and *where*
+on that element — `u` along a segment (the curve parameter, for a cubic), and `(u, v)` across a face,
+which for a four-corner face are true bilinear coordinates, so they are a position **on a panel**.
+`onElement` is the point on the element itself rather than where the pointer was, so its `z` is
+interpolated along the element: a 3D line drawn into the flat 2D output still reports a depth. Every field
+past `position` is defaulted, so a callback written against the original two still compiles.
+
+Two things worth knowing before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
+arc length — on a curve whose controls crowd its start those differ enormously (measured: parameter 0.5 at
+16.8% of the length). And `(u, v)` on a face means different things on different faces, so the record says
+which: `faceCoordinates` is `BILINEAR` only for a four-corner face whose solve is checked and passes,
+`BOUNDING_BOX` for anything else, and `NONE` — with `NaN` — for a face with no plane. The Three.js
+renderer answers with the same record, working in each face's own plane; it has the easier job of the two,
+because the raycast already knows whether it hit the strokes, the fill or the points.
+
+`lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
+part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
+names whatever you click. See `dev_docs/fline_hit_records.md`, and
+`public/docs/assets/fline_hit_records_demo/metadata.edn` for a document to click.
 
 #### 2D callbacks
 

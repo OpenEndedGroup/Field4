@@ -96,8 +96,8 @@ it is a literal token that must still appear at (or within two lines of) the cit
 | 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2216` | `handlers["symbol-context"]` |
 | 20 | how any language's result becomes box output | `src/jvmMain/kotlin/afield/execution.kt:1134` | `fun dispatchExecutionOutput` |
 | 21 | how `print`/`error` inside a program reach the box | `src/jvmMain/kotlin/afield/execution.kt:1179` | `fun configureOutputProxies` |
-| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4632` | `src/commonMain/resources/` |
-| 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/Server.kt:4612` | `val assetCache` |
+| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4629` | `src/commonMain/resources/` |
+| 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/Server.kt:4609` | `val assetCache` |
 | 24 | the per-box-property Monaco language table | `src/jsMain/kotlin/afield/BootstrapMonacoInit.kt:73` | `monacoPropertyLanguages` |
 
 ### Reading the ledger
@@ -584,14 +584,14 @@ language surface, and this page does not fix it.
 
 ## Serving the `.js`, and the cache trap
 
-Ledger points 22-24. `Server.kt:4632` serves `src/commonMain/resources/` at the site root, and
+Ledger points 22-24. `Server.kt:4629` serves `src/commonMain/resources/` at the site root, and
 `bootstrapMonaco.js:19-23` maps the AMD prefix `bithero` to `./`, which is the whole of why
 `define("bithero/fieldml", …)` resolves to `fieldml.js`. Adding a language module means dropping a file
 in that directory; there is nothing to register on the server side.
 
-The trap is `assetCache` (`Server.kt:4612-4627`). An interactive browser gets `Cache-Control: no-store`
-(`:4600`), but a `HeadlessChrome` user agent — every docs capture and every Playwright verification —
-gets `public, max-age=3600` on `.js` (`:4603-4604`). So a headless run can serve you the *previous*
+The trap is `assetCache` (`Server.kt:4609-4625`). An interactive browser gets `Cache-Control: no-store`
+(`:4613`), but a `HeadlessChrome` user agent — every docs capture and every Playwright verification —
+gets `public, max-age=3600` on `.js` (`:4617`, applied at `:4622-4623`). So a headless run can serve the *previous*
 version of your language module for an hour, and the symptom is that a correct fix looks broken. If a
 headless check disagrees with an interactive one about your `.js`, suspect this before your code.
 

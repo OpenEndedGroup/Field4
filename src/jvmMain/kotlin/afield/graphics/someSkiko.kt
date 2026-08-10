@@ -420,15 +420,25 @@ fun outputTo(f: FLine, s: Canvas, antiAlias: Boolean = false) {
  * For each original FLine that has [FLine.hoverColor] set, the `<g>` element gets
  * `onmouseover` / `onmouseout` attributes that call `window.__flineHoverIn` /
  * `window.__flineHoverOut` to swap the geometry colour on pointer entry/exit.
+ *
+ * A clickable `<g>` also carries what the browser needs to say **what** was hit rather than only
+ * "this line was": its index in [pairs] (`data-fline-index`), its [FLine.label], its topology
+ * (`data-fline-elements` — segments and closed subpaths, with node indices) and the picking
+ * tolerances (`data-fline-pick`). All of it in the *original*, unfitted coordinate space, like the
+ * older `data-fline-vertices`, because that is the space the user's own numbers are in; the browser
+ * inverts [fit] before it picks. `__flineIntersectionFromSvg` in `sliders.js` is the consumer, and
+ * `FLineHitRecordProbeTest` executes that very function against the SVG this builds.
  */
 internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: Double, fit: FitTransform? = null): String {
-    val renderablePairs = pairs.filter { (_, scaled) -> scaled.safeFast2DBoundsOrNull() != null }
+    val renderablePairs = pairs.withIndex()
+        .filter { (_, pair) -> pair.second.safeFast2DBoundsOrNull() != null }
+        .map { (index, pair) -> Triple(index, pair.first, pair.second) }
     if (renderablePairs.isEmpty()) return emptySvg(w, h)
 
     val we: Double
     val he: Double
     if (w <= 0.0 || h <= 0.0) {
-        val scaledLines = renderablePairs.map { it.second }
+        val scaledLines = renderablePairs.map { it.third }
         val bounds = scaledLines.combinedRenderableBoundsOrNull() ?: return emptySvg(w, h)
         we = if (w > 0.0) w else max(1.0, max(bounds.w, bounds.x + bounds.w))
         he = if (h > 0.0) h else max(1.0, max(bounds.h, bounds.y + bounds.h))
@@ -439,8 +449,9 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
 
     val sb = StringBuilder()
     sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible"><g vector-effect="non-scaling-stroke">""")
+    sb.append(CALIBRATION_RECT)
 
-    renderablePairs.forEach { (original, scaled) ->
+    renderablePairs.forEach { (lineIndex, original, scaled) ->
         val onClick = original.onClick
         val hoverColor = original.hoverColor
         val hasInteraction = onClick != null || hoverColor != null
@@ -456,6 +467,10 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
             if (callbackId != null) {
                 sb.append(""" data-fline-callback-id="$callbackId"""")
                 sb.append(""" data-fline-vertices='${flineVertexData(original)}'""")
+                sb.append(""" data-fline-index="$lineIndex"""")
+                original.label?.let { sb.append(""" data-fline-label="${svgAttr(it)}"""") }
+                sb.append(""" data-fline-elements='${flineTopologyJson(original)}'""")
+                sb.append(""" data-fline-pick='${flinePickData(original, fit)}'""")
                 if (fit != null) {
                     sb.append(""" data-fit-scale="${jsonN(fit.scale)}" data-fit-offset-x="${jsonN(fit.offsetX)}" data-fit-offset-y="${jsonN(fit.offsetY)}"""")
                 }
@@ -498,6 +513,178 @@ private fun jsonN(v: Number): String {
     if (!d.isFinite()) return "0"
     return String.format(Locale.US, "%.6f", d).trimEnd('0').trimEnd('.').ifEmpty { "0" }
 }
+
+private fun jsonPoint(p: Vec3): String = "[${jsonN(p.x)},${jsonN(p.y)},${jsonN(p.z)}]"
+
+/** Escape a string for use inside a double-quoted SVG/HTML attribute. */
+private fun svgAttr(value: String): String = value
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("\"", "&quot;")
+
+/**
+ * The line's topology, for a browser that has to name the element a click landed on.
+ *
+ * **One producer for both clickable outputs.** The interactive SVG puts this in
+ * `data-fline-elements` and the three.js viewer gets the same string in
+ * [ThreeInteractiveObject.topology], so the two front ends cannot describe the same line differently —
+ * only their *picking* differs, which it must, because one has a click in a plane and the other has a
+ * raycast hit that already knows whether it landed on a line, a fill or a point.
+ *
+ * Two lists, both in the line's own coordinates:
+ *
+ *  - `segments`, one per drawn segment, in draw order. `k` is `l` (straight), `c` (cubic) or `z` (the
+ *    segment a `close` draws back to the subpath's first anchor); `n` is the index in `nodes` of the
+ *    node that *draws* the segment; `p` is the subpath (`moveTo`-delimited piece) it belongs to; `e`
+ *    is its ordinal among the line's segments; `a`/`b` are its ends, `na`/`nb` those ends' own node
+ *    indices (which for a `close` are the last and the *first* anchor, not `n`), and `c1`/`c2` a
+ *    cubic's controls.
+ *  - `faces`, one per **closed** subpath, as the polygon through that subpath's anchors — cubics
+ *    contribute their endpoint, not their curve, which is what makes the four-corner test below mean
+ *    "a quad panel" rather than "a shape with four straight sides". `n` is the `close` node's index.
+ *
+ * A leading `lineTo`/`cubicTo` with no `moveTo` before it starts a subpath and draws nothing, exactly
+ * as [flinePathData] and [outputTo] treat it — otherwise the browser would name segments the renderer
+ * never drew.
+ */
+internal fun flineTopologyJson(f: FLine): String {
+    val segments = StringBuilder()
+    val faces = StringBuilder()
+    var segmentCount = 0
+    var faceCount = 0
+    var subPath = -1
+    var current: Vec3? = null
+    var currentNode = -1
+    var subPathStart: Vec3? = null
+    var subPathStartNode = -1
+    val anchors = mutableListOf<Vec3>()
+    var closeNode = -1
+
+    fun segment(
+        kind: String,
+        nodeIndex: Int,
+        a: Vec3,
+        b: Vec3,
+        nodeA: Int,
+        nodeB: Int,
+        c1: Vec3? = null,
+        c2: Vec3? = null
+    ) {
+        if (segmentCount > 0) segments.append(',')
+        segments.append("""{"k":"$kind","n":$nodeIndex,"p":$subPath,"e":$segmentCount""")
+        segments.append(""","na":$nodeA,"nb":$nodeB""")
+        segments.append(""","a":${jsonPoint(a)},"b":${jsonPoint(b)}""")
+        if (c1 != null && c2 != null) segments.append(""","c1":${jsonPoint(c1)},"c2":${jsonPoint(c2)}""")
+        segments.append('}')
+        segmentCount++
+    }
+
+    fun face() {
+        if (anchors.size < 3) return
+        if (faceCount > 0) faces.append(',')
+        faces.append("""{"n":$closeNode,"p":$subPath,"e":$faceCount,"pts":[""")
+        faces.append(anchors.joinToString(",") { jsonPoint(it) })
+        faces.append("]}")
+        faceCount++
+    }
+
+    fun begin(at: Vec3, nodeIndex: Int) {
+        subPath++
+        current = at
+        currentNode = nodeIndex
+        subPathStart = at
+        subPathStartNode = nodeIndex
+        anchors.clear()
+        anchors.add(at)
+    }
+
+    f.nodes.forEachIndexed { nodeIndex, node ->
+        when (node) {
+            is FLine.MoveTo -> begin(node.to, nodeIndex)
+            is FLine.LineTo -> {
+                val from = current
+                if (from == null) begin(node.to, nodeIndex)
+                else {
+                    segment("l", nodeIndex, from, node.to, currentNode, nodeIndex)
+                    current = node.to
+                    currentNode = nodeIndex
+                    anchors.add(node.to)
+                }
+            }
+            is FLine.CubicTo -> {
+                val from = current
+                if (from == null) begin(node.to, nodeIndex)
+                else {
+                    segment("c", nodeIndex, from, node.to, currentNode, nodeIndex, node.c1, node.c2)
+                    current = node.to
+                    currentNode = nodeIndex
+                    anchors.add(node.to)
+                }
+            }
+            is FLine.Close -> {
+                val from = current
+                val start = subPathStart
+                if (from != null && start != null) {
+                    closeNode = nodeIndex
+                    // A subpath whose last anchor already coincides with its first draws no closing
+                    // segment, but it is still a face.
+                    if (from.x != start.x || from.y != start.y || from.z != start.z) {
+                        segment("z", nodeIndex, from, start, currentNode, subPathStartNode)
+                    } else if (anchors.size > 1) {
+                        anchors.removeAt(anchors.size - 1)
+                    }
+                    face()
+                }
+                current = null
+                currentNode = -1
+                subPathStart = null
+                subPathStartNode = -1
+                anchors.clear()
+            }
+        }
+    }
+
+    return """{"segments":[$segments],"faces":[$faces]}"""
+}
+
+/**
+ * How close, **in the line's own units**, a click has to be to count as hitting a node or a segment.
+ *
+ * Chosen in screen pixels and divided by the fit scale, because that is where the user's finger is:
+ * a figure scaled down to a thumbnail should not need sub-unit precision to click. A node wins over a
+ * segment and a segment over a face, so these two numbers are the whole picking policy — [PICK_POINT_PX]
+ * deliberately small (4px) so that clicking the rim of a filled shape still reads as its edge rather
+ * than as whichever tessellation vertex happened to be nearest.
+ */
+private fun flinePickData(f: FLine, fit: FitTransform?): String {
+    val scale = fit?.scale?.toDouble()?.takeIf { it > 0.0 } ?: 1.0
+    val pointPx = if (f.pointed) max(f.pointSize * 3.0, PICK_POINT_PX) else PICK_POINT_PX
+    val edgePx = max((f.thickness ?: 1.0) / 2.0, PICK_EDGE_PX)
+    return """{"point":${jsonN(pointPx / scale)},"edge":${jsonN(edgePx / scale)}}"""
+}
+
+private const val PICK_POINT_PX = 4.0
+private const val PICK_EDGE_PX = 4.0
+
+/**
+ * A painted-nothing square of known size, so the browser can measure how the page is scaling this SVG.
+ *
+ * Measured on a live canvas, 2026-08-10: an interactive figure's clicks were arriving in the wrong
+ * place — a click in the middle of one panel reconstructed to a point three times too far up the
+ * figure, and therefore named the wrong element. The cause is not in the picking: Field's output area
+ * gives the emitted `<svg>` `width: 100%` and the canvas scales the box with CSS, and
+ * `SVGSVGElement.getScreenCTM()` — which `__flineIntersectionFromSvg` used on its own — reports the
+ * matrix *inside* the SVG only, so the canvas's own scale was missing from the inverse. Nobody had
+ * noticed because until this commit nothing read the position: a click's meaning came entirely from
+ * *which* callback fired, which is right whatever the coordinates say.
+ *
+ * `getBoundingClientRect()` of this rectangle, against its known 100×100 user units, measures the
+ * whole chain at once — viewBox, CSS transform, CSS zoom, device pixel ratio — with two divisions and
+ * no assumptions. It is `pointer-events="none"` so it can never take a click, and paints nothing.
+ */
+private const val CALIBRATION_RECT =
+    """<rect data-fline-calibration="100" x="0" y="0" width="100" height="100" fill="none" stroke="none" pointer-events="none"/>"""
 
 /** Convert a [Vec4] RGBA colour (components in [0,1]) to an SVG `rgba(...)` string. */
 internal fun vec4ToSvgColor(c: Vec4): String {

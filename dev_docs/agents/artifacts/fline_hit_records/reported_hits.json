@@ -1,0 +1,128 @@
+[
+ {
+  "name": "centre of panel 1,2",
+  "payload": {
+   "callbackId": "fline-d9846e79-a9f7-43fd-b676-f626c433e428",
+   "closestVertexIndex": 3,
+   "x": 266,
+   "y": 183,
+   "z": 88,
+   "kind": "face",
+   "lineIndex": 7,
+   "label": "panel 1,2",
+   "nodeIndex": 4,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": 0.5,
+   "v": 0.5,
+   "ex": 266,
+   "ey": 183,
+   "ez": 110.00000413021353
+  }
+ },
+ {
+  "name": "centre of panel 0,4",
+  "payload": {
+   "callbackId": "fline-224bfb82-7997-4329-aa16-2469bf4628ce",
+   "closestVertexIndex": 3,
+   "x": 430,
+   "y": 248,
+   "z": 176,
+   "kind": "face",
+   "lineIndex": 4,
+   "label": "panel 0,4",
+   "nodeIndex": 4,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": 0.4914203579789925,
+   "v": 0.5097059695831319,
+   "ex": 430,
+   "ey": 248,
+   "ez": 197.6224957510757
+  }
+ },
+ {
+  "name": "centre of panel 2,0",
+  "payload": {
+   "callbackId": "fline-8b235b8b-44a2-473b-9480-6de8d29594c5",
+   "closestVertexIndex": 3,
+   "x": 101,
+   "y": 117,
+   "z": 0,
+   "kind": "face",
+   "lineIndex": 10,
+   "label": "panel 2,0",
+   "nodeIndex": 4,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": 0.49581344564056573,
+   "v": 0.5036420948223327,
+   "ex": 101,
+   "ey": 117,
+   "ez": 21.815792305625784
+  }
+ },
+ {
+  "name": "30% along the lower edge of panel 2,3",
+  "payload": {
+   "callbackId": "fline-ba230de2-80f9-4938-90cc-7b9178dd6574",
+   "closestVertexIndex": 0,
+   "x": 338,
+   "y": 134,
+   "z": 132,
+   "kind": "edge",
+   "lineIndex": 13,
+   "label": "panel 2,3",
+   "nodeIndex": 1,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": 0.2949753950557306,
+   "v": null,
+   "ex": 338.03453997479284,
+   "ey": 134.3375496385834,
+   "ez": 144.97891738245215
+  }
+ },
+ {
+  "name": "a corner shared by four panels",
+  "payload": {
+   "callbackId": "fline-d9846e79-a9f7-43fd-b676-f626c433e428",
+   "closestVertexIndex": 0,
+   "x": 219,
+   "y": 229,
+   "z": 88,
+   "kind": "point",
+   "lineIndex": 7,
+   "label": "panel 1,2",
+   "nodeIndex": 0,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": null,
+   "v": null,
+   "ex": 219.333328,
+   "ey": 229.066666,
+   "ez": 88
+  }
+ },
+ {
+  "name": "the middle of the ridge",
+  "payload": {
+   "callbackId": "fline-cf2b002e-6eec-4495-9848-99510933b809",
+   "closestVertexIndex": 0,
+   "x": 277,
+   "y": 58,
+   "z": 0,
+   "kind": "edge",
+   "lineIndex": 15,
+   "label": "ridge",
+   "nodeIndex": 1,
+   "subPathIndex": 0,
+   "elementIndex": 0,
+   "u": 0.5,
+   "v": null,
+   "ex": 277,
+   "ey": 58,
+   "ez": 110
+  }
+ }
+]

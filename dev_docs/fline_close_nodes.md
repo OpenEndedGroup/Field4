@@ -58,9 +58,9 @@ a `MoveTo`, which neither branch matches. `FLine().lineTo(...)` is legal, and it
 outline arriving from a `java.awt.Shape` has **no `Close` node at all**. Pinned at four shapes,
 including a two-contour ring, by `InteriorCloseNodeTest.awtNeverEmitsACloseNode`.
 
-**From `afield.stdlib.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:279`)
-calls `appendHead` (`:309`) twice, and `appendHead` ends each arrowhead with `target.close()`
-(`:322`). So a double-headed arrow is
+**From `afield.stdlib.arrow`.** `arrow(startHead = true, endHead = true)` (`StandardDrawing.kt:396`)
+calls `appendHead` (`:426`) twice, and `appendHead` ends each arrowhead with `target.close()`
+(`:439`). So a double-headed arrow is
 
 ```
 MoveTo LineTo | MoveTo LineTo LineTo Close | MoveTo LineTo LineTo Close
@@ -141,7 +141,7 @@ Two further normalisations, documented on the function and tested:
   an explicit straight segment. There is no way to write "close, backwards": in the reversed
   traversal the pen is not at the subpath start when it reaches that segment.
 - a subpath with no leading `moveTo` gains one, matching the renderer, which already reads a leading
-  `LineTo` as a `moveTo` (`someSkiko.kt:332-337`).
+  `LineTo` as a `moveTo` (`someSkiko.kt:339-344`).
 
 This refutes the assertion `0954ebfb` left at `ClosedLineNodeAccessTest.kt:74`, that the reversal of
 a closed square starts at its `moveTo`. Updated in the same commit as the change.

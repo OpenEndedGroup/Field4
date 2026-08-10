@@ -259,6 +259,16 @@ $region
             "tessellateCoplanarGroups",
         ),
         "cubic-sampling" to listOf("EDGE_SAMPLES", "cubicPoint", "sampleCubic"),
+        "fline-hit-picking" to listOf(
+            "FLINE_PICK_CUBIC_SAMPLES",
+            "flinePickSegmentAt",
+            "flinePickNearestOnSegment",
+            "flinePickFaceFrame",
+            "flinePickToPlane",
+            "flinePickPointInPolygon",
+            "flinePickFaceCoords",
+            "flinePickClassify",
+        ),
     )
 
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */

@@ -4,6 +4,8 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import afield.stdlib.FLineFaceCoordinates
+import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -868,6 +870,38 @@ internal fun registerFLineClickCallback(callbackId: String, callback: (FLineInte
 internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> Unit)? {
     return flineClickCallbacks[callbackId]
 }
+
+/**
+ * The one place a posted [FLineClick] becomes the [FLineIntersection] a callback sees.
+ *
+ * Both outputs that can be clicked go through here — the SVG one from `Server.kt`'s `fline-click`
+ * handler and the three.js one from `installThreeJsHandler` — so the wire and the record cannot drift
+ * apart in one of them only. Absent optional fields stay at their [FLineIntersection] defaults, which
+ * is how a stale browser cache posting the original five-field payload still works.
+ */
+internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
+    closestVertexIndex = closestVertexIndex,
+    position = afield.stdlib.vec(x, y, z),
+    kind = when (kind.lowercase()) {
+        "point" -> FLineHitKind.POINT
+        "edge" -> FLineHitKind.EDGE
+        "face" -> FLineHitKind.FACE
+        else -> FLineHitKind.UNKNOWN
+    },
+    lineIndex = lineIndex,
+    label = label,
+    nodeIndex = nodeIndex,
+    subPathIndex = subPathIndex,
+    elementIndex = elementIndex,
+    u = u ?: Double.NaN,
+    v = v ?: Double.NaN,
+    faceCoordinates = when (faceCoordinates.lowercase()) {
+        "bilinear" -> FLineFaceCoordinates.BILINEAR
+        "bbox", "bounding_box" -> FLineFaceCoordinates.BOUNDING_BOX
+        else -> FLineFaceCoordinates.NONE
+    },
+    onElement = if (ex != null && ey != null) afield.stdlib.vec(ex, ey, ez ?: 0.0) else null
+)
 
 /**
  * Displays a numeric slider in an output disclosure and calls [onUpdate] whenever its value changes.
