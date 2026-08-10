@@ -2350,6 +2350,17 @@ tasks.register<JavaExec>("ceresExpressionCost") {
     group = "application"
 }
 
+// The Brief notation, solved through the real backend against answers worked out on paper. Every case
+// is over-determined on purpose, so what is checked is the weighted *compromise* rather than that the
+// solver converged — see the file header. Deliberately not a jvmTest: a JUnit test would have to skip
+// when the optional native library is absent, and a test that skips is silently green.
+val smokeBrief = tasks.register<JavaExec>("smokeBrief") {
+    configureCeresSmokeTask(
+        "afield.examples.brief.BriefSolveSmokeKt",
+        "Solves Brief notation programs through Ceres and checks them against analytic answers.",
+    )
+}
+
 tasks.register("smokeCeres") {
     group = "verification"
     description = "Runs all Ceres FFM smoke examples."
@@ -2363,6 +2374,7 @@ tasks.register("smokeCeres") {
         smokeCeresCanonical,
         smokeCeresExpression,
         smokeCeresExpressionVariables,
+        smokeBrief,
     )
 }
 
