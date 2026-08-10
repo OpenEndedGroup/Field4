@@ -372,6 +372,11 @@ the index structure, so a watertight mesh round-trips watertight. **STL is trian
 three unshared vertices per triangle, no indices at all — so it comes back with 3× the vertices and
 `isWatertight()` false until you `weld(1e-5)` it. Both recover the volume exactly.
 
+Those two are the whole *dependency-free* story, and they are not the whole story: PLY, glTF and GLB
+read as well. [Geometry from disk](geometry_from_disk.md) is the route from any format to pixels — one
+call per format, a measured table of what each one loses in each direction, and an honest list of what
+cannot be read at all (STEP and every other CAD boundary representation).
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/bridges.png" wait="3.0" capture="box" open-outputs="true" padding="20"}
 :::static
 // A tube swept along an FLine: rotation-minimising frames, so it does not twist where the path's
@@ -552,9 +557,12 @@ smoothing parameter or an SDF expression, re-run the box, and watch it update. S
 | **fields / marching cubes** | `ScalarField3D`, `boundsOf`, `boundsAround`, `bounds`, `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`, `sdfCylinder`, `sdfCapsule`, `sdfGyroid`, `sdfMetaballs`, `sdfUnion`, `sdfIntersect`, `sdfSubtract`, `sdfInvert`, `sdfSmoothUnion`, `sdfSmoothIntersect`, `sdfSmoothSubtract`, `sdfExpUnion`, `shell`, `rounded`, `translated`, `scaled`, `rotated`, `repeated`, `twisted`, `displaced`, `gradient`, `normalAt`, `marchingCubes`, `march`, `Img.asHeightSdf` |
 | **processing** | `withVertexNormals`, `flatShaded`, `shadedNormals`, `loopSubdivide`, `laplacianSmooth`, `taubinSmooth`, `decimate`, `quality`, `MeshQuality` |
 | **measure / query** | `surfaceArea`, `signedVolume`, `volume`, `centroid`, `solidCentroid`, `mixedVertexAreas`, `gaussianCurvature`, `meanCurvature`, `MeshBvh`, `bvh`, `raycast`, `raycastAll`, `closestPoint`, `contains`, `signedDistance`, `asSdf`, `RayHit`, `SurfacePoint`, `convexHullMesh`, `convexHull`, `deviationFrom`, `maxDeviation`, `isContainedIn`, `samplePoints`, `angleBetweenDegrees` |
-| **I/O** | `toObj`, `objToTriMesh`, `saveObj`, `triMeshFromObj`, `toStlAscii`, `toStlBinary`, `stlToTriMesh`, `saveStl`, `meshFromFile` |
+| **I/O** | `toObj`, `objToTriMesh`, `saveObj`, `triMeshFromObj`, `toStlAscii`, `toStlBinary`, `stlToTriMesh`, `saveStl`, `meshFromFile` — and, for PLY / glTF / GLB, [`meshFromAnyFile`](geometry_from_disk.md) |
 | **Field integration** | `MeshLines`, `toFLines`, `tubeMesh`, `VoronoiCell3.toTriMesh`, `VoronoiLattice.toTriMesh`, `toCapturedMesh`, `coloredByScalar`, `MeshView`, `renderPng`, `renderPixels`, `toFigureHtml`, `showMesh`, `showMeshGrid`, `showMeshTurntable`, `summary`, `longestEdge`, `meanEdgeLength`, `normalized` |
 
 Source: `src/jvmMain/kotlin/afield/stdlib/mesh.kt`, `mesh_topology.kt`, `mesh_generate.kt`,
 `mesh_sdf.kt`, `mesh_process.kt`, `mesh_measure.kt`, `mesh_io.kt`, `mesh_field.kt`. Developer notes,
 including the measurements behind the Voronoi fix: `dev_docs/MESH_GEOMETRY.md`.
+
+Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_disk.md), over
+`afield/four/modules/MeshFromDisk.kt`.
