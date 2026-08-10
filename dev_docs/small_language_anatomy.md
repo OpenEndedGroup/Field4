@@ -319,10 +319,10 @@ box.
 | StackSL's document formatter | `src/commonMain/resources/stacksl.js:2194` | `registerDocumentFormattingEditProvider` |
 | StackSL as a first-class box property | `src/jvmMain/kotlin/afield/Boxes.kt:464` | `"stackSL" to "stacksl"` |
 | StackSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/StackSLGalleryHarness.kt:53` | `object StackSLGalleryHarness` |
-| Brief's compile entry point | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:86` | `fun compileBrief` |
+| Brief's compile entry point | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:89` | `fun compileBrief` |
 | Brief's one vocabulary table | `src/jvmMain/kotlin/afield/brief/Brief.kt:350` | `object BriefVerbs` |
 | Brief's weight ladder | `src/jvmMain/kotlin/afield/brief/Brief.kt:134` | `enum class BriefStrength` |
-| Brief's lowering into the Kotlin DSL | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:621` | `fun BriefProgram.toGeometryModel` |
+| Brief's lowering into the Kotlin DSL | `src/jvmMain/kotlin/afield/brief/BriefLowering.kt:624` | `fun BriefProgram.toGeometryModel` |
 | Brief's extension object | `src/commonMain/resources/brief.js:394` | `const extension = {` |
 | its standalone `.brief` Monaco language | `src/commonMain/resources/brief.js:429` | `registerBriefLanguage` |
 | the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/brief/BriefEditorExtension.kt:18` | `fun javascript()` |
