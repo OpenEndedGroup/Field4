@@ -387,6 +387,17 @@ row by row, the `84 + 50n` STL size, the five shading counts, and the fact that 
 `MeshIoTest.kt` covers the OBJ/STL readers themselves — quads, negative indices, the
 `solid`-prefixed-binary sniff trap, uv survival.
 
+## Playing with it instead of reading it
+
+The three fences above are also a loadable document. Replay
+`dev_docs/agents/transcripts/geometry_from_disk.yaml` into a fresh Field with the agent backdoor
+(`field_run_transcript`) — or open it from the [transcript gallery](agent_transcripts.md) — and you get
+the same three boxes live. Point the first box's `path` at a mesh file of your own and re-run it;
+change the second box's weld tolerance, or the third's corner colours, and watch the numbers and the
+picture move together. Boxes two and three write only into a temp directory they delete themselves.
+That transcript is classified `EXECUTE` in `DemoTranscriptExecSmokeTest`, so the GLB path on this page
+is re-run by CI on every build rather than asserted once and forgotten.
+
 ## Reference
 
 | | |
