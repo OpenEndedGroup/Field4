@@ -243,10 +243,30 @@ function flineJsonAttribute(groupEl, name, fallback) {
     }
 }
 
-window.__flineIntersectionFromSvg = function(event, groupEl) {
-    var svg = groupEl && groupEl.ownerSVGElement;
-    var x = 0;
-    var y = 0;
+/**
+ * A click position in the SVG's own user units.
+ *
+ * Preferred route: measure the calibration rectangle the renderer emits (a known 100x100 at the
+ * origin, painting nothing) with `getBoundingClientRect`. That measures the *whole* chain from user
+ * units to client pixels — viewBox, CSS transform, CSS zoom, devicePixelRatio — which
+ * `getScreenCTM()` does not: Field's output area sizes the emitted `<svg>` at `width: 100%` and the
+ * canvas scales the box with CSS, and on a scaled canvas the CTM alone put a click three times too far
+ * up the figure. The CTM is kept as the fallback, for a page holding an older cached SVG.
+ */
+function flineClickInSvgUnits(event, svg) {
+    if (svg && svg.querySelector) {
+        var calibration = svg.querySelector('[data-fline-calibration]');
+        if (calibration && calibration.getBoundingClientRect) {
+            var side = parseFloat(calibration.getAttribute('data-fline-calibration')) || 100;
+            var box = calibration.getBoundingClientRect();
+            if (box && box.width > 0 && box.height > 0) {
+                return {
+                    x: (event.clientX - box.left) * side / box.width,
+                    y: (event.clientY - box.top) * side / box.height
+                };
+            }
+        }
+    }
     if (svg && svg.createSVGPoint && svg.getScreenCTM) {
         var point = svg.createSVGPoint();
         point.x = event.clientX;
@@ -254,10 +274,17 @@ window.__flineIntersectionFromSvg = function(event, groupEl) {
         var matrix = svg.getScreenCTM();
         if (matrix) {
             var svgPoint = point.matrixTransform(matrix.inverse());
-            x = svgPoint.x;
-            y = svgPoint.y;
+            return { x: svgPoint.x, y: svgPoint.y };
         }
     }
+    return { x: 0, y: 0 };
+}
+
+window.__flineIntersectionFromSvg = function(event, groupEl) {
+    var svg = groupEl && groupEl.ownerSVGElement;
+    var inSvg = flineClickInSvgUnits(event, svg);
+    var x = inSvg.x;
+    var y = inSvg.y;
 
     var scale = parseFloat(groupEl.getAttribute('data-fit-scale') || '1');
     var offsetX = parseFloat(groupEl.getAttribute('data-fit-offset-x') || '0');

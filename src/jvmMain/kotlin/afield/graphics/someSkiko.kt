@@ -449,6 +449,7 @@ internal fun buildInteractiveSVG(pairs: List<Pair<FLine, FLine>>, w: Double, h: 
 
     val sb = StringBuilder()
     sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$we" height="$he" style="overflow:visible"><g vector-effect="non-scaling-stroke">""")
+    sb.append(CALIBRATION_RECT)
 
     renderablePairs.forEach { (lineIndex, original, scaled) ->
         val onClick = original.onClick
@@ -659,6 +660,25 @@ private fun flinePickData(f: FLine, fit: FitTransform?): String {
 
 private const val PICK_POINT_PX = 4.0
 private const val PICK_EDGE_PX = 4.0
+
+/**
+ * A painted-nothing square of known size, so the browser can measure how the page is scaling this SVG.
+ *
+ * Measured on a live canvas, 2026-08-10: an interactive figure's clicks were arriving in the wrong
+ * place — a click in the middle of one panel reconstructed to a point three times too far up the
+ * figure, and therefore named the wrong element. The cause is not in the picking: Field's output area
+ * gives the emitted `<svg>` `width: 100%` and the canvas scales the box with CSS, and
+ * `SVGSVGElement.getScreenCTM()` — which `__flineIntersectionFromSvg` used on its own — reports the
+ * matrix *inside* the SVG only, so the canvas's own scale was missing from the inverse. Nobody had
+ * noticed because until this commit nothing read the position: a click's meaning came entirely from
+ * *which* callback fired, which is right whatever the coordinates say.
+ *
+ * `getBoundingClientRect()` of this rectangle, against its known 100×100 user units, measures the
+ * whole chain at once — viewBox, CSS transform, CSS zoom, device pixel ratio — with two divisions and
+ * no assumptions. It is `pointer-events="none"` so it can never take a click, and paints nothing.
+ */
+private const val CALIBRATION_RECT =
+    """<rect data-fline-calibration="100" x="0" y="0" width="100" height="100" fill="none" stroke="none" pointer-events="none"/>"""
 
 /** Convert a [Vec4] RGBA colour (components in [0,1]) to an SVG `rgba(...)` string. */
 internal fun vec4ToSvgColor(c: Vec4): String {

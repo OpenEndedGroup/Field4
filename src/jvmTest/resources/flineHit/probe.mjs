@@ -61,8 +61,40 @@ class StubElement {
     }
 
     querySelectorAll(selector) {
+        // Two forms, which is all the code under test asks for: a tag list, and one `[data-attr]`.
+        if (selector.startsWith('[')) {
+            const name = selector.replace(/^\[|\]$/g, '');
+            return this.descendants().filter((node) => node.getAttribute(name) !== null);
+        }
         const wanted = selector.split(',').map((part) => part.trim());
         return this.descendants().filter((node) => wanted.includes(node.tagName));
+    }
+
+    querySelector(selector) {
+        return this.querySelectorAll(selector)[0] || null;
+    }
+
+    /**
+     * Where this element is on screen, under the owning <svg>'s CTM.
+     *
+     * Only rectangles need it — the calibration rectangle the renderer emits, which is how the code
+     * under test measures the page's scaling. Computing it from the same CTM the fallback path uses
+     * means both routes have to agree, which is the property worth holding.
+     */
+    getBoundingClientRect() {
+        const svg = this.tagName === 'svg' ? this : this.ownerSVGElement;
+        const m = svg && svg.screenCTM;
+        const x = parseFloat(this.getAttribute('x') || '0');
+        const y = parseFloat(this.getAttribute('y') || '0');
+        const width = parseFloat(this.getAttribute('width') || '0');
+        const height = parseFloat(this.getAttribute('height') || '0');
+        if (!m) return { left: x, top: y, width, height };
+        return {
+            left: m.a * x + m.c * y + m.e,
+            top: m.b * x + m.d * y + m.f,
+            width: width * m.a,
+            height: height * m.d
+        };
     }
 
     closest(selector) {
