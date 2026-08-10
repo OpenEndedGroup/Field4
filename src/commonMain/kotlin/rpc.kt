@@ -1194,13 +1194,37 @@ data class SlideAnnotation(
     val strokeWidth: Double = 2.0,
     val dashed: Boolean = false
 )
+/**
+ * One click on an interactive FLine, as the browser posts it.
+ *
+ * Every field past [callbackId] is defaulted on purpose. The server decodes this **strictly** (an
+ * unknown key throws), so the JavaScript and this class have to name the same things — but the
+ * defaults mean a browser running a *stale cached* `sliders.js`, which posts only the first five
+ * fields, still arrives and still fires the callback with `kind = UNKNOWN`.
+ *
+ * `kind` is the lower-case spelling of an `FLineHitKind` (`point`/`edge`/`face`, or empty). The
+ * client-side reconstruction is `__flineIntersectionFromSvg` in `src/commonMain/resources/sliders.js`;
+ * `FLineClick.toIntersection()` is the one place this becomes an `FLineIntersection`.
+ */
 @Serializable
 data class FLineClick(
     val callbackId: String,
     val closestVertexIndex: Int = -1,
     val x: Double = 0.0,
     val y: Double = 0.0,
-    val z: Double = 0.0
+    val z: Double = 0.0,
+    val kind: String = "",
+    val lineIndex: Int = -1,
+    val label: String? = null,
+    val nodeIndex: Int = -1,
+    val subPathIndex: Int = -1,
+    val elementIndex: Int = -1,
+    /** `null` rather than `NaN`: JSON has no NaN, and a browser that sends one cannot be parsed. */
+    val u: Double? = null,
+    val v: Double? = null,
+    val ex: Double? = null,
+    val ey: Double? = null,
+    val ez: Double? = null
 )
 
 @Serializable

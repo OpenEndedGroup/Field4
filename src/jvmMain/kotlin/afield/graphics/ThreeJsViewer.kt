@@ -266,18 +266,14 @@ fun installThreeJsHandler() {
 
         when (payload["type"]?.jsonPrimitive?.contentOrNull) {
             "fline-click" -> {
-                val callbackId = payload["callbackId"]?.jsonPrimitive?.contentOrNull
+                // Same wire type and same mapping as the SVG output's handler in `Server.kt`, so the
+                // two clickable outputs cannot disagree about what a click returns. `threeJson`
+                // ignores the envelope's own keys (`type`, `channel`, `debug_uid`).
+                val click = runCatching { threeJson.decodeFromJsonElement<FLineClick>(payload) }.getOrNull()
                     ?: return@add Handled.no
-                val closestVertexIndex = payload["closestVertexIndex"]?.jsonPrimitive?.content?.toIntOrNull() ?: -1
-                val x = payload["x"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                val y = payload["y"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                val z = payload["z"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-                val callback = getFLineClickCallback(callbackId)
+                val callback = getFLineClickCallback(click.callbackId)
                 if (callback != null) {
-                    val intersection = FLineIntersection(
-                        closestVertexIndex = closestVertexIndex,
-                        position = vec(x, y, z)
-                    )
+                    val intersection = click.toIntersection()
                     GlobalScope.launch {
                         runCatching { callback(intersection) }
                     }

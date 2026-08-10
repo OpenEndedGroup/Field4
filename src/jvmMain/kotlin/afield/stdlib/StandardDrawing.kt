@@ -134,7 +134,36 @@ var FLine.pointSize by Delegation<Double> { 1.0 }
  */
 var FLine.Node.pointSize by Delegation<Double?>(null)
 
-/** Hit information passed to [FLine.onClick] from the interactive line renderers. */
+/**
+ * What kind of thing on a figure a click landed on — the same three-way distinction the editable
+ * FLine widget already draws its hit targets with (`data-fline-hit-kind` in `sliders.js`), now
+ * reported to [FLine.onClick] as well.
+ *
+ * [UNKNOWN] is not a failure: it is what an output that only knows "this line was clicked" says, and
+ * what a *stale cached* `sliders.js` posting the old two-field payload decodes to.
+ */
+enum class FLineHitKind {
+    /** Within picking distance of a node — a `moveTo`/`lineTo`/`cubicTo` endpoint. */
+    POINT,
+    /** On (or within picking distance of) one segment, and [FLineIntersection.u] says where along it. */
+    EDGE,
+    /** Inside a closed subpath, with [FLineIntersection.u] and `v` local to that face. */
+    FACE,
+    /** The line was hit but the output could not say which part of it. */
+    UNKNOWN
+}
+
+/**
+ * Hit information passed to [FLine.onClick] from the interactive line renderers — what a click on a
+ * figure *returns*.
+ *
+ * Everything past [position] is optional in the wire sense: an output that cannot work a field out
+ * leaves it at its default ([FLineHitKind.UNKNOWN], `-1`, `null`, `NaN`), so a callback written
+ * against the two original fields still compiles and still behaves, and an old browser cache posting
+ * the old payload still arrives. What fills them in today is the interactive SVG output
+ * (`buildInteractiveSVG` → `data-fline-elements` → `__flineIntersectionFromSvg` in `sliders.js`);
+ * see `dev_docs/fline_hit_records.md` for the whole chain and for what each output can promise.
+ */
 data class FLineIntersection(
     /**
      * Index into the line's `nodes` of the node nearest the click, or `-1` when the client did not
@@ -143,13 +172,68 @@ data class FLineIntersection(
     val closestVertexIndex: Int,
     /**
      * Where the click landed, in the line's own coordinate space. The three.js output fills in all
-     * three components; the 2D SVG output leaves `z` at 0.
+     * three components; the 2D SVG output leaves `z` at 0 — [onElement] is the one to read for a
+     * depth, because it interpolates `z` along the element that was hit.
      */
-    val position: Vec3
+    val position: Vec3,
+    /** Which kind of element was hit. [FLineHitKind.UNKNOWN] when the output does not distinguish. */
+    val kind: FLineHitKind = FLineHitKind.UNKNOWN,
+    /**
+     * Index of the clicked line within the lines passed to that one `lines(...)` call, or `-1` when
+     * unknown. The point of it: one shared `onClick` closure can serve a whole figure, instead of one
+     * closure per part.
+     */
+    val lineIndex: Int = -1,
+    /** The clicked line's [FLine.label], if it had one. */
+    val label: String? = null,
+    /**
+     * Index into the line's `nodes` of the node that *is* this element: the node itself for a
+     * [FLineHitKind.POINT], the node that draws the segment for an [FLineHitKind.EDGE], the `Close`
+     * for a [FLineHitKind.FACE]. `-1` when unknown. Unlike [closestVertexIndex] this is the element,
+     * not the nearest dot.
+     */
+    val nodeIndex: Int = -1,
+    /** Which subpath (`moveTo`-delimited piece) of the line the element belongs to, or `-1`. */
+    val subPathIndex: Int = -1,
+    /** Ordinal of the element among its own kind within the line — edge 0, 1, 2…; face 0, 1… Or `-1`. */
+    val elementIndex: Int = -1,
+    /**
+     * Where on the element the click landed, `0..1`, or `NaN` when it does not apply.
+     *
+     * Along the segment for an [FLineHitKind.EDGE] (0 at the segment's start node, 1 at its end; for a
+     * cubic it is the curve parameter). The first face coordinate for a [FLineHitKind.FACE].
+     */
+    val u: Double = Double.NaN,
+    /**
+     * The second face coordinate for a [FLineHitKind.FACE], `NaN` otherwise.
+     *
+     * For a face with exactly four corners `(u, v)` are true bilinear coordinates — `u` runs from
+     * corner 0 to corner 1, `v` from corner 0 to corner 3 — which is what makes them usable as a
+     * position *on a panel*. For any other closed subpath they are the click's position within the
+     * face's own bounding box.
+     */
+    val v: Double = Double.NaN,
+    /**
+     * The point *on* the element nearest the click, in the line's own coordinate space, or `null`.
+     *
+     * For an [FLineHitKind.EDGE] this is the segment evaluated at [u], which means `z` is interpolated
+     * along the segment: a 3D line drawn into the 2D SVG output recovers a real depth here even though
+     * [position] cannot have one.
+     */
+    val onElement: Vec3? = null
 )
 
 /** Callback invoked when this FLine is clicked in an interactive output. */
 var FLine.onClick by Delegation<((FLineIntersection) -> Unit)?>()
+
+/**
+ * A human name for this line, reported back as [FLineIntersection.label] when it is clicked and used
+ * as the heading by [afield.graphics.inspect].
+ *
+ * Unset by default. Unlike [onClick] this is a plain string, so it survives serialisation and travels
+ * with the line.
+ */
+var FLine.label by Delegation<String?>()
 
 /**
  * Color to show when the pointer hovers over this FLine in an interactive SVG output.
