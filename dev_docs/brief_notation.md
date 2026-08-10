@@ -14,11 +14,11 @@ point west  at (0, 0)
 point east  at (9, 0)
 1e10 fix west east
 
-prefer spine at 1/3 along (west, east)
-insist distance(west, spine) = 6
+prefer post at 1/3 along (west, east)
+insist distance(west, post) = 6
 ```
 
-That program solves to `spine.x = 5.997002997`, which is `(1·3 + 1000·6) / 1001` — the weighted mean of
+That program solves to `post.x = 5.997002997`, which is `(1·3 + 1000·6) / 1001` — the weighted mean of
 what its two statements asked for. Change `prefer` to `insist` and it is `4.5`, exactly. Change it to
 `demand` and it is `3.002996970`. **That is the whole idea**: hard-versus-soft is not a flag, it is a
 number, and the number is visible in the answer.
@@ -94,35 +94,42 @@ fatal" below.
 
 ### Constraints
 
-Every constraint is `strength relation`, and there are two relation forms.
+Every constraint is `strength relation`, and there are two relation forms. In the examples below
+`a b c d`, `apex`, `west`, `east`, `post`, `left`, `right` are points; `spine`, `ridge`, `mast`,
+`rafter`, `eaves`, `westWall`, `eastWall` are lines; `floor` and `mid` are planes; `roof`, `wide` and
+`small` are panels. `BriefDocsTest` compiles every one of them against exactly that geometry, so none of
+these is a plausible-looking line somebody typed.
 
 **Equations**, over properties:
 
 ```
-insist spine.length = 4              prefer  spine.length >= 2
-prefer west.length = east.length     prefer  spine.length <= 9
-insist roof.area = 12                prefer  wide.area = small.area
-insist ridge.z = 3                   prefer  a.z = b.z
-insist distance(a, b) = 8            prefer  angle(spine, ridge) = 30deg
-prefer cos-angle(spine, ridge) = 0.5 prefer  dot(spine, ridge) = 0.5
-prefer raw-dot(spine, ridge) = 6     prefer  dihedral(eaves, a, b) = -1
+insist spine.length = 4                 prefer  spine.length >= 2
+prefer westWall.length = eastWall.length   prefer  spine.length <= 9
+insist roof.area = 12                   prefer  wide.area = small.area
+insist apex.z = 3                       prefer  a.z = b.z
+insist apex.x = 2                       prefer  a.y = b.y
+insist distance(a, b) = 8               prefer  angle(spine, ridge) = 30deg
+prefer cos-angle(spine, ridge) = 0.5    prefer  dot(spine, ridge) = 0.5
+prefer raw-dot(spine, ridge) = 6        prefer  dihedral(eaves, d, b) = -1
 ```
 
 **Predicates**, over elements:
 
 ```
-insist  spine parallel ridge          insist  spine perpendicular mast
-insist  west same-vector east         insist  a b c d planar
-insist  roof planar                   insist  a b c colinear
-insist  a b c level                   insist  a b same-x   (also same-y/z/xy/xz/yz)
-insist  apex on floor offset 3        insist  apex inside floor clearance 0.2
-insist  left mirrors right across mid insist  a coincident b
-insist  mast along (0, 0, 1)          insist  floor faces (0, 0, 1)
-prefer  rafter toward apex            prefer  rafter vanishes-at apex
-prefer  spine at 1/3 along (west, east)
-demand  fix west east                 demand  fix west in xy
-whisper hold apex                     whisper all loose
-insist  all above-ground
+insist  spine parallel ridge            insist  spine perpendicular mast
+insist  westWall same-vector eastWall   insist  a b c d planar
+insist  roof planar                     insist  a b c colinear
+insist  a b c level                     insist  a b same-x
+insist  a b same-y                      insist  a b same-z
+insist  a b same-xy                     insist  a b same-xz
+insist  a b same-yz                     insist  a coincident b
+insist  apex on floor offset 3          insist  apex inside floor clearance 0.2
+insist  left mirrors right across mid   insist  floor faces (0, 0, 1)
+insist  mast along (0, 0, 1)            insist  all above-ground
+prefer  rafter toward apex              prefer  rafter vanishes-at apex
+prefer  post at 1/3 along (west, east)
+demand  fix west east                   demand  fix west in xy
+whisper hold apex                       whisper all loose
 ```
 
 Number literals accept `1e3`, `-4`, `30deg` (converted to radians) and `1/3` (folded as a division, so
