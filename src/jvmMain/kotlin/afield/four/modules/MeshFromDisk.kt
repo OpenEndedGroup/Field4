@@ -6,6 +6,7 @@ import afield.stdlib.TriMesh
 import afield.stdlib.TriMeshBuilder
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
+import afield.stdlib.linalg.Matrix3f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.meshFromFile
 import afield.stdlib.showMesh
@@ -148,7 +149,17 @@ fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
         for (instance in model.meshes) {
             val b = instance.buffers
             if (b.indexCount < 3) continue
-            val m = instance.bindPose.toMatrix()
+            // The node's true world matrix, NOT bindPose.toMatrix(): a TRS cannot carry a mirror or a
+            // shear, and decomposeToTRS silently turns a mirrored node into a pure translation. See
+            // GltfSupport.MeshInstance.bindMatrix.
+            val m = instance.bindMatrix ?: instance.bindPose.toMatrix()
+            // Normals transform by the inverse transpose, not by the matrix. Identical for a rigid or
+            // uniformly-scaled node -- which is why ToyCar (a uniform 1e-4) never showed the difference
+            // -- and wrong for anything non-uniform.
+            val normalMatrix = m.get3x3(Matrix3f()).invert().transpose()
+            // A negative determinant means the transform mirrors, which reverses triangle winding. Emit
+            // the corners in the other order so the surface still faces outward afterwards.
+            val mirrors = m.determinant() < 0f
             val floats = b.vertexData.asFloatBuffer()
             // Two passes so the all-white test can decide before any vertex is emitted -- the builder
             // requires colours to be all-or-nothing.
@@ -168,7 +179,7 @@ fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
             val n = Vector3f()
             for (row in rows) {
                 p.set(row[0], row[1], row[2]); m.transformPosition(p)
-                n.set(row[3], row[4], row[5]); m.transformDirection(n)
+                n.set(row[3], row[4], row[5]); normalMatrix.transform(n)
                 val len = kotlin.math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z)
                 builder.vertex(
                     p.x, p.y, p.z,
@@ -181,7 +192,9 @@ fun assimpToTriMesh(path: String, keepColors: Boolean = true): TriMesh {
             var t = 0
             while (t + 2 < b.indexCount) {
                 val a = indices.get(t); val bb = indices.get(t + 1); val c = indices.get(t + 2)
-                if (a < b.vertexCount && bb < b.vertexCount && c < b.vertexCount) builder.triangle(a, bb, c)
+                if (a < b.vertexCount && bb < b.vertexCount && c < b.vertexCount) {
+                    if (mirrors) builder.triangle(a, c, bb) else builder.triangle(a, bb, c)
+                }
                 t += 3
             }
             val part = builder.build()

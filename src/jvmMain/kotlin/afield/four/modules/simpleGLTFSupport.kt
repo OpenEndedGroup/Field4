@@ -157,6 +157,29 @@ object GltfSupport {
         val doTextures: Boolean = false,
         val animationSamples: List<TRSSample>? // sampled TRS for this node, or null
     ) {
+        /**
+         * The node's **true** world matrix at import time — the thing [bindPose] is a lossy summary of.
+         *
+         * [bindPose] is a translation/rotation/scale triple, and a glTF node transform is a full 4x4: a
+         * **mirror** (negative determinant) or a shear does not fit in a TRS. `Matrix4f.getScale`
+         * returns `sqrt(...)` per basis column and is therefore always positive, so
+         * [decomposeToTRS] silently flattens a mirrored node to a *pure translation* — the recomposed
+         * matrix comes back with determinant `+1` and the geometry is placed un-mirrored. Measured on a
+         * four-node test scene: Assimp hands over row 1 `[-1 0 0 -3]` with 3x3 determinant `-1.0`, and
+         * `bindPose.toMatrix()` returns `[1 0 0 -3]` with determinant `+1.0`.
+         *
+         * Deliberately a body property rather than a constructor parameter, so it is not a `data class`
+         * component: adding it to `equals` / `hashCode` / `copy` would change the identity of every
+         * `MeshInstance`, and [Matrix4f] does not define structural equality.
+         *
+         * Set by the loader's node walk; `null` only for an instance built some other way, in which case
+         * `bindPose.toMatrix()` is all there is. [afield.four.modules.assimpToTriMesh] prefers this. The
+         * GPU paths (`applyToMesh`, `FabricateScene.importGltf`, `StandardRendererDocsHarness`) still
+         * read [bindPose] and so still carry the flattening — untouched here on purpose, because
+         * changing a renderer's model matrix needs its committed captures re-verified.
+         */
+        var bindMatrix: Matrix4f? = null
+
         fun applyToMesh(m: Mesh, camera: Camera = fromContext()) {
 
             m.initializePushConstantsFromModule(m.inside)
@@ -282,7 +305,10 @@ object GltfSupport {
                     buffers = buffers,
                     bindPose = bindTrs,
                     material = material,
-                    animationSamples = animSamples.ifEmpty { null })
+                    animationSamples = animSamples.ifEmpty { null },
+                    // The un-decomposed world matrix, kept because bindTrs cannot represent a mirror or
+                    // a shear. See MeshInstance.bindMatrix.
+                ).also { it.bindMatrix = Matrix4f(world) }
             }
         }
 

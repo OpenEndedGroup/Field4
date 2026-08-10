@@ -115,6 +115,46 @@ render of it paints more than 5% of its pixels.
     `GltfLoadConfig(loadTextures = false)` and geometry-only loading works everywhere.
     `assimpToTriMesh` does exactly that for you.
 
+## A GLB is a scene, not a mesh
+
+Which means flattening one into a single `TriMesh` has a domain, and you should know where its edges
+are. A glTF file is a node hierarchy: each node carries a **full 4×4 transform**, several nodes can
+reference the same mesh, and each mesh carries its own material. Here is what `meshFromAnyFile` does
+with all of that, measured on a four-node scene that `AssimpSceneBridgeTest` builds from scratch — one
+asymmetric triangle instanced by an identity node, a translated node, a *child* of that translated node,
+and a **mirrored** node with `scale (-1, 1, 1)`.
+
+| the scene has | the bridge does |
+|---|---|
+| several nodes referencing meshes | **merges all of them.** Four instances arrive as 4 triangles in 4 components, not "the first one". |
+| a node transform | **applies it.** ToyCar's own three nodes each carry a uniform `1e-4` scale, which is what makes that figure evidence rather than a file that happens not to exercise this: a bridge that dropped transforms would render it 10,000× too big — 730 m across, not 0.073 m. |
+| a parent chain | **composes it.** The child of the node translated by `(3, 0, 0)`, itself translated by `(0, 2, 0)`, lands at `(3, 2, 0)`. |
+| a **mirror** — negative determinant | applies it, **and reverses that part's winding**, so the surface still faces outward instead of being culled away. |
+| non-uniform scale | normals go through the **inverse transpose**, not the matrix, so they stay perpendicular to the surface. |
+| per-vertex `COLOR_0` | kept, per instance. An all-white array — what glTF writes when the file has no colours — is dropped. |
+| quads or n-gons | already triangles: Assimp's `aiProcess_Triangulate` runs before the bridge sees anything. |
+| materials and textures | **dropped.** A `TriMesh` has no concept of a texture. Use the [Fabricate renderer](fabricate_renderer.md) for those. |
+| animation | **dropped.** The bind pose is baked; node TRS tracks and skinning are not read. |
+| a Y-up / Z-up disagreement | **nothing.** glTF is Y-up by specification and no axis conversion is applied, so a Z-up PLY or OBJ arrives on its side. `rotated(...)` is yours to apply. |
+
+!!! warning "The bug that scene caught, which is still live on the GPU paths"
+
+    `GltfSupport.MeshInstance.bindPose` is a *translation / rotation / scale* triple, and a mirror does
+    not fit in one — `Matrix4f.getScale` is `sqrt(...)` per basis column, so it is never negative.
+    Measured: Assimp hands the mirrored node over as row 1 `[-1 0 0 -3]` with 3×3 determinant **−1.0**,
+    and `bindPose.toMatrix()` returns `[1 0 0 -3]` with determinant **+1.0**. The reflection is gone.
+
+    A bridge reading `bindPose` therefore placed that instance **un-mirrored** — far vertex at `x = -2`
+    instead of `x = -4` — with no error, no warning, and a perfectly plausible-looking mesh. That is the
+    worst failure mode a loader has. The fix was to record the un-decomposed world matrix
+    (`MeshInstance.bindMatrix`) and read *that*, which `assimpToTriMesh` now does; the test fails if it
+    stops.
+
+    **The GPU paths still read `bindPose`** — `applyToMesh`, `FabricateScene.importGltf` and
+    `StandardRendererDocsHarness` all call `bindPose.toMatrix()` — so a mirrored node is still flattened
+    there. Stated rather than fixed: changing a renderer's model matrix needs its committed captures
+    re-verified, which is a separate change.
+
 ## Writing a file and reading it back
 
 The round trip is worth doing once yourself, because what comes back is not always what went out.
