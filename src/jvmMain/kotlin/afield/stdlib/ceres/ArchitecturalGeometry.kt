@@ -563,8 +563,13 @@ class GeometryModelScope {
  * three same-coordinate constraints, and [angleRadiansTo] takes the cosine for you.
  *
  * Weights default to `1.0` and are only comparable between constraints whose residuals share units. Nothing here checks
- * for redundancy or contradiction: two conflicting statements are not an error, they are a least-squares compromise
- * weighted by whatever you gave them.
+ * for redundancy or contradiction: two conflicting statements are not an error, they are a compromise weighted by
+ * whatever you gave them.
+ *
+ * **What kind of compromise depends on [robustLoss], and the default is not the one this sentence used to promise.**
+ * Under the inherited default — `Huber(1e-3)`, see [RobustLoss.DEFAULT] and the discussion at
+ * [CeresGeometry]'s `RobustLoss` — the compromise is nearer a weighted *median* than a weighted mean, so the heavier
+ * statement effectively wins outright. Call `robustLoss(RobustLoss.NONE)` when the weights are meant to trade off.
  */
 class ConstraintScope internal constructor(private val model: GeometryModelScope) {
     /** Add a raw [GeometryConstraint] — the escape hatch to anything this scope has no verb for. */

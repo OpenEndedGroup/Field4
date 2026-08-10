@@ -150,10 +150,15 @@ and a **mirrored** node with `scale (-1, 1, 1)`.
     (`MeshInstance.bindMatrix`) and read *that*, which `assimpToTriMesh` now does; the test fails if it
     stops.
 
-    **The GPU paths still read `bindPose`** — `applyToMesh`, `FabricateScene.importGltf` and
-    `StandardRendererDocsHarness` all call `bindPose.toMatrix()` — so a mirrored node is still flattened
-    there. Stated rather than fixed: changing a renderer's model matrix needs its committed captures
-    re-verified, which is a separate change.
+    **The GPU paths have not been fixed, and they fail in two different ways.**
+    `FabricateScene.importGltf` and `StandardRendererDocsHarness.gltfWorldBounds` call
+    `bindPose.toMatrix()`, so a mirrored node is still *flattened* there — the same defect, one line from
+    a fix (`instance.bindMatrix ?: instance.bindPose.toMatrix()`). `PlyModel.applyToMesh`/the glTF
+    `applyToMesh` are worse and differently wrong: they set `modelView` and `proj` from the camera and
+    apply **no model matrix at all**, so they drop every node transform, not just the mirror — a scene
+    whose parts are positioned by their nodes draws them all at the origin. Stated rather than fixed:
+    changing a renderer's model matrix needs its committed captures re-verified, which is a separate
+    change.
 
 ## Writing a file and reading it back
 
@@ -478,7 +483,7 @@ the image is that box's own output area. Two caveats, the same ones
   file is ever replaced, this page's counts and `MeshFromDiskTest` both go wrong at once — which is
   the intended arrangement, since the test says so out loud.
 
-What keeps the page honest is `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`: twelve tests,
+What keeps the page honest is `src/jvmTest/kotlin/afield/stdlib/MeshFromDiskTest.kt`: sixteen tests,
 every number quoted here asserted as an exact value, including the ToyCar counts, the fidelity table
 row by row, the `84 + 50n` STL size, the five shading counts, and the fact that `.step` still fails.
 `MeshIoTest.kt` covers the OBJ/STL readers themselves — quads, negative indices, the

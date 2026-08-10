@@ -296,9 +296,11 @@ Both were found by asserting a closed form. Neither would have been found by a t
 convergence, and neither shows up as a failure — they show up as a figure that is *slightly* wrong, and
 as a weight ladder that does not do what its own documentation says.
 
-### And one defect in the host DSL
+### And one sharp edge in the host DSL, which the host DSL already documented
 
-`PointExpr.ceq` looked like the way to lower `at f along`. It is not, and its KDoc now says why: it
+`PointExpr.ceq` looked like the way to lower `at f along`. It is not, and — correcting this page's first
+version, which implied Brief had documented it — **its KDoc already said why before Brief existed**
+(`ArchitecturalGeometry.kt:680-687` at the base commit): it
 materialises a *trace* point recomputed **between** solves and held only by a `1e-6` prior, so within a
 solve the minimiser can satisfy the relation by moving the trace point rather than the geometry — and
 its weight is hardcoded to `1.0` besides. A brief written with `prefer` and one written with `demand`
@@ -334,7 +336,7 @@ The box needs the native solver once: `./gradlew buildCeresRedistributable`.
 | what | how | status |
 | --- | --- | --- |
 | the notation's *meaning*, against closed forms, through real Ceres | `./gradlew smokeBrief -PceresLibrary=…` | 8 analytic assertions pass |
-| parse / resolve / diagnose / lower | `./gradlew jvmTest --tests 'afield.brief.*'` | 35 tests pass, no native library needed |
+| parse / resolve / diagnose / lower | `./gradlew jvmTest --tests 'afield.brief.*'` | 39 tests pass, no native library needed |
 | the coverage ratchet | same | 31/37, floor 82% |
 | `brief.js` ↔ `BriefVerbs`, both directions | same | 9 word sets, exact set equality |
 | `brief.js` executed for real | `python3 tools/run_field_tests.py --id brief.editor-extension.workout` | pass |

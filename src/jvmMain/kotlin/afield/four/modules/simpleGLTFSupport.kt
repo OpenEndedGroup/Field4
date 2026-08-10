@@ -173,10 +173,13 @@ object GltfSupport {
          * `MeshInstance`, and [Matrix4f] does not define structural equality.
          *
          * Set by the loader's node walk; `null` only for an instance built some other way, in which case
-         * `bindPose.toMatrix()` is all there is. [afield.four.modules.assimpToTriMesh] prefers this. The
-         * GPU paths (`applyToMesh`, `FabricateScene.importGltf`, `StandardRendererDocsHarness`) still
-         * read [bindPose] and so still carry the flattening — untouched here on purpose, because
-         * changing a renderer's model matrix needs its committed captures re-verified.
+         * `bindPose.toMatrix()` is all there is. [afield.four.modules.assimpToTriMesh] prefers this.
+         *
+         * The GPU paths are untouched here on purpose — changing a renderer's model matrix needs its
+         * committed captures re-verified — and they are wrong in two different ways. `FabricateScene`
+         * and `StandardRendererDocsHarness` read [bindPose] and so still carry the flattening.
+         * `applyToMesh` does not read either: it pushes only `modelView` and `proj` from the camera, so
+         * it drops every node transform, not just the mirror.
          */
         var bindMatrix: Matrix4f? = null
 
