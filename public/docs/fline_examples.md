@@ -224,6 +224,206 @@ That gives you a useful split of responsibilities:
 
 The two viewers are deliberately close in spirit. If you learn one, the other should feel familiar rather than like a separate subsystem.
 
+### The 3D output area as an instrument: `threeInspect(...)`
+
+A 3D preview of something that gets *built* gets asked three questions that a picture cannot answer: **how far apart are these two things**, **what does this look like in section**, and **how does it come apart**. `threeInspect(...)` is `threeLines(...)` plus those three, and it returns a view you can keep driving rather than a viewer you have to re-run a box to change.
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun Box.threeInspect(
+    lines: Collection<FLine>,
+    channel: String = "debug",
+    name: String = "inspector",
+    height: Int = 520,
+    samplesPerCubic: Int = 48,
+    autoFrame: Boolean = true,
+    groupBy: (FLine) -> String = { it.label ?: "" },
+    explode: ThreeExplode = ThreeExplode(),
+    section: ThreeSection = ThreeSection(),
+    measurements: List<ThreeMeasurement> = emptyList(),
+    units: String = "",
+    decimals: Int = 2,
+    pickToMeasure: Boolean = true
+): ThreeInspectorView
+```
+
+`groupBy` decides what counts as one *part* of the assembly, and it defaults to the FLine's `label` — so a figure that already labels its pieces explodes sensibly with no extra work.
+
+#### Measuring
+
+A `ThreeMeasurement` is a dimension the figure carries from the moment it is drawn: two elements, and the **closest approach** between them — not centroid to centroid, which on a panel drawing is a different number and not the one you would take to a saw. The dimension is drawn in the scene with witness lines and a legible number, so it orbits with the figure.
+
+You can also click the ruler in the viewer's toolbar and pick two elements yourself.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_measure.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
+:::static
+
+// A wall detail in millimetres, plus a conduit run threaded through it.
+fun skin(name: String, x: Double, c: Vec4) = fline {
+    moveTo(x, 0.0, 0.0)
+    lineTo(x, 1600.0, 0.0)
+    lineTo(x, 1600.0, 1800.0)
+    lineTo(x, 0.0, 1800.0)
+    close()
+    label = name
+    filled = true
+    stroked = true
+    thickness = 1.4
+    color = c
+}
+
+val wall = listOf(
+    skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.5)),
+    skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.28)),
+    skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.28)),
+    skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.4))
+)
+
+val conduit = fline {
+    moveTo(120.0, 1300.0, 1500.0)
+    lineTo(120.0, 500.0, 1500.0)
+    label = "conduit"
+    stroked = true
+    thickness = 5.0
+    color = vec(1.0, 0.45, 0.30, 1.0)
+}
+
+threeInspect(
+    wall + conduit,
+    channel = "wall-measured",
+    height = 520,
+    units = "mm",
+    measurements = listOf(
+        // the build-up: sheathing face to lining face, which is 152 by construction
+        ThreeMeasurement(
+            ThreeMeasureElement.face(wall[0]),
+            ThreeMeasureElement.face(wall[3]),
+            "build-up "
+        ),
+        // and the clearance from the conduit to the inside face of the lining,
+        // which is 152 - 120 = 32 and is nowhere written down in the figure
+        ThreeMeasurement(
+            ThreeMeasureElement.segment(120.0, 1300.0, 1500.0, 120.0, 500.0, 1500.0),
+            ThreeMeasureElement.face(wall[3]),
+            "clear "
+        )
+    )
+)
+```
+
+![Two dimensions drawn in the Three.js inspector](assets/fline_examples/three_inspect_measure.png)
+
+A measurement is in **model space**: it reads the real distance between the two things, which is what you want on a drawing, and it is not moved by the explode slider. Scrub the explode back to zero to read a dimension against the geometry it dimensions.
+
+#### Exploding
+
+`ThreeExplode` has two modes because there are two questions. `radial` slides every group away from the figure's centre, which reads well on an irregular assembly like a routed conduit run. `axis` slides every group along one direction, spaced by its **rank** in that direction rather than by its distance — which is what a layered wall needs, because four skins 12 mm apart stay in a clump under a distance-proportional explode while the far one leaves the frame.
+
+The ranks are centred, so the assembly stays put as the slider moves instead of walking out of view.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_explode.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
+:::static
+
+fun skin(name: String, x: Double, c: Vec4) = fline {
+    moveTo(x, 0.0, 0.0)
+    lineTo(x, 2400.0, 0.0)
+    lineTo(x, 2400.0, 2600.0)
+    lineTo(x, 0.0, 2600.0)
+    close()
+    label = name
+    filled = true
+    stroked = true
+    thickness = 1.4
+    color = c
+}
+
+val wall = listOf(
+    skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.75)),
+    skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.6)),
+    skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.6)),
+    skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.7))
+)
+
+val view = threeInspect(
+    wall,
+    channel = "wall-exploded",
+    height = 520,
+    units = "mm",
+    explode = ThreeExplode(
+        amount = 900.0,
+        mode = "axis",
+        axis = floatArrayOf(1f, 0f, 0f),
+        sliderMax = 1800.0
+    )
+)
+
+// `amount` is a parameter, not a literal you retype: the view can be driven again.
+// view.explode(1800.0)
+// view.explodeAlong(0.0, 0.0, 1.0, 600.0)
+```
+
+![A wall build-up exploded along its own axis](assets/fline_examples/three_inspect_explode.png)
+
+#### Sectioning
+
+`ThreeSection` cuts the figure at a **fraction of its own bounds** measured along the section normal, so `0.42` means the same thing on a 3 m wall and a 30 mm bracket and the slider is meaningful without knowing the model's scale.
+
+The part that makes it a section rather than a hidden half is the cut *outline*: the viewer computes where the plane crosses each triangle of the fill and each line segment, and draws those crossings brightly over the clipped figure. Hiding the front half shows you the inside of a shell; the outline shows you the cut, which on a fabrication drawing is the whole content of a section.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/three_inspect_section.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
+:::static
+
+fun skin(name: String, x: Double, c: Vec4) = fline {
+    moveTo(x, 0.0, 0.0)
+    lineTo(x, 2400.0, 0.0)
+    lineTo(x, 2400.0, 2600.0)
+    lineTo(x, 0.0, 2600.0)
+    close()
+    label = name
+    filled = true
+    stroked = true
+    thickness = 1.4
+    color = c
+}
+
+val wall = listOf(
+    skin("sheathing", 0.0, vec(0.36, 0.46, 0.58, 0.7)),
+    skin("studs", 90.0, vec(0.85, 0.62, 0.32, 0.5)),
+    skin("services", 140.0, vec(0.35, 0.72, 0.86, 0.5)),
+    skin("lining", 152.0, vec(0.90, 0.92, 0.96, 0.6))
+)
+
+val conduit = (0 until 5).map { i ->
+    fline {
+        val y = 300.0 + i * 450.0
+        moveTo(120.0, y, 0.0)
+        lineTo(120.0, y, 2600.0)
+        label = "conduit $i"
+        stroked = true
+        thickness = 4.0
+        color = vec(1.0, 0.45, 0.30, 1.0)
+    }
+}
+
+threeInspect(
+    wall + conduit,
+    channel = "wall-sectioned",
+    height = 520,
+    units = "mm",
+    section = ThreeSection(
+        enabled = true,
+        normal = floatArrayOf(0f, 0f, 1f),
+        fraction = 0.62
+    )
+)
+```
+
+![A section through the wall, with the cut outline drawn over it](assets/fline_examples/three_inspect_section.png)
+
+The status line reports the total length of the cut and where the plane sits, both in the figure's own units.
+
+One honest limitation: only the **fill** materials are clipped. The stroked outlines and point sprites are custom `ShaderMaterial`s and do not carry three.js's clipping-plane chunks, so they stay visible as a ghost wireframe behind the cut. That reads well — you keep the context and the cut is what stands out — but it is a consequence of the implementation rather than a decision, and it is written down here so nobody has to rediscover it.
+
 ### Callbacks: `onClick` and `hoverColor`
 
 `FLine` can also be interactive without being editable. If you set `onClick`, Field registers a callback for that line. If you set `hoverColor`, the line brightens or changes color when the pointer moves over it.

@@ -3314,7 +3314,10 @@ function inspectorDrawMeasurement(elementA, elementB, prefix) {
     inspectorAddSegments(points, DIMENSION_COLOR);
 
     const text = (prefix || '') + measureFormat(annotation.distance, spec.units || '', spec.decimals);
-    const sprite = inspectorLabelSprite(text, inspectorState.diagonal * 0.05, '#ffd35c');
+    // 7.5% of the figure's diagonal. Sized against the *figure* rather than in pixels because the
+    // label lives in the scene: a pixel size would grow as you dolly in and shrink to nothing as you
+    // pull out, and the one thing a dimension has to stay is readable.
+    const sprite = inspectorLabelSprite(text, inspectorState.diagonal * 0.075, '#ffd35c');
     sprite.position.set(annotation.label[0], annotation.label[1], annotation.label[2]);
     inspectorRoot.add(sprite);
     return text;
