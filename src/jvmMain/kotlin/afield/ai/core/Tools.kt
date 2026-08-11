@@ -722,12 +722,61 @@ internal class ToolRegistry {
 
     private val handlers = ConcurrentHashMap<String, Handler<*>>()
 
+    /**
+     * The subset of [handlers] that arrived through [AgentToolExtensions] rather than from core.
+     *
+     * Two things depend on telling the difference. An extension may replace or retire *its own* tool at
+     * any time — that is what makes a live-coded tool set possible — and it may never replace one of
+     * core's, because the agent's instructions are written around core's tools behaving as documented.
+     */
+    private val extensionOwned = ConcurrentHashMap.newKeySet<String>()
+
+    /** Serialises the mutators; reads stay lock-free on the concurrent collections. */
+    private val writeLock = Any()
+
     fun <T : Any> register(
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean = { true },
         handler: (ToolExecutionContext, T) -> Any
     ) {
-        handlers[toolClass.simpleName] = Handler(toolClass, available, handler)
+        synchronized(writeLock) {
+            handlers[toolClass.simpleName] = Handler(toolClass, available, handler)
+            // Core is registering this name directly, so core owns it from here on — even if an
+            // extension got there first, which it does: applyTo runs at the top of
+            // registerBuiltInAgentTools, before any of core's own register calls.
+            extensionOwned.remove(toolClass.simpleName)
+        }
+    }
+
+    /**
+     * Register a tool on behalf of [AgentToolExtensions], refusing a name core already holds.
+     *
+     * @return `false` if a non-extension handler is already registered under this simple name, in which
+     *   case nothing changed. The caller turns that into an error the extension author can read;
+     *   swallowing it would leave them with a tool that is registered on their side and invisible to
+     *   every model — the exact failure this seam was hardened against on 2026-08-11.
+     */
+    internal fun <T : Any> registerExtension(
+        toolClass: Class<T>,
+        available: (ToolExecutionContext) -> Boolean,
+        handler: (ToolExecutionContext, T) -> Any
+    ): Boolean = synchronized(writeLock) {
+        val name = toolClass.simpleName
+        if (handlers.containsKey(name) && !extensionOwned.contains(name)) return@synchronized false
+        handlers[name] = Handler(toolClass, available, handler)
+        extensionOwned.add(name)
+        true
+    }
+
+    /** True if [registerExtension] would accept [name] — i.e. core does not already hold it. */
+    internal fun acceptsExtensionNamed(name: String): Boolean =
+        !handlers.containsKey(name) || extensionOwned.contains(name)
+
+    /** Retire an extension's tool. A core tool of the same name is left alone. */
+    internal fun unregisterExtension(name: String) {
+        synchronized(writeLock) {
+            if (extensionOwned.remove(name)) handlers.remove(name)
+        }
     }
 
     fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
