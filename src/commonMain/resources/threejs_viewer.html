@@ -182,6 +182,15 @@
             text-align: right;
         }
 
+        /* `#hud-right` is a flex column with an 8px gap, so an *empty* status line is not free -- it
+           costs one gap and pushes the meta readout down by 8px on every figure in the docs, inspector
+           or not. `tools/docs_capture_audit.py --repeat 2` classified three unrelated three.js captures
+           as stale for exactly that reason before this rule existed. `:empty` takes it out of the flow,
+           so a payload with no inspector renders as it did before any of this landed. */
+        #inspector-status:empty {
+            display: none;
+        }
+
         #marquee {
             position: absolute;
             z-index: 9;
