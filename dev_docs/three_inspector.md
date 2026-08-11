@@ -149,11 +149,13 @@ constructor right but not that nobody has added a fourth beside it, which is how
   rendered empty, every test here would still be green. That is why `public/docs/fline_examples.md`
   carries four real captures rather than four claims, and why the demo's code *is* one of those
   captures.
-* **Only the fill materials clip.** The stroked outlines and point sprites are custom `ShaderMaterial`s
-  and do not carry three.js's `clipping_planes_*` GLSL chunks, so they stay visible as a ghost
-  wireframe behind the cut. It reads well — you keep the context and the cut is what stands out — but
-  it is a consequence of the implementation rather than a decision. Adding the chunks to the three
-  custom materials is the obvious next step.
+* **Clipping covers the three custom `ShaderMaterial`s as well as the standard one**, but by hand:
+  `makeLineMaterial`, `makePointMaterial` and their two interactive siblings each carry
+  `clipping: true` plus three.js's `clipping_planes_*` chunks, with `<clipping_planes_vertex>` after a
+  `vec4 mvPosition` it reads *by name*. That is an undocumented-ish contract with `WebGLPrograms`, and
+  a fifth custom material added later will silently not clip. The editable-mode overlay materials
+  (handles, marquee highlights) deliberately do not clip — edit mode and section mode are not meant to
+  be combined, and that is untested rather than prevented.
 * **A measurement is model-space.** It reads the real distance between two things and is *not* moved by
   the explode slider, so on an exploded figure the dimension detaches from the geometry. That is the
   right trade — a drawing wants the real number — but it means dimensions and explosions are best read

@@ -420,9 +420,9 @@ threeInspect(
 
 ![A section through the wall, with the cut outline drawn over it](assets/fline_examples/three_inspect_section.png)
 
-The status line reports the total length of the cut and where the plane sits, both in the figure's own units.
+The status line reports the total length of the cut and where the plane sits, both in the figure's own units — `cut 9600 mm` above is exactly four 2400-wide skins.
 
-One honest limitation: only the **fill** materials are clipped. The stroked outlines and point sprites are custom `ShaderMaterial`s and do not carry three.js's clipping-plane chunks, so they stay visible as a ghost wireframe behind the cut. That reads well — you keep the context and the cut is what stands out — but it is a consequence of the implementation rather than a decision, and it is written down here so nobody has to rediscover it.
+Everything clips: fills, strokes and point sprites. `MeshStandardMaterial` gets clipping from three.js for free, but the viewer draws strokes and points with custom `ShaderMaterial`s, which do not — so those carry three.js's own `clipping_planes_*` chunks explicitly. Without them a section clipped the fills and left the wireframe and the conduits hanging in the air past the cut, which reads as a rendering bug rather than as a drawing.
 
 #### Open it and feel it
 

@@ -923,25 +923,45 @@ function ensureAttribute(geometry, name, itemSize, fillValue) {
     geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
 }
 
+// The four custom materials below carry three.js's own clipping-plane chunks.
+//
+// `MeshStandardMaterial` gets clipping for free; a `ShaderMaterial` does not, and the four figures the
+// viewer draws with are three of these plus one standard. Without the chunks a section clipped the
+// fills and left the strokes and the point sprites hanging in the air past the cut, which reads as a
+// rendering bug rather than as a drawing.
+//
+// The contract is small and exact: `clipping: true` so `WebGLPrograms` defines `NUM_CLIPPING_PLANES`
+// and injects the `clippingPlanes` uniform; `<clipping_planes_pars_vertex>` and
+// `<clipping_planes_vertex>` in the vertex shader, the latter after a `vec4 mvPosition` it reads by
+// name; and the two fragment chunks, with `<clipping_planes_fragment>` first in `main` so a clipped
+// fragment is discarded before anything else is computed. With no planes set, every chunk expands to
+// nothing and the shaders are byte-identical to what they were — asserted by re-running
+// `docs_capture_audit.py`, which left all 43 of the page's other figures unmoved.
 function makeLineMaterial() {
     return new THREE.ShaderMaterial({
         vertexShader: `
             attribute vec3 color;
             attribute float alpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 gl_FragColor = vColor;
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -956,16 +976,20 @@ function makePointMaterial() {
             attribute float alpha;
             varying vec4 vColor;
             uniform float uPixelRatio;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_PointSize = max(size * uPixelRatio, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
@@ -974,7 +998,8 @@ function makePointMaterial() {
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -1015,9 +1040,12 @@ function makeInteractiveLineMaterial(hoverColor) {
             attribute vec3 color;
             attribute float alpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
@@ -1025,14 +1053,17 @@ function makeInteractiveLineMaterial(hoverColor) {
             uniform vec3 uHoverColor;
             uniform float uHoverAlpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec3 c = mix(vColor.rgb, uHoverColor, uHover);
                 float a = mix(vColor.a, uHoverAlpha, uHover);
                 gl_FragColor = vec4(c, a);
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -1050,11 +1081,13 @@ function makeInteractivePointMaterial(hoverColor) {
             attribute float alpha;
             varying vec4 vColor;
             uniform float uPixelRatio;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_PointSize = max(size * uPixelRatio, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
@@ -1062,7 +1095,9 @@ function makeInteractivePointMaterial(hoverColor) {
             uniform vec3 uHoverColor;
             uniform float uHoverAlpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
@@ -1073,7 +1108,8 @@ function makeInteractivePointMaterial(hoverColor) {
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -3174,14 +3210,28 @@ function inspectorMovableSlots() {
     return out;
 }
 
-/** The fills, whose material is a `MeshStandardMaterial` and therefore clips natively. */
+/**
+ * Every material a section has to cut: the fills, the strokes and the point sprites.
+ *
+ * The fills are `MeshStandardMaterial` and clip for free. The other two are custom `ShaderMaterial`s
+ * and carry three.js's clipping chunks explicitly — see `makeLineMaterial`. Getting them all is the
+ * difference between a section and a clipped fill with the wireframe still hanging in the air past the
+ * cut.
+ *
+ * The inspector's own overlay (`inspectorRoot`) is deliberately *not* here: the cut line and the
+ * dimensions are annotations about the section and must survive it.
+ */
 function inspectorClippableMaterials() {
     const out = [];
-    if (payloadGeometrySlots.fills && payloadGeometrySlots.fills.material) {
-        out.push(payloadGeometrySlots.fills.material);
-    }
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const slot = payloadGeometrySlots[key];
+        if (slot && slot.material) out.push(slot.material);
+    });
     payloadGeometrySlots.interactive.forEach((slot) => {
-        if (slot && slot.fills && slot.fills.material) out.push(slot.fills.material);
+        if (!slot) return;
+        ['lines', 'fills', 'points'].forEach((key) => {
+            if (slot[key] && slot[key].material) out.push(slot[key].material);
+        });
     });
     return out;
 }
