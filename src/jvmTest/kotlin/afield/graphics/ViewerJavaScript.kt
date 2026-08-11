@@ -308,6 +308,14 @@ $region
             "explodeOffsets",
             "explodeApply",
         ),
+        "inspector-section" to listOf(
+            "SECTION_EPS",
+            "sectionPlane",
+            "sectionSignedDistance",
+            "sectionCutTriangles",
+            "sectionCutSegments",
+            "sectionCutLength",
+        ),
     )
 
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */

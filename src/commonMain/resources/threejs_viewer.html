@@ -2032,6 +2032,168 @@ function explodeApply(base, groups, offsets, out) {
 }
 // [viewer-region inspector-explode] END
 
+// [viewer-region inspector-section] BEGIN
+// "What does this look like in section" — the cut plane, and the cut itself.
+//
+// three.js will hide half a figure for you: set `renderer.localClippingEnabled` and give the materials
+// a `THREE.Plane`. That answers a *different* question. Hiding the front half shows you the inside of a
+// shell; it does not draw the line where the knife went, and on a fabrication drawing the cut line is
+// the entire content of a section — it is what tells you the wall is 240 thick here and 90 there.
+//
+// So this region does two things. `sectionPlane` turns a normal and a **fraction of the figure's own
+// bounds** into a plane; and `sectionCutTriangles` / `sectionCutSegments` compute where that plane
+// actually crosses the geometry, which the viewer then draws as a bright cut line over the clipped
+// figure. The plane is the part three.js could have done. The crossings are the part it cannot.
+//
+// A fraction rather than a world coordinate, deliberately: a section at `0.42` means the same thing on
+// a 3 m wall and on a 30 mm bracket, so a scrubber over it is meaningful without knowing the model's
+// scale, and a section is portable between figures.
+//
+// ### The straddle test, which is the whole subtlety
+//
+// `(da > 0) !== (db > 0)` and not `da * db < 0`. They differ exactly when a vertex lies *on* the plane,
+// which is the common case rather than the rare one: real geometry is built on round numbers and
+// sections get put on round numbers. Under the product test a triangle with one vertex on the plane
+// contributes one crossing instead of two, the segment is dropped, and the cut line comes out full of
+// holes wherever the model was tidy. `ThreeInspectorSectionDifferentialTest` has that as a
+// counterfactual, and the perturbed cut length is exactly zero.
+//
+// No DOM, no THREE.
+const SECTION_EPS = 1e-9;
+
+/**
+ * The cut plane for a figure, as `n · p + d = 0` with `n` unit.
+ *
+ * `fraction` runs 0..1 across the figure's bounds *measured along the normal* — the eight corners are
+ * projected and the extremes taken, so an oblique normal still gets the true extent rather than an
+ * axis-aligned guess.
+ *
+ * `flip` swaps which half survives without changing where the cut is: `n` and `d` are both negated, and
+ * `at` — the position of the plane along the *original* normal — is reported unchanged. That is why
+ * flipping is a separate control from negating the normal, which would also reverse the fraction and
+ * send the slider backwards under the user's hand.
+ */
+function sectionPlane(bounds, normal, fraction, flip) {
+    const length = Math.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+    const n = length > SECTION_EPS
+        ? [normal[0] / length, normal[1] / length, normal[2] / length]
+        : [1, 0, 0];
+    let lo = 0;
+    let hi = 0;
+    if (bounds && bounds.min && bounds.max) {
+        let first = true;
+        for (let corner = 0; corner < 8; corner += 1) {
+            const p = [
+                (corner & 1) ? bounds.max[0] : bounds.min[0],
+                (corner & 2) ? bounds.max[1] : bounds.min[1],
+                (corner & 4) ? bounds.max[2] : bounds.min[2]
+            ];
+            const at = p[0] * n[0] + p[1] * n[1] + p[2] * n[2];
+            if (first) { lo = at; hi = at; first = false; }
+            else { lo = Math.min(lo, at); hi = Math.max(hi, at); }
+        }
+    }
+    const t = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0.5;
+    const at = lo + (hi - lo) * t;
+    if (flip) return { n: [-n[0], -n[1], -n[2]], d: at, at: at, lo: lo, hi: hi, flipped: true };
+    return { n: n, d: -at, at: at, lo: lo, hi: hi, flipped: false };
+}
+
+/** Signed distance from the plane — positive on the side that survives clipping. */
+function sectionSignedDistance(plane, p) {
+    return plane.n[0] * p[0] + plane.n[1] * p[1] + plane.n[2] * p[2] + plane.d;
+}
+
+/**
+ * Where the plane crosses a triangle mesh, as a flat array of segment endpoints.
+ *
+ * `[ax, ay, az, bx, by, bz, …]`, ready to become a `THREE.LineSegments` with no reshaping — this runs
+ * on a slider drag over the whole fill buffer, so the output is the shape the consumer wants.
+ *
+ * `index` may be null, in which case the positions are read three vertices at a time. A triangle with
+ * fewer than two crossings contributes nothing: a triangle wholly on one side, and also the degenerate
+ * case of a triangle lying *in* the plane, which would otherwise emit an arbitrary one of its edges.
+ */
+function sectionCutTriangles(positions, index, plane) {
+    const out = [];
+    const triangles = index ? Math.floor(index.length / 3) : Math.floor(positions.length / 9);
+    const crossing = [];
+    for (let t = 0; t < triangles; t += 1) {
+        const i0 = index ? index[t * 3] : t * 3;
+        const i1 = index ? index[t * 3 + 1] : t * 3 + 1;
+        const i2 = index ? index[t * 3 + 2] : t * 3 + 2;
+        const corners = [
+            [positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]],
+            [positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]],
+            [positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]]
+        ];
+        const d = [
+            sectionSignedDistance(plane, corners[0]),
+            sectionSignedDistance(plane, corners[1]),
+            sectionSignedDistance(plane, corners[2])
+        ];
+        crossing.length = 0;
+        for (let e = 0; e < 3; e += 1) {
+            const a = e;
+            const b = (e + 1) % 3;
+            // See the region's header: `!==` on the sign, not a product, so a vertex sitting exactly on
+            // the plane still yields a crossing.
+            if ((d[a] > 0) === (d[b] > 0)) continue;
+            const span = d[a] - d[b];
+            if (!(Math.abs(span) > SECTION_EPS)) continue;
+            const s = d[a] / span;
+            crossing.push([
+                corners[a][0] + (corners[b][0] - corners[a][0]) * s,
+                corners[a][1] + (corners[b][1] - corners[a][1]) * s,
+                corners[a][2] + (corners[b][2] - corners[a][2]) * s
+            ]);
+        }
+        if (crossing.length < 2) continue;
+        out.push(
+            crossing[0][0], crossing[0][1], crossing[0][2],
+            crossing[1][0], crossing[1][1], crossing[1][2]
+        );
+    }
+    return out;
+}
+
+/**
+ * Where the plane crosses a `LineSegments` buffer, as a flat array of **points**.
+ *
+ * A cut through a line is a point, not a segment, so these are drawn as marks rather than as a line —
+ * which is what a section through a conduit run should look like: a row of dots where each pipe was
+ * caught, at the height of the cut.
+ */
+function sectionCutSegments(positions, plane) {
+    const out = [];
+    const pairs = Math.floor(positions.length / 6);
+    for (let s = 0; s < pairs; s += 1) {
+        const a = [positions[s * 6], positions[s * 6 + 1], positions[s * 6 + 2]];
+        const b = [positions[s * 6 + 3], positions[s * 6 + 4], positions[s * 6 + 5]];
+        const da = sectionSignedDistance(plane, a);
+        const db = sectionSignedDistance(plane, b);
+        if ((da > 0) === (db > 0)) continue;
+        const span = da - db;
+        if (!(Math.abs(span) > SECTION_EPS)) continue;
+        const t = da / span;
+        out.push(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t);
+    }
+    return out;
+}
+
+/** Total length of a cut, for the readout — and the number the differential test ratchets. */
+function sectionCutLength(cut) {
+    let total = 0;
+    for (let i = 0; i + 5 < cut.length; i += 6) {
+        const dx = cut[i + 3] - cut[i];
+        const dy = cut[i + 4] - cut[i + 1];
+        const dz = cut[i + 5] - cut[i + 2];
+        total += Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    return total;
+}
+// [viewer-region inspector-section] END
+
 /** Which of an interactive object's three geometries three.js says the ray hit. */
 function flineRoleForObject(object) {
     if (!object) return '';
