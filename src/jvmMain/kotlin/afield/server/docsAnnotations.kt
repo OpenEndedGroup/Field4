@@ -546,11 +546,56 @@ fun Route.installDocsAnnotationRoutes() {
     route(PROXY_ROOT.removeSuffix("/")) { get("{...}") { call.proxyFieldDocs() } }
 }
 
+/**
+ * The upstream URL a `/field-docs/…` request may be turned into, or `null` to refuse.
+ *
+ * The guard this replaces was `relative.contains("..")` applied to `URI.rawPath` — the
+ * *percent-encoded* path. `..` written as `%2e%2e` therefore contains no `..`, sailed
+ * past the check, and was handed to `HttpClient`, which normalises it: the proxy would
+ * cheerfully fetch anything on `openendedgroup.com` outside `/field4/` and serve it
+ * back through Field's own origin, with the annotation script injected into it. The
+ * damage is bounded — that origin is a public website — but "our proxy will fetch
+ * whatever you ask it to" is not a property to leave lying around.
+ *
+ * Two independent checks now, because encoding bugs are exactly the class of bug where
+ * one clever check is wrong:
+ *
+ *  - textual, on the *decoded* path: no `..` segment, no absolute path, no backslash
+ *    (a Windows-flavoured separator some servers still honour), no control characters;
+ *  - structural, on the assembled URI: after [URI.normalize] the origin must still be
+ *    the documentation origin and the path must still start with `/field4/`.
+ *
+ * Decoding once is the right depth: the upstream server also decodes once, so a
+ * double-encoded `%252e%252e` reaches it as the literal filename `%2e%2e` and never
+ * becomes a traversal.
+ */
+internal fun docsProxyTarget(rawPath: String, rawQuery: String?): URI? {
+    val relative = rawPath.removePrefix(PROXY_ROOT).ifBlank { "index.html" }
+    val decoded = runCatching { URLDecoder.decode(relative, StandardCharsets.UTF_8) }.getOrNull() ?: return null
+    if (decoded.split('/').any { it == ".." }) return null
+    if (decoded.startsWith("/") || decoded.contains('\\') || decoded.any { it.code < 0x20 }) return null
+    val target = runCatching {
+        URI.create("$DOCS_ORIGIN$DOCS_ROOT$relative" + rawQuery?.let { "?$it" }.orEmpty()).normalize()
+    }.getOrNull() ?: return null
+    if ("${target.scheme}://${target.authority}" != DOCS_ORIGIN) return null
+    if (!target.rawPath.startsWith(DOCS_ROOT)) return null
+    return target
+}
+
+/**
+ * Minimal attribute escaping for the injected `<base href>`.
+ *
+ * Belt and braces, honestly: [URI.create] already rejects a raw `"` or `<`, so no
+ * request that reaches here can carry one, and the encoded `%22` form renders as inert
+ * text. It costs one function to stop that argument from being load-bearing.
+ */
+private fun escapeDocsHtmlAttribute(value: String): String =
+    value.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
 private suspend fun ApplicationCall.proxyFieldDocs() {
     val incoming = URI(request.uri)
-    val relative = incoming.rawPath.removePrefix(PROXY_ROOT).ifBlank { "index.html" }
-    if (relative.contains("..")) return respond(HttpStatusCode.BadRequest, "invalid docs path")
-    val target = URI.create("$DOCS_ORIGIN$DOCS_ROOT$relative" + incoming.rawQuery?.let { "?$it" }.orEmpty())
+    val target = docsProxyTarget(incoming.rawPath, incoming.rawQuery)
+        ?: return respond(HttpStatusCode.BadRequest, "invalid docs path")
     val upstream = try {
         withContext(Dispatchers.IO) {
             docsProxyClient.send(HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30)).GET().build(), HttpResponse.BodyHandlers.ofByteArray())
@@ -559,7 +604,7 @@ private suspend fun ApplicationCall.proxyFieldDocs() {
     val contentType = upstream.headers().firstValue(HttpHeaders.ContentType).orElse("application/octet-stream")
     if (contentType.lowercase().contains("text/html")) {
         var html = upstream.body().toString(StandardCharsets.UTF_8)
-        val pageBase = target.resolve(".")
+        val pageBase = escapeDocsHtmlAttribute(target.resolve(".").toString())
         val sauce = """<script>window.__FIELD_DOCS_UPSTREAM__=${Json.encodeToString(target.toString())};window.__FIELD_DOCS_PROXY__='$PROXY_ROOT';const fieldDocsAnnotationsScript=document.createElement('script');fieldDocsAnnotationsScript.src=window.location.origin+'/docsAnnotations.js';document.head.appendChild(fieldDocsAnnotationsScript);</script><base href="$pageBase">"""
         val head = Regex("<head[^>]*>", RegexOption.IGNORE_CASE)
         val headMatch = head.find(html)
