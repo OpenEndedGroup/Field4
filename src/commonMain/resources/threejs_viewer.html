@@ -1875,6 +1875,163 @@ function measureFormat(distance, units, decimals) {
 }
 // [viewer-region inspector-measure] END
 
+// [viewer-region inspector-explode] BEGIN
+// "How does it come apart" — the arithmetic of an exploded view.
+//
+// This exists because of one literal in the human's own document
+// (`panel-cross-host-3d`, 2026-08-09):
+//
+//     showConduitRelaxationThree(relaxed, channelPrefix = "cross-host-assembled", explosionMm = 0.0, …)
+//
+// An exploded view already existed — as a number you retype and re-run the box for. The whole
+// complaint is that it is not a *control*, so the displacement has to happen in the viewer, on the CPU,
+// from a kept copy of the base positions. Which means the arithmetic is written twice — once here and
+// once in `ThreeJsViewer.kt` — and that is exactly the situation the region harness exists for.
+//
+// The scene's batched geometry merges every FLine into one buffer, so each vertex carries a `group`
+// attribute saying which assembly it belongs to. Everything below is over that pair of arrays.
+//
+// Two modes, because two different questions are being asked:
+//
+//  * `radial` — every group slides directly away from a common origin. This is the "show me the
+//    fasteners" explode, and it is the one that reads well on an irregular assembly.
+//  * `axis` — every group slides along one fixed direction, spaced by its **rank** in that direction
+//    rather than by its distance. This is the layered-wall explode (`panel-plumbing-wall-floor`), where
+//    the four skins of a wall are 12 mm apart in reality and have to be metres apart to be looked at.
+//    Rank-spacing is what makes an even fan out of unevenly-spaced layers.
+//
+// The ranks are **centred**, so the middle of the assembly stays where it is and the view does not
+// walk out of frame as the slider moves. That is a usability property with an arithmetic test.
+//
+// No DOM, no THREE.
+const EXPLODE_EPS = 1e-12;
+
+/** The centre of a payload's bounds — the natural origin for a radial explode. */
+function explodeBoundsCentre(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return [0, 0, 0];
+    return [
+        (bounds.min[0] + bounds.max[0]) * 0.5,
+        (bounds.min[1] + bounds.max[1]) * 0.5,
+        (bounds.min[2] + bounds.max[2]) * 0.5
+    ];
+}
+
+/**
+ * Each group's centroid and vertex count, from the flat position buffer and the per-vertex group index.
+ *
+ * A group with no vertices gets a `null` centroid rather than `[0, 0, 0]`, and every caller below
+ * checks for it. `[0, 0, 0]` would be a plausible-looking answer that quietly drags an absent group's
+ * neighbours toward the world origin, and an assembly usually *does* have empty groups — a line that is
+ * stroked but not filled contributes nothing to the fill buffer.
+ */
+function explodeGroupCentroids(positions, groups, groupCount) {
+    const count = Math.max(0, groupCount | 0);
+    const sums = [];
+    const counts = [];
+    for (let g = 0; g < count; g += 1) {
+        sums.push([0, 0, 0]);
+        counts.push(0);
+    }
+    const vertices = Math.floor(positions.length / 3);
+    for (let i = 0; i < vertices; i += 1) {
+        const g = Math.round(groups[i]);
+        if (!(g >= 0 && g < count)) continue;
+        sums[g][0] += positions[i * 3];
+        sums[g][1] += positions[i * 3 + 1];
+        sums[g][2] += positions[i * 3 + 2];
+        counts[g] += 1;
+    }
+    const centroids = [];
+    for (let g = 0; g < count; g += 1) {
+        if (counts[g] === 0) centroids.push(null);
+        else centroids.push([sums[g][0] / counts[g], sums[g][1] / counts[g], sums[g][2] / counts[g]]);
+    }
+    return { centroids: centroids, counts: counts };
+}
+
+/**
+ * The groups ordered along `axis`, as a rank per group — `-1` for a group that is not there.
+ *
+ * Ties are broken by group index, so a wall whose two skins share a centroid still fans out in a
+ * defined order rather than in whatever order the sort happened to produce this frame.
+ */
+function explodeAxisRanks(centroids, axis) {
+    const length = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
+    const unit = length > EXPLODE_EPS
+        ? [axis[0] / length, axis[1] / length, axis[2] / length]
+        : [0, 1, 0];
+    const order = [];
+    for (let g = 0; g < centroids.length; g += 1) {
+        if (!centroids[g]) continue;
+        const c = centroids[g];
+        order.push({ g: g, at: c[0] * unit[0] + c[1] * unit[1] + c[2] * unit[2] });
+    }
+    order.sort((a, b) => (a.at === b.at ? a.g - b.g : a.at - b.at));
+    const ranks = centroids.map(() => -1);
+    order.forEach((entry, index) => { ranks[entry.g] = index; });
+    return { ranks: ranks, unit: unit, present: order.length };
+}
+
+/**
+ * The displacement for each group: `[[dx, dy, dz], …]`, one per group, always the full length.
+ *
+ * `amount = 0` returns exact zeros in both modes, which is the assembled state and has to be *exactly*
+ * the assembled state — the human's document passes `explosionMm = 0.0` and the geometry it draws must
+ * be the geometry the server sent, bit for bit, not the geometry plus a rounding error.
+ */
+function explodeOffsets(centroids, origin, spec) {
+    const amount = spec && Number.isFinite(spec.amount) ? spec.amount : 0;
+    const zero = centroids.map(() => [0, 0, 0]);
+    if (amount === 0) return zero;
+    const mode = (spec && spec.mode) || 'radial';
+    if (mode === 'axis') {
+        const ordering = explodeAxisRanks(centroids, (spec && spec.axis) || [0, 1, 0]);
+        const middle = (ordering.present - 1) * 0.5;
+        return centroids.map((c, g) => {
+            if (!c || ordering.ranks[g] < 0) return [0, 0, 0];
+            const step = (ordering.ranks[g] - middle) * amount;
+            return [ordering.unit[0] * step, ordering.unit[1] * step, ordering.unit[2] * step];
+        });
+    }
+    return centroids.map((c) => {
+        if (!c) return [0, 0, 0];
+        const dx = c[0] - origin[0];
+        const dy = c[1] - origin[1];
+        const dz = c[2] - origin[2];
+        const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // A group sitting exactly on the origin has no direction to go, and must not be given one.
+        if (!(length > EXPLODE_EPS)) return [0, 0, 0];
+        return [dx / length * amount, dy / length * amount, dz / length * amount];
+    });
+}
+
+/**
+ * `base + offset[group]` for every vertex, written into `out`.
+ *
+ * `out` is reused between frames — this runs on a slider drag — so it is written into rather than
+ * allocated. A vertex whose group index is out of range is *copied*, not dropped, because a geometry
+ * that loses vertices when a slider moves is worse than one that fails to explode.
+ */
+function explodeApply(base, groups, offsets, out) {
+    const target = out || new Array(base.length);
+    const vertices = Math.floor(base.length / 3);
+    for (let i = 0; i < vertices; i += 1) {
+        const g = Math.round(groups ? groups[i] : -1);
+        const offset = (g >= 0 && g < offsets.length) ? offsets[g] : null;
+        if (offset) {
+            target[i * 3] = base[i * 3] + offset[0];
+            target[i * 3 + 1] = base[i * 3 + 1] + offset[1];
+            target[i * 3 + 2] = base[i * 3 + 2] + offset[2];
+        } else {
+            target[i * 3] = base[i * 3];
+            target[i * 3 + 1] = base[i * 3 + 1];
+            target[i * 3 + 2] = base[i * 3 + 2];
+        }
+    }
+    return target;
+}
+// [viewer-region inspector-explode] END
+
 /** Which of an interactive object's three geometries three.js says the ray hit. */
 function flineRoleForObject(object) {
     if (!object) return '';

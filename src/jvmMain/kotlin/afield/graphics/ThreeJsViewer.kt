@@ -140,6 +140,14 @@ data class ThreeInteractiveObject(
     val vertices: List<ThreeInteractiveVertex> = emptyList(),
     /** Index of this FLine among the lines the viewer was given, reported back as `lineIndex`. */
     val lineIndex: Int = -1,
+    /**
+     * Which assembly group this whole object belongs to, or `-1` when the payload has no inspector.
+     *
+     * An interactive object is one FLine, so its group is uniform and the viewer moves it by
+     * `object.position` rather than by rewriting a per-vertex buffer — same offsets, same region
+     * function, a great deal less work per slider frame.
+     */
+    val group: Int = -1,
     /** The line's [FLine.label], reported back with a hit so one closure can serve a whole figure. */
     val label: String? = null,
     /**
@@ -182,7 +190,14 @@ data class ThreeGeometryPayload(
     /** Per-FLine interactive objects (separate geometry with click/hover callbacks). */
     val interactive: List<ThreeInteractiveObject> = emptyList(),
     val scene: ThreeEditableScene? = null,
-    val editableEnabled: Boolean = false
+    val editableEnabled: Boolean = false,
+    /**
+     * Measure / section / explode, when the payload came from [Box.threeInspect].
+     *
+     * `null` for an ordinary [Box.threeLines] payload, and the viewer then behaves exactly as it did
+     * before this existed — no HUD, no clipping planes, no kept copy of the base positions.
+     */
+    val inspector: ThreeInspector? = null
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -195,7 +210,8 @@ data class ThreeGeometryPayload(
         "autoFrame" to autoFrame,
         "interactive" to interactive.size,
         "scene" to (scene != null),
-        "editableEnabled" to editableEnabled
+        "editableEnabled" to editableEnabled,
+        "inspector" to (inspector != null)
     )
 }
 
@@ -499,15 +515,37 @@ private class BoundsTracker {
  * This count is the cheap guard. The real one is `ThreeJsViewerTessellationParityTest`, which *executes*
  * the viewer's JavaScript on GraalJS and compares it to [PlanarTessellation] triangle for triangle; see
  * `ViewerJavaScript`.
+ *
+ * @param groupKeys one assembly-group name per source line, or `null` for an ordinary payload. When
+ * present, every vertex of the batched geometry gets a `group` attribute holding the index of its
+ * line's group in [distinctGroupNames], and every interactive object gets a scalar `group`. That
+ * attribute is what the viewer's `inspector-explode` region displaces.
+ *
+ * The per-line vertex ranges are *recorded* — the buffer length before and after each line is
+ * appended — rather than threaded through [appendFLineGeometry] and its five callees as another
+ * out-parameter. The result is identical and five signatures stay the length they are.
+ *
+ * @param inspector the measure / section / explode block, or `null`. With `null` the payload is byte
+ * for byte what it was before any of this existed, and the viewer takes its old path.
  */
 internal fun buildThreeGeometryPayload(
     uid: String,
     lines: Collection<FLine>,
     samplesPerCubic: Int,
     autoFrame: Boolean,
-    editable: Boolean
+    editable: Boolean,
+    groupKeys: List<String>? = null,
+    inspector: ThreeInspector? = null
 ): ThreeGeometryPayload {
     val sourceLines = lines.toList()
+    require(groupKeys == null || groupKeys.size == sourceLines.size) {
+        "one assembly-group key per line, please: ${groupKeys!!.size} keys for ${sourceLines.size} lines"
+    }
+    val groupNames = groupKeys?.let { distinctGroupNames(it) }
+    val groupOfLine = groupKeys?.map { groupNames!!.indexOf(it) }
+    val lineGroups = if (groupOfLine != null) ArrayList<Float>() else null
+    val meshGroups = if (groupOfLine != null) ArrayList<Float>() else null
+    val pointGroups = if (groupOfLine != null) ArrayList<Float>() else null
     val editSession = if (editable) registerFLineEditSession(sourceLines, null) else null
     val samples = samplesPerCubic.coerceAtLeast(2)
     val callbackIds = sourceLines.map { line ->
@@ -570,6 +608,7 @@ internal fun buildThreeGeometryPayload(
                 )
 
                 interactiveObjects += ThreeInteractiveObject(
+                    group = groupOfLine?.get(lineIndex) ?: -1,
                     callbackId = callbackId,
                     hoverColor = hoverColor,
                     lines = lineGeometryOrNull(localLinePositions, localLineColors, localLineAlphas),
@@ -582,6 +621,9 @@ internal fun buildThreeGeometryPayload(
                     topology = if (callbackId.isNotEmpty()) flineTopologyJson(f) else ""
                 )
             } else {
+                val lineVerticesBefore = linePositions.size / 3
+                val meshVerticesBefore = meshPositions.size / 3
+                val pointVerticesBefore = pointPositions.size / 3
                 appendFLineGeometry(
                     f = f,
                     samplesPerCubic = samples,
@@ -598,6 +640,12 @@ internal fun buildThreeGeometryPayload(
                     pointSizes = pointSizes,
                     bounds = geometryBounds
                 )
+                if (groupOfLine != null) {
+                    val group = groupOfLine[lineIndex].toFloat()
+                    repeat(linePositions.size / 3 - lineVerticesBefore) { lineGroups!!.add(group) }
+                    repeat(meshPositions.size / 3 - meshVerticesBefore) { meshGroups!!.add(group) }
+                    repeat(pointPositions.size / 3 - pointVerticesBefore) { pointGroups!!.add(group) }
+                }
             }
         }
     }
@@ -692,9 +740,10 @@ internal fun buildThreeGeometryPayload(
         }
     } else null
 
-    val lineGeom = lineGeometryOrNull(linePositions, lineColors, lineAlphas)
-    val fillGeom = fillGeometryOrNull(meshPositions, meshColors, meshAlphas, meshIndices)
+    val lineGeom = lineGeometryOrNull(linePositions, lineColors, lineAlphas).withGroups(lineGroups)
+    val fillGeom = fillGeometryOrNull(meshPositions, meshColors, meshAlphas, meshIndices).withGroups(meshGroups)
     val pointGeom = pointGeometryOrNull(pointPositions, pointColors, pointAlphas, pointSizes)
+        .withGroups(pointGroups)
 
     return ThreeGeometryPayload(
         uid = uid,
@@ -710,8 +759,27 @@ internal fun buildThreeGeometryPayload(
         autoFrame = autoFrame,
         interactive = interactiveObjects,
         scene = scene,
-        editableEnabled = editable
+        editableEnabled = editable,
+        inspector = inspector?.copy(groups = groupNames ?: inspector.groups)
     )
+}
+
+/**
+ * Attach the per-vertex assembly-group index, when there is one.
+ *
+ * A separate pass rather than another parameter on the three `…GeometryOrNull` builders: the group of a
+ * vertex is a property of *which line appended it*, which those builders do not know and should not
+ * have to. The count is asserted here rather than trusted, because a group array one vertex short of
+ * the position array is a silent off-by-one that three.js renders as a plausible-looking wrong
+ * explosion — the vertices simply pick up their neighbour's group.
+ */
+private fun ThreeGeometryData?.withGroups(groups: List<Float>?): ThreeGeometryData? {
+    if (this == null || groups == null || groups.isEmpty()) return this
+    val vertexCount = (attributes["position"]?.array?.size ?: 0) / 3
+    check(groups.size == vertexCount) {
+        "the assembly-group attribute has ${groups.size} entries for $vertexCount vertices"
+    }
+    return copy(attributes = attributes + ("group" to ThreeAttribute(itemSize = 1, array = groups.toFloatArray())))
 }
 
 private fun lineGeometryOrNull(

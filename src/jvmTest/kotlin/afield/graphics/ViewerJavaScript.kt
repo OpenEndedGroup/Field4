@@ -107,6 +107,24 @@ object ViewerJavaScript {
     }
 
     /**
+     * A region's source with its comments removed, for guards that ask "does this *reach for* X".
+     *
+     * Added 2026-08-11 because the `inspector-explode` region explains itself by quoting the human's
+     * workspace document, and the word "document" in a sentence is not a DOM access. The alternative
+     * was to write the comments around the guard, which would have made a *prose* rule out of a
+     * *behaviour* rule — and these regions carry a lot of prose on purpose.
+     *
+     * Deliberately a simple stripper: block comments, and `//` to end of line, with no string- or
+     * regex-literal awareness. That direction is safe for a guard — a naive stripper can only ever
+     * remove *more* than it should, never less, so it cannot hide a `document.getElementById` that a
+     * careful one would find. [ViewerJavaScriptRegionTest.aRealDomAccessIsStillCaughtAfterCommentsAreStripped]
+     * pins that claim rather than leaving it as an argument.
+     */
+    fun withoutComments(source: String): String = source
+        .replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), " ")
+        .replace(Regex("""//[^\n]*"""), " ")
+
+    /**
      * The host side of the shim: the one thing the guest cannot do for itself.
      *
      * Public members are reachable from the guest because the context is built with
@@ -281,6 +299,14 @@ $region
             "measureClosestApproach",
             "measureAnnotation",
             "measureFormat",
+        ),
+        "inspector-explode" to listOf(
+            "EXPLODE_EPS",
+            "explodeBoundsCentre",
+            "explodeGroupCentroids",
+            "explodeAxisRanks",
+            "explodeOffsets",
+            "explodeApply",
         ),
     )
 
