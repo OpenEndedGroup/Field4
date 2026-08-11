@@ -269,6 +269,19 @@ $region
             "flinePickFaceCoords",
             "flinePickClassify",
         ),
+        "inspector-measure" to listOf(
+            "MEASURE_EPS",
+            "measureElement",
+            "measureEdges",
+            "measureNearestOnSegment",
+            "measurePolygonFrame",
+            "measureNearestOnElement",
+            "measureSegmentSegment",
+            "measurePierce",
+            "measureClosestApproach",
+            "measureAnnotation",
+            "measureFormat",
+        ),
     )
 
     /** What the `planar-tessellation` region exports, in the order the viewer defines them. */

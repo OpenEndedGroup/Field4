@@ -1541,6 +1541,340 @@ function flinePickClassify(topology, role, point3) {
 }
 // [viewer-region fline-hit-picking] END
 
+// [viewer-region inspector-measure] BEGIN
+// "How far apart are these two things" — the arithmetic half of the measure tool.
+//
+// The viewer can already name the element under the pointer (`flinePickClassify`, above). Naming two
+// of them and reporting the distance between them is the next question anyone asks of a 3D preview of
+// something that gets built, and it is the first one the viewer could not answer at all.
+//
+// An **element** here is one of three shapes, which is exactly what a hit record can resolve to:
+// a `point` (a node), a `segment` (an edge — a straight one; a cubic is sampled into straight pieces
+// by the caller before it gets here), or a `polygon` (a filled face, as its ring of corners).
+//
+// The distance is the true **closest approach**, not a centroid-to-centroid convenience, because on a
+// panel drawing those are different numbers and only one of them is the one you would take to a saw.
+// For two disjoint polygonal sets in 3D the minimum is always attained at a (vertex, other-element)
+// pair or at an (edge, edge) pair, so enumerating exactly those three families is complete rather than
+// approximate — no sampling, no iteration, no tolerance in the answer. `measureClosestApproach` is
+// therefore exact to floating point: two squares built 2.5 apart come back as 2.5, and
+// `ThreeInspectorMeasureDifferentialTest` asserts precisely that.
+//
+// Deliberate duplication, said out loud: `measurePolygonFrame` recomputes a Newell normal and an
+// orthonormal plane frame that `flinePickFaceFrame` already computes 300 lines up. They are *not*
+// shared, because a region has to be liftable on its own — `ViewerJavaScript` evaluates one region at
+// a time, and a cross-region call would make each of them untestable in isolation. The cost is thirty
+// lines said twice; the benefit is that both are executed under test. If a third region needs the same
+// frame, that is the moment to make a `viewer-vector-math` region and have all three import it.
+//
+// No DOM, no THREE — `ViewerJavaScriptRegionTest` asserts both.
+const MEASURE_EPS = 1e-12;
+
+function measureSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function measureAdd(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function measureScale(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function measureDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function measureCross(a, b) {
+    return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    ];
+}
+function measureLength(a) { return Math.sqrt(measureDot(a, a)); }
+function measureDistance(a, b) { return measureLength(measureSub(a, b)); }
+
+/** A unit vector, or `null` when there was no direction to normalise — never a NaN triple. */
+function measureNormalize(a) {
+    const length = measureLength(a);
+    if (!(length > MEASURE_EPS)) return null;
+    return [a[0] / length, a[1] / length, a[2] / length];
+}
+
+/**
+ * The three shapes a picked element can take, normalised.
+ *
+ * `kind` is authoritative when it is given — the caller got it from a raycast, which already knows
+ * whether the ray hit line geometry, a fill or a point sprite. The point-count fallback is only for a
+ * caller that constructed an element by hand.
+ */
+function measureElement(kind, points) {
+    const pts = (points || []).map((p) => [Number(p[0]), Number(p[1]), Number(p[2])]);
+    if (kind === 'point' || (!kind && pts.length === 1)) return { kind: 'point', pts: pts.slice(0, 1) };
+    if (kind === 'segment' || kind === 'edge' || (!kind && pts.length === 2)) {
+        return { kind: 'segment', pts: pts.slice(0, 2) };
+    }
+    return { kind: 'polygon', pts: pts };
+}
+
+/** The closed ring of an element, as `[a, b]` pairs. A point has none; a segment has one. */
+function measureEdges(element) {
+    const pts = element.pts;
+    if (element.kind === 'segment' && pts.length >= 2) return [[pts[0], pts[1]]];
+    if (element.kind === 'polygon' && pts.length >= 2) {
+        const out = [];
+        for (let i = 0; i < pts.length; i += 1) out.push([pts[i], pts[(i + 1) % pts.length]]);
+        return out;
+    }
+    return [];
+}
+
+/** The point of `[a, b]` nearest to `p`, with the parameter clamped to the segment. */
+function measureNearestOnSegment(a, b, p) {
+    const d = measureSub(b, a);
+    const lengthSquared = measureDot(d, d);
+    if (!(lengthSquared > MEASURE_EPS)) return a.slice();
+    const t = Math.min(1, Math.max(0, measureDot(measureSub(p, a), d) / lengthSquared));
+    return measureAdd(a, measureScale(d, t));
+}
+
+/**
+ * An orthonormal frame for a polygon's own plane, plus the ring already flattened into it.
+ *
+ * Newell's normal, so a slightly non-planar ring — which every real tessellated panel is — gets the
+ * area-weighted average plane rather than whatever its first three corners happened to say. `null` for
+ * a ring with no plane at all, and the callers then fall back to the boundary, which still has an
+ * answer.
+ */
+function measurePolygonFrame(pts) {
+    if (!pts || pts.length < 3) return null;
+    let n = [0, 0, 0];
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        n[0] += (pts[j][1] - pts[i][1]) * (pts[j][2] + pts[i][2]);
+        n[1] += (pts[j][2] - pts[i][2]) * (pts[j][0] + pts[i][0]);
+        n[2] += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]);
+    }
+    const normal = measureNormalize(n);
+    if (!normal) return null;
+    let axisU = null;
+    for (let i = 1; i < pts.length && !axisU; i += 1) axisU = measureNormalize(measureSub(pts[i], pts[0]));
+    if (!axisU) return null;
+    const axisV = measureCross(normal, axisU);
+    const origin = pts[0];
+    const flat = pts.map((q) => {
+        const d = measureSub(q, origin);
+        return [measureDot(d, axisU), measureDot(d, axisV)];
+    });
+    return { origin: origin, u: axisU, v: axisV, normal: normal, flat: flat };
+}
+
+/** `p` in the frame's plane coordinates, plus its signed distance off the plane. */
+function measureToPlane(frame, p) {
+    const d = measureSub(p, frame.origin);
+    return { s: measureDot(d, frame.u), t: measureDot(d, frame.v), off: measureDot(d, frame.normal) };
+}
+
+/** Even-odd, on a ring already flattened into `[s, t]` pairs. */
+function measurePointInPolygon(flat, s, t) {
+    let inside = false;
+    for (let i = 0, j = flat.length - 1; i < flat.length; j = i++) {
+        const si = flat[i][0];
+        const ti = flat[i][1];
+        const sj = flat[j][0];
+        const tj = flat[j][1];
+        if ((ti > t) !== (tj > t) && s < (sj - si) * (t - ti) / (tj - ti) + si) inside = !inside;
+    }
+    return inside;
+}
+
+/**
+ * The point of an element nearest to `p`.
+ *
+ * For a polygon this is the perpendicular foot when the foot lands *inside* the ring, and the nearest
+ * boundary point otherwise — which is the distinction that makes a face-to-face measurement mean what
+ * a fabricator would mean by it, rather than collapsing to a corner-to-corner answer.
+ *
+ * `null` — never a plausible-looking origin — for an element with no geometry at all. An empty element
+ * reaches this code when a cached viewer receives a topology it cannot parse, and answering `[0, 0, 0]`
+ * would have reported the distance to the world origin as if it were a measurement.
+ */
+function measureNearestOnElement(element, p) {
+    if (!element || !element.pts || !element.pts.length) return null;
+    if (element.kind === 'point') return element.pts[0].slice();
+    if (element.kind === 'segment' && element.pts.length < 2) return element.pts[0].slice();
+    if (element.kind === 'segment') return measureNearestOnSegment(element.pts[0], element.pts[1], p);
+    const frame = measurePolygonFrame(element.pts);
+    if (frame) {
+        const at = measureToPlane(frame, p);
+        if (measurePointInPolygon(frame.flat, at.s, at.t)) {
+            return measureSub(p, measureScale(frame.normal, at.off));
+        }
+    }
+    let best = null;
+    let bestDistance = Infinity;
+    measureEdges(element).forEach((edge) => {
+        const q = measureNearestOnSegment(edge[0], edge[1], p);
+        const d = measureDistance(q, p);
+        if (d < bestDistance) { bestDistance = d; best = q; }
+    });
+    return best || element.pts[0].slice();
+}
+
+/**
+ * Closest approach of two segments, as `{ from, to }` — Ericson's clamped solve, closed form.
+ *
+ * The degenerate branches matter more here than they look: a "segment" in a real figure is often a
+ * zero-length one, because a panel's ring can carry a repeated corner.
+ */
+function measureSegmentSegment(p1, q1, p2, q2) {
+    const d1 = measureSub(q1, p1);
+    const d2 = measureSub(q2, p2);
+    const r = measureSub(p1, p2);
+    const a = measureDot(d1, d1);
+    const e = measureDot(d2, d2);
+    const f = measureDot(d2, r);
+    let s = 0;
+    let t = 0;
+    if (a <= MEASURE_EPS && e <= MEASURE_EPS) {
+        s = 0;
+        t = 0;
+    } else if (a <= MEASURE_EPS) {
+        s = 0;
+        t = Math.min(1, Math.max(0, f / e));
+    } else {
+        const c = measureDot(d1, r);
+        if (e <= MEASURE_EPS) {
+            t = 0;
+            s = Math.min(1, Math.max(0, -c / a));
+        } else {
+            const b = measureDot(d1, d2);
+            const denom = a * e - b * b;
+            s = denom > MEASURE_EPS ? Math.min(1, Math.max(0, (b * f - c * e) / denom)) : 0;
+            t = (b * s + f) / e;
+            if (t < 0) {
+                t = 0;
+                s = Math.min(1, Math.max(0, -c / a));
+            } else if (t > 1) {
+                t = 1;
+                s = Math.min(1, Math.max(0, (b - c) / a));
+            }
+        }
+    }
+    return { from: measureAdd(p1, measureScale(d1, s)), to: measureAdd(p2, measureScale(d2, t)) };
+}
+
+/**
+ * Where an edge pierces a polygon's interior, or `null`.
+ *
+ * Only the *interior*: an edge that crosses the plane outside the ring, or that lies in the plane, is
+ * left to the edge-vs-edge family, which will find the same minimum without this having to guess.
+ */
+function measurePierce(edge, polygon) {
+    const frame = measurePolygonFrame(polygon.pts);
+    if (!frame) return null;
+    const da = measureToPlane(frame, edge[0]).off;
+    const db = measureToPlane(frame, edge[1]).off;
+    if ((da > 0 && db > 0) || (da < 0 && db < 0)) return null;
+    if (Math.abs(da - db) <= MEASURE_EPS) return null;
+    const t = da / (da - db);
+    const p = measureAdd(edge[0], measureScale(measureSub(edge[1], edge[0]), t));
+    const at = measureToPlane(frame, p);
+    if (!measurePointInPolygon(frame.flat, at.s, at.t)) return null;
+    return p;
+}
+
+/**
+ * The closest approach between two elements: `{ distance, from, to }`.
+ *
+ * Complete rather than sampled. Every candidate family that can hold the minimum is enumerated:
+ *
+ *  * every corner of A against the whole of B, and every corner of B against the whole of A —
+ *    which covers (vertex, vertex), (vertex, edge) and (vertex, face-interior);
+ *  * every edge of A against every edge of B — which covers (edge, edge);
+ *  * every edge of A pierced through B's interior and vice versa — which is the only way the answer
+ *    can be exactly zero, and it should be, for two things that actually intersect.
+ *
+ * `from` is on A and `to` is on B, always in that order, so a caller can label the ends.
+ */
+function measureClosestApproach(elementA, elementB) {
+    let best = null;
+    function consider(from, to) {
+        if (!from || !to) return;
+        const d = measureDistance(from, to);
+        if (!isFinite(d)) return;
+        if (!best || d < best.distance) best = { distance: d, from: from, to: to };
+    }
+    (elementA.pts || []).forEach((c) => consider(c.slice(), measureNearestOnElement(elementB, c)));
+    (elementB.pts || []).forEach((c) => consider(measureNearestOnElement(elementA, c), c.slice()));
+    const edgesA = measureEdges(elementA);
+    const edgesB = measureEdges(elementB);
+    edgesA.forEach((ea) => {
+        edgesB.forEach((eb) => {
+            const pair = measureSegmentSegment(ea[0], ea[1], eb[0], eb[1]);
+            consider(pair.from, pair.to);
+        });
+    });
+    if (elementB.kind === 'polygon') {
+        edgesA.forEach((ea) => {
+            const hit = measurePierce(ea, elementB);
+            if (hit) consider(hit.slice(), hit.slice());
+        });
+    }
+    if (elementA.kind === 'polygon') {
+        edgesB.forEach((eb) => {
+            const hit = measurePierce(eb, elementA);
+            if (hit) consider(hit.slice(), hit.slice());
+        });
+    }
+    if (!best) return { distance: NaN, from: null, to: null };
+    return best;
+}
+
+/**
+ * Where to draw the dimension, given the two ends and the direction the camera is looking.
+ *
+ * A dimension you cannot read is not a measurement, so the annotation is offset off the measured line
+ * — `witness` are the two extension lines back to the real geometry, `a`→`b` is the dimension line
+ * itself, and `label` is where the text goes. `side` is perpendicular to both the measured direction
+ * and the view direction, so the offset is always *across* the screen rather than into it.
+ *
+ * The two degenerate cases are the ones that would otherwise put the annotation somewhere absurd: a
+ * zero-length measurement (the two elements touch) and a measurement pointing straight at the camera.
+ * Both fall back to an arbitrary but *stable* perpendicular rather than to NaN.
+ */
+function measureAnnotation(from, to, viewDirection, offset) {
+    const along = measureSub(to, from);
+    const distance = measureLength(along);
+    const direction = measureNormalize(along) || [1, 0, 0];
+    const view = measureNormalize(viewDirection || [0, 0, -1]) || [0, 0, -1];
+    let side = measureNormalize(measureCross(direction, view));
+    if (!side) {
+        side = measureNormalize(measureCross(direction, [0, 1, 0]))
+            || measureNormalize(measureCross(direction, [1, 0, 0]))
+            || [0, 1, 0];
+    }
+    const shift = measureScale(side, offset);
+    const a = measureAdd(from, shift);
+    const b = measureAdd(to, shift);
+    const mid = measureScale(measureAdd(a, b), 0.5);
+    return {
+        distance: distance,
+        direction: direction,
+        side: side,
+        a: a,
+        b: b,
+        mid: mid,
+        label: measureAdd(mid, measureScale(side, offset * 0.18)),
+        witness: [[from.slice(), a], [to.slice(), b]]
+    };
+}
+
+/**
+ * The number as it appears on the dimension.
+ *
+ * Trailing zeros are trimmed because `2.50 mm` reads as a tolerance claim the figure is not making,
+ * and because the human's panels are in millimetres where `1200 mm` and `1200.00 mm` say different
+ * things about how the number was arrived at.
+ */
+function measureFormat(distance, units, decimals) {
+    if (!isFinite(distance)) return '—';
+    const places = Number.isFinite(decimals) ? Math.max(0, Math.min(8, decimals)) : 2;
+    let text = distance.toFixed(places);
+    if (text.indexOf('.') >= 0) text = text.replace(/0+$/, '').replace(/\.$/, '');
+    return units ? text + ' ' + units : text;
+}
+// [viewer-region inspector-measure] END
+
 /** Which of an interactive object's three geometries three.js says the ray hit. */
 function flineRoleForObject(object) {
     if (!object) return '';
