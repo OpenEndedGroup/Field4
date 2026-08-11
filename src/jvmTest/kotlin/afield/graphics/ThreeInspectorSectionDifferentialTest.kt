@@ -186,8 +186,9 @@ class ThreeInspectorSectionDifferentialTest {
     @Test
     fun `sweeping the section keeps the cut length constant through a prism`() {
         val p = payload()
-        val positions = p.fills!!.attributes.getValue("position").array
-        val index = p.fills!!.index!!.array
+        val fills = p.fills!!
+        val positions = fills.attributes.getValue("position").array
+        val index = fills.index!!.array
         session().use { js ->
             val bounds = js.boundsJson(p.bounds!!)
             val positionsJs = js.fromJson(positions.json())
@@ -206,12 +207,12 @@ class ThreeInspectorSectionDifferentialTest {
     /** A plane that misses the figure cuts nothing, rather than cutting something arbitrary. */
     @Test
     fun `a plane that misses the figure produces no cut`() {
-        val p = payload()
+        val fills = payload().fills!!
         session().use { js ->
             val cut = js.call(
                 "sectionCutTriangles",
-                js.fromJson(p.fills!!.attributes.getValue("position").array.json()),
-                js.fromJson(p.fills!!.index!!.array.json()),
+                js.fromJson(fills.attributes.getValue("position").array.json()),
+                js.fromJson(fills.index!!.array.json()),
                 js.fromJson("""{"n": [0,0,1], "d": -1000}"""),
             )
             assertEquals(0L, cut.arraySize)

@@ -47,6 +47,9 @@ class ThreeInteractiveEntryDifferentialTest {
             perturbation = perturbation,
         )
 
+    /** One instance: the server's own encoder settings, and creating a `Json` per call is slow. */
+    private val json = Json { encodeDefaults = true }
+
     private fun panel() = fline {
         moveTo(0.0, 0.0, 0.0)
         lineTo(100.0, 0.0, 0.0)
@@ -66,7 +69,7 @@ class ThreeInteractiveEntryDifferentialTest {
             uid = "t", lines = listOf(panel()), samplesPerCubic = 12, autoFrame = true, editable = false,
         )
         assertEquals(1, payload.interactive.size, "the figure should have produced one interactive object")
-        val encoded = Json { encodeDefaults = true }.encodeToString(payload)
+        val encoded = json.encodeToString(payload)
         val obj = Json.parseToJsonElement(encoded).jsonObject.getValue("interactive")
         return obj.toString().removePrefix("[").removeSuffix("]")
     }
@@ -110,7 +113,7 @@ class ThreeInteractiveEntryDifferentialTest {
         val payload = buildThreeGeometryPayload(
             uid = "t", lines = listOf(panel()), samplesPerCubic = 12, autoFrame = true, editable = true,
         )
-        val encoded = Json { encodeDefaults = true }.encodeToString(payload)
+        val encoded = json.encodeToString(payload)
         val line = Json.parseToJsonElement(encoded).jsonObject
             .getValue("scene").jsonObject.getValue("lines").toString()
             .removePrefix("[").removeSuffix("]")
