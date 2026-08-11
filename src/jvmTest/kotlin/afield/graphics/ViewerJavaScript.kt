@@ -308,6 +308,12 @@ $region
             "explodeOffsets",
             "explodeApply",
         ),
+        "interactive-entry" to listOf(
+            "INTERACTIVE_ENTRY_FIELDS",
+            "parseFLineTopology",
+            "verticesForLine",
+            "interactiveEntry",
+        ),
         "inspector-section" to listOf(
             "SECTION_EPS",
             "sectionPlane",

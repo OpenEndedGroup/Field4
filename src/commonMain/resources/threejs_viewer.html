@@ -144,6 +144,44 @@
             visibility: hidden;
         }
 
+        /* The inspector's three controls. Deliberately the same visual language as the edit tools:
+           the point of this pane is that measuring, sectioning and exploding are the same *kind* of
+           thing as selecting a vertex, not a separate mode you have to go somewhere else for. */
+        .hud-slider {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 6px;
+            font-size: 10px;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .hud-slider input[type="range"] {
+            width: 84px;
+            height: 14px;
+            accent-color: var(--accent);
+            background: transparent;
+            cursor: ew-resize;
+        }
+
+        .hud-slider b {
+            color: var(--ink);
+            font-weight: 400;
+            min-width: 34px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #inspector-status {
+            font-size: 11px;
+            color: var(--selection);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+            text-align: right;
+        }
+
         #marquee {
             position: absolute;
             z-index: 9;
@@ -184,8 +222,31 @@
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 L13.2 12.6 L2.8 12.6 Z"></path></svg>
             </button>
         </div>
+        <div class="hud-group hidden" id="inspector-group" aria-label="Inspector tools">
+            <button type="button" class="hud-button is-icon" data-inspector="measure" aria-label="Measure between two elements" title="Measure: click two elements">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M1.8 9.6 6.4 5l7.8 7.8-4.6 4.6z" transform="translate(0,-2.6)"></path>
+                    <path d="M4.4 6.2 5.6 7.4M6.6 4 7.8 5.2M8.8 6.2 10 7.4"></path>
+                </svg>
+            </button>
+            <button type="button" class="hud-button is-icon" data-inspector="section" aria-label="Section" title="Section: cut the figure">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2.2 4.4h11.6L11 11.6H4.8z"></path>
+                    <path d="M1 8h14"></path>
+                </svg>
+            </button>
+            <span class="hud-slider hidden" id="section-slider-wrap">
+                <input type="range" id="section-slider" min="0" max="1000" value="500" aria-label="Section position">
+            </span>
+            <span class="hud-slider" id="explode-slider-wrap">
+                <span>explode</span>
+                <input type="range" id="explode-slider" min="0" max="1000" value="0" aria-label="Explode amount">
+                <b id="explode-readout">0</b>
+            </span>
+        </div>
     </div>
     <div id="hud-right">
+        <div id="inspector-status"></div>
         <div class="selection-status is-empty hidden" id="selection-status"></div>
         <div class="meta" id="meta">waiting for data...</div>
     </div>
@@ -1104,70 +1165,30 @@ function upsertInteractiveObject(slot, obj) {
     next.points = upsertGeometrySlot(next.points, obj.points, interactiveSlotOptions('points', hoverColor));
     const meshes = [next.lines?.object, next.fills?.object, next.points?.object].filter(Boolean);
     if (!meshes.length) return removeInteractiveSlot(next);
-    next.entry = {
-        callbackId: obj.callbackId || '',
-        hoverColor,
-        meshes,
-        hovering: false,
-        vertices: obj.vertices || []
-    };
+    next.entry = interactiveEntry(obj, meshes, obj.vertices);
     return next;
 }
 
-function addInteractiveObject(obj) {
-    const meshes = [];
-    const hoverColor = obj.hoverColor || null;
-    if (obj.lines) {
-        const geometry = buildGeometry(obj.lines);
-        if (geometry) {
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = makeInteractiveLineMaterial(hoverColor);
-            const three = new THREE.LineSegments(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (obj.fills) {
-        const geometry = buildGeometry(obj.fills);
-        if (geometry) {
-            geometry.computeVertexNormals();
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = makeInteractiveFillMaterial(hoverColor);
-            const three = new THREE.Mesh(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (obj.points) {
-        const geometry = buildGeometry(obj.points);
-        if (geometry) {
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            ensureAttribute(geometry, 'size', 1, 3);
-            const material = makeInteractivePointMaterial(hoverColor);
-            const three = new THREE.Points(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (meshes.length) {
-        interactiveObjects.push({
-            callbackId: obj.callbackId || '',
-            hoverColor,
-            meshes,
-            hovering: false,
-            vertices: obj.vertices || [],
-            lineIndex: Number.isFinite(obj.lineIndex) ? obj.lineIndex : -1,
-            label: typeof obj.label === 'string' ? obj.label : null,
-            topology: parseFLineTopology(obj.topology)
-        });
-    }
-}
+// [viewer-region interactive-entry] BEGIN
+// What a clickable object remembers about itself — written once, for both paths.
+//
+// This region exists because of a bug rather than a feature. `06352df08` taught the viewer to name the
+// element under the pointer, and the naming needs three fields on the entry: `topology`, `lineIndex`
+// and `label`. There were **two** places that built an entry — `makeInteractiveEntry` for editable
+// scenes and an object literal inside `upsertInteractiveObject` for ordinary ones — and only the first
+// was updated. `upsertInteractiveObject` is the one `renderPayloadGeometry` actually calls, so on the
+// live non-editable path `entry.topology` was `undefined`, `flinePickClassify` was handed `null`, and
+// every click came back with `kind` but `nodeIndex: -1` and no label. The feature was dead in the water
+// on exactly the figures it was written for. Found 2026-08-11 while wiring pick-to-measure, which needs
+// the same three fields.
+//
+// A third copy — `addInteractiveObject`, ~50 lines, no callers — had them all and was never reached.
+// It has been deleted; it is what made the drift invisible.
+//
+// So: one constructor, marked, lifted and executed under test by
+// `ThreeInteractiveEntryDifferentialTest`. Pure — the meshes and vertices come in as opaque values —
+// so the fact that this cannot happen again is an assertion rather than a convention.
+const INTERACTIVE_ENTRY_FIELDS = 8;
 
 /** The line's segments and closed subpaths, as the server serialised them. Never throws. */
 function parseFLineTopology(text) {
@@ -1175,11 +1196,13 @@ function parseFLineTopology(text) {
     try {
         return JSON.parse(text);
     } catch (error) {
-        console.warn('unparsable FLine topology', error);
+        // Guarded because this region is also executed outside a browser, by the differential test.
+        if (typeof console !== 'undefined' && console.warn) console.warn('unparsable FLine topology', error);
         return null;
     }
 }
 
+/** An editable scene's line, as the `{ index, position }` pairs an entry wants. */
 function verticesForLine(line) {
     return line.nodes
         .filter((node) => node.kind !== 'close' && node.to)
@@ -1189,17 +1212,29 @@ function verticesForLine(line) {
         }));
 }
 
-function makeInteractiveEntry(line, meshes) {
+/**
+ * The one entry constructor.
+ *
+ * `source` is either an editable `ThreeEditableLine` or a `ThreeInteractiveObject`; the four fields it
+ * is read for — `callbackId`, `hoverColor`, `lineIndex`, `label`, `topology` — are named identically on
+ * both by the server, which is what makes one constructor possible at all.
+ */
+function interactiveEntry(source, meshes, vertices) {
     return {
-        callbackId: line.callbackId || '',
-        hoverColor: line.hoverColor || null,
-        meshes,
+        callbackId: source.callbackId || '',
+        hoverColor: source.hoverColor || null,
+        meshes: meshes,
         hovering: false,
-        vertices: verticesForLine(line),
-        lineIndex: Number.isFinite(line.lineIndex) ? line.lineIndex : -1,
-        label: typeof line.label === 'string' ? line.label : null,
-        topology: parseFLineTopology(line.topology)
+        vertices: vertices || [],
+        lineIndex: Number.isFinite(source.lineIndex) ? source.lineIndex : -1,
+        label: typeof source.label === 'string' ? source.label : null,
+        topology: parseFLineTopology(source.topology)
     };
+}
+// [viewer-region interactive-entry] END
+
+function makeInteractiveEntry(line, meshes) {
+    return interactiveEntry(line, meshes, verticesForLine(line));
 }
 
 // [viewer-region fline-hit-picking] BEGIN
@@ -3005,6 +3040,450 @@ function rebuildEditableView() {
     renderEditableOverlay();
 }
 
+// ---------------------------------------------------------------------------------------------
+// The inspector: measure, section, explode.
+//
+// Everything *geometric* below is a call into one of the three marked regions above
+// (`inspector-measure`, `inspector-explode`, `inspector-section`), which are lifted out of this file
+// and executed on GraalJS by the three `ThreeInspector*DifferentialTest`s. What is left here is the
+// three.js and DOM plumbing that cannot be lifted: buffers, materials, sprites, sliders. That split is
+// deliberate and it is where the honesty line sits — if the arithmetic is wrong, a test fails; if the
+// *sprite* is empty, only a docs capture would notice, which is why `public/docs/three_inspector.md`
+// carries a real screenshot rather than a claim.
+// ---------------------------------------------------------------------------------------------
+
+const inspectorRoot = new THREE.Group();
+scene.add(inspectorRoot);
+
+const inspectorGroupEl = document.getElementById('inspector-group');
+const inspectorStatusEl = document.getElementById('inspector-status');
+const explodeSliderEl = document.getElementById('explode-slider');
+const explodeReadoutEl = document.getElementById('explode-readout');
+const sectionSliderEl = document.getElementById('section-slider');
+const sectionSliderWrapEl = document.getElementById('section-slider-wrap');
+
+const DIMENSION_COLOR = 0xffd35c;
+const CUT_COLOR = 0x62d7ff;
+
+const inspectorState = {
+    spec: null,
+    bounds: null,
+    diagonal: 1,
+    // The geometry as the server sent it. Every explode is computed from *this*, never from the last
+    // frame's positions — accumulating displacements is how a scrubbed slider drifts.
+    base: { lines: null, fills: null, points: null },
+    groups: { lines: null, fills: null, points: null },
+    interactive: [],
+    centroids: [],
+    explodeAmount: 0,
+    explodeMax: 1,
+    sectionEnabled: false,
+    sectionFraction: 0.5,
+    cut: null,
+    measuring: false,
+    pending: null,
+    picked: []
+};
+
+function inspectorDiagonal(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return 1;
+    const dx = bounds.max[0] - bounds.min[0];
+    const dy = bounds.max[1] - bounds.min[1];
+    const dz = bounds.max[2] - bounds.min[2];
+    return Math.max(1e-6, Math.sqrt(dx * dx + dy * dy + dz * dz));
+}
+
+/**
+ * Take a copy of the geometry the server sent, and work out each assembly group's centroid once.
+ *
+ * The centroids are of the *assembled* figure and never change while the slider moves, so they are
+ * computed here rather than per frame. They are also computed over every buffer at once — batched
+ * lines, fills, points and each interactive object — because a group whose stroke is in one buffer and
+ * whose fill is in another must have one centroid, not two.
+ */
+function inspectorCapture(payload) {
+    const spec = payload.inspector || null;
+    inspectorState.spec = spec;
+    inspectorState.bounds = payload.bounds || null;
+    inspectorState.diagonal = inspectorDiagonal(payload.bounds);
+    inspectorState.picked = [];
+    inspectorState.interactive = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const data = payload[key];
+        const position = data && data.attributes && data.attributes.position;
+        const group = data && data.attributes && data.attributes.group;
+        inspectorState.base[key] = position ? Float32Array.from(position.array) : null;
+        inspectorState.groups[key] = group ? Float32Array.from(group.array) : null;
+    });
+    (payload.interactive || []).forEach((obj, index) => {
+        inspectorState.interactive.push({ index: index, group: Number.isFinite(obj.group) ? obj.group : -1 });
+    });
+
+    if (!spec || !spec.enabled) {
+        inspectorState.centroids = [];
+        return;
+    }
+
+    // one long buffer, so `explodeGroupCentroids` sees the whole assembly
+    const allPositions = [];
+    const allGroups = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const base = inspectorState.base[key];
+        const groups = inspectorState.groups[key];
+        if (!base || !groups) return;
+        for (let i = 0; i < groups.length; i += 1) {
+            allPositions.push(base[i * 3], base[i * 3 + 1], base[i * 3 + 2]);
+            allGroups.push(groups[i]);
+        }
+    });
+    (payload.interactive || []).forEach((obj) => {
+        const group = Number.isFinite(obj.group) ? obj.group : -1;
+        if (group < 0) return;
+        ['lines', 'fills', 'points'].forEach((key) => {
+            const array = obj[key] && obj[key].attributes && obj[key].attributes.position
+                ? obj[key].attributes.position.array : null;
+            if (!array) return;
+            for (let i = 0; i + 2 < array.length; i += 3) {
+                allPositions.push(array[i], array[i + 1], array[i + 2]);
+                allGroups.push(group);
+            }
+        });
+    });
+    inspectorState.centroids = explodeGroupCentroids(
+        allPositions, allGroups, (spec.groups || []).length
+    ).centroids;
+}
+
+/** Every geometry the explode has to move, as `{ object, base, groups }`. */
+function inspectorMovableSlots() {
+    const out = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const slot = payloadGeometrySlots[key];
+        if (!slot || !slot.object) return;
+        out.push({ object: slot.object, base: inspectorState.base[key], groups: inspectorState.groups[key] });
+    });
+    return out;
+}
+
+/** The fills, whose material is a `MeshStandardMaterial` and therefore clips natively. */
+function inspectorClippableMaterials() {
+    const out = [];
+    if (payloadGeometrySlots.fills && payloadGeometrySlots.fills.material) {
+        out.push(payloadGeometrySlots.fills.material);
+    }
+    payloadGeometrySlots.interactive.forEach((slot) => {
+        if (slot && slot.fills && slot.fills.material) out.push(slot.fills.material);
+    });
+    return out;
+}
+
+/** Displace every buffer from its base copy. Idempotent, and exact at `amount = 0`. */
+function inspectorApplyExplode() {
+    const spec = inspectorState.spec;
+    if (!spec || !spec.enabled) return;
+    const explode = spec.explode || {};
+    const offsets = explodeOffsets(
+        inspectorState.centroids,
+        explodeBoundsCentre(inspectorState.bounds),
+        { amount: inspectorState.explodeAmount, mode: explode.mode || 'radial', axis: explode.axis || [0, 1, 0] }
+    );
+    inspectorMovableSlots().forEach((slot) => {
+        if (!slot.base) return;
+        const attribute = slot.object.geometry.getAttribute('position');
+        if (!attribute) return;
+        explodeApply(slot.base, slot.groups, offsets, attribute.array);
+        attribute.needsUpdate = true;
+        slot.object.geometry.computeBoundingSphere();
+    });
+    // An interactive object is one FLine, so its group is uniform: move the whole object.
+    inspectorState.interactive.forEach((entry) => {
+        const slot = payloadGeometrySlots.interactive[entry.index];
+        if (!slot) return;
+        const offset = (entry.group >= 0 && entry.group < offsets.length) ? offsets[entry.group] : [0, 0, 0];
+        [slot.lines, slot.fills, slot.points].forEach((piece) => {
+            if (piece && piece.object) piece.object.position.set(offset[0], offset[1], offset[2]);
+        });
+    });
+}
+
+/** Turn clipping on or off, and recompute the plane from the current slider position. */
+function inspectorApplySection() {
+    const spec = inspectorState.spec;
+    const section = (spec && spec.section) || {};
+    const active = !!inspectorState.sectionEnabled;
+    renderer.localClippingEnabled = active;
+    inspectorState.cut = active
+        ? sectionPlane(inspectorState.bounds, section.normal || [1, 0, 0], inspectorState.sectionFraction, !!section.flip)
+        : null;
+    const planes = inspectorState.cut
+        ? [new THREE.Plane(
+            new THREE.Vector3(inspectorState.cut.n[0], inspectorState.cut.n[1], inspectorState.cut.n[2]),
+            inspectorState.cut.d
+        )]
+        : [];
+    inspectorClippableMaterials().forEach((material) => {
+        material.clippingPlanes = planes;
+        material.clipShadows = false;
+        material.needsUpdate = true;
+    });
+}
+
+/**
+ * A text label as a camera-facing sprite, drawn into a canvas.
+ *
+ * A sprite rather than a DOM overlay because a dimension belongs *in* the scene — it has to orbit with
+ * the figure and end up on the docs capture, and an absolutely-positioned div does neither. `depthTest`
+ * off and a high `renderOrder` because a dimension you cannot see behind the thing it dimensions is not
+ * a dimension.
+ */
+function inspectorLabelSprite(text, height, color) {
+    const scale = 4;
+    const fontPx = 30;
+    const canvas = document.createElement('canvas');
+    const measurer = canvas.getContext('2d');
+    measurer.font = `500 ${fontPx * scale}px "Iosevka Web", ui-monospace, Menlo, monospace`;
+    const padding = 12 * scale;
+    const width = Math.ceil(measurer.measureText(text).width) + padding * 2;
+    canvas.width = width;
+    canvas.height = Math.ceil(fontPx * scale * 1.6);
+    const ctx = canvas.getContext('2d');
+    ctx.font = `500 ${fontPx * scale}px "Iosevka Web", ui-monospace, Menlo, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(8, 12, 18, 0.82)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 * scale;
+    ctx.strokeRect(scale, scale, canvas.width - 2 * scale, canvas.height - 2 * scale);
+    ctx.fillStyle = color;
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 2 * scale);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 4;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    }));
+    sprite.scale.set(height * (canvas.width / canvas.height), height, 1);
+    sprite.renderOrder = 1000;
+    return sprite;
+}
+
+function inspectorAddSegments(points, color, width) {
+    if (!points.length) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(points), 3));
+    const line = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: false,
+        linewidth: width || 1
+    }));
+    line.renderOrder = 999;
+    inspectorRoot.add(line);
+}
+
+/**
+ * Draw one dimension: witness lines back to the geometry, the dimension line itself, end ticks and the
+ * number.
+ *
+ * The geometry all comes from `measureAnnotation`, which is under differential test; what is added here
+ * is only the tick length and the choice of colour.
+ */
+function inspectorDrawMeasurement(elementA, elementB, prefix) {
+    const answer = measureClosestApproach(elementA, elementB);
+    if (!answer || !answer.from || !isFinite(answer.distance)) return null;
+    const spec = inspectorState.spec || {};
+    const offset = inspectorState.diagonal * 0.07;
+    const view = camera.getWorldDirection(new THREE.Vector3());
+    const annotation = measureAnnotation(answer.from, answer.to, [view.x, view.y, view.z], offset);
+
+    const points = [];
+    annotation.witness.forEach((pair) => points.push(...pair[0], ...pair[1]));
+    points.push(...annotation.a, ...annotation.b);
+    // end ticks, along the measured direction, so the dimension reads as a dimension and not as a stray
+    const tick = inspectorDiagonalTick();
+    [annotation.a, annotation.b].forEach((end) => {
+        points.push(
+            end[0] - annotation.direction[0] * tick, end[1] - annotation.direction[1] * tick, end[2] - annotation.direction[2] * tick,
+            end[0] + annotation.direction[0] * tick, end[1] + annotation.direction[1] * tick, end[2] + annotation.direction[2] * tick
+        );
+    });
+    inspectorAddSegments(points, DIMENSION_COLOR);
+
+    const text = (prefix || '') + measureFormat(annotation.distance, spec.units || '', spec.decimals);
+    const sprite = inspectorLabelSprite(text, inspectorState.diagonal * 0.05, '#ffd35c');
+    sprite.position.set(annotation.label[0], annotation.label[1], annotation.label[2]);
+    inspectorRoot.add(sprite);
+    return text;
+}
+
+function inspectorDiagonalTick() {
+    return inspectorState.diagonal * 0.012;
+}
+
+/** Where the plane crosses the figure, drawn over the clipped geometry. */
+function inspectorDrawCut() {
+    const spec = inspectorState.spec;
+    const cut = inspectorState.cut;
+    if (!cut || !spec || !(spec.section && spec.section.outline !== false)) return 0;
+    const outline = [];
+    const fills = payloadGeometrySlots.fills;
+    if (fills && fills.object) {
+        const geometry = fills.object.geometry;
+        const position = geometry.getAttribute('position');
+        const index = geometry.getIndex();
+        outline.push(...sectionCutTriangles(position.array, index ? index.array : null, cut));
+    }
+    payloadGeometrySlots.interactive.forEach((slot) => {
+        if (!slot || !slot.fills || !slot.fills.object) return;
+        const geometry = slot.fills.object.geometry;
+        const offset = slot.fills.object.position;
+        const position = geometry.getAttribute('position');
+        const index = geometry.getIndex();
+        // the object may have been translated by the explode; the cut is in world space
+        const moved = new Float32Array(position.array.length);
+        for (let i = 0; i + 2 < moved.length; i += 3) {
+            moved[i] = position.array[i] + offset.x;
+            moved[i + 1] = position.array[i + 1] + offset.y;
+            moved[i + 2] = position.array[i + 2] + offset.z;
+        }
+        outline.push(...sectionCutTriangles(moved, index ? index.array : null, cut));
+    });
+    inspectorAddSegments(outline, CUT_COLOR, 2);
+
+    const marks = [];
+    const lines = payloadGeometrySlots.lines;
+    if (lines && lines.object) {
+        marks.push(...sectionCutSegments(lines.object.geometry.getAttribute('position').array, cut));
+    }
+    if (marks.length) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(marks), 3));
+        const dots = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: CUT_COLOR, size: 7, sizeAttenuation: false, depthTest: false
+        }));
+        dots.renderOrder = 999;
+        inspectorRoot.add(dots);
+    }
+    return sectionCutLength(outline);
+}
+
+/** An element the user picked, resolved through the hit-picking region when there is a topology. */
+function inspectorElementFromHit(entry, hit) {
+    const p = hit.point;
+    const role = flineRoleForObject(hit.object);
+    const topology = entry && entry.topology;
+    if (topology) {
+        const record = flinePickClassify(topology, role, [p.x, p.y, p.z]);
+        if (role === 'face') {
+            const face = (topology.faces || []).find((f) => f.e === record.elementIndex);
+            if (face && face.pts && face.pts.length >= 3) return measureElement('polygon', face.pts);
+        }
+        if (role === 'edge') {
+            const segment = (topology.segments || []).find((s) => s.e === record.elementIndex);
+            if (segment && segment.a && segment.b) return measureElement('segment', [segment.a, segment.b]);
+        }
+        if (record.onElement) return measureElement('point', [record.onElement]);
+    }
+    return measureElement('point', [[p.x, p.y, p.z]]);
+}
+
+function inspectorSetStatus(text) {
+    inspectorStatusEl.textContent = text || '';
+}
+
+/** Rebuild every overlay: the authored dimensions, the picked one, the cut. */
+function inspectorRebuildOverlay() {
+    clearGroup(inspectorRoot);
+    const spec = inspectorState.spec;
+    if (!spec || !spec.enabled) return;
+    const lines = [];
+    (spec.measurements || []).forEach((m) => {
+        const text = inspectorDrawMeasurement(
+            measureElement(m.a.kind, m.a.points),
+            measureElement(m.b.kind, m.b.points),
+            m.label
+        );
+        if (text) lines.push(text);
+    });
+    if (inspectorState.picked.length === 2) {
+        const text = inspectorDrawMeasurement(inspectorState.picked[0], inspectorState.picked[1], '');
+        if (text) lines.push(text);
+    }
+    const cutLength = inspectorDrawCut();
+    if (inspectorState.cut) {
+        lines.push('cut ' + measureFormat(cutLength, spec.units || '', 0) + ' @ ' +
+            measureFormat(inspectorState.cut.at, spec.units || '', 1));
+    }
+    if (inspectorState.measuring && inspectorState.picked.length < 2) {
+        lines.push(inspectorState.picked.length ? 'pick the second element' : 'pick an element');
+    }
+    inspectorSetStatus(lines.join('   ·   '));
+}
+
+/** Everything, in the order the pieces depend on each other. */
+function inspectorRefresh() {
+    inspectorApplyExplode();
+    inspectorApplySection();
+    inspectorRebuildOverlay();
+}
+
+function inspectorUpdateHud() {
+    const spec = inspectorState.spec;
+    const on = !!(spec && spec.enabled);
+    inspectorGroupEl.classList.toggle('hidden', !on || !editorState.uiVisible);
+    if (!on) {
+        renderer.localClippingEnabled = false;
+        inspectorSetStatus('');
+        clearGroup(inspectorRoot);
+        return;
+    }
+    const explode = spec.explode || {};
+    inspectorState.explodeMax = explode.sliderMax > 0 ? explode.sliderMax : inspectorState.diagonal * 0.75;
+    inspectorState.explodeAmount = Math.min(explode.amount || 0, inspectorState.explodeMax);
+    explodeSliderEl.value = String(Math.round(inspectorState.explodeAmount / inspectorState.explodeMax * 1000));
+    explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, spec.units || '', 0);
+    const section = spec.section || {};
+    inspectorState.sectionEnabled = !!section.enabled;
+    inspectorState.sectionFraction = Number.isFinite(section.fraction) ? section.fraction : 0.5;
+    sectionSliderEl.value = String(Math.round(inspectorState.sectionFraction * 1000));
+    sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
+    inspectorGroupEl.querySelector('[data-inspector="section"]')
+        .classList.toggle('is-active', inspectorState.sectionEnabled);
+    inspectorGroupEl.querySelector('[data-inspector="measure"]')
+        .classList.toggle('is-active', inspectorState.measuring);
+}
+
+explodeSliderEl.addEventListener('input', () => {
+    inspectorState.explodeAmount = (Number(explodeSliderEl.value) / 1000) * inspectorState.explodeMax;
+    const spec = inspectorState.spec || {};
+    explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, spec.units || '', 0);
+    inspectorRefresh();
+});
+
+sectionSliderEl.addEventListener('input', () => {
+    inspectorState.sectionFraction = Number(sectionSliderEl.value) / 1000;
+    inspectorRefresh();
+});
+
+inspectorGroupEl.querySelectorAll('[data-inspector]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const tool = button.getAttribute('data-inspector');
+        if (tool === 'section') {
+            inspectorState.sectionEnabled = !inspectorState.sectionEnabled;
+            sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
+        } else if (tool === 'measure') {
+            inspectorState.measuring = !inspectorState.measuring;
+            inspectorState.picked = [];
+        }
+        button.classList.toggle('is-active', tool === 'section' ? inspectorState.sectionEnabled : inspectorState.measuring);
+        inspectorRefresh();
+    });
+});
+
 function frameBounds(bounds, pad = 1.25) {
     if (!bounds || !bounds.min || !bounds.max) return;
     const minV = new THREE.Vector3(...bounds.min);
@@ -3072,6 +3551,11 @@ function applyGeometry(payload) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
     }
+    // Last, because it reads the geometry the steps above created and because framing the camera first
+    // means the first dimension is offset across the view the user is actually going to see.
+    inspectorCapture(payload);
+    inspectorUpdateHud();
+    inspectorRefresh();
 }
 
 function buildWsUrl() {
@@ -3448,11 +3932,21 @@ renderer.domElement.addEventListener('click', (event) => {
     const hits = raycaster.intersectObjects(meshes, false);
     if (!hits.length) return;
     const hitObject = hits[0].object;
-    for (const entry of interactiveObjects) {
-        if (entry.meshes.includes(hitObject) && entry.callbackId) {
-            sendMessage({ type: 'fline-click', callbackId: entry.callbackId, ...intersectionForHit(entry, hits[0]) });
-            break;
-        }
+    const owner = interactiveObjects.find((entry) => entry.meshes.includes(hitObject)) || null;
+
+    // The measure tool takes the click instead of the server callback: while you are measuring, a click
+    // is a pick, not a `fline-click`. Two picks make a dimension, and a third starts over — the same
+    // rhythm as every CAD measure tool, and the reason it is a *tool* rather than a modifier key.
+    if (inspectorState.measuring) {
+        const element = inspectorElementFromHit(owner, hits[0]);
+        if (inspectorState.picked.length >= 2) inspectorState.picked = [];
+        inspectorState.picked.push(element);
+        inspectorRebuildOverlay();
+        return;
+    }
+
+    if (owner && owner.callbackId) {
+        sendMessage({ type: 'fline-click', callbackId: owner.callbackId, ...intersectionForHit(owner, hits[0]) });
     }
 });
 
