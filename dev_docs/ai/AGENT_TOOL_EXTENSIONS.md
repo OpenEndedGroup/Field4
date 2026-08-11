@@ -78,6 +78,15 @@ appends the images as a separate user-role message with `ToolImage.caption` as t
 (`OpenAiIdeCodexBridge.kt:433`). `GeometryAgentToolsTest.theRenderedImageIsRealPngAndStaysOutOfTheJson`
 asserts both halves.
 
+**`CarriesToolImages` only does anything on the OpenAI/OpenRouter path.** `AnthropicBridge` has no
+image handling in either direction — it warns and drops `imageDataUrls` on input (`:96`) and never
+looks at `CarriesToolImages` on output. So under `AFIELD_AI_PROVIDER=anthropic` a tool's pictures are
+silently discarded and only the JSON result arrives. That is a gap in the Anthropic bridge rather
+than in this seam (its own KDoc calls image support a v1 follow-up), and it is not fixed here, but a
+tool author needs to know it: anything the model must not miss belongs in the result as well as in
+the picture. `GeometryAgentTools` is written that way — every measurement in the image caption is
+also a field on `InspectGeometryFileResult`.
+
 ## Live coding — what actually happens
 
 This is the part the KDoc used to get wrong, and it is worth writing down in full because the failure
@@ -146,6 +155,21 @@ The same registration reaches both surfaces, which is the property that keeps th
   exactly the same shapes, so an extension's tools are indistinguishable from a built-in's from
   outside, and nothing reading descriptors needs a special case.
 
+That second bullet was **false until 2026-08-11**, and it is worth knowing why, because it is the
+same class of failure as the live-coding one. The KDoc has always said there is "nothing extra to
+write for the OpenAI path or the MCP face" — but the MCP registry is not built by
+`registerBuiltInAgentTools`. `Ai4BackdoorTools` assembles its own `ToolRegistry` by hand, tool by
+tool, and so had no route to `AgentToolExtensions` at all. The result was a genuinely confusing
+asymmetry: the house cluster's seventeen tools worked in AI Chat and were simply absent from the
+tool list an agent driving Field over the backdoor saw, with no error and no note anywhere. The fix
+is one line at the top of that builder; the ordering matches `registerBuiltInAgentTools`, so a name
+collision resolves the same way in both registries.
+
+The lesson generalises: "the tools go in one registry" is only true if every registry is built the
+same way, and there are two. If a third appears, it needs the `applyTo` line too, and
+`AgentToolExtensionsTest.theMcpBackdoorRegistryCarriesExtensionToolsToo` is the shape of the test
+that would notice.
+
 `execute` being public is also what makes a tool set testable. Core's own registry is `internal`, so
 a cluster living outside core cannot inspect itself through it; that gap is what made the house tool
 set's smoke untestable after the move into `src/personal`.
@@ -187,10 +211,18 @@ is shaped the way it is, and because two of its habits are worth stealing:
 - **A registration surviving a provider switch.** Changing the provider on `/welcome` builds a new
   bridge; the subscription handles that correctly now, but nothing re-runs your box, so a
   registration made by a box that has since been edited to something else is gone.
-- **Compiling the examples on the docs page.** `public/docs/aiFeatures.md`'s Kotlin fences are
-  checked by `AiToolAuthoringDocsTest` for the symbols they name and the numbers they quote, not by
-  compiling them. `BriefDocsTest` is the in-repo model for a page whose snippets are genuinely
-  executed, and doing that for Kotlin would need a compile harness that does not exist yet.
+- **Compiling *every* example on the docs page.** The two substantial Kotlin examples in
+  `public/docs/aiFeatures.md` carry `FIELD_TEST … runner: backdoor-box` annotations, so
+  `tools/run_field_tests.py` executes the page's own fence in a live Field — which is stronger than
+  `BriefDocsTest`'s scrape-and-parse, because the snippet runs rather than being re-implemented. The
+  remaining short fences (the gating example, the result-interface example) are fragments and are
+  checked only by `AiToolAuthoringDocsTest`, for the symbols they name. Also note that
+  `run_field_tests.py` is not part of `./gradlew check`, so those two are CI-executed only where that
+  runner is invoked.
+
+  A trap for the next person writing one: the `FIELD_TEST` block is parsed by a mini-YAML in
+  `tools/discover_field_tests.py` that turns any list item containing a colon into a mapping,
+  whatever the quoting (`:167`). Expected substrings have to be colon-free.
 
 ## Regenerating the evidence
 

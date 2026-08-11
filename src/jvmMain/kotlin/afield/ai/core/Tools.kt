@@ -638,6 +638,15 @@ data class ToolImage(
  * Implement this on a result class and the bridge appends the images to the conversation as a user-role
  * message after the function-call output, with [ToolImage.caption] as the text.
  *
+ * # Which bridge
+ *
+ * The OpenAI/OpenRouter one, and only that one. [AnthropicBridge] has no image handling in either
+ * direction — it warns and drops `imageDataUrls` on input and never reads this interface on output —
+ * so under `AFIELD_AI_PROVIDER=anthropic` a tool's pictures are silently discarded and only the JSON
+ * result reaches the model. That is a gap in that bridge (its own docs call image support a v1
+ * follow-up) rather than in this interface, but a tool author has to design around it: put anything
+ * the model must not miss in the result as well as in the picture.
+ *
  * # The one thing to get right
  *
  * [toolImages] is annotated `@get:JsonIgnore`, and any implementation must keep it that way — which is
