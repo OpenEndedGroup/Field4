@@ -207,21 +207,108 @@ faithfully follow.
 - **`0.0.0.0` is still `0.0.0.0`.** Narrowing it would break the visionOS shell and
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
-- **`CORS { anyHost() }` applies to Field's whole API**, not just to this corner of it.
-  Every one of the ~50 unauthenticated `/api/…` routes is therefore readable and (for
-  GET/POST/DELETE with a simple content type) writable from any website you visit while
-  Field is running. This branch's token defends *one* route from that. It is the largest
-  thing found while working here that is out of scope for a docs-endpoint branch, and it
-  is worth a look of its own.
+- **`CORS { anyHost() }` applies to Field's whole API.** Measured rather than asserted;
+  it has its own section below, and it is the biggest thing found here.
 - **The editor's docs iframe** (`Cmd+/`, `bootstrapMonaco.js`, default `/field-docs/`)
   follows the mirror's loopback rule. Opening Field at `localhost` — the normal case, and
   what `field.sh` prints — is unaffected. Opening it at the machine's LAN address means
   the iframe now needs `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=1`.
 
+---
+
+# The other hole, measured: `CORS { anyHost() }`
+
+Not fixed here, and not this branch's to fix. Written down with evidence because a number
+in a worklog decays and this one should not.
+
+## What it is
+
+`Server.kt` installs Ktor's CORS plugin for the whole application:
+
+```kotlin
+install(CORS) {
+    allowHeader(HttpHeaders.ContentType)
+    allowMethod(HttpMethod.Get); allowMethod(HttpMethod.Post); allowMethod(HttpMethod.Delete)
+    anyHost()
+}
+```
+
+`anyHost()` means *any website you have open in any tab* may call Field. The surface is
+**70 HTTP routes with literal paths — 29 GET and 38 state-changing** (33 POST, 3 DELETE,
+2 PUT; PUT is in fact excluded, since only GET/POST/DELETE are allow-listed). Exactly one
+of the 38 requires a credential, and it is the one this branch added.
+
+## What was measured, 2026-08-11, real Chromium, real foreign origin
+
+An attacker page served from `http://127.0.0.1:9493` — a different origin from
+`https://localhost:9492` by scheme, host and port — against a real Field:
+
+| probe | result |
+| --- | --- |
+| `GET /api/instance-info` | **read**: `{"repoRoot":"/Users/marc/field4-worktrees/…","pid":4508}` |
+| `GET /api/welcome-changelog` | **read**: the human's recent commit messages, in full |
+| `POST /api/docs-improvement` **with** the token header | `TypeError: Failed to fetch` — preflight refused |
+| `POST /api/docs-improvement` without it | reached the server, refused there, `401` |
+| `POST /api/shutdown-instance` | **`200` — and Field stopped.** Listener before: `4508`. After: none. |
+
+A web page you visit can stop your Field. It can also read the path of the checkout you
+have open and what you have been committing.
+
+## The one experiment that decides the fix
+
+I was about to write "removing `anyHost()` only stops the *reads*, because CORS never
+prevents a simple request being *sent*" — which is true of the browser model and **false
+for Ktor**. So I measured it instead: `anyHost()` deleted, nothing else changed.
+
+| probe | with `anyHost()` | without it |
+| --- | --- | --- |
+| `GET /api/instance-info` | read | `Failed to fetch` |
+| `GET /api/welcome-changelog` | read | `Failed to fetch` |
+| `POST /api/shutdown-instance` | **server stopped** | `Failed to fetch`; **server survived** |
+| direct `curl` with `Origin: https://evil.example` | handled | `403 Forbidden`, handler never ran |
+| `/health`, and a request with a matching `Origin` | `200` | `200` |
+
+Ktor's CORS plugin is a **server-side gate**, not header decoration: it rejects a
+disallowed origin before the handler. So removing `anyHost()` closes reads *and* writes,
+and leaves same-origin use — which is all of Field's own UI — untouched.
+
+## Why it is still there
+
+One consumer, found by tracing rather than guessing. `offline-viewer.js:878` POSTs to
+`${localBase}/api/import-offline-doc` to transfer a document into a running Field, and
+`dev_docs/OFFLINE_DEPLOYMENT.md:34` documents exactly that. It is the only cross-origin
+`fetch` at a Field host in the whole tree; the viewer's other Field URLs are top-level
+navigations, which CORS does not govern.
+
+Ktor's CORS is a `RouteScopedPlugin`, so "install it only on that route" looks like the
+answer — but the application-level plugin intercepts first and would 403 the request
+before the route-scoped one ran. Verifying that ordering, and deciding what happens to a
+viewer hosted at `file://` (`Origin: null`), is the actual work.
+
+## Recommended shape
+
+Same shape as everything else on this branch: safe default, documented escape hatch.
+
+- keep the app-level plugin (it is the gate — do **not** simply delete the block, which
+  would remove the server-side rejection and make things *worse*);
+- replace `anyHost()` with an allow-list read from `AFIELD_ALLOWED_ORIGINS`, empty by
+  default, so out of the box Field answers only its own origin;
+- document that offline-viewer import needs that variable set to wherever the viewer is
+  served from.
+
+That is a behaviour change for anyone importing from the offline viewer today, which is
+why a nightly branch proposes it rather than shipping it.
+
 ## Where the tests are
 
-`src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt`. Fifteen tests; ten of
-them were watched to fail against the pre-change behaviour before being trusted. The
-guards are pure functions over a `DocsAccessPolicy` value precisely so that reverting one
-and re-running the suite is a two-minute experiment. If you change a guard, do that again
-rather than trusting the green.
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — 16 tests. Ten were
+  watched to fail against the pre-change behaviour before being trusted. The guards are
+  pure functions over a `DocsAccessPolicy` value precisely so that reverting one and
+  re-running the suite is a two-minute experiment. If you change a guard, do that again
+  rather than trusting the green.
+- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — 3 tests pinning the
+  exposure above so it cannot drift silently: the CORS block literally, the count and
+  identity of the 38 state-changing routes, and the invariant the improvement token
+  actually rests on — that `X-Field-Docs-Improvement-Token` is *not* CORS-allow-listed,
+  because the failing preflight **is** the CSRF defence. Adding `anyHeader()` there would
+  hand the agent-spawning endpoint back to any web page; that test is the tripwire.
