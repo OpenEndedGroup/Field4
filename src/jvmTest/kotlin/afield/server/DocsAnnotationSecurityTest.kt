@@ -123,6 +123,31 @@ class DocsAnnotationSecurityTest {
     // What counts as "this machine"
     // ══════════════════════════════════════════════════════════════════════════
 
+    /**
+     * The forms Netty was *observed* handing us, as opposed to the ones I assumed.
+     *
+     * A loopback guard that refuses the human's own browser is a worse outcome than the
+     * hole it closes, and it would fail silently — the panel would simply say
+     * "loopback-only" on the machine you are sitting at. Driving a real Field on port
+     * 9492 on 2026-08-11, a request from `curl https://localhost:9492/…` arrived with
+     * `request.local.remoteAddress` = `0:0:0:0:0:0:0:1`: the fully expanded IPv6
+     * loopback, neither `127.0.0.1` nor `::1`. Confirmed by the server's own log line,
+     * `Refused a documentation improvement launch from 0:0:0:0:0:0:0:1: 403 Forbidden` —
+     * a refusal from the *disabled* check, which a request only reaches by passing the
+     * loopback check first.
+     *
+     * The LAN forms in the second half are from the same session, where the machine's
+     * own address was 192.168.2.125 and every probe from it was correctly refused.
+     */
+    @Test
+    fun theAddressFormsNettyActuallyHandsUsAreLoopback() {
+        for (observed in listOf("0:0:0:0:0:0:0:1", "127.0.0.1", "::1", "::ffff:127.0.0.1")) {
+            assertTrue(isLoopbackDocsClient(observed), "$observed must be treated as this machine")
+        }
+        assertFalse(isLoopbackDocsClient("192.168.2.125"), "the machine's own LAN address is not loopback")
+        assertFalse(isLoopbackDocsClient("::ffff:192.168.2.125"), "nor is it, wearing an IPv6 hat")
+    }
+
     @Test
     fun loopbackIsDecidedOnALiteralAddressAndNeverOnAName() {
         for (address in listOf("127.0.0.1", "127.0.0.5", "127.255.255.254", "::1", "0:0:0:0:0:0:0:1", "::ffff:127.0.0.1", "[::1]", " 127.0.0.1 ")) {

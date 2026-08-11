@@ -213,11 +213,24 @@ internal fun refuseDocsImprovementLaunch(
 }
 
 /**
- * Compares in time independent of *content*, via [MessageDigest.isEqual].
+ * Compares in time independent of *content*, via [MessageDigest.isEqual] — deliberately,
+ * though constant-time comparison turns out not to be load-bearing here.
  *
- * Length is still observable — `isEqual` returns early on a length mismatch — and no
- * amount of care here changes that a local attacker has better options. This is the
- * cheap correct thing, not a claim that the token is safe against a remote oracle.
+ * Worth working out rather than cargo-culting, because the answer is "probably doesn't
+ * matter". A timing oracle needs someone who can submit guesses and observe the outcome,
+ * and neither caller who can reach this line can:
+ *
+ *  - a **cross-site page** — the case the token actually exists for — never arrives.
+ *    `X-Field-Docs-Improvement-Token` is not CORS-safelisted, so the browser preflights,
+ *    and Field's CORS config allows only `Content-Type`. Measured 2026-08-11: the
+ *    preflight gets `403 Forbidden` and the page gets `TypeError: Failed to fetch`. No
+ *    request reaches the handler, so there is no timing to measure.
+ *  - a **local process running as this user** can reach loopback, but it can equally read
+ *    the token out of the environment or the startup log, so it has no reason to guess.
+ *
+ * So: the cheap correct default, not a defence anything rests on. The residual weakness
+ * is stated rather than papered over — `isEqual` returns early on a length mismatch, so
+ * token *length* leaks to anyone positioned to time it. Nobody so positioned needs it.
  */
 private fun docsTokensMatch(expected: String, presented: String): Boolean =
     expected.isNotEmpty() && MessageDigest.isEqual(
