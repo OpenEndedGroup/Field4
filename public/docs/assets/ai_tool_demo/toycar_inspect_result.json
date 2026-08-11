@@ -1,0 +1,19 @@
+{
+  "path" : "ToyCar.glb",
+  "root" : "<repo>/public/docs/assets/fabricate_demo",
+  "format" : "glb",
+  "bytesOnDisk" : 5422412,
+  "vertexCount" : 77429,
+  "triangleCount" : 108936,
+  "hasNormals" : true,
+  "hasUvs" : true,
+  "hasColors" : false,
+  "extent" : [ 0.07344292104244232, 0.028822891414165497, 0.07396229356527328 ],
+  "minCorner" : [ -0.03499509021639824, -0.016206270083785057, -0.03698115423321724 ],
+  "surfaceArea" : 0.009275409038869269,
+  "volume" : null,
+  "watertight" : false,
+  "eulerCharacteristic" : 1909,
+  "boundaryLoopCount" : 2782,
+  "notes" : [ "Not watertight. For a modelled asset this is normal — UV seams and hard edges are real cuts in the surface — and only matters if you need a volume, a boolean or a printer." ]
+}

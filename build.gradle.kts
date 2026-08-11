@@ -1141,6 +1141,24 @@ tasks.register<JavaExec>("runDocsPanelCodeLinksSmokeTest") {
     jvmArgs(vectorizationJvmArgs)
 }
 
+// The evidence behind public/docs/aiFeatures.md's "Give the AI a tool of your own": the literal tool
+// schemas AgentToolExtensions.describe() emits for the example tool set, the literal function-call
+// output, and the literal PNG the bridge hands the model. No API key and no model — execute() is the
+// production path and takes a name and a JSON string.
+//
+// With an output directory it writes; with none it drift-checks the committed copies from a temp dir,
+// which is the mode the ai.tool-extensions.demo FIELD_TEST uses so that a check never writes a
+// committed asset. Deliberately not wired into `check`: it reads a 5.4 MB GLB through Assimp.
+tasks.register<JavaExec>("runAgentToolDemo") {
+    group = "documentation"
+    description = "Rewrites public/docs/assets/ai_tool_demo/ — the committed schema, result JSON and rendered image behind the aiFeatures.md tool-authoring section."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.AgentToolDemoEvidence")
+    jvmArgs(vectorizationJvmArgs)
+    args(file("public/docs/assets/ai_tool_demo").absolutePath)
+}
+
 tasks.register<JavaExec>("generateCodebaseReference") {
     group = "documentation"
     description = "Regenerates the committed codebase reference (public/docs/reference/) from the KDoc in afield.stdlib and afield.visualization. Pass -Pout=<dir> to write elsewhere; with no output dir the generator drift-checks the committed pages instead."
