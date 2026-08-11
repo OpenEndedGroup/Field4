@@ -560,6 +560,45 @@ class AgentToolExtensionsTest {
     }
 
     /**
+     * The MCP face carries extension tools too.
+     *
+     * `AgentToolExtensions`' KDoc has always promised "nothing extra to write for the OpenAI path or
+     * the MCP face". The MCP face was the one surface where that was false: the agent backdoor's
+     * `agent-ai-tools-list` / `agent-ai-tool-call` handlers read `Ai4BackdoorTools.registry`, which is
+     * assembled by hand rather than by `registerBuiltInAgentTools`, and so had no route to
+     * `AgentToolExtensions` at all. A cluster's tools were reachable from AI Chat and invisible to an
+     * agent driving Field over the backdoor, with nothing anywhere saying so.
+     *
+     * Asserted through the registry the two handlers actually use, so this fails if that wiring is
+     * removed — the handlers themselves need a live session, which a unit test has no business faking.
+     */
+    @Test
+    fun theMcpBackdoorRegistryCarriesExtensionToolsToo() {
+        val backdoor = afield.ai.core.Ai4BackdoorTools.registry
+
+        AgentToolExtensions.register(NightlyLate::class.java) { _, request ->
+            NightlyLateResult(request.note, "over-mcp")
+        }
+
+        assertTrue(
+            backdoor.isAvailable(ctx, "NightlyLate"),
+            "an extension tool must appear on the backdoor's tool list",
+        )
+        assertTrue(
+            backdoor.describe(ctx).any { """"NightlyLate"""" in it.toString() },
+            "and in the MCP-style descriptors, which is what field_mcp.py forwards",
+        )
+        assertEquals(
+            "over-mcp",
+            (backdoor.executeByName(ctx, "NightlyLate", """{"note": "x"}""") as NightlyLateResult).generation,
+            "and must be callable through agent-ai-tool-call's dispatch",
+        )
+
+        AgentToolExtensions.unregister(NightlyLate::class.java)
+        assertFalse(backdoor.isAvailable(ctx, "NightlyLate"), "and retiring it takes it off that face too")
+    }
+
+    /**
      * A tool result's images travel on [CarriesToolImages] and must stay **out** of the JSON the model
      * is sent as function output — a base64 PNG spent as text tokens is invisible cost that buys
      * nothing, because a model cannot see an image encoded in a JSON string.

@@ -107,34 +107,78 @@ edited in Field to add a tool: the registration goes the other way.
 
 ### The smallest version
 
+Paste this into a box and run it. It needs no API key: the last three lines call
+the tool the same way a model's tool call does, so you can see the whole loop
+before involving a model at all.
+
+<!--
+FIELD_TEST
+id: docs.ai-features.tool-authoring.register-and-call
+runner: backdoor-box
+tags: [docs, ai4, tools]
+timeoutSec: 90
+expect:
+  outputContains:
+    - "MeasureRoom"
+    - "The room's width in metres."
+    - "[\"width\",\"depth\"]"
+    - "area=13.02 acceptable=true"
+  eventKinds:
+    - output
+-->
 ```diffstatic {data-lang=kotlin}
+:::static
 import afield.ai.core.AgentToolExtensions
+import afield.ai.core.SummarisesForToolLog
+import afield.ai.core.ToolExecutionContext
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
 // The request class IS the schema. Its name is the tool's name, and these two
 // annotations are the only prompt this tool gets — write them for a reader who
 // cannot see the code.
-@JsonClassDescription("Report the current position and radius of the orbiting marker.")
-data class MarkerState(
-    @JsonPropertyDescription("Return the value in millimetres instead of scene units.")
-    val millimetres: Boolean = false,
+@JsonClassDescription("Measure a rectangular room and say whether it meets a minimum floor area.")
+data class MeasureRoom(
+    @JsonPropertyDescription("The room's width in metres.")
+    val width: Double,
+    @JsonPropertyDescription("The room's depth in metres.")
+    val depth: Double,
+    @JsonPropertyDescription("The smallest floor area, in square metres, that counts as acceptable.")
+    val minimumArea: Double = 11.0,
 )
 
-AgentToolExtensions.register(MarkerState::class.java) { _, request ->
-    val scale = if (request.millimetres) 1000.0 else 1.0
-    mapOf("x" to marker.x * scale, "y" to marker.y * scale, "radius" to marker.r * scale)
+// Implementing SummarisesForToolLog is what puts something readable in Field's
+// tool I/O log; without it the log records only this class's name.
+data class MeasureRoomResult(val area: Double, val acceptable: Boolean) : SummarisesForToolLog {
+    override fun toolLogSummary() = "area=%.2f acceptable=%s".format(area, acceptable)
 }
+
+AgentToolExtensions.register(MeasureRoom::class.java) { _, request ->
+    val area = request.width * request.depth
+    MeasureRoomResult(area, area >= request.minimumArea)
+}
+
+// Now look at it the way the model will, with no model involved.
+val ctx = ToolExecutionContext()
+println(AgentToolExtensions.describe(ctx).single { "MeasureRoom" in it })
+
+val answer = AgentToolExtensions.execute(
+    ctx, "MeasureRoom", """{"width": 4.2, "depth": 3.1}"""
+) as MeasureRoomResult
+println(answer.toolLogSummary())
 ```
 
-Run the box. Select any box, press `command/ctrl-4`, and ask *"where is the
-marker?"* — the model now has a way to find out that does not involve guessing
-from your source.
+The first `println` is the schema, and it is worth reading: `width` and `depth`
+are `required` because they have no default, `minimumArea` is not because it has
+one, and every `@JsonPropertyDescription` is there. Enums become a string with an
+enumerated list. That is the whole schema language.
 
-A parameter with no default is required; a parameter with one is optional, and
-the default is Kotlin's. Enums become a string with an enumerated list. That is
-the whole schema language, and `AgentToolExtensions.describe(...)` will print
-exactly what the model is shown.
+The second is `13.02`, which arrived by way of a JSON string — the same Jackson
+call the bridge makes, so a request class whose defaults or enums do not survive
+the trip fails here rather than in the middle of a conversation.
+
+Now select any box, press `command/ctrl-4`, and ask *"is a 4.2 by 3.1 metre room
+big enough?"*
 
 ### Live coding
 
@@ -144,7 +188,7 @@ follow: register before you open the chat or after, and a conversation that is
 already running picks the change up on its next turn. Editing the handler and
 re-running is the intended way to work.
 
-`AgentToolExtensions.unregister("MarkerState")` takes it away again.
+`AgentToolExtensions.unregister("MeasureRoom")` takes it away again.
 
 One rule: the class's simple name has to be unique across the whole
 conversation, which includes Field's own built-in tools. Naming your request
@@ -159,8 +203,8 @@ each turn:
 
 ```diffstatic {data-lang=kotlin}
 AgentToolExtensions.register(
-    MarkerState::class.java,
-    available = { markerExists() },
+    MeasureRoom::class.java,
+    available = { thereIsAPlanOpen() },
 ) { _, request -> /* … */ }
 ```
 
@@ -179,12 +223,12 @@ Two optional interfaces, both worth implementing:
   did instead of taking your word for it.
 
 ```diffstatic {data-lang=kotlin}
-data class MarkerReport(
-    val x: Double,
-    val y: Double,
+data class RoomReport(
+    val area: Double,
+    val acceptable: Boolean,
     override val toolImages: List<ToolImage>,
 ) : SummarisesForToolLog, CarriesToolImages {
-    override fun toolLogSummary() = "marker at %.1f, %.1f".format(x, y)
+    override fun toolLogSummary() = "area=%.2f acceptable=%s".format(area, acceptable)
 }
 ```
 
@@ -239,26 +283,59 @@ The full session — both descriptors, both calls, both results — is committed
 alongside it as `public/docs/assets/ai_tool_demo/session.md`, produced with no
 API key and no model.
 
-### Trying a tool without a model
+If you have no scans handy, this makes some and runs both tools over them,
+including putting the picture the model would receive into the box's output:
 
-`execute` is the same entry point a model's tool call goes through, so you can
-drive your own tool from a box and see precisely what it would return:
-
+<!--
+FIELD_TEST
+id: docs.ai-features.tool-authoring.geometry-tool
+runner: backdoor-box
+tags: [docs, ai4, tools, geometry]
+timeoutSec: 120
+expect:
+  outputContains:
+    - "InspectGeometryFile"
+    - "watertight=true"
+  eventKinds:
+    - output
+-->
 ```diffstatic {data-lang=kotlin}
+:::static
 import afield.ai.core.AgentToolExtensions
+import afield.ai.core.CarriesToolImages
+import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolExecutionContext
+import afield.four.modules.InspectGeometryFileResult
+import java.io.File
+
+val root = File(System.getProperty("java.io.tmpdir"), "field-ai-tool-docs").also { it.mkdirs() }
+if (!File(root, "knot.obj").isFile) torusMesh().saveObj(File(root, "knot.obj"))
+
+GeometryAgentTools.clearSearchRoots()
+GeometryAgentTools.addSearchRoot(root)
+GeometryAgentTools.register()
 
 val ctx = ToolExecutionContext()
 println(AgentToolExtensions.availableToolNames(ctx))
-println(AgentToolExtensions.describe(ctx).joinToString("\n"))
-println(AgentToolExtensions.execute(ctx, "MarkerState", """{"millimetres": true}"""))
+
+val report = AgentToolExtensions.execute(
+    ctx, "InspectGeometryFile", """{"path": "knot.obj", "yawDegrees": 34.0}"""
+) as InspectGeometryFileResult
+
+println((report as SummarisesForToolLog).toolLogSummary())
+
+// The picture is NOT in the JSON the model reads — see the note above. It comes
+// back on the CarriesToolImages channel, which is what the bridge turns into a
+// real image message. Here it is in the box output instead:
+val image = (report as CarriesToolImages).toolImages.single()
+display("<img src='" + image.dataUrl + "' style='width:100%'/>")
 ```
 
-That needs no API key. It deserialises your JSON with the same Jackson call the
-bridge uses, so a request class whose defaults or enums do not survive the trip
-fails here rather than in the middle of a conversation.
+`execute` is the same entry point a model's tool call goes through — a name and
+a JSON string — so this is not a simulation of the tool path, it *is* the tool
+path, minus the model.
 
-There is a loadable document that does all of the above cold:
+There is a loadable document with both examples side by side:
 `public/docs/assets/ai_tool_demo/metadata.edn`.
 
 ### If your tool takes a path, or anything else from the outside

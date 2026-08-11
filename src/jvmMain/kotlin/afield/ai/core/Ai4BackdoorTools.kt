@@ -38,6 +38,21 @@ internal object Ai4BackdoorTools {
 
     /** A registry populated with the Tier-1 tools (passthroughs to context providers). */
     val registry: ToolRegistry = ToolRegistry().apply {
+        // Everything registered through AgentToolExtensions, exactly as registerBuiltInAgentTools does
+        // it for the in-app agents — and first, so that a name collision is resolved the same way in
+        // both registries: whatever core registers below wins.
+        //
+        // This line was missing until 2026-08-11, and its absence made a documented claim false rather
+        // than merely incomplete. AgentToolExtensions' own KDoc promised "nothing extra to write for
+        // the OpenAI path or the MCP face", and the MCP face was the one surface that never saw an
+        // extension tool: this registry is built by hand here rather than by registerBuiltInAgentTools,
+        // so it had no route to them. A cluster's tools were reachable from AI Chat and invisible to
+        // Claude Code over the backdoor, with nothing anywhere saying so.
+        //
+        // applyTo also *subscribes* this registry, so a tool a box registers later shows up on the next
+        // agent-ai-tools-list without the backdoor being restarted.
+        AgentToolExtensions.applyTo(this)
+
         register(MacroListRequest::class.java, { it.listMacros != null }) { ctx, req ->
             ctx.listMacros!!.invoke(req)
         }
