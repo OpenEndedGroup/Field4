@@ -104,7 +104,34 @@ attack above:
 - **the directory** must resolve to a real directory, and is logged before the process
   starts.
 
-Two details in the loopback check are load-bearing and easy to undo by accident.
+### Why the token exists even though the route is already loopback-only
+
+Because **your own browser is on loopback**. Loopback-only stops another *machine*; it does
+nothing about a page you are visiting in a tab. Field installs Ktor's CORS plugin with
+`anyHost()` and `allowMethod(Post)`, so `https://somewhere-else.example/` can issue
+
+```js
+fetch("https://localhost:9092/api/docs-improvement", {method: "POST", …})
+```
+
+and the browser will *send* it. CORS only stops that page reading the reply — the coding
+agent would already have started. That is a textbook CSRF, and the loopback check is
+exactly the wrong shape of defence against it.
+
+A custom request header is the right shape. `X-Field-Docs-Improvement-Token` is not a
+CORS-safelisted header, so the browser must preflight, and the preflight fails: Field's
+CORS config allows `Content-Type` and nothing else. A cross-site page therefore cannot
+send the header at all, never mind guess it.
+
+The consequence, and it is deliberate: **the token is never served over HTTP.** Not from
+an endpoint, not inlined into a page — because with `anyHost()`, anything this origin
+would hand its own pages it would also hand that other website. It lives in the
+environment and in the startup log. The welcome page's "Improve annotated docs" button
+prompts for it once and caches it in `localStorage`, which *is* origin-scoped; a 401 drops
+the cached copy and asks again, which is what you want given Field mints a fresh token on
+every restart unless you set `AFIELD_DOCS_IMPROVEMENT_TOKEN` yourself.
+
+### Two details in the loopback check are load-bearing and easy to undo by accident.
 
 It reads `call.request.local`, not `call.request.origin`. `origin` is the connection
 point as rewritten by `XForwardedHeaders`/`ForwardedHeaders`, out of a header the client
@@ -180,6 +207,16 @@ faithfully follow.
 - **`0.0.0.0` is still `0.0.0.0`.** Narrowing it would break the visionOS shell and
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
+- **`CORS { anyHost() }` applies to Field's whole API**, not just to this corner of it.
+  Every one of the ~50 unauthenticated `/api/…` routes is therefore readable and (for
+  GET/POST/DELETE with a simple content type) writable from any website you visit while
+  Field is running. This branch's token defends *one* route from that. It is the largest
+  thing found while working here that is out of scope for a docs-endpoint branch, and it
+  is worth a look of its own.
+- **The editor's docs iframe** (`Cmd+/`, `bootstrapMonaco.js`, default `/field-docs/`)
+  follows the mirror's loopback rule. Opening Field at `localhost` — the normal case, and
+  what `field.sh` prints — is unaffected. Opening it at the machine's LAN address means
+  the iframe now needs `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=1`.
 
 ## Where the tests are
 
