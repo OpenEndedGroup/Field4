@@ -290,6 +290,17 @@ data class DocsAnnotation(
     val updatedAtEpochMs: Long = 0,
     val resolvedAtEpochMs: Long? = null,
     val resolution: String = "",
+    /**
+     * The checkout whose Field recorded this note.
+     *
+     * The store is the single global `~/.afield/docs-annotations.json`, shared by every
+     * Field on the machine, so before this field there was no way to tell a note written
+     * from the human's main tree apart from one written by a nightly worktree's server —
+     * which matters now that a note is an instruction to a coding agent. Empty for notes
+     * written before this field existed, and never used as a filter: it is a fact for a
+     * reader, not a security boundary.
+     */
+    val recordedInCheckout: String = "",
 )
 
 @Serializable private data class DocsAnnotationFile(val version: Int = 1, val annotations: List<DocsAnnotation> = emptyList())
@@ -335,9 +346,11 @@ private object DocsAnnotationStore {
         val existing = old.firstOrNull { it.id == id }
         val saved = input.copy(
             id = id,
-            tags = extractTags(input.note, input.tags),
+            tags = docsAnnotationTags(input.note, input.tags),
             createdAtEpochMs = existing?.createdAtEpochMs ?: now,
             updatedAtEpochMs = now,
+            // An edit does not relocate a note: whoever first recorded it stays recorded.
+            recordedInCheckout = existing?.recordedInCheckout?.ifBlank { null } ?: docsImprovementDirectory.display,
         )
         write(old.filterNot { it.id == id } + saved)
         saved
@@ -371,16 +384,48 @@ private object DocsAnnotationStore {
         DocsAnnotationFile()
     }
 
-    private fun extractTags(note: String, supplied: List<String>): List<String> =
-        (supplied + Regex("(?<![\\w@])@([A-Za-z][A-Za-z0-9_-]{0,63})").findAll(note).map { it.groupValues[1] })
-            .map { it.removePrefix("@").lowercase() }.filter { it.isNotBlank() }.distinct().sorted()
+    private fun write(annotations: List<DocsAnnotation>) =
+        writeDocsAnnotationsAtomically(path, json, annotations)
+}
 
-    private fun write(annotations: List<DocsAnnotation>) {
-        Files.createDirectories(path.parent)
-        val temp = Files.createTempFile(path.parent, "docs-annotations-", ".json")
-        Files.writeString(temp, json.encodeToString(DocsAnnotationFile(annotations = annotations)), StandardCharsets.UTF_8)
-        Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-    }
+/**
+ * The `@tag` vocabulary a note carries, which is also the filter the improvement agent
+ * selects notes by — so what counts as a tag decides what a run is handed.
+ *
+ * The lookbehind is the interesting part: `(?<![\w@])` means an `@` that follows a word
+ * character or another `@` is not a tag opener, so `user@example.com` contributes no
+ * `example`, and `@@shout` contributes nothing at all. Tags must begin with a letter,
+ * which keeps a bare `@2` out, and are lowercased and de-duplicated so that filtering
+ * is case-insensitive without every caller having to remember that.
+ *
+ * Explicitly supplied tags are merged rather than trusted alone; the client already
+ * computes its own list in `docsAnnotations.js` and the two are allowed to disagree.
+ */
+internal fun docsAnnotationTags(note: String, supplied: List<String>): List<String> =
+    (supplied + Regex("(?<![\\w@])@([A-Za-z][A-Za-z0-9_-]{0,63})").findAll(note).map { it.groupValues[1] })
+        .map { it.removePrefix("@").lowercase() }.filter { it.isNotBlank() }.distinct().sorted()
+
+/**
+ * Replaces the annotation file in one step, or not at all.
+ *
+ * The temporary file is created in the *destination's own directory* on purpose:
+ * `ATOMIC_MOVE` is only guaranteed within a filesystem, and a temp file under
+ * `java.io.tmpdir` can easily be on a different one, which turns the move into a
+ * copy-then-delete with a window where the file is half-written. This matters more than
+ * it looks — the improvement agent is told to edit this very file while a human may be
+ * adding notes through the panel, so a torn write loses annotations.
+ *
+ * Extracted from the store object so a test can point it at a temporary directory. What
+ * it does not do is protect against two *processes* interleaving: the store is one
+ * global file shared by every Field on the machine, and the in-JVM lock around it says
+ * nothing about the other JVM. `recordedInCheckout` exists so that at least the result
+ * is legible after the fact.
+ */
+internal fun writeDocsAnnotationsAtomically(path: Path, json: Json, annotations: List<DocsAnnotation>) {
+    Files.createDirectories(path.parent)
+    val temp = Files.createTempFile(path.parent, "docs-annotations-", ".json")
+    Files.writeString(temp, json.encodeToString(DocsAnnotationFile(annotations = annotations)), StandardCharsets.UTF_8)
+    Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
 }
 
 private object DocsImprovementTask {
