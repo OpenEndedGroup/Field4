@@ -148,6 +148,7 @@ class AgentToolExtensionsTest {
         AgentToolExtensions.unregister(NightlyLate::class.java)
         AgentToolExtensions.unregister("NightlyReloaded")
         AgentToolExtensions.unregister("Commentary")
+        AgentToolExtensions.unregister("NightlyFragile")
     }
 
     // ------------------------------------------------------------------ the schema
@@ -454,6 +455,154 @@ class AgentToolExtensionsTest {
             tools.executeByName(ctx, "Commentary", """{"text": "hello"}"""),
             "core's Commentary handler, not the extension's",
         )
+    }
+
+    // ------------------------------------------------- the semantics of a live registration
+    //
+    // Making a registration reach an open conversation is the point of this branch, and it is also a
+    // new sharp edge: a half-edited box that registers a broken handler now reaches a live model
+    // instead of being quietly ignored. These four tests are the deliberate answer to that, written
+    // down so the next person changing this cannot reverse it by accident.
+    //
+    // The answer is that immediate liveness is right, for a reason that is easy to miss. The
+    // alternative was never "the broken handler is ignored" — it was "the STALE handler runs", the
+    // one compiled from source that is no longer on screen. A model calling the code you are looking
+    // at and getting an error is recoverable in one keystroke; a model calling code you deleted an
+    // hour ago, and succeeding, is not even diagnosable. Live coding's bargain is that what runs is
+    // what you see, and a tool registration is not special.
+    //
+    // What that bargain requires in exchange is the three properties below: a throwing handler must
+    // not damage anything, re-running must fix it, and a *failed* registration must not destroy the
+    // working tool it was trying to replace.
+
+    @JsonClassDescription("A tool whose handler is about to be replaced by a broken one.")
+    data class NightlyFragile(val value: Int = 0)
+
+    /**
+     * A handler that throws is an ordinary tool error, and the *next* run of the box repairs it.
+     *
+     * This is the recovery path that makes immediate liveness safe, so it is asserted end to end
+     * through a real registry: break it, observe a legible failure that names the tool, fix it, and
+     * observe the fix land in the same conversation with nothing restarted.
+     */
+    @Test
+    fun aBrokenHandlerIsRecoverableByRunningTheBoxAgain() {
+        val tools = ToolRegistry()
+        registerBuiltInAgentTools(tools)
+
+        AgentToolExtensions.register(NightlyFragile::class.java) { _, request ->
+            mapOf("doubled" to request.value * 2)
+        }
+        assertEquals(mapOf("doubled" to 8), tools.executeByName(ctx, "NightlyFragile", """{"value": 4}"""))
+
+        // The author saves the box mid-edit and it now throws.
+        AgentToolExtensions.register(NightlyFragile::class.java) { _, _ ->
+            throw IllegalStateException("half-written")
+        }
+        val boom = assertFailsWith<IllegalStateException> {
+            tools.executeByName(ctx, "NightlyFragile", """{"value": 4}""")
+        }
+        assertEquals("half-written", boom.message, "the author's own exception, not one we invented")
+
+        // Crucially, nothing else is damaged: the tool is still listed, and every other tool works.
+        assertTrue(
+            tools.isAvailable(ctx, "NightlyFragile"),
+            "a throwing handler must not deregister the tool — that would make the failure look like " +
+                "a disappearance, which is far harder to diagnose",
+        )
+        assertTrue(tools.isAvailable(ctx, "Commentary"), "and must not disturb core's tools")
+
+        // The author fixes the box and runs it again. Same conversation, no restart.
+        AgentToolExtensions.register(NightlyFragile::class.java) { _, request ->
+            mapOf("doubled" to request.value * 2, "fixed" to true)
+        }
+        assertEquals(
+            mapOf("doubled" to 8, "fixed" to true),
+            tools.executeByName(ctx, "NightlyFragile", """{"value": 4}"""),
+            "one re-run is the whole recovery procedure",
+        )
+    }
+
+    /**
+     * A registration that is *refused* leaves the previous one working.
+     *
+     * `register` validates before it mutates, so the failure is atomic. Without that, an author who
+     * renamed a request class into a collision would lose the tool they already had — a second,
+     * invisible failure on top of the one they can see.
+     */
+    @Test
+    fun aRefusedRegistrationDoesNotDestroyTheWorkingOne() {
+        val tools = ToolRegistry()
+        registerBuiltInAgentTools(tools)
+
+        AgentToolExtensions.register(NightlyFragile::class.java) { _, _ -> mapOf("alive" to true) }
+        assertTrue(tools.isAvailable(ctx, "NightlyFragile"))
+
+        assertFailsWith<IllegalArgumentException> {
+            AgentToolExtensions.register(ClashingCluster.Commentary::class.java) { _, _ -> mapOf<String, Any>() }
+        }
+
+        assertEquals(
+            mapOf("alive" to true),
+            tools.executeByName(ctx, "NightlyFragile", "{}"),
+            "the unrelated tool the author already had is untouched by a refused registration",
+        )
+        assertEquals(
+            1,
+            AgentToolExtensions.registeredToolNames().count { it == "NightlyFragile" },
+            "and the registration list did not grow or shrink",
+        )
+    }
+
+    /**
+     * Retiring a tool that was never registered is a no-op.
+     *
+     * A box's teardown runs unconditionally — it does not know whether its `register` ever succeeded,
+     * and on the first run of a freshly opened document it did not. Making `unregister` throw would
+     * mean every author writing a guard around it.
+     */
+    @Test
+    fun retiringSomethingThatWasNeverThereIsHarmless() {
+        val tools = ToolRegistry()
+        registerBuiltInAgentTools(tools)
+
+        AgentToolExtensions.unregister("NeverRegisteredAnywhere")
+        AgentToolExtensions.unregister(NightlyFragile::class.java)
+
+        // And it cannot be used to remove one of core's tools by name, which is the one way a no-op
+        // unregister could have been dangerous.
+        AgentToolExtensions.unregister("Commentary")
+        assertTrue(
+            tools.isAvailable(ctx, "Commentary"),
+            "unregister is scoped to extension-owned names; core's Commentary survives",
+        )
+        assertEquals(
+            mapOf("ok" to true),
+            tools.executeByName(ctx, "Commentary", """{"text": "still here"}"""),
+        )
+    }
+
+    /**
+     * The gate is re-evaluated per call, not captured at registration — so a box can turn its own
+     * tools off without re-registering, and turning them off really does close `execute`.
+     */
+    @Test
+    fun theGateIsReReadOnEveryCallRatherThanSnapshotted() {
+        val tools = ToolRegistry()
+        registerBuiltInAgentTools(tools)
+
+        var open = true
+        AgentToolExtensions.register(NightlyFragile::class.java, available = { open }) { _, _ ->
+            mapOf("ran" to true)
+        }
+        assertTrue(tools.isAvailable(ctx, "NightlyFragile"))
+
+        open = false
+        assertFalse(tools.isAvailable(ctx, "NightlyFragile"), "no re-registration was needed")
+        assertFailsWith<IllegalStateException> { tools.executeByName(ctx, "NightlyFragile", "{}") }
+
+        open = true
+        assertEquals(mapOf("ran" to true), tools.executeByName(ctx, "NightlyFragile", "{}"))
     }
 
     // ------------------------------------------------------------------ reaching the agent

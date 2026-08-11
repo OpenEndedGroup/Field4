@@ -78,14 +78,57 @@ appends the images as a separate user-role message with `ToolImage.caption` as t
 (`OpenAiIdeCodexBridge.kt:433`). `GeometryAgentToolsTest.theRenderedImageIsRealPngAndStaysOutOfTheJson`
 asserts both halves.
 
-**`CarriesToolImages` only does anything on the OpenAI/OpenRouter path.** `AnthropicBridge` has no
-image handling in either direction — it warns and drops `imageDataUrls` on input (`:96`) and never
-looks at `CarriesToolImages` on output. So under `AFIELD_AI_PROVIDER=anthropic` a tool's pictures are
-silently discarded and only the JSON result arrives. That is a gap in the Anthropic bridge rather
-than in this seam (its own KDoc calls image support a v1 follow-up), and it is not fixed here, but a
-tool author needs to know it: anything the model must not miss belongs in the result as well as in
-the picture. `GeometryAgentTools` is written that way — every measurement in the image caption is
-also a field on `InspectGeometryFileResult`.
+### Which bridges honour `CarriesToolImages`
+
+| surface | tool images out | image input (a person pastes one) |
+|---|---|---|
+| `OpenAiIdeCodexBridge` (OpenAI, OpenRouter) | **yes** — a following user-role message (`:433`) | yes |
+| `AnthropicBridge` | **yes**, since 2026-08-11 — inside the `tool_result` | **no** — `imageDataUrls` is warned and dropped (`:100`) |
+| MCP backdoor (`agent-ai-tool-call`) | **no** — the reply is `aiToolMapper` JSON, from which `@get:JsonIgnore` correctly removes them | n/a |
+
+The Anthropic row was "no" until this branch, and it was the interesting kind of no.
+`CarriesToolImages`' KDoc said "the bridge appends the images to the conversation"; there are two
+bridges and only one did. Every Anthropic tool result went out as `content(resultJson)`, a bare
+string, so under `AFIELD_AI_PROVIDER=anthropic` — the provider this project is built around — a
+geometry tool's whole purpose evaporated with no error and no log line. The only available symptom
+was a model reasoning confidently about a picture it had never been shown.
+
+**It was an unfinished feature, not a limitation.** The Messages API has accepted images inside a
+`tool_result`'s content for as long as this bridge has existed, and the SDK models it as
+`ToolResultBlockParam.Content.Block.ofImage`. The conversion was simply never written. Measured by
+`AnthropicToolImageTest.theImageReachesTheSerialisedRequestPayload`, using the same Jackson mapper
+the SDK's HTTP layer uses — so this is the wire body, not a rendering of it:
+
+```json
+// before
+{"tool_use_id":"toolu_02","type":"tool_result","content":"{\"note\":\"x\"}"}
+
+// after
+{"tool_use_id":"toolu_02","type":"tool_result","content":[
+  {"text":"{\"note\":\"x\"}","type":"text"},
+  {"text":"a caption","type":"text"},
+  {"source":{"data":"iVBORw0…","media_type":"image/png","type":"base64"},"type":"image"}]}
+```
+
+Images go *inside* the `tool_result` rather than in a following message, which is what the OpenAI
+bridge does only because the Responses API has no equivalent nesting. Here the nesting exists and is
+better: the picture is bound to the call it came from, so a turn with three tool calls cannot leave
+the model guessing which image answers which. A result with no images still serialises to the plain
+string it always did — pinned by a test, because turning every request into a one-element block list
+would be a gratuitous change to every tool call the bridge makes.
+
+Dropped rather than sent: a payload over `ANTHROPIC_MAX_IMAGE_BASE64_CHARS` (5 MB — the ToyCar render
+is about 2% of it), a non-`data:` URL, or a media type the API does not accept. The text result still
+goes, because a 400 from an oversized attachment would lose the answer in order to save a bonus, and
+the drop is reported through the bridge's `warn` rather than being silent. Silence is the bug this
+whole section is about.
+
+**What is still not carried:** image *input* on the Anthropic path, and images over MCP. The second is
+correct behaviour — an MCP tool reply is JSON and `@get:JsonIgnore` is doing its job — but it does
+mean a tool whose answer is only a picture has nothing to say to an agent on the backdoor. Design for
+it: put anything the model must not miss in the result as well as in the picture. `GeometryAgentTools`
+is written that way, which is why every measurement in its image caption is also a field on
+`InspectGeometryFileResult`.
 
 ## Live coding — what actually happens
 

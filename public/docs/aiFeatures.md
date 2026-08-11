@@ -218,12 +218,13 @@ Two optional interfaces, both worth implementing:
 - **`SummarisesForToolLog`** — one line for Field's tool I/O log. Without it the
   log records only your result's class name, which cannot distinguish a turn
   where the model got what it needed from one where it got an error and gave up.
-- **`CarriesToolImages`** — pictures. The OpenAI/OpenRouter agent loop lifts them
-  onto the conversation as a real image message. This is how a tool lets a model
-  *look* at what it just did instead of taking your word for it. The Anthropic
-  bridge does not carry images yet, in either direction, so with
-  `AFIELD_AI_PROVIDER=anthropic` a tool's pictures are silently dropped and only
-  the JSON result arrives; put anything the model must not miss in the result.
+- **`CarriesToolImages`** — pictures. Both agent loops send them as real images:
+  OpenAI and OpenRouter as a message following the tool output, Anthropic as
+  image blocks inside the tool result itself. This is how a tool lets a model
+  *look* at what it just did instead of taking your word for it. The exception is
+  a tool called over the MCP backdoor — that reply is JSON, so it carries the
+  numbers and not the picture. Put anything the model must not miss in the
+  result as well as in the image.
 
 ```diffstatic {data-lang=kotlin}
 data class RoomReport(

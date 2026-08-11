@@ -638,14 +638,24 @@ data class ToolImage(
  * Implement this on a result class and the bridge appends the images to the conversation as a user-role
  * message after the function-call output, with [ToolImage.caption] as the text.
  *
- * # Which bridge
+ * # Which surfaces honour this
  *
- * The OpenAI/OpenRouter one, and only that one. [AnthropicBridge] has no image handling in either
- * direction — it warns and drops `imageDataUrls` on input and never reads this interface on output —
- * so under `AFIELD_AI_PROVIDER=anthropic` a tool's pictures are silently discarded and only the JSON
- * result reaches the model. That is a gap in that bridge (its own docs call image support a v1
- * follow-up) rather than in this interface, but a tool author has to design around it: put anything
- * the model must not miss in the result as well as in the picture.
+ * Both agent loops, by different routes that the two APIs force:
+ *
+ *  - [OpenAiIdeCodexBridge] appends a following user-role message, because the Responses API has no
+ *    way to nest an image inside a function output.
+ *  - [AnthropicBridge] puts them *inside* the `tool_result`, which the Messages API does allow and
+ *    which is the better shape — the picture is bound to the call it came from, so a turn with three
+ *    tool calls cannot leave the model guessing which image answers which. This was missing until
+ *    2026-08-11: that bridge sent every result as a bare string, so a tool's pictures vanished with
+ *    no error on the provider this project is built around. See `toolResultBlock` and
+ *    `AnthropicToolImageTest`.
+ *
+ * **Not** the MCP backdoor. `agent-ai-tool-call` replies with `aiToolMapper` JSON, and the
+ * `@get:JsonIgnore` below quite correctly keeps the images out of it, so an agent on the backdoor
+ * gets the numbers and not the picture. That is right for a JSON transport, but it does mean a tool
+ * whose answer is *only* an image has nothing to say there. Design around it: put anything the model
+ * must not miss in the result as well as in the picture.
  *
  * # The one thing to get right
  *
