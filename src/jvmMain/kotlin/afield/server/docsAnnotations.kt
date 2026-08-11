@@ -615,7 +615,10 @@ fun Route.installDocsAnnotationRoutes() {
  * becomes a traversal.
  */
 internal fun docsProxyTarget(rawPath: String, rawQuery: String?): URI? {
-    val relative = rawPath.removePrefix(PROXY_ROOT).ifBlank { "index.html" }
+    // Both spellings of the root: Ktor routes `/field-docs` as well as `/field-docs/`,
+    // and the old prefix-strip only matched the latter, so a request without the
+    // trailing slash was assembled into `/field4//field-docs` and 404'd upstream.
+    val relative = rawPath.removePrefix(PROXY_ROOT.removeSuffix("/")).removePrefix("/").ifBlank { "index.html" }
     val decoded = runCatching { URLDecoder.decode(relative, StandardCharsets.UTF_8) }.getOrNull() ?: return null
     if (decoded.split('/').any { it == ".." }) return null
     if (decoded.startsWith("/") || decoded.contains('\\') || decoded.any { it.code < 0x20 }) return null
