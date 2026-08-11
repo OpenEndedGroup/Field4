@@ -585,10 +585,28 @@ fun Route.installDocsAnnotationRoutes() {
         }
         call.respond(DocsImprovementTask.start(call.receive<DocsImprovementLaunchRequest>().tags.map(String::lowercase)))
     }
-    // Deliberately *not* loopback-gated: this route mirrors a public documentation site
-    // and holds nothing of the human's. Gating it would 403 a tablet reading the docs
-    // and buy nothing; the annotation panel it injects will report its own refusal.
-    route(PROXY_ROOT.removeSuffix("/")) { get("{...}") { call.proxyFieldDocs() } }
+    // Gated like the annotations, and the reason is not the one you would guess.
+    //
+    // The content is a public website, so nothing here is *secret*. The problem is where
+    // it runs. This route fetches openendedgroup.com's HTML and serves it back from
+    // Field's own origin — that is the entire trick that lets the injected panel talk to
+    // `/api/docs-annotations` without CORS. The cost of the trick is that every script in
+    // the mirrored page is same-origin with Field, and Field has ~50 other unauthenticated
+    // `/api/…` routes. A compromised or hostile documentation page would be able to call
+    // all of them.
+    //
+    // A remote reader loses nothing by this: the only thing the proxy adds over visiting
+    // the real site is the annotation panel, and that panel is loopback-only anyway. So
+    // the mirror is now loopback-only too, which costs a tablet one redirect of effort and
+    // takes the whole same-origin surface off the local network. The same
+    // AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE hatch re-opens both together, which is the
+    // honest coupling — they were never independent.
+    route(PROXY_ROOT.removeSuffix("/")) {
+        get("{...}") {
+            if (call.refuseUnlessLocalDocsClient()) return@get
+            call.proxyFieldDocs()
+        }
+    }
 }
 
 /**
@@ -625,10 +643,23 @@ internal fun docsProxyTarget(rawPath: String, rawQuery: String?): URI? {
     val target = runCatching {
         URI.create("$DOCS_ORIGIN$DOCS_ROOT$relative" + rawQuery?.let { "?$it" }.orEmpty()).normalize()
     }.getOrNull() ?: return null
-    if ("${target.scheme}://${target.authority}" != DOCS_ORIGIN) return null
-    if (!target.rawPath.startsWith(DOCS_ROOT)) return null
+    if (!isWithinFieldDocs(target)) return null
     return target
 }
+
+/**
+ * Whether a URI is still a page of the Field documentation.
+ *
+ * Applied twice: once to the URL we are about to request, and once to the URL the
+ * response actually came back from. The second application is the interesting one —
+ * `docsProxyClient` follows redirects, so a redirect is a way for the upstream to move
+ * the proxy somewhere the path checks never saw. That is only reachable if the
+ * documentation origin itself starts redirecting somewhere strange, which is unlikely
+ * and is also exactly the situation in which you want the proxy to stop rather than to
+ * faithfully mirror wherever it has been sent.
+ */
+private fun isWithinFieldDocs(uri: URI): Boolean =
+    "${uri.scheme}://${uri.authority}" == DOCS_ORIGIN && uri.rawPath.orEmpty().startsWith(DOCS_ROOT)
 
 /**
  * Minimal attribute escaping for the injected `<base href>`.
@@ -649,6 +680,12 @@ private suspend fun ApplicationCall.proxyFieldDocs() {
             docsProxyClient.send(HttpRequest.newBuilder(target).timeout(Duration.ofSeconds(30)).GET().build(), HttpResponse.BodyHandlers.ofByteArray())
         }
     } catch (error: Exception) { return respond(HttpStatusCode.BadGateway, "documentation unavailable: ${error.message}") }
+    // Where the bytes actually came from, after any redirects the client followed. See
+    // [isWithinFieldDocs]: the path checks above only constrain where we *asked*.
+    if (!isWithinFieldDocs(upstream.uri())) {
+        lprintln("warning,docs-annotations", "Docs proxy refused a redirect off ${DOCS_ORIGIN}${DOCS_ROOT}: ${upstream.uri()}")
+        return respond(HttpStatusCode.BadGateway, "documentation redirected outside $DOCS_ORIGIN$DOCS_ROOT")
+    }
     val contentType = upstream.headers().firstValue(HttpHeaders.ContentType).orElse("application/octet-stream")
     if (contentType.lowercase().contains("text/html")) {
         var html = upstream.body().toString(StandardCharsets.UTF_8)

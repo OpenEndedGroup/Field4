@@ -121,10 +121,46 @@ job is to keep that false.
 Not because storing a string is dangerous, but because annotation text is the *input* to
 the agent's prompt. Whoever can write a note can steer a run the human later launches.
 
-The cost is real and worth stating: if you browse the docs on a tablet, or at your Mac's
-LAN address rather than `localhost`, the panel will show a refusal instead of your notes.
-The refusal says what to do. `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=1` restores the old
-behaviour for annotations only.
+## And so is the mirror, for a different reason
+
+`/field-docs/…` fetches openendedgroup.com and serves it back **from Field's own origin**.
+That is the whole trick: it is what lets the injected panel `fetch('/api/docs-annotations')`
+without CORS. The price of the trick is that every script in the mirrored page is
+same-origin with Field, and Field has around fifty other `/api/…` routes with no
+authentication on them at all. A hostile or compromised documentation page would be able
+to call all of them — read your workspace, execute box code, the lot.
+
+Nothing about this is new; it has been true since the proxy was written, and the
+documentation site is the human's own. It is written down here because it is the largest
+remaining consequence of the design, and because it is invisible from the route's five
+lines of code.
+
+The mitigation taken is the cheap one. A remote reader gains nothing from the mirror that
+they would not get from the real site — the *only* thing the proxy adds is the annotation
+panel, and the panel is loopback-only — so the mirror is loopback-only too. That takes the
+entire same-origin surface off the local network at the cost of one redirect of effort for
+a tablet.
+
+What is *not* done: a Content-Security-Policy on the proxied response. The obvious ones
+(`sandbox`, a restrictive `connect-src`) also break the panel, which needs same-origin
+access to Field. Doing this properly means serving the panel from a separate origin and
+talking to Field over `postMessage`, which is a redesign rather than a hardening pass.
+
+**The cost of both, stated plainly:** if you browse the docs on a tablet, or at your Mac's
+LAN address rather than `localhost`, you now get a refusal instead of the mirror and your
+notes. The refusal says what to do. `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=1` restores the
+old behaviour for the mirror and the annotations together — they were never really
+independent — and never for the spawn.
+
+## Redirects cannot walk the proxy off the docs site
+
+The path checks constrain the URL the proxy *asks* for. `docsProxyClient` follows
+redirects, so they say nothing about where the bytes came from. The final
+`HttpResponse.uri()` is therefore checked against the same predicate, and a response that
+arrived from outside `https://openendedgroup.com/field4/` is refused with a 502 and a log
+line. This is only reachable if the documentation origin itself starts redirecting
+somewhere strange — which is precisely when you want the mirror to stop rather than
+faithfully follow.
 
 ## What is not solved
 
