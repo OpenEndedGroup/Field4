@@ -1,0 +1,331 @@
+package afield.docs
+
+import java.io.File
+
+/**
+ * Resolving `dev_docs` citations by **symbol** rather than by counting lines.
+ *
+ * ## Why this exists
+ *
+ * Field's dev_docs cite source as `` `path/to/File.kt:1234` ``. A line number is a genuinely useful
+ * thing to hand a reader — it puts them on the spot in one keystroke — and it is also the single most
+ * perishable fact a document can contain, because *anyone* who inserts a line above it invalidates it.
+ *
+ * The guards that watched those numbers used a slack window: the anchor had to appear within ±N lines
+ * of the cited number. That works right up until it doesn't, and it fails in a specific, expensive way:
+ *
+ * - **2026-08-10.** Two rows of `small_language_anatomy.md` cited `Server.kt:4632`/`:4612` for anchors
+ *   really at 4634/4614 — surviving at *exactly* the full ±2 budget, which nothing reported. A merge
+ *   moved two lines and both detonated at once.
+ * - **2026-08-07.** The lesson was written down as: *a line-number citation guard is never
+ *   path-disjoint.* Two branches touched perfectly disjoint file sets and still collided, because the
+ *   guard reaches into every source file any branch happens to touch.
+ *
+ * A slack window cannot fix this, because the failure is not caused by the window being too small. It
+ * is caused by the number being load-bearing at all.
+ *
+ * ## What this does instead
+ *
+ * The number stops being load-bearing. Every citation carries an **anchor** — a substring that must
+ * still be present at the cited site — and the anchor is resolved by *searching the whole file* for
+ * it. Where the symbol turns out to be is the answer. A sibling inserting twenty lines at the top of
+ * the file moves the symbol and the guard follows it, silently and correctly.
+ *
+ * The line number survives as **advisory**: it is what the doc shows the reader, it is used to
+ * disambiguate an anchor that occurs more than once, and when it has drifted this reports the line the
+ * symbol is *actually* on — but a stale advisory line is not a build failure. That last part is the
+ * whole design. If a stale advisory number could fail the build, a sibling's insertion would still
+ * turn the guard red, and nothing would have been fixed. See [Resolution.Resolved.advisoryDrift] and
+ * `dev_docs/citation_contracts.md` for the trade this makes.
+ *
+ * ## Ambiguity, and the honest limit of the idea
+ *
+ * Symbol anchors are only unbreakable when the symbol is **unique in its file**. 23 of the 134 anchors
+ * in the migrated corpus are not: `` `runNodeProbe` `` occurs twice, `` `builtinWords` `` four times.
+ * For those, the advisory line is used to pick the nearest occurrence, which restores a *bounded*
+ * fragility — insert enough lines and the nearest occurrence becomes a different one.
+ *
+ * Rather than wave at that, [Resolution.Resolved.headroom] measures it: the number of lines that can be
+ * inserted above the cited site before the anchor would resolve to the wrong occurrence. A unique
+ * anchor reports [UNBOUNDED]. This is the honest replacement for "slack", and it is a much better
+ * number, because it is a property of the citation rather than a constant in the guard.
+ */
+object CitationGuard {
+
+    /** Reported as the headroom of an anchor that is unique in its file and so cannot be confused. */
+    const val UNBOUNDED = Int.MAX_VALUE
+
+    /** How far a simulated insertion is pushed before an anchor is called effectively unbreakable. */
+    private const val HEADROOM_PROBE_LIMIT = 2000
+
+    /** Extensions a citation may point at. Kept in sync with the parsing regexes below. */
+    private const val EXT = "kt|js|md|py|kts|html|swift|glsl|json|yml|yaml"
+
+    /**
+     * The shape a citation was written in. This matters for error messages — telling an author to fix
+     * "the ledger row" or "the prose citation" is worth more than a line number in a 700-line page.
+     */
+    enum class Form {
+        /** `` | n | description | `path:line` | `anchor` | `` — the ledger tables. */
+        LEDGER_ROW,
+
+        /** `` `path#anchor` `` — no line number at all, the most robust form. */
+        PROSE_SYMBOL,
+
+        /** `` `path:line#anchor` `` — advisory line for the reader, symbol for the guard. */
+        PROSE_LINE_SYMBOL,
+    }
+
+    /**
+     * One citation, as written on a page.
+     *
+     * @param page repo-relative path of the citing markdown page.
+     * @param pageLine 1-based line within that page, so a failure names where to go and edit.
+     * @param path repo-relative path of the cited source file.
+     * @param advisoryLine the number written in the doc, or null for a pure [Form.PROSE_SYMBOL].
+     * @param anchor the substring that must still be present at the cited site.
+     */
+    data class Citation(
+        val page: String,
+        val pageLine: Int,
+        val path: String,
+        val advisoryLine: Int?,
+        val anchor: String,
+        val form: Form,
+    ) {
+        /** How this reads in a failure message: `dev_docs/x.md:12 → Foo.kt:34 (`bar`)`. */
+        fun describe(): String =
+            "$page:$pageLine → $path:${advisoryLine ?: "?"} (`$anchor`)"
+    }
+
+    sealed interface Resolution {
+        /**
+         * The anchor was found. [line] is where it *actually* is, which may differ from the advisory
+         * number in the doc.
+         *
+         * @param hits every line in the file containing the anchor, 1-based.
+         * @param headroom lines insertable above the site before this would resolve elsewhere;
+         *   [UNBOUNDED] when the anchor is unique.
+         */
+        data class Resolved(
+            val citation: Citation,
+            val line: Int,
+            val hits: List<Int>,
+            val headroom: Int,
+        ) : Resolution {
+            /** Signed distance from the advisory number to the truth; null when there is no number. */
+            val advisoryDrift: Int? get() = citation.advisoryLine?.let { line - it }
+
+            /** True when the doc's number is exactly right and needs no repair. */
+            val advisoryIsCorrect: Boolean get() = advisoryDrift == 0
+
+            /** True when the anchor occurs exactly once in its file, and so cannot be confused. */
+            val isUnique: Boolean get() = hits.size == 1
+        }
+
+        /** The anchor is not in the file at all, or the file is gone. Always a build failure. */
+        data class Broken(val citation: Citation, val reason: String) : Resolution
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Parsing
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Ledger row: `` | … | `path:line` | `anchor` | ``.
+     *
+     * This is the shape `SmallLanguageAnatomyTest` has always recognised, kept byte-compatible so the
+     * migration did not have to rewrite 134 rows. The fourth cell was always a symbol; only the way it
+     * gets resolved has changed.
+     */
+    private val LEDGER_ROW = Regex(
+        """^\|.*\|\s*`([^`]+\.(?:$EXT)):(\d+)`\s*\|\s*`([^`]+)`\s*\|\s*$"""
+    )
+
+    /** `` `path:line#anchor` `` — advisory line plus authoritative symbol. */
+    private val PROSE_LINE_SYMBOL = Regex("""`([A-Za-z0-9_./-]+\.(?:$EXT)):(\d+)#([^`]+)`""")
+
+    /** `` `path#anchor` `` — no number at all. */
+    private val PROSE_SYMBOL = Regex("""`([A-Za-z0-9_./-]+\.(?:$EXT))#([^`]+)`""")
+
+    /**
+     * Bare `` `path:line` `` with no anchor of any kind — an *unguarded* citation. Not a citation this
+     * can check; counted so that a page's unguarded remainder is a number rather than a vibe.
+     */
+    private val BARE = Regex("""`([A-Za-z0-9_./-]+\.(?:$EXT)):(\d+)(?:-\d+)?`""")
+
+    /**
+     * A `|` inside a markdown table cell has to be written `\|`, so an anchor containing a pipe —
+     * FieldML's `\|>` pipeline operator, say — arrives escaped. Unescape it, or the anchor can never
+     * match and the page is forced to avoid citing the very operators it documents.
+     */
+    private fun unescapeCell(s: String) = s.replace("\\|", "|")
+
+    /** Every checkable citation on [pageFile], in page order. */
+    fun parse(pageFile: File, pageName: String = pageFile.name): List<Citation> {
+        val out = mutableListOf<Citation>()
+        pageFile.readLines().forEachIndexed { idx, text ->
+            val n = idx + 1
+            LEDGER_ROW.find(text)?.let { m ->
+                out += Citation(
+                    pageName, n, m.groupValues[1], m.groupValues[2].toInt(),
+                    unescapeCell(m.groupValues[3]), Form.LEDGER_ROW
+                )
+            }
+            PROSE_LINE_SYMBOL.findAll(text).forEach { m ->
+                out += Citation(
+                    pageName, n, m.groupValues[1], m.groupValues[2].toInt(),
+                    unescapeCell(m.groupValues[3]), Form.PROSE_LINE_SYMBOL
+                )
+            }
+            // A `path:line#anchor` also matches `path#anchor` on the `path:line` prefix in some
+            // readings; anchor the pure form by requiring no `:` before the `#`.
+            PROSE_SYMBOL.findAll(text).forEach { m ->
+                if (':' in m.groupValues[1]) return@forEach
+                out += Citation(
+                    pageName, n, m.groupValues[1], null,
+                    unescapeCell(m.groupValues[2]), Form.PROSE_SYMBOL
+                )
+            }
+        }
+        return out
+    }
+
+    /**
+     * Bare `path:line` citations on [pageFile] that carry no anchor and therefore nothing checks.
+     * Ledger rows are excluded — their number is bare but their fourth cell is the anchor.
+     */
+    fun unguarded(pageFile: File): List<Pair<String, Int>> =
+        pageFile.readLines().flatMap { text ->
+            if (LEDGER_ROW.containsMatchIn(text)) return@flatMap emptyList()
+            val symbolic = (PROSE_LINE_SYMBOL.findAll(text) + PROSE_SYMBOL.findAll(text))
+                .map { it.range }.toList()
+            BARE.findAll(text)
+                .filterNot { b -> symbolic.any { it.first <= b.range.first && b.range.last <= it.last } }
+                .map { it.groupValues[1] to it.groupValues[2].toInt() }
+                .toList()
+        }
+
+    // ---------------------------------------------------------------------------------------------
+    // Resolution
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Find [Citation.anchor] in [Citation.path] and report where it really is.
+     *
+     * When the anchor occurs more than once the advisory line picks the nearest occurrence; with no
+     * advisory line an ambiguous anchor is [Resolution.Broken], which is deliberate — it pushes the
+     * author toward an anchor specific enough to stand on its own.
+     */
+    fun resolve(root: File, c: Citation): Resolution {
+        val f = File(root, c.path)
+        if (!f.isFile) return Resolution.Broken(c, "cited file does not exist")
+        val lines = f.readLines()
+        val hits = lines.mapIndexedNotNull { i, l -> if (c.anchor in l) i + 1 else null }
+        if (hits.isEmpty()) {
+            val at = c.advisoryLine?.let { n ->
+                if (n in 1..lines.size) " — line $n now reads: ${lines[n - 1].trim()}"
+                else " — the file has only ${lines.size} lines"
+            } ?: ""
+            return Resolution.Broken(c, "anchor `${c.anchor}` occurs nowhere in ${c.path}$at")
+        }
+        val advisory = c.advisoryLine
+        if (hits.size > 1 && advisory == null) {
+            return Resolution.Broken(
+                c,
+                "anchor `${c.anchor}` is ambiguous — ${hits.size} occurrences in ${c.path} " +
+                    "(lines ${hits.joinToString(", ")}) and no line number to disambiguate. " +
+                    "Use a longer anchor, or write `${c.path}:${hits.first()}#${c.anchor}`."
+            )
+        }
+        val line = if (advisory == null) hits.single() else pick(hits, advisory)
+        return Resolution.Resolved(c, line, hits, headroom(hits, line, advisory))
+    }
+
+    /** The occurrence nearest the advisory number; ties break low, so the choice is deterministic. */
+    private fun pick(hits: List<Int>, advisory: Int): Int =
+        hits.minWithOrNull(compareBy({ Math.abs(it - advisory) }, { it }))!!
+
+    /**
+     * How many lines can be inserted *above* the cited site before [pick] would choose a different
+     * occurrence — the honest, per-citation replacement for a global slack constant.
+     *
+     * Measured by simulation rather than derived in closed form: shift every occurrence down by `s`
+     * (which is what a sibling inserting `s` lines at the top of the file does), leave the doc's
+     * advisory number where it is, and find the first `s` at which the choice changes. A unique anchor
+     * cannot change and reports [UNBOUNDED].
+     */
+    private fun headroom(hits: List<Int>, chosen: Int, advisory: Int?): Int {
+        if (hits.size == 1 || advisory == null) return UNBOUNDED
+        val chosenIndex = hits.indexOf(chosen)
+        for (s in 1..HEADROOM_PROBE_LIMIT) {
+            val shifted = hits.map { it + s }
+            if (shifted.indexOf(pick(shifted, advisory)) != chosenIndex) return s - 1
+        }
+        return UNBOUNDED
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Inventory
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * A countable summary of a corpus's health. Every field here is asserted against a floor or a
+     * ceiling by [CitationContractTest]; "prints a proud number with no assertion under it" is the
+     * failure mode this repo keeps rediscovering.
+     */
+    data class Inventory(
+        val total: Int,
+        val resolved: Int,
+        val broken: List<Resolution.Broken>,
+        val uniqueAnchors: Int,
+        val advisoryCorrect: Int,
+        val advisoryDrifted: List<Resolution.Resolved>,
+        val lowHeadroom: List<Resolution.Resolved>,
+        val unguarded: Int,
+    ) {
+        fun render(): String = buildString {
+            appendLine("citations parsed:            $total")
+            appendLine("  resolved by symbol:        $resolved")
+            appendLine("  broken:                    ${broken.size}")
+            appendLine("  unique anchors (unbounded headroom): $uniqueAnchors")
+            appendLine("  advisory line exactly right: $advisoryCorrect")
+            appendLine("  advisory line drifted:     ${advisoryDrifted.size}")
+            appendLine("  headroom below $LOW_HEADROOM lines:      ${lowHeadroom.size}")
+            append("unguarded bare citations:    $unguarded")
+        }
+    }
+
+    /**
+     * Headroom at or below this is reported as fragile. Chosen to be the old `ANCHOR_SLACK` of 2 so
+     * that the warning the 2026-08-10 report asked for — "tell me which citations are surviving on
+     * their last inch" — reports the same population it would have reported then, only now measured
+     * per citation rather than assumed globally.
+     */
+    const val LOW_HEADROOM = 2
+
+    fun inventory(root: File, pages: List<File>): Inventory {
+        val cites = pages.flatMap { p -> parse(p, p.relativeToOrSelf(root).path) }
+        val resolutions = cites.map { resolve(root, it) }
+        val ok = resolutions.filterIsInstance<Resolution.Resolved>()
+        return Inventory(
+            total = cites.size,
+            resolved = ok.size,
+            broken = resolutions.filterIsInstance<Resolution.Broken>(),
+            uniqueAnchors = ok.count { it.isUnique },
+            advisoryCorrect = ok.count { it.advisoryIsCorrect },
+            advisoryDrifted = ok.filter { it.advisoryDrift != null && it.advisoryDrift != 0 },
+            lowHeadroom = ok.filter { it.headroom <= LOW_HEADROOM },
+            unguarded = pages.sumOf { unguarded(it).size },
+        )
+    }
+
+    /** Walk up to the directory holding `settings.gradle.kts`. */
+    fun repoRoot(): File {
+        var d = File(System.getProperty("user.dir")).absoluteFile
+        while (!File(d, "settings.gradle.kts").isFile) {
+            d = d.parentFile ?: error("no repo root above ${System.getProperty("user.dir")}")
+        }
+        return d
+    }
+}
