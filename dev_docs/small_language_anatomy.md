@@ -179,7 +179,7 @@ Multi-argument natives are nested single-argument closures (`native1`/`native2`/
 | prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:70` | `FieldMLRuntimePrelude.values` |
 | the `value : Type` inline result | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:297` | `fun renderInlineResult` |
 | only print it if the program printed nothing | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:174` | `output.printed` |
-| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `reportDiagnostics` |
+| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `private fun reportDiagnostics` |
 
 `TrackingOutput` (`FieldMLInterface.kt:270`) exists only to answer "did the program print anything",
 so the automatic `value : Type` line does not duplicate a program's own output. That is a small idea

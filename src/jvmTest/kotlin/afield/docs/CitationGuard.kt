@@ -287,6 +287,25 @@ object CitationGuard {
      * (which is what a sibling inserting `s` lines at the top of the file does), leave the doc's
      * advisory number where it is, and find the first `s` at which the choice changes. A unique anchor
      * cannot change and reports [UNBOUNDED].
+     *
+     * ## Why simulating only a whole-file shift is enough — for insertions
+     *
+     * This models one edit: `s` lines inserted above every occurrence. The reasonable objection is
+     * that a real edit lands *between* occurrences, shifting only those below it, and that the model
+     * therefore flatters citations resolved to the **first** occurrence — of which this corpus has 30.
+     *
+     * It does not, and the reason turns an apparent gap into a guarantee. An insertion only ever moves
+     * occurrences *down*, never up. For a citation resolved to the first occurrence every rival is
+     * already below the advisory line, so any insertion pushes it **further** away; a rival can never
+     * close the gap. A first-occurrence citation is insertion-robust for the same reason a unique one
+     * is, and [UNBOUNDED] is the right answer rather than a modelling artefact. Argued and then
+     * checked: re-measuring the corpus against a model that inserts at every point *between*
+     * occurrences returns the same minimum (16 lines) and the same five finite-headroom citations.
+     *
+     * **What is genuinely not modelled: deletion.** Removing lines above a later occurrence can pull it
+     * toward the advisory number. Deleting a cited region usually breaks the anchor outright, which
+     * [Resolution.Broken] does catch, so the residual risk is narrow — but it is real, and it is why a
+     * unique anchor is still worth preferring over a merely first-occurrence one.
      */
     private fun headroom(hits: List<Int>, chosen: Int, advisory: Int?): Int {
         if (hits.size == 1 || advisory == null) return UNBOUNDED
