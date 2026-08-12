@@ -88,6 +88,20 @@ only tell you something has already broken; headroom tells you how close to brea
 The 2026-08-10 report asked for a warning about citations "surviving at exactly full slack" — headroom
 is that warning, generalised, and it is asserted (`MAX_FRAGILE = 0`) rather than printed.
 
+### The inventory, machine-readable
+
+Every guard run writes `build/reports/citations/inventory.json` — one record per citation, with its
+page, path, anchor, resolved line, occurrence count, headroom and advisory drift. It exists for the
+query that would have turned two of the three recorded collisions from discoveries into predictions:
+
+```
+jq -r '.citations[] | select(.path | endswith("Server.kt")) | .page' \
+  build/reports/citations/inventory.json | sort -u
+```
+
+Ask that *before* starting a branch that edits a heavily-cited file, and you know in advance which
+docs are in your blast radius.
+
 ## Adding a guarded citation to a new page
 
 1. **Write the citation with an anchor.** In prose, `` `path:line#anchor` ``, or `` `path#anchor` ``
