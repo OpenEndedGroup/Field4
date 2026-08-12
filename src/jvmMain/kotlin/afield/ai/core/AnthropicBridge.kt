@@ -4,12 +4,15 @@ import com.anthropic.client.AnthropicClient
 import com.anthropic.core.JsonValue
 import com.anthropic.errors.AnthropicServiceException
 import com.anthropic.errors.UnauthorizedException
+import com.anthropic.models.messages.Base64ImageSource
 import com.anthropic.models.messages.ContentBlockParam
+import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.MessageParam
 import com.anthropic.models.messages.StopReason
 import com.anthropic.models.messages.Tool
+import com.anthropic.models.messages.TextBlockParam
 import com.anthropic.models.messages.ToolResultBlockParam
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -180,11 +183,7 @@ class AnthropicBridge(
 
                 val isError = (result as? Map<*, *>)?.get("error") == true
                 resultBlocks += ContentBlockParam.ofToolResult(
-                    ToolResultBlockParam.builder()
-                        .toolUseId(use.id())
-                        .content(resultJson)
-                        .apply { if (isError) isError(true) }
-                        .build()
+                    toolResultBlock(use.id(), resultJson, isError, result, ::warn)
                 )
             }
 
@@ -326,4 +325,123 @@ class AnthropicBridge(
             else -> e.content
         }
     }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tool results that carry pictures
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The largest base64 payload this will send for one image, in characters.
+ *
+ * The Messages API rejects an oversized image with a 400 that fails the whole turn, taking the text
+ * result down with a picture that was only ever a bonus. Five megabytes of base64 is comfortably under
+ * the documented per-request ceiling and far above anything Field's CPU rasteriser produces — the
+ * 640×480 render in `public/docs/assets/ai_tool_demo/` is 84 KB, so about 112 KB of base64, roughly 2%
+ * of this. A tool that manages to exceed it loses its image and keeps its answer.
+ */
+internal const val ANTHROPIC_MAX_IMAGE_BASE64_CHARS = 5 * 1024 * 1024
+
+/**
+ * Build the `tool_result` block for one tool call, attaching any images the result carries.
+ *
+ * # Why this is a function rather than four lines inline
+ *
+ * It was four lines inline, and the four lines were wrong in a way nothing could see. [CarriesToolImages]
+ * is documented as "the bridge appends the images to the conversation", and this bridge never read the
+ * interface at all: every tool result went out as `content(resultJson)`, a bare string. So under
+ * `AFIELD_AI_PROVIDER=anthropic` a geometry tool's whole point — letting the model *look* at what it
+ * did — silently evaporated, and the only symptom was a model reasoning about a picture it had never
+ * been shown.
+ *
+ * It was an unfinished feature rather than a limitation. The Messages API has accepted images *inside*
+ * a `tool_result`'s content for as long as this bridge has existed, and the SDK models it as
+ * [ToolResultBlockParam.Content.Block.ofImage]. Nothing needed inventing; the conversion was missing.
+ *
+ * Pulling it out here is what makes it testable without a network or an API key: `AnthropicToolImageTest`
+ * builds the real parameter object and asserts the image block is in it, which is the object the SDK
+ * serialises into the request body.
+ *
+ * # Shape
+ *
+ * Images go inside the `tool_result` rather than in a following user message — which is what the OpenAI
+ * bridge does (`OpenAiIdeCodexBridge.kt:433`) because the Responses API has no equivalent nesting. Here
+ * the nesting exists and is better: the picture is bound to the call it came from, so a turn with three
+ * tool calls cannot leave the model guessing which image answers which.
+ *
+ * Each image is preceded by its caption as a text block, for the same reason the OpenAI path does it: a
+ * bare picture in a conversation is much less useful than one that says what question it answers.
+ *
+ * @param onOversize called with a human-readable reason when an image is dropped, so a silent drop is
+ *   at least a logged one. Dropping the image and keeping the text is deliberate: a 400 from an
+ *   oversized attachment would lose the answer as well.
+ */
+internal fun toolResultBlock(
+    toolUseId: String,
+    resultJson: String,
+    isError: Boolean,
+    result: Any,
+    onOversize: (String) -> Unit = {},
+): ToolResultBlockParam {
+    val builder = ToolResultBlockParam.builder().toolUseId(toolUseId)
+    if (isError) builder.isError(true)
+
+    val carried = (result as? CarriesToolImages)?.toolImages.orEmpty()
+        .filter { it.dataUrl.isNotBlank() }
+    if (carried.isEmpty()) return builder.content(resultJson).build()
+
+    val blocks = mutableListOf<ToolResultBlockParam.Content.Block>()
+    blocks += ToolResultBlockParam.Content.Block.ofText(TextBlockParam.builder().text(resultJson).build())
+
+    for (image in carried) {
+        val decoded = decodeDataUrl(image.dataUrl)
+        if (decoded == null) {
+            onOversize("dropped a tool image: not a base64 data URL this bridge can send")
+            continue
+        }
+        val (mediaType, data) = decoded
+        if (data.length > ANTHROPIC_MAX_IMAGE_BASE64_CHARS) {
+            onOversize(
+                "dropped a tool image: ${data.length} base64 chars exceeds the " +
+                    "$ANTHROPIC_MAX_IMAGE_BASE64_CHARS limit; the text result was still sent"
+            )
+            continue
+        }
+        if (image.caption.isNotBlank()) {
+            blocks += ToolResultBlockParam.Content.Block.ofText(
+                TextBlockParam.builder().text(image.caption).build()
+            )
+        }
+        blocks += ToolResultBlockParam.Content.Block.ofImage(
+            ImageBlockParam.builder()
+                .source(Base64ImageSource.builder().mediaType(mediaType).data(data).build())
+                .build()
+        )
+    }
+
+    // Every image was rejected, so there is nothing a block list buys over the plain string.
+    if (blocks.size == 1) return builder.content(resultJson).build()
+    return builder.contentOfBlocks(blocks).build()
+}
+
+/**
+ * Split a `data:image/png;base64,…` URL into the media type the API wants and the payload.
+ *
+ * Returns `null` for anything else — a remote `https:` URL, a non-image type, a media type Anthropic
+ * does not accept, or a malformed string. [ToolImage.dataUrl] is documented as a data URL, so a caller
+ * that passes something else is making a mistake this cannot repair by guessing.
+ */
+internal fun decodeDataUrl(dataUrl: String): Pair<Base64ImageSource.MediaType, String>? {
+    val match = Regex("""^data:(image/[a-zA-Z0-9.+-]+);base64,(.*)$""", RegexOption.DOT_MATCHES_ALL)
+        .find(dataUrl.trim()) ?: return null
+    val (mime, data) = match.destructured
+    if (data.isBlank()) return null
+    val mediaType = when (mime.lowercase()) {
+        "image/png" -> Base64ImageSource.MediaType.IMAGE_PNG
+        "image/jpeg", "image/jpg" -> Base64ImageSource.MediaType.IMAGE_JPEG
+        "image/gif" -> Base64ImageSource.MediaType.IMAGE_GIF
+        "image/webp" -> Base64ImageSource.MediaType.IMAGE_WEBP
+        else -> return null
+    }
+    return mediaType to data
 }

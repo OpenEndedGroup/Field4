@@ -30,13 +30,38 @@ import java.util.concurrent.CopyOnWriteArrayList
  * ```
  *
  * Call it once, from wherever the owning code is first touched — a personal package's `init`, a
- * `Box` helper, an installer. Registration is idempotent per tool class: registering the same class
- * again replaces the handler rather than adding a second one, so a re-run of a live-coded box does not
- * accumulate duplicates.
+ * `Box` helper, an installer. Registration is idempotent **per tool name**: registering another class
+ * with the same [Class.getSimpleName] replaces the handler rather than adding a second one, so a re-run
+ * of a live-coded box does not accumulate duplicates. The name, not the `Class`, is the key on purpose;
+ * see "Live coding" below.
  *
  * The request class is the tool's schema. Annotate it with [JsonClassDescription] and its fields with
  * `@JsonPropertyDescription`; the same reflection that describes a built-in tool describes this one, so
  * there is nothing extra to write for the OpenAI path or the MCP face.
+ *
+ * Core's own tool names are reserved. A request class called `Commentary` or `EditFileRequest` is
+ * rejected by [register] with an error naming the clash, rather than quietly shadowing a built-in the
+ * agent's instructions depend on.
+ *
+ * # Live coding
+ *
+ * A tool registered from a box reaches every open conversation immediately, including ones that were
+ * already running, and re-running the box swaps the handler under them. That is a property of *this*
+ * object rather than of the bridges: each bridge builds its [ToolRegistry] in its constructor, and
+ * `Ai4Installer` builds each bridge lazily on the first AI turn and then caches it for the life of the
+ * window, so a registry is built once and long outlives any given box run.
+ *
+ * It did not work that way until 2026-08-11, and the way it failed is worth knowing because it is the
+ * shape of failure this seam invites. [applyTo] *copied* the registrations into the registry, so:
+ *
+ *  - a box run after the first AI turn registered a tool no model ever saw; and
+ *  - re-running a box replaced the registration here while the agent went on calling the **previous**
+ *    handler — compiled into a classloader that no longer corresponded to anything on screen — for the
+ *    rest of the session.
+ *
+ * Neither logged anything. The order that did work, and the only one anybody had tried, was "run the
+ * box, then open the chat". [applyTo] now *subscribes* a registry instead of copying into it, and
+ * `AgentToolExtensionsTest` holds that down from both directions.
  *
  * # What a tool result should implement
  *
@@ -59,24 +84,64 @@ object AgentToolExtensions {
     private val registrations = CopyOnWriteArrayList<Registration<*>>()
 
     /**
-     * Add a tool, replacing any previous registration of the same request class.
+     * Every [ToolRegistry] [applyTo] has been called on, held **weakly**.
+     *
+     * Weakly because a registry's lifetime is a bridge's lifetime, and a bridge can be discarded — a
+     * CLI builds one per run, and `Ai4Installer` would build a fresh one if the provider setting
+     * changed. A strong reference here would pin every bridge, and with it every handler lambda and
+     * everything those close over, for the life of the process.
+     */
+    private val boundRegistries: MutableSet<ToolRegistry> =
+        java.util.Collections.newSetFromMap(java.util.WeakHashMap())
+
+    private fun bound(): List<ToolRegistry> = synchronized(boundRegistries) { boundRegistries.toList() }
+
+    /**
+     * Add a tool, replacing any previous registration of the same **name**, and push it to every agent
+     * that is already running.
      *
      * [available] is asked on every turn, so it is the place to gate a cluster's tools on whether that
      * cluster has anything to work on. Seventeen tool schemas on every request is a real cost for a
      * conversation that is not about the subject.
+     *
+     * Keyed on [Class.getSimpleName] rather than on the `Class` object, because the case this exists
+     * for is a box being re-run: a live REPL recompiles into a fresh classloader, so the second run's
+     * request class is a *different* `Class` with an identical name. Identity de-duplication left both
+     * registrations in place, and everything downstream — `describe`, [execute], [isAvailable], and the
+     * tool name a model sends back — keys on the simple name, so the model was shown the tool twice and
+     * the older handler is the one that ran.
+     *
+     * @throws IllegalArgumentException if a core built-in already owns this tool name in a live agent.
      */
     fun <T : Any> register(
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean = { true },
         handler: (ToolExecutionContext, T) -> Any,
     ) {
-        registrations.removeAll { it.toolClass == toolClass }
+        val name = toolClass.simpleName
+        val live = bound()
+        if (live.any { !it.acceptsExtensionNamed(name) }) {
+            throw IllegalArgumentException(
+                "Cannot register an extension tool named '$name': a built-in AI tool already uses that " +
+                    "name. Rename the request class — the class's simple name is the tool name the " +
+                    "model sees, so it has to be unique across every tool in the conversation."
+            )
+        }
+        registrations.removeAll { it.toolClass.simpleName == name }
         registrations.add(Registration(toolClass, available, handler))
+        live.forEach { it.registerExtension(toolClass, available, handler) }
     }
 
     /** Drop a tool. Mostly for tests, and for a live-coded registration being retired. */
-    fun unregister(toolClass: Class<*>) {
-        registrations.removeAll { it.toolClass == toolClass }
+    fun unregister(toolClass: Class<*>) = unregister(toolClass.simpleName)
+
+    /**
+     * Drop a tool by the name the model sees, for a box retiring a registration whose request class it
+     * no longer has in scope — which, after an edit that renamed or deleted the class, is normal.
+     */
+    fun unregister(name: String) {
+        registrations.removeAll { it.toolClass.simpleName == name }
+        bound().forEach { it.unregisterExtension(name) }
     }
 
     /** Every registered tool's request class, for diagnostics and for a status readout. */
@@ -134,12 +199,27 @@ object AgentToolExtensions {
                 }.toString()
             }
 
-    /** Applies every registration to [tools]. Called by core once, while building the registry. */
+    /**
+     * Applies every registration to [tools] **and subscribes it to later ones**. Called by core once,
+     * while building the registry.
+     *
+     * The subscription is the whole point: a registry is built once per bridge and a bridge outlives
+     * every box run in the window, so a copy taken here would be a snapshot of whichever tool sets
+     * happened to have loaded before the human's first AI turn. See this object's docs for what that
+     * actually looked like in practice.
+     *
+     * A refusal from [ToolRegistry.registerExtension] here is a name collision with a core built-in and
+     * is dropped silently, unlike the same collision in [register]. There is nobody to tell: this runs
+     * inside a bridge constructor, on whatever thread opened the chat, and throwing would take out the
+     * chat rather than the offending tool. [register] catches the overwhelmingly more common case — the
+     * author writing the registration while an agent is already up — and reports it there.
+     */
     internal fun applyTo(tools: ToolRegistry) {
+        synchronized(boundRegistries) { boundRegistries.add(tools) }
         registrations.forEach { registration ->
             @Suppress("UNCHECKED_CAST")
             val typed = registration as Registration<Any>
-            tools.register(typed.toolClass, typed.available, typed.handler)
+            tools.registerExtension(typed.toolClass, typed.available, typed.handler)
         }
     }
 }

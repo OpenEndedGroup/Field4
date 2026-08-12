@@ -46,6 +46,15 @@ of this work, and the generalisable part of it has already been factored out: `C
 `OpenAiIdeCodexBridge` is generic over tool name. A petri or a polytope tool set would need no new
 infrastructure.
 
+*Updated 2026-08-11:* the registration side is factored out too, and the cell is no longer empty in the
+public tree. `AgentToolExtensions` is the seam — core no longer names any cluster — and
+`afield.four.modules.GeometryAgentTools` is a second, public tool surface built on it, over the
+geometry-from-disk loaders. Two tools, no change to `afield.ai.core`. Filling this slot for a cluster
+that already has a model and figures is now a small job, and `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md` is
+the checklist for it — including the two things the seam does *not* do (nested request objects,
+suspending handlers) and the one thing an example is most likely to leave out, which is that a tool
+argument is a value a language model chose.
+
 **The gap this survey turned up has since been filled.** `afield.rect` had no editor extension when the table
 was first written, which two other clusters did. It now has one, built by copying `PetriEditorExtension`'s
 shape — which is the best evidence that a table like this is worth keeping: the missing cell was the work item.

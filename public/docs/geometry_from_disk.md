@@ -510,6 +510,24 @@ is re-run by CI on every build rather than asserted once and forgotten.
 | **look at it** | `showMesh`, `showMeshGrid`, `showMeshTurntable`, `MeshView`, `renderPng`, `renderPixels`, `toFigureHtml`, `summary` — `afield/stdlib/mesh_field.kt` |
 | **repair what you read** | `weld`, `fixWinding`, `removeDegenerateTriangles`, `repaired`, `largestComponent`, `shadedNormals`, `normalized` |
 | **on the GPU instead** | `plyModelHere`, `plyPointCloudHere`, `gltfModelHere`, `modelWithTextureHere` — `simplePLYSupport.kt`, `simpleGLTFSupport.kt` |
+| **let the AI read it** | `GeometryAgentTools.addSearchRoot`, `.register` — `afield/four/modules/GeometryAgentTools.kt` |
+
+## Letting Field's AI look at your geometry
+
+Two lines turn everything on this page into something the AI can use:
+
+```diffstatic {data-lang=kotlin}
+GeometryAgentTools.addSearchRoot(File(System.getProperty("user.home"), "scans"))
+GeometryAgentTools.register()
+```
+
+`ListGeometryFiles` tells the model what you have. `InspectGeometryFile` loads one, returns the same
+measurements this page describes, and — because the CPU rasteriser needs no GPU and no window — hands
+back a *rendered image*, so a model can look at a scan rather than reason about its bounding box. It
+will only read inside roots you have added.
+
+See [Give the AI a tool of your own](aiFeatures.md), which uses this tool set as its worked example
+and shows the schema and the picture the model receives.
 
 Related pages: [Meshes and 3D geometry](mesh_examples.md) for everything you can *do* with a mesh
 once you have one; [the Fabricate renderer](fabricate_renderer.md) for textured PBR rendering of the
