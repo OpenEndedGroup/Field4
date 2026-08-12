@@ -161,6 +161,64 @@ ui.eval(
 ui.pause(1500)
 ```
 
+## Streaming Field's audio into Sonic Pi
+
+v5 added `link_audio`, which subscribes to another Ableton Link peer's published audio channel and
+treats it exactly like a soundcard input. Field already publishes one, so Field's output can be an
+input to a Sonic Pi patch — with reverb on it, or a filter, or whatever else Sonic Pi does to a live
+input — and the two share tempo over the same Link session.
+
+Field publishes as a *peer* with *channels*: the peer name comes from `LinkAudioInterface.shared`, the
+channel from `enableLinkOutput`. Name the channel `Main` and the Sonic Pi side is a one-liner, since
+that is `link_audio`'s default.
+
+```diffstatic {data-lang=kotlin}
+:::static
+// Field: publish as peer "Field4", channel "Main"
+FieldAudioEngine.shared().enableLinkOutput(name = "Main")
+```
+
+```diffstatic {data-lang=ruby}
+:::static
+#sonicpi
+# Sonic Pi: subscribe, and treat it like any other live input
+with_fx :reverb, room: 0.8 do
+  link_audio "Field4", amp: 1
+end
+```
+
+One prerequisite is easy to lose a long time to: **Sonic Pi's Link visibility defaults to Off**, and no
+Sonic Pi *language* function turns it on — only the GUI's Link toggle, which owned mode does not have.
+Until it is on, neither side can see the other, `link_audio` still accepts the call without
+complaining, and you get silence with nothing to explain it. There is a second, separate gate for
+Sonic Pi *publishing* its own channels, also off by default.
+
+```diffstatic {data-lang=ruby}
+:::static
+#sonicpi
+@link_api.link_enable                    # /clock/visibility 2 — NetworkWide (1 is loopback-only)
+@link_api.link_audio_publish_set!(true)  # only needed for Sonic Pi to publish *its* output
+puts @link_api.link_get_visibility       #=> 2
+```
+
+That the two implementations actually interoperate is measured rather than assumed.
+`sonicpi.link-audio.probe` publishes a 440 Hz sine from Field, has Sonic Pi subscribe and record its
+own mixer output, and measures the recording at 440 Hz against a control frequency:
+
+```diffstatic {data-lang=text}
+:::static
+Field sees 1 Link peer(s)
+Sonic Pi reports 1 Link peer(s), bpm 120.0     # adopted Field's Link tempo, was 60
+overall RMS ......... 0.059291
+energy at 440.0 Hz ... 0.040832
+energy at 1170.0 Hz .. 0.000006  (control)
+tone / control ...... 7423.66
+VERDICT: YES — 440.0 Hz dominates the recording, so Field's channel reached Sonic Pi
+```
+
+The probe commits PCM to the Link sink directly rather than through an audio device, so it does not
+depend on which soundcard the machine happens to have selected.
+
 ## Ports, tokens and shutting down
 
 The daemon prints one line to stdout and nothing else identifies it: five ports and the token, in the
