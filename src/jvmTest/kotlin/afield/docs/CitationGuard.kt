@@ -211,6 +211,35 @@ object CitationGuard {
     // ---------------------------------------------------------------------------------------------
 
     /**
+     * Source files by name, built once, used to resolve abbreviated citation paths.
+     *
+     * Prose cites `` `FloatEarcut.kt:705#linkedList` ``, not the full
+     * `src/jvmMain/kotlin/afield/graphics/FloatEarcut.kt`, and it should keep being able to: a
+     * sentence carrying a forty-character path is a sentence nobody reads. So a path that is not
+     * repo-relative is matched as a **path suffix**, and is only accepted if exactly one file matches.
+     */
+    private val fileIndex: Map<String, List<File>> by lazy {
+        val skip = setOf(".git", "build", "node_modules", ".gradle", "out", ".idea")
+        repoRoot().walkTopDown()
+            .onEnter { it.name !in skip }
+            .filter { it.isFile && it.extension in EXT.split("|") }
+            .toList()
+            .groupBy { it.name }
+    }
+
+    /**
+     * The file a citation path points at, or null when it is missing or ambiguous.
+     *
+     * Exact repo-relative paths win outright, so an unambiguous citation never pays for the index.
+     */
+    fun locate(root: File, path: String): File? {
+        File(root, path).takeIf { it.isFile }?.let { return it }
+        val byName = fileIndex[path.substringAfterLast('/')].orEmpty()
+        val suffix = byName.filter { it.path.endsWith("/$path") }
+        return suffix.singleOrNull() ?: byName.singleOrNull()
+    }
+
+    /**
      * Find [Citation.anchor] in [Citation.path] and report where it really is.
      *
      * When the anchor occurs more than once the advisory line picks the nearest occurrence; with no
@@ -218,8 +247,12 @@ object CitationGuard {
      * author toward an anchor specific enough to stand on its own.
      */
     fun resolve(root: File, c: Citation): Resolution {
-        val f = File(root, c.path)
-        if (!f.isFile) return Resolution.Broken(c, "cited file does not exist")
+        val f = locate(root, c.path)
+            ?: return Resolution.Broken(
+                c,
+                "cited file `${c.path}` does not exist, or the abbreviated path matches more than " +
+                    "one file — write enough of the path to be unambiguous"
+            )
         val lines = f.readLines()
         val hits = lines.mapIndexedNotNull { i, l -> if (c.anchor in l) i + 1 else null }
         if (hits.isEmpty()) {
@@ -318,6 +351,50 @@ object CitationGuard {
             lowHeadroom = ok.filter { it.headroom <= LOW_HEADROOM },
             unguarded = pages.sumOf { unguarded(it).size },
         )
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // Repair
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * Rewrite every advisory line number on [pageFile] to the line its anchor is actually on, and
+     * return how many were changed.
+     *
+     * This is the other half of the bargain. Advisory numbers are not allowed to fail the build — that
+     * is what makes a sibling's insertion harmless — so something has to stop them rotting quietly
+     * instead, and this is it: a mechanical refresh a human runs when they are already editing the
+     * page. It is deliberately *not* wired into `check`. A guard that rewrites tracked files during an
+     * ordinary build is a worse problem than the one being solved.
+     *
+     * Only the number is touched. Anchors, prose and table structure are left exactly as they are, so
+     * the diff of a refresh is legible and reviewable.
+     */
+    fun refreshAdvisoryLines(root: File, pageFile: File, pageName: String = pageFile.name): Int {
+        val byLine = parse(pageFile, pageName)
+            .mapNotNull { c ->
+                val r = resolve(root, c) as? Resolution.Resolved ?: return@mapNotNull null
+                if (r.advisoryDrift == null || r.advisoryDrift == 0) null else c to r.line
+            }
+            .groupBy({ it.first.pageLine }, { it })
+        if (byLine.isEmpty()) return 0
+
+        var changed = 0
+        val out = pageFile.readLines().mapIndexed { idx, text ->
+            var line = text
+            byLine[idx + 1]?.forEach { (c, actual) ->
+                // Replace only within this citation's own backticked span, so a line carrying two
+                // citations cannot have one of them clobbered by the other's number.
+                val old = "`${c.path}:${c.advisoryLine}"
+                if (old in line) {
+                    line = line.replace(old, "`${c.path}:$actual")
+                    changed++
+                }
+            }
+            line
+        }
+        if (changed > 0) pageFile.writeText(out.joinToString("\n", postfix = "\n"))
+        return changed
     }
 
     /** Walk up to the directory holding `settings.gradle.kts`. */
