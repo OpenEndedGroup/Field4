@@ -164,8 +164,7 @@ one test" is not evidence that the documentation gates passed.** To actually che
 - **Anything in `public/docs/`.** Out of scope for all three guards.
 - **`kdoc_worklist.md`**, which carries 120 citations and is generated — it belongs to
   `checkCodebaseReference`, not here.
-- **The other sixteen `dev_docs` pages carrying unanchored citations.** Bringing one under guard is
-  now a small, mechanical job; step 4 above is the whole of it. The highest-value next candidates are
-  `completion_aa_sidecar.md` (25 citations, and it already has one genuinely broken:
-  `AaCompletionClient.kt:91` cites `no-sidecar-url`, which is really at 162) and
-  `fline_close_nodes.md`, whose guard is the last one still counting lines.
+- **The other fifteen `dev_docs` pages carrying unanchored citations.** Bringing one under guard is
+  now a small, mechanical job; step 4 above is the whole of it. The best next candidate is
+  `fline_close_nodes.md`, whose guard is the last one still counting lines and whose citation table
+  still lives in the test rather than the page.

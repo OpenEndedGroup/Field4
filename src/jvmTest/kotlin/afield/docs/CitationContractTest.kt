@@ -45,6 +45,7 @@ class CitationContractTest {
         val GUARDED_PAGES = mapOf(
             "dev_docs/small_language_anatomy.md" to 134,
             "dev_docs/fline_fill_orientation.md" to 20,
+            "dev_docs/completion_aa_sidecar.md" to 24,
         )
 
         /**
@@ -52,7 +53,7 @@ class CitationContractTest {
          * [CitationGuard.headroom]: no amount of unrelated editing can make them resolve to the wrong
          * place. This is the number that actually measures how safe the corpus is.
          */
-        const val MIN_UNIQUE_ANCHORS = 133
+        const val MIN_UNIQUE_ANCHORS = 154
 
         /**
          * Corpus ceiling on anchors fragile enough to be confused by fewer than
