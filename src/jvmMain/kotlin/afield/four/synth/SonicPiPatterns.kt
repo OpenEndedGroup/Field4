@@ -134,6 +134,15 @@ object SonicPiVocabulary {
      */
     fun synthOpts(synth: String): Set<String> = synthOptsByName[synth] ?: commonPlayOpts
 
+    private val fxOptsByName: Map<String, Set<String>> by lazy {
+        root["fx"].associate { node ->
+            (node["name"]?.asText() ?: "") to (node["opts"]?.map { it.asText() }?.toSet() ?: emptySet())
+        }
+    }
+
+    /** The opts FX [name] accepts — `:reverb` has `room` and `damp`, `:echo` has `phase` and `decay`. */
+    fun fxOpts(name: String): Set<String> = fxOptsByName[name] ?: emptySet()
+
     fun isSample(name: String): Boolean = name in samples
     fun isSynth(name: String): Boolean = name in synths
     fun isFx(name: String): Boolean = name in fx
@@ -421,8 +430,47 @@ fun sonicPiProgram(
 data class SonicPiLayer(
     val name: String,
     val pattern: PatPattern<String>,
-    val instruments: SonicPiInstruments? = null
+    val instruments: SonicPiInstruments? = null,
+    /** FX to wrap this loop's body in, outermost first. See [sonicPiFx]. */
+    val fx: List<SonicPiFx> = emptyList()
 )
+
+/**
+ * One `with_fx` around a layer's body.
+ *
+ * Build these with [sonicPiFx] rather than the constructor: the name and *every opt* are checked
+ * against the installed vocabulary there, and Sonic Pi's response to `with_fx :revreb` is a runtime
+ * error on the loop's own thread minutes into a performance — the exact failure `Box.sonicPi`'s
+ * error reporting exists to make visible, and which is nicer still not to have.
+ */
+data class SonicPiFx(val name: String, val opts: Map<String, Double> = emptyMap()) {
+    override fun toString(): String =
+        if (opts.isEmpty()) "with_fx :$name"
+        else "with_fx :$name, " + opts.entries.joinToString(", ") { "${it.key}: ${it.value}" }
+}
+
+/**
+ * A checked `with_fx`: `sonicPiFx("reverb", "room" to 0.8, "mix" to 0.4)`.
+ *
+ * ```
+ * sonicPiLayer("bass", pat("e3 ~ e4 ~"), synth = "tb303", fx = listOf(sonicPiFx("reverb", "room" to 0.6)))
+ * ```
+ */
+fun sonicPiFx(name: String, vararg opts: Pair<String, Number>): SonicPiFx {
+    require(SonicPiVocabulary.isFx(name)) {
+        "'$name' is not an FX in Sonic Pi ${SonicPiVocabulary.version}"
+    }
+    val accepted = SonicPiVocabulary.fxOpts(name)
+    for ((key, _) in opts) {
+        require(key in accepted) {
+            "with_fx :$name has no opt '$key' — it accepts ${accepted.sorted()}"
+        }
+    }
+    return SonicPiFx(name, opts.associate { it.first to it.second.toDouble() })
+}
+
+/** `pat("bd sd") on "beep" through sonicPiFx("echo")` — add FX to a layer. */
+infix fun SonicPiLayer.through(effect: SonicPiFx): SonicPiLayer = copy(fx = fx + effect)
 
 /**
  * A layer, spelled out.
@@ -442,11 +490,13 @@ fun sonicPiLayer(
     name: String,
     pattern: PatPattern<String>,
     synth: String? = null,
-    instruments: SonicPiInstruments? = null
+    instruments: SonicPiInstruments? = null,
+    fx: List<SonicPiFx> = emptyList()
 ): SonicPiLayer = SonicPiLayer(
     name = name,
     pattern = pattern,
-    instruments = instruments ?: synth?.let { SonicPiInstruments(defaultSynth = it) }
+    instruments = instruments ?: synth?.let { SonicPiInstruments(defaultSynth = it) },
+    fx = fx
 )
 
 /** `"bass" to pat("e1 ~ e2 ~") on "tb303"` — this layer's notes play on [synth]. */
@@ -495,7 +545,7 @@ fun sonicPiProgram(
 
         missing.forEach { (atom, count) -> unresolved += SonicPiUnresolvedAtom(layer, atom, count) }
         allEvents += lowered
-        bodies += renderLiveLoop(layer, lowered, cycles, cpsValue, kit.defaultSynth)
+        bodies += renderLiveLoop(layer, lowered, cycles, cpsValue, kit.defaultSynth, spec.fx)
     }
 
     val header = renderHeader(layers.map { it.name }, cpsValue, cycles, unresolved, dropped)
@@ -567,36 +617,49 @@ private fun renderLiveLoop(
     events: List<SonicPiPatternEvent>,
     cycles: Int,
     cps: Double,
-    defaultSynth: String
+    defaultSynth: String,
+    fx: List<SonicPiFx> = emptyList()
 ): String = buildString {
     appendLine()
     appendLine("live_loop :$layer do")
     // `60 * cps` rather than the product, so the emitted program says why its tempo is what it is.
     appendLine("  use_bpm 60 * ${formatRubyNumber(cps)}")
     appendLine("  use_synth :$defaultSynth")
+    // FX wrap the body, not the `use_bpm`: `with_fx` re-enters its block on every iteration, and a
+    // sleep inside one is still a sleep, so the loop's period is unaffected by how deep it is.
+    fx.forEachIndexed { depth, effect ->
+        appendLine("  " + "  ".repeat(depth) + renderWithFx(effect) + " do")
+    }
+    val pad = "  " + "  ".repeat(fx.size)
 
     var cursor = PatQ.ZERO
     var currentSynth = defaultSynth
     for (event in events) {
         val delta = event.at - cursor
-        if (delta > PatQ.ZERO) appendLine("  sleep ${patQToRuby(delta)}")
+        if (delta > PatQ.ZERO) appendLine("${pad}sleep ${patQToRuby(delta)}")
         cursor = event.at
         when (val voice = event.voice) {
-            is SonicPiVoice.Sample -> appendLine("  sample :${voice.name}${renderOpts(event.opts)}")
+            is SonicPiVoice.Sample -> appendLine("${pad}sample :${voice.name}${renderOpts(event.opts)}")
             is SonicPiVoice.Note -> {
                 if (voice.synth != null && voice.synth != currentSynth) {
-                    appendLine("  use_synth :${voice.synth}")
+                    appendLine("${pad}use_synth :${voice.synth}")
                     currentSynth = voice.synth
                 }
-                appendLine("  play ${voice.note}${renderOpts(event.opts)}")
+                appendLine("${pad}play ${voice.note}${renderOpts(event.opts)}")
             }
             SonicPiVoice.Silent -> Unit
         }
     }
     val tail = PatQ.of(cycles) - cursor
-    if (tail > PatQ.ZERO) appendLine("  sleep ${patQToRuby(tail)}")
+    if (tail > PatQ.ZERO) appendLine("${pad}sleep ${patQToRuby(tail)}")
+    for (depth in fx.indices.reversed()) appendLine("  " + "  ".repeat(depth) + "end")
     appendLine("end")
 }
+
+/** `with_fx :reverb, room: 0.8` — opts already checked by [sonicPiFx]. */
+private fun renderWithFx(effect: SonicPiFx): String =
+    "with_fx :${effect.name}" + effect.opts.entries.sortedBy { it.key }
+        .joinToString("") { ", ${it.key}: ${formatRubyNumber(it.value)}" }
 
 private fun renderOpts(opts: List<Pair<String, String>>): String =
     if (opts.isEmpty()) "" else opts.joinToString(", ", prefix = ", ") { "${it.first}: ${it.second}" }
@@ -745,7 +808,9 @@ data class SonicPiReading(
     /** Total sleep per loop, which for a well-formed loop is its period in cycles. */
     val loopPeriods: Map<String, PatQ>,
     /** Lines that were neither blank, a comment, nor part of the emitted subset. */
-    val unparsed: List<String>
+    val unparsed: List<String>,
+    /** The `with_fx` blocks each loop opened, outermost first. */
+    val fx: Map<String, List<SonicPiFx>> = emptyMap()
 )
 
 /**
@@ -768,6 +833,7 @@ object SonicPiProgramReader {
     private val LIVE_LOOP = Regex("""^live_loop\s+:(\w+)\s+do$""")
     private val USE_SYNTH = Regex("""^use_synth\s+:(\w+)$""")
     private val USE_BPM = Regex("""^use_bpm\s+(.+)$""")
+    private val WITH_FX = Regex("""^with_fx\s+:(\w+)\s*(?:,\s*(.*?))?\s+do$""")
     private val SLEEP = Regex("""^sleep\s+(.+)$""")
     private val SAMPLE = Regex("""^sample\s+:(\w+)\s*(?:,\s*(.*))?$""")
     private val PLAY = Regex("""^play\s+(-?[\d.]+)\s*(?:,\s*(.*))?$""")
@@ -779,16 +845,21 @@ object SonicPiProgramReader {
         val events = mutableListOf<SonicPiReadEvent>()
         val periods = LinkedHashMap<String, PatQ>()
         val unparsed = mutableListOf<String>()
+        val fxSeen = LinkedHashMap<String, MutableList<SonicPiFx>>()
 
         var layer: String? = null
         var at = PatQ.ZERO
         var synth = "?"
+        // `with_fx ... do` opens a block inside the loop, so its `end` must not be mistaken for the
+        // loop's. Counted rather than parsed: nothing about a timing lattice depends on the nesting.
+        var openBlocks = 0
 
         for (rawLine in source.lineSequence()) {
             val line = rawLine.substringBefore('#').trim()
             if (line.isEmpty()) continue
 
             val loopStart = LIVE_LOOP.matchEntire(line)
+            val withFx = WITH_FX.matchEntire(line)
             val useSynth = USE_SYNTH.matchEntire(line)
             val sleepFor = SLEEP.matchEntire(line)
             val sampleAt = SAMPLE.matchEntire(line)
@@ -799,10 +870,21 @@ object SonicPiProgramReader {
                     layer = loopStart.groupValues[1]
                     at = PatQ.ZERO
                     synth = "?"
+                    openBlocks = 0
+                }
+                withFx != null -> {
+                    openBlocks++
+                    fxSeen.getOrPut(layer ?: "<toplevel>") { mutableListOf() } +=
+                        SonicPiFx(withFx.groupValues[1], parseOpts(withFx.groupValues.getOrNull(2))
+                            .mapNotNull { (k, v) -> v.toDoubleOrNull()?.let { k to it } }.toMap())
                 }
                 line == "end" -> {
-                    layer?.let { periods[it] = at }
-                    layer = null
+                    if (openBlocks > 0) {
+                        openBlocks--
+                    } else {
+                        layer?.let { periods[it] = at }
+                        layer = null
+                    }
                 }
                 USE_BPM.matches(line) -> Unit
                 useSynth != null -> synth = useSynth.groupValues[1]
@@ -828,7 +910,7 @@ object SonicPiProgramReader {
                 else -> unparsed += rawLine
             }
         }
-        return SonicPiReading(events, periods, unparsed)
+        return SonicPiReading(events, periods, unparsed, fxSeen)
     }
 
     /**

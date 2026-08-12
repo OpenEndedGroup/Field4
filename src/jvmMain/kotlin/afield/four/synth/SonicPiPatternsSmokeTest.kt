@@ -70,6 +70,9 @@ object SonicPiPatternsSmokeTest {
         println("a layer may name its own synth")
         checkPerLayerSynth(failures)
 
+        println("with_fx chains")
+        checkFxChains(failures)
+
         println("unresolved atoms are reported, not dropped")
         checkUnresolvedReporting(failures)
 
@@ -513,6 +516,73 @@ object SonicPiPatternsSmokeTest {
             failures += "a per-layer loop does not close on the bar: ${reading.loopPeriods}"
         }
         println("  drums on :beep, bass on :tb303, cutoff reaches only the one that has it")
+    }
+
+    /**
+     * `with_fx` wraps a layer's body, and the thing that must survive it is the timing.
+     *
+     * `with_fx :reverb do … end` adds a block — and an `end` — inside the `live_loop`. A reader that
+     * counts the first `end` as the loop's would close the loop early and read a period of zero, and
+     * every timing assertion downstream of that would be measuring a program that does not exist.
+     * So the oracle is re-run here with two FX nested around a pattern that has a triplet in it: the
+     * events, their exact `PatQ` positions and the loop's period must all be unchanged.
+     */
+    private fun checkFxChains(failures: MutableList<String>) {
+        // The name and every opt are checked at construction, because Sonic Pi's answer to
+        // `with_fx :revreb` is a runtime error on the loop's own thread, minutes in.
+        if (runCatching { sonicPiFx("revreb") }.isSuccess) {
+            failures += "sonicPiFx accepted an FX that does not exist"
+        }
+        if (runCatching { sonicPiFx("reverb", "roomm" to 0.5) }.isSuccess) {
+            failures += "sonicPiFx accepted an opt :reverb does not have"
+        }
+        if (runCatching { sonicPiFx("reverb", "room" to 0.8, "mix" to 0.4) }.isFailure) {
+            failures += "sonicPiFx rejected room and mix, which :reverb does have"
+        }
+
+        val pattern = pat("bd ~ [bd bd bd] bd")
+        val plain = sonicPiLayer("dry", pattern)
+        val wet = sonicPiLayer(
+            "wet",
+            pattern,
+            fx = listOf(sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25))
+        )
+        val program = sonicPiProgram(plain, wet, cps = 0.5, cycles = 2)
+        val reading = SonicPiProgramReader.read(program.source)
+
+        if (reading.unparsed.isNotEmpty()) {
+            failures += "with_fx made lines the reader cannot read: ${reading.unparsed.map { it.trim() }}"
+        }
+        if (reading.fx["wet"]?.map { it.name } != listOf("reverb", "echo")) {
+            failures += "the wet layer's FX read back as ${reading.fx["wet"]}, expected reverb then echo"
+        }
+        if (reading.fx["dry"] != null) failures += "the dry layer picked up FX: ${reading.fx["dry"]}"
+        if ("with_fx :reverb, room: 0.8" !in program.source) failures += "the reverb opt was not emitted"
+        if ("with_fx :echo, phase: 0.25" !in program.source) failures += "the echo opt was not emitted"
+
+        // The point of the whole check: the lattice is identical wet and dry.
+        val dryEvents = reading.events.filter { it.layer == "dry" }
+        val wetEvents = reading.events.filter { it.layer == "wet" }
+        if (dryEvents.size != wetEvents.size) {
+            failures += "with_fx changed the event count: ${dryEvents.size} dry vs ${wetEvents.size} wet"
+        } else if (dryEvents.map { normalisePatQ(it.at) } != wetEvents.map { normalisePatQ(it.at) }) {
+            failures += "with_fx moved the events"
+        }
+        for (layer in listOf("dry", "wet")) {
+            val period = reading.loopPeriods[layer]
+            if (period == null || normalisePatQ(period) != PatQ.of(2)) {
+                failures += "loop :$layer closed at $period, expected 2 — an `end` was miscounted"
+            }
+        }
+        // And against the pattern itself, exactly, the same way the oracle does.
+        val expected = pattern.scheduled(cps = 0.5, fromCycle = 0, startAt = 0.0, clock = null)
+            .takeWhile { it.arc.start < PatQ.of(2) }.toList()
+        if (wetEvents.size != expected.size ||
+            wetEvents.map { normalisePatQ(it.at) } != expected.map { normalisePatQ(it.arc.start) }
+        ) {
+            failures += "a layer inside two with_fx blocks no longer agrees with its pattern"
+        }
+        println("  2 nested FX, ${wetEvents.size} events, lattice identical to the dry layer")
     }
 
     private fun checkUnresolvedReporting(failures: MutableList<String>) {

@@ -266,6 +266,48 @@ sonicPiProgram(
 )
 ```
 
+### FX wrap a layer
+
+`with_fx` is where Sonic Pi is furthest ahead of anything Field has, so a layer can carry a chain of
+it. Names and opts are checked when the layer is built, against the same extracted vocabulary — and
+that check earns its keep here more than anywhere else, because Sonic Pi's answer to
+`with_fx :revreb` is a runtime error on the `live_loop`'s own thread, minutes into a performance.
+
+```diffstatic {data-lang=kotlin}
+:::static
+sonicPiProgram(
+    sonicPiLayer(
+        "bass", pat("e3 ~ [e4 g3] ~") with cutoff(700.0), synth = "tb303",
+        fx = listOf(sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4))
+    ),
+    cps = 0.5
+)
+```
+
+```diffstatic {data-lang=ruby}
+:::static
+live_loop :bass do
+  use_bpm 60 * 0.5
+  use_synth :tb303
+  with_fx :reverb, room: 0.8 do
+    with_fx :echo, decay: 4, phase: 0.25 do
+      play 40, cutoff: 77.0382
+      sleep 0.5
+      play 52, cutoff: 77.0382
+      sleep 0.125
+      play 43, cutoff: 77.0382
+      sleep 0.375
+    end
+  end
+end
+```
+
+The FX wrap the body rather than the `use_bpm`, and each one adds an `end` inside the `live_loop`.
+That second detail is the only reason this is worth a paragraph: a reader that counted the first
+`end` as the loop's would close the loop early and read a period of zero. `synth.sonic-pi.patterns`
+runs the whole differential oracle again through two nested FX and requires the lattice to be
+identical to the dry layer's.
+
 ### drive — Field's clock sequences, Sonic Pi sounds
 
 The other direction sends one `/run-code` per event, through the same `PatResponseSpec` machinery
@@ -382,15 +424,25 @@ listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
 //
 // Turn your volume down before you run this.
 
+// Three things a layer can carry beyond its pattern: which synth its bare notes play on, an FX
+// chain wrapped around its live_loop, and parameters from the pattern algebra. Every FX name and
+// every FX opt below is checked against the installed vocabulary when the layer is built — Sonic
+// Pi's answer to `with_fx :revreb` is a runtime error on the loop's own thread, minutes in.
+//
 // Field's octave numbering puts middle C at c5 = 60, one octave below Sonic Pi's :c4. That is why
 // the lowering emits MIDI numbers rather than :symbols — the number the pattern meant survives.
 sonicPiPattern(
     sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
-    sonicPiLayer("hats", pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35)),
+    sonicPiLayer(
+        "hats",
+        pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
+        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3))
+    ),
     sonicPiLayer(
         "bass",
         pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
-        synth = "tb303"
+        synth = "tb303",
+        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4))
     ),
     cps = 0.5,
     cycles = 4
