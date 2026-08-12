@@ -12,10 +12,12 @@
 
  **compile** — turn a pattern into a Sonic Pi program.
 
-     stack(
+     sonicPiProgram(
          "drums" to pat("bd [hh hh] sd hh"),
-         "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() }
-     ).toSonicPi(cps = 0.5, cycles = 4)
+         "bass" to pat("<e1 g1> ~ e2 ~").every(4) { it.rev() } on "tb303",
+         cps = 0.5,
+         cycles = 4
+     ).source
 
  gives you a `live_loop` per layer, with `sleep`s that are the pattern's own rational cycle
  positions. The result is ordinary Sonic Pi source: paste it into a `#sonicpi` region and edit it by
@@ -392,9 +394,72 @@ fun PatPattern<String>.toSonicPiProgram(
  * way back out: the emitted program should have the shape the person wrote, and a `live_loop` per
  * voice is both what Sonic Pi is good at and what is editable afterwards. `stack` still works
  * inside a layer — it just lands as several notes at the same `sleep` position, which is right.
+ *
+ * Name a layer's synth with [on] when its notes should not play on the program's default one —
+ * `"bass" to pat("e1 ~ e2 ~") on "tb303"` — which is also what makes `cutoff` reach it, since
+ * `:beep` has no such opt and the lowering will not send one that the target does not accept.
  */
 fun sonicPiProgram(
     vararg layers: Pair<String, PatPattern<String>>,
+    cps: Number = 1.0,
+    cycles: Int = 1,
+    instruments: SonicPiInstruments = SonicPiInstruments()
+): SonicPiProgram = sonicPiProgram(
+    layers = layers.map { SonicPiLayer(it.first, it.second) }.toTypedArray(),
+    cps = cps,
+    cycles = cycles,
+    instruments = instruments
+)
+
+/**
+ * One `live_loop`: a name, a pattern, and optionally its own instrument set.
+ *
+ * The per-layer [instruments] is the whole reason this exists rather than a `Pair`. Drums want
+ * samples and a bass line wants `:tb303`, and `use_synth` is emitted per `live_loop` anyway, so
+ * "which synth" is naturally a property of the layer rather than of the program.
+ */
+data class SonicPiLayer(
+    val name: String,
+    val pattern: PatPattern<String>,
+    val instruments: SonicPiInstruments? = null
+)
+
+/**
+ * A layer, spelled out.
+ *
+ * Kotlin will not mix a `Pair` and a [SonicPiLayer] in one `vararg`, so a program in which *any*
+ * layer names its own synth has to be written entirely in one form or the other. This is that form:
+ *
+ * ```
+ * sonicPiProgram(
+ *     sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
+ *     sonicPiLayer("bass", pat("<e1 g1> ~ e2 ~") with cutoff(700.0), synth = "tb303"),
+ *     cps = 0.5
+ * )
+ * ```
+ */
+fun sonicPiLayer(
+    name: String,
+    pattern: PatPattern<String>,
+    synth: String? = null,
+    instruments: SonicPiInstruments? = null
+): SonicPiLayer = SonicPiLayer(
+    name = name,
+    pattern = pattern,
+    instruments = instruments ?: synth?.let { SonicPiInstruments(defaultSynth = it) }
+)
+
+/** `"bass" to pat("e1 ~ e2 ~") on "tb303"` — this layer's notes play on [synth]. */
+infix fun Pair<String, PatPattern<String>>.on(synth: String): SonicPiLayer =
+    SonicPiLayer(first, second, SonicPiInstruments(defaultSynth = synth))
+
+/** `"drums" to pat("bd sd") using myKit` — this layer resolves its atoms with [instruments]. */
+infix fun Pair<String, PatPattern<String>>.using(instruments: SonicPiInstruments): SonicPiLayer =
+    SonicPiLayer(first, second, instruments)
+
+/** Lower named layers, each free to name its own synth. See [sonicPiProgram] and [on]. */
+fun sonicPiProgram(
+    vararg layers: SonicPiLayer,
     cps: Number = 1.0,
     cycles: Int = 1,
     instruments: SonicPiInstruments = SonicPiInstruments()
@@ -409,29 +474,31 @@ fun sonicPiProgram(
     val dropped = mutableListOf<SonicPiDroppedOpt>()
     val bodies = mutableListOf<String>()
 
-    for ((rawName, pattern) in layers) {
+    for (spec in layers) {
+        val (rawName, pattern) = spec.name to spec.pattern
+        val kit = spec.instruments ?: instruments
         val layer = rubyLoopName(rawName)
         val missing = LinkedHashMap<String, Int>()
         val lowered = mutableListOf<SonicPiPatternEvent>()
 
         for (event in patternEventsForCycles(pattern, cycles)) {
             val atom = event.value
-            val voice = instruments.resolve(atom)
+            val voice = kit.resolve(atom)
             if (voice == null) {
                 missing[atom] = (missing[atom] ?: 0) + 1
                 continue
             }
             if (voice is SonicPiVoice.Silent) continue
-            val opts = sonicPiOptsFor(voice, event.annotations, layer, atom, dropped)
+            val opts = sonicPiOptsFor(voice, event.annotations, layer, atom, kit.defaultSynth, dropped)
             lowered += SonicPiPatternEvent(layer, event.arc.start, voice, opts, atom)
         }
 
         missing.forEach { (atom, count) -> unresolved += SonicPiUnresolvedAtom(layer, atom, count) }
         allEvents += lowered
-        bodies += renderLiveLoop(layer, lowered, cycles, instruments.defaultSynth)
+        bodies += renderLiveLoop(layer, lowered, cycles, kit.defaultSynth)
     }
 
-    val header = renderHeader(layers.map { it.first }, cpsValue, cycles, unresolved, dropped)
+    val header = renderHeader(layers.map { it.name }, cpsValue, cycles, unresolved, dropped)
     val source = (listOf(header) + bodies).joinToString("\n")
 
     return SonicPiProgram(
@@ -439,7 +506,7 @@ fun sonicPiProgram(
         events = allEvents,
         cps = cpsValue,
         cycles = cycles,
-        layers = layers.map { rubyLoopName(it.first) },
+        layers = layers.map { rubyLoopName(it.name) },
         unresolved = unresolved,
         droppedOpts = dropped
     )
@@ -553,15 +620,18 @@ private fun sonicPiOptsFor(
     annotations: Map<String, String>,
     layer: String,
     atom: String,
+    ambientSynth: String,
     dropped: MutableList<SonicPiDroppedOpt>
 ): List<Pair<String, String>> {
     if (annotations.isEmpty()) return emptyList()
 
     val isSample = voice is SonicPiVoice.Sample
+    // A note with no synth of its own plays on the layer's `use_synth`, so that is the synth whose
+    // opts decide what may be sent. Asking `play`'s common opts instead would drop `cutoff` from a
+    // `:tb303` layer — correct for `:beep`, and silently wrong for the case anyone would write.
     val accepted: Set<String> = when (voice) {
         is SonicPiVoice.Sample -> SonicPiVocabulary.sampleOpts
-        is SonicPiVoice.Note -> voice.synth?.let { SonicPiVocabulary.synthOpts(it) }
-            ?: SonicPiVocabulary.commonPlayOpts
+        is SonicPiVoice.Note -> SonicPiVocabulary.synthOpts(voice.synth ?: ambientSynth)
         SonicPiVoice.Silent -> emptySet()
     }
 
@@ -587,7 +657,7 @@ private fun sonicPiOptsFor(
             key == "cutoff" && number != null -> {
                 val midi = formatRubyNumber(hzToMidiNote(number))
                 if (isSample) emit("lpf", midi, "no lpf on sample")
-                else emit("cutoff", midi, "synth :${(voice as? SonicPiVoice.Note)?.synth ?: "?"} has no cutoff opt")
+                else emit("cutoff", midi, "synth :${(voice as? SonicPiVoice.Note)?.synth ?: ambientSynth} has no cutoff opt")
             }
 
             key == "resonance" && number != null ->
@@ -843,6 +913,30 @@ fun Box.sonicPiPattern(
     cps: Number = 1.0,
     cycles: Int = 1,
     instruments: SonicPiInstruments = SonicPiInstruments()
+): SonicPiLaunch = sonicPiPattern(
+    layers = layers.map { SonicPiLayer(it.first, it.second) }.toTypedArray(),
+    cps = cps,
+    cycles = cycles,
+    instruments = instruments
+)
+
+/**
+ * Compile layers that may each name their own synth, and play them, tied to the box.
+ *
+ * ```
+ * sonicPiPattern(
+ *     "drums" to pat("bd ~ [bd bd bd] bd"),
+ *     "bass" to (pat("<e1 g1> ~ e2 ~") with cutoff(700.0)) on "tb303",
+ *     cps = 0.5,
+ *     cycles = 4
+ * )
+ * ```
+ */
+fun Box.sonicPiPattern(
+    vararg layers: SonicPiLayer,
+    cps: Number = 1.0,
+    cycles: Int = 1,
+    instruments: SonicPiInstruments = SonicPiInstruments()
 ): SonicPiLaunch {
     val program = sonicPiProgram(*layers, cps = cps, cycles = cycles, instruments = instruments)
     program.unresolved.forEach {
@@ -921,7 +1015,7 @@ internal fun sonicPiOneLiner(
     defaultSynth: String
 ): String {
     val dropped = mutableListOf<SonicPiDroppedOpt>()
-    val opts = renderOpts(sonicPiOptsFor(voice, annotations, "live", "-", dropped))
+    val opts = renderOpts(sonicPiOptsFor(voice, annotations, "live", "-", defaultSynth, dropped))
     return when (voice) {
         is SonicPiVoice.Sample -> "sample :${voice.name}$opts"
         is SonicPiVoice.Note -> "use_synth :${voice.synth ?: defaultSynth}; play ${voice.note}$opts"

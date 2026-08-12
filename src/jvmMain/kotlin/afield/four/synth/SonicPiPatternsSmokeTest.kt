@@ -64,6 +64,9 @@ object SonicPiPatternsSmokeTest {
         println("parameter translation")
         checkOptTranslation(failures)
 
+        println("a layer may name its own synth")
+        checkPerLayerSynth(failures)
+
         println("unresolved atoms are reported, not dropped")
         checkUnresolvedReporting(failures)
 
@@ -430,6 +433,52 @@ object SonicPiPatternsSmokeTest {
         if (rate["rate"] != "1.5") failures += "speed(1.5) became rate: ${rate["rate"]}, expected 1.5"
 
         println("  gain->amp, pan rescaled to -1..1, cutoff Hz->MIDI (440->69), speed->rate")
+    }
+
+    /**
+     * `"bass" to pat(...) on "tb303"` has to change two things at once, and the second is easy to
+     * miss: the `use_synth` at the top of that `live_loop`, *and* which opts a bare note may carry.
+     * A note with no synth of its own plays on the layer's synth, so it is that synth's opt list
+     * that decides — asking `play`'s common opts instead drops `cutoff` from a `:tb303` layer,
+     * which is correct for `:beep` and silently wrong for the case anyone would actually write.
+     */
+    private fun checkPerLayerSynth(failures: MutableList<String>) {
+        val bass = pat("e1 ~ e2 ~") with cutoff(700.0)
+
+        val onTb303 = sonicPiProgram(
+            sonicPiLayer("drums", pat("bd sd")),
+            sonicPiLayer("bass", bass, synth = "tb303"),
+            cps = 1.0
+        )
+        if ("use_synth :tb303" !in onTb303.source) failures += "the bass layer did not get use_synth :tb303"
+        if ("use_synth :beep" !in onTb303.source) failures += "the drums layer lost the default synth"
+        if ("cutoff:" !in onTb303.source) failures += "cutoff did not reach a :tb303 layer: ${onTb303.droppedOpts}"
+        if (onTb303.droppedOpts.isNotEmpty()) failures += "unexpected dropped opts: ${onTb303.droppedOpts}"
+
+        // The same layer on the default synth: :beep has no cutoff, so it is dropped and recorded.
+        val onBeep = sonicPiProgram("bass" to bass, cps = 1.0)
+        if ("cutoff:" in onBeep.source) failures += "cutoff was emitted for a :beep layer"
+        if (onBeep.droppedOpts.none { it.key == "cutoff" }) {
+            failures += "cutoff on a :beep layer was neither emitted nor recorded as dropped"
+        }
+
+        // Per-layer instruments do not leak between layers.
+        val kit = SonicPiInstruments().mapping("bd" to sonicPiSample("bd_tek"))
+        val mixed = sonicPiProgram(
+            sonicPiLayer("a", pat("bd"), instruments = kit),
+            sonicPiLayer("b", pat("bd")),
+            cps = 1.0
+        )
+        if ("sample :bd_tek" !in mixed.source) failures += "a per-layer override did not apply"
+        if ("sample :bd_haus" !in mixed.source) failures += "a per-layer override leaked into the other layer"
+
+        // And the emitted layers still agree with the patterns, exactly.
+        val reading = SonicPiProgramReader.read(onTb303.source)
+        if (reading.unparsed.isNotEmpty()) failures += "per-layer program has unreadable lines: ${reading.unparsed}"
+        if (reading.loopPeriods.values.any { normalisePatQ(it) != PatQ.ONE }) {
+            failures += "a per-layer loop does not close on the bar: ${reading.loopPeriods}"
+        }
+        println("  drums on :beep, bass on :tb303, cutoff reaches only the one that has it")
     }
 
     private fun checkUnresolvedReporting(failures: MutableList<String>) {
