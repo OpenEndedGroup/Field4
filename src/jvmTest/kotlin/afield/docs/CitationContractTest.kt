@@ -117,6 +117,14 @@ class CitationContractTest {
         println("--- dev_docs citation inventory (${GUARDED_PAGES.size} guarded pages) ---")
         println(inv.render())
 
+        // The same inventory, machine-readable, for questions this class did not anticipate —
+        // "which guarded pages cite Server.kt?" chief among them, since that is the query that
+        // turns a merge collision from a discovery into a prediction.
+        val json = File(root, "build/reports/citations/inventory.json")
+        CitationGuard.writeInventoryJson(root, pages(), json)
+        println("machine-readable inventory: ${json.relativeTo(root).path}")
+        assertTrue(json.isFile && json.length() > 0, "inventory JSON was not written")
+
         assertEquals(0, inv.broken.size, "unresolvable citations in the corpus")
         assertEquals(
             inv.total, inv.resolved,

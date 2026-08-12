@@ -397,6 +397,51 @@ object CitationGuard {
         return changed
     }
 
+    /**
+     * Write the whole corpus out as JSON, one record per citation, for anything that wants to ask a
+     * question this test class did not anticipate — "which pages cite `Server.kt`?" being the obvious
+     * one, since knowing that in advance is what would have let two of the three recorded merge
+     * collisions be predicted rather than discovered.
+     *
+     * Hand-rolled rather than serialized: this is a test-source utility, and a schema this small is
+     * not worth a dependency. Written under `build/`, so it is never committed.
+     */
+    fun writeInventoryJson(root: File, pages: List<File>, out: File) {
+        fun esc(s: String) = buildString {
+            s.forEach {
+                when (it) {
+                    '"' -> append("\\\"")
+                    '\\' -> append("\\\\")
+                    '\n' -> append("\\n")
+                    '\r' -> append("\\r")
+                    '\t' -> append("\\t")
+                    else -> if (it < ' ') append("\\u%04x".format(it.code)) else append(it)
+                }
+            }
+        }
+        val rows = pages.flatMap { p -> parse(p, p.relativeToOrSelf(root).path) }.map { c ->
+            when (val r = resolve(root, c)) {
+                is Resolution.Resolved -> """
+                    |    {"page": "${esc(c.page)}", "pageLine": ${c.pageLine},
+                    | "path": "${esc(c.path)}", "anchor": "${esc(c.anchor)}", "form": "${c.form}",
+                    | "advisoryLine": ${c.advisoryLine ?: "null"}, "resolvedLine": ${r.line},
+                    | "occurrences": ${r.hits.size}, "unique": ${r.isUnique},
+                    | "headroom": ${if (r.headroom == UNBOUNDED) "null" else r.headroom},
+                    | "advisoryDrift": ${r.advisoryDrift ?: "null"}, "broken": false}
+                """.trimMargin().replace("\n", "")
+
+                is Resolution.Broken -> """
+                    |    {"page": "${esc(c.page)}", "pageLine": ${c.pageLine},
+                    | "path": "${esc(c.path)}", "anchor": "${esc(c.anchor)}", "form": "${c.form}",
+                    | "advisoryLine": ${c.advisoryLine ?: "null"}, "broken": true,
+                    | "reason": "${esc(r.reason)}"}
+                """.trimMargin().replace("\n", "")
+            }
+        }
+        out.parentFile?.mkdirs()
+        out.writeText("{\n  \"citations\": [\n" + rows.joinToString(",\n") + "\n  ]\n}\n")
+    }
+
     /** Walk up to the directory holding `settings.gradle.kts`. */
     fun repoRoot(): File {
         var d = File(System.getProperty("user.dir")).absoluteFile
