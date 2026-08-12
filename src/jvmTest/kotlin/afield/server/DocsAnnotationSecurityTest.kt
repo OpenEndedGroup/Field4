@@ -281,7 +281,12 @@ class DocsAnnotationSecurityTest {
         // Other ways to leave /field4/ on the way out.
         assertNull(docsProxyTarget("/field-docs//evil.example.com/x", null), "a rooted path picks its own origin")
         assertNull(docsProxyTarget("/field-docs/a\\..\\b", null), "backslashes are separators to somebody")
-        assertNull(docsProxyTarget("/field-docs/a b", null), "control characters are not filenames")
+        // Written as an escape rather than as the byte itself. It used to be a literal
+        // NUL in the source, which made `file` report this .kt as binary data and made
+        // plain `grep` skip the whole file — so the one test file whose subject is
+        // "what does an attacker put in a path" was invisible to the two tools you
+        // would reach for while looking into exactly that.
+        assertNull(docsProxyTarget("/field-docs/a\u0000b", null), "control characters are not filenames")
     }
 
     @Test

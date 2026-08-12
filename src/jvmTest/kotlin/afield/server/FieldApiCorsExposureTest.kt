@@ -7,42 +7,45 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * A guard over the shape of Field's cross-origin exposure, and over the one property
- * that makes `/api/docs-improvement`'s token worth having.
+ * A guard over the shape of Field's cross-origin exposure, and an inventory of what that
+ * exposure applies to.
  *
- * ## Why this test reads source instead of starting a server
+ * ## Why this test reads source rather than starting a server
  *
- * The CORS configuration is a seven-line literal inside `createServer` in `Server.kt`,
- * which cannot be reached without standing up a Netty engine, and `ktor-server-test-host`
- * is not a declared `jvmTest` dependency. Reading the source is the same move
- * `SmallLanguageAnatomyTest` makes for documentation citations, for the same reason: the
- * fact being guarded is a *decision recorded in the source*, and the failure mode is
- * somebody changing it without noticing what it implies.
+ * It no longer *has* to — `ktor-server-test-host` is a declared `jvmTest` dependency and
+ * [DocsAnnotationRouteSecurityTest] drives the real routes through the real CORS
+ * configuration. This file kept the source-reading approach because it is asking a
+ * different question. Behaviour tests ask *what does this request do*; these ask *what did
+ * somebody decide, and is it still what they decided*. `anyHost()` cannot be tested away:
+ * it is load-bearing for a feature, so what a test can usefully do is make changing it
+ * deliberate. And the route inventory below is a census of source, because a route nobody
+ * remembered to install in a test application is exactly the route it needs to catch.
  *
  * ## What was measured, on 2026-08-11, against a real Field on port 9492
  *
- * Not asserted here — a unit test cannot see it — but this is the evidence the
- * assertions below are standing in for, from a real Chromium page served from
- * `http://127.0.0.1:9493`, a genuinely foreign origin:
+ * Not asserted here — a source-reading test cannot see it — but this is the evidence the
+ * assertions below stand in for, from a real Chromium page served at `http://127.0.0.1:9493`,
+ * a genuinely foreign origin:
  *
- *  - `GET /api/instance-info` and `GET /api/welcome-changelog` were **read** by that
- *    page. The first returns the absolute path of the checkout; the second returns the
- *    human's recent commit messages.
+ *  - `GET /api/instance-info` and `GET /api/welcome-changelog` were **read** by that page.
+ *    The first returns the absolute path of the checkout; the second returns the human's
+ *    recent commit messages.
  *  - `POST /api/shutdown-instance` from that page **stopped the server**. Listener PID
  *    before: 4508. After: none.
  *  - With `anyHost()` removed and nothing else changed, every one of those probes failed
- *    with `TypeError: Failed to fetch`, the server replied `403 Forbidden` with the
- *    handler never running, the server survived the shutdown attempt, and same-origin
- *    requests were entirely unaffected (`/health` 200, and 200 with a matching `Origin`).
+ *    with `TypeError: Failed to fetch`, the server replied `403 Forbidden` with the handler
+ *    never running, and same-origin requests were unaffected.
  *
- * So `anyHost()` is load-bearing for the exposure in both directions, and Ktor's CORS
- * plugin is a server-side gate rather than mere header decoration. The single legitimate
- * consumer of it is `POST /api/import-offline-doc`, which the offline viewer calls from
- * whatever origin it happens to be hosted at (`dev_docs/OFFLINE_DEPLOYMENT.md`). That is
- * why this test pins the exposure rather than asserting it away: closing it means
- * deciding what happens to that feature, which is the human's call and not a test's.
+ * ## And the part that measurement did not reach
  *
- * See `dev_docs/DOCS_IMPROVEMENT_AGENT.md` for the write-up and the recommended fix.
+ * That session concluded that `POST /api/docs-improvement` needed a credential and gave it
+ * one. It did not follow the same sentence one screen up the same file: `POST` and `DELETE`
+ * `/api/docs-annotations` were reachable from that page too, because their only guard was
+ * a loopback check and the attacking page is in a browser that is on loopback. As of
+ * 2026-08-12 those routes refuse a cross-site request themselves; see
+ * [DocsAnnotationRouteSecurityTest], which watched each guard fail before trusting it.
+ *
+ * See `dev_docs/DOCS_IMPROVEMENT_AGENT.md` for the write-up and for what is still open.
  */
 class FieldApiCorsExposureTest {
 
@@ -57,7 +60,7 @@ class FieldApiCorsExposureTest {
      *
      * Any edit to it fails this test, which is the entire point: every line of it decides
      * what an arbitrary website can do to a running Field, and none of that is visible
-     * from the seven lines themselves.
+     * from the five lines themselves.
      */
     @Test
     fun theCorsConfigurationIsExactlyWhatWeThinkItIs() {
@@ -84,14 +87,13 @@ class FieldApiCorsExposureTest {
     /**
      * The invariant the documentation-improvement token actually rests on.
      *
-     * Loopback-only does not stop a cross-site POST, because the human's own browser is
-     * on loopback. What stops it is that `X-Field-Docs-Improvement-Token` is not a
+     * Loopback-only does not stop a cross-site POST, because the human's own browser is on
+     * loopback. What stops it is that `X-Field-Docs-Improvement-Token` is not a
      * CORS-safelisted header and is not in `allowHeader`, so the preflight fails — 403,
      * observed, and `TypeError: Failed to fetch` in the page.
      *
      * `anyHeader()`, or an `allowHeader` for this header, would silently convert the
-     * agent-spawning endpoint back into something a web page can reach. This test is the
-     * tripwire on that, and it is the reason this file exists at all.
+     * agent-spawning endpoint back into something a web page can reach.
      */
     @Test
     fun theImprovementTokenHeaderIsNotReachableFromAWebPage() {
@@ -99,58 +101,144 @@ class FieldApiCorsExposureTest {
         assertFalse(
             "anyHeader()" in block,
             "anyHeader() in the CORS config would let any website send $DOCS_IMPROVEMENT_TOKEN_HEADER, " +
-                "which is the only thing standing between a web page and `codex exec --sandbox workspace-write`.",
+                "which is one of the two things standing between a web page and `codex exec --sandbox " +
+                "workspace-write`. The other is the route's own same-site check, added 2026-08-12.",
         )
         assertFalse(
             DOCS_IMPROVEMENT_TOKEN_HEADER.lowercase() in block.lowercase(),
-            "$DOCS_IMPROVEMENT_TOKEN_HEADER must never be CORS-allowed; the preflight failing is the CSRF defence.",
+            "$DOCS_IMPROVEMENT_TOKEN_HEADER must never be CORS-allowed; the preflight failing is one layer " +
+                "of the CSRF defence.",
         )
-        // PUT is likewise absent, which is why `PUT /api/docs-annotations/{id}/resolve`
-        // is not cross-origin reachable. Recorded rather than relied upon — the loopback
-        // check is that route's actual guard.
-        assertFalse("allowMethod(HttpMethod.Put)" in block, "adding PUT widens the cross-origin surface")
     }
 
     /**
-     * The size of the surface `anyHost()` applies to, pinned as a number and a list.
+     * `PUT` is absent from `allowMethod`, and this test says so — but not for the reason
+     * the comment that used to sit here gave.
      *
-     * A count in a worklog decays the first time somebody adds a route. This fails
-     * instead, which turns "we added an endpoint" into "we added an endpoint that any
-     * website can call while `anyHost()` stands".
+     * It read: *"PUT is likewise absent, which is why `PUT /api/docs-annotations/{id}/resolve`
+     * is not cross-origin reachable. Recorded rather than relied upon — the loopback check
+     * is that route's actual guard."* Both halves of that were wrong, and in a way that
+     * mattered, because the same file's other KDoc states the correct rule two paragraphs
+     * earlier:
      *
-     * Counting from source rather than from a running server is deliberate and its
-     * limitation is real: it sees literal-path declarations only, so parameterised
-     * sub-routes under a `route("…") { }` prefix (the two `{...}` proxies) are not here.
-     * It is a tripwire on growth, not a census.
+     *  - the loopback check was **not** a guard against a cross-site request at all, for
+     *    exactly the reason `theImprovementTokenHeaderIsNotReachableFromAWebPage` gives —
+     *    the attacking page is in a browser, and the browser is on loopback. `POST` and
+     *    `DELETE` on the same routes were cross-site writable the whole time this comment
+     *    claimed otherwise;
+     *  - so `PUT`'s absence from `allowMethod` was not a footnote to a real defence, it was
+     *    the *only* thing making that one verb unreachable — a line of configuration in
+     *    another file, one word away from being deleted by someone adding an unrelated
+     *    `PUT` endpoint, with a comment here inviting them to.
+     *
+     * Since 2026-08-12 `PUT …/resolve` has a guard of its own and this assertion is what it
+     * always should have been: a note that widening `allowMethod` widens the surface, and
+     * nothing more. [DocsAnnotationRouteSecurityTest] covers the `PUT` in the form that
+     * arrives when CORS is not there to pre-empt it.
      */
     @Test
-    fun theUnauthenticatedMutatingApiSurfaceHasNotGrownUnnoticed() {
-        val declaration = Regex("""^\s*(get|post|put|delete|patch)\(\s*"(/[^"]*)"""", RegexOption.MULTILINE)
-        val sources = File(repositoryRoot(), "src/jvmMain/kotlin/afield")
-            .walkTopDown().filter { it.isFile && it.extension == "kt" }
-        val mutating = sources.flatMap { file ->
-            declaration.findAll(file.readText()).mapNotNull { match ->
-                val method = match.groupValues[1]
-                if (method == "get") null else "${method.uppercase()} ${match.groupValues[2]}"
+    fun addingPutToTheCorsConfigWouldWidenTheSurfaceAndIsNotWhatGuardsResolve() {
+        val block = Regex("""install\(CORS\)\s*\{([^}]*)\}""").find(serverSource)?.groupValues?.get(1).orEmpty()
+        assertFalse(
+            "allowMethod(HttpMethod.Put)" in block,
+            "Adding PUT is allowed, but do it knowing what it changes: every mutating PUT in the inventory " +
+                "below becomes reachable from any website you have open. Only the docs-annotation routes " +
+                "refuse for themselves.",
+        )
+        val annotations = File(repositoryRoot(), "src/jvmMain/kotlin/afield/server/docsAnnotations.kt").readText()
+        assertTrue(
+            "refuseUnlessSameSiteDocsClient" in annotations,
+            "the same-site guard is gone from docsAnnotations.kt, so PUT's absence from allowMethod is " +
+                "load-bearing again and this test's KDoc is out of date",
+        )
+    }
+
+    /**
+     * Every state-changing route in the tree, and what guards it. The honest version of a
+     * number in a worklog.
+     *
+     * A count decays the first time somebody adds a route; a *table* decays the first time
+     * somebody adds an **unguarded** one, which is the event worth being told about. So
+     * this fails on a new route, on a removed route, and — the case a count could never
+     * see — on a route that quietly loses its guard.
+     *
+     * ## What it is measuring, and what it cannot
+     *
+     * Two literals per route, read out of the source: the declaration, and whether one of
+     * the three known guard calls appears in the handler that follows it. The guard names
+     * are the vocabulary of `docsAnnotations.kt`; there is no other access control in the
+     * tree, because there is no `install(Authentication)` in it either. So `"none"` here
+     * means precisely `"none"`.
+     *
+     * Its limits are real. It sees literal-path declarations only, so parameterised
+     * sub-routes under a `route("…") { }` prefix are absent. It attributes a guard by
+     * textual containment between one declaration and the next, so a guard mentioned in a
+     * comment would count. It is a tripwire on growth and on regression, not a proof.
+     *
+     * ## What the table says, and it is the honest answer to "is Field's API authenticated"
+     *
+     * **34 of 38 mutating routes have no guard of any kind**, including
+     * `POST /api/shutdown-instance`, which a foreign origin was measured stopping the
+     * server with, and `POST /api/agent-worktrees/delete`. The HTTPS connector binds
+     * `0.0.0.0` — deliberately, so the visionOS shell and other devices can reach Field —
+     * and Ktor's CORS plugin does not apply to a request with no `Origin` header at all.
+     * So every one of these is reachable with `curl` from any host on the same network,
+     * today, and this branch did not change that. Narrowing the bind address would break a
+     * real workflow overnight; it is the human's call, not a nightly agent's. What is in
+     * scope for a test is refusing to let the number grow quietly.
+     */
+    @Test
+    fun everyMutatingRouteAndItsGuardIsPinned() {
+        val declaration = Regex("""^[ \t]*(get|post|put|delete|patch)\(\s*"(/[^"]*)"""", RegexOption.MULTILINE)
+        // The guard vocabulary of docsAnnotations.kt, decomposed into the questions each
+        // one actually asks, so that "loopback" means the same thing in every row.
+        val guardAtoms = mapOf(
+            "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
+            "refuseUnlessLocalDocsClient" to listOf("loopback"),
+            "refuseDocsImprovementLaunch" to listOf("loopback", "enabled+token"),
+        )
+        val order = listOf("loopback", "same-site", "enabled+token")
+
+        val found = sortedMapOf<String, String>()
+        File(repositoryRoot(), "src/jvmMain/kotlin/afield").walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .forEach { file ->
+                val text = file.readText()
+                val declarations = declaration.findAll(text).toList()
+                declarations.forEachIndexed { index, match ->
+                    if (match.groupValues[1] == "get") return@forEachIndexed
+                    val handler = text.substring(
+                        match.range.last + 1,
+                        declarations.getOrNull(index + 1)?.range?.first ?: text.length,
+                    )
+                    val atoms = guardAtoms.filterKeys { it in handler }.values.flatten().distinct()
+                    found["${match.groupValues[1].uppercase()} ${match.groupValues[2]}"] =
+                        if (atoms.isEmpty()) "none" else order.filter { it in atoms }.joinToString(" + ")
+                }
             }
-        }.toSortedSet()
 
         assertEquals(
-            38, mutating.size,
-            "The number of state-changing HTTP routes changed (was 38 on 2026-08-11). While the CORS config " +
-                "says anyHost(), every one of these is reachable from any website the user has open — and only " +
-                "POST /api/docs-improvement requires a credential. If you added one, decide whether it needs " +
-                "protecting, then update this number.\n\nCurrent set:\n" + mutating.joinToString("\n") { "  $it" },
+            EXPECTED_MUTATING_SURFACE, found,
+            "The state-changing HTTP surface, or what guards it, changed.\n\n" +
+                "If you added a route: decide whether it needs protecting before adding the row. Every " +
+                "\"none\" is reachable by curl from any host on the LAN (the connector binds 0.0.0.0) and " +
+                "from any website you have open (the CORS config says anyHost()).\n\n" +
+                "If a row went from a guard to \"none\": that is a regression, and " +
+                "DocsAnnotationRouteSecurityTest should be red too. If it is not, that test needs a case.\n\n" +
+                "Current:\n" + found.entries.joinToString("\n") { "  ${it.key} -> ${it.value}" },
         )
-        // Spot-check the ones whose names alone make the point, so a rename cannot quietly
-        // drop them out of the count while keeping the total the same.
-        listOf(
-            "POST /api/shutdown-instance",
-            "POST /api/agent-worktrees/delete",
-            "POST /api/projects/delete",
-            "POST /api/workspace-switch",
-            "POST /api/maven-repositories",
-        ).forEach { assertTrue(it in mutating, "expected $it to still be part of the pinned surface") }
+
+        // Pinned as a number as well, so the shape of the problem survives a careless
+        // wholesale update of the map above.
+        val unguarded = found.count { it.value == "none" }
+        assertEquals(
+            34, unguarded,
+            "The number of mutating routes with no access control at all was 34 on 2026-08-12, out of " +
+                "${found.size}. If this went down, say so in dev_docs/DOCS_IMPROVEMENT_AGENT.md — it is the " +
+                "headline number in that page. If it went up, you added an unauthenticated write.",
+        )
+        listOf("POST /api/shutdown-instance", "POST /api/agent-worktrees/delete", "POST /api/projects/delete")
+            .forEach { assertEquals("none", found[it], "$it is expected to still be unguarded, and to be named") }
     }
 
     private fun repositoryRoot(): File {
@@ -158,5 +246,51 @@ class FieldApiCorsExposureTest {
         while (candidate != null && !File(candidate, "settings.gradle.kts").isFile) candidate = candidate.parentFile
         assertTrue(candidate != null, "could not locate the repository root from ${File(".").absolutePath}")
         return candidate
+    }
+
+    private companion object {
+        /** Route to guard, as of 2026-08-12. Four guarded rows; everything else is open. */
+        val EXPECTED_MUTATING_SURFACE = sortedMapOf(
+            "DELETE /api/docs-annotations/{id}" to "loopback + same-site",
+            "DELETE /api/maven-dependencies" to "none",
+            "DELETE /api/maven-repositories" to "none",
+            "POST /api/agent-worktrees/delete" to "none",
+            "POST /api/agent-worktrees/merge" to "none",
+            "POST /api/agent-worktrees/restart" to "none",
+            "POST /api/ai-settings" to "none",
+            "POST /api/ai-tool-use-improvement" to "none",
+            "POST /api/ai-tool-use-improvement/clear-reviewed" to "none",
+            "POST /api/code-use/analyze" to "none",
+            "POST /api/completion-doc-polish" to "none",
+            "POST /api/docs-annotations" to "loopback + same-site",
+            "POST /api/docs-improvement" to "loopback + same-site + enabled+token",
+            "POST /api/duplicate-document" to "none",
+            // The one route whose openness is a feature: the offline viewer POSTs here from
+            // whatever origin its bundle was served from, which is why anyHost() stands.
+            "POST /api/import-offline-doc" to "none",
+            "POST /api/maven-dependencies" to "none",
+            "POST /api/maven-repositories" to "none",
+            "POST /api/maven-resolve" to "none",
+            "POST /api/maven-upgrade" to "none",
+            "POST /api/osc-editor-learn" to "none",
+            "POST /api/preferences" to "none",
+            "POST /api/projects" to "none",
+            "POST /api/projects/add-document" to "none",
+            "POST /api/projects/delete" to "none",
+            "POST /api/python-install-jep" to "none",
+            "POST /api/python-settings" to "none",
+            "POST /api/reveal-document" to "none",
+            "POST /api/semantic-search/cache/delete" to "none",
+            "POST /api/semantic-search/download" to "none",
+            "POST /api/semantic-search/query" to "none",
+            "POST /api/semantic-search/rebuild" to "none",
+            "POST /api/semantic-search/settings" to "none",
+            "POST /api/shutdown-instance" to "none",
+            "POST /api/starting-points/open" to "none",
+            "POST /api/workspace-switch" to "none",
+            "POST /stream" to "none",
+            "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
+            "PUT /api/document-tags" to "none",
+        )
     }
 }
