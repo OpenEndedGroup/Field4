@@ -27,10 +27,17 @@ import kotlin.test.assertTrue
  *
  * ## Why the assertions are the shape they are
  *
- * Only properties that survive somebody inserting lines into a cited file are asserted. That rules out
- * the most tempting assertion of all — "every advisory line number is correct" — because enforcing it
- * would rebuild exactly the merge hazard this machinery exists to remove. See
- * `dev_docs/citation_contracts.md`.
+ * Only properties that survive somebody inserting lines into a cited file are asserted, which rules
+ * out the most tempting assertion of all: *"every advisory line number is correct"*. Enforcing that
+ * would rebuild exactly the merge hazard this machinery exists to remove — one insertion above a
+ * densely-cited site turns it red.
+ *
+ * But "unassertable" is not the same as "unenforced", and leaving it there would have swapped a guard
+ * that went red for a number that goes unread. So the enforcement moves from the **count** to the
+ * **magnitude**: no single citation may be more than [CitationGuard.MAX_ADVISORY_DRIFT] lines wrong.
+ * How *many* numbers drift is a property of a page's citation density and says nothing about harm; how
+ * *far* one is wrong is exactly how harmful it is. The argument in full is on
+ * [CitationGuard.MAX_ADVISORY_DRIFT], and in `dev_docs/citation_contracts.md`.
  */
 class CitationContractTest {
 
@@ -46,6 +53,17 @@ class CitationContractTest {
             "dev_docs/small_language_anatomy.md" to 134,
             "dev_docs/fline_fill_orientation.md" to 20,
             "dev_docs/completion_aa_sidecar.md" to 24,
+            "dev_docs/FIELDML_HOST_BRIDGE.md" to 9,
+            "dev_docs/STDLIB_DRAWING_FACE_PACKAGING.md" to 6,
+            "dev_docs/arc_length_spacing.md" to 4,
+            "dev_docs/morpho_circuit_search.md" to 4,
+            "dev_docs/FLineGeometry.md" to 2,
+            "dev_docs/kdoc_reference_contract.md" to 2,
+            "dev_docs/ALIFE.md" to 1,
+            "dev_docs/COMPLETION_ENGINE.md" to 1,
+            "dev_docs/autodiff.md" to 1,
+            "dev_docs/brief_notation.md" to 1,
+            "dev_docs/kotlinjs_status_and_roadmap.md" to 1,
         )
 
         /**
@@ -53,7 +71,7 @@ class CitationContractTest {
          * [CitationGuard.headroom]: no amount of unrelated editing can make them resolve to the wrong
          * place. This is the number that actually measures how safe the corpus is.
          */
-        const val MIN_UNIQUE_ANCHORS = 154
+        const val MIN_UNIQUE_ANCHORS = 181
 
         /**
          * Corpus ceiling on anchors fragile enough to be confused by fewer than
@@ -142,6 +160,18 @@ class CitationContractTest {
                 inv.lowHeadroom.joinToString("\n") {
                     "  ${it.citation.describe()} — ${it.hits.size} occurrences, headroom ${it.headroom}"
                 }
+        )
+        // The assertion under the advisory-drift number. Demoting line numbers to advisory swapped a
+        // guard that went red for a number that could go unread; this is the part that stops it.
+        // Magnitude, not count — see CitationGuard.MAX_ADVISORY_DRIFT for the argument.
+        assertTrue(
+            inv.worstAdvisoryDrift <= CitationGuard.MAX_ADVISORY_DRIFT,
+            "a dev_doc line number is ${inv.worstAdvisoryDrift} lines wrong, over the ceiling of " +
+                "${CitationGuard.MAX_ADVISORY_DRIFT} — far enough that a reader following it lands " +
+                "somewhere else entirely. Worst: " +
+                "${inv.worstAdvisoryDriftAt?.citation?.describe()} → actually at " +
+                ":${inv.worstAdvisoryDriftAt?.line}. Fix every drifted number at once with\n" +
+                "  FIELD_CITATIONS_WRITE=1 ./gradlew --no-daemon jvmTest --tests '*CitationContract*'"
         )
     }
 

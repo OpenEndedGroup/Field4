@@ -317,6 +317,18 @@ object CitationGuard {
         val lowHeadroom: List<Resolution.Resolved>,
         val unguarded: Int,
     ) {
+        /**
+         * The worst single advisory drift in the corpus, in lines — the number that actually measures
+         * harm to a reader. See [MAX_ADVISORY_DRIFT] for why this, and not [advisoryDrifted]`.size`, is
+         * the quantity worth asserting.
+         */
+        val worstAdvisoryDrift: Int
+            get() = advisoryDrifted.maxOfOrNull { Math.abs(it.advisoryDrift ?: 0) } ?: 0
+
+        /** The citation responsible for [worstAdvisoryDrift], for a failure message that names it. */
+        val worstAdvisoryDriftAt: Resolution.Resolved?
+            get() = advisoryDrifted.maxByOrNull { Math.abs(it.advisoryDrift ?: 0) }
+
         fun render(): String = buildString {
             appendLine("citations parsed:            $total")
             appendLine("  resolved by symbol:        $resolved")
@@ -324,6 +336,8 @@ object CitationGuard {
             appendLine("  unique anchors (unbounded headroom): $uniqueAnchors")
             appendLine("  advisory line exactly right: $advisoryCorrect")
             appendLine("  advisory line drifted:     ${advisoryDrifted.size}")
+            appendLine("  worst advisory drift:      $worstAdvisoryDrift line(s) " +
+                "(ceiling $MAX_ADVISORY_DRIFT)")
             appendLine("  headroom below $LOW_HEADROOM lines:      ${lowHeadroom.size}")
             append("unguarded bare citations:    $unguarded")
         }
@@ -336,6 +350,44 @@ object CitationGuard {
      * per citation rather than assumed globally.
      */
     const val LOW_HEADROOM = 2
+
+    /**
+     * The largest advisory drift, in lines, that any one citation may carry before the build fails.
+     *
+     * ## Why the *magnitude* is asserted and the *count* is not
+     *
+     * Demoting line numbers to advisory removed a merge hazard and created a smaller one: a number
+     * nothing enforces is a number that rots. Printing the drift count and calling it mitigation would
+     * be this repo's single most-recorded failure — a proud number with no assertion under it — so it
+     * is worth being precise about which quantity deserves the assertion.
+     *
+     * **Not the count.** How many citations drift is a function of how many citations happen to point
+     * below the edit, which is a property of the *citing page's density*, not of harm. One insertion
+     * into `Server.kt` drifts all seven citations that point into it; the same insertion into a
+     * once-cited file drifts one. Those are equally harmful to a reader and the count calls them
+     * seven-to-one. Worse, a ceiling on the count is exactly the merge hazard again: any sibling
+     * touching a densely-cited file trips it.
+     *
+     * **The magnitude.** How *far* wrong a number is, is precisely how harmful it is. Land a reader
+     * three lines off and they see the anchor without noticing; land them three hundred lines off and
+     * the citation is a lie. So the contract is per-citation and absolute: *no number in a dev_doc may
+     * be more than a screenful wrong.*
+     *
+     * ## Why this does not rebuild the hazard
+     *
+     * The 2026-08-07/08-10 collisions came from a ±2 window, where an ordinary edit anywhere above a
+     * citation tripped the guard. At 40 lines the population that trips it is different in kind: a
+     * branch displacing a cited site by more than a screenful is doing structural surgery on that file,
+     * and refreshing the page that documents it is legitimately part of that work — a one-command fix
+     * (`FIELD_CITATIONS_WRITE=1`), not the manual recomputation the old guard demanded. Tonight's
+     * measured collision case, inserting 20 lines into `Server.kt`, sits comfortably under it and stays
+     * a non-event.
+     *
+     * 40 is a judgement, not a measurement: roughly one screenful, the distance over which a reader who
+     * lands slightly wrong still finds what they came for by looking around. It is stated as a
+     * judgement so the next person can argue with it rather than assume it was derived.
+     */
+    const val MAX_ADVISORY_DRIFT = 40
 
     fun inventory(root: File, pages: List<File>): Inventory {
         val cites = pages.flatMap { p -> parse(p, p.relativeToOrSelf(root).path) }
