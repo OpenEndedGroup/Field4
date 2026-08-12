@@ -123,10 +123,23 @@
         noteEditor.focus();
     };
     const cancelEditor = () => { noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; };
+    // Failures here used to be an unhandled promise rejection: the note stayed in the box
+    // and nothing said why. That was survivable while every request succeeded. It is not
+    // now that the server can refuse — annotations are loopback-only unless
+    // AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE is set — because the refusal is a sentence
+    // telling you what to do, and swallowing it turns "open this over localhost instead"
+    // into "the save button is broken". The note is deliberately left in the textarea.
+    const reportError = message => {
+        const region = panel.querySelector('[data-role="selection"]');
+        region.textContent = message;
+        editorRegion.hidden = false;
+    };
     const save = async () => {
         const note = noteEditor.value.trim();
         if (!note) return;
-        await api("/api/docs-annotations", { method:"POST", body:JSON.stringify({ annotation:{ pageUrl:canonicalPage, note, tags:tags(note), anchor:state.selected || {} } }) });
+        try {
+            await api("/api/docs-annotations", { method:"POST", body:JSON.stringify({ annotation:{ pageUrl:canonicalPage, note, tags:tags(note), anchor:state.selected || {} } }) });
+        } catch (error) { return reportError(error.message); }
         noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; await load();
     };
     const filtered = item => {
@@ -172,8 +185,10 @@
         const action = button.dataset.act, id = button.closest("[data-id]")?.dataset.id;
         if (action === "new") openEditor();
         if (action === "hide") { panel.hidden = true; launcher.hidden = false; state.visible = false; renderMarkers(); }
-        if (action === "resolve" && id) { await api(`/api/docs-annotations/${id}/resolve`, {method:"PUT",body:JSON.stringify({resolved:true,resolution:"Resolved by user"})}); await load(); }
-        if (action === "delete" && id && confirm("Delete this annotation?")) { await api(`/api/docs-annotations/${id}`, {method:"DELETE"}); await load(); }
+        try {
+            if (action === "resolve" && id) { await api(`/api/docs-annotations/${id}/resolve`, {method:"PUT",body:JSON.stringify({resolved:true,resolution:"Resolved by user"})}); await load(); }
+            if (action === "delete" && id && confirm("Delete this annotation?")) { await api(`/api/docs-annotations/${id}`, {method:"DELETE"}); await load(); }
+        } catch (error) { reportError(error.message); }
     });
     launcher.addEventListener("click", () => { launcher.hidden = true; panel.hidden = false; state.visible = true; renderMarkers(); });
     panel.querySelector('[data-role="list"]').addEventListener("click", event => {

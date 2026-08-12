@@ -222,7 +222,7 @@ class AssimpSceneBridgeTest {
                 val real = mirrored.bindMatrix
                 assertTrue(real != null, "the loader must record the un-decomposed world matrix")
                 assertTrue(
-                    real!!.determinant() < 0f,
+                    real.determinant() < 0f,
                     "bindMatrix must still be a reflection; det = ${real.determinant()}",
                 )
                 // Non-mirrored nodes agree between the two, so nothing else changed.

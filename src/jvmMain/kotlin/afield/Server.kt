@@ -3047,6 +3047,11 @@ class Server {
             val portFallbackCount =
                 System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
             var port = preferredPort
+            // Every interface, deliberately: browsers and the visionOS shell reach Field from
+            // other devices on the local network. The consequence is that *every* route
+            // installed below is reachable from that network, and a route that must not be
+            // has to enforce it itself — on `call.request.local.remoteAddress`, which is the
+            // socket, rather than on a header. `docsAnnotations.kt` is the worked example.
             val httpsHost = "0.0.0.0"
             val keystorePath =
                 System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
@@ -3086,8 +3091,21 @@ class Server {
                     //
                     // So HTTP/1.1 stays the default on merit, not superstition. It also fails safe:
                     // Content-Length and the chunked terminator turn a truncated response into an
-                    // error rather than a silent hang, and Field only ever serves loopback, where h2
-                    // multiplexing buys very little. Re-check with the flag if upstream moves.
+                    // error rather than a silent hang, and the clients that would benefit from h2
+                    // multiplexing are on a local network where it buys very little. Re-check with
+                    // the flag if upstream moves.
+                    //
+                    // (This sentence used to read "Field only ever serves loopback". That was false
+                    // — `httpsHost` fifteen lines below is `0.0.0.0` — and it was the kind of false
+                    // that spreads, because it is exactly the assumption a route author reaches for
+                    // when deciding whether an endpoint needs authentication. One of them did:
+                    // `docsAnnotations.kt` shipped an unauthenticated POST that spawned a coding
+                    // agent with write access to a checkout. Field serves the local network on
+                    // purpose — the visionOS shell's WKWebViews load `/welcome` and `/index.html`
+                    // from another device, see dev_docs/vision_frontend.md — so the binding is not
+                    // the bug and narrowing it would break a real client. Routes that must not be
+                    // reachable from another device have to say so themselves; see
+                    // dev_docs/DOCS_IMPROVEMENT_AGENT.md.)
                     enableHttp2 = System.getProperty("afield.http2").toBoolean()
                     loopbackHttpPortFor(bindPort)?.let { localHttpPort ->
                         connector {
