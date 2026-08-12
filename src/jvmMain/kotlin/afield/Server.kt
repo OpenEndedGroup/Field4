@@ -3127,13 +3127,13 @@ class Server {
                         json()
                     }
 
-                    install(CORS) {
-                        allowHeader(HttpHeaders.ContentType)
-                        allowMethod(HttpMethod.Get)
-                        allowMethod(HttpMethod.Post)
-                        allowMethod(HttpMethod.Delete)
-                        anyHost()
-                    }
+                    // Field's cross-origin posture, and the reasons for it, live in
+                    // `installFieldApiCors` at the bottom of this file. Extracted from
+                    // here so that a test can install the *real* configuration into a
+                    // `testApplication` and drive requests through it, rather than
+                    // re-typing a copy of it and then proving things about the copy.
+                    // `FieldApiCorsExposureTest` pins its contents literally.
+                    installFieldApiCors()
 
                     intercept(ApplicationCallPipeline.Setup) {
                         if (call.request.path() == "/api/import-offline-doc") {
@@ -4913,5 +4913,42 @@ fun languageNameForProperty(box: Box, property: String): String {
         "intersection_s" -> "Slang (intersection)"
         "callable_s" -> "Slang (callable)"
         else -> "Kotlin"
+    }
+}
+
+/**
+ * Field's cross-origin posture: what an arbitrary website you have open in another tab is
+ * allowed to do to a running Field.
+ *
+ * Five directives, and none of what they decide is visible from the five lines. Written
+ * out here rather than inline in `createServer` so that a route-level test can install the
+ * real object — `DocsAnnotationRouteSecurityTest` does exactly that, and a copy of this
+ * block re-typed into a test file would be a test of the copy. `FieldApiCorsExposureTest`
+ * pins the directive list literally.
+ *
+ * `anyHost()` is the load-bearing one and it is deliberate: `POST /api/import-offline-doc`
+ * is called by `offline-viewer.js` from whatever origin the offline bundle happens to be
+ * served from (`dev_docs/OFFLINE_DEPLOYMENT.md`), which is a genuine cross-origin consumer
+ * and the reason this cannot simply be narrowed. What it costs is stated plainly in
+ * `dev_docs/DOCS_IMPROVEMENT_AGENT.md`: with `anyHost()` standing, every other `/api/…`
+ * route — around three dozen of them mutating — is reachable from any page you visit, and
+ * a route that must not be has to refuse for itself. `docsAnnotations.kt` is the worked
+ * example of doing that: loopback for another machine, `Sec-Fetch-Site`/`Origin` for
+ * another *site*, and a non-safelisted header for the one route that spawns an agent.
+ *
+ * Note what is absent. `allowMethod(HttpMethod.Put)` is not here, which is the only reason
+ * `PUT /api/docs-annotations/{id}/resolve` was never cross-site reachable — an accident of
+ * configuration, not a defence, and it is not what that route relies on now. `anyHeader()`
+ * is not here either, and must never be: `X-Field-Docs-Improvement-Token` not being
+ * CORS-allowed is what makes the preflight fail for a web page trying to spawn the coding
+ * agent.
+ */
+internal fun Application.installFieldApiCors() {
+    install(CORS) {
+        allowHeader(HttpHeaders.ContentType)
+        allowMethod(HttpMethod.Get)
+        allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Delete)
+        anyHost()
     }
 }
