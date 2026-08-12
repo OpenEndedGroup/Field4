@@ -40,10 +40,13 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 57 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 40 of them are
+All 58 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 41 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
-pipeline runs every box, and the test fails if a single box emits one error-kind output line. 10
+pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
+error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
+create a box it does not execute — one that wants a device the build does not have, or that fails on
+purpose to demonstrate a diagnostic — and only the ops it actually writes down are replayed.) 10
 open a GLFW window and a Vulkan renderer, which is not a thing to spin up headless in a build, so
 those are **built and compiled**: the graph is assembled through the real apply path and each box's
 Kotlin goes through the real K2 compiler, with only the terminal evaluation — the line that would
@@ -641,6 +644,23 @@ three stacked bands: the target, a seed missing every waypoint by 7.72, and the 
 three at 4.7e-15. Move a waypoint and re-run to watch it re-solve; move one somewhere
 `amp·trig(rate·t + phase) + centre` cannot reach and the caption reports the honest miss instead.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/rectsl_inverse_animation/metadata.edn)
+
+**faust_voice** — Five boxes around [Faust](faust.md), whose compiler Field ships as WebAssembly, so
+nothing is installed to run any of them. *Faust voice* is the one to click: a `#faust` region returned as
+the box's last expression, which keeps the box lit while it plays and takes the sound down when you stop
+it. The three sliders that appear are not written anywhere in the box — they are the program's own
+`hslider` declarations, and because they arrive as an ordinary Field control group they are also what a
+tablet gets. *Block diagram* is Faust's own SVG of the signal flow, out of the embedded compiler rather
+than `faust -svg`. *Waveform* renders the identical program offline and plots it, which is both a cache
+hit and the reason a Faust figure can be honest in a build with no sound card. *The interface it declares*
+prints what makes the first box's controls possible: ranges, steps, `[unit:Hz]`, `[scale:log]`, and the
+byte `index` in WebAssembly memory that makes a slider a float store rather than a message — listed
+alphabetically, because that is how Faust orders them and not how they were written. *An error, on the
+line* is broken on purpose: `#` is not a comment in Faust, so the `#faust` marker is stripped before
+compiling and its lines are added back before the marker is placed — get that arithmetic wrong and every
+diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
+here; the voice wants an audio device and the last one fails by design.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_voice/metadata.edn)
 
 ## Service-backed composition scenes
 

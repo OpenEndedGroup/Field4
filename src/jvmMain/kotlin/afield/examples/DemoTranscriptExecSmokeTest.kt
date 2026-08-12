@@ -27,7 +27,7 @@ id: examples.demo-transcript.exec
 runner: jvm-main
 entrypoint: afield.examples.DemoTranscriptExecSmokeTest
 tags: [smoke, agents, transcript, docs, verification]
-timeoutSec: 300
+timeoutSec: 600
 expect:
   exitCode: 0
   stdoutContains:
@@ -36,6 +36,20 @@ expect:
 /**
  * Verification-integrity harness: executes / compiles the box bodies of *every* shipped demo
  * transcript under `dev_docs/agents/transcripts/` and asserts they carry no diagnostics.
+ *
+ * ### On the timeout
+ *
+ * `timeoutSec` was 300 until 2026-08-12, when the 58th transcript pushed the sweep past it: the run
+ * died at 4m46s having reached `spatial_geometry_examples`, within a handful of transcripts of the end.
+ * The cost is concentrated rather than spread, so trimming is the wrong first instinct —
+ * `morpho_circuit_search` alone is **66.5s** of GraalJS compile-and-simulate, five times the next
+ * largest, and `faust_voice` is 13.7s of one-off libfaust warm-up. A cap at 1.05× the observed runtime
+ * would flake on any machine slower than the one it was measured on, so it is now 600: roughly 2×,
+ * with room for the corpus to keep growing.
+ *
+ * If it times out again, **measure before trimming**. `AFIELD_DEMO_TRANSCRIPT_VERBOSE=1` echoes what
+ * the boxes printed, and the `evaluate=<n>s` lines in the run's stdout attribute the time to the
+ * transcript being replayed when they were emitted — which is how the two numbers above were found.
  *
  * Why this exists: on 2026-07-18 `fn_differentiable_fit_demo.yaml` shipped with two compile errors
  * in its box body and merged, because nothing in CI ever *ran* the box Kotlin —
@@ -91,6 +105,11 @@ object DemoTranscriptExecSmokeTest {
         // JVM Kotlin that compiles a Live Metal box's Kotlin/JS for real, runs it, and rasterises
         // the mesh it builds. No headset and no Metal toolchain, so it runs to completion here.
         "vision_geometry_desk_preview",
+        // Compiles a Faust program with the vendored libfaust-wasm and draws it: a block diagram
+        // straight out of the compiler, an offline render, and the UI metadata the compiler reports.
+        // The playing box and the deliberately-broken box are NOT executed by the transcript — one
+        // opens an audio device, the other fails on purpose — so neither can trip this harness.
+        "faust_voice",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
         // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real
@@ -141,7 +160,9 @@ object DemoTranscriptExecSmokeTest {
         // Three pure-compute MorphoHDL circuit-search boxes. Every candidate is compiled by
         // morpho's own JS compiler on GraalJS and simulated by MorphoSim; the figures go through
         // showPlaneGrid (drawToSVG -> display), so no Window and no Renderer. The searches are
-        // budgeted in compiler invocations and take a few seconds each.
+        // budgeted in compiler invocations, and they are the most expensive thing in this harness by a
+        // factor of five: 66.5s of the sweep's ~300s, measured 2026-08-12 (44.6s + 21.9s of
+        // `evaluate=`). Not "a few seconds each", as this comment said while that was still true.
         "morpho_circuit_search",
         // Four independent pure-CPU heatmap boxes; showHeatmap / showImage encode a PNG and end in
         // display(), so no AWT, no GPU and nothing to launch.
