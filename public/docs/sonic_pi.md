@@ -1,7 +1,5 @@
 # Sonic Pi
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`SonicPi.kt`](reference/audio.md). Start from [what's already in the box](reference/index.md).*
-
 [Sonic Pi](https://sonic-pi.net) v5 is a live-coding instrument with a genuinely good synth engine, a
 sample library, and an idea of time that a text editor can drive. Field talks to it in *owned* mode:
 Field starts the Sonic Pi server itself and becomes the client it expects, so there is no Sonic Pi
