@@ -505,9 +505,17 @@ private object DocsAnnotationStore {
  * Runs [block] with the annotation store pointed at [path], then puts it back. Tests only.
  *
  * The alternative was a test that drives `POST /api/docs-annotations` for real and lands a
- * note in the human's own notebook, which is a worse trade than a `var`. Not re-entrant and
- * not concurrent-safe, deliberately: the store is a process-global singleton and pretending
- * otherwise here would be a more convincing lie than the `@Volatile`.
+ * note in the human's own notebook, which is a worse trade than a `var`. Not concurrent-safe,
+ * deliberately: the store is a process-global singleton and pretending otherwise here would
+ * be a more convincing lie than the `@Volatile`. Nesting *is* safe — the previous value is
+ * restored, not the default — because a helper that wraps every test application in one of
+ * these cannot know whether its caller already did.
+ *
+ * Worth reaching for more readily than it looks. Most of the route-level tests assert a
+ * *refusal*, so while they pass they never reach the store at all — but the point of a
+ * security test is to be run against a reverted guard, and that is exactly the state in
+ * which they do reach it. Twelve notes landed in the real file that way on 2026-08-12,
+ * during this function's own branch, before anybody noticed.
  */
 internal fun <T> withDocsAnnotationStoreAt(path: Path, block: () -> T): T {
     val previous = DocsAnnotationStore.path

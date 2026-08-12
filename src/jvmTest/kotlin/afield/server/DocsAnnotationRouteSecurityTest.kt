@@ -48,40 +48,41 @@ import kotlin.test.assertTrue
  * A security test nobody has watched fail guards nothing. Seven reverts, each applied on
  * its own with everything else restored, run 2026-08-12 against
  * `DocsAnnotationRouteSecurityTest` + `DocsAnnotationSecurityTest` +
- * `FieldApiCorsExposureTest` — 31 tests, of which this file is 12. The control run with
- * nothing reverted was 0 of 31.
+ * `FieldApiCorsExposureTest` — **33 tests**, of which this file is 13. Control, with
+ * nothing reverted: **0 of 33**.
  *
  * The one that is the point of the file first:
  *
  *  - **the guard *call* deleted from `post("/api/docs-annotations")`**, leaving the guard
  *    function itself intact. The nineteen pre-existing security tests: **0 of 19 failed.**
- *    This file: **6 of 12 failed.** That is the gap, measured, and it is why testing a
- *    predicate is not testing a route.
+ *    This file: **6 of 12 failed** (measured before the matrix test below existed). That is
+ *    the gap, and it is why testing a predicate is not testing a route.
  *
  * Then each guard in turn:
  *
  *  - **the whole site guard short-circuited to "allowed"** — the posture `main` ships,
- *    where loopback is the only check: **6 of 31** — `aCrossSiteWriteIsRefused…`,
+ *    where loopback is the only check: **7 of 33** — `aCrossSiteWriteIsRefused…`,
  *    `aSameSiteBrowserBadgeIsNotEnough…`, `aCrossSiteReadOfTheImprovementStatusIsRefused`,
- *    `anOriginThatDisagreesWithHost…`, `originNullIsNotAnAuthority…`,
+ *    `anOriginThatDisagreesWithHost…`, `originNullIsNotAnAuthority…`, `theSecFetchSiteMatrix`,
  *    `theWholeApiSurfaceRefusesACrossSitePost`.
- *  - **the `Sec-Fetch-Site` arm removed**, leaving only `Origin`/`Host`: **1 of 31** —
- *    `aCrossSiteWriteIsRefused…`, via its `PUT`, which is the case that arrives with no
- *    `Origin` to compare.
- *  - **the `Origin`/`Host` arm removed**, leaving only `Sec-Fetch-Site`: **2 of 31** —
- *    `anOriginThatDisagreesWithHost…` and `originNullIsNotAnAuthority…`.
+ *  - **the `Sec-Fetch-Site` arm removed**, leaving only `Origin`/`Host`: **2 of 33** —
+ *    `theSecFetchSiteMatrix`, and `aCrossSiteWriteIsRefused…` via its `PUT`, which is the
+ *    case that arrives with no `Origin` to compare.
+ *  - **the `Origin`/`Host` arm removed**, leaving only `Sec-Fetch-Site`: **3 of 33** —
+ *    `theSecFetchSiteMatrix`, `anOriginThatDisagreesWithHost…`, `originNullIsNotAnAuthority…`.
  *    The two arms failing *different* tests is the evidence that neither is decoration.
- *  - **the loopback check short-circuited to "allowed"**: **3 of 31** —
+ *  - **the loopback check short-circuited to "allowed"**: **3 of 33** —
  *    `aRequestFromOffTheMachineIsRefusedBeforeAnythingElse`, `theMirrorIsStillMachineGuarded`
  *    and, from the older file, `annotationsAreLoopbackOnlyByDefaultBecauseTheyArePromptText`.
- *  - **`allowMethod(HttpMethod.Delete)` removed** from [installFieldApiCors]: **3 of 31**.
- *  - **`anyHost()` removed**: **9 of 31**. Worth knowing which way that one points — most of
- *    those are tests in *this* file that stop being able to reach the route, because Ktor's
- *    CORS plugin refuses the request before the handler runs. The tests here therefore
- *    depend on the exposure they were written about still existing. If `anyHost()` ever
- *    goes, this file needs rereading, not repairing.
+ *  - **`allowMethod(HttpMethod.Delete)` removed** from [installFieldApiCors]: **3 of 33**.
+ *  - **`anyHost()` removed**: **10 of 33**. Worth knowing which way that one points — most
+ *    of those are tests in *this* file that stop being able to reach the route, because
+ *    Ktor's CORS plugin refuses the request before the handler runs. The tests here
+ *    therefore depend on the exposure they were written about still existing. If
+ *    `anyHost()` ever goes, this file needs rereading, not repairing.
  *
- * If you change a guard, do that again rather than trusting the green.
+ * If you change a guard, do that again rather than trusting the green — and read what
+ * [docsApp] says about the annotation store before you do.
  *
  * ## What the test engine hands us, which is not what a browser hands us
  *
@@ -192,6 +193,63 @@ class DocsAnnotationRouteSecurityTest {
         )
     }
 
+    /**
+     * The whole `Sec-Fetch-Site` vocabulary, and the two ways of not saying anything.
+     *
+     * Written as a table because the interesting cases are the ones nobody thinks to try.
+     * The `Origin` is held foreign throughout, so any row that passes is passing on the
+     * header alone — which is what makes `same-site` and `Sec-Fetch-Site: SAME-ORIGIN`
+     * worth their rows, and what makes the unrecognised values worth theirs. A value we do
+     * not understand is not permission.
+     */
+    @Test
+    fun theSecFetchSiteMatrix() = docsApp { secFetchSiteMatrix() }
+
+    /** Extracted only so the whole matrix runs inside one temp store; the allowed rows really do write. */
+    private suspend fun HttpClient.secFetchSiteMatrix() {
+        val allowed = listOf("same-origin", "none", "  same-origin  ", "SAME-ORIGIN", "None")
+        val refused = listOf("cross-site", "same-site", "CROSS-SITE", "Same-Site", "maybe", "same origin", "1")
+        for (value in allowed) {
+            assertEquals(
+                HttpStatusCode.OK,
+                post("/api/docs-annotations") {
+                    header(HttpHeaders.Host, FIELD_HOST)
+                    header(HttpHeaders.Origin, EVIL_ORIGIN)
+                    header(SEC_FETCH_SITE_HEADER, value)
+                    jsonBody(UPSERT)
+                }.status,
+                "Sec-Fetch-Site: '$value' should be trusted even against a foreign Origin — it is a forbidden " +
+                    "header name, so a page cannot have written it",
+            )
+        }
+        for (value in refused) {
+            assertRefusedAsCrossSite(
+                post("/api/docs-annotations") {
+                    header(HttpHeaders.Host, FIELD_HOST)
+                    header(HttpHeaders.Origin, EVIL_ORIGIN)
+                    header(SEC_FETCH_SITE_HEADER, value)
+                    jsonBody(UPSERT)
+                },
+                "for Sec-Fetch-Site: '$value' —",
+            )
+        }
+        // Blank is "the header is not really there", and falls through to Origin/Host,
+        // which here disagree. Absent entirely does the same.
+        for (builder in listOf<HttpRequestBuilder.() -> Unit>(
+            { header(SEC_FETCH_SITE_HEADER, "  ") },
+            { },
+        )) {
+            assertRefusedAsCrossSite(
+                post("/api/docs-annotations") {
+                    header(HttpHeaders.Host, FIELD_HOST)
+                    header(HttpHeaders.Origin, EVIL_ORIGIN)
+                    builder()
+                    jsonBody(UPSERT)
+                },
+            )
+        }
+    }
+
     /** A sandboxed iframe sends the literal string `null`, which is not an authority and cannot match. */
     @Test
     fun originNullIsNotAnAuthorityThatCanMatch() = docsApp {
@@ -230,27 +288,25 @@ class DocsAnnotationRouteSecurityTest {
      * here rather than asserted in a worklog because a worklog cannot go red.
      */
     @Test
-    fun theLocalPanelStillCompletesItsWholeLoop() = withTempStore { store ->
-        docsApp {
-            val created = post("/api/docs-annotations") { fromThePanel(); jsonBody(UPSERT) }
-            assertEquals(HttpStatusCode.OK, created.status, created.bodyAsText())
-            val id = Regex(""""id"\s*:\s*"([^"]+)"""").find(created.bodyAsText())?.groupValues?.get(1)
-            assertTrue(id != null, "the created note must come back with an id: ${created.bodyAsText()}")
+    fun theLocalPanelStillCompletesItsWholeLoop() = docsApp {
+        val created = post("/api/docs-annotations") { fromThePanel(); jsonBody(UPSERT) }
+        assertEquals(HttpStatusCode.OK, created.status, created.bodyAsText())
+        val id = Regex(""""id"\s*:\s*"([^"]+)"""").find(created.bodyAsText())?.groupValues?.get(1)
+        assertTrue(id != null, "the created note must come back with an id: ${created.bodyAsText()}")
 
-            val listed = get("/api/docs-annotations") { fromThePanel() }
-            assertEquals(HttpStatusCode.OK, listed.status)
-            assertTrue(id in listed.bodyAsText(), "the note must be listed back to the panel")
+        val listed = get("/api/docs-annotations") { fromThePanel() }
+        assertEquals(HttpStatusCode.OK, listed.status)
+        assertTrue(id in listed.bodyAsText(), "the note must be listed back to the panel")
 
-            val resolved = put("/api/docs-annotations/$id/resolve") { fromThePanel(); jsonBody(RESOLVE) }
-            assertEquals(HttpStatusCode.OK, resolved.status, resolved.bodyAsText())
-            assertTrue("Resolved by user" in resolved.bodyAsText())
+        val resolved = put("/api/docs-annotations/$id/resolve") { fromThePanel(); jsonBody(RESOLVE) }
+        assertEquals(HttpStatusCode.OK, resolved.status, resolved.bodyAsText())
+        assertTrue("Resolved by user" in resolved.bodyAsText())
 
-            assertEquals(HttpStatusCode.OK, delete("/api/docs-annotations/$id") { fromThePanel() }.status)
-            assertEquals(HttpStatusCode.OK, get("/api/docs-improvement") { fromThePanel() }.status)
+        assertEquals(HttpStatusCode.OK, delete("/api/docs-annotations/$id") { fromThePanel() }.status)
+        assertEquals(HttpStatusCode.OK, get("/api/docs-improvement") { fromThePanel() }.status)
 
-            // And it went to the temp store rather than the human's real notebook.
-            assertTrue(Files.exists(store), "the panel's writes must have landed in $store")
-        }
+        // And it went to the temp store rather than the human's real notebook.
+        assertTrue(Files.exists(storeInUse), "the panel's writes must have landed in $storeInUse")
     }
 
     /**
@@ -276,7 +332,7 @@ class DocsAnnotationRouteSecurityTest {
 
     /** The hatch, since a guard with an escape hatch nobody has tried is a guard with a story about a hatch. */
     @Test
-    fun theCrossSiteHatchOpensExactlyTheAnnotationApi() = withTempStore {
+    fun theCrossSiteHatchOpensExactlyTheAnnotationApi() {
         docsApp(remoteAllowed.copy(allowCrossSiteAnnotations = true)) {
             assertEquals(
                 HttpStatusCode.OK,
@@ -388,21 +444,37 @@ class DocsAnnotationRouteSecurityTest {
      * machine guard correctly refuses, so leaving it shut would mean every test here proved
      * only that the machine guard works. Opening it is what puts the *site* guard on the
      * path. The tests that want the machine guard pass `DocsAccessPolicy()` explicitly.
+     *
+     * **Every app runs against a temporary store, unconditionally**, and that is not
+     * belt-and-braces — it is a bug fix. Most of the tests here assert a *refusal*, so on
+     * the face of it they never reach the store at all. But the whole method of this file is
+     * to revert a guard and watch them fail, and a reverted guard is precisely the state in
+     * which those POSTs succeed. Running the six experiments in this file's KDoc wrote
+     * **twelve** notes into the human's real `~/.afield/docs-annotations.json` before this
+     * was noticed. (Noticing was easy, which is the one good part: `recordedInCheckout`,
+     * added the night before for exactly this, named the worktree on every one of them.)
+     * A test that is safe *while it passes* is not a safe test.
      */
     private fun docsApp(
         policy: DocsAccessPolicy = remoteAllowed,
         block: suspend HttpClient.() -> Unit,
-    ) = testApplication {
-        application {
-            install(ContentNegotiation) { json() }
-            installFieldApiCors()
-            routing { installDocsAnnotationRoutes(policy) }
+    ) = withTempStore { store ->
+        storeInUse = store
+        testApplication {
+            application {
+                install(ContentNegotiation) { json() }
+                installFieldApiCors()
+                routing { installDocsAnnotationRoutes(policy) }
+            }
+            client.block()
         }
-        client.block()
     }
 
     /** Loopback opened, everything else as shipped: the posture that isolates the site guard. */
     private val remoteAllowed = DocsAccessPolicy(allowRemoteAnnotations = true)
+
+    /** The temporary file the currently-running [docsApp] is writing to. */
+    private lateinit var storeInUse: Path
 
     /** Headers a browser attaches to a `fetch` from a page on another website. */
     private fun HttpRequestBuilder.fromEvilPage() {
