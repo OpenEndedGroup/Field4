@@ -495,7 +495,7 @@ fun sonicPiProgram(
 
         missing.forEach { (atom, count) -> unresolved += SonicPiUnresolvedAtom(layer, atom, count) }
         allEvents += lowered
-        bodies += renderLiveLoop(layer, lowered, cycles, kit.defaultSynth)
+        bodies += renderLiveLoop(layer, lowered, cycles, cpsValue, kit.defaultSynth)
     }
 
     val header = renderHeader(layers.map { it.name }, cpsValue, cycles, unresolved, dropped)
@@ -566,11 +566,13 @@ private fun renderLiveLoop(
     layer: String,
     events: List<SonicPiPatternEvent>,
     cycles: Int,
+    cps: Double,
     defaultSynth: String
 ): String = buildString {
     appendLine()
     appendLine("live_loop :$layer do")
-    appendLine("  use_bpm ${formatRubyNumber(60.0)} * $SONIC_PI_CPS_PLACEHOLDER")
+    // `60 * cps` rather than the product, so the emitted program says why its tempo is what it is.
+    appendLine("  use_bpm 60 * ${formatRubyNumber(cps)}")
     appendLine("  use_synth :$defaultSynth")
 
     var cursor = PatQ.ZERO
@@ -595,14 +597,6 @@ private fun renderLiveLoop(
     if (tail > PatQ.ZERO) appendLine("  sleep ${patQToRuby(tail)}")
     appendLine("end")
 }
-
-/**
- * A placeholder rather than the number, so the emitted source names its own tempo once.
- *
- * Replaced in [sonicPiProgram]'s output — see [substituteCps]. Kept as a constant because the
- * program reader has to recognise it to read a program back that has not been substituted.
- */
-private const val SONIC_PI_CPS_PLACEHOLDER = "__CPS__"
 
 private fun renderOpts(opts: List<Pair<String, String>>): String =
     if (opts.isEmpty()) "" else opts.joinToString(", ", prefix = ", ") { "${it.first}: ${it.second}" }
@@ -715,7 +709,9 @@ internal fun formatRubyNumber(value: Double): String {
     if (value == value.roundToInt().toDouble() && kotlin.math.abs(value) < 1e9) {
         return value.roundToInt().toString()
     }
-    return BigDecimal(value).setScale(6, java.math.RoundingMode.HALF_UP)
+    // Four places: enough for a rate or a gain curve, few enough that a MIDI cutoff derived from
+    // Hz reads as a number rather than as an artefact of the conversion that produced it.
+    return BigDecimal(value).setScale(4, java.math.RoundingMode.HALF_UP)
         .stripTrailingZeros().toPlainString()
 }
 
@@ -728,9 +724,6 @@ internal fun rubyLoopName(name: String): String {
     val safe = cleaned.ifEmpty { "field" }
     return if (safe.first().isDigit()) "l_$safe" else safe
 }
-
-private fun substituteCps(source: String, cps: Double): String =
-    source.replace(SONIC_PI_CPS_PLACEHOLDER, formatRubyNumber(cps))
 
 // ── reading a program back ─────────────────────────────────────────────────────────────────────
 
@@ -944,7 +937,7 @@ fun Box.sonicPiPattern(
     }
     // lineOffset 0 rather than inferred: the Ruby was generated, so there is no literal in this
     // box's source for Sonic Pi's line numbers to be measured against.
-    return sonicPi(substituteCps(program.source, program.cps), lineOffset = 0)
+    return sonicPi(program.source, lineOffset = 0)
 }
 
 /** The Sonic Pi source for a pattern, ready to paste into a `#sonicpi` region. */
@@ -953,10 +946,7 @@ fun PatPattern<String>.sonicPiSource(
     cycles: Int = 1,
     name: String = "field",
     instruments: SonicPiInstruments = SonicPiInstruments()
-): String {
-    val program = sonicPiProgram(name to this, cps = cps, cycles = cycles, instruments = instruments)
-    return substituteCps(program.source, program.cps)
-}
+): String = sonicPiProgram(name to this, cps = cps, cycles = cycles, instruments = instruments).source
 
 /**
  * Drive Sonic Pi from Field's clock, one `/run-code` per event.

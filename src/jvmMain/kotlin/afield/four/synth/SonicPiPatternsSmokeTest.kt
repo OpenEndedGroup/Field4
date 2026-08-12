@@ -64,6 +64,9 @@ object SonicPiPatternsSmokeTest {
         println("parameter translation")
         checkOptTranslation(failures)
 
+        println("the emitted source is complete")
+        checkSourceIsRunnable(failures)
+
         println("a layer may name its own synth")
         checkPerLayerSynth(failures)
 
@@ -433,6 +436,37 @@ object SonicPiPatternsSmokeTest {
         if (rate["rate"] != "1.5") failures += "speed(1.5) became rate: ${rate["rate"]}, expected 1.5"
 
         println("  gain->amp, pan rescaled to -1..1, cutoff Hz->MIDI (440->69), speed->rate")
+    }
+
+    /**
+     * [SonicPiProgram.source] is something a person pastes into a `#sonicpi` region, so whatever
+     * comes out of it has to be Ruby all the way through.
+     *
+     * This exists because it was not. The tempo started life as a `__CPS__` placeholder substituted
+     * on the way out of `Box.sonicPiPattern`, which meant the *public* `source` — the field the
+     * whole API is named after — carried a token Ruby has never heard of. It only showed up when
+     * the program was printed from a box, which is the first thing anyone does.
+     */
+    private fun checkSourceIsRunnable(failures: MutableList<String>) {
+        for (cps in listOf(0.25, 0.5, 1.0, 2.0)) {
+            val program = pat("bd sd hh").toSonicPiProgram(cps = cps, cycles = 2, name = "run")
+            val source = program.source
+            if ("__" in source) failures += "an unsubstituted placeholder survived into source at $cps cps"
+            if ("use_bpm 60 * ${formatRubyNumber(cps)}" !in source) {
+                failures += "the emitted tempo line is wrong at $cps cps: " +
+                    source.lines().first { it.trim().startsWith("use_bpm") }.trim()
+            }
+            // Every route to the text has to give the same text; two of them once did not.
+            if (pat("bd sd hh").sonicPiSource(cps = cps, cycles = 2, name = "run") != source) {
+                failures += "sonicPiSource and SonicPiProgram.source disagree at $cps cps"
+            }
+            // Only Ruby the reader recognises, and a program that is nothing but a comment header
+            // would satisfy that vacuously — so check it has a body too.
+            val reading = SonicPiProgramReader.read(source)
+            if (reading.unparsed.isNotEmpty()) failures += "unreadable line(s): ${reading.unparsed}"
+            if (reading.events.size != 6) failures += "expected 6 events over 2 cycles, got ${reading.events.size}"
+        }
+        println("  no placeholders survive; source, sonicPiSource and the reader all agree")
     }
 
     /**
