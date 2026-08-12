@@ -71,12 +71,17 @@ class ViewerJavaScriptRegionTest {
      * If the viewer ever needs more of three.js in here, this test is the place that says so — and the
      * answer is to extend the shim deliberately, not to discover months later that the region stopped
      * being executable and the differential stopped meaning anything.
+     *
+     * The scan runs over [ViewerJavaScript.withoutComments] rather than the raw text: the regions
+     * explain themselves at length and one of them quotes the human's workspace *document*, which is a
+     * sentence rather than a DOM access. Before 2026-08-11 that word alone failed this test, which is a
+     * prose rule masquerading as a behaviour rule.
      */
     @Test
     fun noRegionUsesTheDomAndOnlyTheShimmedThreeMembersAppear() {
         val allowed = setOf("Vector2", "ShapeUtils.triangulateShape")
         ViewerJavaScript.KNOWN_REGIONS.keys.forEach { name ->
-            val source = ViewerJavaScript.regionSource(name)
+            val source = ViewerJavaScript.withoutComments(ViewerJavaScript.regionSource(name))
             listOf("document", "window", "navigator", "requestAnimationFrame", "localStorage").forEach {
                 assertTrue(
                     !Regex("""\b$it\b""").containsMatchIn(source),
@@ -91,7 +96,7 @@ class ViewerJavaScriptRegionTest {
         }
         // And the shimmed surface is exactly used, not merely permitted — if the tessellation region
         // stops needing `triangulateShape`, the shim has become dead weight and should be reconsidered.
-        val tessellation = ViewerJavaScript.regionSource("planar-tessellation")
+        val tessellation = ViewerJavaScript.withoutComments(ViewerJavaScript.regionSource("planar-tessellation"))
         val inTessellation = Regex("""THREE\.(\w+(?:\.\w+)?)""").findAll(tessellation)
             .map { it.groupValues[1] }.toSet()
         assertEquals(allowed, inTessellation, "the tessellation region's THREE surface changed")
@@ -112,6 +117,41 @@ class ViewerJavaScriptRegionTest {
             assertEquals(1L, polygons.arraySize)
             assertEquals(0, polygons.getArrayElement(0).getMember("outer").asInt())
             assertEquals(6L, polygons.getArrayElement(0).getMember("triangles").arraySize)
+        }
+    }
+
+    /**
+     * The comment stripper loosened the DOM guard, so here is the proof it did not blunt it.
+     *
+     * Three shapes of real DOM access — bare, behind a block comment on the same line, and behind a
+     * trailing line comment — all still trip the same scan. And the third case is the one that says the
+     * stripper is safe *in the right direction*: a `//` inside a string literal makes it delete more
+     * than it should, never less, so it cannot conceal a reach for the DOM. It can only cause a
+     * false green on a region whose only DOM access is inside a string, which is not a thing.
+     */
+    @Test
+    fun aRealDomAccessIsStillCaughtAfterCommentsAreStripped() {
+        val forbidden = Regex("""\bdocument\b""")
+        listOf(
+            "const el = document.getElementById('x');",
+            "/* explaining a document */ const el = document.body;",
+            "const el = document.body; // fetch the document",
+            "const el =\n    document\n        .body;",
+        ).forEach { snippet ->
+            assertTrue(
+                forbidden.containsMatchIn(ViewerJavaScript.withoutComments(snippet)),
+                "the stripper hid a real DOM access in: $snippet",
+            )
+        }
+        // …while prose alone no longer trips it, which is the whole point of the change.
+        listOf(
+            "// quoting the human's document, which is prose",
+            "/*\n * a document, at length\n */",
+        ).forEach { snippet ->
+            assertTrue(
+                !forbidden.containsMatchIn(ViewerJavaScript.withoutComments(snippet)),
+                "prose still trips the DOM guard: $snippet",
+            )
         }
     }
 

@@ -144,6 +144,53 @@
             visibility: hidden;
         }
 
+        /* The inspector's three controls. Deliberately the same visual language as the edit tools:
+           the point of this pane is that measuring, sectioning and exploding are the same *kind* of
+           thing as selecting a vertex, not a separate mode you have to go somewhere else for. */
+        .hud-slider {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 0 6px;
+            font-size: 10px;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .hud-slider input[type="range"] {
+            width: 84px;
+            height: 14px;
+            accent-color: var(--accent);
+            background: transparent;
+            cursor: ew-resize;
+        }
+
+        .hud-slider b {
+            color: var(--ink);
+            font-weight: 400;
+            min-width: 34px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #inspector-status {
+            font-size: 11px;
+            color: var(--selection);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+            pointer-events: none;
+            text-align: right;
+        }
+
+        /* `#hud-right` is a flex column with an 8px gap, so an *empty* status line is not free -- it
+           costs one gap and pushes the meta readout down by 8px on every figure in the docs, inspector
+           or not. `tools/docs_capture_audit.py --repeat 2` classified three unrelated three.js captures
+           as stale for exactly that reason before this rule existed. `:empty` takes it out of the flow,
+           so a payload with no inspector renders as it did before any of this landed. */
+        #inspector-status:empty {
+            display: none;
+        }
+
         #marquee {
             position: absolute;
             z-index: 9;
@@ -184,8 +231,31 @@
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 L13.2 12.6 L2.8 12.6 Z"></path></svg>
             </button>
         </div>
+        <div class="hud-group hidden" id="inspector-group" aria-label="Inspector tools">
+            <button type="button" class="hud-button is-icon" data-inspector="measure" aria-label="Measure between two elements" title="Measure: click two elements">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M1.8 9.6 6.4 5l7.8 7.8-4.6 4.6z" transform="translate(0,-2.6)"></path>
+                    <path d="M4.4 6.2 5.6 7.4M6.6 4 7.8 5.2M8.8 6.2 10 7.4"></path>
+                </svg>
+            </button>
+            <button type="button" class="hud-button is-icon" data-inspector="section" aria-label="Section" title="Section: cut the figure">
+                <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2.2 4.4h11.6L11 11.6H4.8z"></path>
+                    <path d="M1 8h14"></path>
+                </svg>
+            </button>
+            <span class="hud-slider hidden" id="section-slider-wrap">
+                <input type="range" id="section-slider" min="0" max="1000" value="500" aria-label="Section position">
+            </span>
+            <span class="hud-slider" id="explode-slider-wrap">
+                <span>explode</span>
+                <input type="range" id="explode-slider" min="0" max="1000" value="0" aria-label="Explode amount">
+                <b id="explode-readout">0</b>
+            </span>
+        </div>
     </div>
     <div id="hud-right">
+        <div id="inspector-status"></div>
         <div class="selection-status is-empty hidden" id="selection-status"></div>
         <div class="meta" id="meta">waiting for data...</div>
     </div>
@@ -853,25 +923,45 @@ function ensureAttribute(geometry, name, itemSize, fillValue) {
     geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
 }
 
+// The four custom materials below carry three.js's own clipping-plane chunks.
+//
+// `MeshStandardMaterial` gets clipping for free; a `ShaderMaterial` does not, and the four figures the
+// viewer draws with are three of these plus one standard. Without the chunks a section clipped the
+// fills and left the strokes and the point sprites hanging in the air past the cut, which reads as a
+// rendering bug rather than as a drawing.
+//
+// The contract is small and exact: `clipping: true` so `WebGLPrograms` defines `NUM_CLIPPING_PLANES`
+// and injects the `clippingPlanes` uniform; `<clipping_planes_pars_vertex>` and
+// `<clipping_planes_vertex>` in the vertex shader, the latter after a `vec4 mvPosition` it reads by
+// name; and the two fragment chunks, with `<clipping_planes_fragment>` first in `main` so a clipped
+// fragment is discarded before anything else is computed. With no planes set, every chunk expands to
+// nothing and the shaders are byte-identical to what they were — asserted by re-running
+// `docs_capture_audit.py`, which left all 43 of the page's other figures unmoved.
 function makeLineMaterial() {
     return new THREE.ShaderMaterial({
         vertexShader: `
             attribute vec3 color;
             attribute float alpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 gl_FragColor = vColor;
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -886,16 +976,20 @@ function makePointMaterial() {
             attribute float alpha;
             varying vec4 vColor;
             uniform float uPixelRatio;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_PointSize = max(size * uPixelRatio, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
@@ -904,7 +998,8 @@ function makePointMaterial() {
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -945,9 +1040,12 @@ function makeInteractiveLineMaterial(hoverColor) {
             attribute vec3 color;
             attribute float alpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
@@ -955,14 +1053,17 @@ function makeInteractiveLineMaterial(hoverColor) {
             uniform vec3 uHoverColor;
             uniform float uHoverAlpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec3 c = mix(vColor.rgb, uHoverColor, uHover);
                 float a = mix(vColor.a, uHoverAlpha, uHover);
                 gl_FragColor = vec4(c, a);
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -980,11 +1081,13 @@ function makeInteractivePointMaterial(hoverColor) {
             attribute float alpha;
             varying vec4 vColor;
             uniform float uPixelRatio;
+            #include <clipping_planes_pars_vertex>
             void main() {
                 vColor = vec4(color, alpha);
                 vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
                 gl_PointSize = max(size * uPixelRatio, 1.0);
                 gl_Position = projectionMatrix * mvPosition;
+                #include <clipping_planes_vertex>
             }
         `,
         fragmentShader: `
@@ -992,7 +1095,9 @@ function makeInteractivePointMaterial(hoverColor) {
             uniform vec3 uHoverColor;
             uniform float uHoverAlpha;
             varying vec4 vColor;
+            #include <clipping_planes_pars_fragment>
             void main() {
+                #include <clipping_planes_fragment>
                 vec2 uv = gl_PointCoord - vec2(0.5);
                 float dist = dot(uv, uv);
                 if (dist > 0.25) discard;
@@ -1003,7 +1108,8 @@ function makeInteractivePointMaterial(hoverColor) {
             }
         `,
         transparent: true,
-        depthWrite: false
+        depthWrite: false,
+        clipping: true
     });
 }
 
@@ -1104,70 +1210,30 @@ function upsertInteractiveObject(slot, obj) {
     next.points = upsertGeometrySlot(next.points, obj.points, interactiveSlotOptions('points', hoverColor));
     const meshes = [next.lines?.object, next.fills?.object, next.points?.object].filter(Boolean);
     if (!meshes.length) return removeInteractiveSlot(next);
-    next.entry = {
-        callbackId: obj.callbackId || '',
-        hoverColor,
-        meshes,
-        hovering: false,
-        vertices: obj.vertices || []
-    };
+    next.entry = interactiveEntry(obj, meshes, obj.vertices);
     return next;
 }
 
-function addInteractiveObject(obj) {
-    const meshes = [];
-    const hoverColor = obj.hoverColor || null;
-    if (obj.lines) {
-        const geometry = buildGeometry(obj.lines);
-        if (geometry) {
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = makeInteractiveLineMaterial(hoverColor);
-            const three = new THREE.LineSegments(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (obj.fills) {
-        const geometry = buildGeometry(obj.fills);
-        if (geometry) {
-            geometry.computeVertexNormals();
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            const material = makeInteractiveFillMaterial(hoverColor);
-            const three = new THREE.Mesh(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (obj.points) {
-        const geometry = buildGeometry(obj.points);
-        if (geometry) {
-            ensureAttribute(geometry, 'color', 3, 1);
-            ensureAttribute(geometry, 'alpha', 1, 1);
-            ensureAttribute(geometry, 'size', 1, 3);
-            const material = makeInteractivePointMaterial(hoverColor);
-            const three = new THREE.Points(geometry, material);
-            three.userData.interactiveMat = material;
-            baseGeometryRoot.add(three);
-            meshes.push(three);
-        }
-    }
-    if (meshes.length) {
-        interactiveObjects.push({
-            callbackId: obj.callbackId || '',
-            hoverColor,
-            meshes,
-            hovering: false,
-            vertices: obj.vertices || [],
-            lineIndex: Number.isFinite(obj.lineIndex) ? obj.lineIndex : -1,
-            label: typeof obj.label === 'string' ? obj.label : null,
-            topology: parseFLineTopology(obj.topology)
-        });
-    }
-}
+// [viewer-region interactive-entry] BEGIN
+// What a clickable object remembers about itself — written once, for both paths.
+//
+// This region exists because of a bug rather than a feature. `06352df08` taught the viewer to name the
+// element under the pointer, and the naming needs three fields on the entry: `topology`, `lineIndex`
+// and `label`. There were **two** places that built an entry — `makeInteractiveEntry` for editable
+// scenes and an object literal inside `upsertInteractiveObject` for ordinary ones — and only the first
+// was updated. `upsertInteractiveObject` is the one `renderPayloadGeometry` actually calls, so on the
+// live non-editable path `entry.topology` was `undefined`, `flinePickClassify` was handed `null`, and
+// every click came back with `kind` but `nodeIndex: -1` and no label. The feature was dead in the water
+// on exactly the figures it was written for. Found 2026-08-11 while wiring pick-to-measure, which needs
+// the same three fields.
+//
+// A third copy — `addInteractiveObject`, ~50 lines, no callers — had them all and was never reached.
+// It has been deleted; it is what made the drift invisible.
+//
+// So: one constructor, marked, lifted and executed under test by
+// `ThreeInteractiveEntryDifferentialTest`. Pure — the meshes and vertices come in as opaque values —
+// so the fact that this cannot happen again is an assertion rather than a convention.
+const INTERACTIVE_ENTRY_FIELDS = 8;
 
 /** The line's segments and closed subpaths, as the server serialised them. Never throws. */
 function parseFLineTopology(text) {
@@ -1175,11 +1241,13 @@ function parseFLineTopology(text) {
     try {
         return JSON.parse(text);
     } catch (error) {
-        console.warn('unparsable FLine topology', error);
+        // Guarded because this region is also executed outside a browser, by the differential test.
+        if (typeof console !== 'undefined' && console.warn) console.warn('unparsable FLine topology', error);
         return null;
     }
 }
 
+/** An editable scene's line, as the `{ index, position }` pairs an entry wants. */
 function verticesForLine(line) {
     return line.nodes
         .filter((node) => node.kind !== 'close' && node.to)
@@ -1189,17 +1257,29 @@ function verticesForLine(line) {
         }));
 }
 
-function makeInteractiveEntry(line, meshes) {
+/**
+ * The one entry constructor.
+ *
+ * `source` is either an editable `ThreeEditableLine` or a `ThreeInteractiveObject`; the four fields it
+ * is read for — `callbackId`, `hoverColor`, `lineIndex`, `label`, `topology` — are named identically on
+ * both by the server, which is what makes one constructor possible at all.
+ */
+function interactiveEntry(source, meshes, vertices) {
     return {
-        callbackId: line.callbackId || '',
-        hoverColor: line.hoverColor || null,
-        meshes,
+        callbackId: source.callbackId || '',
+        hoverColor: source.hoverColor || null,
+        meshes: meshes,
         hovering: false,
-        vertices: verticesForLine(line),
-        lineIndex: Number.isFinite(line.lineIndex) ? line.lineIndex : -1,
-        label: typeof line.label === 'string' ? line.label : null,
-        topology: parseFLineTopology(line.topology)
+        vertices: vertices || [],
+        lineIndex: Number.isFinite(source.lineIndex) ? source.lineIndex : -1,
+        label: typeof source.label === 'string' ? source.label : null,
+        topology: parseFLineTopology(source.topology)
     };
+}
+// [viewer-region interactive-entry] END
+
+function makeInteractiveEntry(line, meshes) {
+    return interactiveEntry(line, meshes, verticesForLine(line));
 }
 
 // [viewer-region fline-hit-picking] BEGIN
@@ -1540,6 +1620,659 @@ function flinePickClassify(topology, role, point3) {
     };
 }
 // [viewer-region fline-hit-picking] END
+
+// [viewer-region inspector-measure] BEGIN
+// "How far apart are these two things" — the arithmetic half of the measure tool.
+//
+// The viewer can already name the element under the pointer (`flinePickClassify`, above). Naming two
+// of them and reporting the distance between them is the next question anyone asks of a 3D preview of
+// something that gets built, and it is the first one the viewer could not answer at all.
+//
+// An **element** here is one of three shapes, which is exactly what a hit record can resolve to:
+// a `point` (a node), a `segment` (an edge — a straight one; a cubic is sampled into straight pieces
+// by the caller before it gets here), or a `polygon` (a filled face, as its ring of corners).
+//
+// The distance is the true **closest approach**, not a centroid-to-centroid convenience, because on a
+// panel drawing those are different numbers and only one of them is the one you would take to a saw.
+// For two disjoint polygonal sets in 3D the minimum is always attained at a (vertex, other-element)
+// pair or at an (edge, edge) pair, so enumerating exactly those three families is complete rather than
+// approximate — no sampling, no iteration, no tolerance in the answer. `measureClosestApproach` is
+// therefore exact to floating point: two squares built 2.5 apart come back as 2.5, and
+// `ThreeInspectorMeasureDifferentialTest` asserts precisely that.
+//
+// Deliberate duplication, said out loud: `measurePolygonFrame` recomputes a Newell normal and an
+// orthonormal plane frame that `flinePickFaceFrame` already computes 300 lines up. They are *not*
+// shared, because a region has to be liftable on its own — `ViewerJavaScript` evaluates one region at
+// a time, and a cross-region call would make each of them untestable in isolation. The cost is thirty
+// lines said twice; the benefit is that both are executed under test. If a third region needs the same
+// frame, that is the moment to make a `viewer-vector-math` region and have all three import it.
+//
+// No DOM, no THREE — `ViewerJavaScriptRegionTest` asserts both.
+const MEASURE_EPS = 1e-12;
+
+function measureSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function measureAdd(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function measureScale(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function measureDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function measureCross(a, b) {
+    return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0]
+    ];
+}
+function measureLength(a) { return Math.sqrt(measureDot(a, a)); }
+function measureDistance(a, b) { return measureLength(measureSub(a, b)); }
+
+/** A unit vector, or `null` when there was no direction to normalise — never a NaN triple. */
+function measureNormalize(a) {
+    const length = measureLength(a);
+    if (!(length > MEASURE_EPS)) return null;
+    return [a[0] / length, a[1] / length, a[2] / length];
+}
+
+/**
+ * The three shapes a picked element can take, normalised.
+ *
+ * `kind` is authoritative when it is given — the caller got it from a raycast, which already knows
+ * whether the ray hit line geometry, a fill or a point sprite. The point-count fallback is only for a
+ * caller that constructed an element by hand.
+ */
+function measureElement(kind, points) {
+    const pts = (points || []).map((p) => [Number(p[0]), Number(p[1]), Number(p[2])]);
+    if (kind === 'point' || (!kind && pts.length === 1)) return { kind: 'point', pts: pts.slice(0, 1) };
+    if (kind === 'segment' || kind === 'edge' || (!kind && pts.length === 2)) {
+        return { kind: 'segment', pts: pts.slice(0, 2) };
+    }
+    return { kind: 'polygon', pts: pts };
+}
+
+/** The closed ring of an element, as `[a, b]` pairs. A point has none; a segment has one. */
+function measureEdges(element) {
+    const pts = element.pts;
+    if (element.kind === 'segment' && pts.length >= 2) return [[pts[0], pts[1]]];
+    if (element.kind === 'polygon' && pts.length >= 2) {
+        const out = [];
+        for (let i = 0; i < pts.length; i += 1) out.push([pts[i], pts[(i + 1) % pts.length]]);
+        return out;
+    }
+    return [];
+}
+
+/** The point of `[a, b]` nearest to `p`, with the parameter clamped to the segment. */
+function measureNearestOnSegment(a, b, p) {
+    const d = measureSub(b, a);
+    const lengthSquared = measureDot(d, d);
+    if (!(lengthSquared > MEASURE_EPS)) return a.slice();
+    const t = Math.min(1, Math.max(0, measureDot(measureSub(p, a), d) / lengthSquared));
+    return measureAdd(a, measureScale(d, t));
+}
+
+/**
+ * An orthonormal frame for a polygon's own plane, plus the ring already flattened into it.
+ *
+ * Newell's normal, so a slightly non-planar ring — which every real tessellated panel is — gets the
+ * area-weighted average plane rather than whatever its first three corners happened to say. `null` for
+ * a ring with no plane at all, and the callers then fall back to the boundary, which still has an
+ * answer.
+ */
+function measurePolygonFrame(pts) {
+    if (!pts || pts.length < 3) return null;
+    let n = [0, 0, 0];
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        n[0] += (pts[j][1] - pts[i][1]) * (pts[j][2] + pts[i][2]);
+        n[1] += (pts[j][2] - pts[i][2]) * (pts[j][0] + pts[i][0]);
+        n[2] += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]);
+    }
+    const normal = measureNormalize(n);
+    if (!normal) return null;
+    let axisU = null;
+    for (let i = 1; i < pts.length && !axisU; i += 1) axisU = measureNormalize(measureSub(pts[i], pts[0]));
+    if (!axisU) return null;
+    const axisV = measureCross(normal, axisU);
+    const origin = pts[0];
+    const flat = pts.map((q) => {
+        const d = measureSub(q, origin);
+        return [measureDot(d, axisU), measureDot(d, axisV)];
+    });
+    return { origin: origin, u: axisU, v: axisV, normal: normal, flat: flat };
+}
+
+/** `p` in the frame's plane coordinates, plus its signed distance off the plane. */
+function measureToPlane(frame, p) {
+    const d = measureSub(p, frame.origin);
+    return { s: measureDot(d, frame.u), t: measureDot(d, frame.v), off: measureDot(d, frame.normal) };
+}
+
+/** Even-odd, on a ring already flattened into `[s, t]` pairs. */
+function measurePointInPolygon(flat, s, t) {
+    let inside = false;
+    for (let i = 0, j = flat.length - 1; i < flat.length; j = i++) {
+        const si = flat[i][0];
+        const ti = flat[i][1];
+        const sj = flat[j][0];
+        const tj = flat[j][1];
+        if ((ti > t) !== (tj > t) && s < (sj - si) * (t - ti) / (tj - ti) + si) inside = !inside;
+    }
+    return inside;
+}
+
+/**
+ * The point of an element nearest to `p`.
+ *
+ * For a polygon this is the perpendicular foot when the foot lands *inside* the ring, and the nearest
+ * boundary point otherwise — which is the distinction that makes a face-to-face measurement mean what
+ * a fabricator would mean by it, rather than collapsing to a corner-to-corner answer.
+ *
+ * `null` — never a plausible-looking origin — for an element with no geometry at all. An empty element
+ * reaches this code when a cached viewer receives a topology it cannot parse, and answering `[0, 0, 0]`
+ * would have reported the distance to the world origin as if it were a measurement.
+ */
+function measureNearestOnElement(element, p) {
+    if (!element || !element.pts || !element.pts.length) return null;
+    if (element.kind === 'point') return element.pts[0].slice();
+    if (element.kind === 'segment' && element.pts.length < 2) return element.pts[0].slice();
+    if (element.kind === 'segment') return measureNearestOnSegment(element.pts[0], element.pts[1], p);
+    const frame = measurePolygonFrame(element.pts);
+    if (frame) {
+        const at = measureToPlane(frame, p);
+        if (measurePointInPolygon(frame.flat, at.s, at.t)) {
+            return measureSub(p, measureScale(frame.normal, at.off));
+        }
+    }
+    let best = null;
+    let bestDistance = Infinity;
+    measureEdges(element).forEach((edge) => {
+        const q = measureNearestOnSegment(edge[0], edge[1], p);
+        const d = measureDistance(q, p);
+        if (d < bestDistance) { bestDistance = d; best = q; }
+    });
+    return best || element.pts[0].slice();
+}
+
+/**
+ * Closest approach of two segments, as `{ from, to }` — Ericson's clamped solve, closed form.
+ *
+ * The degenerate branches matter more here than they look: a "segment" in a real figure is often a
+ * zero-length one, because a panel's ring can carry a repeated corner.
+ */
+function measureSegmentSegment(p1, q1, p2, q2) {
+    const d1 = measureSub(q1, p1);
+    const d2 = measureSub(q2, p2);
+    const r = measureSub(p1, p2);
+    const a = measureDot(d1, d1);
+    const e = measureDot(d2, d2);
+    const f = measureDot(d2, r);
+    let s = 0;
+    let t = 0;
+    if (a <= MEASURE_EPS && e <= MEASURE_EPS) {
+        s = 0;
+        t = 0;
+    } else if (a <= MEASURE_EPS) {
+        s = 0;
+        t = Math.min(1, Math.max(0, f / e));
+    } else {
+        const c = measureDot(d1, r);
+        if (e <= MEASURE_EPS) {
+            t = 0;
+            s = Math.min(1, Math.max(0, -c / a));
+        } else {
+            const b = measureDot(d1, d2);
+            const denom = a * e - b * b;
+            s = denom > MEASURE_EPS ? Math.min(1, Math.max(0, (b * f - c * e) / denom)) : 0;
+            t = (b * s + f) / e;
+            if (t < 0) {
+                t = 0;
+                s = Math.min(1, Math.max(0, -c / a));
+            } else if (t > 1) {
+                t = 1;
+                s = Math.min(1, Math.max(0, (b - c) / a));
+            }
+        }
+    }
+    return { from: measureAdd(p1, measureScale(d1, s)), to: measureAdd(p2, measureScale(d2, t)) };
+}
+
+/**
+ * Where an edge pierces a polygon's interior, or `null`.
+ *
+ * Only the *interior*: an edge that crosses the plane outside the ring, or that lies in the plane, is
+ * left to the edge-vs-edge family, which will find the same minimum without this having to guess.
+ */
+function measurePierce(edge, polygon) {
+    const frame = measurePolygonFrame(polygon.pts);
+    if (!frame) return null;
+    const da = measureToPlane(frame, edge[0]).off;
+    const db = measureToPlane(frame, edge[1]).off;
+    if ((da > 0 && db > 0) || (da < 0 && db < 0)) return null;
+    if (Math.abs(da - db) <= MEASURE_EPS) return null;
+    const t = da / (da - db);
+    const p = measureAdd(edge[0], measureScale(measureSub(edge[1], edge[0]), t));
+    const at = measureToPlane(frame, p);
+    if (!measurePointInPolygon(frame.flat, at.s, at.t)) return null;
+    return p;
+}
+
+/**
+ * The closest approach between two elements: `{ distance, from, to }`.
+ *
+ * Complete rather than sampled. Every candidate family that can hold the minimum is enumerated:
+ *
+ *  * every corner of A against the whole of B, and every corner of B against the whole of A —
+ *    which covers (vertex, vertex), (vertex, edge) and (vertex, face-interior);
+ *  * every edge of A against every edge of B — which covers (edge, edge);
+ *  * every edge of A pierced through B's interior and vice versa — which is the only way the answer
+ *    can be exactly zero, and it should be, for two things that actually intersect.
+ *
+ * `from` is on A and `to` is on B, always in that order, so a caller can label the ends.
+ */
+function measureClosestApproach(elementA, elementB) {
+    let best = null;
+    function consider(from, to) {
+        if (!from || !to) return;
+        const d = measureDistance(from, to);
+        if (!isFinite(d)) return;
+        if (!best || d < best.distance) best = { distance: d, from: from, to: to };
+    }
+    (elementA.pts || []).forEach((c) => consider(c.slice(), measureNearestOnElement(elementB, c)));
+    (elementB.pts || []).forEach((c) => consider(measureNearestOnElement(elementA, c), c.slice()));
+    const edgesA = measureEdges(elementA);
+    const edgesB = measureEdges(elementB);
+    edgesA.forEach((ea) => {
+        edgesB.forEach((eb) => {
+            const pair = measureSegmentSegment(ea[0], ea[1], eb[0], eb[1]);
+            consider(pair.from, pair.to);
+        });
+    });
+    if (elementB.kind === 'polygon') {
+        edgesA.forEach((ea) => {
+            const hit = measurePierce(ea, elementB);
+            if (hit) consider(hit.slice(), hit.slice());
+        });
+    }
+    if (elementA.kind === 'polygon') {
+        edgesB.forEach((eb) => {
+            const hit = measurePierce(eb, elementA);
+            if (hit) consider(hit.slice(), hit.slice());
+        });
+    }
+    if (!best) return { distance: NaN, from: null, to: null };
+    return best;
+}
+
+/**
+ * Where to draw the dimension, given the two ends and the direction the camera is looking.
+ *
+ * A dimension you cannot read is not a measurement, so the annotation is offset off the measured line
+ * — `witness` are the two extension lines back to the real geometry, `a`→`b` is the dimension line
+ * itself, and `label` is where the text goes. `side` is perpendicular to both the measured direction
+ * and the view direction, so the offset is always *across* the screen rather than into it.
+ *
+ * The two degenerate cases are the ones that would otherwise put the annotation somewhere absurd: a
+ * zero-length measurement (the two elements touch) and a measurement pointing straight at the camera.
+ * Both fall back to an arbitrary but *stable* perpendicular rather than to NaN.
+ */
+function measureAnnotation(from, to, viewDirection, offset) {
+    const along = measureSub(to, from);
+    const distance = measureLength(along);
+    const direction = measureNormalize(along) || [1, 0, 0];
+    const view = measureNormalize(viewDirection || [0, 0, -1]) || [0, 0, -1];
+    let side = measureNormalize(measureCross(direction, view));
+    if (!side) {
+        side = measureNormalize(measureCross(direction, [0, 1, 0]))
+            || measureNormalize(measureCross(direction, [1, 0, 0]))
+            || [0, 1, 0];
+    }
+    const shift = measureScale(side, offset);
+    const a = measureAdd(from, shift);
+    const b = measureAdd(to, shift);
+    const mid = measureScale(measureAdd(a, b), 0.5);
+    return {
+        distance: distance,
+        direction: direction,
+        side: side,
+        a: a,
+        b: b,
+        mid: mid,
+        label: measureAdd(mid, measureScale(side, offset * 0.18)),
+        witness: [[from.slice(), a], [to.slice(), b]]
+    };
+}
+
+/**
+ * The number as it appears on the dimension.
+ *
+ * Trailing zeros are trimmed because `2.50 mm` reads as a tolerance claim the figure is not making,
+ * and because the human's panels are in millimetres where `1200 mm` and `1200.00 mm` say different
+ * things about how the number was arrived at.
+ */
+function measureFormat(distance, units, decimals) {
+    if (!isFinite(distance)) return '—';
+    const places = Number.isFinite(decimals) ? Math.max(0, Math.min(8, decimals)) : 2;
+    let text = distance.toFixed(places);
+    if (text.indexOf('.') >= 0) text = text.replace(/0+$/, '').replace(/\.$/, '');
+    return units ? text + ' ' + units : text;
+}
+// [viewer-region inspector-measure] END
+
+// [viewer-region inspector-explode] BEGIN
+// "How does it come apart" — the arithmetic of an exploded view.
+//
+// This exists because of one literal in the human's own document
+// (`panel-cross-host-3d`, 2026-08-09):
+//
+//     showConduitRelaxationThree(relaxed, channelPrefix = "cross-host-assembled", explosionMm = 0.0, …)
+//
+// An exploded view already existed — as a number you retype and re-run the box for. The whole
+// complaint is that it is not a *control*, so the displacement has to happen in the viewer, on the CPU,
+// from a kept copy of the base positions. Which means the arithmetic is written twice — once here and
+// once in `ThreeJsViewer.kt` — and that is exactly the situation the region harness exists for.
+//
+// The scene's batched geometry merges every FLine into one buffer, so each vertex carries a `group`
+// attribute saying which assembly it belongs to. Everything below is over that pair of arrays.
+//
+// Two modes, because two different questions are being asked:
+//
+//  * `radial` — every group slides directly away from a common origin. This is the "show me the
+//    fasteners" explode, and it is the one that reads well on an irregular assembly.
+//  * `axis` — every group slides along one fixed direction, spaced by its **rank** in that direction
+//    rather than by its distance. This is the layered-wall explode (`panel-plumbing-wall-floor`), where
+//    the four skins of a wall are 12 mm apart in reality and have to be metres apart to be looked at.
+//    Rank-spacing is what makes an even fan out of unevenly-spaced layers.
+//
+// The ranks are **centred**, so the middle of the assembly stays where it is and the view does not
+// walk out of frame as the slider moves. That is a usability property with an arithmetic test.
+//
+// No DOM, no THREE.
+const EXPLODE_EPS = 1e-12;
+
+/** The centre of a payload's bounds — the natural origin for a radial explode. */
+function explodeBoundsCentre(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return [0, 0, 0];
+    return [
+        (bounds.min[0] + bounds.max[0]) * 0.5,
+        (bounds.min[1] + bounds.max[1]) * 0.5,
+        (bounds.min[2] + bounds.max[2]) * 0.5
+    ];
+}
+
+/**
+ * Each group's centroid and vertex count, from the flat position buffer and the per-vertex group index.
+ *
+ * A group with no vertices gets a `null` centroid rather than `[0, 0, 0]`, and every caller below
+ * checks for it. `[0, 0, 0]` would be a plausible-looking answer that quietly drags an absent group's
+ * neighbours toward the world origin, and an assembly usually *does* have empty groups — a line that is
+ * stroked but not filled contributes nothing to the fill buffer.
+ */
+function explodeGroupCentroids(positions, groups, groupCount) {
+    const count = Math.max(0, groupCount | 0);
+    const sums = [];
+    const counts = [];
+    for (let g = 0; g < count; g += 1) {
+        sums.push([0, 0, 0]);
+        counts.push(0);
+    }
+    const vertices = Math.floor(positions.length / 3);
+    for (let i = 0; i < vertices; i += 1) {
+        const g = Math.round(groups[i]);
+        if (!(g >= 0 && g < count)) continue;
+        sums[g][0] += positions[i * 3];
+        sums[g][1] += positions[i * 3 + 1];
+        sums[g][2] += positions[i * 3 + 2];
+        counts[g] += 1;
+    }
+    const centroids = [];
+    for (let g = 0; g < count; g += 1) {
+        if (counts[g] === 0) centroids.push(null);
+        else centroids.push([sums[g][0] / counts[g], sums[g][1] / counts[g], sums[g][2] / counts[g]]);
+    }
+    return { centroids: centroids, counts: counts };
+}
+
+/**
+ * The groups ordered along `axis`, as a rank per group — `-1` for a group that is not there.
+ *
+ * Ties are broken by group index, so a wall whose two skins share a centroid still fans out in a
+ * defined order rather than in whatever order the sort happened to produce this frame.
+ */
+function explodeAxisRanks(centroids, axis) {
+    const length = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
+    const unit = length > EXPLODE_EPS
+        ? [axis[0] / length, axis[1] / length, axis[2] / length]
+        : [0, 1, 0];
+    const order = [];
+    for (let g = 0; g < centroids.length; g += 1) {
+        if (!centroids[g]) continue;
+        const c = centroids[g];
+        order.push({ g: g, at: c[0] * unit[0] + c[1] * unit[1] + c[2] * unit[2] });
+    }
+    order.sort((a, b) => (a.at === b.at ? a.g - b.g : a.at - b.at));
+    const ranks = centroids.map(() => -1);
+    order.forEach((entry, index) => { ranks[entry.g] = index; });
+    return { ranks: ranks, unit: unit, present: order.length };
+}
+
+/**
+ * The displacement for each group: `[[dx, dy, dz], …]`, one per group, always the full length.
+ *
+ * `amount = 0` returns exact zeros in both modes, which is the assembled state and has to be *exactly*
+ * the assembled state — the human's document passes `explosionMm = 0.0` and the geometry it draws must
+ * be the geometry the server sent, bit for bit, not the geometry plus a rounding error.
+ */
+function explodeOffsets(centroids, origin, spec) {
+    const amount = spec && Number.isFinite(spec.amount) ? spec.amount : 0;
+    const zero = centroids.map(() => [0, 0, 0]);
+    if (amount === 0) return zero;
+    const mode = (spec && spec.mode) || 'radial';
+    if (mode === 'axis') {
+        const ordering = explodeAxisRanks(centroids, (spec && spec.axis) || [0, 1, 0]);
+        const middle = (ordering.present - 1) * 0.5;
+        return centroids.map((c, g) => {
+            if (!c || ordering.ranks[g] < 0) return [0, 0, 0];
+            const step = (ordering.ranks[g] - middle) * amount;
+            return [ordering.unit[0] * step, ordering.unit[1] * step, ordering.unit[2] * step];
+        });
+    }
+    return centroids.map((c) => {
+        if (!c) return [0, 0, 0];
+        const dx = c[0] - origin[0];
+        const dy = c[1] - origin[1];
+        const dz = c[2] - origin[2];
+        const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // A group sitting exactly on the origin has no direction to go, and must not be given one.
+        if (!(length > EXPLODE_EPS)) return [0, 0, 0];
+        return [dx / length * amount, dy / length * amount, dz / length * amount];
+    });
+}
+
+/**
+ * `base + offset[group]` for every vertex, written into `out`.
+ *
+ * `out` is reused between frames — this runs on a slider drag — so it is written into rather than
+ * allocated. A vertex whose group index is out of range is *copied*, not dropped, because a geometry
+ * that loses vertices when a slider moves is worse than one that fails to explode.
+ */
+function explodeApply(base, groups, offsets, out) {
+    const target = out || new Array(base.length);
+    const vertices = Math.floor(base.length / 3);
+    for (let i = 0; i < vertices; i += 1) {
+        const g = Math.round(groups ? groups[i] : -1);
+        const offset = (g >= 0 && g < offsets.length) ? offsets[g] : null;
+        if (offset) {
+            target[i * 3] = base[i * 3] + offset[0];
+            target[i * 3 + 1] = base[i * 3 + 1] + offset[1];
+            target[i * 3 + 2] = base[i * 3 + 2] + offset[2];
+        } else {
+            target[i * 3] = base[i * 3];
+            target[i * 3 + 1] = base[i * 3 + 1];
+            target[i * 3 + 2] = base[i * 3 + 2];
+        }
+    }
+    return target;
+}
+// [viewer-region inspector-explode] END
+
+// [viewer-region inspector-section] BEGIN
+// "What does this look like in section" — the cut plane, and the cut itself.
+//
+// three.js will hide half a figure for you: set `renderer.localClippingEnabled` and give the materials
+// a `THREE.Plane`. That answers a *different* question. Hiding the front half shows you the inside of a
+// shell; it does not draw the line where the knife went, and on a fabrication drawing the cut line is
+// the entire content of a section — it is what tells you the wall is 240 thick here and 90 there.
+//
+// So this region does two things. `sectionPlane` turns a normal and a **fraction of the figure's own
+// bounds** into a plane; and `sectionCutTriangles` / `sectionCutSegments` compute where that plane
+// actually crosses the geometry, which the viewer then draws as a bright cut line over the clipped
+// figure. The plane is the part three.js could have done. The crossings are the part it cannot.
+//
+// A fraction rather than a world coordinate, deliberately: a section at `0.42` means the same thing on
+// a 3 m wall and on a 30 mm bracket, so a scrubber over it is meaningful without knowing the model's
+// scale, and a section is portable between figures.
+//
+// ### The straddle test, which is the whole subtlety
+//
+// `(da > 0) !== (db > 0)` and not `da * db < 0`. They differ exactly when a vertex lies *on* the plane,
+// which is the common case rather than the rare one: real geometry is built on round numbers and
+// sections get put on round numbers. Under the product test a triangle with one vertex on the plane
+// contributes one crossing instead of two, the segment is dropped, and the cut line comes out full of
+// holes wherever the model was tidy. `ThreeInspectorSectionDifferentialTest` has that as a
+// counterfactual, and the perturbed cut length is exactly zero.
+//
+// No DOM, no THREE.
+const SECTION_EPS = 1e-9;
+
+/**
+ * The cut plane for a figure, as `n · p + d = 0` with `n` unit.
+ *
+ * `fraction` runs 0..1 across the figure's bounds *measured along the normal* — the eight corners are
+ * projected and the extremes taken, so an oblique normal still gets the true extent rather than an
+ * axis-aligned guess.
+ *
+ * `flip` swaps which half survives without changing where the cut is: `n` and `d` are both negated, and
+ * `at` — the position of the plane along the *original* normal — is reported unchanged. That is why
+ * flipping is a separate control from negating the normal, which would also reverse the fraction and
+ * send the slider backwards under the user's hand.
+ */
+function sectionPlane(bounds, normal, fraction, flip) {
+    const length = Math.sqrt(normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]);
+    const n = length > SECTION_EPS
+        ? [normal[0] / length, normal[1] / length, normal[2] / length]
+        : [1, 0, 0];
+    let lo = 0;
+    let hi = 0;
+    if (bounds && bounds.min && bounds.max) {
+        let first = true;
+        for (let corner = 0; corner < 8; corner += 1) {
+            const p = [
+                (corner & 1) ? bounds.max[0] : bounds.min[0],
+                (corner & 2) ? bounds.max[1] : bounds.min[1],
+                (corner & 4) ? bounds.max[2] : bounds.min[2]
+            ];
+            const at = p[0] * n[0] + p[1] * n[1] + p[2] * n[2];
+            if (first) { lo = at; hi = at; first = false; }
+            else { lo = Math.min(lo, at); hi = Math.max(hi, at); }
+        }
+    }
+    const t = Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : 0.5;
+    const at = lo + (hi - lo) * t;
+    if (flip) return { n: [-n[0], -n[1], -n[2]], d: at, at: at, lo: lo, hi: hi, flipped: true };
+    return { n: n, d: -at, at: at, lo: lo, hi: hi, flipped: false };
+}
+
+/** Signed distance from the plane — positive on the side that survives clipping. */
+function sectionSignedDistance(plane, p) {
+    return plane.n[0] * p[0] + plane.n[1] * p[1] + plane.n[2] * p[2] + plane.d;
+}
+
+/**
+ * Where the plane crosses a triangle mesh, as a flat array of segment endpoints.
+ *
+ * `[ax, ay, az, bx, by, bz, …]`, ready to become a `THREE.LineSegments` with no reshaping — this runs
+ * on a slider drag over the whole fill buffer, so the output is the shape the consumer wants.
+ *
+ * `index` may be null, in which case the positions are read three vertices at a time. A triangle with
+ * fewer than two crossings contributes nothing: a triangle wholly on one side, and also the degenerate
+ * case of a triangle lying *in* the plane, which would otherwise emit an arbitrary one of its edges.
+ */
+function sectionCutTriangles(positions, index, plane) {
+    const out = [];
+    const triangles = index ? Math.floor(index.length / 3) : Math.floor(positions.length / 9);
+    const crossing = [];
+    for (let t = 0; t < triangles; t += 1) {
+        const i0 = index ? index[t * 3] : t * 3;
+        const i1 = index ? index[t * 3 + 1] : t * 3 + 1;
+        const i2 = index ? index[t * 3 + 2] : t * 3 + 2;
+        const corners = [
+            [positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]],
+            [positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]],
+            [positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]]
+        ];
+        const d = [
+            sectionSignedDistance(plane, corners[0]),
+            sectionSignedDistance(plane, corners[1]),
+            sectionSignedDistance(plane, corners[2])
+        ];
+        crossing.length = 0;
+        for (let e = 0; e < 3; e += 1) {
+            const a = e;
+            const b = (e + 1) % 3;
+            // See the region's header: `!==` on the sign, not a product, so a vertex sitting exactly on
+            // the plane still yields a crossing.
+            if ((d[a] > 0) === (d[b] > 0)) continue;
+            const span = d[a] - d[b];
+            if (!(Math.abs(span) > SECTION_EPS)) continue;
+            const s = d[a] / span;
+            crossing.push([
+                corners[a][0] + (corners[b][0] - corners[a][0]) * s,
+                corners[a][1] + (corners[b][1] - corners[a][1]) * s,
+                corners[a][2] + (corners[b][2] - corners[a][2]) * s
+            ]);
+        }
+        if (crossing.length < 2) continue;
+        out.push(
+            crossing[0][0], crossing[0][1], crossing[0][2],
+            crossing[1][0], crossing[1][1], crossing[1][2]
+        );
+    }
+    return out;
+}
+
+/**
+ * Where the plane crosses a `LineSegments` buffer, as a flat array of **points**.
+ *
+ * A cut through a line is a point, not a segment, so these are drawn as marks rather than as a line —
+ * which is what a section through a conduit run should look like: a row of dots where each pipe was
+ * caught, at the height of the cut.
+ */
+function sectionCutSegments(positions, plane) {
+    const out = [];
+    const pairs = Math.floor(positions.length / 6);
+    for (let s = 0; s < pairs; s += 1) {
+        const a = [positions[s * 6], positions[s * 6 + 1], positions[s * 6 + 2]];
+        const b = [positions[s * 6 + 3], positions[s * 6 + 4], positions[s * 6 + 5]];
+        const da = sectionSignedDistance(plane, a);
+        const db = sectionSignedDistance(plane, b);
+        if ((da > 0) === (db > 0)) continue;
+        const span = da - db;
+        if (!(Math.abs(span) > SECTION_EPS)) continue;
+        const t = da / span;
+        out.push(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t);
+    }
+    return out;
+}
+
+/** Total length of a cut, for the readout — and the number the differential test ratchets. */
+function sectionCutLength(cut) {
+    let total = 0;
+    for (let i = 0; i + 5 < cut.length; i += 6) {
+        const dx = cut[i + 3] - cut[i];
+        const dy = cut[i + 4] - cut[i + 1];
+        const dz = cut[i + 5] - cut[i + 2];
+        total += Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+    return total;
+}
+// [viewer-region inspector-section] END
 
 /** Which of an interactive object's three geometries three.js says the ray hit. */
 function flineRoleForObject(object) {
@@ -2352,6 +3085,467 @@ function rebuildEditableView() {
     renderEditableOverlay();
 }
 
+// ---------------------------------------------------------------------------------------------
+// The inspector: measure, section, explode.
+//
+// Everything *geometric* below is a call into one of the three marked regions above
+// (`inspector-measure`, `inspector-explode`, `inspector-section`), which are lifted out of this file
+// and executed on GraalJS by the three `ThreeInspector*DifferentialTest`s. What is left here is the
+// three.js and DOM plumbing that cannot be lifted: buffers, materials, sprites, sliders. That split is
+// deliberate and it is where the honesty line sits — if the arithmetic is wrong, a test fails; if the
+// *sprite* is empty, only a docs capture would notice, which is why `public/docs/three_inspector.md`
+// carries a real screenshot rather than a claim.
+// ---------------------------------------------------------------------------------------------
+
+const inspectorRoot = new THREE.Group();
+scene.add(inspectorRoot);
+
+const inspectorGroupEl = document.getElementById('inspector-group');
+const inspectorStatusEl = document.getElementById('inspector-status');
+const explodeSliderEl = document.getElementById('explode-slider');
+const explodeReadoutEl = document.getElementById('explode-readout');
+const sectionSliderEl = document.getElementById('section-slider');
+const sectionSliderWrapEl = document.getElementById('section-slider-wrap');
+
+const DIMENSION_COLOR = 0xffd35c;
+const CUT_COLOR = 0x62d7ff;
+
+const inspectorState = {
+    spec: null,
+    bounds: null,
+    diagonal: 1,
+    // The geometry as the server sent it. Every explode is computed from *this*, never from the last
+    // frame's positions — accumulating displacements is how a scrubbed slider drifts.
+    base: { lines: null, fills: null, points: null },
+    groups: { lines: null, fills: null, points: null },
+    interactive: [],
+    centroids: [],
+    explodeAmount: 0,
+    explodeMax: 1,
+    sectionEnabled: false,
+    sectionFraction: 0.5,
+    cut: null,
+    measuring: false,
+    pending: null,
+    picked: []
+};
+
+function inspectorDiagonal(bounds) {
+    if (!bounds || !bounds.min || !bounds.max) return 1;
+    const dx = bounds.max[0] - bounds.min[0];
+    const dy = bounds.max[1] - bounds.min[1];
+    const dz = bounds.max[2] - bounds.min[2];
+    return Math.max(1e-6, Math.sqrt(dx * dx + dy * dy + dz * dz));
+}
+
+/**
+ * Take a copy of the geometry the server sent, and work out each assembly group's centroid once.
+ *
+ * The centroids are of the *assembled* figure and never change while the slider moves, so they are
+ * computed here rather than per frame. They are also computed over every buffer at once — batched
+ * lines, fills, points and each interactive object — because a group whose stroke is in one buffer and
+ * whose fill is in another must have one centroid, not two.
+ */
+function inspectorCapture(payload) {
+    const spec = payload.inspector || null;
+    inspectorState.spec = spec;
+    inspectorState.bounds = payload.bounds || null;
+    inspectorState.diagonal = inspectorDiagonal(payload.bounds);
+    inspectorState.picked = [];
+    inspectorState.interactive = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const data = payload[key];
+        const position = data && data.attributes && data.attributes.position;
+        const group = data && data.attributes && data.attributes.group;
+        inspectorState.base[key] = position ? Float32Array.from(position.array) : null;
+        inspectorState.groups[key] = group ? Float32Array.from(group.array) : null;
+    });
+    (payload.interactive || []).forEach((obj, index) => {
+        inspectorState.interactive.push({ index: index, group: Number.isFinite(obj.group) ? obj.group : -1 });
+    });
+
+    if (!spec || !spec.enabled) {
+        inspectorState.centroids = [];
+        return;
+    }
+
+    // one long buffer, so `explodeGroupCentroids` sees the whole assembly
+    const allPositions = [];
+    const allGroups = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const base = inspectorState.base[key];
+        const groups = inspectorState.groups[key];
+        if (!base || !groups) return;
+        for (let i = 0; i < groups.length; i += 1) {
+            allPositions.push(base[i * 3], base[i * 3 + 1], base[i * 3 + 2]);
+            allGroups.push(groups[i]);
+        }
+    });
+    (payload.interactive || []).forEach((obj) => {
+        const group = Number.isFinite(obj.group) ? obj.group : -1;
+        if (group < 0) return;
+        ['lines', 'fills', 'points'].forEach((key) => {
+            const array = obj[key] && obj[key].attributes && obj[key].attributes.position
+                ? obj[key].attributes.position.array : null;
+            if (!array) return;
+            for (let i = 0; i + 2 < array.length; i += 3) {
+                allPositions.push(array[i], array[i + 1], array[i + 2]);
+                allGroups.push(group);
+            }
+        });
+    });
+    inspectorState.centroids = explodeGroupCentroids(
+        allPositions, allGroups, (spec.groups || []).length
+    ).centroids;
+}
+
+/** Every geometry the explode has to move, as `{ object, base, groups }`. */
+function inspectorMovableSlots() {
+    const out = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const slot = payloadGeometrySlots[key];
+        if (!slot || !slot.object) return;
+        out.push({ object: slot.object, base: inspectorState.base[key], groups: inspectorState.groups[key] });
+    });
+    return out;
+}
+
+/**
+ * Every material a section has to cut: the fills, the strokes and the point sprites.
+ *
+ * The fills are `MeshStandardMaterial` and clip for free. The other two are custom `ShaderMaterial`s
+ * and carry three.js's clipping chunks explicitly — see `makeLineMaterial`. Getting them all is the
+ * difference between a section and a clipped fill with the wireframe still hanging in the air past the
+ * cut.
+ *
+ * The inspector's own overlay (`inspectorRoot`) is deliberately *not* here: the cut line and the
+ * dimensions are annotations about the section and must survive it.
+ */
+function inspectorClippableMaterials() {
+    const out = [];
+    ['lines', 'fills', 'points'].forEach((key) => {
+        const slot = payloadGeometrySlots[key];
+        if (slot && slot.material) out.push(slot.material);
+    });
+    payloadGeometrySlots.interactive.forEach((slot) => {
+        if (!slot) return;
+        ['lines', 'fills', 'points'].forEach((key) => {
+            if (slot[key] && slot[key].material) out.push(slot[key].material);
+        });
+    });
+    return out;
+}
+
+/** Displace every buffer from its base copy. Idempotent, and exact at `amount = 0`. */
+function inspectorApplyExplode() {
+    const spec = inspectorState.spec;
+    if (!spec || !spec.enabled) return;
+    const explode = spec.explode || {};
+    const offsets = explodeOffsets(
+        inspectorState.centroids,
+        explodeBoundsCentre(inspectorState.bounds),
+        { amount: inspectorState.explodeAmount, mode: explode.mode || 'radial', axis: explode.axis || [0, 1, 0] }
+    );
+    inspectorMovableSlots().forEach((slot) => {
+        if (!slot.base) return;
+        const attribute = slot.object.geometry.getAttribute('position');
+        if (!attribute) return;
+        explodeApply(slot.base, slot.groups, offsets, attribute.array);
+        attribute.needsUpdate = true;
+        slot.object.geometry.computeBoundingSphere();
+    });
+    // An interactive object is one FLine, so its group is uniform: move the whole object.
+    inspectorState.interactive.forEach((entry) => {
+        const slot = payloadGeometrySlots.interactive[entry.index];
+        if (!slot) return;
+        const offset = (entry.group >= 0 && entry.group < offsets.length) ? offsets[entry.group] : [0, 0, 0];
+        [slot.lines, slot.fills, slot.points].forEach((piece) => {
+            if (piece && piece.object) piece.object.position.set(offset[0], offset[1], offset[2]);
+        });
+    });
+}
+
+/** Turn clipping on or off, and recompute the plane from the current slider position. */
+function inspectorApplySection() {
+    const spec = inspectorState.spec;
+    const section = (spec && spec.section) || {};
+    const active = !!inspectorState.sectionEnabled;
+    renderer.localClippingEnabled = active;
+    inspectorState.cut = active
+        ? sectionPlane(inspectorState.bounds, section.normal || [1, 0, 0], inspectorState.sectionFraction, !!section.flip)
+        : null;
+    const planes = inspectorState.cut
+        ? [new THREE.Plane(
+            new THREE.Vector3(inspectorState.cut.n[0], inspectorState.cut.n[1], inspectorState.cut.n[2]),
+            inspectorState.cut.d
+        )]
+        : [];
+    inspectorClippableMaterials().forEach((material) => {
+        material.clippingPlanes = planes;
+        material.clipShadows = false;
+        material.needsUpdate = true;
+    });
+}
+
+/**
+ * A text label as a camera-facing sprite, drawn into a canvas.
+ *
+ * A sprite rather than a DOM overlay because a dimension belongs *in* the scene — it has to orbit with
+ * the figure and end up on the docs capture, and an absolutely-positioned div does neither. `depthTest`
+ * off and a high `renderOrder` because a dimension you cannot see behind the thing it dimensions is not
+ * a dimension.
+ */
+function inspectorLabelSprite(text, height, color) {
+    const scale = 4;
+    const fontPx = 30;
+    const canvas = document.createElement('canvas');
+    const measurer = canvas.getContext('2d');
+    measurer.font = `500 ${fontPx * scale}px "Iosevka Web", ui-monospace, Menlo, monospace`;
+    const padding = 12 * scale;
+    const width = Math.ceil(measurer.measureText(text).width) + padding * 2;
+    canvas.width = width;
+    canvas.height = Math.ceil(fontPx * scale * 1.6);
+    const ctx = canvas.getContext('2d');
+    ctx.font = `500 ${fontPx * scale}px "Iosevka Web", ui-monospace, Menlo, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(8, 12, 18, 0.82)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2 * scale;
+    ctx.strokeRect(scale, scale, canvas.width - 2 * scale, canvas.height - 2 * scale);
+    ctx.fillStyle = color;
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 2 * scale);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 4;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    }));
+    sprite.scale.set(height * (canvas.width / canvas.height), height, 1);
+    sprite.renderOrder = 1000;
+    return sprite;
+}
+
+function inspectorAddSegments(points, color, width) {
+    if (!points.length) return;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(points), 3));
+    const line = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.95,
+        depthTest: false,
+        linewidth: width || 1
+    }));
+    line.renderOrder = 999;
+    inspectorRoot.add(line);
+}
+
+/**
+ * Draw one dimension: witness lines back to the geometry, the dimension line itself, end ticks and the
+ * number.
+ *
+ * The geometry all comes from `measureAnnotation`, which is under differential test; what is added here
+ * is only the tick length and the choice of colour.
+ */
+function inspectorDrawMeasurement(elementA, elementB, prefix) {
+    const answer = measureClosestApproach(elementA, elementB);
+    if (!answer || !answer.from || !isFinite(answer.distance)) return null;
+    const spec = inspectorState.spec || {};
+    const offset = inspectorState.diagonal * 0.07;
+    const view = camera.getWorldDirection(new THREE.Vector3());
+    const annotation = measureAnnotation(answer.from, answer.to, [view.x, view.y, view.z], offset);
+
+    const points = [];
+    annotation.witness.forEach((pair) => points.push(...pair[0], ...pair[1]));
+    points.push(...annotation.a, ...annotation.b);
+    // end ticks, along the measured direction, so the dimension reads as a dimension and not as a stray
+    const tick = inspectorDiagonalTick();
+    [annotation.a, annotation.b].forEach((end) => {
+        points.push(
+            end[0] - annotation.direction[0] * tick, end[1] - annotation.direction[1] * tick, end[2] - annotation.direction[2] * tick,
+            end[0] + annotation.direction[0] * tick, end[1] + annotation.direction[1] * tick, end[2] + annotation.direction[2] * tick
+        );
+    });
+    inspectorAddSegments(points, DIMENSION_COLOR);
+
+    const text = (prefix || '') + measureFormat(annotation.distance, spec.units || '', spec.decimals);
+    // 7.5% of the figure's diagonal. Sized against the *figure* rather than in pixels because the
+    // label lives in the scene: a pixel size would grow as you dolly in and shrink to nothing as you
+    // pull out, and the one thing a dimension has to stay is readable.
+    const sprite = inspectorLabelSprite(text, inspectorState.diagonal * 0.075, '#ffd35c');
+    sprite.position.set(annotation.label[0], annotation.label[1], annotation.label[2]);
+    inspectorRoot.add(sprite);
+    return text;
+}
+
+function inspectorDiagonalTick() {
+    return inspectorState.diagonal * 0.012;
+}
+
+/** Where the plane crosses the figure, drawn over the clipped geometry. */
+function inspectorDrawCut() {
+    const spec = inspectorState.spec;
+    const cut = inspectorState.cut;
+    if (!cut || !spec || !(spec.section && spec.section.outline !== false)) return 0;
+    const outline = [];
+    const fills = payloadGeometrySlots.fills;
+    if (fills && fills.object) {
+        const geometry = fills.object.geometry;
+        const position = geometry.getAttribute('position');
+        const index = geometry.getIndex();
+        outline.push(...sectionCutTriangles(position.array, index ? index.array : null, cut));
+    }
+    payloadGeometrySlots.interactive.forEach((slot) => {
+        if (!slot || !slot.fills || !slot.fills.object) return;
+        const geometry = slot.fills.object.geometry;
+        const offset = slot.fills.object.position;
+        const position = geometry.getAttribute('position');
+        const index = geometry.getIndex();
+        // the object may have been translated by the explode; the cut is in world space
+        const moved = new Float32Array(position.array.length);
+        for (let i = 0; i + 2 < moved.length; i += 3) {
+            moved[i] = position.array[i] + offset.x;
+            moved[i + 1] = position.array[i + 1] + offset.y;
+            moved[i + 2] = position.array[i + 2] + offset.z;
+        }
+        outline.push(...sectionCutTriangles(moved, index ? index.array : null, cut));
+    });
+    inspectorAddSegments(outline, CUT_COLOR, 2);
+
+    const marks = [];
+    const lines = payloadGeometrySlots.lines;
+    if (lines && lines.object) {
+        marks.push(...sectionCutSegments(lines.object.geometry.getAttribute('position').array, cut));
+    }
+    if (marks.length) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(marks), 3));
+        const dots = new THREE.Points(geometry, new THREE.PointsMaterial({
+            color: CUT_COLOR, size: 7, sizeAttenuation: false, depthTest: false
+        }));
+        dots.renderOrder = 999;
+        inspectorRoot.add(dots);
+    }
+    return sectionCutLength(outline);
+}
+
+/** An element the user picked, resolved through the hit-picking region when there is a topology. */
+function inspectorElementFromHit(entry, hit) {
+    const p = hit.point;
+    const role = flineRoleForObject(hit.object);
+    const topology = entry && entry.topology;
+    if (topology) {
+        const record = flinePickClassify(topology, role, [p.x, p.y, p.z]);
+        if (role === 'face') {
+            const face = (topology.faces || []).find((f) => f.e === record.elementIndex);
+            if (face && face.pts && face.pts.length >= 3) return measureElement('polygon', face.pts);
+        }
+        if (role === 'edge') {
+            const segment = (topology.segments || []).find((s) => s.e === record.elementIndex);
+            if (segment && segment.a && segment.b) return measureElement('segment', [segment.a, segment.b]);
+        }
+        if (record.onElement) return measureElement('point', [record.onElement]);
+    }
+    return measureElement('point', [[p.x, p.y, p.z]]);
+}
+
+function inspectorSetStatus(text) {
+    inspectorStatusEl.textContent = text || '';
+}
+
+/** Rebuild every overlay: the authored dimensions, the picked one, the cut. */
+function inspectorRebuildOverlay() {
+    clearGroup(inspectorRoot);
+    const spec = inspectorState.spec;
+    if (!spec || !spec.enabled) return;
+    const lines = [];
+    (spec.measurements || []).forEach((m) => {
+        const text = inspectorDrawMeasurement(
+            measureElement(m.a.kind, m.a.points),
+            measureElement(m.b.kind, m.b.points),
+            m.label
+        );
+        if (text) lines.push(text);
+    });
+    if (inspectorState.picked.length === 2) {
+        const text = inspectorDrawMeasurement(inspectorState.picked[0], inspectorState.picked[1], '');
+        if (text) lines.push(text);
+    }
+    const cutLength = inspectorDrawCut();
+    if (inspectorState.cut) {
+        lines.push('cut ' + measureFormat(cutLength, spec.units || '', 0) + ' @ ' +
+            measureFormat(inspectorState.cut.at, spec.units || '', 1));
+    }
+    if (inspectorState.measuring && inspectorState.picked.length < 2) {
+        lines.push(inspectorState.picked.length ? 'pick the second element' : 'pick an element');
+    }
+    inspectorSetStatus(lines.join('   ·   '));
+}
+
+/** Everything, in the order the pieces depend on each other. */
+function inspectorRefresh() {
+    inspectorApplyExplode();
+    inspectorApplySection();
+    inspectorRebuildOverlay();
+}
+
+function inspectorUpdateHud() {
+    const spec = inspectorState.spec;
+    const on = !!(spec && spec.enabled);
+    inspectorGroupEl.classList.toggle('hidden', !on || !editorState.uiVisible);
+    if (!on) {
+        renderer.localClippingEnabled = false;
+        inspectorSetStatus('');
+        clearGroup(inspectorRoot);
+        return;
+    }
+    const explode = spec.explode || {};
+    inspectorState.explodeMax = explode.sliderMax > 0 ? explode.sliderMax : inspectorState.diagonal * 0.75;
+    inspectorState.explodeAmount = Math.min(explode.amount || 0, inspectorState.explodeMax);
+    explodeSliderEl.value = String(Math.round(inspectorState.explodeAmount / inspectorState.explodeMax * 1000));
+    explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, spec.units || '', 0);
+    const section = spec.section || {};
+    inspectorState.sectionEnabled = !!section.enabled;
+    inspectorState.sectionFraction = Number.isFinite(section.fraction) ? section.fraction : 0.5;
+    sectionSliderEl.value = String(Math.round(inspectorState.sectionFraction * 1000));
+    sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
+    inspectorGroupEl.querySelector('[data-inspector="section"]')
+        .classList.toggle('is-active', inspectorState.sectionEnabled);
+    inspectorGroupEl.querySelector('[data-inspector="measure"]')
+        .classList.toggle('is-active', inspectorState.measuring);
+}
+
+explodeSliderEl.addEventListener('input', () => {
+    inspectorState.explodeAmount = (Number(explodeSliderEl.value) / 1000) * inspectorState.explodeMax;
+    const spec = inspectorState.spec || {};
+    explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, spec.units || '', 0);
+    inspectorRefresh();
+});
+
+sectionSliderEl.addEventListener('input', () => {
+    inspectorState.sectionFraction = Number(sectionSliderEl.value) / 1000;
+    inspectorRefresh();
+});
+
+inspectorGroupEl.querySelectorAll('[data-inspector]').forEach((button) => {
+    button.addEventListener('click', () => {
+        const tool = button.getAttribute('data-inspector');
+        if (tool === 'section') {
+            inspectorState.sectionEnabled = !inspectorState.sectionEnabled;
+            sectionSliderWrapEl.classList.toggle('hidden', !inspectorState.sectionEnabled);
+        } else if (tool === 'measure') {
+            inspectorState.measuring = !inspectorState.measuring;
+            inspectorState.picked = [];
+        }
+        button.classList.toggle('is-active', tool === 'section' ? inspectorState.sectionEnabled : inspectorState.measuring);
+        inspectorRefresh();
+    });
+});
+
 function frameBounds(bounds, pad = 1.25) {
     if (!bounds || !bounds.min || !bounds.max) return;
     const minV = new THREE.Vector3(...bounds.min);
@@ -2419,6 +3613,11 @@ function applyGeometry(payload) {
         frameBounds(payload.bounds);
         hasFramedInitialGeometry = true;
     }
+    // Last, because it reads the geometry the steps above created and because framing the camera first
+    // means the first dimension is offset across the view the user is actually going to see.
+    inspectorCapture(payload);
+    inspectorUpdateHud();
+    inspectorRefresh();
 }
 
 function buildWsUrl() {
@@ -2795,11 +3994,21 @@ renderer.domElement.addEventListener('click', (event) => {
     const hits = raycaster.intersectObjects(meshes, false);
     if (!hits.length) return;
     const hitObject = hits[0].object;
-    for (const entry of interactiveObjects) {
-        if (entry.meshes.includes(hitObject) && entry.callbackId) {
-            sendMessage({ type: 'fline-click', callbackId: entry.callbackId, ...intersectionForHit(entry, hits[0]) });
-            break;
-        }
+    const owner = interactiveObjects.find((entry) => entry.meshes.includes(hitObject)) || null;
+
+    // The measure tool takes the click instead of the server callback: while you are measuring, a click
+    // is a pick, not a `fline-click`. Two picks make a dimension, and a third starts over — the same
+    // rhythm as every CAD measure tool, and the reason it is a *tool* rather than a modifier key.
+    if (inspectorState.measuring) {
+        const element = inspectorElementFromHit(owner, hits[0]);
+        if (inspectorState.picked.length >= 2) inspectorState.picked = [];
+        inspectorState.picked.push(element);
+        inspectorRebuildOverlay();
+        return;
+    }
+
+    if (owner && owner.callbackId) {
+        sendMessage({ type: 'fline-click', callbackId: owner.callbackId, ...intersectionForHit(owner, hits[0]) });
     }
 });
 
