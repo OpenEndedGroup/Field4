@@ -45,6 +45,7 @@ const loadOptionalPersonalLanguageExtensions = () => {
 const FIELD_LANGUAGE_MODULES = [
         "bithero/glsl", "bithero/slang", "bithero/msl", "bithero/forth", "bithero/fieldml",
         "bithero/languageExtensions", "bithero/stacksl", "bithero/rectsl", "bithero/fnrewrite",
+        "bithero/sonicpi",
         "bithero/nano", "bithero/kotlinjs", "bithero/morpho", "bithero/petri", "bithero/brief",
 ]
 const LANGUAGE_MODULE_DEADLINE_MS = 10000
