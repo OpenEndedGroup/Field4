@@ -27,6 +27,9 @@ import afield.python.PythonSettingsRequest
 import afield.server.refreshFileProxyBoxes
 import afield.server.installFieldAudioProxyRoutes
 import afield.server.installDocsAnnotationRoutes
+import afield.server.SEC_FETCH_SITE_HEADER
+import afield.server.docsFlagEnabled
+import afield.server.isSameSiteRequest
 import afield.server.installControllerRoutes
 import afield.server.broadcastControllerControlUpdates
 import afield.server.recordControllerOutputMessage
@@ -3127,12 +3130,9 @@ class Server {
                         json()
                     }
 
-                    // Field's cross-origin posture, and the reasons for it, live in
-                    // `installFieldApiCors` at the bottom of this file. Extracted from
-                    // here so that a test can install the *real* configuration into a
-                    // `testApplication` and drive requests through it, rather than
-                    // re-typing a copy of it and then proving things about the copy.
-                    // `FieldApiCorsExposureTest` pins its contents literally.
+                    // The CORS block, the opt-in same-site write guard, and the startup line
+                    // that says which of them you have. All three are at the bottom of this
+                    // file, where a test can install the real thing instead of a copy.
                     installFieldApiCors()
 
                     intercept(ApplicationCallPipeline.Setup) {
@@ -4950,5 +4950,94 @@ internal fun Application.installFieldApiCors() {
         allowMethod(HttpMethod.Post)
         allowMethod(HttpMethod.Delete)
         anyHost()
+    }
+    installFieldApiWriteGuard()
+}
+
+/** Turns [installFieldApiWriteGuard] on. Off by default, and the default is the exposure. */
+internal const val FIELD_API_REQUIRE_SAME_SITE_ENV = "AFIELD_API_REQUIRE_SAME_SITE"
+
+/** `-D` equivalent of [FIELD_API_REQUIRE_SAME_SITE_ENV], and it wins when both are set. */
+internal const val FIELD_API_REQUIRE_SAME_SITE_PROPERTY = "afield.api.requireSameSite"
+
+/**
+ * Paths that must keep working cross-origin when the guard is on. Exactly one, and it is the
+ * reason `anyHost()` is in the CORS block at all: the offline viewer POSTs a document here
+ * from whatever origin its bundle happens to be served from. See `offline-viewer.js`.
+ */
+private val fieldApiSameSiteExemptPaths = setOf("/api/import-offline-doc")
+
+/**
+ * An opt-in refusal of cross-site writes across the whole API, and — whether you opt in or
+ * not — one line at startup saying what this server is currently offering the network.
+ *
+ * ## Why this is off by default, which is the uncomfortable part
+ *
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **34 of 38
+ * state-changing routes have no access control of any kind**, `POST /api/shutdown-instance`
+ * among them, and there is no `install(Authentication)` anywhere in the tree. Two separate
+ * exposures follow, and it is worth not conflating them:
+ *
+ *  - **another website**, via the CORS block above. That is what this guard closes.
+ *  - **another host on the network**, via `httpsHost = "0.0.0.0"`. This guard closes *none*
+ *    of that, and nothing in it should be read as if it did: a `curl` from the LAN sends no
+ *    `Origin` and no `Sec-Fetch-Site`, and Ktor's CORS plugin does not even run for a
+ *    request with no `Origin`. [isSameSiteRequest] treats that as same-site on purpose,
+ *    because refusing it would break every non-browser client Field has, including the
+ *    `curl` recipes in its own dev_docs.
+ *
+ * So: default-permissive, because turning it on is a behaviour change to a running system
+ * that nobody is awake to notice, and because a silent default-deny on 34 routes is how you
+ * discover which of them the human's own tooling was using. Loud either way, because the
+ * failure mode this whole area is about is capability you did not know you had.
+ */
+internal fun Application.installFieldApiWriteGuard() {
+    val required = docsFlagEnabled(
+        System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
+        System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
+    )
+    if (!required) {
+        lprintln(
+            "warning,server",
+            "Field's HTTP API is unauthenticated: 34 of its 38 state-changing routes have no access control, " +
+                "the connector binds 0.0.0.0, and CORS allows any origin. Any host on this network can call " +
+                "them with curl, and any website you have open can call them from your browser. Set " +
+                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse the browser half (the network half needs a bind " +
+                "address change, which would break the visionOS shell). See dev_docs/DOCS_IMPROVEMENT_AGENT.md.",
+        )
+        return
+    }
+    lprintln(
+        "server",
+        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site writes to /api/… are refused, except " +
+            "${fieldApiSameSiteExemptPaths.joinToString()}. This does NOT authenticate the API — a client that " +
+            "sends no Origin, which includes every curl on this network, is unaffected.",
+    )
+    intercept(ApplicationCallPipeline.Plugins) {
+        // Reads only, and the CORS preflight, pass untouched: this is about writes, and a
+        // preflight the plugin above is going to answer must not be intercepted first.
+        if (call.request.httpMethod in setOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)) return@intercept
+        val path = call.request.path()
+        if (path in fieldApiSameSiteExemptPaths) return@intercept
+        if (isSameSiteRequest(
+                call.request.headers[SEC_FETCH_SITE_HEADER],
+                call.request.headers[HttpHeaders.Origin],
+                call.request.headers[HttpHeaders.Host],
+            )
+        ) {
+            return@intercept
+        }
+        lprintln(
+            "warning,server",
+            "Refused a cross-site ${call.request.httpMethod.value} $path from " +
+                "origin=${call.request.headers[HttpHeaders.Origin] ?: "<none>"} " +
+                "($FIELD_API_REQUIRE_SAME_SITE_ENV is set)",
+        )
+        call.respond(
+            HttpStatusCode.Forbidden,
+            "Field is refusing cross-site writes because $FIELD_API_REQUIRE_SAME_SITE_ENV is set. Unset it to " +
+                "restore the default, which is that any website you have open can call this route.",
+        )
+        finish()
     }
 }

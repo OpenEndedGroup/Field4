@@ -177,7 +177,9 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
 }
 
 /**
- * The guard for *which website* is asking, as opposed to which machine.
+ * Whether the request came from *this website*, as opposed to some other one. The question
+ * `refuseCrossSiteDocsRequest` and `Server.kt`'s opt-in API guard are both really asking;
+ * *which machine* is a separate one, and [isLoopbackDocsClient] answers that.
  *
  * This is the hole the branch that wrote [refuseDocsAnnotationRequest] reasoned its way to
  * and then did not close. Its own KDoc, and two dev_docs, say the sentence correctly:
@@ -211,9 +213,31 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
  *    or some redirect chains — parses to no authority and is therefore refused.
  *
  * No `Origin` at all means no browser: `curl`, the visionOS shell's own fetches, a script.
- * That is allowed here, because it is not a CSRF — nobody's ambient credentials are being
- * borrowed — and because the caller still has to be on loopback to get this far. An
- * `Origin` with no `Host` is the shape no real client produces, so it fails closed.
+ * That counts as same-site here, because it is not a CSRF — nobody's ambient credentials are
+ * being borrowed — and because on the annotation routes the caller still has to be on
+ * loopback to get this far. An `Origin` with no `Host` is a shape no real client produces,
+ * so it fails closed.
+ */
+internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeader: String?): Boolean {
+    when (secFetchSite?.trim()?.lowercase()) {
+        "same-origin", "none" -> return true
+        null, "" -> Unit
+        else -> return false
+    }
+    val presented = origin?.trim().orEmpty()
+    if (presented.isEmpty()) return true
+    val host = hostHeader?.trim().orEmpty()
+    if (host.isEmpty()) return false
+    val authority = presented.substringAfter("://", missingDelimiterValue = "")
+    return authority.isNotEmpty() && authority.equals(host, ignoreCase = true)
+}
+
+/**
+ * [isSameSiteRequest] as a refusal, with the sentence the annotation panel renders.
+ *
+ * The decision and the message are separated because `Server.kt`'s opt-in guard over the
+ * *whole* mutating API asks the same question and has to give a different answer. One
+ * implementation of "is this another website", two things to say about it.
  */
 internal fun refuseCrossSiteDocsRequest(
     policy: DocsAccessPolicy,
@@ -222,24 +246,14 @@ internal fun refuseCrossSiteDocsRequest(
     hostHeader: String?,
 ): DocsAccessRefusal? {
     if (policy.allowCrossSiteAnnotations) return null
-    val refusal = DocsAccessRefusal(
+    if (isSameSiteRequest(secFetchSite, origin, hostHeader)) return null
+    return DocsAccessRefusal(
         HttpStatusCode.Forbidden,
         "Field documentation annotations are same-site only: this request came from another website, and " +
             "annotation text is the prompt the documentation improvement agent is handed. Use the panel Field " +
             "injects into https://localhost:<port>/field-docs/…, or set " +
             "$DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV=1 before starting Field if you meant this.",
     )
-    when (secFetchSite?.trim()?.lowercase()) {
-        "same-origin", "none" -> return null
-        null, "" -> Unit
-        else -> return refusal
-    }
-    val presented = origin?.trim().orEmpty()
-    if (presented.isEmpty()) return null
-    val host = hostHeader?.trim().orEmpty()
-    if (host.isEmpty()) return refusal
-    val authority = presented.substringAfter("://", missingDelimiterValue = "")
-    return if (authority.isNotEmpty() && authority.equals(host, ignoreCase = true)) null else refusal
 }
 
 /**
