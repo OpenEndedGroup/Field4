@@ -6,6 +6,10 @@ import afield.four.synth.SonicPi
 import afield.four.synth.SonicPiFlash
 import afield.four.synth.SonicPiInstall
 import afield.four.synth.SonicPiProgramReader
+import afield.four.synth.patDetectOnsetSamples
+import afield.four.synth.patEnergyEnvelope
+import afield.four.synth.patMatchOnsets
+import afield.four.synth.PAT_ONSET_HOP
 import afield.four.synth.gain
 import afield.four.synth.pat
 import afield.four.synth.sonicPiSource
@@ -244,8 +248,9 @@ object SonicPiPatternProbe {
         // before this line existed, which is exactly how a probe reports success for nothing.
         val expected = scheduledOnsets(spanSeconds = RECORD_SECONDS + 2.0)
         val minGap = expected.zipWithNext().minOfOrNull { (a, b) -> b - a } ?: 0.2
-        val envelope = energyEnvelope(audio.samples)
-        val detectedSamples = detectOnsetSamples(audio.samples, envelope, audio.sampleRate, minGap)
+        val envelope = patEnergyEnvelope(audio.samples)
+        val detectedSamples =
+            patDetectOnsetSamples(audio.samples, audio.sampleRate, minGap, envelope)
         val detected = detectedSamples.map { it.toDouble() / audio.sampleRate }
         println("  ${detected.size} onset(s), refined to the sample " +
             "(smallest scheduled gap ${"%.0f".format(minGap * 1000)} ms)")
@@ -273,9 +278,9 @@ object SonicPiPatternProbe {
     private fun checkNotSilent(samples: FloatArray, failures: MutableList<String>): Boolean {
         var sum = 0.0
         var peak = 0.0f
-        for (s in samples) {
-            sum += s.toDouble() * s
-            if (abs(s) > peak) peak = abs(s)
+        for (sample in samples) {
+            sum += sample.toDouble() * sample
+            if (abs(sample) > peak) peak = abs(sample)
         }
         val rms = sqrt(sum / max(1, samples.size))
         println("  overall RMS ${"%.6f".format(rms)}, peak ${"%.4f".format(peak)}")
@@ -294,14 +299,10 @@ object SonicPiPatternProbe {
     /**
      * Compare an onset train against the pattern's schedule and assert the bound.
      *
-     * Two things are deliberately *not* asserted. Neither half controls its own zero — the silent
-     * half measures UDP arrival, the audible half a recording that started before the music did —
-     * so the train is first anchored on its earliest onset and then shifted by the *median* of the
-     * matched residuals, which stops the first onset being privileged into a free 0 ms. And the
-     * constant offset that shift removes is reported rather than judged: a sequencer whose events
-     * all arrive 40 ms late is still a correct sequencer, and Sonic Pi's scheduling latency is a
-     * documented, deliberate 0.5 s. What is asserted is the *shape* — that the intervals between
-     * onsets are the intervals the pattern computed, and that they do not drift over the run.
+     * The comparison itself is [patMatchOnsets], shared with the offline half of this measurement in
+     * `synth.sonic-pi.patterns`. That sharing is the point: Field's own renderer and Sonic Pi's are
+     * two implementations of the same schedule, and comparing them is only meaningful if the same
+     * instrument measures both. See `PatOnsetDetection.kt` for what it does and does not assert.
      */
     private fun report(
         label: String,
@@ -315,47 +316,24 @@ object SonicPiPatternProbe {
             failures += "$label: no onsets observed at all"
             return MatchReport(expected, Double.NaN, 0.0)
         }
-        val anchored = observedRaw.map { it - observedRaw.first() }
+        val match = patMatchOnsets(observedRaw, expected, tolerance)
+        println("  " + match.describe(label))
 
-        fun residuals(train: List<Double>): List<Pair<Double, Double>> = expected
-            .filter { it <= train.last() + tolerance }
-            .mapNotNull { want ->
-                val nearest = train.minByOrNull { abs(it - want) } ?: return@mapNotNull null
-                if (abs(nearest - want) <= tolerance) want to (nearest - want) else null
-            }
-
-        val coarse = residuals(anchored)
-        val offset = if (coarse.isEmpty()) 0.0 else coarse.map { it.second }.sorted()[coarse.size / 2]
-        val observed = anchored.map { it - offset }
-
-        val matches = residuals(observed)
-        val considered = expected.count { it <= observed.last() + tolerance }
-        val recall = if (considered == 0) 0.0 else matches.size.toDouble() / considered
-        val errors = matches.map { abs(it.second) }
-        val worst = errors.maxOrNull() ?: Double.NaN
-        val worstAt = matches.maxByOrNull { abs(it.second) }?.first ?: -1.0
-
-        println("  $label: ${observed.size} observed, $considered scheduled in range, ${matches.size} matched")
-        println("  $label: recall ${"%.3f".format(recall)}, " +
-            "mean |error| ${"%.3f".format(errors.average() * 1000)} ms, " +
-            "worst ${"%.3f".format(worst * 1000)} ms at t=${"%.3f".format(worstAt)}s " +
-            "(constant offset removed: ${"%+.1f".format(offset * 1000)} ms)")
-
-        if (recall < minRecall) {
-            failures += "$label recall ${"%.3f".format(recall)} is below the floor $minRecall " +
-                "(${matches.size} of $considered scheduled onsets found within ${tolerance * 1000} ms)"
+        if (match.recall < minRecall) {
+            failures += "$label recall ${"%.3f".format(match.recall)} is below the floor $minRecall " +
+                "(${match.matched} of ${match.scheduled} scheduled onsets found within ${tolerance * 1000} ms)"
         }
-        if (worst.isNaN() || worst > tolerance) {
-            failures += "$label worst error ${"%.3f".format(worst * 1000)} ms exceeds the " +
+        if (match.worstError.isNaN() || match.worstError > tolerance) {
+            failures += "$label worst error ${"%.3f".format(match.worstError * 1000)} ms exceeds the " +
                 "${tolerance * 1000} ms bound"
         }
         // Spurious onsets matter too: a detector that fires on everything trivially has recall 1,
         // and "nearest scheduled onset" becomes meaningless when the observed train is dense.
-        if (observed.size > considered + max(2, considered / 4)) {
-            failures += "$label saw ${observed.size} onsets for $considered scheduled — " +
+        if (match.observed > match.scheduled + max(2, match.scheduled / 4)) {
+            failures += "$label saw ${match.observed} onsets for ${match.scheduled} scheduled — " +
                 "the detector is firing on something that is not the pattern"
         }
-        return MatchReport(expected, worst, recall)
+        return MatchReport(expected, match.worstError, match.recall)
     }
 
     /**
@@ -394,86 +372,6 @@ object SonicPiPatternProbe {
             if (line.trim().startsWith("sample :")) index + 1 else null
         }.toSet()
 
-    // ── onset detection ────────────────────────────────────────────────────────────────────────
-
-    private const val HOP = 32
-    private const val WINDOW = 256
-
-    /** RMS per hop — a plain energy envelope, which is all a percussive train needs. */
-    private fun energyEnvelope(samples: FloatArray): DoubleArray {
-        val frames = max(1, (samples.size - WINDOW) / HOP)
-        val env = DoubleArray(frames)
-        for (f in 0 until frames) {
-            val start = f * HOP
-            var sum = 0.0
-            for (i in start until min(start + WINDOW, samples.size)) {
-                sum += samples[i].toDouble() * samples[i]
-            }
-            env[f] = sqrt(sum / WINDOW)
-        }
-        return env
-    }
-
-    /**
-     * Where, to the sample, each drum starts.
-     *
-     * Two stages, and the second is the one that matters. A flux peak in a 256-sample window can
-     * only say which *frame* something happened in, which puts a floor of a hop under any error
-     * this probe could report — and a probe whose resolution is coarser than the thing it is
-     * measuring will report zero error whatever the truth is. So each coarse hit is walked back to
-     * the first sample that exceeds 5% of the local peak, and the comparison is in samples.
-     *
-     * The refractory gap is [minGapSeconds], the pattern's own smallest interval, and dedup happens
-     * *after* refinement. Both are load-bearing: `bd_haus` has a secondary energy rise 129 ms into
-     * its decay, and a first-past-the-post refractory applied to the coarse stage will happily
-     * report that shoulder and suppress the real attack that follows it. That is not a hypothetical
-     * — it is what this probe did before the refinement stage existed, and it looked like a pass.
-     */
-    private fun detectOnsetSamples(
-        samples: FloatArray,
-        envelope: DoubleArray,
-        sampleRate: Int,
-        minGapSeconds: Double
-    ): List<Int> {
-        if (envelope.size < 8) return emptyList()
-        val flux = DoubleArray(envelope.size)
-        for (i in 1 until envelope.size) flux[i] = max(0.0, envelope[i] - envelope[i - 1])
-
-        val sorted = flux.sortedArray()
-        val median = sorted[sorted.size / 2]
-        val high = sorted[(sorted.size * 0.995).toInt().coerceAtMost(sorted.size - 1)]
-        val threshold = median + 0.30 * (high - median)
-
-        val refractoryFrames = (minGapSeconds * 0.45 * sampleRate / HOP).toInt().coerceAtLeast(1)
-        val coarse = mutableListOf<Int>()
-        var lastFrame = -refractoryFrames * 2
-        for (i in 3 until flux.size - 3) {
-            if (flux[i] < threshold) continue
-            if (flux[i] < flux[i - 1] || flux[i] < flux[i + 1]) continue
-            if (i - lastFrame < refractoryFrames) continue
-            coarse += i * HOP
-            lastFrame = i
-        }
-
-        val backS = (0.030 * sampleRate).toInt()
-        val forwardS = (0.010 * sampleRate).toInt()
-        val refined = coarse.map { at ->
-            val lo = max(0, at - backS)
-            val hi = min(samples.size, at + forwardS)
-            var peak = 0.0f
-            for (i in lo until hi) if (abs(samples[i]) > peak) peak = abs(samples[i])
-            val trigger = 0.05f * peak
-            var found = lo
-            for (i in lo until hi) if (abs(samples[i]) > trigger) { found = i; break }
-            found
-        }.sorted()
-
-        val gapSamples = (minGapSeconds * 0.5 * sampleRate).toInt()
-        val out = mutableListOf<Int>()
-        for (at in refined) if (out.isEmpty() || at - out.last() >= gapSamples) out += at
-        return out
-    }
-
     // ── the picture ────────────────────────────────────────────────────────────────────────────
 
     private const val PLOT_W = 1400
@@ -501,7 +399,7 @@ object SonicPiPatternProbe {
             for (y in from..to) if (!dashed || (y / 6) % 2 == 0) px(x, y, colour)
         }
 
-        val totalS = envelope.size.toDouble() * HOP / sampleRate
+        val totalS = envelope.size.toDouble() * PAT_ONSET_HOP / sampleRate
         if (totalS <= 0.0) return PngEncoder.encode(pixels, PLOT_W, PLOT_H)
         fun xOf(t: Double) = ((t / totalS) * (PLOT_W - 1)).roundToInt()
 
@@ -522,7 +420,7 @@ object SonicPiPatternProbe {
         }
         // Envelope.
         for (f in envelope.indices) {
-            val x = xOf(f.toDouble() * HOP / sampleRate)
+            val x = xOf(f.toDouble() * PAT_ONSET_HOP / sampleRate)
             val h = ((envelope[f] / peak) * (base - envTop)).roundToInt().coerceIn(0, base - envTop)
             for (y in (base - h)..base) px(x, y, 0xFF7A8A99.toInt())
         }
