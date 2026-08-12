@@ -1020,6 +1020,11 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                // Lets a test stand up the *actual* Ktor routes and drive them over the wire.
+                // Field's security tests used to call `internal fun`s directly, so deleting
+                // the guard call at the head of a handler left every one of them green: the
+                // guards were tested, their installation was not.
+                implementation("io.ktor:ktor-server-test-host:$ktorVersion")
             }
         }
 
