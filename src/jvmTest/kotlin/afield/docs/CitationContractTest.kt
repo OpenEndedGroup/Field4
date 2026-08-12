@@ -52,7 +52,7 @@ class CitationContractTest {
          * [CitationGuard.headroom]: no amount of unrelated editing can make them resolve to the wrong
          * place. This is the number that actually measures how safe the corpus is.
          */
-        const val MIN_UNIQUE_ANCHORS = 128
+        const val MIN_UNIQUE_ANCHORS = 133
 
         /**
          * Corpus ceiling on anchors fragile enough to be confused by fewer than

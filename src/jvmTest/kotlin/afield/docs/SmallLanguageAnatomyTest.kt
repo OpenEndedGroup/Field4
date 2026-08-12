@@ -56,7 +56,7 @@ class SmallLanguageAnatomyTest {
          * would rebuild the merge hazard this whole change exists to remove. It is reported by
          * [theCitationInventoryIsReported] and never enforced.
          */
-        const val MIN_UNIQUE_ANCHORS = 108
+        const val MIN_UNIQUE_ANCHORS = 111
 
         /**
          * Ceiling on ledger citations whose anchor is ambiguous enough to be confusable by fewer than

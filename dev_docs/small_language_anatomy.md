@@ -99,7 +99,7 @@ it is a literal token that must still appear somewhere in the cited file. The li
 | 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2215` | `handlers["symbol-context"]` |
 | 20 | how any language's result becomes box output | `src/jvmMain/kotlin/afield/execution.kt:1134` | `fun dispatchExecutionOutput` |
 | 21 | how `print`/`error` inside a program reach the box | `src/jvmMain/kotlin/afield/execution.kt:1179` | `fun configureOutputProxies` |
-| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4647` | `src/commonMain/resources/` |
+| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4647` | `dir = File("./src/commonMain/resources/"), block` |
 | 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/Server.kt:4627` | `val assetCache` |
 | 24 | the per-box-property Monaco language table | `src/jsMain/kotlin/afield/BootstrapMonacoInit.kt:73` | `monacoPropertyLanguages` |
 
