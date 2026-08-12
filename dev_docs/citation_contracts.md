@@ -37,33 +37,67 @@ around it and no file-level review that predicts it.
 |---|---|---|---|---|
 | `CitationContractTest` | `src/jvmTest/kotlin/afield/docs/CitationContractTest.kt` | corpus-wide, opt-in pages | symbol search | n/a — line advisory |
 | `SmallLanguageAnatomyTest` | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt` | `small_language_anatomy.md` | symbol search | n/a — line advisory |
-| `CloseNodeCitationDriftTest` | `src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt` | `fline_close_nodes.md` | **line window** | **±1** |
+| `CloseNodeCitationDriftTest` | `src/jvmTest/kotlin/afield/graphics/CloseNodeCitationDriftTest.kt` | `fline_close_nodes.md` | symbol search | n/a — line advisory |
 
-Read the third row carefully; it is the one people get wrong. `CloseNodeCitationDriftTest` has
-**not** been migrated, and its window is **±1**, not ±2 — `subList((line - 2), (line + 1))` is
-0-based, so it spans the cited line and one line either side. It also differs structurally: its table
-of 52 citations lives **in the test**, not in the doc, so the test and the page it guards can drift
-apart from each other. Its second test, `theDevDocOnlyCitesSitesThisTestChecks`, exists to stop that —
-it requires every `Foo.kt:NNN` in the page to appear in the test's table. Note the regex is
-`([A-Za-z_0-9]+\.kt):(\d+)` — **`.kt` only**, so the page's one `.js`/`.html` citation is invisible
-to it, and a cited *range* is checked at its first line only. Three citations point into
-`src/personal`, which is gitignored and simply absent; they are listed in `outsideThisRepo` as an
-explicit admission that CI cannot check them.
+All three now resolve by symbol; **no line window survives in the repo.** `CloseNodeCitationDriftTest`
+was the last, and until 2026-08-12 its window was **±1** — `subList((line - 2), (line + 1))` is 0-based,
+so it spanned the cited line and one line either side.
+
+It still differs structurally, and this is the one to know: its table of **52 citations lives in the
+test**, not in the page, so the two can disagree about what is worth citing, and
+`FIELD_CITATIONS_WRITE=1` cannot refresh its numbers. `theDevDocOnlyCitesSitesThisTestChecks` stops the
+page citing a site the table does not know about; its regex is `([A-Za-z_0-9]+\.kt):(\d+)` — **`.kt`
+only**, so the page's one `.js`/`.html` citation is invisible to it, and a cited *range* is matched at
+its first line. Three citations point into `src/personal`, which is gitignored and simply absent; they
+are listed in `outsideThisRepo` as an explicit admission that CI cannot check them.
+
+Migrating it also produced the sharpest evidence for the limit described under *Headroom* below:
+**32 of its 52 anchors were ambiguous**, and several had headroom 0 or 1 — `}` (684 occurrences in
+`FLineGeometry.kt`), bare `toOrNull` (7), bare `endPointOf` (26). They resolved correctly only because
+the advisory line happened to sit nearest the right occurrence. That is worse than it sounds: one
+inserted line would have moved such a citation to a different site **silently**, where the old window
+would at least have gone red. Seven were lengthened until unique, and
+`noAnchorIsTooVagueToSurviveAnEdit` now keeps the rest out. The lesson generalises: *switching to
+symbol resolution does not make a corpus robust; it makes a corpus's robustness measurable, and then
+you still have to fix the weak anchors it finds.*
 
 ## How resolution works now
 
-Since 2026-08-12 the two `afield.docs` guards do not count lines. Every citation carries an **anchor**
+Since 2026-08-12 none of the three guards count lines. Every citation carries an **anchor**
 — a substring that must still be present — and `CitationGuard` **searches the whole cited file for
 it**. Where the anchor turns out to be is the answer.
 
 The line number stays, and stays useful, but it is **advisory**: it is what the reader is shown, and
-it disambiguates an anchor that occurs more than once. A stale advisory number does not fail the
-build.
+it disambiguates an anchor that occurs more than once.
 
-That last sentence is the entire design, and it is worth defending, because the instinct is to
-enforce it. If a wrong line number could fail the build, then a sibling inserting twenty lines would
-turn the guard red — which is the hazard, exactly as before, wearing a different hat. The trade
-accepted here is: **the anchor is guaranteed by CI; the number is a convenience refreshed on demand.**
+### The two tiers, and why the obvious assertion is the wrong one
+
+**Tier 1 — the anchor. Absolute.** It must exist. Insertion-invariant, so no sibling branch can ever
+turn it red; it fires only when something is renamed or deleted, which is an editorial event a person
+should look at.
+
+**Tier 2 — the number. Bounded, not exact.** The instinct is to require every advisory number to be
+*correct*, and that instinct rebuilds the hazard: a sibling inserting twenty lines above a citation
+would turn the guard red again, wearing a different hat.
+
+But "cannot be asserted exactly" is not "cannot be asserted", and stopping there would swap a guard
+that goes red for a number that goes unread — this repo's most-recorded failure. So the enforcement
+moves from the *count* to the *magnitude*:
+
+> No single citation may be more than `MAX_ADVISORY_DRIFT` (**40**) lines wrong.
+
+The count is the wrong quantity. How many numbers drift depends on how densely a page cites the file
+someone edited — one insertion into `Server.kt` drifts all seven citations pointing at it, the same
+insertion elsewhere drifts one, and those are equally harmful to a reader. The magnitude is the right
+quantity, because how *far* wrong a number is, is exactly how harmful it is: three lines off and the
+reader still sees the anchor; three hundred and the citation is a lie.
+
+40 is a judgement — roughly a screenful — stated as a judgement so it can be argued with. It was
+verified to bite: inserting 60 lines into `Server.kt` fails and names the citation and its real line,
+while a 20-line insertion stays green.
+
+So: **the anchor is guaranteed by CI absolutely; the number is guaranteed to within a screenful and
+refreshed on demand.**
 
 Refresh a page's worth of numbers with:
 
@@ -188,7 +222,12 @@ makes it cheap enough to run on any documentation change. It does not alter what
 - **Anything in `public/docs/`.** Out of scope for all three guards.
 - **`kdoc_worklist.md`**, which carries 120 citations and is generated — it belongs to
   `checkCodebaseReference`, not here.
-- **The other fifteen `dev_docs` pages carrying unanchored citations.** Bringing one under guard is
-  now a small, mechanical job; step 4 above is the whole of it. The best next candidate is
-  `fline_close_nodes.md`, whose guard is the last one still counting lines and whose citation table
-  still lives in the test rather than the page.
+- **`kdoc_worklist.md`**, 120 citations, which is *generated* — it belongs to
+  `checkCodebaseReference`, not here, and hand-anchoring it would be overwritten on the next
+  regeneration.
+- **`DOCS_IMPROVEMENT_AGENT.md`**, unguarded only because another branch owned it the night this was
+  written. It is two citations and should be folded in.
+- **Moving `CloseNodeCitationDriftTest`'s 52-row table out of the test and into
+  `fline_close_nodes.md`**, which would make it an ordinary guarded page and remove the last place
+  where a citation table and the page it guards can disagree. Roughly an hour of careful
+  restructuring; the obvious next step.
