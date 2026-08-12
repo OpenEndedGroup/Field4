@@ -165,8 +165,18 @@ Compounding it: `checkCodebaseReference` is a `JavaExec`, not a test. It produce
 is invisible to every "N tests, 0 failures" summary anyone quotes.
 
 The practical consequence, and it is the reason this section exists: **"the build was green except for
-one test" is not evidence that the documentation gates passed.** To actually check them, run
-`./gradlew --no-daemon check --continue`, or invoke the gates directly.
+one test" is not evidence that the documentation gates passed.**
+
+So there is now a task that makes the evidence unconditional:
+
+```
+./gradlew --no-daemon docsGates
+```
+
+It depends on all six gates and on nothing else — no `:allTests` in the way, so no test failure can
+hide whether they ran. Measured at **1m13s**, against roughly seven minutes for a full `check`, which
+makes it cheap enough to run on any documentation change. It does not alter what `check` does;
+`check --continue` remains the way to get all six *plus* the tests.
 
 ## What none of this checks
 
