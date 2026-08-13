@@ -1,6 +1,8 @@
 package afield.four.synth
 
 import afield.four.audio.WavFloatArrayWriter
+import afield.stdlib.displayAudioSamples
+import afield.showSignals
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.max
@@ -890,4 +892,56 @@ object SoundPathMap {
      * allows a single rounding step and nothing more.
      */
     const val SEAM_AGREEMENT_CEILING = 1e-6f
+}
+
+// ── the loadable box ───────────────────────────────────────────────────────────────────
+
+
+/**
+ * One line for a box: the whole comparison, playable and plotted.
+ *
+ * Three players and a brightness plot, so the difference between the paths can be heard *and*
+ * seen without leaving the box. Deliberately routed through `displayAudioSamples`, which is the
+ * `box-output-player` path from the map — so running this exercises four of the fifteen declared
+ * paths at once (`pat-stand-in`, `signal-graph`, `faust`, `box-output-player`).
+ *
+ * The Faust compile costs 13–22s the first time in a process and is nearly free afterwards, so
+ * the first run of this box is slow and the second is not. That is Truffle warming up, not
+ * anything of Field's.
+ */
+fun afield.Box.showSoundPathComparison(cutoffHz: Double = SoundPathMap.COMPARISON_CUTOFF_HZ) {
+    val dry = SoundPathMap.dryBeat()
+    val graph = SoundPathMap.throughSignalGraph(dry, cutoffHz)
+    val faust = SoundPathMap.throughFaust(dry, cutoffHz)
+
+    val renders = listOf(
+        "pat-stand-in — the shared input, unfiltered" to dry,
+        "signal-graph — ChamberlinLowpass at ${cutoffHz.toInt()} Hz (2-pole)" to graph,
+        "faust — fi.lowpass(1, ${cutoffHz.toInt()}) (1-pole)" to faust,
+    )
+    renders.forEachIndexed { i, (label, audio) ->
+        displayAudioSamples(audio.mono, PatSoundDocs.SR, channel = "path$i", label = label)
+        println(
+            "%-52s centroid=%6.0f Hz  rms=%.4f".format(
+                label, SoundPathMap.brightnessHz(audio.mono), PatSoundDocs.rms(audio.mono)
+            )
+        )
+    }
+
+    println("signal-graph vs faust waveform similarity: %.4f".format(
+        SoundRenderPathDocs.waveformSimilarity(graph, faust)
+    ))
+    println("the same gain through both paths, worst per-sample error: %.3e".format(
+        SoundPathMap.seamAgreementError(dry)
+    ))
+    println("(0 means bit-equal — AudioPatchSpec.Renderer is one seam, not two similar ones)")
+
+    showSignals(
+        *renders.map { (label, audio) ->
+            label.substringBefore(" —") to doughShortTimeBrightness(audio.mono, 40.0, 200, PatSoundDocs.SR)
+        }.toTypedArray(),
+        channel = "plot",
+        title = "one buffer, three paths — short-time brightness",
+        xTitle = "window", yTitle = "brightness (unitless proxy)",
+    )
 }
