@@ -15,11 +15,17 @@ import kotlin.test.assertTrue
  * the point.
  *
  * **Citation checking.** [everyCitedSiteStillContainsItsAnchor] parses the page's own ledger tables:
- * any table row whose last two cells are a `` `path:line` `` and a `` `anchor` `` is a citation, and
- * the anchor must still occur within [ANCHOR_SLACK] lines of the cited line. The page is therefore
- * the single source of truth — unlike [afield.graphics.CloseNodeCitationDriftTest], whose table lives
- * in the test and can itself drift from the doc it guards. Adding a row to the page adds a checked
- * citation with no edit here.
+ * any table row whose last two cells are a `` `path:line` `` and a `` `anchor` `` is a citation. The
+ * page is therefore the single source of truth — unlike [afield.graphics.CloseNodeCitationDriftTest],
+ * whose table lives in the test and can itself drift from the doc it guards. Adding a row to the page
+ * adds a checked citation with no edit here.
+ *
+ * As of 2026-08-12 the anchor is resolved by [CitationGuard], which **searches the whole file for it**
+ * instead of looking within a slack window of the cited line. The cited line is now advisory. That
+ * change is the point rather than an optimisation: while a slack window was load-bearing, this test
+ * reached into every Kotlin file any concurrent branch happened to touch, so it could not be made
+ * path-disjoint from anyone and detonated on merges that had nothing to do with small languages
+ * (2026-08-07, 2026-08-10). See `dev_docs/citation_contracts.md`.
  *
  * **Ratchets.** The rest of the tests compare a number the page states *in prose* against a set
  * **derived from the code** — the registered main languages, the editor's language modules, the
@@ -34,20 +40,31 @@ import kotlin.test.assertTrue
 class SmallLanguageAnatomyTest {
 
     private companion object {
-        /** How far either side of a cited line the anchor may have drifted before this fails. */
-        const val ANCHOR_SLACK = 2
-
-        /** Citation row: `| … | `path:line` | `anchor` |`. */
-        val CITATION = Regex(
-            """^\|.*\|\s*`([^`]+\.(?:kt|js|md|py|kts)):(\d+)`\s*\|\s*`([^`]+)`\s*\|\s*$""",
-            RegexOption.MULTILINE
-        )
-
         /**
          * Every citation row on the page. Ratcheted so that deleting the ledger — the cheapest way to
          * make this whole test class pass — fails instead.
          */
         const val EXPECTED_CITATIONS = 134
+
+        /**
+         * Floor on ledger anchors that are **unique in their file** and so cannot be confused no
+         * matter how much code moves. Asserted as a floor rather than an equality because tightening
+         * an anchor is always an improvement and should never need a second edit here.
+         *
+         * Deliberately *not* asserted: the number of citations whose advisory line is exactly right.
+         * That number falls whenever anybody inserts a line above a cited site, so a floor under it
+         * would rebuild the merge hazard this whole change exists to remove. It is reported by
+         * [theCitationInventoryIsReported] and never enforced.
+         */
+        const val MIN_UNIQUE_ANCHORS = 111
+
+        /**
+         * Ceiling on ledger citations whose anchor is ambiguous enough to be confusable by fewer than
+         * [CitationGuard.LOW_HEADROOM] inserted lines — the "surviving only at full slack" population
+         * the 2026-08-10 incident report asked to be told about. Zero today; kept as an assertion so
+         * that adding a fragile anchor is a build failure rather than a slow leak.
+         */
+        const val MAX_FRAGILE_ANCHORS = 0
 
         /** Rows in the "coverage-guard pattern" table. */
         const val EXPECTED_GUARD_ROWS = 9
@@ -68,17 +85,12 @@ class SmallLanguageAnatomyTest {
         pageFile.readText()
     }
 
-    /**
-     * `path:line` citations, in page order.
-     *
-     * A `|` inside a markdown table cell has to be written `\|`, so an anchor containing a pipe —
-     * `\|>` for FieldML's pipeline operator, say — arrives escaped. Unescape it, or the anchor can
-     * never match and the page is forced to avoid citing the very operators it is documenting.
-     */
-    private fun citations(): List<Triple<String, Int, String>> =
-        CITATION.findAll(page)
-            .map { Triple(it.groupValues[1], it.groupValues[2].toInt(), it.groupValues[3].replace("\\|", "|")) }
-            .toList()
+    /** Citations on the page, parsed and resolved against the source by [CitationGuard]. */
+    private fun citations(): List<CitationGuard.Citation> =
+        CitationGuard.parse(pageFile, "dev_docs/small_language_anatomy.md")
+
+    private fun resolutions(): List<CitationGuard.Resolution> =
+        citations().map { CitationGuard.resolve(root, it) }
 
     private fun sourceText(relative: String): String {
         val f = File(root, relative)
@@ -86,26 +98,61 @@ class SmallLanguageAnatomyTest {
         return f.readText()
     }
 
+    /**
+     * The anchor named by every citation must still exist in the file it points at.
+     *
+     * Note what this no longer says: nothing about *where* in the file. A citation breaks when the
+     * thing it cites is renamed or deleted — which is a real editorial event someone should look at —
+     * and not when it merely moves, which is a thing that happens to innocent files all day.
+     */
     @Test
     fun everyCitedSiteStillContainsItsAnchor() {
-        val broken = mutableListOf<String>()
-        citations().forEach { (relative, line, anchor) ->
-            val lines = sourceText(relative).lines()
-            if (line > lines.size) {
-                broken += "$relative:$line — file has only ${lines.size} lines (anchor `$anchor`)"
-                return@forEach
-            }
-            val lo = (line - 1 - ANCHOR_SLACK).coerceAtLeast(0)
-            val hi = (line - 1 + ANCHOR_SLACK).coerceAtMost(lines.size - 1)
-            if ((lo..hi).none { anchor in lines[it] }) {
-                broken += "$relative:$line — no `$anchor` within ±$ANCHOR_SLACK lines; " +
-                    "the line now reads: ${lines[line - 1].trim()}"
-            }
-        }
+        val broken = resolutions().filterIsInstance<CitationGuard.Resolution.Broken>()
         assertTrue(
             broken.isEmpty(),
-            "dev_docs/small_language_anatomy.md cites ${broken.size} site(s) that have moved. " +
-                "Recompute the line, do not loosen the anchor:\n" + broken.joinToString("\n") { "  $it" }
+            "dev_docs/small_language_anatomy.md has ${broken.size} citation(s) whose anchor no longer " +
+                "exists. Re-point the citation at what the code says now; do not weaken the anchor:\n" +
+                broken.joinToString("\n") { "  ${it.citation.describe()}: ${it.reason}" }
+        )
+    }
+
+    /**
+     * The inventory: printed in full, and floored where flooring is safe.
+     *
+     * "Prints a proud number with no assertion under it" is this repo's clearest recurring weakness,
+     * so every number here is either asserted or explicitly documented as unassertable. The division
+     * is not arbitrary — it is exactly the set of properties that survive somebody inserting lines
+     * into a cited file:
+     *
+     * - **assertable**: totals, symbol-resolution success, anchor uniqueness, anchor fragility. All
+     *   are invariant under insertion, so no sibling branch can turn them red.
+     * - **not assertable**: how many advisory line numbers are currently correct. Insertion breaks it
+     *   by construction. It is reported so a human can run a refresh, never enforced.
+     */
+    @Test
+    fun theCitationInventoryIsReported() {
+        val inv = CitationGuard.inventory(root, listOf(pageFile))
+        println("--- small_language_anatomy.md citation inventory ---")
+        println(inv.render())
+        inv.advisoryDrifted.take(20).forEach {
+            println("  advisory drift ${it.citation.describe()} → actually at :${it.line}")
+        }
+
+        assertEquals(0, inv.broken.size, "unresolvable citations: ${inv.broken.map { it.reason }}")
+        assertTrue(
+            inv.uniqueAnchors >= MIN_UNIQUE_ANCHORS,
+            "only ${inv.uniqueAnchors} of ${inv.total} anchors are unique in their file, below the " +
+                "floor of $MIN_UNIQUE_ANCHORS. An ambiguous anchor is resolved by nearest-to-advisory " +
+                "and so is only finitely robust; lengthen anchors rather than lowering this."
+        )
+        assertTrue(
+            inv.lowHeadroom.size <= MAX_FRAGILE_ANCHORS,
+            "${inv.lowHeadroom.size} citation(s) would resolve to the wrong occurrence after fewer " +
+                "than ${CitationGuard.LOW_HEADROOM} inserted lines — these are the ones that detonate " +
+                "on the next merge. Lengthen the anchor until it is unique:\n" +
+                inv.lowHeadroom.joinToString("\n") {
+                    "  ${it.citation.describe()} — ${it.hits.size} occurrences, headroom ${it.headroom}"
+                }
         )
     }
 

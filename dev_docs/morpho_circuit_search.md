@@ -63,8 +63,8 @@ add two bits and not yet to carry across eight is progress, and a max-only score
 ## Four things that were learned the hard way
 
 **Recursion has to be proved to terminate, statically.** MorphoHDL stops recursing by running out of
-bits: `SPLIT` below width 2 returns `null` (`primitives.js:41`), the compiler discards the body
-(`compiler.js:1053`) and the fallback answers. A generated body has no such courtesy, and the local
+bits: `SPLIT` below width 2 returns `null` (`primitives.js:41#if (w.length < 2) return null`), the compiler discards the body
+(`compiler.js:1053#if (!targets) return null`) and the fallback answers. A generated body has no such courtesy, and the local
 rule "the arguments are narrower than the inputs" is *not* sufficient, because the body computes
 different widths at every level. The first version emitted `evolved(ONE, t0, ONE)` where `t0` is as
 wide as `b`, which calls itself at the same signature forever. `MorphoWidthModel.terminates` walks
@@ -128,7 +128,7 @@ the full-adder row and not these would be cherry-picking.
 
 `or-reduce` is `y = (x != 0)`: an N-bit bus reduced to one bit. It is the positive structural result
 because **it cannot be done without recursion in this vocabulary**. Morpho sizes a LUT cell to its
-widest operand and broadcasts the narrow ones (`compiler.js:962–973`), so no gate and no combination
+widest operand and broadcasts the narrow ones (`compiler.js:962#function materializeLut`), so no gate and no combination
 of gates turns eight wires into one; the only route down is to keep `SPLIT`ting. Every correct
 answer is therefore genuinely divide-and-conquer.
 
@@ -160,11 +160,11 @@ One design in four hundred is genuinely parametric, and for the dual, none. The 
 *large* widths, which is what a generalisation check normally looks for — 32 and 48 are fine. It is
 at 5, 7 and 9.
 
-`SPLIT` halves a bus as `floor(w/2), w - floor(w/2)` (`primitives.js:42`), so the halves are equal
+`SPLIT` halves a bus as `floor(w/2), w - floor(w/2)` (`primitives.js:42#const half = Math.floor(w.length / 2)`), so the halves are equal
 exactly when the width is even. 5, 7 and 9 are the small widths where they are unequal *and* both
 wider than one bit. The designs found are all some form of `Or(x0, x1)` over the two halves followed
 by a recursion, so at those widths the LUT gets operands of two different widths — and
-`materializeLut` (`compiler.js:962-973`) computes `w = max(...)` and broadcasts only operands of
+`materializeLut` (`compiler.js:962#function materializeLut`) computes `w = max(...)` and broadcasts only operands of
 length 1. Unequal wider operands are neither an error nor a broadcast; the pins read past the end of
 the shorter bus. Silently wrong.
 

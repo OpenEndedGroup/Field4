@@ -78,7 +78,7 @@ surface with `// {{ remoteAR }}` or `// {{ visionmetal }}`. Working and smoke-gu
    globals (each verified in the `__superglobal.*` export list). Loaders are async/callback-based
    (`files.js`); the callback payload is `dynamic` for the compiler but a typed shape for completion
    (`GltfAsset`/`FbxAsset`/`PlyAsset`) so its members complete inside the lambda. The AnimationMixer is
-   module-local and auto-created + auto-`update()`d every XR frame (`webxr.js:76`); user code drives it
+   module-local and auto-created + auto-`update()`d every XR frame (`webxr.js:76#new THREE.AnimationMixer`); user code drives it
    through the payload's `play()`/`stop()`/`apply(t)` (which call `mixer.clipAction(clip)…`,
    `files.js:396+`). `loadFBX` THROWS unless the head vendors a FBXLoader — bound + documented; prefer
    glTF. Array-valued payload fields are kept `Any?` (a `dynamic` receiver emits member names verbatim,

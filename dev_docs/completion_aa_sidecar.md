@@ -74,7 +74,7 @@ conflicts, memory, startup). So the AA work runs in a **separate JVM** — the *
 — and Field talks to it over a tiny local HTTP contract. This is the same design already used for
 code-use telemetry (`/analyze`); completion just added a second endpoint (`/complete`) to the same
 process. The in-runtime side (`AaCompletionClient`) is a thin `java.net.http` bridge with **no** AA
-classes on its classpath (`AaCompletionClient.kt:19`).
+classes on its classpath (`AaCompletionClient.kt:19#thin HTTP bridge`).
 
 ---
 
@@ -83,14 +83,14 @@ classes on its classpath (`AaCompletionClient.kt:19`).
 ### 2.1 Editor → server
 
 The browser editor issues a `complete` RPC. `Server.kt` registers the handler
-(`Server.kt:2162`) and decodes the payload into a `CompletionRequest`
-(`Server.kt:2164`) carrying the full code buffer, caret `position`, box uid, and the `property` being
+(`Server.kt:2188#handlers["complete"]`) and decodes the payload into a `CompletionRequest`
+(`Server.kt:2190#decodeFromJsonElement<CompletionRequest>`) carrying the full code buffer, caret `position`, box uid, and the `property` being
 edited (`code`, a shader stage, `metadata`, …).
 
 ### 2.2 Server dispatch (`execution.kt`)
 
-`KotlinExecution.complete(inside, completionRequest, reply)` (`execution.kt:2757`, declared on the
-`BoxExecution` interface at `execution.kt:86`) routes by property: YAML `metadata`, GLSL/Slang shader
+`KotlinExecution.complete(inside, completionRequest, reply)` (`execution.kt:2913#override fun complete(inside: Box, completionRequest`, declared on the
+`BoxExecution` interface at `execution.kt:89#fun complete(inside: Box, completionRequest`) routes by property: YAML `metadata`, GLSL/Slang shader
 stages (`GlslCompletionSupport`, `Ai4GlslAutocomplete`), or — for ordinary Kotlin `code` — the language
 engine. For Kotlin it calls, **on the main runloop**:
 
@@ -104,26 +104,26 @@ the same non-reentrant dispatcher used elsewhere (see the `warmCompletion` note 
 
 ### 2.3 `KotlinInterface2.complete()` — backend switch
 
-`KotlinInterface2.complete(s, cursor)` (`KotlinInterface2.kt:552`) is the fork:
+`KotlinInterface2.complete(s, cursor)` (`KotlinInterface2.kt:551#override suspend fun complete(s: String, cursor: Int)`) is the fork:
 
-- If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:561`):
+- If `KotlinEngineConfig.activeCompletionBackend == AA` (`KotlinInterface2.kt:560#activeCompletionBackend ==`):
   1. gather the box's inherited preamble: `normalizePreambleText(gatherPreambleUpwards(box))`
-     (`KotlinInterface2.kt:562`; `gatherPreambleUpwards` in `macros/macros.kt:93`,
-     `normalizePreambleText` in `stdlib/shaders.kt:1861`).
+     (`KotlinInterface2.kt:561#normalizePreambleText(gatherPreambleUpwards`; `gatherPreambleUpwards` in `macros/macros.kt:117#fun gatherPreambleUpwards`,
+     `normalizePreambleText` in `stdlib/shaders.kt:2569#fun normalizePreambleText`).
   2. collect implicit receiver type names (e.g. `afield.Box`).
   3. call `AaCompletionClient.complete(s, cursor, completionPreamble, receiverTypes)` on
      `Dispatchers.IO` (`KotlinInterface2.kt:565-566`).
   4. If AA **served** the result, log `backend=AA … (detail)` and return it (`KotlinInterface2.kt:569-571`).
-  5. Otherwise log `backend=K1 … (AA→K1: detail)` and fall through (`KotlinInterface2.kt:573`).
+  5. Otherwise log `backend=K1 … (AA→K1: detail)` and fall through (`KotlinInterface2.kt:573#if (outcome.served)`).
 - Otherwise (backend `K1`, or after an AA miss) it calls `k1CompletionDelegate().complete(s, cursor)`
-  (`KotlinInterface2.kt:577`).
+  (`KotlinInterface2.kt:577#backend=K1`).
 
 Every request logs which backend actually served it on the `completion` log channel, so the source of any
 given completion is never a mystery.
 
 ### 2.4 `AaCompletionClient` — the HTTP bridge
 
-`AaCompletionClient` (`src/jvmMain/kotlin/afield/AaCompletionClient.kt:21`) is an `object` with no AA
+`AaCompletionClient` (`src/jvmMain/kotlin/afield/AaCompletionClient.kt:21#object AaCompletionClient`) is an `object` with no AA
 dependencies. `complete()` (`:84`):
 
 - resolves the endpoint (`endpoint()`, `:65`): prefer `-Dafield.completion.sidecarUrl`, else
@@ -146,7 +146,7 @@ K1 rather than showing the user nothing.
 
 ### 2.5 Sidecar `/complete` → `K2CompletionAnalyzer` → `AaCompleter`
 
-The sidecar's HTTP server (`CodeUseSemanticSidecar.kt:183`) exposes `/health` (`:190`), `/analyze`
+The sidecar's HTTP server (`CodeUseSemanticSidecar.kt:226#HttpServer.create`) exposes `/health` (`:190`), `/analyze`
 (telemetry, `:212`) and `/complete` (`:194`). `/complete` decodes a `CompletionRequest`
 (`CodeUseSemanticSidecar.kt:143`) and calls `K2CompletionAnalyzer.complete()` (`:658`). Any thrown
 exception is caught and returned as `CompletionResponse(success=false, …)` with HTTP 200 (`:204-209`) —
@@ -169,7 +169,7 @@ so the client sees a clean "server-fail" and falls back to K1, never an HTTP err
 
 #### What `AaCompleter` does with the Analysis API (`AaCompletion.kt`)
 
-`AaCompleter.complete()` (`AaCompletion.kt:295`) reconstructs the box's editing context as a synthetic,
+`AaCompleter.complete()` (`AaCompletion.kt:741#fun complete(`) reconstructs the box's editing context as a synthetic,
 compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in scope at the caret:
 
 - **Preamble → local stubs, *and* file scope.** A dangling file's own *top-level* declarations don't
@@ -428,7 +428,7 @@ commit above moved its bucket and then raised its floor.
 #### Recall in the payload is not recall on the screen
 
 **Every number above measures the response. The popup renders 80 rows** (`MAX_VISIBLE_ITEMS`,
-`fieldSuggest.js:22`). Those are different measurements and the second one is the user's — and until
+`fieldSuggest.js:24#const MAX_VISIBLE_ITEMS`). Those are different measurements and the second one is the user's — and until
 2026-08-07 nothing in the tree measured it, which is how a bare `f.` on an FLine could score as a *hit* at
 96% recall while `moveTo` was nowhere on screen (present in the response, index 159 of 249).
 
@@ -493,7 +493,7 @@ cache is answering for a previous build.
 At `d.scheme = ‸` the answer is the three entries of the `Scheme` enum, and until this existed completion
 answered with every name in scope instead, because neither backend asked what type belonged there. AA can
 be asked — `KaExpressionTypeProvider.expectedType` — which is why this is AA-only: K1 has no equivalent,
-so `InfixCompletion` (`execution.kt:751`) had to *guess* the analogous thing for infix operands by
+so `InfixCompletion` (`execution.kt:771#object InfixCompletion`) had to *guess* the analogous thing for infix operands by
 regexing the source index.
 
 Three pieces, all in the non-dot branch of `completeAt`:
@@ -549,7 +549,7 @@ branch resolves from the qualified expression and was left byte-for-byte alone.
 Standalone AA **cannot** enumerate a *binary* package's members by prefix
 (`packageScope.callables(nameFilter)` returns empty for binary packages), but it *can* resolve them by
 exact name (`findTopLevelCallables`, `findClassLike`, `findTypeAlias`). So `AaSymbolIndex`
-(`AaCompletion.kt:90`) scans the binary classpath roots once with ASM to learn which callable /
+(`AaCompletion.kt:289#data class AaSymbolIndex`) scans the binary classpath roots once with ASM to learn which callable /
 classifier / type-alias names exist per imported package, then AA resolves them on demand by exact name.
 The index is disk-cached under the sidecar scratch dir, keyed by a stat-only classpath fingerprint
 (`buildOrLoad`, `:112`; fingerprint `:130`), so a recompile transparently rebuilds it and an unchanged
@@ -626,7 +626,7 @@ Run it manually:
 ```
 
 **Transport:** plain `com.sun.net.httpserver.HttpServer` on `127.0.0.1` (default port 17841,
-`SidecarConfig`, `CodeUseSemanticSidecar.kt:249`), daemon thread pool of 2 (`--threads`, 1-8).
+`SidecarConfig`, `CodeUseSemanticSidecar.kt:300#private data class SidecarConfig`), daemon thread pool of 2 (`--threads`, 1-8).
 
 **Warmup / session lifecycle:** an AA session (`buildStandaloneAnalysisAPISession`, `:713`) indexes the
 JDK + Field's binary classpath and costs ~1 min to build. It is built **once per classpath-root set**,
@@ -658,12 +658,12 @@ var activeCompletionBackend = when (System.getProperty(
 
 | Condition | Where | `detail` |
 |---|---|---|
-| No sidecar URL configured | `AaCompletionClient.kt:91` | `no-sidecar-url` |
-| Empty classpath | `:92` | `no-classpath` |
-| HTTP non-200 | `:110` | `http-<code>` |
-| Sidecar reported failure | `:112` | `server-fail: …` |
-| **Empty AA result** (incl. warmup) | `:116` | `empty…` |
-| Timeout / network / any exception | `:143` | `error <Exception>: …` |
+| No sidecar URL configured | `AaCompletionClient.kt:162` | `no-sidecar-url` |
+| Empty classpath | `AaCompletionClient.kt:164` | `no-classpath` |
+| HTTP non-200 | `AaCompletionClient.kt:185` | `http-${response.statusCode()}` |
+| Sidecar reported failure | `AaCompletionClient.kt:187` | `server-fail: ` |
+| **Empty AA result** (incl. warmup) | `AaCompletionClient.kt:191` | `resp.candidates.isEmpty()` |
+| Timeout / network / any exception | `AaCompletionClient.kt:226` | `error ${it.javaClass.simpleName}` |
 
 So AA is strictly additive: worst case you get exactly the K1 experience. The K1 delegate itself is
 warmed ahead of time (`warmCompletion`/`warmCompletionAsync`, `KotlinInterface2.kt:587,603`) so the first

@@ -3,9 +3,9 @@
 *2026-08-02.*
 
 Everything that turns a **filled** `FLine` into triangles funnels into one place:
-`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014`). It flattens the line into
-rings and hands them to `PlanarTessellation`
-(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170`), which groups them into planes,
+`FLine.tessellate` (`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014#fun tessellate`). It flattens
+the line into rings and hands them to `PlanarTessellation`
+(`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170#fun tessellate`), which groups them into planes,
 works out which rings are holes in which, and hands each group to `FloatEarcut`.
 
 *Updated 2026-08-03: the second half of this document — "The limit that remains" and "A convention
@@ -21,7 +21,7 @@ The idea is right. Two details of it were wrong, and a third was already wrong b
 ## The thing that makes projection choices load-bearing
 
 `FloatEarcut` **normalises the winding of every ring it is handed**. `linkedList`
-(`FloatEarcut.kt:705`) walks the ring forwards or backwards depending on the sign of its signed
+(`FloatEarcut.kt:705#clockwise == (signedArea`) walks the ring forwards or backwards depending on the sign of its signed
 area, so the outer ring always ends up in earcut's canonical orientation and the holes always end up
 in the opposite one. That is a good property for a triangulator — it means you can feed it rings in
 any order and any winding — but it has a consequence that is easy to miss:
@@ -84,7 +84,7 @@ Worth recording, because it is the obvious suspicion and it is false.
 
 The mirror flips the sign of `area2D`, and `area2D` is what the code uses to pick between candidate
 parent rings. It does **not** corrupt anything, because `tessellate` only ever consumes the signed
-area through `abs()` (`PlanarTessellation.kt:389`), and point-in-polygon containment is mirror
+area through `abs()` (`PlanarTessellation.kt:389#val area = abs(b.area)`), and point-in-polygon containment is mirror
 invariant. So
 triangle counts, total areas and nesting parity were already invariant under rigid rotation before
 this branch, and still are. Measured, not reasoned: `TessellationOrientationOracleTest`'s area,
@@ -104,21 +104,23 @@ measures both halves, including the counterfactual.)
 
 | | |
 |---|---|
-| `StandardDrawing.kt:134` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
-| `ThreeJsViewer.kt:854` | inside `appendFilledMesh` (`:843`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:362`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69`). |
+| `graphics/StandardDrawing.kt:134#f.tessellate(samplesPerCubic)` | inside `trianglesOut`, which de-indexes into an `afield.four` vertex buffer. **No in-repo callers** — it is stdlib API for user boxes that own a `DynamicallyWriteable`. |
+| `ThreeJsViewer.kt:941#f.tessellate(samplesPerCubic)` | inside `appendFilledMesh` (`ThreeJsViewer.kt:930#private fun appendFilledMesh`), reached from `Box.threeLines(...)` (`ThreeJsViewer.kt:391#fun Box.threeLines`) and served into `threejs_viewer.html`. Also the wire format the visionOS native viewer reads (`FLineWire.swift:69#let fills`). |
 
-Not on this path at all: SVG export (`graphics/someSkiko.kt:553` writes `<path fill=…>`), the 2D Skia canvas
-(`graphics/someSkiko.kt:368`, a filled Skia `Path`), and typography extrusion (`typography_field.kt:342` calls
+Not on this path at all: SVG export (`graphics/someSkiko.kt:753#stroke="none" fill=` writes
+`<path fill=…>`), the 2D Skia canvas (`graphics/someSkiko.kt:375#f.filled) PaintMode.FILL`, a filled
+Skia `Path`), and typography extrusion (`typography_field.kt:342#FloatEarcut.earcut` calls
 `FloatEarcut` directly).
 
 And the reason it shipped: **nothing in Field culls back faces.** Every Vulkan pipeline is
 `VK_CULL_MODE_NONE` (`four/modules/Module.kt:803`, `:988`, `:1146`; `four/modules/MeshModule.kt:466`,
-`:664`; `four/imgui/ImGuiRenderToTexture.kt:250`). The three.js fill materials are
-`MeshStandardMaterial` with `side: THREE.DoubleSide` (`threejs_viewer.html:915`, `:1014`), and
-although they do derive normals from the winding — `computeVertexNormals()` at `:759`, `:810`,
-`:1135`, `:1572` — three.js flips the normal for back-facing fragments on a double-sided material,
-so a uniformly mis-wound flat face still shades correctly. The visionOS viewer sets
-`faceCulling = .none` explicitly (`FLineMeshBuilder.swift:401`).
+`:664`; `four/imgui/ImGuiRenderToTexture.kt:250#vkCmdSetCullMode(cmd, VK_CULL_MODE_NONE)`). The
+three.js fill materials are `MeshStandardMaterial` with `side: THREE.DoubleSide`
+(`threejs_viewer.html:1010#side: THREE.DoubleSide`, `:1120`), and although they do derive normals
+from the winding — `computeVertexNormals()` at three sites, `:829`, `:880` and `:2697` — three.js
+flips the normal for back-facing fragments on a double-sided material, so a uniformly mis-wound flat
+face still shades correctly. The visionOS viewer sets `faceCulling = .none` explicitly
+(`FLineMeshBuilder.swift:401#faceCulling = .none`).
 
 So the honest statement of severity: **the defect was real but latent in every first-party viewer.**
 What this fix protects is anything that turns culling on, reads a face normal off the mesh, exports
@@ -138,7 +140,7 @@ the commands that regenerate either half, are in
 ## Coverage
 
 Before the 2026-08-02 branch, **no** test exercised `FLine.tessellate` with holes at all, and only
-`PolytopeRealizationAndTessellationTest.kt:61` exercised it off the XY plane — by triangle count
+`PolytopeRealizationAndTessellationTest.kt:61#line.tessellate { _, indices` exercised it off the XY plane — by triangle count
 alone. That is the gap that let the facing defect land.
 
 The invariants are now pinned by `src/jvmTest/kotlin/afield/graphics/`:
@@ -183,7 +185,7 @@ What made this more than a change of projection is the sentence the old version 
 on: hole classification has to be scoped to a plane as well as to a projection, because "ring A is a
 hole in ring B" is measured on projected coordinates. It only *means* something when A and B are
 flattened in the same frame, and it is only *true* when they lie in the same surface. So the rings
-are clustered into planes first (`PlanarTessellation.kt:202`), and everything downstream — frame,
+are clustered into planes first (`PlanarTessellation.kt:202#private fun cluster`), and everything downstream — frame,
 nesting, hole parity, hemisphere — is scoped to a cluster.
 
 ### The clustering rule
@@ -204,7 +206,7 @@ absolute epsilon would say they are not, silently changing its mind somewhere be
 
 Three more decisions, each of which someone will eventually want to know the reason for:
 
-**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:223`), not the
+**Ambiguity resolves to the first plane in ring order** (`PlanarTessellation.kt:223#val existing = groups.firstOrNull`), not the
 nearest. Planes are grown greedily and a plane is represented by the ring that *seeded* it, never by
 a running average of its members. Nearest-plane needs a global pass over every candidate; "first"
 is the only tie-break that stays stable as rings are appended; and seed-not-average is what stops a
@@ -232,7 +234,7 @@ and the same ring at twice it (a polygon), on both implementations, plus the sam
 
 **A degenerate ring has no plane.** A ring whose Newell normal is zero — collinear, all-identical, a
 bowtie — cannot vote on a plane and is not allowed to seed one. Those rings are placed *after* every
-ring that has a normal (`PlanarTessellation.kt:245`), by the distance test alone; one that matches
+ring that has a normal (`PlanarTessellation.kt:245#for (i in withoutANormal)`), by the distance test alone; one that matches
 nothing gets a plane to itself, where it fills nothing. This reproduces the single-axis code's
 behaviour exactly: its `projectionAxis` kept its `(x, y)` default when no ring had a normal, and an
 all-degenerate FLine still comes out the same way.
@@ -264,13 +266,13 @@ support".
 
 > **Corrected 2026-08-04, and this correction is the point of the paragraph.** This section used to
 > restate the note "more strongly", as: *"`FloatEarcut` decides which of the rings it is handed is the
-> outer one from the sign of its projected area (`FloatEarcut.kt:705`), so a mirrored frame inverts the
+> outer one from the sign of its projected area (`FloatEarcut.kt:705#clockwise == (signedArea`), so a mirrored frame inverts the
 > hole-versus-outer decision before any triangle exists to flip. The convention and the absence of
 > holes were the same fact."* That is **false**, and it was the stated justification for unifying the
 > two triangulators, which makes it worth a paragraph rather than a silent edit.
 
 What the code does. `earcut(data, holeIndices, dim)` slices the flat vertex array by **array
-position**: `outerLen = holeIndices[0] * dim` (`FloatEarcut.kt:19`), the outer ring is `[0, outerLen)`
+position**: `outerLen = holeIndices[0] * dim` (`FloatEarcut.kt:19#val outerLen = if (hasHoles)`), the outer ring is `[0, outerLen)`
 (`:21`), and each remaining slice is a hole (`:484`–`:492`). No area is consulted to make that
 decision. `linkedList` (`:705`) *does* read `signedArea`, but only to choose a **traversal direction**
 against a target its caller supplies — `true` for the outer ring, `false` for every hole — which is
@@ -295,11 +297,11 @@ So there is now one implementation — `PlanarTessellation` — and two thin ada
 
 | | |
 |---|---|
-| `FLine.tessellate` (`FLine.kt:1014`) | flattens and sanitises, then packs each returned polygon's own vertices |
-| `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:179`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
+| `FLine.tessellate` (`FLine.kt:1014#fun tessellate`) | flattens and sanitises, then packs each returned polygon's own vertices |
+| `EarcutFaceTriangulator` (`polytope/FieldAdapters.kt:214#object EarcutFaceTriangulator`) | reads a `Realization3` and maps the returned `(ring, vertex)` references back to realization indices |
 
 `EarcutFaceTriangulator` therefore *gained* hole support, through a new
-`HoleAwareFaceTriangulator` (`polytope/FieldAdapters.kt:149`) that adds
+`HoleAwareFaceTriangulator` (`polytope/FieldAdapters.kt:184#interface HoleAwareFaceTriangulator`) that adds
 `triangulate(outer, holes, realization)` without disturbing the existing `fun interface
 FaceTriangulator`. Holes are still not reachable from `PolyhedralObject.triangulate`, because a
 `faceCycle` is a single cycle and the topology has no notion of a hole in a face; the capability is
@@ -319,7 +321,8 @@ obviously wrong.
 
 *Was: a naive JS fan. Fixed 2026-08-03, in the same pass.*
 
-`FLine.tessellate` has two production call sites, and the second one — `ThreeJsViewer.kt:854`, inside
+`FLine.tessellate` has two production call sites, and the second one —
+`ThreeJsViewer.kt:941#f.tessellate(samplesPerCubic)`, inside
 `appendFilledMesh` — is only half the story for the three.js viewer, because `editable = true`
 **re-triangulates client-side**. It has to: the user drags points, and the fill has to follow between
 server round-trips.
@@ -382,7 +385,7 @@ rigidly rotated three ways — through both implementations and compares them **
 Two things about that comparison are worth knowing before extending it.
 
 * **The shimmed `THREE.ShapeUtils.triangulateShape` is `FloatEarcut`.** Not a compromise: the viewer's
-  three.js comes from a CDN (`threejs_viewer.html:197`) and the only in-repo copy,
+  three.js comes from a CDN (`threejs_viewer.html:267#cdn.jsdelivr.net/npm/three@`) and the only in-repo copy,
   `extensions/remote_ar/vendor/super-three/0.184.0/`, is an incomplete vendoring whose
   `three.module.js` imports a `three.core.js` that was never committed, so it cannot be loaded at all.
   Holding the triangulator fixed also makes the comparison exact rather than a count, and earcut is
@@ -440,7 +443,7 @@ for a concave ring — a separate question about hit testing, not about fills.
 Found by the first two-hole test that had ever been written against it, and unrelated to any
 projection.
 
-`findHoleBridge` (`FloatEarcut.kt:586`) implements David Eberly's bridge search: cast a ray left from
+`findHoleBridge` (`FloatEarcut.kt:586#private fun findHoleBridge`) implements David Eberly's bridge search: cast a ray left from
 the hole's leftmost point, take the intersected edge, and then — this is the second half — walk the
 outer ring looking for vertices inside the triangle formed by hole point, intersection and endpoint,
 choosing the one at the minimum angle. Upstream that walk is a `do … while (p !== stop)` starting at
@@ -451,7 +454,7 @@ The symptom needed two holes in a diagonal arrangement to show: a 100x100 square
 low-left and a 30x30 hole high-right came back as 13 triangles instead of 14, with overlapping
 bridges, measuring 9000 instead of 8700. One hole was always fine, which is why nothing noticed —
 `FLine.tessellate` had no hole test at all before 2026-08-02, and typography extrusion
-(`typography_field.kt:342`) is the only other caller. A letter with two counters (`B`, `%`, `8`) was
+(`typography_field.kt:342#FloatEarcut.earcut`) is the only other caller. A letter with two counters (`B`, `%`, `8`) was
 in the blast radius.
 
 Fixed at `FloatEarcut.kt:629` by restoring the `do … while`. All 1283 `jvmTest` cases stay green, and

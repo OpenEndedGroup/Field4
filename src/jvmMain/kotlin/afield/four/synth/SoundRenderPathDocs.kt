@@ -22,10 +22,15 @@ expect:
 /**
  * The figures behind `public/docs/sound.md`, and the reason that page can be trusted.
  *
- * Field has two offline voices for the same pattern and they sound nothing alike.
+ * Field has two offline voices for the same **pattern** and they sound nothing alike.
  * [patRenderStereo] plays it through [patVoice] — a sine for `bd`, filtered noise for `sd` and
- * `hh` — and [patRenderStereoDirt] plays it through the genuine Tidal Dirt-Samples library. Every
- * audio figure Field has published so far is the first one, and nothing on any page said so.
+ * `hh` — and [patRenderStereoDirt] plays it through the genuine Tidal Dirt-Samples library.
+ *
+ * This used to continue "and every audio figure Field has published so far is the first one, and
+ * nothing on any page said so". Both halves went stale within days: [DocsAudioProvenance] measured
+ * the corpus and most of it is [DoughDspSoundDocs], and `public/docs/sound.md` now says so at
+ * length. Two is also the count of *pattern* voices and never was the count of ways to make a sound
+ * — [SoundPathMap] has that, and there are six.
  *
  * So provenance is not a comment here, it is a field. Each [Figure] *declares* its [Voice], and
  * two mechanisms hold the declaration to it:

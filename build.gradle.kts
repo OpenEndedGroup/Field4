@@ -1020,6 +1020,11 @@ kotlin {
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test"))
+                // Lets a test stand up the *actual* Ktor routes and drive them over the wire.
+                // Field's security tests used to call `internal fun`s directly, so deleting
+                // the guard call at the head of a handler left every one of them green: the
+                // guards were tested, their installation was not.
+                implementation("io.ktor:ktor-server-test-host:$ktorVersion")
             }
         }
 
@@ -1359,6 +1364,31 @@ tasks.named("check") {
     dependsOn("checkAgentTranscripts")
     dependsOn("checkAgentTranscriptIndex")
     dependsOn("checkCompletionCorpusFixtures")
+}
+
+// The six gates above are attached to `check` with no ordering constraint, which means Gradle is free
+// to schedule them anywhere relative to `:allTests` — and without `--continue`, a single failing test
+// stops the build before an arbitrary subset of them has run. That is not hypothetical: on 2026-08-12
+// a baseline `check` ran checkPythonTools, checkAgentTranscriptIndex and checkAgentTranscripts, then
+// :jvmTest failed, and checkKDocAttachment, checkCodebaseReference and checkCompletionCorpusFixtures
+// never executed at all. `check --dry-run` lists them in a *different* order again, so which evidence
+// you get is not reproducible from this file. Three of these are JavaExec and emit no test XML, so
+// their absence is invisible to any "N tests, 0 failures" summary.
+//
+// Hence this: one task that runs the documentation gates and nothing else, with no :allTests in the
+// way. For a human checking a docs change, and for the nightly harness, which needs to report
+// checkCodebaseReference explicitly rather than hope it ran.
+//   ./gradlew --no-daemon docsGates
+// This does not change what `check` does. See dev_docs/citation_contracts.md.
+tasks.register("docsGates") {
+    group = "verification"
+    description = "Runs only the documentation/generated-artifact guards, without :allTests — so a docs change can be verified, and reported on, without a test failure hiding whether they ran."
+    dependsOn("checkCodebaseReference")
+    dependsOn("checkKDocAttachment")
+    dependsOn("checkAgentTranscripts")
+    dependsOn("checkAgentTranscriptIndex")
+    dependsOn("checkCompletionCorpusFixtures")
+    dependsOn("checkPythonTools")
 }
 
 tasks.register<JavaExec>("runSidecarPathParseSmokeTest") {

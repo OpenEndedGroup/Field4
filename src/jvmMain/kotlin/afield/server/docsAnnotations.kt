@@ -5,6 +5,8 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.httpMethod
+import io.ktor.server.request.path
 import io.ktor.server.request.receive
 import io.ktor.server.request.uri
 import io.ktor.server.response.respond
@@ -82,6 +84,9 @@ internal const val DOCS_IMPROVEMENT_DIRECTORY_ENV = "AFIELD_DOCS_IMPROVEMENT_DIR
 /** Escape hatch that re-opens the *annotation* routes to non-loopback clients. Never re-opens the spawn. */
 internal const val DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV = "AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE"
 
+/** Escape hatch that re-opens the annotation *API* to other websites. A different axis from the one above. */
+internal const val DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV = "AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE"
+
 /** Header carrying [DOCS_IMPROVEMENT_TOKEN_ENV] on a launch request. */
 internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Token"
 
@@ -96,6 +101,7 @@ internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Tok
 internal data class DocsAccessPolicy(
     val improvementEnabled: Boolean = false,
     val allowRemoteAnnotations: Boolean = false,
+    val allowCrossSiteAnnotations: Boolean = false,
     val improvementToken: String = "",
 )
 
@@ -167,6 +173,86 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
         "Field documentation annotations are loopback-only. Open Field at https://localhost:<port>/field-docs/… " +
             "from this machine, or set $DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV=1 before starting Field to allow " +
             "annotations from other devices.",
+    )
+}
+
+/**
+ * Whether the request came from *this website*, as opposed to some other one. The question
+ * `refuseCrossSiteDocsRequest` and `Server.kt`'s opt-in API guard are both really asking;
+ * *which machine* is a separate one, and [isLoopbackDocsClient] answers that.
+ *
+ * This is the hole the branch that wrote [refuseDocsAnnotationRequest] reasoned its way to
+ * and then did not close. Its own KDoc, and two dev_docs, say the sentence correctly:
+ * **loopback does not stop a cross-site POST, because your own browser is on loopback.**
+ * It was applied to `POST /api/docs-improvement`, whose token header is not CORS-safelisted
+ * so the preflight fails — and not to the annotation routes one screen above it, whose only
+ * header is `Content-Type: application/json`. That header *is* in Field's `allowHeader`,
+ * `Post` and `Delete` *are* in its `allowMethod`, and `anyHost()` covers the origin. So the
+ * preflight succeeded and any page you had open could write annotation notes — which are
+ * the improvement agent's prompt input, i.e. the exact asset the token exists to protect.
+ *
+ * The fix is not to narrow the CORS block. `POST /api/import-offline-doc` is a real
+ * cross-origin consumer (`offline-viewer.js`), the plugin's configuration is
+ * application-wide, and a route that must not be reachable has to refuse for itself — the
+ * same conclusion `Server.kt` reaches about the bind address, for the same reason.
+ *
+ * Two signals, in the order of how much they are worth:
+ *
+ *  - **`Sec-Fetch-Site`**, which the browser sets and a page cannot: it is a forbidden
+ *    header name, so no amount of `fetch` options touches it. `same-origin` is the panel
+ *    talking to its own server. `none` is a human typing the URL or following a bookmark —
+ *    a request with no initiator at all, which is not a CSRF. Everything else is refused,
+ *    and note that includes **`same-site`**: a page on `http://localhost:9493` is a
+ *    different *origin* from `https://localhost:9092` but the same *site*, and it is
+ *    precisely the origin from which last night's branch measured a successful attack.
+ *    An unrecognised value is refused too, because a value we do not understand is not
+ *    permission.
+ *  - **`Origin` against `Host`**, for a client too old to send `Sec-Fetch-Site`. Both are
+ *    set by the browser from the same URL, so a same-origin request has them agreeing on
+ *    the authority and a cross-origin one does not. `Origin: null` — a sandboxed iframe,
+ *    or some redirect chains — parses to no authority and is therefore refused.
+ *
+ * No `Origin` at all means no browser: `curl`, the visionOS shell's own fetches, a script.
+ * That counts as same-site here, because it is not a CSRF — nobody's ambient credentials are
+ * being borrowed — and because on the annotation routes the caller still has to be on
+ * loopback to get this far. An `Origin` with no `Host` is a shape no real client produces,
+ * so it fails closed.
+ */
+internal fun isSameSiteRequest(secFetchSite: String?, origin: String?, hostHeader: String?): Boolean {
+    when (secFetchSite?.trim()?.lowercase()) {
+        "same-origin", "none" -> return true
+        null, "" -> Unit
+        else -> return false
+    }
+    val presented = origin?.trim().orEmpty()
+    if (presented.isEmpty()) return true
+    val host = hostHeader?.trim().orEmpty()
+    if (host.isEmpty()) return false
+    val authority = presented.substringAfter("://", missingDelimiterValue = "")
+    return authority.isNotEmpty() && authority.equals(host, ignoreCase = true)
+}
+
+/**
+ * [isSameSiteRequest] as a refusal, with the sentence the annotation panel renders.
+ *
+ * The decision and the message are separated because `Server.kt`'s opt-in guard over the
+ * *whole* mutating API asks the same question and has to give a different answer. One
+ * implementation of "is this another website", two things to say about it.
+ */
+internal fun refuseCrossSiteDocsRequest(
+    policy: DocsAccessPolicy,
+    secFetchSite: String?,
+    origin: String?,
+    hostHeader: String?,
+): DocsAccessRefusal? {
+    if (policy.allowCrossSiteAnnotations) return null
+    if (isSameSiteRequest(secFetchSite, origin, hostHeader)) return null
+    return DocsAccessRefusal(
+        HttpStatusCode.Forbidden,
+        "Field documentation annotations are same-site only: this request came from another website, and " +
+            "annotation text is the prompt the documentation improvement agent is handed. Use the panel Field " +
+            "injects into https://localhost:<port>/field-docs/…, or set " +
+            "$DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV=1 before starting Field if you meant this.",
     )
 }
 
@@ -277,6 +363,7 @@ private fun resolveDocsAccessPolicy(): DocsAccessPolicy {
     return DocsAccessPolicy(
         improvementEnabled = enabled,
         allowRemoteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV)),
+        allowCrossSiteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV)),
         improvementToken = token,
     )
 }
@@ -343,10 +430,23 @@ data class DocsAnnotation(
     val workingDirectory: String = "",
 )
 
+/** Where notes live when nobody has said otherwise: one file, shared by every Field on the machine. */
+private fun defaultDocsAnnotationStorePath(): Path =
+    Paths.get(System.getProperty("user.home"), ".afield", "docs-annotations.json")
+
 private object DocsAnnotationStore {
     private val lock = Any()
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
-    val path: Path = Paths.get(System.getProperty("user.home"), ".afield", "docs-annotations.json")
+
+    /**
+     * A `var` for exactly one reason: [withDocsAnnotationStoreAt].
+     *
+     * A route-level test that POSTs an annotation would otherwise write into the human's
+     * real `~/.afield/docs-annotations.json`, which is not a temp file and not the test's
+     * to touch. There is no production path that assigns to this.
+     */
+    @Volatile
+    var path: Path = defaultDocsAnnotationStorePath()
 
     fun list(): List<DocsAnnotation> = synchronized(lock) { read().annotations }
 
@@ -399,6 +499,32 @@ private object DocsAnnotationStore {
 
     private fun write(annotations: List<DocsAnnotation>) =
         writeDocsAnnotationsAtomically(path, json, annotations)
+}
+
+/**
+ * Runs [block] with the annotation store pointed at [path], then puts it back. Tests only.
+ *
+ * The alternative was a test that drives `POST /api/docs-annotations` for real and lands a
+ * note in the human's own notebook, which is a worse trade than a `var`. Not concurrent-safe,
+ * deliberately: the store is a process-global singleton and pretending otherwise here would
+ * be a more convincing lie than the `@Volatile`. Nesting *is* safe — the previous value is
+ * restored, not the default — because a helper that wraps every test application in one of
+ * these cannot know whether its caller already did.
+ *
+ * Worth reaching for more readily than it looks. Most of the route-level tests assert a
+ * *refusal*, so while they pass they never reach the store at all — but the point of a
+ * security test is to be run against a reverted guard, and that is exactly the state in
+ * which they do reach it. Twelve notes landed in the real file that way on 2026-08-12,
+ * during this function's own branch, before anybody noticed.
+ */
+internal fun <T> withDocsAnnotationStoreAt(path: Path, block: () -> T): T {
+    val previous = DocsAnnotationStore.path
+    DocsAnnotationStore.path = path
+    try {
+        return block()
+    } finally {
+        DocsAnnotationStore.path = previous
+    }
 }
 
 /**
@@ -514,28 +640,65 @@ private val docsImprovementDirectory: DocsImprovementDirectory by lazy {
 }
 
 /**
- * Refuses and returns true when this call may not touch annotations.
+ * Refuses and returns true when this call is not from *this machine*.
  *
  * Written as an explicit call at the head of each handler rather than a pipeline
  * interceptor so that a reader of any one route can see, in that route, that it is
- * guarded — and so that grepping `refuseUnlessLocalDocsClient` enumerates the whole
- * protected surface.
+ * guarded — and so that grepping the two `refuseUnless…` names enumerates the whole
+ * protected surface, and which axis each route is protected on.
  */
-private suspend fun ApplicationCall.refuseUnlessLocalDocsClient(): Boolean {
-    val refusal = refuseDocsAnnotationRequest(docsAccessPolicy, request.local.remoteAddress) ?: return false
+private suspend fun ApplicationCall.refuseUnlessLocalDocsClient(policy: DocsAccessPolicy): Boolean {
+    val refusal = refuseDocsAnnotationRequest(policy, request.local.remoteAddress) ?: return false
     respond(refusal.status, refusal.reason)
     return true
 }
 
-fun Route.installDocsAnnotationRoutes() {
+/**
+ * Refuses and returns true when this call is not from *this site*. Loopback first, because
+ * a caller who is off the machine should learn the machine rule and nothing more.
+ *
+ * The `Host` header rather than `request.local.serverHost`: `Host` is what the browser
+ * derived the page's origin from, so it is the thing `Origin` is comparable to. Reading
+ * the connection point instead would compare an origin against a socket, and on a server
+ * reached by several names — `localhost`, `127.0.0.1`, the LAN address, all live here —
+ * those are not the same question.
+ */
+private suspend fun ApplicationCall.refuseUnlessSameSiteDocsClient(policy: DocsAccessPolicy): Boolean {
+    if (refuseUnlessLocalDocsClient(policy)) return true
+    val refusal = refuseCrossSiteDocsRequest(
+        policy,
+        request.headers[SEC_FETCH_SITE_HEADER],
+        request.headers[HttpHeaders.Origin],
+        request.headers[HttpHeaders.Host],
+    ) ?: return false
+    lprintln(
+        "warning,docs-annotations",
+        "Refused a cross-site ${request.httpMethod.value} ${request.path()} from " +
+            "origin=${request.headers[HttpHeaders.Origin] ?: "<none>"} " +
+            "sec-fetch-site=${request.headers[SEC_FETCH_SITE_HEADER] ?: "<none>"}",
+    )
+    respond(refusal.status, refusal.reason)
+    return true
+}
+
+/** The browser-set signal for "who initiated this". A page cannot set it: it is a forbidden header name. */
+internal const val SEC_FETCH_SITE_HEADER = "Sec-Fetch-Site"
+
+/**
+ * @param policy the access posture to enforce. Defaults to the one this JVM resolved at
+ *   startup; a test passes its own so that "the server as it shipped last week", "the
+ *   hatch open" and "the hatch shut" are all just arguments, the way [DocsAccessPolicy]
+ *   was designed to make them.
+ */
+internal fun Route.installDocsAnnotationRoutes(policy: DocsAccessPolicy = docsAccessPolicy) {
     // One line at startup that says what this server will and will not do, because the
     // failure mode being defended against is silent capability.
-    if (docsAccessPolicy.improvementEnabled) {
+    if (policy.improvementEnabled) {
         lprintln(
             "docs-annotations",
             "Documentation improvement agent ENABLED for ${docsImprovementDirectory.display}. " +
                 "POST /api/docs-improvement requires header $DOCS_IMPROVEMENT_TOKEN_HEADER: " +
-                "${docsAccessPolicy.improvementToken} (from loopback only).",
+                "${policy.improvementToken} (from loopback only).",
         )
     } else {
         lprintln(
@@ -544,16 +707,24 @@ fun Route.installDocsAnnotationRoutes() {
                 "enable with -D$DOCS_IMPROVEMENT_ENABLE_PROPERTY=true or $DOCS_IMPROVEMENT_ENABLE_ENV=1.",
         )
     }
-    if (docsAccessPolicy.allowRemoteAnnotations) {
+    if (policy.allowRemoteAnnotations) {
         lprintln(
             "warning,docs-annotations",
             "$DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV is set: documentation annotations accept writes from any host " +
                 "that can reach this port. The improvement agent stays loopback-only regardless.",
         )
     }
+    if (policy.allowCrossSiteAnnotations) {
+        lprintln(
+            "warning,docs-annotations",
+            "$DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV is set: documentation annotations accept writes from any " +
+                "website open in your browser, and annotation text is the improvement agent's prompt. The " +
+                "improvement agent still needs its token regardless.",
+        )
+    }
 
     get("/api/docs-annotations") {
-        if (call.refuseUnlessLocalDocsClient()) return@get
+        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
         val page = call.request.queryParameters["page"]
         val tags = call.request.queryParameters.getAll("tag").orEmpty().map(String::lowercase)
         val from = call.request.queryParameters["from"]?.toLongOrNull()
@@ -566,26 +737,35 @@ fun Route.installDocsAnnotationRoutes() {
         })
     }
     post("/api/docs-annotations") {
-        if (call.refuseUnlessLocalDocsClient()) return@post
+        if (call.refuseUnlessSameSiteDocsClient(policy)) return@post
         call.respond(DocsAnnotationStore.upsert(call.receive<DocsAnnotationUpsert>().annotation))
     }
     put("/api/docs-annotations/{id}/resolve") {
-        if (call.refuseUnlessLocalDocsClient()) return@put
+        if (call.refuseUnlessSameSiteDocsClient(policy)) return@put
         DocsAnnotationStore.resolve(call.parameters["id"].orEmpty(), call.receive<DocsAnnotationResolve>())?.let { call.respond(it) }
             ?: call.respond(HttpStatusCode.NotFound, "annotation not found")
     }
     delete("/api/docs-annotations/{id}") {
-        if (call.refuseUnlessLocalDocsClient()) return@delete
+        if (call.refuseUnlessSameSiteDocsClient(policy)) return@delete
         if (DocsAnnotationStore.delete(call.parameters["id"].orEmpty())) call.respond(mapOf("ok" to true))
         else call.respond(HttpStatusCode.NotFound, "annotation not found")
     }
     get("/api/docs-improvement") {
-        if (call.refuseUnlessLocalDocsClient()) return@get
+        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
         call.respond(DocsImprovementTask.status())
     }
     post("/api/docs-improvement") {
+        // Belt and braces on the one route where the cost of being wrong is a coding agent.
+        // The token already stops a web page — its header is not CORS-safelisted, so the
+        // preflight fails — but that argument rests on six lines of CORS configuration in
+        // another file staying exactly as they are. This check does not.
+        //
+        // `allowCrossSiteAnnotations` is forced shut here, for the same reason
+        // [refuseDocsImprovementLaunch] never reads `allowRemoteAnnotations`: a hatch whose
+        // name says "annotations" must not turn out to have opened the spawn.
+        if (call.refuseUnlessSameSiteDocsClient(policy.copy(allowCrossSiteAnnotations = false))) return@post
         val refusal = refuseDocsImprovementLaunch(
-            docsAccessPolicy,
+            policy,
             call.request.local.remoteAddress,
             call.request.headers[DOCS_IMPROVEMENT_TOKEN_HEADER],
         )
@@ -616,7 +796,13 @@ fun Route.installDocsAnnotationRoutes() {
     // honest coupling — they were never independent.
     route(PROXY_ROOT.removeSuffix("/")) {
         get("{...}") {
-            if (call.refuseUnlessLocalDocsClient()) return@get
+            // Machine only, not site: this route is reached by *navigation*, and a link to
+            // it from somewhere else arrives as `Sec-Fetch-Site: cross-site` while being an
+            // entirely ordinary way to get to a page. It also serves nothing but a public
+            // website's bytes. What it must not do is hand those bytes — and the
+            // same-origin position they arrive in — to another device, and that is the
+            // loopback check, unchanged.
+            if (call.refuseUnlessLocalDocsClient(policy)) return@get
             call.proxyFieldDocs()
         }
     }

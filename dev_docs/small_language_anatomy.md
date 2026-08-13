@@ -7,9 +7,10 @@ know what else it touches.
 Every `file:line` below was read in the worktree that shipped this page, and
 `SmallLanguageAnatomyTest` (`src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt`) re-checks
 each one on every `./gradlew check`: it scrapes the ledger table out of *this file* and fails if a
-cited line no longer contains its anchor token. Every count claimed in prose is asserted there too,
-against a set derived from the code rather than a number typed in. So if this page is wrong, the
-build is red. See "What the guard checks" at the end for exactly how far that goes.
+cited **anchor** no longer exists in the file it points at. Every count claimed in prose is asserted
+there too, against a set derived from the code rather than a number typed in. So if this page is
+wrong, the build is red. See "What the guard checks" at the end for exactly how far that goes, and
+`dev_docs/citation_contracts.md` for how the citation machinery works and how to use it elsewhere.
 
 ## The spine: two routes, and they are not variants of each other
 
@@ -71,7 +72,9 @@ compiler behind them, which is a third shape the two-route story does not quite 
 ## The integration points
 
 This is the ledger. The guard test parses this exact table, so the `anchor` column is load-bearing:
-it is a literal token that must still appear at (or within two lines of) the cited line.
+it is a literal token that must still appear somewhere in the cited file. The line number is advisory
+— refresh a page's worth with
+`FIELD_CITATIONS_WRITE=1 ./gradlew jvmTest --tests '*CitationContract*'`.
 
 | # | integration point | site | anchor |
 | --- | --- | --- | --- |
@@ -86,17 +89,17 @@ it is a literal token that must still appear at (or within two lines of) the cit
 | 9 | the browser-side extension registry (Route A) | `src/commonMain/resources/languageExtensions.js:112` | `const registry = {` |
 | 10 | the registry's global entry point | `src/commonMain/resources/languageExtensions.js:124` | `root.FieldLanguageExtensions = registry` |
 | 11 | the list of editor language modules loaded at boot | `src/commonMain/resources/bootstrapMonaco.js:45` | `FIELD_LANGUAGE_MODULES` |
-| 12 | the one-at-a-time module loader, and why it is not one `require` | `src/commonMain/resources/bootstrapMonaco.js:58` | `loadFieldLanguageModules` |
-| 13 | the set of languages Field's own suggest widget serves | `src/commonMain/resources/fieldSuggest.js:7` | `DEFAULT_LANGUAGES` |
-| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1143` | `this.languages.has` |
-| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:734` | `const rankItems` |
-| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1289` | `requestWithReply("complete"` |
-| 17 | the server handler for it | `src/jvmMain/kotlin/afield/Server.kt:2189` | `handlers["complete"]` |
-| 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/Server.kt:2195` | `box.ke.complete` |
-| 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2216` | `handlers["symbol-context"]` |
+| 12 | the one-at-a-time module loader, and why it is not one `require` | `src/commonMain/resources/bootstrapMonaco.js:59` | `loadFieldLanguageModules` |
+| 13 | the set of languages Field's own suggest widget serves | `src/commonMain/resources/fieldSuggest.js:8` | `DEFAULT_LANGUAGES` |
+| 14 | the gate that consults it | `src/commonMain/resources/fieldSuggest.js:1144` | `this.languages.has` |
+| 15 | client-side ranking (fuzzy + category + recency + contextScore) | `src/commonMain/resources/fieldSuggest.js:735` | `const rankItems` |
+| 16 | the `complete` RPC the browser sends | `src/commonMain/resources/fieldSuggest.js:1290` | `requestWithReply("complete"` |
+| 17 | the server handler for it | `src/jvmMain/kotlin/afield/Server.kt:2188` | `handlers["complete"]` |
+| 18 | the polymorphic hop into the language's own completion | `src/jvmMain/kotlin/afield/Server.kt:2194` | `box.ke.complete` |
+| 19 | the sibling hover/doc route | `src/jvmMain/kotlin/afield/Server.kt:2215` | `handlers["symbol-context"]` |
 | 20 | how any language's result becomes box output | `src/jvmMain/kotlin/afield/execution.kt:1134` | `fun dispatchExecutionOutput` |
 | 21 | how `print`/`error` inside a program reach the box | `src/jvmMain/kotlin/afield/execution.kt:1179` | `fun configureOutputProxies` |
-| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4647` | `src/commonMain/resources/` |
+| 22 | the Ktor route that serves your `.js` to the browser | `src/jvmMain/kotlin/afield/Server.kt:4647` | `dir = File("./src/commonMain/resources/"), block` |
 | 23 | the `Cache-Control` it sets, and the headless exception | `src/jvmMain/kotlin/afield/Server.kt:4627` | `val assetCache` |
 | 24 | the per-box-property Monaco language table | `src/jsMain/kotlin/afield/BootstrapMonacoInit.kt:73` | `monacoPropertyLanguages` |
 
@@ -176,7 +179,7 @@ Multi-argument natives are nested single-argument closures (`native1`/`native2`/
 | prelude + evaluate, on the launch path | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:70` | `FieldMLRuntimePrelude.values` |
 | the `value : Type` inline result | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:297` | `fun renderInlineResult` |
 | only print it if the program printed nothing | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:174` | `output.printed` |
-| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `reportDiagnostics` |
+| diagnostics → box error output | `src/jvmMain/kotlin/afield/ml/FieldMLInterface.kt:203` | `private fun reportDiagnostics` |
 
 `TrackingOutput` (`FieldMLInterface.kt:270`) exists only to answer "did the program print anything",
 so the automatic `value : Type` line does not duplicate a program's own output. That is a small idea
@@ -205,8 +208,8 @@ One file, `src/commonMain/resources/fieldml.js`, 91 lines, and it is all of Fiel
 | brackets, comments, auto-closing pairs | `src/commonMain/resources/fieldml.js:13` | `setLanguageConfiguration` |
 | the Monarch tokenizer | `src/commonMain/resources/fieldml.js:45` | `setMonarchTokensProvider` |
 | loaded at boot | `src/commonMain/resources/bootstrapMonaco.js:46` | `bithero/fieldml` |
-| served by Field's own suggest widget | `src/commonMain/resources/fieldSuggest.js:17` | `fieldml` |
-| one of only two languages with hover | `src/commonMain/resources/bootstrapMonaco.js:441` | `"kotlin", "fieldml"` |
+| served by Field's own suggest widget | `src/commonMain/resources/fieldSuggest.js:18` | `fieldml` |
+| one of only two languages with hover | `src/commonMain/resources/bootstrapMonaco.js:442` | `"kotlin", "fieldml"` |
 
 Note what is *absent*: no `monaco.languages.registerCompletionItemProvider`. Field routes user-facing
 completion through its own suggest widget, not Monaco's, and being in `DEFAULT_LANGUAGES`
@@ -281,10 +284,10 @@ write a Monarch grammar for a language Monaco already knows.
 
 ### The editor's language modules
 
-**14** editor language modules load at boot (`bootstrapMonaco.js:45-49`): `bithero/glsl`,
+**16** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
 `bithero/slang`, `bithero/msl`, `bithero/forth`, `bithero/fieldml`, `bithero/languageExtensions`,
-`bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/nano`, `bithero/kotlinjs`,
-`bithero/morpho`, `bithero/petri`, `bithero/brief`.
+`bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/faust`,
+`bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
 main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite` and `brief` have editor modules and no
@@ -307,9 +310,9 @@ box.
 | backend 2, the GLSL emitter | `src/jvmMain/kotlin/afield/rectsl/RectSLGlsl.kt:265` | `fun emitSdf` |
 | backend 3, the differentiable `fn:` lowering | `src/jvmMain/kotlin/afield/rectsl/RectSLFn.kt:493` | `fun Track<Double>.toFn` |
 | the editor extension object | `src/commonMain/resources/rectsl.js:836` | `const extension = {` |
-| its standalone `.rectsl` Monaco language | `src/commonMain/resources/rectsl.js:864` | `registerRectSLLanguage` |
+| its standalone `.rectsl` Monaco language | `src/commonMain/resources/rectsl.js:862` | `registerRectSLLanguage` |
 | the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/rectsl/RectSLEditorExtension.kt:15` | `fun javascript()` |
-| the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLEditorExtensionWorkout.kt:45` | `runNodeProbe` |
+| the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLEditorExtensionWorkout.kt:45` | `private fun runNodeProbe` |
 | RectSL's gallery harness | `src/jvmMain/kotlin/afield/four/fabricated/RectSLGalleryHarness.kt:67` | `object RectSLGalleryHarness` |
 | StackSL's compiler | `src/jvmMain/kotlin/afield/stacksl/StackSL.kt:105` | `object StackSLCompiler` |
 | StackSL's word table | `src/jvmMain/kotlin/afield/stacksl/StackSL.kt:2645` | `builtinWords` |
@@ -326,7 +329,7 @@ box.
 | Brief's extension object | `src/commonMain/resources/brief.js:394` | `const extension = {` |
 | its standalone `.brief` Monaco language | `src/commonMain/resources/brief.js:429` | `registerBriefLanguage` |
 | the Kotlin side that reads the JS verbatim | `src/jvmMain/kotlin/afield/brief/BriefEditorExtension.kt:18` | `fun javascript()` |
-| the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/brief/BriefEditorExtensionWorkout.kt:50` | `runNodeProbe` |
+| the node probe that runs that JS for real | `src/jvmMain/kotlin/afield/examples/brief/BriefEditorExtensionWorkout.kt:55` | `private fun runNodeProbe` |
 
 **Brief is the third member of this shape and the newest**, so it is the one to read if you are adding
 one: a weighted constraint notation whose programs lower to `afield.stdlib.ceres.ConstraintScope`. It
@@ -428,7 +431,7 @@ Note the path: the hooks module is `public/docs_hooks.py`, **not** `tools/docs_h
 | the two that execute | `public/docs_hooks.py:48` | `RUNNER_FENCES` |
 | the function that finds and runs them | `public/docs_hooks.py:1899` | `def process_markdown` |
 | where the build imports the hooks | `tools/build_zensical_docs.py:211` | `import docs_hooks` |
-| the full attribute set of a runner fence | `public/docs_hooks.py:217` | `class RunnerOptions` |
+| the full attribute set of a runner fence | `public/docs_hooks.py:216` | `class RunnerOptions` |
 | where every fence attribute is parsed | `public/docs_hooks.py:2121` | `def parse_runner_options` |
 | where `data-lang=` is read | `public/docs_hooks.py:2311` | `def fence_language_key` |
 | **per-language wrapping of the fence body** | `public/docs_hooks.py:2316` | `def wrap_runnable_code_for_language` |
@@ -552,11 +555,11 @@ There are **9** coverage guards over these languages' pages and vocabularies:
 | --- | --- | --- | --- |
 | FieldML cheatsheet ↔ type prelude | 1 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLCheatsheetCoverageTest.kt:16` | `fieldml_cheatsheet.md` |
 | FieldML operators are documented | 1 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLCheatsheetCoverageTest.kt:63` | `\|>` |
-| every FieldML doc snippet compiles and evaluates | 3 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLSmokeExamplesTest.kt:61` | `docsFieldMLExamplesCompileAndEvaluate` |
+| every FieldML doc snippet compiles and evaluates | 3 | `src/jvmTest/kotlin/afield/ml/tests/FieldMLSmokeExamplesTest.kt:63` | `docsFieldMLExamplesCompileAndEvaluate` |
 | every RectSL cheatsheet operator has a worked example | 2 | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt:441` | `checkCheatsheetCoverage` |
 | the RectSL operator scrape has not silently broken | 2 | `src/jvmMain/kotlin/afield/examples/rectsl/RectSLExamples.kt:448` | `operators.size > 100` |
 | fnrewrite's editor op list ↔ `OpRegistry`, both ways | 4 | `src/jvmTest/kotlin/afield/stdlib/FunctionsGraphRewriteTest.kt:105` | `editorOpVocabularyMirrorsTheRegistryInBothDirections` |
-| this page's own citations | 1 | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt:34` | `class SmallLanguageAnatomyTest` |
+| this page's own citations | 1 | `src/jvmTest/kotlin/afield/docs/SmallLanguageAnatomyTest.kt:40` | `class SmallLanguageAnatomyTest` |
 | Brief's constructs ↔ `ConstraintScope`'s members | 1 | `src/jvmTest/kotlin/afield/brief/BriefCoverageTest.kt:35` | `class BriefCoverageTest` |
 | `brief.js`'s vocabulary ↔ `BriefVerbs`, both ways | 4 | `src/jvmTest/kotlin/afield/brief/BriefEditorExtensionTest.kt:39` | `theEditorVocabularyMirrorsBriefVerbsInBothDirections` |
 
@@ -601,11 +604,15 @@ headless check disagrees with an interactive one about your `.js`, suspect this 
 precisely, because they bound what "this page is checked" means.
 
 1. **Citations.** Every table row whose last two cells are `` `path:line` `` and `` `anchor` `` is
-   re-checked: the anchor must occur within ±2 lines of the cited line. There are **134** checked
-   citations. The slack is deliberate — reformatting inside a function should not fail, moving a
-   function should. A `|` in an anchor is written `\|` and unescaped by the test.
+   re-checked: the anchor must still exist **somewhere in the cited file**, found by searching it.
+   There are **134** checked citations. The line number is *advisory* — it is what you are shown, and
+   it disambiguates an anchor that occurs more than once, but a stale one does not fail the build. A
+   citation breaks when the thing it names is renamed or deleted, not when it moves. That is the point:
+   until 2026-08-12 this guard used a ±2-line window, which meant it reached into every file any
+   concurrent branch touched and could not be made path-disjoint from anybody
+   (see `dev_docs/citation_contracts.md`). A `|` in an anchor is written `\|` and unescaped by the test.
 2. **Derived counts.** Four numbers on this page are computed from the code and compared to the prose:
-   the **8** main languages (scraped from `registerMainLanguageRuntime` call sites), the **14** editor
+   the **8** main languages (scraped from `registerMainLanguageRuntime` call sites), the **15** editor
    language modules (from `FIELD_LANGUAGE_MODULES`), the **14** languages the suggest widget serves
    (from `DEFAULT_LANGUAGES`), and the **8** optional hooks (from `callExtension` calls). Each also
    asserts the individual names appear on the page, so adding a language fails the build until it is
@@ -617,9 +624,10 @@ precisely, because they bound what "this page is checked" means.
 
 What it does **not** check, stated so nobody assumes otherwise:
 
-- **Prose claims outside a table.** Every `file:line` written in a sentence rather than a table cell is
-  unguarded. They were verified by hand when this page was written and will rot. If a claim matters,
-  move it into a table.
+- **Prose claims outside a table.** A `file:line` written in a sentence is unguarded *unless it carries
+  an anchor* — `` `path:line#anchor` `` is checked wherever it appears, table or not. **61** bare
+  citations on this page still have no anchor; `CitationContractTest` counts them on every build so the
+  size of the unchecked remainder is a number rather than a guess. If a claim matters, give it an anchor.
 - **That the description is true.** The guard proves the cited line still contains the anchor token; it
   cannot prove the sentence next to it describes what that code does.
 - **Anything in `public/docs/`.** The two `language_extensions.md` section citations are line *ranges*

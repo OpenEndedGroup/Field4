@@ -300,7 +300,7 @@ as a weight ladder that does not do what its own documentation says.
 
 `PointExpr.ceq` looked like the way to lower `at f along`. It is not, and — correcting this page's first
 version, which implied Brief had documented it — **its KDoc already said why before Brief existed**
-(`ArchitecturalGeometry.kt:680-687` at the base commit): it
+(`ArchitecturalGeometry.kt:596#introduces a *trace* point recomputed between solves`; it was `:680-687` at the base commit): it
 materialises a *trace* point recomputed **between** solves and held only by a `1e-6` prior, so within a
 solve the minimiser can satisfy the relation by moving the trace point rather than the geometry — and
 its weight is hardcoded to `1.0` besides. A brief written with `prefer` and one written with `demand`

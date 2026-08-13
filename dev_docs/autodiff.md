@@ -122,7 +122,7 @@ canonical ops, which `FnOpCoverageTest` prints as **25.8%** rather than asking y
 | modulation | `amplitudeMod ringMod` |
 | the one exact step | `floor` |
 
-`floor` (`autodiff_formula.kt:257`) is the odd one out and is here on purpose. Its derivative is zero
+`floor` (`autodiff_formula.kt:257#put("floor", FnExpr.Floor`) is the odd one out and is here on purpose. Its derivative is zero
 on every open interval and undefined on the integers, so it is not *smooth* — but zero really is the
 derivative of a staircase, and having it as a first-class differentiable node is what lets RectSL's
 visibility gates, hold tracks and looped clocks lower exactly instead of being refused. See

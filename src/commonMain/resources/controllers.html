@@ -6,7 +6,10 @@
     <title>Field Controllers</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/controllers.css">
-    <script defer src="/controllers.js?v=20260716-no-client-count"></script>
+    <!-- The law module comes first: `controllers.js` renders the same ControllerControl records the
+         desktop output area does, so the two surfaces share one mapping from travel to value. -->
+    <script defer src="/controlLaws.js?v=20260813-control-laws"></script>
+    <script defer src="/controllers.js?v=20260813-control-laws"></script>
   </head>
   <body>
     <main class="controller-shell" aria-label="Field touch controller">

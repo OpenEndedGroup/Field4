@@ -94,6 +94,7 @@ nav:
         - Patterns & Rhythm: pattern_language.md
         # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
         - "Sound: the Pattern → Audio Path": sound.md
+        - Making a Sound, Every Path There Is: sound_paths.md
         - Sonic Pi: sonic_pi.md
         - Faust: faust.md
         - Audio AI Gesture Board: audio_ai_gesture_board.md

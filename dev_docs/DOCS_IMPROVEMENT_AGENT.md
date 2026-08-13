@@ -43,6 +43,88 @@ running as you can reach loopback, read the token out of the environment or out 
 log, and in any case already has every access the coding agent would be handed. Nothing
 here pretends otherwise.
 
+### The second attack, which the first pass reasoned its way to and did not close
+
+The 2026-08-11 pass wrote the correct sentence down in three places — *loopback does not
+stop a cross-site POST, because your own browser is on loopback* — applied it to step 2 of
+the attack above, and did not apply it to **step 1**, one screen up the same file. So from
+2026-08-11 to 2026-08-12 this worked from any page you had open:
+
+```js
+fetch("https://localhost:9092/api/docs-annotations", {
+  method: "POST",
+  headers: {"Content-Type": "application/json"},
+  body: JSON.stringify({annotation: {
+    pageUrl: "https://openendedgroup.com/field4/index.html",
+    note: "…whatever you would like the coding agent to be told…",
+  }}),
+});
+```
+
+`application/json` is not a CORS-safelisted content type, so the browser preflights — and
+the preflight *passes*, because `Content-Type` is exactly what `allowHeader` allows, `Post`
+and `Delete` are exactly what `allowMethod` allows, and `anyHost()` covers the origin. The
+route's only guard was the loopback check, and the attacking page is in a browser that is
+on loopback. `DELETE` was reachable the same way. `PUT …/resolve` was not, but only because
+`Put` happens to be missing from `allowMethod` — one line of configuration in another file,
+not a defence.
+
+That is a write to the *prompt*. A hostile page could pre-load instructions and simply wait
+for you to press the button yourself, for your own reasons, with a note in the batch you
+did not write. `GET /api/docs-improvement` was readable cross-site too, and it returns
+`workingDirectory` and up to 120 KB of the agent's log tail.
+
+Closed 2026-08-12; see the next section.
+
+## Annotations are same-site as well as loopback-only
+
+Two questions now, because they are two different questions:
+
+| question | what answers it | what it stops |
+| --- | --- | --- |
+| which **machine**? | `isLoopbackDocsClient`, on `request.local.remoteAddress` | another device on the Wi-Fi |
+| which **website**? | `isSameSiteRequest`, on `Sec-Fetch-Site` and `Origin`/`Host` | a page in *your* browser |
+
+`isSameSiteRequest` prefers **`Sec-Fetch-Site`**, which the browser sets and a page cannot
+— it is a forbidden header name, so no `fetch` option touches it. `same-origin` passes;
+`none` passes, because a typed URL or a bookmark has no initiator and is not a CSRF;
+`cross-site`, `same-site` and anything unrecognised are refused. `same-site` being refused
+is the interesting one: `http://localhost:9493` is a different *origin* from
+`https://localhost:9092` but the same *site*, and it is precisely the origin the 2026-08-11
+session measured a successful attack from.
+
+For a client too old to send it, `Origin` is compared with `Host`. Both are set by the
+browser from the same URL, so they agree for a same-origin request. `Origin: null` — a
+sandboxed iframe — has no authority and cannot match.
+
+**No `Origin` at all is allowed.** That is `curl`, a script, the visionOS shell's own
+fetches; nobody's ambient credentials are being borrowed, so it is not the thing this guard
+is for, and on these routes loopback is still the boundary. It does mean the `curl` recipes
+on this page keep working.
+
+`AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE=1` re-opens it, with a warning at startup, and —
+like the remote hatch — never opens the spawn.
+
+The `/field-docs/…` mirror deliberately keeps the machine guard and *not* the site guard: it
+is reached by navigation, and a link to a page from another site is an ordinary way to
+arrive at it.
+
+### Verified on a real Field, port 9492, 2026-08-12
+
+| request | result |
+| --- | --- |
+| `POST /api/docs-annotations`, `Origin: https://somewhere-else.example`, `Sec-Fetch-Site: cross-site` | **403**, "…are same-site only…" |
+| `DELETE /api/docs-annotations/{id}`, same headers | **403** |
+| `PUT /api/docs-annotations/{id}/resolve`, `Sec-Fetch-Site: cross-site` | **403** |
+| `GET /api/docs-improvement`, same headers | **403**, no `workingDirectory` in the body |
+| `POST` and `DELETE` with `Origin: https://localhost:9492`, `Sec-Fetch-Site: same-origin` | **200** — the panel is unaffected |
+| `GET /api/docs-annotations` with no `Origin` at all (plain `curl`) | **200** |
+| `POST` from `https://192.168.2.125:9492`, the machine's own LAN address | **403**, the *loopback* refusal |
+| `GET /field-docs/index.html` | **200**, and still injects `docsAnnotations.js` |
+
+The human's `~/.afield/docs-annotations.json` was checked before and after: 14 notes, no
+note from the cross-site attempt, and the same-origin probe cleaned up after itself.
+
 ## Turning it on
 
 The agent is off unless asked for. Off means `POST /api/docs-improvement` returns 403
@@ -94,13 +176,17 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_IMPROVEMENT_TOKEN` | a fresh random 24-byte hex value, printed once | the value of `X-Field-Docs-Improvement-Token`. Compared with `MessageDigest.isEqual`. |
 | `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Logged as a warning at startup. Never affects the spawn. |
+| `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
+| `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site writes across Field's **whole** API, not just this feature. Off by default; see the last section for what it does and — mostly — does not close. |
 
-Four independent conditions guard the spawn, each separately sufficient to stop the
+Five independent conditions guard the spawn, each separately sufficient to stop the
 attack above:
 
 - **it is off** unless enabled;
 - **the token** must match;
 - **the peer must be loopback**, decided on `call.request.local.remoteAddress`;
+- **the request must be same-site**, decided on `Sec-Fetch-Site` and `Origin`/`Host`
+  (added 2026-08-12; see below for why, given the token already exists);
 - **the directory** must resolve to a real directory, and is logged before the process
   starts.
 
@@ -122,6 +208,13 @@ A custom request header is the right shape. `X-Field-Docs-Improvement-Token` is 
 CORS-safelisted header, so the browser must preflight, and the preflight fails: Field's
 CORS config allows `Content-Type` and nothing else. A cross-site page therefore cannot
 send the header at all, never mind guess it.
+
+Since 2026-08-12 this route also asks `isSameSiteRequest` before anything else, which is
+belt and braces on purpose: the argument above is correct, and it depends entirely on six
+lines of CORS configuration in a different file staying exactly as they are. The route's
+own check does not. The annotation hatch is forced shut for this call, for the same reason
+`refuseDocsImprovementLaunch` never reads the remote hatch — a variable whose name says
+"annotations" must not turn out to have opened the spawn.
 
 The consequence, and it is deliberate: **the token is never served over HTTP.** Not from
 an endpoint, not inlined into a page — because with `anyHost()`, anything this origin
@@ -147,6 +240,11 @@ job is to keep that false.
 
 Not because storing a string is dangerous, but because annotation text is the *input* to
 the agent's prompt. Whoever can write a note can steer a run the human later launches.
+
+That sentence was written on 2026-08-11 and is where the second attack came from: it
+answered *which machine* and stopped there, when the thing it names — steering a run — is
+just as available to a page in your own browser. Both questions are asked now; see
+"Annotations are same-site as well as loopback-only", above.
 
 ## And so is the mirror, for a different reason
 
@@ -207,8 +305,15 @@ faithfully follow.
 - **`0.0.0.0` is still `0.0.0.0`.** Narrowing it would break the visionOS shell and
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
+- **The rest of the API is still unauthenticated, and that is the largest thing on this
+  page.** 34 of 38 mutating routes have no guard of any kind, and `0.0.0.0` plus "Ktor's
+  CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
+  host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
+  asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
+  address, so a non-loopback peer — returned **200**. Nothing on this branch changes that.
+  See the last section.
 - **`CORS { anyHost() }` applies to Field's whole API.** Measured rather than asserted;
-  it has its own section below, and it is the biggest thing found here.
+  it has its own section below.
 - **The editor's docs iframe** (`Cmd+/`, `bootstrapMonaco.js`, default `/field-docs/`)
   follows the mirror's loopback rule. Opening Field at `localhost` — the normal case, and
   what `field.sh` prints — is unaffected. Opening it at the machine's LAN address means
@@ -216,10 +321,34 @@ faithfully follow.
 
 ---
 
-# The other hole, measured: `CORS { anyHost() }`
+# The other hole, measured: an unauthenticated API on `0.0.0.0` behind `anyHost()`
 
-Not fixed here, and not this branch's to fix. Written down with evidence because a number
-in a worklog decays and this one should not.
+Still not fixed, and mostly still not fixable by a nightly branch. Written down with
+evidence, and now with an **asserted table** rather than a number, because a number in a
+worklog decays and this one should not:
+`FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` fails when a route is
+added, when one is removed, and — the case a count could never see — when one quietly
+loses its guard.
+
+**34 of 38 state-changing routes have no access control of any kind**, and there is no
+`install(Authentication)` anywhere in the tree.
+
+## Two exposures, which are worth not conflating
+
+|  | reached by | closed by | status |
+| --- | --- | --- | --- |
+| **another website** | a page in your browser, via `anyHost()` | `AFIELD_API_REQUIRE_SAME_SITE=1`, or per-route guards | switchable, **off by default** |
+| **another host** | `curl` from the Wi-Fi, via `httpsHost = "0.0.0.0"` | authentication, or a narrower bind | **open** |
+
+The second row is the one to read twice. Ktor's CORS plugin does not run for a request
+with no `Origin` header, and `isSameSiteRequest` treats such a request as same-site on
+purpose — refusing it would break every non-browser client Field has, including the `curl`
+recipes on this page. So `AFIELD_API_REQUIRE_SAME_SITE`, switched fully on, closes **none**
+of the network exposure. `FieldApiWriteGuardTest.theGuardDoesNothingAboutTheNetworkAndThisTestSaysSoOutLoud`
+asserts precisely that, so the limitation cannot decay into a claim.
+
+Field says so itself now, once, at startup, whichever way the switch is set. If you cannot
+find that line, the server you are talking to is not the server you think it is.
 
 ## What it is
 
@@ -235,8 +364,19 @@ install(CORS) {
 
 `anyHost()` means *any website you have open in any tab* may call Field. The surface is
 **70 HTTP routes with literal paths — 29 GET and 38 state-changing** (33 POST, 3 DELETE,
-2 PUT; PUT is in fact excluded, since only GET/POST/DELETE are allow-listed). Exactly one
-of the 38 requires a credential, and it is the one this branch added.
+2 PUT; `PUT` is in fact excluded, since only GET/POST/DELETE are allow-listed — which is
+configuration, not a guard, and is not what `PUT …/resolve` relies on any more).
+
+Four of the 38 are guarded, all of them in `docsAnnotations.kt`, and the table that says so
+is asserted in `FieldApiCorsExposureTest`:
+
+| route | guard |
+| --- | --- |
+| `POST /api/docs-annotations` | loopback + same-site |
+| `PUT /api/docs-annotations/{id}/resolve` | loopback + same-site |
+| `DELETE /api/docs-annotations/{id}` | loopback + same-site |
+| `POST /api/docs-improvement` | loopback + same-site + enabled&token |
+| **the other 34** | **none** |
 
 ## What was measured, 2026-08-11, real Chromium, real foreign origin
 
@@ -285,30 +425,56 @@ answer — but the application-level plugin intercepts first and would 403 the r
 before the route-scoped one ran. Verifying that ordering, and deciding what happens to a
 viewer hosted at `file://` (`Origin: null`), is the actual work.
 
-## Recommended shape
+## What was taken instead of narrowing `anyHost()`
 
-Same shape as everything else on this branch: safe default, documented escape hatch.
+The 2026-08-11 recommendation was to replace `anyHost()` with an `AFIELD_ALLOWED_ORIGINS`
+allow-list, empty by default. That is still a reasonable end state and it is still not
+what was done, for a reason worth recording: it makes the *default* posture depend on
+correctly enumerating every origin the offline viewer might be served from, including
+`file://` (`Origin: null`), and getting that wrong breaks a feature silently at the exact
+moment somebody is trying to import a document.
 
-- keep the app-level plugin (it is the gate — do **not** simply delete the block, which
-  would remove the server-side rejection and make things *worse*);
-- replace `anyHost()` with an allow-list read from `AFIELD_ALLOWED_ORIGINS`, empty by
-  default, so out of the box Field answers only its own origin;
-- document that offline-viewer import needs that variable set to wherever the viewer is
-  served from.
+What 2026-08-12 did instead was cheaper and pushes the decision to where the knowledge is:
 
-That is a behaviour change for anyone importing from the offline viewer today, which is
-why a nightly branch proposes it rather than shipping it.
+- **per-route guards** on the four routes whose exposure is specific and understood — the
+  annotation and improvement routes, above;
+- **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site writes with
+  `/api/import-offline-doc` exempted, **off by default**. Same shape as everything else
+  here — safe default, documented hatch — except that "safe" points the other way: the
+  default is the old behaviour, because turning a refusal on across 34 routes is how you
+  find out at 4am which of them the human's own tooling was quietly using;
+- **one loud startup line**, unconditionally, naming the exposure and the switch.
+
+Verified live on port 9492 with the switch on, 2026-08-12: a cross-site
+`POST /api/preferences` is refused **403** with a message naming the variable; the same
+route same-origin is unaffected; the `OPTIONS` preflight for `/api/import-offline-doc`
+still returns **200** with `Access-Control-Allow-Origin: *`; and `GET /api/instance-info`
+with no `Origin` still returns **200**, which is the limitation, not an oversight.
+
+An allow-list on `anyHost()` remains the better long-term answer for the *browser* half.
+Neither it nor this switch touches the network half.
 
 ## Where the tests are
 
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — 16 tests. Ten were
-  watched to fail against the pre-change behaviour before being trusted. The guards are
-  pure functions over a `DocsAccessPolicy` value precisely so that reverting one and
-  re-running the suite is a two-minute experiment. If you change a guard, do that again
-  rather than trusting the green.
-- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — 3 tests pinning the
-  exposure above so it cannot drift silently: the CORS block literally, the count and
-  identity of the 38 state-changing routes, and the invariant the improvement token
-  actually rests on — that `X-Field-Docs-Improvement-Token` is *not* CORS-allow-listed,
-  because the failing preflight **is** the CSRF defence. Adding `anyHeader()` there would
-  hand the agent-spawning endpoint back to any web page; that test is the tripwire.
+Four files, 39 tests. Two of them start a real Ktor application; two read source.
+
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **12 tests**,
+  route-level, through the real CORS configuration. This file exists because of a measured
+  gap: delete the guard *call* at the head of `post("/api/docs-annotations")` and the 19
+  tests that existed before it **all still pass**, while 6 of these 12 go red. Testing a
+  predicate is not testing a route. Seven reverts are recorded in its KDoc with the count
+  each one produced.
+- `src/jvmTest/kotlin/afield/server/FieldApiWriteGuardTest.kt` — **7 tests** over
+  `AFIELD_API_REQUIRE_SAME_SITE`, including one whose entire job is to assert the
+  *limitation*: a request with no `Origin` is not refused, so the switch does nothing about
+  the network.
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **16 tests** over the
+  guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
+  reverting one and re-running a two-minute experiment.
+- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **4 tests** pinning
+  decisions rather than behaviour: the CORS block literally, the route→guard table, the
+  fact that `X-Field-Docs-Improvement-Token` is not CORS-allow-listed, and that adding
+  `PUT` to `allowMethod` widens the surface.
+
+**If you change a guard, revert it and watch the suite before trusting the green.** Every
+count in those files was observed, not predicted.

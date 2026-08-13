@@ -1844,6 +1844,57 @@ const fmt = (v, decimals) => {
 // Slider (1D) ---------------------------------------------------------------
 const sliderState = { active: null };
 
+/**
+ * The law a slider element declares, or a linear one.
+ *
+ * `controlLaws.js` is loaded ahead of this file by `index.html`. If it is somehow absent — a stale
+ * cache, a hand-assembled page — every control still works, linearly, rather than throwing on the
+ * first drag. That fallback is the reason each helper below is a one-line wrapper.
+ */
+function sliderLaw(container) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.specFromDataset(container.dataset);
+    const min = parseFloat(container.dataset.min);
+    const max = parseFloat(container.dataset.max);
+    return {
+        law: 'linear',
+        min: isNaN(min) ? 0 : min,
+        max: isNaN(max) ? 1 : max,
+        exponent: 2,
+        center: 0,
+        significantDigits: 0,
+        step: parseFloat(container.dataset.step || '0') || 0,
+        decimalPlaces: parseInt(container.dataset.decimalPlaces || '0', 10) || 0
+    };
+}
+
+function lawValueAt(spec, t) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.valueAt(spec, t);
+    return spec.min + clamp(t, 0, 1) * (spec.max - spec.min);
+}
+
+function lawNormalizedFor(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.normalizedFor(spec, value);
+    return spec.max === spec.min ? 0 : clamp((value - spec.min) / (spec.max - spec.min), 0, 1);
+}
+
+function lawQuantize(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.quantize(spec, value);
+    return clamp(snap(value, spec.step, spec.min), Math.min(spec.min, spec.max), Math.max(spec.min, spec.max));
+}
+
+function lawFormat(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.format(spec, value);
+    return fmt(value, spec.decimalPlaces);
+}
+
+/** Where along a control's track a value sits, in the SVG's own coordinates. */
+function trackX(container, spec, value, fallbackWidth) {
+    const viewWidth = parseFloat(container.dataset.viewWidth || fallbackWidth || '320');
+    const padding = parseFloat(container.dataset.padding || '14');
+    const trackLen = Math.max(viewWidth - padding * 2, 1);
+    return padding + trackLen * lawNormalizedFor(spec, value);
+}
+
 function sliderValueFromPointer(container, event) {
     const svg = container.querySelector('.field-slider-visual');
     if (!svg) return null;
@@ -1851,30 +1902,24 @@ function sliderValueFromPointer(container, event) {
     const rect = svg.getBoundingClientRect();
     const viewWidth = parseFloat(container.dataset.viewWidth || '320');
     const padding = parseFloat(container.dataset.padding || '14');
-    const min = parseFloat(container.dataset.min);
-    const max = parseFloat(container.dataset.max);
 
     const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
-    return min + t * (max - min);
+    // The pointer only ever produces a fraction of the track; turning that fraction into a value is
+    // the law's entire job.
+    return lawValueAt(sliderLaw(container), t);
 }
 
 function updateSlider(container, value, { send = false } = {}) {
-    const min = parseFloat(container.dataset.min);
-    const max = parseFloat(container.dataset.max);
-    const step = parseFloat(container.dataset.step || '0');
-    const decimals = parseInt(container.dataset.decimalPlaces || '0', 10);
+    const spec = sliderLaw(container);
     const sliderId = container.dataset.sliderId;
-    const viewWidth = parseFloat(container.dataset.viewWidth || '320');
-    const padding = parseFloat(container.dataset.padding || '14');
 
-    let v = clamp(value, min, max);
-    v = snap(v, step, min);
+    // Snap first, clamp second: snapping a maximum onto a step can land just outside the declared
+    // range, and that number is the one the callback would receive.
+    const v = lawQuantize(spec, value);
     container.dataset.value = v;
 
-    const trackLen = Math.max(viewWidth - padding * 2, 1);
-    const normalized = max === min ? 0 : (v - min) / (max - min);
-    const cx = padding + trackLen * normalized;
+    const cx = trackX(container, spec, v);
 
     const svg = container.querySelector('.field-slider-visual');
     if (svg) {
@@ -1888,7 +1933,7 @@ function updateSlider(container, value, { send = false } = {}) {
 
     const valueDisplay = document.getElementById(`${sliderId}-value`);
     if (valueDisplay) {
-        valueDisplay.textContent = fmt(v, decimals);
+        valueDisplay.textContent = lawFormat(spec, v);
     }
 
     if (send && sliderId) {
@@ -2092,7 +2137,90 @@ function endVec2Drag() {
     window.removeEventListener('pointerup', endVec2Drag);
 }
 
+// Momentary button ---------------------------------------------------------
+//
+// A checkbox is one event; a momentary button is two, and the second one is the one that goes wrong.
+// The classic defect is a `pointerdown` whose `pointerup` is delivered somewhere else — the pointer left
+// the element, a touch became a scroll, the window lost focus — leaving the control held down forever
+// with a gate open behind it. So the release is listened for on the WINDOW, from three directions, and
+// guarded by a set so that exactly one release is ever sent per press.
+const buttonState = { held: new Set() };
+
+function buttonById(controlId) {
+    return document.querySelector(`.field-button[data-control-id="${cssEscape(controlId)}"]`);
+}
+
+function markButtonHeld(container, held) {
+    if (!container) return;
+    if (held) container.classList.add('held'); else container.classList.remove('held');
+    const inner = document.getElementById(container.dataset.controlId);
+    if (inner && inner.setAttribute) inner.setAttribute('aria-pressed', held ? 'true' : 'false');
+}
+
+function pressButton(container) {
+    const controlId = container?.dataset?.controlId;
+    if (!controlId || buttonState.held.has(controlId)) return;
+    buttonState.held.add(controlId);
+    markButtonHeld(container, true);
+    sendViaAfield('button-update', { controlId: controlId, pressed: true });
+}
+
+function releaseButton(controlId) {
+    if (!buttonState.held.delete(controlId)) return;
+    markButtonHeld(buttonById(controlId), false);
+    sendViaAfield('button-update', { controlId: controlId, pressed: false });
+}
+
+/**
+ * Releases every held button.
+ *
+ * Bound to `pointerup`, `pointercancel` and `blur` on the window. Doing this unconditionally is safe
+ * and is the point: `releaseButton` is a no-op for anything not actually held, so a stray release posts
+ * nothing at all.
+ */
+function releaseAllButtons() {
+    if (buttonState.held.size === 0) return;
+    Array.from(buttonState.held).forEach(releaseButton);
+}
+
+/** Space and enter on a focused button, so the control is reachable without a pointer. */
+function buttonKeyDown(event) {
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    const container = event.target?.closest?.('.field-button');
+    if (!container) return;
+    if (event.preventDefault) event.preventDefault();
+    pressButton(container);
+}
+
+function buttonKeyUp(event) {
+    if (event.key !== ' ' && event.key !== 'Enter' && event.code !== 'Space') return;
+    const container = event.target?.closest?.('.field-button');
+    if (container?.dataset?.controlId) releaseButton(container.dataset.controlId);
+}
+
+// Meter (read-only) --------------------------------------------------------
+function updateMeter(container, value) {
+    const spec = sliderLaw(container);
+    const v = Number(value);
+    if (!Number.isFinite(v)) return;
+    const clamped = Math.min(Math.max(v, Math.min(spec.min, spec.max)), Math.max(spec.min, spec.max));
+    container.dataset.value = clamped;
+
+    const viewWidth = parseFloat(container.dataset.viewWidth || '320');
+    const padding = parseFloat(container.dataset.padding || '14');
+    const trackLen = Math.max(viewWidth - padding * 2, 1);
+    const fill = container.querySelector('.meter-fill');
+    if (fill) fill.setAttribute('width', trackLen * lawNormalizedFor(spec, clamped));
+
+    const readout = document.getElementById(`${container.dataset.controlId}-value`);
+    if (readout) readout.textContent = lawFormat(spec, clamped);
+}
+
 function refreshControls(root = document) {
+    root.querySelectorAll('.field-meter').forEach((container) => {
+        const initial = parseFloat(container.dataset.value);
+        if (!Number.isNaN(initial)) updateMeter(container, initial);
+    });
     root.querySelectorAll('.field-slider').forEach((container) => {
         const initial = parseFloat(container.dataset.value);
         if (!Number.isNaN(initial)) {
@@ -2115,6 +2243,13 @@ function refreshControls(root = document) {
 
 function addDelegatedListeners() {
     const pointerHandler = (evt) => {
+        const buttonEl = evt.target.closest?.('.field-button');
+        if (buttonEl) {
+            // Not `preventDefault()`: the inner element is a real <button>, and letting it take focus is
+            // what makes space and enter work afterwards.
+            pressButton(buttonEl);
+            return;
+        }
         const sliderVis = evt.target.closest?.('.field-slider-visual');
         if (sliderVis) {
             const container = sliderVis.closest('.field-slider');
@@ -2135,6 +2270,15 @@ function addDelegatedListeners() {
     document.addEventListener('pointerdown', pointerHandler, true);
     document.addEventListener('mousedown', pointerHandler, true);
     document.addEventListener('touchstart', (evt) => pointerHandler(evt), { passive: false, capture: true });
+
+    // The three ways a press ends somewhere other than on the element it started on.
+    window.addEventListener('pointerup', releaseAllButtons);
+    window.addEventListener('pointercancel', releaseAllButtons);
+    window.addEventListener('touchend', releaseAllButtons);
+    window.addEventListener('touchcancel', releaseAllButtons);
+    window.addEventListener('blur', releaseAllButtons);
+    document.addEventListener('keydown', buttonKeyDown, true);
+    document.addEventListener('keyup', buttonKeyUp, true);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2378,6 +2522,19 @@ window.applyFieldControlUpdate = function(control) {
         if (container && Number.isFinite(x) && Number.isFinite(y)) {
             updateVec2(container, x, y, { send: false });
         }
+        return;
+    }
+
+    if (type === 'meter') {
+        const container = document.querySelector(`.field-meter[data-control-id="${cssEscape(id)}"]`);
+        if (container) updateMeter(container, Number(control.value));
+        return;
+    }
+
+    if (type === 'button') {
+        // Reflect a press made on another surface (the tablet) without sending anything back, and
+        // without disturbing a press this browser is itself holding.
+        if (!buttonState.held.has(id)) markButtonHeld(buttonById(id), Boolean(control.checked));
         return;
     }
 

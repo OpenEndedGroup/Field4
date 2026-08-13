@@ -210,6 +210,10 @@ object DemoTranscriptExecSmokeTest {
         // rasterises target/seed/fitted with TriMesh.renderPng into display(). `toFn` and the Adam
         // fitter are plain arithmetic over Fn — no shader, no Window, no Renderer.
         "rectsl_inverse_animation",
+        // The three control-surface affordances: slider laws, a momentary button, a meter fed by a
+        // `source` lambda. Pure arithmetic and one daemon sampler thread — no Window, no Renderer, no
+        // audio device — so the whole transcript runs to completion here.
+        "control_surface_laws",
     )
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */

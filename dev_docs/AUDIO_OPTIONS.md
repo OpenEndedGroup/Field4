@@ -2,6 +2,13 @@
 
 Status: implemented.
 
+Scope note, added when the render paths were mapped: this record covers **one** of Field's audio
+paths — the video package's decode-and-play route, `video-audio` in the map. It is not the audio
+backend decision for Field as a whole. There are three independent OpenAL contexts in the process
+(this one, `FieldAudioEngine` and `SimpleSpatialAudioEngine`) and five ways for samples to leave it.
+`public/docs/sound_paths.md` maps all of them, and `SoundPathMap` holds the count against the code:
+a fourth `alcOpenDevice(` anywhere under `src/jvmMain/kotlin` fails the build until it is declared.
+
 Field's video package uses FFmpeg for decoding and LWJGL's OpenAL bindings for queued PCM
 playback. This kept audio inside the native-library stack already used by the renderer and exposed
 the OpenAL sample offset needed by the shipped playback clock. The alternatives considered before
