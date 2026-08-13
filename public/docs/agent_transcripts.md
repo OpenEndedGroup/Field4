@@ -710,6 +710,14 @@ lanes as waveform-evaluated targets; the UI never disguises either as native tim
 Walkthrough: [Gesture board: drawing toward a sound](audio_ai_gesture_board.md).
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_gesture_board/metadata.edn)
 
+**audio_ai_analysis** — Resolve a recording by filename, display its exact source window, submit
+librosa beat and pYIN analysis plus Spotify Basic Pitch, follow all three jobs through replaceable
+progress cards and the durable monitor, await their immutable results, then compare onset, tempo,
+confidence, monophonic F0, voicing and polyphonic notes on synchronized timelines. Its first two
+boxes are model-free and remain runnable without the analysis worker.
+Walkthrough: [Beat and pitch analysis](audio_ai_analysis.md).
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/audio_ai_analysis/metadata.edn)
+
 ## visionOS device scenes
 
 <!-- transcript-index: verified-by = kotlinjs, execute -->

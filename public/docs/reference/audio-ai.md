@@ -4,7 +4,7 @@
 
 The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. Nothing here loads a model or does inference in the JVM — a box builds a `ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can poll or watch; the results are immutable server-side *assets* referenced by id, which is why the protocol types carry representation ids rather than samples. Every call is asynchronous and completes off Field's runloop and off the audio callback, so nothing here may be `.get()`-ed from a box's frame. The rest of the category is what you do with a result inside a box: the candidate browser, the EnCodec reconstruction microscope, the beat/pitch analysis viewer and the job monitor, each of them one function returning a self-contained HTML fragment for `display(…)`. Start from `Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; [Field Audio service reference](../field_audio_service_reference.md) is the service-side contract the types mirror.
 
-10 source file(s), 300 public symbol(s), 250 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+10 source file(s), 305 public symbol(s), 255 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -30,7 +30,7 @@ probability; `polyphonicPitchAnalysis` when there are chords and you want discre
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisOperations.kt`
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### Top-level functions { #analysisoperations-kt-functions }
 
@@ -42,21 +42,18 @@ probability; `polyphonicPitchAnalysis` when there are chords and you want discre
 
 ## AnalysisVisualization.kt { #analysisvisualization-kt }
 
-The analysis viewer: one function that turns an [`AnalysisResult`](audio-ai.md#protocol-kt-analysisresult) into a zoomable beat, pitch or
-note display for a box output.
-
-It draws whichever of the three analyses the result came from, deciding in the browser from
-`AnalysisPreview.operation`. What crosses the wire is the downsampled preview and never the
-`.npz`, which is what keeps this cheap on a long recording — and the reason it is a display and
-not a measurement.
-
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisVisualization.kt`
+
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md)
 
 ### Top-level functions { #analysisvisualization-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
-| <code class="highlight"><span class="k">fun</span> <span class="nf">analysisVisualizationHtml</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nc">AnalysisResult</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1600</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A compact, range-aware beat/pitch viewer. The browser fetches a carefully downsampled JSON preview; full NPZ tensors and MIDI remain immutable assets. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">analysisVisualizationHtml</span><span class="p">(</span><span class="n">result</span><span class="p">:</span> <span class="nc">AnalysisResult</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1600</span><span class="p">,</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">timeOffsetSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | The analysis viewer: one function that turns an [`AnalysisResult`](audio-ai.md#protocol-kt-analysisresult) into a zoomable beat, pitch or note display for a box output. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">analysisPreviewVisualizationHtml</span><span class="p">(</span><span class="n">preview</span><span class="p">:</span> <span class="nc">AnalysisPreview</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">360</span><span class="p">,</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">timeOffsetSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Render a deterministic or already-fetched preview without contacting the service. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">analysisDashboardHtml</span><span class="p">(</span><span class="n">results</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AnalysisResult</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">panelHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">270</span><span class="p">,</span> <span class="n">points</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1600</span><span class="p">,</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">timeOffsetSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Stack several live results into one board. Zoom, pan and hover cursors are synchronized, which makes beat/pYIN/Basic Pitch disagreements inspectable. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">analysisPreviewDashboardHtml</span><span class="p">(</span><span class="n">previews</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AnalysisPreview</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1100</span><span class="p">,</span> <span class="n">panelHeight</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">270</span><span class="p">,</span> <span class="n">syncGroup</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">timeOffsetSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Model-free counterpart used by documentation, fixtures and cached previews. |
 
 ## AudioAssetVisualization.kt { #audioassetvisualization-kt }
 
@@ -245,11 +242,15 @@ origins.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/JobMonitor.kt`
 
+**Used in:** [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+
 ### Top-level functions { #jobmonitor-kt-functions }
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">fieldAudioJobMonitor</span><span class="p">(</span><span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">heightPixels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">420</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | An embeddable, same-origin view of all durable Field Audio jobs. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fieldAudioJobStatusHtml</span><span class="p">(</span><span class="n">accepted</span><span class="p">:</span> <span class="nc">JobAccepted</span><span class="p">,</span> <span class="n">event</span><span class="p">:</span> <span class="nc">ProgressEvent</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | A small per-operation status card suitable for replacing one named Field output as events arrive. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">fieldAudioJobStatusHtml</span><span class="p">(</span><span class="n">job</span><span class="p">:</span> <span class="nc">JobRecord</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Render durable inspected state, including the structured error when a job failed. |
 
 ## NpyIntTensor.kt { #npyinttensor-kt }
 
@@ -315,7 +316,7 @@ an older Field; the reverse is not true, because the service rejects unknown fie
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt`
 
-**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md)
+**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis: from source to synchronized views](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
 
 ### AssetRegion { #protocol-kt-assetregion }
 
