@@ -1,0 +1,249 @@
+name: faust_polyphony
+description: >
+  Loadable demo of Faust as a polyphonic instrument that a pattern plays
+  (afield.four.synth/FaustPoly.kt, FaustPattern.kt). Yesterday's Faust binding was one always-on DSP with
+  sliders; Field's pattern language knew exactly when every note should start and had only a stand-in CPU
+  voice to play it with. These five boxes are the join.
+    1. Faust instrument     — the real thing: `faustPoly(..., voices = 8)` played by
+       `inst.play(pat("[c4,ef4,g4] …"), automate = mapOf("cutoff" to …))` and returned as the box's last
+       expression, so the box stays lit while it plays and stopping it stops the sound, the feeder thread
+       and the GraalVM context. The `cutoff` slider that appears moves all eight voices at once; `freq`,
+       `gate` and `gain` are absent from it on purpose, because the notes drive those.
+    2. offline, with a plot — `showFaustPattern(...)`: the identical path, rendered with no audio device
+       and no GPU, into an audio player and a waveform. This is the box that is safe anywhere.
+    3. three notes at once  — the assertion that proves polyphony rather than plumbing. `[c4,e4,g4]` at
+       four voices puts three fundamentals in the 100-230Hz band; the same chord at one voice puts one
+       there and reports two voice steals. Counting attacks could not tell those apart.
+    4. onsets, in samples   — every notated event's frame against the frame the audio actually attacks on.
+       Seven notes to a cycle, so twelve of fourteen onsets fall off the 128-frame block grid.
+    5. what it refuses      — a program with no `gate`, and the message it gets instead of silence.
+  Nothing is installed for any of this: the compiler is vendored as platform-independent WebAssembly and
+  runs in the GraalVM runtime Field already uses for dough.wasm. Only boxes 2-5 are executed by this
+  transcript; box 1 opens an audio device, so click that one yourself. See public/docs/faust.md.
+operations:
+  - create:
+      box: faust_polyphony_play
+      name: Faust instrument
+      frame: { x: 80.0, y: 80.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // Eight instances of one compiled Faust program, allocated to notes by a pattern. Nothing is
+          // recompiled per voice: a Faust wasm factory built with internal memory keeps its whole state at
+          // offset 0 of its own memory, so eight WebAssembly instances of one module are eight independent
+          // voices, and they all live in one GraalVM context.
+          //
+          // `freq` / `gate` / `gain` is Faust's own polyphonic convention — the three names `-nvoices` looks
+          // for — and they are found by LABEL, never by index. Faust lists controls alphabetically, so index
+          // 0 in this program is `cutoff`; an allocator that wrote pitch to index 0 would sweep a filter and
+          // never change a note.
+          //
+          // The first compile of a session is slow (13-22s of GraalVM warm-up, then ~600ms). Run
+          // `FaustEngine.warmInBackground()` in another box first if you would rather wait now.
+          val inst = faustPoly("""
+          #faust
+          import("stdfaust.lib");
+          cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
+          freq   = hslider("freq [unit:Hz]", 220, 30, 4000, 0.001);
+          gain   = hslider("gain", 0.22, 0, 1, 0.001);
+          gate   = button("gate");
+          env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
+          process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
+                  : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
+          """, voices = 8)
+
+          // Two patterns, one timeline. The chords are notes; the cutoff is a parameter. Both are scheduled
+          // in frames and applied inside the audio block rather than at its edge, so a filter that opens on
+          // the beat opens on the *sample* of the beat.
+          //
+          // The slider that appears below is `cutoff` only. `freq`, `gate` and `gain` are deliberately not
+          // in the control group: the notes write them, and a slider fighting the notes for them would look
+          // broken.
+          inst.play(
+              pat("[c4,ef4,g4] [af3,c4,ef4] [bf3,d4,f4] [ef4,g4,bf4]"),
+              cps = 0.5,
+              sustain = 0.85,
+              automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums())
+          )
+
+          inst
+
+  - create:
+      box: faust_polyphony_offline
+      name: offline, with a plot
+      frame: { x: 660.0, y: 80.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // The identical path with no audio device and no GPU: the same FaustVoiceBank, rendered in 128-frame
+          // blocks exactly as the audio thread would render it, into a WAV player and a waveform.
+          //
+          // `sustain = 0.55` rather than 1.0 on purpose. At 1.0 the gate never falls between adjacent notes,
+          // and what you get is one continuous tone with a single attack — which sounds wrong and, worse,
+          // makes an onset detector report envelope ripple as notes. FAUST_PATTERN_SUSTAIN defaults to 0.9
+          // for exactly that reason.
+          val render = showFaustPattern("""
+          #faust
+          import("stdfaust.lib");
+          cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
+          freq   = hslider("freq [unit:Hz]", 220, 30, 4000, 0.001);
+          gain   = hslider("gain", 0.22, 0, 1, 0.001);
+          gate   = button("gate");
+          env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
+          process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
+                  : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
+          """,
+              pat("c4 ef4 g4 bf4 c5 bf4 g4 ef4"),
+              cycles = 2,
+              cps = 1.0,
+              voices = 8,
+              sustain = 0.55,
+              automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums())
+          )
+
+          println(
+              render.notes.size.toString() + " notes over " + "%.2f".format(render.seconds) + "s, " +
+                  render.voices + " voices, peak concurrency " + render.peakConcurrency +
+                  ", " + render.automationApplied + " cutoff steps, " +
+                  render.steals + " steals, peak " + "%.3f".format(render.peak)
+          )
+
+  - create:
+      box: faust_polyphony_chord
+      name: three notes at once
+      frame: { x: 80.0, y: 470.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // The assertion that proves the feature rather than the plumbing.
+          //
+          // Counting attacks cannot tell polyphony from monophony: a single voice that steals itself
+          // produces exactly the same number of attacks as three voices. What cannot be faked is the
+          // spectrum. `[c4,e4,g4]` is one chord — three events on the same arc, so three notes on the same
+          // frame — whose fundamentals are 130.81, 164.81 and 196.00 Hz. The band 100-230 Hz can hold
+          // nothing else: the lowest second harmonic in the chord is 261.6 Hz. So a peak in that band is
+          // somebody's fundamental, and counting them counts notes sounding.
+          //
+          // ONE oscillator per voice here, not the detuned pair the other boxes use — that matters, and it
+          // was found by running this: two sawtooths 0.5% apart put a *beating pair* in the band, so four
+          // voices reported four peaks and one voice reported two, which muddies the very thing the box is
+          // for. A measurement wants one partial per note.
+          val voice = """
+          #faust
+          import("stdfaust.lib");
+          cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
+          freq   = hslider("freq [unit:Hz]", 220, 30, 4000, 0.001);
+          gain   = hslider("gain", 0.22, 0, 1, 0.001);
+          gate   = button("gate");
+          env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
+          process = os.sawtooth(freq) : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
+          """
+
+          val chord = pat("[c4,e4,g4]")
+          val poly = faustPatternRender(voice, chord, cycles = 1, cps = 1.0, voices = 4, sustain = 0.9, gain = 0.18)
+          val one = faustPatternRender(voice, chord, cycles = 1, cps = 1.0, voices = 1, sustain = 0.9, gain = 0.18)
+
+          val at = (0.12 * poly.sampleRate).toInt()
+          println("notated:    " + poly.notes.map { "%.2f".format(it.hz) })
+          println("4 voices:   " + faustSpectrumPeaks(poly.mono(), at, 32768, poly.sampleRate, 100.0, 230.0, 0.15))
+          println("1 voice:    " + faustSpectrumPeaks(one.mono(), at, 32768, one.sampleRate, 100.0, 230.0, 0.15))
+          println("steals:     4 voices " + poly.steals + ", 1 voice " + one.steals)
+          println("concurrency: 4 voices " + poly.peakConcurrency + ", 1 voice " + one.peakConcurrency)
+
+          display("chord", afield.four.audio.WavFloatArrayWriter.encodeStereo16(poly.left, poly.right, poly.sampleRate, 0.9f))
+          display("one voice", afield.four.audio.WavFloatArrayWriter.encodeStereo16(one.left, one.right, one.sampleRate, 0.9f))
+
+  - create:
+      box: faust_polyphony_timing
+      name: onsets, in samples
+      frame: { x: 660.0, y: 470.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // Where the notes actually landed, in samples, against where they were notated.
+          //
+          // Seven notes to a cycle on purpose: 48000/7 = 6857, and 6857 % 128 = 105, so twelve of the
+          // fourteen onsets fall *inside* a 128-frame audio block rather than on its edge. A scheduler that
+          // wrote parameters once per block — which is what FaustDsp's parameter queue is — would drag every
+          // one of those forward to the next boundary, up to 110 frames late.
+          //
+          // Before believing any onset count: check the signal has onsets. faustSilentGaps must find real
+          // silence between the notes, or the "onsets" are envelope ripple in a continuous tone.
+          val render = faustPatternRender("""
+          #faust
+          import("stdfaust.lib");
+          cutoff = hslider("cutoff [unit:Hz]", 2600, 120, 9000, 1);
+          freq   = hslider("freq [unit:Hz]", 220, 30, 4000, 0.001);
+          gain   = hslider("gain", 0.22, 0, 1, 0.001);
+          gate   = button("gate");
+          env = en.adsr(0.004, 0.09, 0.55, 0.03, gate);
+          process = (os.sawtooth(freq) + os.sawtooth(freq * 1.005)) * 0.5
+                  : fi.resonlp(cutoff, 1.4, 1) * env * gain <: _,_;
+          """, pat("c4 e4 g4 a4 c5 d5 e5"), cycles = 2, cps = 1.0, voices = 8, sustain = 0.5)
+
+          val mono = render.mono()
+          val gaps = faustSilentGaps(mono, render.sampleRate)
+          val notated = render.notes.map { it.startFrame }.sorted()
+          val onsets = faustOnsets(mono, render.sampleRate)
+
+          println("silent gaps:  " + gaps.size + " (so the signal really has attacks)")
+          println("notated:      " + notated.size + " notes, " + notated.count { it % 128L != 0L } + " of them off the block grid")
+          println("detected:     " + onsets.size + " onsets")
+          if (onsets.size == notated.size) {
+              val errors = onsets.mapIndexed { i, o -> o - notated[i].toInt() }
+              val median = errors.sorted()[errors.size / 2]
+              println("error/note:   " + errors)
+              println("median " + median + " frames, jitter +/-" + errors.maxOf { Math.abs(it - median) } +
+                  " frames, worst " + errors.maxOf { Math.abs(it) } +
+                  " — against up to 110 if the writes were quantised to the block")
+          }
+
+          display("waveform", afield.four.audio.WavFloatArrayWriter.encodeStereo16(render.left, render.right, render.sampleRate, 0.9f))
+          showSignals(
+              "mono" to (0 until render.frames step 24).map { mono[it] },
+              x = (0 until render.frames step 24).map { it.toDouble() / render.sampleRate },
+              channel = "waveform", title = "14 notes, 8 voices", xTitle = "seconds", yTitle = "amplitude"
+          )
+
+  - create:
+      box: faust_polyphony_refusal
+      name: what it refuses
+      frame: { x: 80.0, y: 830.0, w: 220.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // A polyphonic program has to declare `freq` and `gate`. Faust hands its whole declared interface
+          // back as JSON, so Field can check — and the interesting question is what happens when it fails.
+          //
+          // Writing pitch to control index 0 and hoping would produce silence, or a filter sweep, and there
+          // is nothing in silence to read. So this refuses, and names what is missing, what the program did
+          // declare, and the line of Faust that would fix it.
+          val program = faustCompile("""
+          #faust
+          import("stdfaust.lib");
+          cutoff = hslider("cutoff [unit:Hz]", 1200, 60, 8000, 1);
+          freq   = hslider("freq [unit:Hz]", 220, 40, 4000, 0.001);
+          process = os.sawtooth(freq) : fi.lowpass(2, cutoff) * 0.2 <: _,_;
+          """)
+
+          println("it declares, in the order Faust lists them (alphabetical, not as written):")
+          program.ui.writable.forEach { println("  " + it.displayLabel + "  " + it.type + "  index " + it.index) }
+          println()
+          println(runCatching { FaustPolyControls.of(program) }.exceptionOrNull()?.message ?: "accepted?!")
+
+  # Boxes 2-5 only. The instrument opens an audio device, so it is left for you to click.
+  - execute:
+      box: faust_polyphony_offline
+  - execute:
+      box: faust_polyphony_chord
+  - execute:
+      box: faust_polyphony_timing
+  - execute:
+      box: faust_polyphony_refusal
+  - await:
+      wait: pending

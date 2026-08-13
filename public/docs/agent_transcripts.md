@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 58 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 41 of them are
+All 59 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 42 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -661,6 +661,25 @@ compiling and its lines are added back before the marker is placed — get that 
 diagnostic lands a row or two off, looking like a compiler bug. Only the middle three boxes are replayed
 here; the voice wants an audio device and the last one fails by design.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_voice/metadata.edn)
+
+**faust_polyphony** — Five boxes in which [Faust](faust.md) stops being a drone with knobs and becomes an
+instrument that a [pattern](sound.md) plays: eight instances of one compiled program, allocated to notes.
+*Faust instrument* is the one to click — `faustPoly(…, voices = 8)` played by `inst.play(pat("[c4,ef4,g4] …"),
+automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()))`, so the chords are one pattern and the filter
+is another and both are scheduled in frames. Only `cutoff` appears as a slider; `freq`, `gate` and `gain` are
+absent because the notes write them, and they are found by *label* because Faust lists controls
+alphabetically and index 0 in that program is `cutoff`. *Offline, with a plot* is the same path with no audio
+device: 16 notes over 2.25s, 8 cutoff steps, 0 steals, peak 0.317. *Three notes at once* is the box worth
+reading twice, because counting attacks cannot tell polyphony from a voice stealing itself — so it counts
+spectral peaks in 100–230 Hz, a band that can hold nothing but fundamentals, and gets **three** at four
+voices (130.0, 166.2, 196.5 Hz against a notated 130.81, 164.81, 196.00) against **one** at a single voice,
+which also reports two steals. *Onsets, in samples* puts every notated event's frame beside the frame the
+audio actually attacks on: 14 of 14 detected, median error 1 frame, jitter ±6, worst 7 — against up to 110 if
+the parameter writes were quantised to the 128-frame block, which twelve of the fourteen onsets fall inside.
+It checks `faustSilentGaps` first, because an onset detector pointed at a continuous tone always finds
+something. *What it refuses* is a program with no `gate`, and the message it gets instead of silence. Four of
+the five are replayed here; the instrument wants an audio device.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_polyphony/metadata.edn)
 
 ## Service-backed composition scenes
 

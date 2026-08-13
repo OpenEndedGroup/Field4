@@ -110,6 +110,11 @@ object DemoTranscriptExecSmokeTest {
         // The playing box and the deliberately-broken box are NOT executed by the transcript — one
         // opens an audio device, the other fails on purpose — so neither can trip this harness.
         "faust_voice",
+        // Faust as a polyphonic instrument that a `Pat` pattern plays. Four of its five boxes render
+        // offline through the same `FaustVoiceBank` the audio thread uses, in 128-frame blocks, into WAV
+        // bytes and a plot — so no audio device and no GPU. The fifth returns a live launch and is not
+        // executed by the transcript.
+        "faust_polyphony",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
         // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real
