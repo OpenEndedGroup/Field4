@@ -1810,7 +1810,10 @@ private fun String.prettyQuoted(limit: Int): String = "\"${if (length <= limit) 
 
 private fun Double.prettyNumber(): String = String.format(Locale.US, "%.4f", this).trimEnd('0').trimEnd('.')
 
-private fun defaultPatClock(): PatClock? {
+// internal rather than private so the other Pat* files — and SonicPiPatterns' `sonicPiLive` — can
+// spell the same default rather than each inventing one; a second answer to "which clock?" is how
+// two patterns in one box end up on two timelines.
+internal fun defaultPatClock(): PatClock? {
     return Box.context.get()?.patClock ?: musicClock()
 }
 

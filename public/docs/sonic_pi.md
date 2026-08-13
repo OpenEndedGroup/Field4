@@ -161,6 +161,311 @@ ui.eval(
 ui.pause(1500)
 ```
 
+## Field patterns as a Sonic Pi sequencer
+
+Field already owns a pattern algebra. `pat("bd [hh hh] sd")` parses Tidal-style mini-notation, keeps
+every transform exact in *rational* cycle space, and has `.every(4) { it.rev() }`, `.degradeBy`,
+euclidean rhythms, polymeters and continuous control signals on top of it (`TidalPatterns.md`).
+Sonic Pi has 66 synths, 42 FX, 206 samples and a scheduler that is sample-accurate. Until
+`SonicPiPatterns.kt` these were strangers: the only way to reach Sonic Pi from Field was to type
+Sonic Pi's own language into a string literal, which the pattern algebra cannot see into.
+
+There are two ways to join them, they are good at different things, and both are here.
+
+### compile — the pattern becomes a program
+
+`sonicPiProgram(...)` lowers named layers to a `live_loop` each. The result is ordinary Sonic Pi
+that you can read, paste into a `#sonicpi` region and edit by hand.
+
+```diffstatic {data-lang=kotlin}
+:::static
+println(pat("bd ~ [bd bd bd] bd").sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
+```
+
+```diffstatic {data-lang=ruby}
+:::static
+#sonicpi
+# Generated from a Field pattern. Ordinary Sonic Pi from here on — edit it freely.
+#
+#   layer groove
+#
+# use_bpm makes one beat exactly one Field cycle, so every sleep below is the cycle
+# fraction the pattern computed. Rational(n, d) appears where a decimal would round.
+# 0.5 cycles/second, 1 cycle(s) per loop.
+
+live_loop :groove do
+  use_bpm 60 * 0.5
+  use_synth :beep
+  sample :bd_haus
+  sleep 0.5
+  sample :bd_haus
+  sleep Rational(1, 12)
+  sample :bd_haus
+  sleep Rational(1, 12)
+  sample :bd_haus
+  sleep Rational(1, 12)
+  sample :bd_haus
+  sleep 0.25
+end
+```
+
+Two decisions in that output are worth naming, because both are the difference between a lowering
+that works and one that nearly works.
+
+**`use_bpm 60 * cps` makes one Sonic Pi beat exactly one Field cycle.** So every `sleep` in the
+emitted program *is* the cycle fraction the pattern computed — the lattice is the pattern's own, and
+nothing in the body depends on the tempo. Change `cps` and only the `use_bpm` line moves.
+
+**`Rational(1, 12)`, not `0.0833`.** Three even hits inside a quarter of a bar is a position no
+decimal can hold, and a `live_loop` runs for a great deal longer than the minute it takes a rounded
+`sleep` to lose a beat. A decimal is emitted when the denominator is a product of 2s and 5s, because
+then it terminates and reads the way a musician expects; a Ruby `Rational` otherwise.
+
+`cycles` is the one parameter that needs thought. A pattern that varies per cycle — `<a b>`,
+`.every(4)`, `.iter` — needs a loop long enough to contain the variation, or the emitted program
+plays cycle 0 for ever.
+
+### Atoms become instruments, checked against the installed vocabulary
+
+An atom resolves in order: an explicit override, then a real sample name, then a real synth name,
+then a note (`c4`, `e2`, `60`), then the drum-machine aliases — `bd`, `sd`, `hh`, `cp`, `oh`, `amen`
+and forty more. "Real" means *present in `sonicpi-vocabulary.json`*, the file extracted from the
+installed app.
+
+That check is not decoration. Sonic Pi answers `sample :bd_hauz` by doing nothing at all — no error,
+no sound — and a `live_loop` playing three of its four voices is very hard to debug from the sound.
+So a mistyped alias is a failing test rather than a silence, and an atom that matches nothing is
+named in a comment at the top of the emitted program instead of being quietly dropped.
+
+Notes come out as MIDI numbers rather than `:c4` on purpose: Field puts middle C at `c5`, Sonic Pi
+at `:c4`, and emitting the number the pattern meant removes a whole class of off-by-an-octave that
+neither side would report.
+
+Control patterns arrive through `PatAlgebra`'s parameters, so `with(gain(sine().range(0.2, 0.8)))`
+works unchanged. Three of them are conversions rather than renames, and they are the ones that would
+otherwise be wrong in a way you can hear but not see:
+
+| Field | Sonic Pi | why it is not a rename |
+| --- | --- | --- |
+| `gain` | `amp:` | — |
+| `pan` | `pan:` | Field's pan is `0..1`, Sonic Pi's is `-1..1` |
+| `cutoff` | `cutoff:` on a synth, `lpf:` on a sample | Field's cutoff is **Hz**, Sonic Pi's is a **MIDI note number** |
+
+Anything else is passed through only if the vocabulary says the target accepts it. `cutoff` is not
+an opt of `:beep`, so on a `:beep` layer it is dropped *and recorded* — in
+`SonicPiProgram.droppedOpts` and in a comment in the program — rather than sent for Sonic Pi to
+ignore. Which synth a layer's bare notes play on is a property of the layer:
+
+```diffstatic {data-lang=kotlin}
+:::static
+sonicPiProgram(
+    sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
+    sonicPiLayer("bass", pat("<e3 g3> ~ e4 ~") with cutoff(700.0), synth = "tb303"),
+    cps = 0.5,
+    cycles = 4
+)
+```
+
+### FX wrap a layer
+
+`with_fx` is where Sonic Pi is furthest ahead of anything Field has, so a layer can carry a chain of
+it. Names and opts are checked when the layer is built, against the same extracted vocabulary — and
+that check earns its keep here more than anywhere else, because Sonic Pi's answer to
+`with_fx :revreb` is a runtime error on the `live_loop`'s own thread, minutes into a performance.
+
+```diffstatic {data-lang=kotlin}
+:::static
+sonicPiProgram(
+    sonicPiLayer(
+        "bass", pat("e3 ~ [e4 g3] ~") with cutoff(700.0), synth = "tb303",
+        fx = listOf(sonicPiFx("reverb", "room" to 0.8), sonicPiFx("echo", "phase" to 0.25, "decay" to 4))
+    ),
+    cps = 0.5
+)
+```
+
+```diffstatic {data-lang=ruby}
+:::static
+live_loop :bass do
+  use_bpm 60 * 0.5
+  use_synth :tb303
+  with_fx :reverb, room: 0.8 do
+    with_fx :echo, decay: 4, phase: 0.25 do
+      play 40, cutoff: 77.0382
+      sleep 0.5
+      play 52, cutoff: 77.0382
+      sleep 0.125
+      play 43, cutoff: 77.0382
+      sleep 0.375
+    end
+  end
+end
+```
+
+The FX wrap the body rather than the `use_bpm`, and each one adds an `end` inside the `live_loop`.
+That second detail is the only reason this is worth a paragraph: a reader that counted the first
+`end` as the loop's would close the loop early and read a period of zero. `synth.sonic-pi.patterns`
+runs the whole differential oracle again through two nested FX and requires the lattice to be
+identical to the dry layer's.
+
+### drive — Field's clock sequences, Sonic Pi sounds
+
+The other direction sends one `/run-code` per event, through the same `PatResponseSpec` machinery
+that drives every other live pattern in Field. There is no `live_loop` to redefine, so the pattern
+stays editable mid-bar, and a continuous signal is sampled once per note — which a compiled loop
+cannot do.
+
+```diffstatic {data-lang=kotlin}
+:::static
+(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5)))
+    .sonicPiLive(cps = 0.5)
+```
+
+The trade is timing. Each event is a UDP message plus Sonic Pi's own scheduling latency, so onsets
+carry a roughly constant offset and a few milliseconds of jitter, where a compiled `live_loop` is
+sample-accurate. A constant offset is not a sequencer problem — every event carries the same one.
+
+### Measured, not assumed
+
+`synth.sonic-pi.patterns` is a differential oracle, and it reads the emitted *text* rather than the
+emitter's own event list. That distinction is the whole test: comparing the emitter against the
+pattern only proves the emitter can enumerate, while everything that can reach a listener lives in
+the gap between that list and the text — a third rendered as `0.333333`, a `sleep` delta that does
+not accumulate back to the position it came from, a missing pad at the end of the loop so the second
+bar arrives early. So the program is parsed back and compared to the pattern's own `PatQ` positions,
+with no floating point anywhere in the comparison.
+
+```diffstatic {data-lang=text}
+:::static
+55 patterns x 3 tempos, 346 events, agreement exact in PatQ
+53/53 = 100.0% of the Sonic Pi-meaningful Pat surface
+44 aliases: 40 sample, 2 synth — all present
+```
+
+None of that says Sonic Pi then *does* what the program says. `sonicpi.pattern.timing` answers that
+on the real engine with `pat("bd ~ [bd bd bd] bd")` at a quarter cycle per second — a triplet inside
+a binary bar, chosen so that a detector cannot pass by accident. It runs twice: once at `amp: 0`,
+measuring Sonic Pi's own line-activity reports, and once audible at a master volume of 0.15,
+recorded through Sonic Pi's recorder and analysed in process.
+
+```diffstatic {data-lang=text}
+:::static
+flash: recall 1.000, mean |error| 2.114 ms, worst 5.038 ms   (bound asserted at 25 ms)
+
+observed intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
+pattern  intervals (samples): [96000, 16000, 16000, 16000, 48000, 96000, 16000, 16000, 16000, 48000]
+audio: recall 1.000, worst 0.000 ms                          (bound asserted at 2 ms)
+```
+
+Every one of eleven onsets across eight seconds, triplets included, landed on exactly the sample the
+pattern's rational schedule names. That is not luck: SuperCollider schedules bundles
+sample-accurately, and the lowering emits `Rational(1, 3)` rather than `0.333`, so there is nothing
+left to drift.
+
+![The recorded pattern. Blue is what the pattern asked for, green is what the recording contains.](assets/sonic_pi/pattern_onsets.png)
+
+Getting to that number took two corrections, and both first presented as a pass. A flux peak in a
+256-sample window can only say which *frame* something happened in, so the probe read `0.0 ms` at a
+resolution of 2.7 ms — a measurement coarser than the thing it measures reports zero whatever the
+truth is. And `bd_haus` has a secondary energy rise 129 ms into its decay, which a first-past-the-post
+refractory reported in place of the real attack that followed it. Onsets are now refined to the
+sample and deduplicated afterwards, against the pattern's own smallest gap.
+
+### A document to open
+
+`public/docs/assets/sonicpi_pattern_demo/metadata.edn` is a loadable Field document with three
+boxes. The first needs no Sonic Pi at all — it is a text transformation, and it prints the program
+and the atom resolutions. The second plays it. The third drives Sonic Pi from Field's clock.
+
+
+**1 — A pattern, lowered to Sonic Pi.** Needs nothing installed.
+
+```diffstatic {data-lang=kotlin}
+:::static
+// Pat plays Sonic Pi — the program, before you hear it.
+//
+// Field's pattern algebra keeps musical structure exact in rational cycle space. Sonic Pi has 66
+// synths, 42 FX, 206 samples and a sample-accurate scheduler. This is the join: a pattern is
+// lowered to ordinary Sonic Pi source that you can read, paste into a #sonicpi region, and edit.
+//
+//   public/docs/sonic_pi.md — "Field patterns as a Sonic Pi sequencer"
+//
+// Nothing here needs Sonic Pi installed. It is a text transformation.
+
+// A triplet inside a binary bar — three even hits inside the third quarter. This is exactly where
+// a lowering that wrote `sleep 0.333` would start drifting, and it is why the emitter writes
+// Rational(1, 3) instead.
+val groove = pat("bd ~ [bd bd bd] bd")
+
+println(groove.sonicPiSource(cps = 0.5, cycles = 1, name = "groove"))
+
+// use_bpm makes one Sonic Pi beat exactly one Field cycle, so the sleeps above ARE the pattern's
+// cycle fractions. Nothing about them depends on the tempo — change cps and only use_bpm moves.
+
+// Atoms resolve against the *installed* vocabulary, in order: a real sample name, then a real
+// synth name, then a note, then the drum-machine aliases.
+println()
+println(SonicPiVocabulary)
+val kit = SonicPiInstruments()
+listOf("bd", "hh", "bd_tek", "tb303", "c4", "60", "nonesuch").forEach {
+    println("  %-10s -> %s".format(it, kit.resolve(it) ?: "NOTHING — this atom would be silent"))
+}
+```
+
+**2 — Hear it.** Turn your volume down first.
+
+```diffstatic {data-lang=kotlin}
+:::static
+// Hear it.
+//
+// The same lowering, played. Sonic Pi 5 has to be installed; Field starts it itself — owned mode,
+// so there is no Sonic Pi window and this box is the buffer. The box stays lit while the music
+// runs, and the stop button stops it.
+//
+// Turn your volume down before you run this.
+
+// Three things a layer can carry beyond its pattern: which synth its bare notes play on, an FX
+// chain wrapped around its live_loop, and parameters from the pattern algebra. Every FX name and
+// every FX opt below is checked against the installed vocabulary when the layer is built — Sonic
+// Pi's answer to `with_fx :revreb` is a runtime error on the loop's own thread, minutes in.
+//
+// Field's octave numbering puts middle C at c5 = 60, one octave below Sonic Pi's :c4. That is why
+// the lowering emits MIDI numbers rather than :symbols — the number the pattern meant survives.
+sonicPiPattern(
+    sonicPiLayer("drums", pat("bd ~ [bd bd bd] bd")),
+    sonicPiLayer(
+        "hats",
+        pat("[hh hh hh hh]").degradeBy(0.35, salt = 4) with gain(0.35),
+        fx = listOf(sonicPiFx("echo", "phase" to 0.125, "decay" to 2, "mix" to 0.3))
+    ),
+    sonicPiLayer(
+        "bass",
+        pat("<e3 g3> ~ e4 ~").every(4) { it.rev() } with cutoff(700.0),
+        synth = "tb303",
+        fx = listOf(sonicPiFx("reverb", "room" to 0.7, "mix" to 0.4))
+    ),
+    cps = 0.5,
+    cycles = 4
+)
+```
+
+**3 — Field's clock, Sonic Pi's instrument.**
+
+```diffstatic {data-lang=kotlin}
+:::static
+// The other direction: Field's clock is the sequencer, Sonic Pi is the instrument.
+//
+// One /run-code per event instead of a live_loop. Slightly less accurate — a UDP hop of jitter per
+// note, measured at a few milliseconds — and completely live: edit the pattern below, re-run, and
+// the next event goes out changed, with no live_loop to redefine.
+//
+// The thing a compiled loop cannot do is on the last line: a continuous signal sampled once per
+// note, so the hats breathe.
+
+(pat("bd*4, [~ cp]*2, hh*8") with gain(sine().range(0.15, 0.5)))
+    .sonicPiLive(cps = 0.5)
+```
+
 ## Streaming Field's audio into Sonic Pi
 
 v5 added `link_audio`, which subscribes to another Ableton Link peer's published audio channel and
