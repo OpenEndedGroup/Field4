@@ -166,6 +166,30 @@ buffer; not 1.0, because they are not the same lowpass. A figure in which they m
 mean one of them was not running. Every number here is printed by
 `run_field_tests.py --id synth.sound.path.map`, which is where to re-measure them.
 
+### What the three clips do not tell you: loudness
+
+**All three players above are peak-normalized to 0.9 of full scale, so they compare timbre and not
+level.** That is `fun writeStereo16` being called with `normalizePeak = 0.9f`, and it means every
+committed clip has the identical peak sample value of 29490. Listen to them back to back and they
+will seem to arrive at a matched volume; that is the writer's doing, not the paths'.
+
+The level the filters actually produced is in the pre-normalization buffers, and it is not matched at
+all: the dry beat peaks at **2.005** — well past full scale, because ten voices a cycle sum — and the
+two filtered renders at **0.934** and **1.069**. A 12 dB/octave filter removes more energy than a
+6 dB/octave one, and that shows up as level before it is scaled away.
+
+**The centroids in the table are measured on those pre-normalization buffers**, not on the committed
+`.wav`s: `brightnessHz(audio.mono)` runs on the rendered buffer and `writeStereo16` is called
+afterwards. It happens not to matter — peak normalization is a single scalar multiply, so the
+spectral centroid, the rolloff slopes and the 0.9584 similarity are all invariant under it — but
+"the number and the file were computed at different points" is worth saying out loud rather than
+leaving a reader to assume.
+
+One small thing that fell out of decoding the committed bytes, and it is the abstract 0.9584 made
+concrete: the two filtered clips reach their maximum at frames **25778** and **25777** — one sample
+apart — while the dry beat peaks at 22632. Two lowpasses asked for the same 900 Hz, agreeing on
+which kick is loudest and disagreeing by exactly one sample about when.
+
 ### The seam claim, as a number
 
 That comparison shows the paths differ. The stronger claim on this page is that they are *driven
