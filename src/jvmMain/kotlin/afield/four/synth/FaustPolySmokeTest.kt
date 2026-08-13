@@ -1032,7 +1032,6 @@ object FaustPolySmokeTest {
         return best
     }
 
-    /** Microseconds per [BLOCK]-frame block for a bank of [voices], every voice sounding. */
     /**
      * Median µs-per-block over [reps] separate timed windows of [blocks] blocks each.
      *
@@ -1057,6 +1056,7 @@ object FaustPolySmokeTest {
         return samples[reps / 2]
     }
 
+    /** Microseconds per [BLOCK]-frame block for a bank of [voices], every voice sounding. */
     private fun timeBank(program: FaustProgram, voices: Int): Double {
         val bank = FaustVoiceBank(program, SR, voices)
         try {
