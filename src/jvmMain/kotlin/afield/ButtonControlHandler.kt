@@ -1,7 +1,13 @@
+// Same opt-in Server.kt carries at its own line 1: the five sibling control-message handlers all
+// dispatch their callbacks through GlobalScope, and this handler was split out of that file, so it
+// inherits the decision rather than making a new one.
+@file:OptIn(DelicateCoroutinesApi::class)
+
 package afield
 
 import afield.logger.lprintln
 import afield.server.broadcastControllerControlUpdates
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
