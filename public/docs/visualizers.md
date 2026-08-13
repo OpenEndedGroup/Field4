@@ -1028,6 +1028,55 @@ sample decimation would miss. Zooming and panning request a new envelope with at
 the audio itself continues to stream from the immutable representation. Set `showPlayhead = false`
 for a waveform-only inspection surface.
 
+### Shared time cursors and transport
+
+Audio players and arbitrary time-based views can share a loose, browser-side timeline. Give them
+the same `syncGroup`. A component whose local zero is later on the source timeline also gets an
+offset; shared time is always `localSeconds + syncOffsetSeconds`.
+
+```diffstatic {data-lang=kotlin}
+val group = "nancy-analysis"
+
+display("source", representation.audioVisualizerHtml(
+    options = AudioVisualizerOptions(
+        initialStartSeconds = 18.0,
+        initialDurationSeconds = 24.0,
+        initialPositionSeconds = 18.0,
+        syncGroup = group,
+    )
+))
+
+// Analysis-local 0 s corresponds to source 18 s.
+display("analysis", analysisDashboardHtml(
+    listOf(beats, mono, poly),
+    syncGroup = group,
+    timeOffsetSeconds = 18.0,
+))
+```
+
+This synchronizes across separate `display(...)` output documents. Playback publishes a gold
+playhead to every joined view; hover publishes a temporary cursor; click publishes a seek; and zoom
+or pan publishes a visible time window. The deliberately small callback protocol is also available
+to handwritten HTML, gesture views and future timeline widgets through parent-window
+`CustomEvent`s:
+
+```diffstatic {data-lang=javascript}
+const bus = window.parent === window ? window : window.parent
+
+bus.addEventListener("field-time-cursor", event => {
+    const { group, time, kind, active } = event.detail
+    // kind is "hover" or "playhead"
+})
+
+bus.dispatchEvent(new bus.CustomEvent("field-time-seek", {
+    detail: { group: "nancy-analysis", source: "my-view", time: 23.75 }
+}))
+```
+
+`field-time-window` carries `{group, source, start, duration}` and `field-time-transport` reports
+`play` / `pause`. Receivers ignore their own `source`, so callbacks can adapt or republish events
+without a feedback loop.
+
 ### Beat and pitch analysis views
 
 The Field Audio integration keeps full-resolution analysis tensors as immutable NPZ assets and sends
@@ -1055,6 +1104,17 @@ Replace the request with `monophonicPitchAnalysis(region)` or
 `AnalysisResult` exposes the complete NPZ representation and, for Basic Pitch, a MIDI artifact.
 The visualization endpoint caps previews at 4096 points; zoom and pan never turn the full activation
 tensor into a large JSON response.
+
+For comparative inspection, `analysisDashboardHtml(listOf(beats, mono, poly))` aligns all three
+results and synchronizes zoom, pan, hover, seeking and playback time. `analysisPreviewVisualizationHtml(...)` and
+`analysisPreviewDashboardHtml(...)` use the identical renderer with an already-fetched or synthetic
+`AnalysisPreview`, which is useful for offline documents and small reproducible fixtures. Per-job
+progress can replace a named output with `fieldAudioJobStatusHtml(accepted, event)`, while
+`fieldAudioJobMonitor()` embeds the complete durable queue.
+
+The public [beat and pitch analysis walkthrough](audio_ai_analysis.md) and loadable
+`audio_ai_analysis` operation transcript contain the full source → submit → monitor → await →
+visualize path.
 
 ### Waveform-summary endpoint contract
 

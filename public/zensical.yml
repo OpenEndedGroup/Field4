@@ -98,6 +98,7 @@ nav:
         - Sonic Pi: sonic_pi.md
         - Faust: faust.md
         - Audio AI Gesture Board: audio_ai_gesture_board.md
+        - Beat and Pitch Analysis: audio_ai_analysis.md
         - EnCodec Reconstruction Microscope: audio_ai_codec.md
         - Colors Examples: colors_examples.md
         - Neighbors & Graphs Examples: graph_connectivity_examples.md
