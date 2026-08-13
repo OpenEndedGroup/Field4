@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4351 of 6305 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 4358 of 6312 public symbols in `afield.stdlib` and `afield.visualization` carry a KDoc summary, and this is what is missing, most valuable first.
 
 **134 undocumented entry points** (types, top-level functions and values) and 1662 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -14,7 +14,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | --- | --- | --- | --- | --- | --- |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
-| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, visualizers, audio_ai_gesture_board | 11 | 39 | 79% |
+| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 39 | 79% |
 | [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Uncategorised | audio_ai_gesture_board | 4 | 5 | 25% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |

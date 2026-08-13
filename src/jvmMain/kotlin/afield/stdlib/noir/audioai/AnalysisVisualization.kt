@@ -6,6 +6,11 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.security.MessageDigest
 
+private val analysisVisualizationJson = Json {
+    encodeDefaults = true
+    explicitNulls = false
+}
+
 /**
  * The analysis viewer: one function that turns an [AnalysisResult] into a zoomable beat, pitch or
  * note display for a box output.
@@ -15,11 +20,6 @@ import java.security.MessageDigest
  * `.npz`, which is what keeps this cheap on a long recording — and the reason it is a display and
  * not a measurement.
  */
-private val analysisVisualizationJson = Json {
-    encodeDefaults = true
-    explicitNulls = false
-}
-
 fun analysisVisualizationHtml(
     result: AnalysisResult,
     serviceBaseUrl: String = "/field-audio",
