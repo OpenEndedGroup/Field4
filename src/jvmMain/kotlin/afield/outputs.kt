@@ -4,6 +4,7 @@ import afield.logger.lprintln
 import afield.macros.Insert
 import afield.server.Inspector
 import afield.server.LogStream
+import afield.server.broadcastControllerControlUpdates
 import afield.stdlib.FLineFaceCoordinates
 import afield.stdlib.FLineHitKind
 import afield.stdlib.FLineIntersection
@@ -1350,6 +1351,214 @@ fun Box.colorPicker(
     display(channel, html)
 }
 
+// Momentary button control ------------------------------------------------
+
+private val buttonCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Boolean) -> Unit>()
+
+internal fun registerButtonCallback(controlId: String, callback: (Boolean) -> Unit) {
+    buttonCallbacks[controlId] = callback
+}
+
+internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = buttonCallbacks[controlId]
+
+/**
+ * The markup for a momentary button.
+ *
+ * A real `<button>`, so it is reachable by tab and driven by space and enter, wrapped in the
+ * `field-control` shell every other control uses. The press is *not* an inline `onclick`: a click is
+ * one event and this control has two, so `sliders.js` wires `pointerdown`/`pointerup` — plus the window
+ * listeners that stop a pointer released elsewhere from leaving the button held down.
+ */
+private fun buildButtonHtml(controlId: String, label: String): String {
+    val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return """
+        <div class="field-control field-button" data-control-id="$controlId">
+            <span class="field-label">$escaped</span>
+            <button type="button" class="field-button-hit" id="$controlId" aria-pressed="false">hold</button>
+        </div>
+    """.trimIndent()
+}
+
+/**
+ * Displays a momentary button in an output disclosure — down while it is held, up when it is let go.
+ *
+ * ```kotlin
+ * button("gate") { down ->
+ *     if (down) voice.start() else voice.stop()
+ * }
+ * ```
+ *
+ * Distinct from [checkbox], which latches: use a checkbox for a state and a button for a *gesture*.
+ * Anything modelled as "while I am holding this" — a synth gate, a jog, a preview — needs this one, and
+ * a latching checkbox cannot express it at all.
+ *
+ * @param label text shown beside the button
+ * @param channel output disclosure that receives the control
+ * @param onUpdate called with `true` on the way down and `false` on the way up
+ */
+fun Box.button(
+    label: String,
+    channel: String = "controls",
+    onUpdate: (Boolean) -> Unit
+) {
+    val controlId = "button-${UUID.randomUUID()}"
+    registerButtonCallback(controlId, onUpdate)
+    display(channel, buildButtonHtml(controlId, label))
+}
+
+// Read-only meter control -------------------------------------------------
+
+/**
+ * The markup for a level meter — a read-only bar, with the same geometry a slider uses.
+ *
+ * There is no hitbox and no thumb, deliberately: a meter reports and cannot be dragged. It carries the
+ * same `data-law` attributes a slider does, because a level is usually the most logarithmic quantity in
+ * the room.
+ */
+private fun buildMeterHtml(
+    controlId: String,
+    label: String,
+    value: Double,
+    spec: ControlLawSpec,
+    significantDigits: Int,
+    decimalPlaces: Int
+): String {
+    val escaped = label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    val viewWidth = 320
+    val viewHeight = 44
+    val padding = 14
+    val centerY = viewHeight / 2
+    val trackLength = viewWidth - (padding * 2)
+    val clamped = value.coerceIn(minOf(spec.min, spec.max), maxOf(spec.min, spec.max))
+    val width = trackLength * spec.normalizedFor(clamped)
+    val decimals = controlLawDecimals(clamped, significantDigits, decimalPlaces)
+    val formatted = "%.${decimals}f".format(clamped)
+    return """
+        <div class="field-control field-meter"
+             data-control-id="$controlId"
+             data-min="${spec.min}"
+             data-max="${spec.max}"
+             data-law="${spec.law.wireName}"
+             data-law-exponent="${spec.exponent}"
+             data-law-center="${spec.center}"
+             data-significant-digits="$significantDigits"
+             data-decimal-places="$decimalPlaces"
+             data-value="$clamped"
+             data-view-width="$viewWidth"
+             data-padding="$padding">
+            <span class="field-label">$escaped</span>
+            <svg class="field-meter-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
+                <line x1="$padding" y1="$centerY" x2="${viewWidth - padding}" y2="$centerY" class="meter-track"></line>
+                <rect x="$padding" y="${centerY - 4}" width="$width" height="8" class="meter-fill"></rect>
+            </svg>
+            <span class="field-value" id="${controlId}-value">$formatted</span>
+        </div>
+    """.trimIndent()
+}
+
+/** How often a meter is allowed to reach the browser. 30 Hz is what a level display needs. */
+internal const val meterUpdateHz = 30
+
+private val meterMinIntervalNanos = 1_000_000_000L / meterUpdateHz
+
+/**
+ * A live handle on one meter in a control group — the thing a box holds in order to show a level.
+ *
+ * Every [set] is coalesced to at most [meterUpdateHz] updates a second and rides the same
+ * `control-value-update` message a slider's value does, so both control surfaces show it with no new
+ * plumbing. Crucially it does **not** write the box's value cache: that path ends in `setPropertyRaw`,
+ * i.e. a document mutation, and thirty of those a second would churn `operations.yaml` for a number
+ * that is an output and has nothing to preserve across a rerun.
+ */
+class MeterHandle internal constructor(
+    /** The control id this handle drives; useful when a box wants to log what it is feeding. */
+    val controlId: String
+) {
+    private val lastSentNanos = java.util.concurrent.atomic.AtomicLong(0)
+    private val lastValue = java.util.concurrent.atomic.AtomicReference<Double?>(null)
+    private val sent = java.util.concurrent.atomic.AtomicLong(0)
+    private val dropped = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** How many updates have reached the browser, and how many were coalesced away. */
+    val counts: Pair<Long, Long> get() = sent.get() to dropped.get()
+
+    /**
+     * Shows [value] on this meter, if the rate limit and the previous value allow it.
+     *
+     * Returns true when the value went out. Safe to call from an audio callback or a render loop: it
+     * takes no locks, allocates one boxed double, and returns immediately when it is too soon.
+     */
+    fun set(value: Double): Boolean {
+        if (!value.isFinite()) return false
+        if (lastValue.get() == value) return false
+        val now = System.nanoTime()
+        val previous = lastSentNanos.get()
+        if (now - previous < meterMinIntervalNanos) {
+            dropped.incrementAndGet()
+            return false
+        }
+        if (!lastSentNanos.compareAndSet(previous, now)) {
+            dropped.incrementAndGet()
+            return false
+        }
+        lastValue.set(value)
+        val updated = updateControllerControlValueInMemory(controlId) { it.copy(value = value) }
+        if (updated.isEmpty()) return false
+        // No target document: a control id is a UUID, so a broadcast cannot land on the wrong control,
+        // and a box has no session filename to hand in from its own thread.
+        broadcastControllerControlUpdates(updated)
+        sent.incrementAndGet()
+        return true
+    }
+}
+
+private class MeterSampler(val groupKey: String, val handle: MeterHandle, val source: () -> Double)
+
+private val meterSamplers = java.util.concurrent.ConcurrentHashMap<String, MeterSampler>()
+
+private val meterSamplerThread: java.util.concurrent.ScheduledExecutorService by lazy {
+    java.util.concurrent.Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "field-meter-sampler").apply { isDaemon = true }
+    }.also { executor ->
+        executor.scheduleAtFixedRate(
+            {
+                meterSamplers.forEach { (id, sampler) ->
+                    try {
+                        sampler.handle.set(sampler.source())
+                    } catch (t: Throwable) {
+                        // A source usually throws because whatever it was reading has been stopped.
+                        // Say so once and stop asking, rather than filling the log at 30 Hz.
+                        meterSamplers.remove(id)
+                        lprintln("warning,controls", "meter source for $id failed, no longer sampling: ${t.message}")
+                    }
+                }
+            },
+            0L,
+            1000L / meterUpdateHz,
+            TimeUnit.MILLISECONDS
+        )
+    }
+}
+
+private fun registerMeterSampler(groupKey: String, handle: MeterHandle, source: () -> Double) {
+    meterSamplers[handle.controlId] = MeterSampler(groupKey, handle, source)
+    meterSamplerThread // start the shared sampler on first use, never before
+}
+
+/**
+ * Stops sampling any meter that belonged to [groupKey] and is not in [liveIds].
+ *
+ * This is the whole lifecycle: a control group is rebuilt every time the box runs, so a meter that is
+ * no longer declared is a meter nobody is looking at. A box that is stopped and never rerun keeps its
+ * sampler until then, which is a bounded leak of one lambda and one map entry per meter.
+ */
+private fun retireMeterSamplers(groupKey: String, liveIds: Set<String>) {
+    meterSamplers.entries.removeIf { (id, sampler) -> sampler.groupKey == groupKey && id !in liveIds }
+}
+
+/** How many meters are being sampled right now. Test and diagnostic use. */
+internal fun activeMeterSamplerCount(): Int = meterSamplers.size
+
 // ------------------------------------------------------------------------
 // DSL-style grouping of controls
 
@@ -1507,6 +1716,9 @@ internal fun registerControllerControlGroup(box: Box, channel: String, controls:
     val key = controllerControlGroupKey(box.id, channel)
     controllerControlGroups[key] = controls
     controllerControlGroupBoxes[key] = box
+    // A rebuild is the only reliable signal that a meter is gone: the box just said what it has, so
+    // anything sampled for this group and no longer declared has nobody looking at it.
+    retireMeterSamplers(key, controls.map { it.id }.toSet())
 }
 
 internal fun controllerControlsForBox(boxId: String): List<ControllerControl> {
@@ -1515,6 +1727,29 @@ internal fun controllerControlsForBox(boxId: String): List<ControllerControl> {
         .filter { it.key.startsWith(prefix) }
         .sortedBy { it.key.substringAfter('\u0000') }
         .flatMap { it.value }
+}
+
+/**
+ * Updates a control in the live registry **without** touching the box's value cache.
+ *
+ * [updateControllerControlValue] deliberately writes the cache, because a slider a person moved should
+ * survive a rerun. A meter reading and a button press are the opposite: one is an output arriving thirty
+ * times a second — and the cache write ends in `setPropertyRaw`, a document mutation — and the other is
+ * a gesture that must never be replayed, since a cached press would re-fire the moment the box runs
+ * again. So they update the registry (which is what the tablet polls and what the broadcast reads) and
+ * stop there.
+ */
+internal fun updateControllerControlValueInMemory(
+    controlId: String,
+    update: (ControllerControl) -> ControllerControl
+): List<ControllerControl> {
+    val updated = mutableListOf<ControllerControl>()
+    controllerControlGroups.replaceAll { _, controls ->
+        controls.map { control ->
+            if (control.id == controlId) update(control).also { updated += it } else control
+        }
+    }
+    return updated
 }
 
 internal fun updateControllerControlValue(controlId: String, update: (ControllerControl) -> ControllerControl): List<ControllerControl> {
@@ -1541,13 +1776,25 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
 
     private data class CachedControl(val cacheKey: String, val id: String, val previous: ControllerControl?)
 
-    private fun cachedControl(type: String, prefix: String, label: String): CachedControl {
+    /**
+     * The stable identity of the next control of this [type] and [label] — no cache lookup.
+     *
+     * Split out of [cachedControl] for the two controls that must *not* restore a value: a meter, whose
+     * value is an output, and a button, whose value is a gesture that would re-fire on every rerun if it
+     * were remembered. Both still want the stable, label-derived id, so that the control on a tablet is
+     * the same control after the box runs again.
+     */
+    private fun controlIdentity(type: String, prefix: String, label: String): CachedControl {
         val ordinalKey = "$type\u0000$label"
         val ordinal = ordinals.getOrDefault(ordinalKey, 0)
         ordinals[ordinalKey] = ordinal + 1
         val cacheKey = controlGroupControlKey(channel, type, label, ordinal)
-        val id = stableControlId(prefix, box.id, cacheKey)
-    return CachedControl(cacheKey, id, box.cachedControlGroupValue(cacheKey, id))
+        return CachedControl(cacheKey, stableControlId(prefix, box.id, cacheKey), null)
+    }
+
+    private fun cachedControl(type: String, prefix: String, label: String): CachedControl {
+        val identity = controlIdentity(type, prefix, label)
+        return identity.copy(previous = box.cachedControlGroupValue(identity.cacheKey, identity.id))
     }
 
     /**
@@ -1737,6 +1984,114 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
+    }
+
+    /**
+     * Adds a momentary button — down while it is held, up when it is let go.
+     *
+     * ```kotlin
+     * controlGroup("voice") {
+     *     button("gate") { down ->
+     *         if (down) voice.start() else voice.stop()
+     *     }
+     * }
+     * ```
+     *
+     * Genuinely different from [checkbox], and not only in appearance. A checkbox latches, so it can
+     * describe a *state*; a button describes a *gesture*, and "while I am holding this" is a thing a
+     * latching control cannot express at all. Every parameter surface eventually needs one: a synth
+     * gate, a jog, a preview, a shutter.
+     *
+     * **A press is never cached.** Every other control in this builder restores its value across a
+     * rerun, which is exactly what live-coding wants — recompiling must not snap every slider back to
+     * its default. A cached press would instead re-fire on *every* rerun: edit one character of a DSP
+     * and the note retriggers. So [onUpdate] is not called on a rerun, and the button always renders up.
+     *
+     * @param label text shown beside the button
+     * @param onUpdate called with `true` on the way down and `false` on the way up
+     */
+    fun button(label: String, onUpdate: (Boolean) -> Unit) {
+        // The id is still derived from the label and ordinal, so both control surfaces name the same
+        // button and a rerun does not orphan the one on a tablet — only the *value* is uncached.
+        val identity = controlIdentity("button", "button", label)
+        registerButtonCallback(identity.id, onUpdate)
+        htmlParts += buildButtonHtml(identity.id, label)
+        controls += ControllerControl(
+            id = identity.id,
+            type = "button",
+            label = label,
+            channel = channel,
+            checked = false
+        )
+    }
+
+    /**
+     * Adds a read-only meter: a level you can see, rather than a number you have to print.
+     *
+     * ```kotlin
+     * controlGroup("voice") {
+     *     val level = meter("level", min = 0.0, max = 1.0, source = { launch.meter("level") })
+     * }
+     * ```
+     *
+     * Returns a [MeterHandle], so a box that already has a loop can push instead:
+     * `level.set(rms)`. Either way the value reaches the browser at most [meterUpdateHz] times a
+     * second — a rate chosen because that is what a level display needs and a box rerun is nowhere
+     * near it — riding the same message a slider's value does, so the remote tablet shows it too. The
+     * tablet polls at 450 ms, so there it is an indicator rather than a VU meter.
+     *
+     * Pass [source] to have Field sample it for you on a single shared daemon thread; the sampler stops
+     * when the box runs again without declaring this meter, and stops permanently if the source throws
+     * (which is what a stopped engine does).
+     *
+     * A meter is an output, so it is **not** cached and it accepts no input: pressing it does nothing.
+     *
+     * @param label text shown beside the meter
+     * @param min the level that reads empty
+     * @param max the level that reads full
+     * @param initialValue the level shown before the first update arrives
+     * @param law how level maps to bar length; [ControlLaw.LOGARITHMIC] is usually right for a level
+     * @param lawExponent taper strength for [ControlLaw.EXPONENTIAL] and [ControlLaw.BIPOLAR]
+     * @param lawCenter the level at the middle of the bar for [ControlLaw.BIPOLAR]
+     * @param significantDigits digits shown; nonlinear laws default to 4
+     * @param source sampled at [meterUpdateHz] on a shared daemon thread when given
+     */
+    fun meter(
+        label: String,
+        min: Double = 0.0,
+        max: Double = 1.0,
+        initialValue: Double = min,
+        law: ControlLaw = ControlLaw.LINEAR,
+        lawExponent: Double = 2.0,
+        lawCenter: Double = (min + max) / 2,
+        significantDigits: Int = defaultSignificantDigits(law),
+        source: (() -> Double)? = null
+    ): MeterHandle {
+        val identity = controlIdentity("meter", "meter", label)
+        val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
+        val decimalPlaces = if (significantDigits > 0) 0 else 2
+        val value = initialValue.coerceIn(minOf(min, max), maxOf(min, max))
+        htmlParts += buildMeterHtml(identity.id, label, value, spec, significantDigits, decimalPlaces)
+        controls += ControllerControl(
+            id = identity.id,
+            type = "meter",
+            label = label,
+            channel = channel,
+            min = min,
+            max = max,
+            step = 0.0,
+            value = value,
+            decimalPlaces = decimalPlaces,
+            law = law.wireName,
+            lawExponent = spec.exponent,
+            lawCenter = spec.center,
+            significantDigits = significantDigits
+        )
+        val handle = MeterHandle(identity.id)
+        if (source != null) {
+            registerMeterSampler(controllerControlGroupKey(box.id, channel), handle, source)
+        }
+        return handle
     }
 
     /**

@@ -719,9 +719,11 @@
     const signature = JSON.stringify({
       uid: info.selectedUid || "",
       property: info.selectedProperty || "",
-      controls,
+      // A meter's value changes on every poll and must not force a re-render; see updateMeterDisplays.
+      controls: controls.map((control) => (control.type === "meter" ? { ...control, value: null } : control)),
     });
     if (signature === state.controlsSignature || state.activeControlId) {
+      updateMeterDisplays(controls);
       renderGroupReadout();
       return;
     }
@@ -743,6 +745,7 @@
     controls.forEach((control) => {
       groupControls.appendChild(renderControl(control));
     });
+    updateMeterDisplays(controls);
     renderGroupReadout();
   }
 
@@ -750,10 +753,98 @@
     switch (control.type) {
       case "vec2": return renderVec2Control(control);
       case "checkbox": return renderCheckboxControl(control);
+      case "button": return renderButtonControl(control);
+      case "meter": return renderMeterControl(control);
       case "string": return renderStringControl(control);
       case "color": return renderColorControl(control);
       default: return renderSliderControl(control);
     }
+  }
+
+  /**
+   * A momentary button on a touch surface.
+   *
+   * `touchend` and `touchcancel` matter more here than anywhere: a finger that slides off the button, or
+   * a press that the browser reinterprets as a scroll, must not leave the control held. As on the
+   * desktop the release is guarded, so exactly one is sent per press.
+   */
+  function renderButtonControl(control) {
+    const parts = controlShell(control, "");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "phone-button";
+    button.textContent = "hold";
+    let held = false;
+
+    const press = (event) => {
+      if (event && event.preventDefault) event.preventDefault();
+      if (held) return;
+      held = true;
+      button.classList.add("held");
+      setControlValueText(control.id, "down");
+      send({ type: "button", controlId: control.id, pressed: true });
+    };
+    const release = () => {
+      if (!held) return;
+      held = false;
+      button.classList.remove("held");
+      setControlValueText(control.id, "");
+      send({ type: "button", controlId: control.id, pressed: false });
+    };
+
+    button.addEventListener("pointerdown", press);
+    button.addEventListener("touchstart", press, { passive: false });
+    ["pointerup", "pointercancel", "pointerleave", "touchend", "touchcancel"].forEach((name) => {
+      button.addEventListener(name, release);
+    });
+    window.addEventListener("pointerup", release);
+    window.addEventListener("blur", release);
+
+    parts.shell.appendChild(button);
+    return parts.shell;
+  }
+
+  /** A read-only level bar. No listeners at all — a meter reports and cannot be touched. */
+  function renderMeterControl(control) {
+    const spec = lawFor(control);
+    const value = Number(control.value ?? control.min ?? 0);
+    const parts = controlShell(control, controlValueText(control, spec, value));
+
+    const track = document.createElement("div");
+    track.className = "phone-meter";
+    const fill = document.createElement("div");
+    fill.className = "phone-meter-fill";
+    fill.dataset.meterFor = control.id;
+    fill.style.width = `${meterFraction(control, spec, value) * 100}%`;
+    track.appendChild(fill);
+    parts.shell.appendChild(track);
+    return parts.shell;
+  }
+
+  function meterFraction(control, spec, value) {
+    if (spec) return window.FieldControlLaw.normalizedFor(spec, value);
+    const min = Number(control.min ?? 0);
+    const max = Number(control.max ?? 1);
+    return max === min ? 0 : clamp((Number(value) - min) / (max - min), 0, 1);
+  }
+
+  /**
+   * Moves the meters in place, without re-rendering the group.
+   *
+   * A meter's value changes on every poll, so if it were part of the render signature the whole control
+   * group would be rebuilt every 450 ms — throwing away the DOM, and with it any slider the hand happens
+   * to be on. So `renderControlGroup` strips meter values out of the signature and calls this instead.
+   */
+  function updateMeterDisplays(controls) {
+    controls.forEach((control) => {
+      if (control.type !== "meter") return;
+      const spec = lawFor(control);
+      const value = Number(control.value ?? control.min ?? 0);
+      document.querySelectorAll(`[data-meter-for="${CSS.escape(control.id)}"]`).forEach((fill) => {
+        fill.style.width = `${meterFraction(control, spec, value) * 100}%`;
+      });
+      setControlValueText(control.id, controlValueText(control, spec, value));
+    });
   }
 
   function controlShell(control, valueText) {

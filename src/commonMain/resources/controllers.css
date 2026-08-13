@@ -590,3 +590,43 @@ button {
   min-height: 10rem;
   overflow: hidden;
 }
+
+/* Momentary button and level meter on the touch surface. The button is deliberately large: a momentary
+   control that a thumb misses is worse than a latching one. */
+.phone-button {
+  width: 100%;
+  min-height: 64px;
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent, #7fd1ff);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(127, 209, 255, 0.45);
+  border-radius: 12px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.phone-button.held {
+  background: var(--accent, #7fd1ff);
+  color: #06121b;
+}
+
+.phone-meter {
+  width: 100%;
+  height: 18px;
+  border: 1px solid rgba(127, 209, 255, 0.35);
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.phone-meter-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent, #7fd1ff);
+  opacity: 0.85;
+  transition: width 90ms linear;
+}
