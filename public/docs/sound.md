@@ -3,14 +3,23 @@
 `pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
 when — but a schedule makes no sound. Something has to turn each event into samples.
 
-Field has **two** things that do, offline, with no audio device and no realtime engine, and
-they sound nothing alike. One is a tiny synthesiser that ships in the source tree. The
-other is the genuine Tidal drum library, if you happen to have it. This page follows one
-pattern all the way down both, and — because this is the whole point — **every audio figure
-below says which of the two produced it.**
+Field has **two** things that turn a *pattern's* events into samples, offline, with no audio device
+and no realtime engine, and they sound nothing alike. One is a tiny synthesiser that ships in the
+source tree. The other is the genuine Tidal drum library, if you happen to have it. This page
+follows one pattern all the way down both, and — because this is the whole point — **every audio
+figure below says which of the two produced it.**
 
-If you have listened to an audio figure anywhere else in these docs, you have heard the
-first one.
+Two is the count of *pattern voices*, and it is worth being exact about that, because this page's
+first draft said Field had two things that make a sound at all. It has
+[six](sound_paths.md) — the `Signal` graph, Faust, the dough wasm engine and Sonic Pi are four more
+ways to produce samples, none of them driven by a pattern. [Making a sound in Field: every path
+there is](sound_paths.md) maps all of them and helps you pick; this page is the depth on these two.
+
+Some of the audio figures elsewhere in these docs are the first voice below — a third of the
+published corpus, not all of it. This page's first draft said all of them, on the strength of a
+KDoc comment. See [what this means for the audio
+elsewhere](#what-this-means-for-the-audio-elsewhere-in-these-docs) for the measurement that
+refuted it.
 
 ---
 
@@ -184,24 +193,25 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ## What this means for the audio elsewhere in these docs
 
-`DirtRender`'s KDoc says that "every audio figure in the documentation" uses `patVoice`, and
+`DirtRender`'s KDoc said that "every audio figure in the documentation" uses `patVoice`, and
 the first draft of this page repeated it. **It is not true.** The audit described at the
-bottom of this page swept every published clip and measured each one; the corpus is twelve
-clips across three pages and it breaks down like this:
+bottom of this page swept every published clip and measured each one; the corpus is fifteen
+clips across four pages and it breaks down like this:
 
 | how many | family | where |
 | --- | --- | --- |
-| 4 | the stand-in synth (`patVoice`) | 3 on [Patterns & Rhythm](pattern_language.md), 1 here |
+| 5 | the stand-in synth (`patVoice`) | 3 on [Patterns & Rhythm](pattern_language.md), 1 here, 1 on [Sound paths](sound_paths.md) |
 | 1 | real Dirt-Samples one-shots | here |
 | 1 | real samples + the stand-in per unmatched event | here |
-| 6 | a **DoughDSP primitive** on a real signal | [DoughDSP Sound Examples](dough_dsp_sound.md) |
+| 7 | a **DoughDSP primitive** on a real signal | 6 on [DoughDSP Sound Examples](dough_dsp_sound.md), 1 on [Sound paths](sound_paths.md) |
+| 1 | a **Faust** program compiled at runtime | [Sound paths](sound_paths.md) |
 
-So half the published corpus never touches `patVoice` at all — and "stand-in" is the wrong
-word for that half twice over. `DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant
-lowpass and a soft clipper on real signals; a plate reverb ringing down is not standing in
-for anything, it *is* the thing that page is about.
+So a majority of the published corpus never touches `patVoice` at all — and "stand-in" is the
+wrong word for that majority twice over. `DoughDspSoundDocs` runs a plate reverb, a phaser, a
+resonant lowpass and a soft clipper on real signals; a plate reverb ringing down is not
+standing in for anything, it *is* the thing that page is about.
 
-Where the stand-in genuinely is the voice — the four clips in the first row — the reason is
+Where the stand-in genuinely is the voice — the five clips in the first row — the reason is
 the one given above: it needs no assets, so the figure regenerates anywhere, and its claims
 can be measured in the audio rather than asserted in a caption. That is a good default and a
 bad secret. Hence this page.
@@ -276,7 +286,7 @@ assertions:
 
 * **nothing ships unclassified** — the fence count is pinned, so a new clip fails the build
   until somebody states which family it belongs to;
-* **every committed clip still matches what its producer renders today** — all twelve
+* **every committed clip still matches what its producer renders today** — all fifteen
   currently score 1.0000, bit-stable through peak normalisation and 16-bit quantisation;
 * **the list of audio that cannot be re-derived is pinned by key and by reason**, so it
   cannot quietly become a place to put problems. It has one entry, the banner loop.

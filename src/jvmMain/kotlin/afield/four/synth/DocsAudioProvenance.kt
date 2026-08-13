@@ -22,9 +22,12 @@ expect:
  *
  * `sound.md` was written from [DirtRender]'s KDoc, which says that "every audio figure in the
  * documentation" is [patVoice]. This file exists because that sentence had never been checked, and
- * checking it is the whole job: **it is not true.** Half the published corpus comes from
+ * checking it is the whole job: **it is not true.** A large share of the published corpus comes from
  * [DoughDspSoundDocs], which renders DSP primitives and never calls [patVoice] at all. See
- * [Origin] for the three families the sweep actually found.
+ * [Origin] for the families the sweep actually found — four of them when this object was written,
+ * and the count is deliberately not repeated in this sentence, because the first version of it said
+ * "three" while [Origin] already declared four. `DocsAudioProvenanceGuardTest` pins the numbers; a
+ * KDoc paragraph is the wrong place to keep one.
  *
  * There is also a live failure mode here, not a hypothetical one: `56b124131` had to repair two
  * published figures that the code had stopped producing. So the measurement that matters most is
@@ -67,6 +70,9 @@ object DocsAudioProvenance {
 
         /** [DoughDspSoundDocs]: DSP primitives driven by real signals. Not a stand-in for a kit. */
         DOUGH_DSP("a DoughDSP primitive run on a real signal — not a drum stand-in at all"),
+
+        /** A Faust program compiled at runtime and rendered offline. See [SoundPathMap]. */
+        FAUST("a Faust program compiled at runtime and rendered with no audio device"),
 
         /** Present in the tree, no producing code found. Must be in [UNDERIVABLE]. */
         UNDERIVABLE("no producing code found in the repository"),
@@ -168,6 +174,22 @@ object DocsAudioProvenance {
                 SoundRenderPathDocs.Voice.MIXED -> Origin.MIXED_SAMPLES_AND_STAND_IN
             }
 
+        // Also per figure, and for the same reason: the whole point of that page's comparison is
+        // that one buffer is rendered through several *different* paths, so the renderer object
+        // cannot name a single family. It reads the family off the figure's declared SoundPath.
+        //
+        // Two of the three are honestly *chains* — the stand-in synth's output, then a filter from
+        // another path — and are classified by the processing rather than by the source, because
+        // the processing is what the figure is about. The `standInSimilarity` column below says how
+        // much of the stand-in survived, which is the number that keeps that classification honest.
+        "afield.four.synth.SoundPathMap" ->
+            when (SoundPathMap.comparison(published.spec).pathId) {
+                "pat-stand-in" -> Origin.STAND_IN_SYNTH
+                "signal-graph" -> Origin.DOUGH_DSP
+                "faust" -> Origin.FAUST
+                else -> null
+            }
+
         else -> ORIGIN_BY_RENDERER[published.renderer]
     }
 
@@ -229,10 +251,18 @@ object DocsAudioProvenance {
 
         val reproducibility = SoundRenderPathDocs.waveformSimilarity(committed, fresh.getOrThrow())
         val standIn = runCatching {
-            if (published.renderer == "afield.four.synth.SoundRenderPathDocs") {
-                SoundRenderPathDocs.waveformSimilarity(committed, SoundRenderPathDocs.standInReference(published.spec))
-            } else {
-                Double.NaN
+            when (published.renderer) {
+                "afield.four.synth.SoundRenderPathDocs" ->
+                    SoundRenderPathDocs.waveformSimilarity(
+                        committed, SoundRenderPathDocs.standInReference(published.spec),
+                    )
+
+                // The comparison figures share one stand-in render by construction — it is the
+                // *input* to all three — so this column reads as "how much of the dry beat is left".
+                "afield.four.synth.SoundPathMap" ->
+                    SoundRenderPathDocs.waveformSimilarity(committed, SoundPathMap.dryBeat())
+
+                else -> Double.NaN
             }
         }.getOrDefault(Double.NaN)
 
@@ -323,7 +353,7 @@ object DocsAudioProvenance {
     /**
      * A committed asset must still be what its producer renders.
      *
-     * This is the `56b124131` guard generalised to the whole corpus. Measured across all twelve
+     * This is the `56b124131` guard generalised to the whole corpus. Measured across all fifteen
      * published clips: the lowest reproducibility is 1.0000 and so is the highest — every one is
      * bit-stable through peak normalisation and 16-bit quantisation, which is what a deterministic
      * offline renderer should do. 0.98 leaves room for a floating-point drift that changes nothing
