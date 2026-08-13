@@ -187,13 +187,20 @@ block (`48000/7 = 6857`, and `6857 % 128 = 105`):
 | worst absolute error | 8 | 0.17 |
 | **what a per-block parameter write would give** | **up to 110** | **2.3** |
 
-The constant part of that offset is the voice's attack plus its filter's group delay, which is physics. The
-*varying* part is the scheduler, and all ±7 of it is actually the detector: `os.sawtooth`'s phasor runs
-whether the gate is up or not, so a reused voice can be near its zero crossing at the instant the envelope
-opens, and `|x|` then takes a few more samples to clear the quiet threshold.
+Except that none of that spread is the scheduler, and it is worth showing how you can tell. During a gap
+this program's output is **exactly `0f`** — the envelope reaches zero and multiplies the oscillator away — so
+the first non-zero sample of a note is an exact fact about the render with no threshold in it. Measured:
 
-A patterned *parameter* is even cleaner, because nothing is in the way of it: `pat("0 0 0 1 1 1 1")` on a
-`level` control rises at frame 20571 — 91 frames into a block — and is measured at frame **20571, error 0**.
+> the first non-zero sample **is** the notated frame for 13 of 13 checkable notes, worst 0 frames.
+
+So the scheduler is sample-exact, and the whole 0–8 spread in the table is the *onset detector* waiting for
+the attack ramp to clear its amplitude threshold — which depends on where the free-running phasor happened
+to be when the envelope opened. Two numbers, then, and they answer different questions: the scheduler is
+exact to the sample, and an onset detector on a bandlimited sawtooth resolves an attack to within 8.
+
+A patterned *parameter* shows it from the other side, with no attack ramp in the way:
+`pat("0 0 0 1 1 1 1")` on a `level` control rises at frame 20571 — 91 frames into a block — and is measured
+at frame **20571, error 0**.
 
 ### `freq`, `gate`, `gain` — found by label, and refused when absent
 
@@ -233,6 +240,52 @@ Stated, because an allocator without a stated policy is a guess:
 
 `peakConcurrency` reports the most voices that ever sounded together, which is the honest measure of how
 much polyphony a pattern actually asked for.
+
+#### A steal clicks, and by how much
+
+This is the classic defect of every polyphonic synth, so it is measured rather than assumed. The statistic is
+the largest sample-to-sample delta across the steal, normalised by the local peak, against the same
+statistic in the same note once it has settled:
+
+| `stealReleaseFrames` | Normalised step across a steal | Stolen note is |
+|---|---|---|
+| `1` (the default) | **2.71×** the settled step | on time |
+| `1440` (30 ms, longer than this program's release) | **0.04×** | 30 ms late |
+
+A normalised step near 1.0 means the largest single-sample jump is as big as the whole local peak, which is
+not a slope — it is the outgoing note's amplitude vanishing in one sample. The cause is that Faust's
+`en.adsr` **resets to zero** on a trigger rather than continuing from the level it was at, so the one-sample
+gate dip that gives the new note its rising edge drops the envelope to 0 before the attack starts.
+
+And the gate dip is not optional. Writing `freq` to a voice whose gate is already up does *not* restart the
+envelope — Faust triggers on a rising edge — so the first version of this stole silently, correctly, and
+produced no note: the stolen voice glided in at the old envelope level. With the dip, the envelope's local
+peak rises 1.36–1.39× across a steal; without it, 1.00×.
+
+So it is a knob with both ends asserted, and the default prefers the note being on time. Stealing is an
+overload condition either way.
+
+#### `render` is not allocation-free, and that is inherited
+
+An allocation in an audio callback is a GC pause in the audio path — a dropout — and it is invisible to a
+µs-per-block average. Measured with `getCurrentThreadAllocatedBytes` over 4000 blocks:
+
+| | Bytes per 128-frame block |
+|---|---|
+| `FaustVoiceBank`, 8 voices, steady state | 7432 (**929 per voice**) |
+| `FaustDsp`, one voice — the single-voice path above | 1113 |
+
+So the polyphonic path allocates **0.83×** as much per voice as the monophonic one, which places the source:
+it is `Value.readBuffer`, the one bulk copy per channel per block that gets the samples out of WebAssembly,
+and it is in both paths. Three sources that *were* in `FaustVoiceBank` are gone — a boxed `Long?` return, a
+`Pair` built to read two queue heads, and a `runCatching` in the render `finally` — and the remaining figure
+is asserted with a floor near it so a regression fails.
+
+!!! warning "Known, measured, and not fixed"
+    ~0.9 KB per voice per block of garbage on the audio thread is real GC pressure, and removing it means
+    changing how samples leave WebAssembly for *both* the monophonic and polyphonic paths — a
+    `ByteBuffer`-backed view rather than a copying `readBuffer`, if the polyglot API allows one. That is the
+    next thing to do here, and it is a bigger change than adding polyphony was.
 
 ### The offline path, which is what the numbers come from
 
@@ -422,7 +475,7 @@ Field's, so a version bump that changes anything cannot pass unnoticed:
 | `faust.editor-extension.workout` | the shipped `faust.js` under node against the shipped vocabulary — regions, tokenizer, lexical diagnostics, qualified completion, the line arithmetic from both ends |
 | `faust.box.controls` | the compiler reached from inside a real box, generated controls, offline render into an output area |
 | `faust.box.compile-error` | a bad program's line survives the trip, and the compiler recovers afterwards |
-| `synth.faust.poly` | the polyphonic path, 88 checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation and stealing, and the cost curve |
+| `synth.faust.poly` | the polyphonic path, 101 checks: control discovery and its refusal, the onset detector's own sanity, onset timing in samples, pitch in cents, the polyphony-against-monophony spectral proof, a patterned parameter, voice allocation, whether a steal clicks (it does, measurably, and the knob that stops it), how many bytes a block allocates on the audio thread, and the cost curve |
 
 What none of them covers is the launch itself — a box staying lit while sound comes out of a speaker.
 That is the generic audio return-value path, and it needs an audio device, so it is verified by
