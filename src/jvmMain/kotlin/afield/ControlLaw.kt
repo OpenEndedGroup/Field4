@@ -26,7 +26,15 @@ import kotlin.math.pow
  *
  * The same law drives the initial HTML ([ControlLawSpec.valueAt] is used from `buildSliderHtml`), the
  * drag in `src/commonMain/resources/controlLaws.js`, and the tablet surface in `controllers.js` — one
- * rule, three renderers, held together by `ControlSurfaceProbeTest`.
+ * rule, three renderers.
+ *
+ * **Two of those three are held together by a test; the third is not.** `ControlSurfaceProbeTest`
+ * stages `controlLaws.js` and `sliders.js` verbatim off the classpath and drives them under node
+ * against markup built by the real [ControlGroupBuilder], so the box output area's arithmetic is
+ * pinned to the Kotlin's. The tablet surface is **not covered**: nothing executes `controllers.js`,
+ * and the probe reads its law spec from the `data-law-*` attributes only, never from the JSON path
+ * that the controller websocket actually serves. Adding `controllers.js` to that probe is the cheap
+ * next step — the harness exists, it just loads the other two files.
  */
 enum class ControlLaw(
     /** The spelling that travels to the browser in [ControllerControl.law]. */

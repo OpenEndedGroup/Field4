@@ -145,11 +145,19 @@ measured** and would need one.
 
 ### Security: this is a websocket command, and that family is unauthenticated
 
-A momentary button posts `button-update` over the websocket. Websockets are exempt from CORS and appear
-in no route census, so `AFIELD_API_REQUIRE_SAME_SITE` does **not** cover it — exactly as it does not
-cover the `slider-update`, `checkbox-update`, `vec2-update`, `string-update` or `color-update` commands
-it sits beside. Anything that can open a websocket to a running Field can therefore invoke a
-user-registered Kotlin callback with a boolean.
+A momentary button posts `button-update` over the websocket. Websockets are exempt from CORS, so
+`AFIELD_API_REQUIRE_SAME_SITE` does **not** cover it — exactly as it does not cover the
+`slider-update`, `checkbox-update`, `vec2-update`, `string-update` or `color-update` commands it sits
+beside. Anything that can open a websocket to a running Field can therefore invoke a user-registered
+Kotlin callback with a boolean.
+
+Two specifics, so this is checkable rather than atmospheric. The census that *does* exist is
+`EXPECTED_MUTATING_SURFACE` in `FieldApiCorsExposureTest`, asserted by
+`theUnauthenticatedMutatingApiSurfaceHasNotGrownUnnoticed`: **38 mutating HTTP routes, and not one
+websocket entry among them** — so no census edit is needed here, but that is the file a reviewer should
+read next. And the reason the guard misses this is mechanical rather than an oversight: the interceptor
+returns early for `GET`, `HEAD` and `OPTIONS`, and a websocket handshake *is* an HTTP `GET` with an
+`Upgrade` header, so it is skipped before any same-site check runs.
 
 This is a pre-existing hole in the whole control-message family, and this change **widens it by one
 command**. It is not fixed here, because fixing it means authenticating the family as a unit — one
