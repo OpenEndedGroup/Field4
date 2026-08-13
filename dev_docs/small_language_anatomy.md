@@ -284,10 +284,10 @@ write a Monarch grammar for a language Monaco already knows.
 
 ### The editor's language modules
 
-**15** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
+**16** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
 `bithero/slang`, `bithero/msl`, `bithero/forth`, `bithero/fieldml`, `bithero/languageExtensions`,
-`bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/nano`,
-`bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
+`bithero/stacksl`, `bithero/rectsl`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/faust`,
+`bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
 main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite` and `brief` have editor modules and no
