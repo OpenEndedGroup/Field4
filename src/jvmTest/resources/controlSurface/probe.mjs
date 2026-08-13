@@ -347,6 +347,23 @@ function pressAt(element, fraction, { release = true } = {}) {
     return clientX;
 }
 
+/**
+ * A key going down and coming back up on a focused element.
+ *
+ * The `repeat` case is the one that matters: holding space on a real button fires `keydown` over and
+ * over, and a momentary control that posted a `true` for each of them would flood the socket. So the
+ * probe repeats the keydown deliberately.
+ */
+function keyPress(element, key, { repeats = 0, release = true } = {}) {
+    const send = (type) => element.dispatchEvent({
+        type, target: element, key, code: key === ' ' ? 'Space' : key,
+        preventDefault() {}, stopPropagation() {}
+    });
+    send('keydown');
+    for (let i = 0; i < repeats; i++) send('keydown');
+    if (release) send('keyup');
+}
+
 function dragTo(element, fraction) {
     const rect = element.getBoundingClientRect();
     window.dispatch('pointermove', {
@@ -484,6 +501,28 @@ for (const testCase of CASES.buttons || []) {
     posted.length = 0;
     window.dispatch('pointerup', { clientX: 0, clientY: 0, pointerId: 1 });
     await record('stray release');
+
+    // --- keyboard. A momentary control that a keyboard cannot reach is unreachable to some people, and
+    // "held" has no obvious keyboard analogue, so the chosen answer is asserted rather than assumed:
+    // space/enter down is a press, up is the release, and an auto-repeating keydown is NOT a new press.
+    const inner = document.getElementById(testCase.id) || button;
+    posted.length = 0;
+    keyPress(inner, ' ');
+    await record('space down and up');
+
+    posted.length = 0;
+    keyPress(inner, ' ', { repeats: 12, release: false });
+    await record('space held, 13 keydowns');
+    window.dispatch('blur', {});
+    await record('space then focus lost');
+
+    posted.length = 0;
+    keyPress(inner, 'Enter');
+    await record('enter down and up');
+
+    posted.length = 0;
+    keyPress(inner, 'a');
+    await record('an unrelated key');
 
     observed.buttons.push({ name: testCase.name, sequence });
     document.body.children = [];

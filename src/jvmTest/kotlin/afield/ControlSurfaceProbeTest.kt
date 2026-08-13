@@ -45,6 +45,9 @@ import kotlin.test.fail
  *  - **A momentary button cannot stick.** A `pointerdown` whose `pointerup` arrives outside the
  *    element, a `pointercancel`, and a window `blur` each have to release it — exactly once — and a
  *    stray release with nothing held has to post nothing.
+ *  - **A momentary button is reachable from the keyboard**, and an auto-repeating `keydown` is not a
+ *    new press. Space and enter press and release; thirteen keydowns are still one press; losing focus
+ *    mid-key releases; an unrelated key does nothing.
  *  - **A meter is read-only.** Pressing it posts nothing, and a level arriving from the server moves
  *    the bar by the law rather than linearly.
  *
@@ -363,6 +366,36 @@ class ControlSurfaceProbeTest {
             emptyList(),
             steps.getValue("stray release").sent,
             "a release with nothing held posted a spurious 'up'"
+        )
+
+        // --- keyboard. A momentary control a keyboard cannot reach is unreachable to some people.
+        // "Held" has no obvious keyboard analogue, so the decision is: space/enter down presses, up
+        // releases, and auto-repeat is *not* a new press. All three are asserted, because the repeat
+        // case is the one that would otherwise flood the socket with `true`s while a key is held.
+        assertEquals(
+            listOf(true, false),
+            steps.getValue("space down and up").sent,
+            "space does not press and release the button"
+        )
+        assertEquals(
+            listOf(true),
+            steps.getValue("space held, 13 keydowns").sent,
+            "an auto-repeating keydown posted more than one press"
+        )
+        assertEquals(
+            listOf(false),
+            steps.getValue("space then focus lost").sent,
+            "losing focus while a key was held did not release the button"
+        )
+        assertEquals(
+            listOf(true, false),
+            steps.getValue("enter down and up").sent,
+            "enter does not press and release the button"
+        )
+        assertEquals(
+            emptyList(),
+            steps.getValue("an unrelated key").sent,
+            "an unrelated key pressed the button"
         )
     }
 

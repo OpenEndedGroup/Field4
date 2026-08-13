@@ -75,7 +75,8 @@ scroll, the window lost focus — leaving the control held and, behind it, a gat
 listened for on the **window**, from five directions (`pointerup`, `pointercancel`, `touchend`,
 `touchcancel`, `blur`), guarded by a held-set so exactly one release is sent per press and a stray
 release with nothing held sends nothing. It is a real `<button>` inside the control shell, so tab, space
-and enter reach it.
+and enter reach it — space or enter down is the press, up is the release, and an auto-repeating
+`keydown` is **not** a new press, which is asserted because otherwise holding space floods the socket.
 
 **A press is deliberately not cached.** Every other control in the builder restores its value across a
 rerun — that is `cachedControl`, and it is exactly what live-coding wants. A cached *press* would
@@ -115,6 +116,46 @@ Two consequences that look like details and are not:
 meter, and dropped permanently the first time it throws — which is what a stopped engine does, and which
 would otherwise fill the log at 30 Hz.
 
+### What a meter costs — measured, and linear
+
+`MeterRateTest` pins this, because "30 Hz" is a claim about a rate and a rate is a thing you can be
+wrong about.
+
+| meters | messages/second | per meter |
+|---|---|---|
+| 1 | 30.0 | 30.0 |
+| 4 | 120.0 | 30.0 |
+| 16 | 480.0 | 30.0 |
+
+The per-meter rate has a **spread of 0.0/s** across all three, so the cost is **strictly linear and
+unbatched**: each meter has its own coalescer and nothing merges two meters into one frame. Ten boxes
+with five meters each really is 1500 messages a second down the same websocket that carries editor
+commands. That is stated here rather than left to be discovered by someone whose editor goes sticky
+while a DSP is playing — **if a document ever wants that many meters, batching is the fix, and the table
+above is the number to beat.**
+
+What the coalescer does earn: **20 964 001** `set` calls in 700 ms became **21** messages, a 998 285×
+reduction, so an audio callback can call `set` per sample without thinking about it. An *unchanged* level
+costs nothing at all — 50 000 repeats of the same number produce zero messages — and a non-finite level
+is refused outright, so a broken source cannot put a `NaN` on the wire.
+
+Measured at the **coalescer**, not at the browser: that is the boundary that decides how many messages
+exist, and it is testable without a browser. The delivered frame rate *at* a browser under load is **not
+measured** and would need one.
+
+### Security: this is a websocket command, and that family is unauthenticated
+
+A momentary button posts `button-update` over the websocket. Websockets are exempt from CORS and appear
+in no route census, so `AFIELD_API_REQUIRE_SAME_SITE` does **not** cover it — exactly as it does not
+cover the `slider-update`, `checkbox-update`, `vec2-update`, `string-update` or `color-update` commands
+it sits beside. Anything that can open a websocket to a running Field can therefore invoke a
+user-registered Kotlin callback with a boolean.
+
+This is a pre-existing hole in the whole control-message family, and this change **widens it by one
+command**. It is not fixed here, because fixing it means authenticating the family as a unit — one
+coherent change, not a side effect of adding a button. Recorded so it is a known quantity rather than a
+discovery.
+
 ## One law module, two surfaces
 
 A control group is a single `ControllerControl` record served to two renderers: `sliders.js` gets it
@@ -153,11 +194,19 @@ button in the second box, then drag off it before letting go. Watch the two mete
   `sliders.js` are staged verbatim off the classpath, which also makes them declared inputs of
   `jvmTest`, so editing either re-runs this rather than leaving a stale `UP-TO-DATE` pass. Worst
   Kotlin↔JavaScript law disagreement **1.33e-15** relative over 6 laws × 7 positions; the button
-  sequence in full (`press+release [true,false]`, `release-far-outside [false]`, `pointercancel
-  [false]`, `blur [false]`, `stray release []`); a meter's bar at 0 / 73 / 146 / 262.8 / 292 px of a
-  292 px track with **zero** messages posted back; 13 139 characters of markup swept for `NaN`.
+  sequence as an **eleven-case matrix** — `press+release [true,false]`, `press-only [true]`,
+  `release-far-outside [false]`, `pointercancel [false]`, `blur [false]`, `stray release []`,
+  `space down+up [true,false]`, **`space held through 13 keydowns [true]`** (auto-repeat is not a new
+  press), `space then focus lost [false]`, `enter down+up [true,false]`, `an unrelated key []`; a
+  meter's bar at 0 / 73 / 146 / 262.8 / 292 px of a 292 px track with **zero** messages posted back;
+  13 139 characters of markup swept for `NaN`.
   Modelled on `FLineHitRecordProbeTest`, which is the house pattern for this.
-* Pixels. Screenshotted through the backdoor and looked at: the log handle measured at 56.7% of its
+* `MeterRateTest` — 6 tests on what a meter costs (the table above), the value-cache invariant from the
+  other side (only `slider` and `checkbox` are cached; a rerun re-fires the button **zero** times), and
+  the sampler lifecycle (two sources sampled 8× and 7× in 250 ms, then one retired and provably no
+  longer called).
+* Pixels, committed under `dev_docs/agents/artifacts/control_surface_laws/`. Screenshotted through the
+  backdoor and looked at: the log handle measured at 56.7% of its
   track against ~4% for the linear one with the same range; readouts `1000` and `1000.00` side by side;
   a button that looks like a button beside a checkbox that does not; and two meters showing a live
   level (`0.05` linear, `0.05461` on a log 0.001–1.0 meter — 58% of that bar, which is where a log law
