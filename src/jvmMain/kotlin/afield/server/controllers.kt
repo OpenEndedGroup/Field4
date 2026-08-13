@@ -7,6 +7,7 @@ import afield.ControllerControl
 import afield.ControllerControlsResponse
 import afield.ControllerSelectionState
 import afield.controllerControlsForBox
+import afield.getButtonCallback
 import afield.getCheckboxCallback
 import afield.getColorCallback
 import afield.getSliderCallback
@@ -21,6 +22,7 @@ import afield.sessions
 import afield.SessionInformation
 import afield.Set_output
 import afield.updateControllerControlValue
+import afield.updateControllerControlValueInMemory
 import io.ktor.http.ContentType
 import io.ktor.server.application.call
 import io.ktor.server.response.respondText
@@ -76,6 +78,8 @@ private data class ControllerInput(
     val controlId: String = "",
     val value: Double = 0.0,
     val checked: Boolean? = null,
+    /** A momentary button going down or coming back up; see `ControlGroupBuilder.button`. */
+    val pressed: Boolean? = null,
     val text: String = "",
     val r: Double = 0.0,
     val g: Double = 0.0,
@@ -174,6 +178,7 @@ private fun handleControllerInput(input: ControllerInput, preferences: FieldPref
         "slider" -> updateControllerSlider(input, targetDocument)
         "vec2" -> updateControllerVec2(input, targetDocument)
         "checkbox" -> updateControllerCheckbox(input, targetDocument)
+        "button" -> updateControllerButton(input, targetDocument)
         "string" -> updateControllerString(input, targetDocument)
         "color" -> updateControllerColor(input, targetDocument)
     }
@@ -479,6 +484,22 @@ private fun updateControllerCheckbox(input: ControllerInput, targetDocument: Str
     broadcastControllerControlUpdates(controls, targetDocument)
     val callback = getCheckboxCallback(controlId) ?: return
     launchControllerCallback("checkbox", controlId) { callback(value) }
+}
+
+/**
+ * A momentary button pressed on the tablet.
+ *
+ * The in-memory update, not the caching one: a press must not be written to the box's value cache or it
+ * re-fires on the next rerun. Same reasoning as the `button-update` handler in `Server.kt`.
+ */
+private fun updateControllerButton(input: ControllerInput, targetDocument: String) {
+    val controlId = input.controlId.trim()
+    if (controlId.isBlank()) return
+    val pressed = input.pressed ?: input.checked ?: (abs(input.value) > 1.0e-9)
+    val controls = updateControllerControlValueInMemory(controlId) { it.copy(checked = pressed) }
+    broadcastControllerControlUpdates(controls, targetDocument)
+    val callback = getButtonCallback(controlId) ?: return
+    launchControllerCallback("button", controlId) { callback(pressed) }
 }
 
 private fun updateControllerString(input: ControllerInput, targetDocument: String) {

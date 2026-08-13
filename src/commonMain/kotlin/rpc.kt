@@ -1371,8 +1371,34 @@ data class ControllerControl(
     val g: Double? = null,
     val b: Double? = null,
     val a: Double? = null,
-    val decimalPlaces: Int = 2
+    val decimalPlaces: Int = 2,
+    /**
+     * How travel maps to value — `"linear"`, `"log"`, `"exp"` or `"bipolar"`, matching
+     * `ControlLaw.wireName`.
+     *
+     * This is the field that makes a law *inherited* rather than bolted onto one surface: the desktop
+     * output area reads it out of `data-law` in the emitted HTML, and the tablet reads it straight off
+     * this record when it polls `/controllers/controls`. A browser running a stale cached
+     * `controlLaws.js` sees an unknown spelling and falls back to linear — wrong, but not broken.
+     */
+    val law: String = "linear",
+    /** Taper strength for the `"exp"` and `"bipolar"` laws. */
+    val lawExponent: Double = 2.0,
+    /** The value at mid-travel for the `"bipolar"` law; ignored by the others. */
+    val lawCenter: Double = 0.0,
+    /**
+     * Digits of precision to show, or `0` to use [decimalPlaces] as before.
+     *
+     * A nonlinear control cannot have one right decimal count (see `controlLawDecimals`), so nonlinear
+     * laws set this and linear ones leave it at `0` — which is what keeps every existing slider's
+     * formatting identical to the digit.
+     */
+    val significantDigits: Int = 0
 )
+
+/** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */
+@Serializable
+data class ButtonUpdate(val controlId: String, val pressed: Boolean)
 
 @Serializable
 data class ControllerControlsResponse(

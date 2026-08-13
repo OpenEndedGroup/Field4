@@ -40,8 +40,8 @@ The source corpus lives in the repository at `dev_docs/agents/transcripts/`, wit
 ## What CI checks, and what it does not
 
 <!-- transcript-index: totals -->
-All 58 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
-not in the same way, and the difference is worth knowing before you trust one. 41 of them are
+All 59 transcripts are checked on every build, by one harness — `DemoTranscriptExecSmokeTest` — but
+not in the same way, and the difference is worth knowing before you trust one. 42 of them are
 **replayed end to end**: the real macro runner builds the graph and the real compile-and-evaluate
 pipeline runs every box the transcript asks it to, and the test fails if a single box emits one
 error-kind output line. (Almost always that is every box in the file. A transcript may deliberately
@@ -84,6 +84,13 @@ its parent.
 output shows the terse text head plus a small inline SVG thumbnail the `ValueVisualizer` draws — an
 auto-scaled arrow for vectors (isometric for `vec3`), a diverging heatmap grid for matrices.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/linalg_thumbnails_demo/metadata.edn)
+
+**control_surface_laws** — The three affordances Field's control surface gained: a slider **law**
+(logarithmic, taper, bipolar), a **momentary button**, and a read-only **meter** fed by a `source`
+lambda at 30 Hz. Four sliders over the same 20 Hz–20 kHz range make the point directly — 1 kHz sits at
+56.6% of a logarithmic track and 4.90% of a linear one — and a button sits beside a checkbox so the
+difference between a gesture and a state is visible rather than described.
+[Open ↗](/offline.html?file=/field4/assets/agent_transcripts/control_surface_laws/metadata.edn)
 
 **fn_differentiable_fit_demo** — A self-contained demo of the differentiable fitter
 (`afield.stdlib.fitBest` / `fitGradient`), the gradient-descent counterpart to the genetic
