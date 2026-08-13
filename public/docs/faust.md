@@ -272,14 +272,24 @@ An allocation in an audio callback is a GC pause in the audio path — a dropout
 
 | | Bytes per 128-frame block |
 |---|---|
-| `FaustVoiceBank`, 8 voices, steady state | 7432 (**929 per voice**) |
-| `FaustDsp`, one voice — the single-voice path above | 1113 |
+| `FaustVoiceBank`, 8 voices, steady state | 7386 (**923 per voice**) |
+| `FaustVoiceBank`, **1 voice** — the like-for-like comparison | 984 |
+| `FaustDsp`, one voice — the single-voice path above | 1075 |
 
-So the polyphonic path allocates **0.83×** as much per voice as the monophonic one, which places the source:
-it is `Value.readBuffer`, the one bulk copy per channel per block that gets the samples out of WebAssembly,
-and it is in both paths. Three sources that *were* in `FaustVoiceBank` are gone — a boxed `Long?` return, a
-`Pair` built to read two queue heads, and a `runCatching` in the render `finally` — and the remaining figure
-is asserted with a floor near it so a regression fails.
+So one voice of the bank costs **0.92×** what one `FaustDsp` costs, doing the same DSP and paying the same
+once-per-block context enter and queue drain. Fitting the two bank measurements as a line gives **915 bytes
+per voice** and a fixed **69 bytes per block** — which places the source: it is `Value.readBuffer`, the one
+bulk copy per channel per block that gets the samples out of WebAssembly, and it is in both paths. Three
+sources that *were* in `FaustVoiceBank` are gone — a boxed `Long?` return, a `Pair` built to read two queue
+heads, and a `runCatching` in the render `finally` — and both figures are asserted with floors near them so a
+regression fails.
+
+The `voices = 1` row is here because the obvious comparison is wrong in a way that flatters this code, and
+an earlier version of this page published the flattering answer. Dividing an 8-voice block by 8 spreads the
+bank's fixed cost across eight voices while `FaustDsp` pays its own once, for one. Worse, the two figures on
+that version came from *different runs*, and solving them as a pair implied a **negative** fixed cost per
+block — an impossible number, printed with confidence. Measuring 1 and 8 voices in the same run and quoting
+the slope and intercept is what makes the claim checkable.
 
 !!! warning "Known, measured, and not fixed"
     ~0.9 KB per voice per block of garbage on the audio thread is real GC pressure, and removing it means
@@ -320,20 +330,29 @@ the faster arrangement. Measured on an M-series Mac, GraalVM CE 25.0.2, every vo
 
 | Voices | One context | N contexts | Ratio | One context |
 |---|---|---|---|---|
-| 1 | 1.8 µs | 2.2 µs | 1.20× | 1449× realtime |
-| 2 | 3.5 µs | 4.2 µs | 1.21× | 772× realtime |
-| 4 | 6.5 µs | 8.0 µs | 1.24× | 413× realtime |
-| 8 | **13.0 µs** | 12.3 µs | 0.95× | **205× realtime** |
-| 16 | 26.2 µs | 25.4 µs | 0.97× | 102× realtime |
+| 1 | 2.1 µs | 2.5 µs | 1.20× | 1295× realtime |
+| 2 | 4.2 µs | 3.8 µs | 0.91× | 640× realtime |
+| 4 | 8.2 µs | 11.0 µs | 1.34× | 323× realtime |
+| 8 | **16.9 µs** | 22.6 µs | 1.34× | **158× realtime** |
+| 16 | 32.7 µs | 29.7 µs | 0.91× | 82× realtime |
+
+Each figure is the **median of five timed windows**, not the mean of one. That is not fussiness: the mean of a
+single window reported **238 µs** for eight voices in one run of this suite — between 8.9 µs at four voices
+and 29.0 µs at sixteen — while the *same* eight-voice configuration measured 13.4 µs a few lines later in the
+same output. `render` allocates ~7.4 KB per block at eight voices, so a 2000-block window churns ~15 MB and an
+ordinary young collection inside it moves the whole average, with nothing in the number to say so. The median
+also revealed the shape the mean was hiding: 2.1, 4.2, 8.2, 16.9, 32.7 is **linear in voices**, which is what
+a bank of independent DSPs should be.
 
 So the hypothesis is **not** borne out at steady state: once Truffle has compiled everything the per-block
-`Context.enter` is a few hundred nanoseconds, and at sixteen voices one context is marginally *slower*. Two
-things still make it the right arrangement, and both are measurements rather than preferences:
+`Context.enter` is a few hundred nanoseconds, and one context and N contexts are within noise of each other
+either way round. Two things still make one context the right arrangement, and both are measurements rather
+than preferences:
 
-* **construction** — 6 ms for sixteen voices in one context against 23 ms for sixteen contexts (3.9×),
+* **construction** — 6 ms for sixteen voices in one context against 46 ms for sixteen contexts (7.8×),
   because N contexts each compile the same WebAssembly module again;
 * **sub-block scheduling**, which is the real argument. A block split at eight event boundaries costs
-  42.7 µs against 12.9 µs undisturbed — 3.3×, and still 62× realtime with a note starting every 0.33 ms,
+  33.0 µs against 15.0 µs undisturbed — 2.2×, and still 81× realtime with a note starting every 0.33 ms,
   which is orders of magnitude denser than music. The N-context arrangement would pay N context entries per
   *chunk* rather than per block, and `FaustDsp`'s per-block parameter queue could not express the split at
   all.
@@ -342,6 +361,25 @@ Note also how much cheaper these figures are than the 60.4 µs a single `FaustDs
 below. That figure is measured after 500 warm-up blocks; these are measured after several seconds of real
 rendering, by which point Truffle has compiled the wasm properly. Both are honest; they are answers to
 different questions, and the first bank built in a process really does cost 118 µs a block until it warms.
+
+### The audio thread takes no lock
+
+`FaustDsp`'s KDoc states the rule: *no lock on the audio thread*. A callback that can block behind another
+thread has a worst case measured in that thread's scheduling rather than in its own work, and the symptom is a
+dropout, not a slow number.
+
+The bank keeps it. Its two ordered queues — notes and parameter changes — are **owned by the audio thread and
+touched by nothing else**; `schedule` and `automate` hand work over through lock-free
+`ConcurrentLinkedQueue`s, which `render` drains once at the top of each block. Producers pay the node
+allocation on their own thread, where it is harmless.
+
+The shape that does *not* work, and which this had first, is one priority queue under a mutex taken by both
+sides: `render` acquires it several times **per chunk** — and a chunk is as short as the gap between two notes
+— while a feeder calling `schedule` with a cycle of notes holds it across one heap insert per note, with the
+audio thread waiting behind the whole batch. The one visible consequence of the fix is that work handed over
+*during* a `render` call is seen by the next block, at most 2.67 ms later, which is already the modelled case:
+notes are scheduled ahead of their frame, and one that arrives late is played immediately and counted in
+`lateNotes`. For the same reason `clearSchedule()` takes effect within a block rather than instantly.
 
 ## The block diagram
 

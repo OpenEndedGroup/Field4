@@ -800,6 +800,11 @@ class FaustPatternFeeder internal constructor(
  * @param voices how many instances of the program to run; the cost per block is roughly linear in this and
  *   `synth.faust.poly` prints the curve
  * @param controls generate a control group for the *shared* controls (everything except `freq`/`gate`/`gain`)
+ * @param stealReleaseFrames how long a stolen voice holds its gate down before the incoming note attacks.
+ *   The default starts the new note on time and **clicks** when the bank runs out of voices, by a measured
+ *   amount; `(0.03 * 48000).toLong()` trades that click for a stolen note 30ms late. This is the one knob
+ *   here with an audible consequence, so it is reachable from the one-liner rather than only from
+ *   [FaustVoiceBank] — see its KDoc for both measurements.
  */
 fun Box.faustPoly(
     source: String,
@@ -808,6 +813,7 @@ fun Box.faustPoly(
     mixGain: Double = 1.0,
     controls: Boolean = true,
     channel: String = "controls",
+    stealReleaseFrames: Long = FaustVoiceBank.RETRIGGER_FRAMES,
     lineOffset: Int = -1
 ): FaustPolyLaunch {
     val (body, headerLines) = stripFaustHeader(source)
@@ -823,7 +829,9 @@ fun Box.faustPoly(
     }
 
     val engine = FieldAudioEngine.shared()
-    val bank = FaustVoiceBank(program, engine.sampleRate, voices, mixGain)
+    val bank = FaustVoiceBank(
+        program, engine.sampleRate, voices, mixGain, stealReleaseFrames = stealReleaseFrames
+    )
     val launch = FaustPolyLaunch(program, bank, FaustPolyNode(bank), gain)
 
     if (controls && launch.sharedControls.isNotEmpty()) {
@@ -871,6 +879,9 @@ fun Box.faustPolyControls(launch: FaustPolyLaunch, channel: String = "controls")
  *
  * @param automate shared controls patterned by label —
  *   `mapOf("cutoff" to pat("400 3000 900 6000").nums())`
+ * @param stealReleaseFrames as [faustPoly]: the default starts a stolen note on time and clicks, and
+ *   `(0.03 * 48000).toLong()` trades the click for lateness. Reachable here because this is the figure a
+ *   reader is looking at when they want to *hear* the difference — render it twice and compare.
  * @return the render, so a box can measure it too — [faustOnsets], [faustFundamentalHz], [faustSpectrumPeaks]
  */
 fun Box.showFaustPattern(
@@ -882,6 +893,7 @@ fun Box.showFaustPattern(
     sustain: Double = FAUST_PATTERN_SUSTAIN,
     gain: Double? = null,
     automate: Map<String, PatPattern<Double>> = emptyMap(),
+    stealReleaseFrames: Long = FaustVoiceBank.RETRIGGER_FRAMES,
     channel: String = "main",
     maxPoints: Int = 2400
 ): FaustPatternRender {
@@ -908,7 +920,8 @@ fun Box.showFaustPattern(
 
     val render = faustPatternRender(
         program, pattern, cycles = cycles, cps = cps, voices = voices, sampleRate = 48_000,
-        sustain = sustain, gain = gain, automation = automation
+        sustain = sustain, gain = gain, automation = automation,
+        stealReleaseFrames = stealReleaseFrames
     )
     display(
         channel,

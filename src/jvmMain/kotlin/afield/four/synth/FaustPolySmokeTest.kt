@@ -863,17 +863,52 @@ object FaustPolySmokeTest {
                 "  the same for one FaustDsp (the shipped single-voice path): " +
                     "${"%.0f".format(dspPerBlock)} bytes per block"
             )
+            // The like-for-like comparison, and the reason it is measured here rather than inferred.
+            //
+            // `perVoice` divides the WHOLE block's cost by 8, including the once-per-block context
+            // enter/leave and queue drain that a bank pays however many voices sound. `FaustDsp` pays its own
+            // fixed cost once, for one voice. So "perVoice vs dspPerBlock" compares an average diluted by 8
+            // against one that is not, and it flatters the bank.
+            //
+            // A bank at `voices = 1` removes that: same class, same drain, same enter/leave, the same amount
+            // of DSP as one FaustDsp. Measuring 1 and 8 also gives the split directly — per-voice cost is the
+            // slope, fixed cost is the intercept — rather than solving two equations from figures taken in
+            // different runs, which is how this was last published with an implied NEGATIVE fixed cost.
+            val solo = FaustVoiceBank(program, SR, voices = 1)
+            val soloPerBlock: Double
+            try {
+                solo.schedule(listOf(FaustNote(0, Long.MAX_VALUE / 4, patMidiToHz(48.0), 0.1, "solo")))
+                repeat(2000) { solo.render(l, r, BLOCK) }
+                check(solo.activeVoices() == 1) { "the solo bank is not sounding" }
+                val beforeSolo = bean.currentThreadAllocatedBytes
+                repeat(blocks) { solo.render(l, r, BLOCK) }
+                soloPerBlock = (bean.currentThreadAllocatedBytes - beforeSolo).toDouble() / blocks
+            } finally {
+                solo.close()
+            }
+            val slope = (perBlock - soloPerBlock) / 7.0
+            val intercept = soloPerBlock - slope
             println(
-                "  => ${"%.2f".format(perVoice / dspPerBlock)}x per voice, so this is the polyglot " +
-                    "Value.readBuffer at the JVM/WebAssembly boundary and NOT this class"
+                "  the same bank at 1 voice: ${"%.0f".format(soloPerBlock)} bytes per block, against " +
+                    "${"%.0f".format(dspPerBlock)} for one FaustDsp — " +
+                    "${"%.2f".format(soloPerBlock / dspPerBlock)}x, like for like"
+            )
+            println(
+                "  => per voice ${"%.0f".format(slope)} bytes/block, fixed ${"%.0f".format(intercept)} " +
+                    "bytes/block, as a slope over 1 and 8 voices in one run"
             )
             report.check(
-                "the per-voice allocation is the shipped single-voice path's, not something new",
-                perVoice < dspPerBlock * 1.6
-            ) { "${"%.0f".format(perVoice)} vs ${"%.0f".format(dspPerBlock)} bytes/block" }
-            // Ratchets on the measured figures — 7415 bytes/block at 8 voices, 927 per voice, 745 for one
-            // FaustDsp. Set near the measurement so a regression that doubles it fails, and honestly
-            // reported rather than asserted away: this is a real GC pressure on the audio thread and
+                "one voice of the bank costs about what one FaustDsp costs, so the source is the shared " +
+                    "polyglot buffer read and not this class",
+                soloPerBlock < dspPerBlock * 1.6
+            ) { "${"%.0f".format(soloPerBlock)} vs ${"%.0f".format(dspPerBlock)} bytes/block" }
+            report.check(
+                "the fixed per-block cost is not negative — which is what the two previously published " +
+                    "figures implied, because they came from different runs",
+                intercept > -1.0
+            ) { "intercept ${"%.0f".format(intercept)} from slope ${"%.0f".format(slope)}" }
+            // Ratchet near the measurement so a regression that doubles it fails, and honestly reported
+            // rather than asserted away: this is real GC pressure on the audio thread and
             // `public/docs/faust.md` says so.
             report.check("8 voices stay under 1.2KB a block per voice", perVoice < 1_200.0) {
                 "${"%.0f".format(perVoice)} bytes/block/voice"
@@ -998,6 +1033,30 @@ object FaustPolySmokeTest {
     }
 
     /** Microseconds per [BLOCK]-frame block for a bank of [voices], every voice sounding. */
+    /**
+     * Median µs-per-block over [reps] separate timed windows of [blocks] blocks each.
+     *
+     * **A mean over one long window is the wrong statistic here, and it produced a false failure.** One run
+     * of this suite reported 238.2µs for eight voices, between 8.9µs at four and 29.0µs at sixteen — and
+     * 13.4µs for the *same* eight-voice configuration a few lines later, which is the measurement refuting
+     * itself inside its own output. `render` allocates ~7.4KB per block at eight voices, so a 2000-block
+     * window churns ~15MB and a young collection inside it is ordinary; landing in a single mean, one pause
+     * moves the whole figure and there is nothing in the number to say so.
+     *
+     * A median over several windows is immune to that: a pause has to hit most of the windows to move it, and
+     * if it does, the cost is real. Same total work, one honest number.
+     */
+    private inline fun medianUsPerBlock(reps: Int = 5, blocks: Int = 400, body: (Int) -> Unit): Double {
+        val samples = DoubleArray(reps)
+        for (rep in 0 until reps) {
+            val start = System.nanoTime()
+            body(blocks)
+            samples[rep] = (System.nanoTime() - start) / 1000.0 / blocks
+        }
+        samples.sort()
+        return samples[reps / 2]
+    }
+
     private fun timeBank(program: FaustProgram, voices: Int): Double {
         val bank = FaustVoiceBank(program, SR, voices)
         try {
@@ -1011,10 +1070,7 @@ object FaustPolySmokeTest {
             val r = FloatArray(BLOCK)
             repeat(600) { bank.render(l, r, BLOCK) }
             check(bank.activeVoices() == voices) { "only ${bank.activeVoices()} of $voices voices sounding" }
-            val blocks = 2000
-            val start = System.nanoTime()
-            repeat(blocks) { bank.render(l, r, BLOCK) }
-            return (System.nanoTime() - start) / 1000.0 / blocks
+            return medianUsPerBlock { blocks -> repeat(blocks) { bank.render(l, r, BLOCK) } }
         } finally {
             bank.close()
         }
@@ -1038,10 +1094,10 @@ object FaustPolySmokeTest {
             )
             fill(0L, 600 * 8)
             repeat(600) { bank.render(l, r, BLOCK) }
+            // Enough notes for every window the median takes, scheduled up front so the feeder is never part
+            // of what is being timed.
             fill(bank.frame, blocks * 8)
-            val start = System.nanoTime()
-            repeat(blocks) { bank.render(l, r, BLOCK) }
-            val us = (System.nanoTime() - start) / 1000.0 / blocks
+            val us = medianUsPerBlock { window -> repeat(window) { bank.render(l, r, BLOCK) } }
             check(bank.notesPlayed > blocks * 7) { "only ${bank.notesPlayed} notes played" }
             return us
         } finally {
@@ -1064,20 +1120,19 @@ object FaustPolySmokeTest {
                 dsp.setParam(gate, 1.0)
             }
             repeat(600) { dsps.forEach { it.render(l, r, BLOCK) } }
-            val blocks = 2000
-            val start = System.nanoTime()
-            repeat(blocks) {
-                java.util.Arrays.fill(mixL, 0f)
-                java.util.Arrays.fill(mixR, 0f)
-                for (dsp in dsps) {
-                    dsp.render(l, r, BLOCK)
-                    for (i in 0 until BLOCK) {
-                        mixL[i] += l[i]
-                        mixR[i] += r[i]
+            return medianUsPerBlock { blocks ->
+                repeat(blocks) {
+                    java.util.Arrays.fill(mixL, 0f)
+                    java.util.Arrays.fill(mixR, 0f)
+                    for (dsp in dsps) {
+                        dsp.render(l, r, BLOCK)
+                        for (i in 0 until BLOCK) {
+                            mixL[i] += l[i]
+                            mixR[i] += r[i]
+                        }
                     }
                 }
             }
-            return (System.nanoTime() - start) / 1000.0 / blocks
         } finally {
             dsps.forEach { it.close() }
         }

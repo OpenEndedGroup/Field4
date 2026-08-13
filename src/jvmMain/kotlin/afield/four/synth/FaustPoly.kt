@@ -114,6 +114,18 @@ class FaustVoiceBank internal constructor(
          * see [stealReleaseFrames] for what is, and what that costs.
          */
         const val RETRIGGER_FRAMES: Long = 1L
+
+        /**
+         * Shortest chunk allowed to declare a voice *finished*.
+         *
+         * Chunks end at the next scheduled event, so they can be a single sample when two notes land on
+         * adjacent frames. One sample of a releasing oscillator says nothing about whether it has stopped:
+         * a zero-crossing reads as silence. Below this length the idle test may only keep a voice alive,
+         * never end it — see the comment in `mixChunk`. 64 frames is 1.3ms at 48kHz, short enough that a
+         * genuinely finished voice is reclaimed within a block and long enough to contain a cycle of
+         * anything above ~750Hz.
+         */
+        const val IDLE_DECISION_FRAMES: Int = 64
     }
 
     /**
@@ -130,6 +142,19 @@ class FaustVoiceBank internal constructor(
         program, sampleRate, voices, FaustPolyControls.of(program), mixGain,
         stealReleaseFrames = stealReleaseFrames
     )
+
+    // Argument validation belongs HERE, above the `context` property, not in the `init` block below it.
+    // Kotlin runs property initialisers and `init` blocks in source order, so a `require` placed after
+    // `context` throws with a live GraalVM context already built and nothing holding a reference to close
+    // it — `FaustVoiceBank(p, sr, voices = 500)` leaked one per attempt. Cheap to get wrong, invisible
+    // until something calls this in a loop.
+    init {
+        require(voices in 1..MAX_VOICES) { "FaustVoiceBank: voices must be in 1..$MAX_VOICES, got $voices" }
+        require(sampleRate > 0) { "FaustVoiceBank: sampleRate must be positive, got $sampleRate" }
+        require(stealReleaseFrames >= 0L) {
+            "FaustVoiceBank: stealReleaseFrames must not be negative, got $stealReleaseFrames"
+        }
+    }
 
     private val closed = AtomicBoolean(false)
 
@@ -165,12 +190,55 @@ class FaustVoiceBank internal constructor(
 
     // ── the schedule ───────────────────────────────────────────────────────────────────────────
 
-    /** Notes not yet started, earliest first. Guarded by [scheduleLock]; fed from any thread. */
+    // ## Why the handoff is two queues deep, and why the audio thread takes no lock
+    //
+    // [FaustDsp]'s KDoc states the rule this class inherits: *no lock on the audio thread*. An audio
+    // callback that can block behind another thread has a worst case measured in that other thread's
+    // scheduling, not in its own work, and the symptom is a dropout rather than a slow number.
+    //
+    // The obvious shape — one `PriorityQueue` under a mutex, taken by both sides — breaks that rule twice
+    // over. [render] would acquire it several times *per chunk*, and chunks are as short as the gap between
+    // two notes; and a feeder calling [schedule] with a cycle's worth of notes would hold it across one heap
+    // insert per note, with the audio thread waiting behind the whole batch.
+    //
+    // So the ordered queues below are **owned by the audio thread and never touched by anyone else**, and
+    // producers hand work over through lock-free [ConcurrentLinkedQueue]s that [render] drains at the top of
+    // each block. Producers pay the node allocation, on their own thread, where it is harmless. The audio
+    // thread pays one drain per block and holds nothing.
+    //
+    // The one visible consequence: work handed over *during* a `render` call is seen by the next block
+    // rather than the current one — at 48kHz with 128-frame blocks, at most 2.67ms later. That is already
+    // the modelled case, because notes are scheduled ahead of their frame and a note that arrives after its
+    // own frame is played immediately and counted in [lateNotes].
+
+    /** Notes not yet started, earliest first. **Audio-thread-owned**: only [render] may touch this. */
     private val pending = PriorityQueue<FaustNote>(64, compareBy({ it.startFrame }, { it.hz }))
 
-    /** Shared-parameter changes not yet applied, earliest first. Guarded by [scheduleLock]. */
+    /** Parameter changes not yet applied, earliest first. **Audio-thread-owned**, as [pending]. */
     private val pendingAutomation = PriorityQueue<FaustParamChange>(32, compareBy { it.frame })
-    private val scheduleLock = Any()
+
+    /** Lock-free handoff, producer side. Drained into [pending] at the top of every [render]. */
+    private val incomingNotes = java.util.concurrent.ConcurrentLinkedQueue<FaustNote>()
+
+    /** Lock-free handoff for automation. Drained into [pendingAutomation] at the top of every [render]. */
+    private val incomingAutomation = java.util.concurrent.ConcurrentLinkedQueue<FaustParamChange>()
+
+    /**
+     * Set by [clearSchedule] from any thread; honoured by [render] at the top of the next block.
+     *
+     * The audio thread owns [pending], so a caller cannot empty it directly — it asks, and the request is
+     * granted within one block.
+     */
+    private val clearRequested = AtomicBoolean(false)
+
+    /**
+     * [pending]`.size` as of the end of the last [render], published for [pendingCount].
+     *
+     * A plain read of a `PriorityQueue` from another thread while the audio thread mutates it is a data
+     * race, so the audio thread publishes the size instead of exposing the collection.
+     */
+    @Volatile
+    private var pendingOwned: Int = 0
 
     private val frameCounter = AtomicLong(0)
 
@@ -221,7 +289,7 @@ class FaustVoiceBank internal constructor(
         private set
 
     init {
-        require(voices in 1..MAX_VOICES) { "FaustVoiceBank: voices must be in 1..$MAX_VOICES, got $voices" }
+        // `voices`/`sampleRate`/`stealReleaseFrames` are already validated above, before `context` exists.
         context.enter()
         try {
             context.eval(source(FAUST_POLY_SHIM))
@@ -296,7 +364,7 @@ class FaustVoiceBank internal constructor(
      */
     fun schedule(notes: Collection<FaustNote>) {
         if (notes.isEmpty() || closed.get()) return
-        synchronized(scheduleLock) { pending.addAll(notes) }
+        incomingNotes.addAll(notes)
     }
 
     /** Schedule one note. */
@@ -321,7 +389,7 @@ class FaustVoiceBank internal constructor(
      */
     fun automate(changes: Collection<FaustParamChange>) {
         if (changes.isEmpty() || closed.get()) return
-        synchronized(scheduleLock) { pendingAutomation.addAll(changes) }
+        incomingAutomation.addAll(changes)
     }
 
     /** Shared-parameter changes applied so far. */
@@ -329,15 +397,27 @@ class FaustVoiceBank internal constructor(
     var automationApplied: Long = 0L
         private set
 
-    /** Notes scheduled but not yet started. */
-    fun pendingCount(): Int = synchronized(scheduleLock) { pending.size }
+    /**
+     * Notes scheduled but not yet started — those handed over and not yet drained, plus those the audio
+     * thread is holding as of its last block.
+     *
+     * Exact once the audio thread has caught up, which is what "nothing was left pending" means; during
+     * playback it can lag one block behind the truth, because it is assembled from a lock-free queue and a
+     * size the audio thread publishes rather than from a snapshot of both.
+     */
+    fun pendingCount(): Int = pendingOwned + incomingNotes.size
 
-    /** Drop every note and parameter change that has not happened yet. Sounding notes finish. */
+    /**
+     * Drop every note and parameter change that has not happened yet. Sounding notes finish.
+     *
+     * Takes effect within one block rather than instantly: the handoff queues are emptied here, and the
+     * audio thread's own ordered queues are emptied at the top of its next [render], because they belong to
+     * it. A note whose frame falls inside the block already in flight may therefore still start.
+     */
     fun clearSchedule() {
-        synchronized(scheduleLock) {
-            pending.clear()
-            pendingAutomation.clear()
-        }
+        incomingNotes.clear()
+        incomingAutomation.clear()
+        clearRequested.set(true)
     }
 
     /** Gate every voice down now, and forget the schedule. */
@@ -399,6 +479,15 @@ class FaustVoiceBank internal constructor(
 
         context.enter()
         try {
+            // Take ownership of everything handed over since the last block, and honour a clear request.
+            // One drain per block, no lock, and after this point the ordered queues are ours alone.
+            if (clearRequested.getAndSet(false)) {
+                pending.clear()
+                pendingAutomation.clear()
+            }
+            while (true) pending.add(incomingNotes.poll() ?: break)
+            while (true) pendingAutomation.add(incomingAutomation.poll() ?: break)
+
             var done = 0
             while (done < numFrames) {
                 val now = frameCounter.get() + done
@@ -417,6 +506,8 @@ class FaustVoiceBank internal constructor(
                 done += chunk
             }
             frameCounter.addAndGet(numFrames.toLong())
+            // Publish the queue depth for `pendingCount()`, which cannot read the queue itself.
+            pendingOwned = pending.size
         } catch (t: Throwable) {
             java.util.Arrays.fill(outL, 0, numFrames, 0f)
             java.util.Arrays.fill(outR, 0, numFrames, 0f)
@@ -460,10 +551,9 @@ class FaustVoiceBank internal constructor(
             }
         }
         while (true) {
-            val change = synchronized(scheduleLock) {
-                val head = pendingAutomation.peek() ?: return@synchronized null
-                if (head.frame > now) null else pendingAutomation.poll()
-            } ?: break
+            val head = pendingAutomation.peek() ?: break
+            if (head.frame > now) break
+            val change = pendingAutomation.poll() ?: break
             val clamped = change.value.coerceIn(change.control.min, change.control.max).toFloat()
             for (v in 0 until voices) fnSetParam.execute(v, change.control.index, clamped)
             automationApplied++
@@ -476,10 +566,9 @@ class FaustVoiceBank internal constructor(
             }
         }
         while (true) {
-            val note = synchronized(scheduleLock) {
-                val head = pending.peek() ?: return@synchronized null
-                if (head.startFrame > now) null else pending.poll()
-            } ?: break
+            val head = pending.peek() ?: break
+            if (head.startFrame > now) break
+            val note = pending.poll() ?: break
             if (note.startFrame < now) lateNotes++
             startNote(note, now)
         }
@@ -604,19 +693,20 @@ class FaustVoiceBank internal constructor(
      * does.
      *
      * A sentinel rather than a `Long?` on purpose: this runs once per chunk on the audio thread, and a
-     * nullable `Long` boxes. Measured — see `synth.faust.poly`'s allocation check, which asserts
-     * `render` allocates nothing at all per block.
+     * nullable `Long` boxes. That boxing was real and removing it was worth doing — but do not read this
+     * as a claim that [render] is allocation-free, because it is not. `synth.faust.poly`'s allocation
+     * check asserts a *bound* on what a block costs, not zero, and what remains is the polyglot buffer
+     * read rather than anything in this class. See "`render` is not allocation-free" in
+     * `public/docs/faust.md`.
      */
     private fun nextEventFrame(now: Long): Long {
         var next = Long.MAX_VALUE
-        // Two peeks in one critical section, assigned to locals rather than returned as a Pair, which is
-        // the other thing that used to allocate here.
-        synchronized(scheduleLock) {
-            val note = pending.peek()
-            if (note != null && note.startFrame > now) next = note.startFrame
-            val change = pendingAutomation.peek()
-            if (change != null && change.frame > now && change.frame < next) next = change.frame
-        }
+        // Two peeks, assigned to locals rather than returned as a Pair, which is the other thing that used
+        // to allocate here. No lock: both queues belong to this thread.
+        val note = pending.peek()
+        if (note != null && note.startFrame > now) next = note.startFrame
+        val change = pendingAutomation.peek()
+        if (change != null && change.frame > now && change.frame < next) next = change.frame
         for (v in 0 until voices) {
             val s = state[v]
             if (s.retriggerAt > now && s.retriggerAt < next) next = s.retriggerAt
@@ -646,7 +736,20 @@ class FaustVoiceBank internal constructor(
                 if (a > peak) peak = a
             }
             // A voice is finished only when its gate is down *and* it has actually stopped moving air.
-            s.silent = !s.gateOn && peak < idleThreshold
+            //
+            // But `peak` is this chunk's maximum, and a chunk is as short as the gap between two scheduled
+            // events — one sample, when two notes land on adjacent frames. A releasing sawtooth crossing
+            // zero on that single sample reads `peak ≈ 0`, which would latch `silent` on a voice that is
+            // still audibly ringing, and `continue` above then skips it forever: the tail vanishes mid-decay
+            // and `tailCuts` never counts it, because nothing was reallocated. So a chunk too short to
+            // contain evidence is not allowed to *end* a voice; it can only keep one alive. The failure
+            // direction is now "compute a finished voice for a few more chunks", which costs a little and
+            // is inaudible, rather than "cut a sounding one", which is audible and untraceable.
+            if (count >= IDLE_DECISION_FRAMES) {
+                s.silent = !s.gateOn && peak < idleThreshold
+            } else if (peak >= idleThreshold) {
+                s.silent = false
+            }
         }
     }
 
