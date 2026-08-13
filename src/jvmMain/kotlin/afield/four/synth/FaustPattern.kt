@@ -244,6 +244,8 @@ class FaustPatternRender(
  *   rather than bypassed by one enormous call
  * @param tailSeconds keep rendering after the last note ends, so its release is in the file
  * @param automation shared-parameter changes on the same timeline as the notes — see [faustParamAutomation]
+ * @param stealReleaseFrames see [FaustVoiceBank.stealReleaseFrames] — the one knob here with an audible
+ *   consequence, and the only way to hear it is to render the same over-subscribed passage twice
  */
 fun faustPatternRender(
     program: FaustProgram,
@@ -257,7 +259,8 @@ fun faustPatternRender(
     mixGain: Double = 1.0,
     blockFrames: Int = 128,
     tailSeconds: Double = 0.25,
-    automation: List<FaustParamChange> = emptyList()
+    automation: List<FaustParamChange> = emptyList(),
+    stealReleaseFrames: Long = FaustVoiceBank.RETRIGGER_FRAMES
 ): FaustPatternRender {
     val controls = FaustPolyControls.of(program)
     val noteGain = gain ?: controls.gain?.init ?: 1.0
@@ -269,7 +272,7 @@ fun faustPatternRender(
 
     val left = FloatArray(frames)
     val right = FloatArray(frames)
-    val bank = FaustVoiceBank(program, sampleRate, voices, mixGain)
+    val bank = FaustVoiceBank(program, sampleRate, voices, mixGain, stealReleaseFrames)
     try {
         bank.schedule(queried.notes)
         bank.automate(automation)
@@ -302,11 +305,13 @@ fun faustPatternRender(
     sampleRate: Int = 48_000,
     sustain: Double = FAUST_PATTERN_SUSTAIN,
     gain: Double? = null,
-    name: String = "faustpoly"
+    name: String = "faustpoly",
+    stealReleaseFrames: Long = FaustVoiceBank.RETRIGGER_FRAMES
 ): FaustPatternRender {
     val (body, _) = stripFaustHeader(source)
     return faustPatternRender(
-        FaustEngine.compile(name, body), pattern, cycles, cps, voices, sampleRate, sustain, gain
+        FaustEngine.compile(name, body), pattern, cycles, cps, voices, sampleRate, sustain, gain,
+        stealReleaseFrames = stealReleaseFrames
     )
 }
 
@@ -489,6 +494,27 @@ fun faustFundamentalHz(
         if (abs(denom) > 1e-12) refined += (a - c) / denom
     }
     return sampleRate / refined
+}
+
+/**
+ * The largest sample-to-sample step in `x[from until from+count]`, as a fraction of the window's own peak.
+ *
+ * Scale-free, which is the whole point: a click is a *step* in the waveform, and comparing raw deltas
+ * between two windows at different pitches or different envelope levels compares the wrong thing — that
+ * mistake produced a confident 1.90x that meant nothing. A value near 1.0 means the largest single-sample
+ * jump is as big as the whole local peak: not a slope, a discontinuity.
+ *
+ * Use it as a ratio against the same measurement taken a few thousand samples later, once the note has
+ * settled. See [FaustVoiceBank.stealReleaseFrames], which is the knob it exists to measure.
+ */
+fun faustNormalisedStep(x: FloatArray, from: Int, count: Int): Double {
+    var step = 0f
+    var peak = 0f
+    for (i in max(1, from) until min(x.size, from + count)) {
+        step = max(step, abs(x[i] - x[i - 1]))
+        peak = max(peak, abs(x[i]))
+    }
+    return if (peak <= 0f) 0.0 else step.toDouble() / peak.toDouble()
 }
 
 /** One spectral peak: where it is and how strong. */

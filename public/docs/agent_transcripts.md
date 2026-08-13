@@ -662,7 +662,7 @@ diagnostic lands a row or two off, looking like a compiler bug. Only the middle 
 here; the voice wants an audio device and the last one fails by design.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_voice/metadata.edn)
 
-**faust_polyphony** — Five boxes in which [Faust](faust.md) stops being a drone with knobs and becomes an
+**faust_polyphony** — Six boxes in which [Faust](faust.md) stops being a drone with knobs and becomes an
 instrument that a [pattern](sound.md) plays: eight instances of one compiled program, allocated to notes.
 *Faust instrument* is the one to click — `faustPoly(…, voices = 8)` played by `inst.play(pat("[c4,ef4,g4] …"),
 automate = mapOf("cutoff" to pat("900 2600 1400 5200").nums()))`, so the chords are one pattern and the filter
@@ -674,11 +674,17 @@ reading twice, because counting attacks cannot tell polyphony from a voice steal
 spectral peaks in 100–230 Hz, a band that can hold nothing but fundamentals, and gets **three** at four
 voices (130.0, 166.2, 196.5 Hz against a notated 130.81, 164.81, 196.00) against **one** at a single voice,
 which also reports two steals. *Onsets, in samples* puts every notated event's frame beside the frame the
-audio actually attacks on: 14 of 14 detected, median error 1 frame, jitter ±6, worst 7 — against up to 110 if
-the parameter writes were quantised to the 128-frame block, which twelve of the fourteen onsets fall inside.
-It checks `faustSilentGaps` first, because an onset detector pointed at a continuous tone always finds
-something. *What it refuses* is a program with no `gate`, and the message it gets instead of silence. Four of
-the five are replayed here; the instrument wants an audio device.
+audio actually attacks on — but it leads with the measurement that has no threshold in it at all: the render
+is exactly `0f` between notes, so the first non-zero sample of a note is an exact fact, and it **is** the
+notated frame for 13 of 13 checkable notes, worst 0. The scheduler is sample-exact; the detector's own numbers
+(14 of 14 found, median 1 frame, jitter ±6, worst 7, against up to 110 if the writes were quantised to the
+128-frame block that twelve of the fourteen onsets fall inside) are printed underneath and labelled as the
+detector's. It checks `faustSilentGaps` first, because an onset detector pointed at a continuous tone always
+finds something. *What it refuses* is a program with no `gate`, and the message it gets instead of silence.
+*When it runs out of voices* is the one knob here you can hear: four notes on two voices, rendered at
+`stealReleaseFrames = 1` and at `1440`, printing **4.23×** and **0.11×** for the normalised waveform step
+across the steal, with both WAVs playable and the line to edit marked. Five of the six are replayed here; the
+instrument wants an audio device.
 [Open ↗](/offline.html?file=/field4/assets/agent_transcripts/faust_polyphony/metadata.edn)
 
 ## Service-backed composition scenes
