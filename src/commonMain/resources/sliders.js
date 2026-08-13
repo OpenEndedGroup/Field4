@@ -1844,6 +1844,57 @@ const fmt = (v, decimals) => {
 // Slider (1D) ---------------------------------------------------------------
 const sliderState = { active: null };
 
+/**
+ * The law a slider element declares, or a linear one.
+ *
+ * `controlLaws.js` is loaded ahead of this file by `index.html`. If it is somehow absent — a stale
+ * cache, a hand-assembled page — every control still works, linearly, rather than throwing on the
+ * first drag. That fallback is the reason each helper below is a one-line wrapper.
+ */
+function sliderLaw(container) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.specFromDataset(container.dataset);
+    const min = parseFloat(container.dataset.min);
+    const max = parseFloat(container.dataset.max);
+    return {
+        law: 'linear',
+        min: isNaN(min) ? 0 : min,
+        max: isNaN(max) ? 1 : max,
+        exponent: 2,
+        center: 0,
+        significantDigits: 0,
+        step: parseFloat(container.dataset.step || '0') || 0,
+        decimalPlaces: parseInt(container.dataset.decimalPlaces || '0', 10) || 0
+    };
+}
+
+function lawValueAt(spec, t) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.valueAt(spec, t);
+    return spec.min + clamp(t, 0, 1) * (spec.max - spec.min);
+}
+
+function lawNormalizedFor(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.normalizedFor(spec, value);
+    return spec.max === spec.min ? 0 : clamp((value - spec.min) / (spec.max - spec.min), 0, 1);
+}
+
+function lawQuantize(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.quantize(spec, value);
+    return clamp(snap(value, spec.step, spec.min), Math.min(spec.min, spec.max), Math.max(spec.min, spec.max));
+}
+
+function lawFormat(spec, value) {
+    if (window.FieldControlLaw) return window.FieldControlLaw.format(spec, value);
+    return fmt(value, spec.decimalPlaces);
+}
+
+/** Where along a control's track a value sits, in the SVG's own coordinates. */
+function trackX(container, spec, value, fallbackWidth) {
+    const viewWidth = parseFloat(container.dataset.viewWidth || fallbackWidth || '320');
+    const padding = parseFloat(container.dataset.padding || '14');
+    const trackLen = Math.max(viewWidth - padding * 2, 1);
+    return padding + trackLen * lawNormalizedFor(spec, value);
+}
+
 function sliderValueFromPointer(container, event) {
     const svg = container.querySelector('.field-slider-visual');
     if (!svg) return null;
@@ -1851,30 +1902,24 @@ function sliderValueFromPointer(container, event) {
     const rect = svg.getBoundingClientRect();
     const viewWidth = parseFloat(container.dataset.viewWidth || '320');
     const padding = parseFloat(container.dataset.padding || '14');
-    const min = parseFloat(container.dataset.min);
-    const max = parseFloat(container.dataset.max);
 
     const viewX = ((event.clientX - rect.left) / rect.width) * viewWidth;
     const t = clamp((viewX - padding) / (viewWidth - padding * 2), 0, 1);
-    return min + t * (max - min);
+    // The pointer only ever produces a fraction of the track; turning that fraction into a value is
+    // the law's entire job.
+    return lawValueAt(sliderLaw(container), t);
 }
 
 function updateSlider(container, value, { send = false } = {}) {
-    const min = parseFloat(container.dataset.min);
-    const max = parseFloat(container.dataset.max);
-    const step = parseFloat(container.dataset.step || '0');
-    const decimals = parseInt(container.dataset.decimalPlaces || '0', 10);
+    const spec = sliderLaw(container);
     const sliderId = container.dataset.sliderId;
-    const viewWidth = parseFloat(container.dataset.viewWidth || '320');
-    const padding = parseFloat(container.dataset.padding || '14');
 
-    let v = clamp(value, min, max);
-    v = snap(v, step, min);
+    // Snap first, clamp second: snapping a maximum onto a step can land just outside the declared
+    // range, and that number is the one the callback would receive.
+    const v = lawQuantize(spec, value);
     container.dataset.value = v;
 
-    const trackLen = Math.max(viewWidth - padding * 2, 1);
-    const normalized = max === min ? 0 : (v - min) / (max - min);
-    const cx = padding + trackLen * normalized;
+    const cx = trackX(container, spec, v);
 
     const svg = container.querySelector('.field-slider-visual');
     if (svg) {
@@ -1888,7 +1933,7 @@ function updateSlider(container, value, { send = false } = {}) {
 
     const valueDisplay = document.getElementById(`${sliderId}-value`);
     if (valueDisplay) {
-        valueDisplay.textContent = fmt(v, decimals);
+        valueDisplay.textContent = lawFormat(spec, v);
     }
 
     if (send && sliderId) {

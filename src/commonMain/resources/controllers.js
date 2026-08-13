@@ -781,27 +781,60 @@
     document.querySelectorAll(`[data-value-for="${CSS.escape(controlId)}"]`).forEach((value) => { value.textContent = text; });
   }
 
+  /**
+   * The law a control record declares, via the module `controllers.html` loads ahead of this file.
+   *
+   * Returning `null` when `controlLaws.js` is missing is what keeps a stale cache from breaking the
+   * tablet outright: every caller below falls back to the linear behaviour this file has always had.
+   */
+  function lawFor(control) {
+    if (!window.FieldControlLaw) return null;
+    const spec = window.FieldControlLaw.spec(control);
+    return spec.law === "linear" && !spec.significantDigits ? null : spec;
+  }
+
+  /** A control's value as text, deferring to the law's adaptive decimals when it has one. */
+  function controlValueText(control, spec, value) {
+    if (spec) return window.FieldControlLaw.format(spec, value);
+    return formatNumber(value, control.decimalPlaces ?? 2);
+  }
+
   function renderSliderControl(control) {
     const min = Number(control.min ?? 0);
     const max = Number(control.max ?? 1);
     const step = Number(control.step ?? 0.01);
+    const spec = lawFor(control);
     const value = clampNumber(Number(control.value ?? min), Math.min(min, max), Math.max(min, max));
-    const places = control.decimalPlaces ?? 2;
-    const parts = controlShell(control, formatNumber(value, places));
+    const parts = controlShell(control, controlValueText(control, spec, value));
 
     const input = document.createElement("input");
     input.className = "phone-range";
     input.type = "range";
-    input.min = String(min);
-    input.max = String(max);
-    input.step = String(step);
-    input.value = String(value);
+    if (spec) {
+      // A nonlinear control's <input type=range> runs over TRAVEL, 0..1, and the law turns travel into
+      // the value — the same way the desktop slider treats a pointer position. Handing the native range
+      // element the value bounds instead would put the handle in the wrong place, which is the bug being
+      // fixed here rather than a cosmetic difference.
+      input.min = "0";
+      input.max = "1";
+      input.step = "0.001";
+      input.value = String(window.FieldControlLaw.normalizedFor(spec, value));
+      input.dataset.law = spec.law;
+    } else {
+      input.min = String(min);
+      input.max = String(max);
+      input.step = String(step);
+      input.value = String(value);
+    }
     input.addEventListener("pointerdown", () => { state.activeControlId = control.id; });
     input.addEventListener("pointerup", () => { state.activeControlId = null; });
     input.addEventListener("pointercancel", () => { state.activeControlId = null; });
     input.addEventListener("input", () => {
-      const next = Number(input.value);
-      setControlValueText(control.id, formatNumber(next, places));
+      const raw = Number(input.value);
+      const next = spec
+        ? window.FieldControlLaw.quantize(spec, window.FieldControlLaw.valueAt(spec, raw))
+        : raw;
+      setControlValueText(control.id, controlValueText(control, spec, next));
       send({ type: "slider", controlId: control.id, value: next });
     });
 

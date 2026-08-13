@@ -935,6 +935,10 @@ internal fun FLineClick.toIntersection(): FLineIntersection = FLineIntersection(
  * @param step increment used for interaction and displayed precision
  * @param initialValue value shown when the control is created
  * @param channel output disclosure that receives the control
+ * @param law how travel maps to value; see [ControlLaw] for when a linear track is the wrong shape
+ * @param lawExponent taper strength for [ControlLaw.EXPONENTIAL] and [ControlLaw.BIPOLAR]
+ * @param lawCenter the value at mid-travel for [ControlLaw.BIPOLAR]; defaults to the range's midpoint
+ * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before
  * @param onUpdate callback invoked with the selected value
  */
 fun Box.slider(
@@ -944,12 +948,17 @@ fun Box.slider(
     step: Double = 0.01,
     initialValue: Double = (min + max) / 2,
     channel: String = "controls",
+    law: ControlLaw = ControlLaw.LINEAR,
+    lawExponent: Double = 2.0,
+    lawCenter: Double = (min + max) / 2,
+    significantDigits: Int = defaultSignificantDigits(law),
     onUpdate: (Double) -> Unit
 ) {
     val sliderId = "slider-${UUID.randomUUID()}"
     registerSliderCallback(sliderId, onUpdate)
 
-    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue)
+    val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
+    val html = buildSliderHtml(sliderId, label, min, max, step, initialValue, spec, significantDigits)
     display(channel, html)
 }
 
@@ -980,31 +989,46 @@ fun Box.sliders(
     display(channel, html)
 }
 
+/**
+ * The markup for one slider — the same geometry the browser then re-derives on every drag.
+ *
+ * The law travels as `data-law` (plus `data-law-exponent`, `data-law-center` and
+ * `data-significant-digits`), which is what `sliderLaw` in `src/commonMain/resources/controlLaws.js`
+ * reads back. Emitting the *position* here as well as the value is not redundant: it is what makes the
+ * control correct before any JavaScript has run, and `ControlSurfaceProbeTest` asserts that the two
+ * computations of it agree to well under a pixel.
+ */
 private fun buildSliderHtml(
     sliderId: String,
     label: String,
     min: Double,
     max: Double,
     step: Double,
-    value: Double
+    value: Double,
+    spec: ControlLawSpec = ControlLawSpec(ControlLaw.LINEAR, min, max),
+    significantDigits: Int = defaultSignificantDigits(spec.law)
 ): String {
-    val decimalPlaces = calculateDecimalPlaces(step)
-    val formattedValue = "%.${decimalPlaces}f".format(value)
+    val stepDecimals = calculateDecimalPlaces(step)
+    val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
+    val decimalPlaces = controlLawDecimals(clampedValue, significantDigits, stepDecimals)
+    val formattedValue = "%.${decimalPlaces}f".format(clampedValue)
     val viewWidth = 320
     val viewHeight = 44
     val centerY = viewHeight / 2
     val padding = 14
-    val clampedValue = value.coerceIn(min, max)
     val trackLength = viewWidth - (padding * 2)
-    val normalized = if (max - min == 0.0) 0.0 else (clampedValue - min) / (max - min)
-    val cx = padding + (trackLength * normalized)
+    val cx = padding + (trackLength * spec.normalizedFor(clampedValue))
     return """
         <div class="field-control field-slider"
              data-slider-id="$sliderId"
              data-min="$min"
              data-max="$max"
              data-step="$step"
-             data-decimal-places="$decimalPlaces"
+             data-decimal-places="$stepDecimals"
+             data-law="${spec.law.wireName}"
+             data-law-exponent="${spec.exponent}"
+             data-law-center="${spec.center}"
+             data-significant-digits="$significantDigits"
              data-value="$value"
              data-view-width="$viewWidth"
              data-padding="$padding">
@@ -1397,6 +1421,10 @@ private fun controlGroupStoredValue(control: ControllerControl): LinkedHashMap<S
         this["b"] = control.b
         this["a"] = control.a
         this["decimalPlaces"] = control.decimalPlaces
+        this["law"] = control.law
+        this["lawExponent"] = control.lawExponent
+        this["lawCenter"] = control.lawCenter
+        this["significantDigits"] = control.significantDigits
         entries.removeIf { it.value == null }
     }
 
@@ -1444,7 +1472,11 @@ private fun controlGroupControlFromStored(cacheKey: String, id: String, stored: 
         g = controlGroupNumber(stored["g"]),
         b = controlGroupNumber(stored["b"]),
         a = controlGroupNumber(stored["a"]),
-        decimalPlaces = controlGroupNumber(stored["decimalPlaces"])?.toInt() ?: 2
+        decimalPlaces = controlGroupNumber(stored["decimalPlaces"])?.toInt() ?: 2,
+        law = stored["law"]?.toString() ?: "linear",
+        lawExponent = controlGroupNumber(stored["lawExponent"]) ?: 2.0,
+        lawCenter = controlGroupNumber(stored["lawCenter"]) ?: 0.0,
+        significantDigits = controlGroupNumber(stored["significantDigits"])?.toInt() ?: 0
     )
 }
 
@@ -1530,11 +1562,28 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
      * On a rerun, a cached UI value is reused when available and [onUpdate] is called with that
      * value so the live variable and visible control remain synchronized.
      *
+     * Pass a [law] when a linear track is the wrong shape for the parameter. It almost always is for
+     * anything heard or seen as a ratio: on a linear 20 Hz–20 kHz control every note below A2 lives in
+     * the first 1% of the track, so the first pixel of travel is a 200 Hz jump.
+     *
+     * ```kotlin
+     * slider("cutoff", min = 20.0, max = 20000.0, initialValue = 1000.0, law = ControlLaw.LOGARITHMIC) {
+     *     cutoff = it
+     * }
+     * ```
+     *
      * @param label text shown beside the slider
      * @param min smallest selectable value
      * @param max largest selectable value
-     * @param step increment used for interaction and displayed precision
+     * @param step increment used for interaction and displayed precision; snapping is in value space,
+     *   so a step means the same thing at both ends of a nonlinear track
      * @param initialValue value used when no cached value exists
+     * @param law how travel maps to value; a [ControlLaw.LOGARITHMIC] law over a non-positive [min]
+     *   throws here rather than emitting a `NaN` into the page
+     * @param lawExponent taper strength for [ControlLaw.EXPONENTIAL] and [ControlLaw.BIPOLAR]
+     * @param lawCenter the value at mid-travel for [ControlLaw.BIPOLAR]; defaults to the midpoint
+     * @param significantDigits digits shown, or `0` to derive the decimal count from [step] as before;
+     *   nonlinear laws default to 4, so one control can read `20.00` and `20000`
      * @param onUpdate callback invoked with the current value
      */
     fun slider(
@@ -1543,16 +1592,21 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         max: Double = 1.0,
         step: Double = 0.01,
         initialValue: Double = (min + max) / 2,
+        law: ControlLaw = ControlLaw.LINEAR,
+        lawExponent: Double = 2.0,
+        lawCenter: Double = (min + max) / 2,
+        significantDigits: Int = defaultSignificantDigits(law),
         onUpdate: (Double) -> Unit
     ) {
         val cached = cachedControl("slider", "slider", label)
         val sliderId = cached.id
         val value = cached.previous?.value?.coerceIn(min, max) ?: initialValue
+        val spec = ControlLawSpec(law, min, max, lawExponent, lawCenter).also { it.validate(label) }
         registerSliderCallback(sliderId, onUpdate)
         if (cached.previous?.value != null) {
             onUpdate(value)
         }
-        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value)
+        htmlParts += buildSliderHtml(sliderId, label, min, max, step, value, spec, significantDigits)
         val control = ControllerControl(
             id = sliderId,
             type = "slider",
@@ -1562,7 +1616,11 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
             max = max,
             step = step,
             value = value,
-            decimalPlaces = calculateDecimalPlaces(step)
+            decimalPlaces = calculateDecimalPlaces(step),
+            law = law.wireName,
+            lawExponent = spec.exponent,
+            lawCenter = spec.center,
+            significantDigits = significantDigits
         )
         controls += control
         box.storeControlGroupValue(cached.cacheKey, control)
