@@ -1,0 +1,154 @@
+name: control_surface_laws
+description: >
+  Loadable demo of the three affordances Field's control surface gained: a slider **law**, a
+  **momentary button**, and a read-only **meter** (afield/ControlLaw.kt, ControlGroupBuilder in
+  afield/outputs.kt, src/commonMain/resources/controlLaws.js).
+    1. a law for the travel — four sliders over the same four decades, one per law. Drag `cutoff`:
+       1 kHz sits at 57% of the track under a logarithmic law and at 4.9% under a linear one, so the
+       bottom two octaves stop being one pixel wide. Compare it with the linear slider directly below,
+       which has exactly the same range.
+    2. hold, don't latch    — a momentary button beside a checkbox, so the difference is visible rather
+       than described. The button posts `true` on the way down and `false` on the way up; the checkbox
+       latches. Press the button and drag off it before letting go: it still releases, because the
+       release is listened for on the window.
+    3. a level you can see  — a meter fed by a `source` lambda, sampled at 30 Hz on a shared daemon
+       thread. Nothing in the box loops; it declares where the number comes from and the number moves.
+       There is also a logarithmic meter beside the linear one, because a level is the most
+       logarithmic quantity in the room.
+  Every control here is the ordinary `controlGroup { }` builder, so all three appear on the remote
+  tablet surface too (Controllers → controls) without any extra work: they are `ControllerControl`
+  records, and `controlLaws.js` is loaded by both pages.
+  Pure compute — no Window, no Renderer, no audio device — so the whole thing runs headless.
+  See dev_docs/control_surface_laws.md.
+operations:
+  - create:
+      box: control_surface_laws
+      name: a law for the travel
+      frame: { x: 80.0, y: 80.0, w: 220.0, h: 55.0 }
+      properties:
+        code: |
+          // Four sliders over the same four decades, one per law. Click this box, open the output
+          // disclosure, and drag them.
+          //
+          // The point is the pair `cutoff` / `cutoff, linear`: identical ranges, and 1 kHz sits at 57%
+          // of the log track against 4.9% of the linear one. On the linear slider every note below A2
+          // is inside the first pixel of travel, which is not a resolution problem — no number of
+          // pixels fixes a 200 Hz jump per pixel — it is the wrong shape.
+          var cutoff = 1000.0
+          var attack = 0.05
+          var pan = 0.0
+          var linearCutoff = 1000.0
+
+          controlGroup("laws") {
+              // Equal travel is equal ratio. Note the readout: 20.00 at the bottom and 20000 at the
+              // top, from one control, because a nonlinear law formats by significant digits.
+              slider("cutoff", min = 20.0, max = 20000.0, initialValue = cutoff, law = ControlLaw.LOGARITHMIC) {
+                  cutoff = it
+              }
+              slider("cutoff, linear", min = 20.0, max = 20000.0, initialValue = linearCutoff) {
+                  linearCutoff = it
+              }
+              // A taper: happy with a zero minimum, where a logarithmic law is not. Most of the track
+              // is spent on the short attacks, which is where the ear is.
+              slider("attack", min = 0.0, max = 2.0, initialValue = attack, law = ControlLaw.EXPONENTIAL, lawExponent = 3.0) {
+                  attack = it
+              }
+              // Two tapers about a centre, so dead centre is exactly mid-travel and you can land on it.
+              slider("pan", min = -1.0, max = 1.0, initialValue = pan, law = ControlLaw.BIPOLAR) {
+                  pan = it
+              }
+          }
+
+          // Where each law puts a handle, in percent of the track. The same numbers the browser uses.
+          val log = ControlLawSpec(ControlLaw.LOGARITHMIC, 20.0, 20000.0)
+          val linear = ControlLawSpec(ControlLaw.LINEAR, 20.0, 20000.0)
+          listOf(20.0, 100.0, 440.0, 1000.0, 5000.0, 20000.0).forEach { hz ->
+              println(
+                  "%8.1f Hz   log %5.1f%%   linear %5.1f%%".format(
+                      hz, log.normalizedFor(hz) * 100, linear.normalizedFor(hz) * 100
+                  )
+              )
+          }
+          println()
+          println("a LOGARITHMIC law over a range that starts at zero is refused, not repaired:")
+          println(
+              runCatching { ControlLawSpec(ControlLaw.LOGARITHMIC, 0.0, 20000.0).validate("cutoff") }
+                  .exceptionOrNull()?.message ?: "(nothing was thrown — that would be the bug)"
+          )
+
+  - create:
+      box: control_surface_button
+      name: hold, don't latch
+      frame: { x: 80.0, y: 300.0, w: 220.0, h: 55.0 }
+      properties:
+        code: |
+          // A momentary button beside a checkbox, so the difference is visible rather than described.
+          //
+          // Try this: press the button, drag the pointer well off it, and let go. It still releases.
+          // The release is listened for on the *window* — `pointerup`, `pointercancel`, `touchend`,
+          // `touchcancel` and `blur` — because a gate that never closes is the defect this control
+          // class is famous for. Cmd-tab away mid-press and it releases then too.
+          //
+          // Also: rerun this box while holding nothing. The checkbox keeps its state (that is the
+          // value cache, and it is what live-coding wants). The button does not, on purpose — a
+          // remembered press would re-fire on every rerun, so editing one character of a DSP would
+          // retrigger the note.
+          val log = mutableListOf<String>()
+
+          controlGroup("gesture") {
+              button("gate") { down ->
+                  log += if (down) "gate down" else "gate up"
+                  println(log.takeLast(6).joinToString("  "))
+              }
+              checkbox("bypass", initialValue = false) { on ->
+                  println("bypass ${if (on) "on" else "off"}")
+              }
+          }
+
+          println("press the button: two callbacks, down then up. tick the checkbox: one, and it sticks.")
+
+  - create:
+      box: control_surface_meter
+      name: a level you can see
+      frame: { x: 80.0, y: 520.0, w: 220.0, h: 55.0 }
+      properties:
+        code: |
+          // Two meters, both fed by a `source` lambda. Nothing here loops: the box says where the
+          // number comes from, and a single shared daemon thread samples it at 30 Hz. The sampler is
+          // retired when this box runs again without declaring the meter, so it does not outlive it.
+          //
+          // A meter is an output. It is not cached across a rerun (there is nothing to preserve), it
+          // posts nothing when you press it, and it is the one control here that reads rather than
+          // writes.
+          val start = System.nanoTime()
+          fun envelope(): Double {
+              val seconds = (System.nanoTime() - start) / 1.0e9
+              return 0.5 + 0.48 * Math.sin(seconds * 2.2)
+          }
+
+          controlGroup("levels") {
+              meter("level", min = 0.0, max = 1.0, source = { envelope() })
+              // The same signal on a logarithmic meter, which is how a level is actually read: the
+              // interesting 20 dB near the top gets most of the bar.
+              meter(
+                  "level, log",
+                  min = 0.001,
+                  max = 1.0,
+                  law = ControlLaw.LOGARITHMIC,
+                  source = { envelope().coerceAtLeast(0.001) }
+              )
+              // And a slider, so you can see the meter is not one: this posts, the meters do not.
+              slider("trim", min = -24.0, max = 24.0, step = 0.1, initialValue = 0.0) { }
+          }
+
+          println("two meters, sampled at 30 Hz from a source lambda. Nothing in this box loops.")
+          println("the remote tablet polls at 450 ms, so there they are indicators rather than VU meters.")
+
+  - execute:
+      box: control_surface_laws
+  - execute:
+      box: control_surface_button
+  - execute:
+      box: control_surface_meter
+  - await:
+      wait: pending
