@@ -109,12 +109,12 @@ fix that changed the reported length would have been suspect.
 ## Cost
 
 `PathFlattener` is **not** on the GPU render path. It is constructed in exactly one place in all of
-main source (`FLinesAndJavaShapes.kt:810`, inside `Cursor.pathFlattener`), and
+main source (`FLinesAndJavaShapes.kt:810#return PathFlattener(this.on, tol)`, inside `Cursor.pathFlattener`), and
 `FLinesAndJavaShapes.positions` — the only other consumer of its `mappings` — has no callers in
 `src/`. So this is the cost of geometry operations, not of frames.
 
 **Field has a second, independent flattener, and it is the one that draws.** `StandardDrawing.linesOut`
-(`StandardDrawing.kt:206`) calls `FLine.uniform_linearize` (`FLine.kt:857`), which emits a fixed
+(`graphics/StandardDrawing.kt:206#f.uniform_linearize(samplesPerCubic`) calls `FLine.uniform_linearize` (`FLine.kt:857#Unused parameters:`), which emits a fixed
 `samplesPerCubic` (default 100) samples per `CubicTo` at **uniform parameter**; fills reach the same
 function through `FLine.tessellate`, and `ThreeJsViewer.kt` is a third caller. Nothing on that path
 constructs a `PathFlattener` or a `Cursor`.
@@ -161,7 +161,7 @@ leaves the pen. Covered by `CursorClosedLineTest`.
 
 **But not "every glyph outline", which is what this page said first.** Glyph outlines arrive through
 `FLinesAndJavaShapes.javaShapeToFLine`, whose `SEG_CLOSE` branch emits an explicit `lineTo` back to
-the last `moveTo` (`FLinesAndJavaShapes.kt:2183-2187`) and never calls `close()` — so an AWT glyph
+the last `moveTo` (`FLinesAndJavaShapes.kt:2205#ty == PathIterator.SEG_CLOSE`) and never calls `close()` — so an AWT glyph
 outline contains **no `Close` node at all** and never had one to trip over. The lines that did are the
 ones Field code closes itself with `.close()`. The crash was real and the fix is real; the population
 it was hurting was smaller and differently shaped than the first draft of this page asserted.

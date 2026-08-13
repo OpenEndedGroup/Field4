@@ -19,8 +19,8 @@ works, the class of curve it got wrong until 2026-07-31, and the measured
 before/after.
 
 Filling an `FLine` goes somewhere else entirely: `FLine.tessellate`
-(`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014`) flattens the line into rings and hands them to
-`PlanarTessellation` (`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170`), which clusters
+(`src/jvmMain/kotlin/afield/graphics/FLine.kt:1014#fun tessellate`) flattens the line into rings and hands them to
+`PlanarTessellation` (`src/jvmMain/kotlin/afield/graphics/PlanarTessellation.kt:170#fun tessellate`), which clusters
 them into planes, decides which rings are holes in which *within* a plane, and triangulates each
 group with `FloatEarcut` on an orientation-preserving projected frame. It is the only triangulator:
 the polytope adapters' `EarcutFaceTriangulator` is a second adapter over the same code, and gained

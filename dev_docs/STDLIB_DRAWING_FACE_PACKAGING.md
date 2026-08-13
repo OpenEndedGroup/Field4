@@ -78,17 +78,17 @@ Together these are 1,643 of the 3,445 lines.
 For `alife_field.kt` and `wfc_field.kt` the dependency runs **backward**. The host type implements
 `ToHTML` in the *algorithm* file by calling into the *drawing* file:
 
-- `alife.kt:229` — `override fun toHTML(): String = alifeGridHtml(this)`
-- `alife_continuous.kt:114` — `override fun toHTML(): String = alifeGrayScottHtml(this)`
+- `alife.kt:229#override fun toHTML(): String = alifeGridHtml` — `override fun toHTML(): String = alifeGridHtml(this)`
+- `alife_continuous.kt:114#override fun toHTML(): String = alifeGrayScottHtml` — `override fun toHTML(): String = alifeGrayScottHtml(this)`
 - `wfc.kt:393`, `wfc.kt:868` — `WfcSolver` / rules types implement `afield.ToHTML` the same way
 
 And it runs backward in the other direction too, so the pair is genuinely mutually dependent:
-`alife_field.kt:125` is `fun alifeGridHtml(grid: IntGrid)`, and `IntGrid` is declared at
-`alife.kt:79`. Likewise every `wfc_field.kt` extension hangs off `PngTileSet` / `WfcSolver` /
+`alife_field.kt:125#fun alifeGridHtml(grid: IntGrid)` is `fun alifeGridHtml(grid: IntGrid)`, and `IntGrid` is declared at
+`alife.kt:79#class IntGrid(`. Likewise every `wfc_field.kt` extension hangs off `PngTileSet` / `WfcSolver` /
 `FloatTileSet`, all declared in `wfc.kt`.
 
 **Why the back-call is structural rather than sloppiness.** `ToHTML` is declared in `package afield`
-(`ValueVisualizer.kt:50`) and dispatched at `ValueVisualizer.kt:221` by `is ToHTML ->
+(`ValueVisualizer.kt:54#interface ToHTML`) and dispatched at `ValueVisualizer.kt:225#is ToHTML -> rewriteBoxReferencesInHtml` by `is ToHTML ->
 rewriteBoxReferencesInHtml(value.toHTML())` — a runtime type test on the value. The *type* must
 implement the interface, so the type must reach its own renderer. There is no registry for attaching
 a renderer to a type from outside.
