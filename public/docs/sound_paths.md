@@ -72,9 +72,14 @@ auditable at all.
 | `video-audio` | a file decoded by FFmpeg and played through a **third** OpenAL context, kept in step by its own playback clock. `class AudioDecoder` in `src/jvmMain/kotlin/afield/four/texture/video/AudioDecoder.kt` | the bundled FFmpeg `dev_docs/AUDIO_OPTIONS.md`, in the repo |
 | `wav-file-in` | a `.wav` off disk as `FloatArray`s — the counterpart of `wav-file`. `WavFloatArrayLoader` in `src/jvmMain/kotlin/afield/four/audio/WavFloatArrayLoader.kt` | nothing | — |
 
-`link-audio-in` is how `sonic-pi` gets back: Sonic Pi renders in its own process, publishes a Link
-Audio channel, and Field reads that channel as an ordinary `Signal`. No virtual cable, no loopback
-device.
+Link Audio is how `sonic-pi` and Field reach each other without a virtual cable — but be precise
+about which direction is *known* to work. **Field → Sonic Pi is measured**: Field publishes a channel
+through `enableAudioOutput` and Sonic Pi v5's `link_audio` subscribes to it, and
+`SonicPiLinkAudioProbe` puts a 440 Hz tone in one end and looks for it at the other. See
+[Sonic Pi](sonic_pi.md), including the Link visibility toggle that defaults to Off and gives you
+silence with nothing to explain it. **Sonic Pi → Field** is supported by both APIs — Sonic Pi has
+`link_audio_publish_set!` and Field has `linkAudioIn(channelName)` — and nothing in this tree
+exercises it, so it is listed as a path and not as a measurement.
 
 ---
 
@@ -92,7 +97,7 @@ sit on it, and being on it is the single most useful fact about a path: **a path
 composes with every other path on the seam for free, and a path off it composes with nothing.**
 
 The clearest evidence is Faust. Embedding a whole third-party compiler was a lot of work, and
-*none* of it was plumbing — `class FaustNode` is thirty lines that fill an input buffer and call
+*none* of it was plumbing — `class FaustNode` is 23 lines that fill an input buffer and call
 `dsp.render`. It reached the speakers, the engine's visualisers, the Link output and the box
 lifecycle on the day it landed, because it landed on the seam.
 
