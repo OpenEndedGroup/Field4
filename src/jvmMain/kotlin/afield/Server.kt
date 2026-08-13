@@ -2665,33 +2665,7 @@ class Server {
                 Handled.yes
             })
 
-            handlers["button-update"] = mutableSetOf({ message, reply ->
-                val update = Json.decodeFromJsonElement<ButtonUpdate>(message.payload!!)
-                lprintln("debug,controls", "Received button update: ${update.controlId} = ${update.pressed}")
-                // In memory only, unlike every other control here: a button press must not be written to
-                // the box's value cache, because a cached press would re-fire on the next rerun. See
-                // `updateControllerControlValueInMemory`.
-                val updatedControls =
-                    updateControllerControlValueInMemory(update.controlId) { it.copy(checked = update.pressed) }
-                broadcastControllerControlUpdates(updatedControls, thisSessionInfo.get().filename)
-
-                val callback = getButtonCallback(update.controlId)
-                if (callback != null) {
-                    GlobalScope.launch {
-                        try {
-                            callback(update.pressed)
-                        } catch (e: Exception) {
-                            lprintln("error,controls", "Error in button callback: ${e.message}")
-                            e.printStackTrace()
-                        }
-                    }
-                } else {
-                    lprintln("warning,controls", "No callback registered for button: ${update.controlId}")
-                }
-
-                Handled.yes
-            })
-
+            registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
