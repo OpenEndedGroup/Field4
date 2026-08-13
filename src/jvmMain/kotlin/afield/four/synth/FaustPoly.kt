@@ -133,6 +133,9 @@ class FaustVoiceBank internal constructor(
 
     /** Notes not yet started, earliest first. Guarded by [scheduleLock]; fed from any thread. */
     private val pending = PriorityQueue<FaustNote>(64, compareBy({ it.startFrame }, { it.hz }))
+
+    /** Shared-parameter changes not yet applied, earliest first. Guarded by [scheduleLock]. */
+    private val pendingAutomation = PriorityQueue<FaustParamChange>(32, compareBy { it.frame })
     private val scheduleLock = Any()
 
     private val frameCounter = AtomicLong(0)
@@ -269,12 +272,32 @@ class FaustVoiceBank internal constructor(
         schedule(FaustNote(start, start + (seconds * sampleRate).roundToLong().coerceAtLeast(1L), hz, gain))
     }
 
+    /**
+     * Schedule shared-parameter changes for their own frames — a cutoff sweep, a resonance, a detune.
+     *
+     * The other half of "a pattern plays it". Notes are one kind of scheduled event and a parameter change
+     * is another; both go through the same timeline, so a filter that opens on the beat opens on the *sample*
+     * of the beat rather than up to 2.67ms after it. `automationApplied` counts what landed.
+     */
+    fun automate(changes: Collection<FaustParamChange>) {
+        if (changes.isEmpty() || closed.get()) return
+        synchronized(scheduleLock) { pendingAutomation.addAll(changes) }
+    }
+
+    /** Shared-parameter changes applied so far. */
+    @Volatile
+    var automationApplied: Long = 0L
+        private set
+
     /** Notes scheduled but not yet started. */
     fun pendingCount(): Int = synchronized(scheduleLock) { pending.size }
 
-    /** Drop every note that has not started yet. Sounding notes are left to finish. */
+    /** Drop every note and parameter change that has not happened yet. Sounding notes finish. */
     fun clearSchedule() {
-        synchronized(scheduleLock) { pending.clear() }
+        synchronized(scheduleLock) {
+            pending.clear()
+            pendingAutomation.clear()
+        }
     }
 
     /** Gate every voice down now, and forget the schedule. */
@@ -370,6 +393,15 @@ class FaustVoiceBank internal constructor(
      * is quantised relative to anything else.
      */
     private fun applyDue(now: Long) {
+        while (true) {
+            val change = synchronized(scheduleLock) {
+                val head = pendingAutomation.peek() ?: return@synchronized null
+                if (head.frame > now) null else pendingAutomation.poll()
+            } ?: break
+            val clamped = change.value.coerceIn(change.control.min, change.control.max).toFloat()
+            for (v in 0 until voices) fnSetParam.execute(v, change.control.index, clamped)
+            automationApplied++
+        }
         for (v in 0 until voices) {
             val s = state[v]
             if (s.gateOn && s.endFrame <= now) {
@@ -450,7 +482,10 @@ class FaustVoiceBank internal constructor(
     /** The next frame at which anything must happen, strictly after [now], or null when nothing does. */
     private fun nextEventFrame(now: Long): Long? {
         var next = Long.MAX_VALUE
-        synchronized(scheduleLock) { pending.peek() }?.let { if (it.startFrame > now) next = min(next, it.startFrame) }
+        synchronized(scheduleLock) { pending.peek() to pendingAutomation.peek() }.let { (note, change) ->
+            if (note != null && note.startFrame > now) next = min(next, note.startFrame)
+            if (change != null && change.frame > now) next = min(next, change.frame)
+        }
         for (v in 0 until voices) {
             val s = state[v]
             if (s.gateOn && s.endFrame > now) next = min(next, s.endFrame)
@@ -559,6 +594,16 @@ data class FaustNote(
     override fun toString(): String =
         "FaustNote(${startFrame}..$endFrame, ${"%.2f".format(hz)}Hz, gain=${"%.2f".format(gain)}" +
             (if (label.isBlank()) "" else ", '$label'") + ")"
+}
+
+/**
+ * One shared-parameter change, on a frame of the bank's clock.
+ *
+ * Written to **every** voice, because these are the front-panel controls rather than the per-note ones — a
+ * cutoff, a resonance, a reverb mix. Same timeline as the notes, so the same sample accuracy.
+ */
+data class FaustParamChange(val frame: Long, val control: FaustControl, val value: Double) {
+    override fun toString(): String = "FaustParamChange(@$frame ${control.label}=${"%.3f".format(value)})"
 }
 
 /**

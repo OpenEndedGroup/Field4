@@ -69,8 +69,9 @@ object FaustPolySmokeTest {
         freq   = hslider("freq [unit:Hz]", 220, 40, 4000, 0.001);
         gain   = hslider("gain", 0.25, 0, 1, 0.001);
         gate   = button("gate");
+        level  = hslider("level", 1, 0, 1, 0.001);
         env = en.adsr(0.003, 0.04, 0.7, 0.02, gate);
-        process = os.sawtooth(freq) : fi.lowpass(3, cutoff) * env * gain <: _,_;
+        process = os.sawtooth(freq) : fi.lowpass(3, cutoff) * env * gain * level <: _,_;
     """.trimIndent()
 
     /** The same voice with no `gate`: what a person actually writes first, and what has to be refused. */
@@ -121,6 +122,9 @@ object FaustPolySmokeTest {
         println("polyphony against a monophonic control")
         checkPolyphony(report, program, outDir)
 
+        println("a patterned parameter, not just notes")
+        checkAutomation(report, program, outDir)
+
         println("voice allocation")
         checkAllocation(report, program)
 
@@ -142,7 +146,7 @@ object FaustPolySmokeTest {
         }
 
         val writable = program.ui.writable
-        report.check("four writable controls", writable.size == 4) { writable.joinToString { it.label } }
+        report.check("five writable controls", writable.size == 5) { writable.joinToString { it.label } }
         // The reason label lookup is mandatory rather than tidy.
         report.check(
             "Faust lists them alphabetically, so index 0 is cutoff not freq",
@@ -457,6 +461,112 @@ object FaustPolySmokeTest {
             File(outDir, "faust-poly-chord-spectrum.png"),
             poly.mono(), mono.mono(), from, expected
         )
+    }
+
+    // ── a patterned parameter ──────────────────────────────────────────────────────────────────
+
+    /**
+     * A `Pat` pattern of *numbers* driving a shared control, on the same timeline as the notes.
+     *
+     * The pattern language is a rhythm of anything, not only of notes, so a parameter change goes through
+     * the same event timeline and gets the same accuracy. Two halves, because they answer different
+     * questions and the first attempt conflated them:
+     *
+     *  1. **A patterned `cutoff` really changes the sound** — measured as the energy of the signal's first
+     *     difference, which for a lowpassed sawtooth rises monotonically with the cutoff.
+     *  2. **A patterned control lands on the sample** — and *not* measured on the cutoff, which was the
+     *     first attempt and was wrong: a filter's response to a cutoff step is not instantaneous, and a
+     *     short-window high-frequency estimate on a 110Hz sawtooth is dominated by the once-per-period
+     *     discontinuity, so the "detected" step came out 3909 frames early. Asking the physics for
+     *     64-sample localisation of a filter change is asking for something it does not have. So the
+     *     localisation is done on `level`, whose effect on the samples *is* instantaneous, with the same
+     *     onset detector the notes use.
+     */
+    private fun checkAutomation(report: Reporter, program: FaustProgram, outDir: File) {
+        val cutoff = program.ui.writable.first { it.label == "cutoff" }
+        val level = program.ui.writable.first { it.label == "level" }
+
+        fun renderWith(automation: List<FaustParamChange>, frames: Int): Pair<FloatArray, Long> {
+            val bank = FaustVoiceBank(program, SR, voices = 2)
+            val mono = FloatArray(frames)
+            try {
+                bank.schedule(FaustNote(0, (frames * 0.95).roundToLong(), patMidiToHz(45.0), 0.25, "a"))
+                bank.automate(automation)
+                val l = FloatArray(BLOCK)
+                val r = FloatArray(BLOCK)
+                var done = 0
+                while (done < frames) {
+                    val n = min(BLOCK, frames - done)
+                    bank.render(l, r, n)
+                    for (i in 0 until n) mono[done + i] = (l[i] + r[i]) * 0.5f
+                    done += n
+                }
+                return mono to bank.automationApplied
+            } finally {
+                bank.close()
+            }
+        }
+
+        // ── 1. a patterned cutoff changes the sound ──
+        val sweep = faustParamAutomation(pat("300 6000").nums(), cutoff, cycles = 1, cps = 1.0, sampleRate = SR)
+        report.check("two cutoff steps in a cycle", sweep.size == 2) { "$sweep" }
+        val step = sweep[1].frame
+        report.check("the cutoff step is 24000 frames in", step == 24_000L) { "$step" }
+        val (swept, sweepApplied) = renderWith(sweep, SR)
+        report.check("both cutoff changes were applied", sweepApplied == 2L) { "$sweepApplied" }
+
+        fun hf(x: FloatArray, from: Int, count: Int): Double {
+            var sum = 0.0
+            for (i in from until from + count) {
+                val d = (x[i] - x[i - 1]).toDouble()
+                sum += d * d
+            }
+            return sum / count
+        }
+
+        val before = hf(swept, step.toInt() - 2000, 1500)
+        val after = hf(swept, step.toInt() + 500, 1500)
+        println(
+            "  HF energy before the cutoff step ${"%.3e".format(before)}, after ${"%.3e".format(after)} " +
+                "(${"%.1f".format(after / before)}x)"
+        )
+        report.check("opening the filter really changes the sound", after > before * 15.0) {
+            "${"%.1f".format(after / before)}x"
+        }
+
+        // ── 2. and a patterned control lands on the sample ──
+        // Seven steps, so the change is off the block grid: 3/7 of 48000 is 20571, and 20571 % 128 = 91, so
+        // a write quantised to the next block boundary would be 37 frames late.
+        val gateOpen = faustParamAutomation(
+            pat("0 0 0 1 1 1 1").nums(), level, cycles = 1, cps = 1.0, sampleRate = SR
+        )
+        report.check("seven level steps", gateOpen.size == 7) { "${gateOpen.size}" }
+        val rise = gateOpen.first { it.value > 0.5 }.frame
+        report.check("the rise is at 20571", rise == 20_571L) { "$rise" }
+        val remainder = rise % BLOCK
+        report.check("which is 91 frames into a block", remainder == 91L) { "$remainder" }
+
+        val (gated, gateApplied) = renderWith(gateOpen, SR)
+        report.check("every level step was applied", gateApplied == 7L) { "$gateApplied" }
+
+        val onsets = faustOnsets(gated, SR)
+        report.check("level 0 then 1 gives exactly one onset", onsets.size == 1) { "${onsets.size}: $onsets" }
+        val detected = onsets.firstOrNull() ?: -1
+        val error = if (detected < 0) Int.MAX_VALUE else abs(detected - rise.toInt())
+        val quantised = (BLOCK - remainder).toInt()
+        println("  level rise notated at $rise, detected at $detected (error $error frames); " +
+            "quantised to the block it would have been $quantised late")
+        report.check("the parameter change lands within 8 samples", error <= 8) { "$error frames" }
+        report.check(
+            "which a block-quantised write could not have managed",
+            error * 4 < quantised
+        ) { "$error vs $quantised" }
+
+        WavFloatArrayWriter.writeStereo16(
+            File(outDir, "faust-poly-cutoff.wav"), swept, swept, SR, normalizePeak = 0.9f
+        )
+        writeWaveformPng(File(outDir, "faust-poly-cutoff.png"), swept, listOf(step.toInt()), listOf())
+        writeWaveformPng(File(outDir, "faust-poly-level.png"), gated, listOf(rise.toInt()), onsets)
     }
 
     // ── allocation ─────────────────────────────────────────────────────────────────────────────

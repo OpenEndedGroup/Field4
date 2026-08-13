@@ -135,6 +135,55 @@ fun faustPatternNotes(
     )
 }
 
+/**
+ * Turn a pattern of numbers into shared-parameter changes for [control].
+ *
+ * The other half of "a pattern plays it", and the reason it is worth having: a `Pat` pattern is not only a
+ * rhythm of notes, it is a rhythm of *anything*. `pat("300 4000 800 6000").nums()` is a cutoff that steps on
+ * the sixteenth, and because it goes through the same event timeline as the notes it steps on the **sample**
+ * of the sixteenth rather than somewhere inside the block containing it.
+ *
+ * Continuous patterns work too — `sine().range(300.0, 6000.0).segment(16)` — because `segment` is what turns
+ * a signal into events, and events are what this reads. A truly continuous sweep would need a change per
+ * sample and is the program's own job (`si.smoo`), not the scheduler's.
+ *
+ * @param values one value per event; each event's *onset* is when the value is written
+ */
+fun faustParamAutomation(
+    values: PatPattern<Double>,
+    control: FaustControl,
+    arc: PatArc,
+    cps: Double,
+    sampleRate: Int,
+    frameOrigin: Long = 0L
+): List<FaustParamChange> {
+    require(cps > 0.0) { "cps must be > 0" }
+    val secondsPerCycle = 1.0 / cps
+    return values.events(arc)
+        .filter { it.hasOnset }
+        .sortedBy { it.extent.start }
+        .map { event ->
+            FaustParamChange(
+                frame = frameOrigin +
+                    (event.extent.start.toDouble() * secondsPerCycle * sampleRate).roundToLong(),
+                control = control,
+                value = event.value
+            )
+        }
+}
+
+/** [faustParamAutomation] over [cycles] whole cycles from frame 0. */
+fun faustParamAutomation(
+    values: PatPattern<Double>,
+    control: FaustControl,
+    cycles: Int,
+    cps: Double = 1.0,
+    sampleRate: Int = 48_000
+): List<FaustParamChange> {
+    require(cycles > 0) { "cycles must be > 0" }
+    return faustParamAutomation(values, control, PatArc(PatQ.ZERO, PatQ.of(cycles)), cps, sampleRate)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //  Offline render — no audio device, no GPU, so it is the thing that can be asserted on
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -150,7 +199,9 @@ class FaustPatternRender(
     val unpitched: Int,
     val steals: Long,
     val tailCuts: Long,
-    val peakConcurrency: Int
+    val peakConcurrency: Int,
+    /** Shared-parameter changes that landed — see [faustParamAutomation]. */
+    val automationApplied: Long = 0L
 ) {
     val frames: Int get() = left.size
 
@@ -192,6 +243,7 @@ class FaustPatternRender(
  * @param blockFrames render in blocks of this size, so the sub-block scheduling is genuinely exercised
  *   rather than bypassed by one enormous call
  * @param tailSeconds keep rendering after the last note ends, so its release is in the file
+ * @param automation shared-parameter changes on the same timeline as the notes — see [faustParamAutomation]
  */
 fun faustPatternRender(
     program: FaustProgram,
@@ -204,7 +256,8 @@ fun faustPatternRender(
     gain: Double? = null,
     mixGain: Double = 1.0,
     blockFrames: Int = 128,
-    tailSeconds: Double = 0.25
+    tailSeconds: Double = 0.25,
+    automation: List<FaustParamChange> = emptyList()
 ): FaustPatternRender {
     val controls = FaustPolyControls.of(program)
     val noteGain = gain ?: controls.gain?.init ?: 1.0
@@ -219,6 +272,7 @@ fun faustPatternRender(
     val bank = FaustVoiceBank(program, sampleRate, voices, mixGain)
     try {
         bank.schedule(queried.notes)
+        bank.automate(automation)
         val bl = FloatArray(blockFrames)
         val br = FloatArray(blockFrames)
         var done = 0
@@ -231,7 +285,7 @@ fun faustPatternRender(
         }
         return FaustPatternRender(
             left, right, sampleRate, queried.notes, voices, queried.unpitched,
-            bank.steals, bank.tailCuts, bank.peakConcurrency
+            bank.steals, bank.tailCuts, bank.peakConcurrency, bank.automationApplied
         )
     } finally {
         bank.close()
@@ -567,15 +621,34 @@ class FaustPolyLaunch internal constructor(
      * The feeder runs on its own daemon thread and the *frames* are the clock, so being early costs nothing
      * and is not a source of jitter: a note's frame is computed once, from rational cycle time, and the
      * audio thread starts it on that exact sample however early it arrived.
+     *
+     * @param automate shared controls patterned by label alongside the notes —
+     *   `automate = mapOf("cutoff" to pat("400 3000 900 6000").nums())`. An unknown label is a printed
+     *   warning rather than fatal, because live-coding a program is how controls get renamed and a typo
+     *   should not silence the instrument.
      */
     fun play(
         pattern: PatPattern<String>,
         cps: Double = 1.0,
         sustain: Double = FAUST_PATTERN_SUSTAIN,
-        gain: Double = 1.0,
-        aheadSeconds: Double = 0.4
+        gain: Double? = null,
+        aheadSeconds: Double = 0.4,
+        automate: Map<String, PatPattern<Double>> = emptyMap()
     ): FaustPatternFeeder {
-        val feeder = FaustPatternFeeder(bank, pattern, cps, sustain, gain, aheadSeconds)
+        val resolved = automate.mapNotNull { (label, values) ->
+            val control = program.ui.writable.firstOrNull {
+                it.label == label || it.qualifiedLabel == label || it.address == label
+            }
+            if (control == null) {
+                println("Faust: '${program.name}' declares no control '$label' — not automating it")
+                null
+            } else {
+                control to values
+            }
+        }.toMap()
+        val feeder = FaustPatternFeeder(
+            bank, pattern, cps, sustain, gain ?: bank.controls.gain?.init ?: 1.0, aheadSeconds, resolved
+        )
         synchronized(feeders) { feeders += feeder }
         feeder.start()
         return feeder
@@ -611,7 +684,9 @@ class FaustPatternFeeder internal constructor(
     val cps: Double,
     val sustain: Double,
     val gain: Double,
-    val aheadSeconds: Double
+    val aheadSeconds: Double,
+    /** Shared controls patterned alongside the notes. */
+    val automated: Map<FaustControl, PatPattern<Double>> = emptyMap()
 ) {
     private val running = AtomicBoolean(false)
     private var thread: Thread? = null
@@ -637,11 +712,16 @@ class FaustPatternFeeder internal constructor(
                 val horizon = bank.frame + ahead
                 var fed = 0
                 while (running.get() && origin + cycle * framesPerCycle <= horizon && fed < 64) {
+                    val arc = PatArc(PatQ.of(cycle), PatQ.of(cycle + 1))
                     val queried = faustNotesForArc(
-                        pattern, PatArc(PatQ.of(cycle), PatQ.of(cycle + 1)),
-                        cps, bank.sampleRate, sustain, gain, origin
+                        pattern, arc, cps, bank.sampleRate, sustain, gain, origin
                     )
                     bank.schedule(queried.notes)
+                    for ((control, values) in automated) {
+                        bank.automate(
+                            faustParamAutomation(values, control, arc, cps, bank.sampleRate, origin)
+                        )
+                    }
                     if (queried.unpitched > 0) unpitched += queried.unpitched
                     cycle++
                     cyclesFed = cycle
@@ -763,6 +843,8 @@ fun Box.faustPolyControls(launch: FaustPolyLaunch, channel: String = "controls")
  * The one-liner that makes the whole thing visible without an audio device, and the honest way to put a
  * polyphonic Faust figure in the documentation.
  *
+ * @param automate shared controls patterned by label —
+ *   `mapOf("cutoff" to pat("400 3000 900 6000").nums())`
  * @return the render, so a box can measure it too — [faustOnsets], [faustFundamentalHz], [faustSpectrumPeaks]
  */
 fun Box.showFaustPattern(
@@ -773,6 +855,7 @@ fun Box.showFaustPattern(
     voices: Int = 8,
     sustain: Double = FAUST_PATTERN_SUSTAIN,
     gain: Double? = null,
+    automate: Map<String, PatPattern<Double>> = emptyMap(),
     channel: String = "main",
     maxPoints: Int = 2400
 ): FaustPatternRender {
@@ -785,9 +868,21 @@ fun Box.showFaustPattern(
         throw e
     }
 
+    val automation = automate.flatMap { (label, values) ->
+        val control = program.ui.writable.firstOrNull {
+            it.label == label || it.qualifiedLabel == label || it.address == label
+        }
+        if (control == null) {
+            println("Faust: '${program.name}' declares no control '$label' — not automating it")
+            emptyList()
+        } else {
+            faustParamAutomation(values, control, cycles, cps, 48_000)
+        }
+    }
+
     val render = faustPatternRender(
         program, pattern, cycles = cycles, cps = cps, voices = voices, sampleRate = 48_000,
-        sustain = sustain, gain = gain
+        sustain = sustain, gain = gain, automation = automation
     )
     display(
         channel,
@@ -804,7 +899,8 @@ fun Box.showFaustPattern(
         x = indices.map { it.toDouble() / render.sampleRate },
         channel = channel,
         title = "${program.name} — ${render.notes.size} notes, ${render.voices} voices, " +
-            "peak concurrency ${render.peakConcurrency}",
+            "peak concurrency ${render.peakConcurrency}" +
+            (if (render.automationApplied == 0L) "" else ", ${render.automationApplied} param changes"),
         xTitle = "seconds",
         yTitle = "amplitude"
     )
