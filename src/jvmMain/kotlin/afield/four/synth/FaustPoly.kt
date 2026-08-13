@@ -69,7 +69,28 @@ class FaustVoiceBank internal constructor(
      * than a guess about the length of an envelope the host cannot see. Faust does not report its release
      * time, so guessing it would be wrong for every program but the one it was tuned on.
      */
-    val idleThreshold: Float = 1e-5f
+    val idleThreshold: Float = 1e-5f,
+    /**
+     * How long a stolen voice holds its gate **down** before raising it for the incoming note, in samples.
+     *
+     * The one place in this class where there is a real trade and no right answer, so it is a knob with both
+     * ends measured by `synth.faust.poly`:
+     *
+     *  * **1 sample (the default).** The stolen note starts essentially on time. It also clicks, and by a
+     *     measured amount: Faust's `en.adsr` *resets to zero* on a trigger rather than continuing from the
+     *     level it was at, so the outgoing note's amplitude appears as a one-sample step. Measured, the
+     *     largest sample-to-sample delta across a steal is **0.99 of the local peak** against 0.36 in the
+     *     same note once settled — 2.7×. That is audible, and it is what nearly every hardware polysynth
+     *     does on voice overload.
+     *  * **longer than the program's release** — `(0.03 * sampleRate)` for a 30ms release. The envelope
+     *     reaches zero before the new note begins, so there is no step at all: measured **0.04×**, which is
+     *     to say the largest jump across the steal is smaller than the sawtooth's own step in the same
+     *     passage. The cost is that the stolen note is that late.
+     *
+     * A steal is an overload condition either way; the default prefers the note being on time. Set it to the
+     * program's release length if you would rather never hear it.
+     */
+    val stealReleaseFrames: Long = RETRIGGER_FRAMES
 ) : Closeable {
 
     companion object {
@@ -84,6 +105,15 @@ class FaustVoiceBank internal constructor(
 
         /** Voices beyond this are refused: it is a hundredfold past anything measured. */
         const val MAX_VOICES: Int = 128
+
+        /**
+         * Default [stealReleaseFrames]: one sample.
+         *
+         * Enough for a Faust envelope to see a rising edge, since `1, 0, 1` over three samples is one — and
+         * the smallest value that makes a stolen note actually attack. It is not enough to avoid the click;
+         * see [stealReleaseFrames] for what is, and what that costs.
+         */
+        const val RETRIGGER_FRAMES: Long = 1L
     }
 
     /**
@@ -94,8 +124,12 @@ class FaustVoiceBank internal constructor(
         program: FaustProgram,
         sampleRate: Int,
         voices: Int = 8,
-        mixGain: Double = 1.0
-    ) : this(program, sampleRate, voices, FaustPolyControls.of(program), mixGain)
+        mixGain: Double = 1.0,
+        stealReleaseFrames: Long = RETRIGGER_FRAMES
+    ) : this(
+        program, sampleRate, voices, FaustPolyControls.of(program), mixGain,
+        stealReleaseFrames = stealReleaseFrames
+    )
 
     private val closed = AtomicBoolean(false)
 
@@ -151,6 +185,12 @@ class FaustVoiceBank internal constructor(
         /** True once the voice's own output has fallen below the idle threshold with its gate down. */
         var silent = true
         var note: FaustNote? = null
+
+        /** Frame at which a stolen voice raises its gate again; [Long.MAX_VALUE] when it is not stealing. */
+        var retriggerAt = Long.MAX_VALUE
+        var pendingHz = 0.0
+        var pendingGain = 0.0
+        var pendingEnd = Long.MAX_VALUE
     }
 
     private val state = Array(voices) { VoiceState() }
@@ -307,10 +347,12 @@ class FaustVoiceBank internal constructor(
         context.enter()
         try {
             for (v in 0 until voices) {
-                if (state[v].gateOn) {
+                val s = state[v]
+                s.retriggerAt = Long.MAX_VALUE
+                if (s.gateOn) {
                     fnSetParam.execute(v, controls.gate.index, 0f)
-                    state[v].gateOn = false
-                    state[v].endFrame = Long.MAX_VALUE
+                    s.gateOn = false
+                    s.endFrame = Long.MAX_VALUE
                 }
             }
         } finally {
@@ -363,7 +405,8 @@ class FaustVoiceBank internal constructor(
                 applyDue(now)
 
                 var chunk = min(MAX_FRAMES, numFrames - done)
-                nextEventFrame(now)?.let { next ->
+                val next = nextEventFrame(now)
+                if (next != Long.MAX_VALUE) {
                     // Clamped before narrowing: a note with no end in sight is a legitimate schedule, and
                     // `(next - now).toInt()` on a far-future frame would overflow into a negative chunk.
                     chunk = min(chunk, (next - now).coerceAtMost(MAX_FRAMES.toLong()).toInt())
@@ -381,7 +424,13 @@ class FaustVoiceBank internal constructor(
                 println("Faust: '${program.name}' failed while rendering polyphonically and was stopped: $t")
             }
         } finally {
-            runCatching { context.leave() }
+            // try/catch rather than `runCatching`, which builds a `Result` — this is the audio thread, and
+            // an allocation here is a GC pause in the audio path rather than a performance nit.
+            try {
+                context.leave()
+            } catch (ignored: Throwable) {
+                // Leaving a context that was never entered is not worth taking the audio thread down for.
+            }
         }
     }
 
@@ -393,6 +442,23 @@ class FaustVoiceBank internal constructor(
      * is quantised relative to anything else.
      */
     private fun applyDue(now: Long) {
+        // Stolen voices raise their gate again first: their rising edge is due at this frame and the
+        // envelope has to see it before anything else writes to the voice.
+        for (v in 0 until voices) {
+            val s = state[v]
+            if (s.retriggerAt <= now) {
+                fnSetParam.execute(v, controls.freq.index, clamp(controls.freq, s.pendingHz))
+                val gainControl = controls.gain
+                if (gainControl != null) fnSetParam.execute(v, gainControl.index, clamp(gainControl, s.pendingGain))
+                fnSetParam.execute(v, controls.gate.index, 1f)
+                s.gateOn = true
+                s.noteOnFrame = s.retriggerAt
+                s.endFrame = max(now + 1, s.pendingEnd)
+                s.hz = s.pendingHz
+                s.silent = false
+                s.retriggerAt = Long.MAX_VALUE
+            }
+        }
         while (true) {
             val change = synchronized(scheduleLock) {
                 val head = pendingAutomation.peek() ?: return@synchronized null
@@ -435,43 +501,97 @@ class FaustVoiceBank internal constructor(
      *     released voices is the quietest tail;
      *  3. else **steal the oldest sounding voice** and count it in [steals]. A note is never dropped: an
      *     instrument that silently ignores a note is worse than one that runs out of voices audibly.
+     *
+     * ## Stealing drops the gate for [stealReleaseFrames] samples, and that is not cosmetic
+     *
+     * Writing `freq` to a voice whose gate is already up does **not** restart its envelope: Faust's
+     * `en.adsr` and friends trigger on a *rising edge*, so `gate = 1` over an already-high gate is a no-op.
+     * The first version of this did exactly that, and it was measured: no click at all — the phasor and the
+     * envelope both stay continuous, so `max |x[i] - x[i-1]|` across a steal was **1.03×** the same
+     * statistic in a steal-free passage — but also **no attack**. The stolen note simply glided in at the
+     * old envelope level, which is not a note.
+     *
+     * So a steal writes `gate = 0` now and raises it [stealReleaseFrames] samples later, giving the
+     * envelope a real rising edge — and at the default of one sample it *does* click, because Faust's
+     * `en.adsr` resets to zero on a trigger rather than continuing from where it was. That click is measured
+     * (0.99 of the local peak against 0.36 settled, 2.7×) and [stealReleaseFrames] is the knob that removes
+     * it at the cost of latency. See its KDoc for both numbers.
      */
     private fun startNote(note: FaustNote, now: Long) {
+        // 1. a finished voice: gate down and no longer moving air.
         var chosen = -1
         for (v in 0 until voices) {
-            if (!state[v].gateOn && state[v].silent) { chosen = v; break }
+            val s = state[v]
+            if (!s.gateOn && s.silent && s.retriggerAt == Long.MAX_VALUE) { chosen = v; break }
         }
+        // 2. else a released voice whose tail is still audible.
         if (chosen < 0) {
             var oldest = Long.MAX_VALUE
             for (v in 0 until voices) {
-                if (!state[v].gateOn && state[v].noteOnFrame < oldest) {
-                    oldest = state[v].noteOnFrame
+                val s = state[v]
+                if (!s.gateOn && s.retriggerAt == Long.MAX_VALUE && s.noteOnFrame < oldest) {
+                    oldest = s.noteOnFrame
                     chosen = v
                 }
             }
             if (chosen >= 0) tailCuts++
         }
-        if (chosen < 0) {
-            var oldest = Long.MAX_VALUE
-            for (v in 0 until voices) {
-                if (state[v].noteOnFrame < oldest) {
-                    oldest = state[v].noteOnFrame
-                    chosen = v
-                }
-            }
-            steals++
+        if (chosen >= 0) {
+            val s = state[chosen]
+            fnSetParam.execute(chosen, controls.freq.index, clamp(controls.freq, note.hz))
+            val gainControl = controls.gain
+            if (gainControl != null) fnSetParam.execute(chosen, gainControl.index, clamp(gainControl, note.gain))
+            // Gate last: freq and gain must be in place on the sample the envelope opens.
+            fnSetParam.execute(chosen, controls.gate.index, 1f)
+            s.gateOn = true
+            s.noteOnFrame = now
+            s.endFrame = max(now + 1, note.endFrame)
+            s.hz = note.hz
+            s.silent = false
+            s.note = note
+            notesPlayed++
+            return
         }
 
+        // 3. else steal the oldest sounding voice, gate down now and up again a sample later.
+        var oldest = Long.MAX_VALUE
+        for (v in 0 until voices) {
+            val s = state[v]
+            if (s.gateOn && s.noteOnFrame < oldest) {
+                oldest = s.noteOnFrame
+                chosen = v
+            }
+        }
+        if (chosen >= 0) {
+            steals++
+            val s = state[chosen]
+            fnSetParam.execute(chosen, controls.gate.index, 0f)
+            s.gateOn = false
+            s.retriggerAt = now + stealReleaseFrames.coerceAtLeast(1L)
+            s.pendingHz = note.hz
+            s.pendingGain = note.gain
+            s.pendingEnd = note.endFrame
+            s.silent = false
+            s.note = note
+            notesPlayed++
+            return
+        }
+
+        // 4. every voice is already mid-steal — which happens when a chord larger than the bank arrives on
+        //    one frame. Supersede the pending note on whichever retriggers soonest, rather than dropping
+        //    this one: the last note of an over-large chord is the one a person hears as "the note".
+        var soonest = Long.MAX_VALUE
+        for (v in 0 until voices) {
+            if (state[v].retriggerAt < soonest) {
+                soonest = state[v].retriggerAt
+                chosen = v
+            }
+        }
+        steals++
         val s = state[chosen]
-        fnSetParam.execute(chosen, controls.freq.index, clamp(controls.freq, note.hz))
-        controls.gain?.let { fnSetParam.execute(chosen, it.index, clamp(it, note.gain)) }
-        // Gate last: freq and gain must be in place on the sample the envelope opens.
-        fnSetParam.execute(chosen, controls.gate.index, 1f)
-        s.gateOn = true
-        s.noteOnFrame = now
-        s.endFrame = max(now + 1, note.endFrame)
-        s.hz = note.hz
-        s.silent = false
+        s.pendingHz = note.hz
+        s.pendingGain = note.gain
+        s.pendingEnd = note.endFrame
         s.note = note
         notesPlayed++
     }
@@ -479,18 +599,30 @@ class FaustVoiceBank internal constructor(
     private fun clamp(control: FaustControl, value: Double): Float =
         value.coerceIn(control.min, control.max).toFloat()
 
-    /** The next frame at which anything must happen, strictly after [now], or null when nothing does. */
-    private fun nextEventFrame(now: Long): Long? {
+    /**
+     * The next frame at which anything must happen, strictly after [now]; [Long.MAX_VALUE] when nothing
+     * does.
+     *
+     * A sentinel rather than a `Long?` on purpose: this runs once per chunk on the audio thread, and a
+     * nullable `Long` boxes. Measured — see `synth.faust.poly`'s allocation check, which asserts
+     * `render` allocates nothing at all per block.
+     */
+    private fun nextEventFrame(now: Long): Long {
         var next = Long.MAX_VALUE
-        synchronized(scheduleLock) { pending.peek() to pendingAutomation.peek() }.let { (note, change) ->
-            if (note != null && note.startFrame > now) next = min(next, note.startFrame)
-            if (change != null && change.frame > now) next = min(next, change.frame)
+        // Two peeks in one critical section, assigned to locals rather than returned as a Pair, which is
+        // the other thing that used to allocate here.
+        synchronized(scheduleLock) {
+            val note = pending.peek()
+            if (note != null && note.startFrame > now) next = note.startFrame
+            val change = pendingAutomation.peek()
+            if (change != null && change.frame > now && change.frame < next) next = change.frame
         }
         for (v in 0 until voices) {
             val s = state[v]
-            if (s.gateOn && s.endFrame > now) next = min(next, s.endFrame)
+            if (s.retriggerAt > now && s.retriggerAt < next) next = s.retriggerAt
+            if (s.gateOn && s.endFrame > now && s.endFrame < next) next = s.endFrame
         }
-        return if (next == Long.MAX_VALUE) null else next
+        return next
     }
 
     /** Compute and sum every audible voice for `count` frames. Caller has entered the context. */

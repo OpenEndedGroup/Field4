@@ -128,6 +128,12 @@ object FaustPolySmokeTest {
         println("voice allocation")
         checkAllocation(report, program)
 
+        println("does a steal click?")
+        checkStealing(report, program, outDir)
+
+        println("is render allocation-free?")
+        checkAudioThreadAllocation(report, program)
+
         println("cost of a voice")
         checkCost(report, program)
 
@@ -323,6 +329,42 @@ object FaustPolySmokeTest {
             "and the block-quantised alternative really would have been worse",
             quantisedWorst >= 60 && quantisedWorst > jitter * 8
         ) { "quantised $quantisedWorst vs jitter $jitter" }
+
+        // ── what the residual actually is ──
+        //
+        // 8 frames worst case is 167us, which is fine, but something is rounding and it is worth naming.
+        // It is not the scheduler. During a gap this program's output is *exactly* 0f — the envelope reaches
+        // zero and multiplies the oscillator away — so the first non-zero sample of each note is an exact
+        // fact about the render, with no threshold in it. If that sample is the notated frame, the scheduler
+        // is sample-exact and the whole of the 0..8 spread is the onset detector waiting for the attack ramp
+        // to clear its amplitude threshold, which depends on where the free-running phasor happens to be.
+        var worstFirstAudible = 0
+        var exact = 0
+        // Note 0 starts at frame 0, so there is no preceding sample to require silence of; the other 13 are
+        // the checkable ones.
+        val checkable = notated.count { it >= 1L && it < mono.size }
+        for (n in notated) {
+            val i = n.toInt()
+            if (i < 1 || i >= mono.size) continue
+            // Walk forward from the notated frame to the first sample that is not exactly zero.
+            var j = i
+            while (j < mono.size && mono[j] == 0f) j++
+            if (j == i) exact++
+            worstFirstAudible = max(worstFirstAudible, j - i)
+            if (mono[i - 1] != 0f) {
+                report.check("the frame before note at $n is silent", false) { "${mono[i - 1]}" }
+            }
+        }
+        println(
+            "  residual: the first non-zero sample IS the notated frame for $exact of $checkable notes " +
+                "(worst $worstFirstAudible frames). So the scheduler is sample-EXACT, and the whole " +
+                "0..$worstAbsolute spread above is the onset detector waiting for the attack ramp to clear " +
+                "its amplitude threshold — which depends on where the free-running phasor was."
+        )
+        report.check(
+            "every note's first non-zero sample IS its notated frame",
+            exact == checkable && worstFirstAudible == 0
+        ) { "$exact of $checkable, worst $worstFirstAudible" }
 
         val wav = File(outDir, "faust-poly-timing.wav")
         WavFloatArrayWriter.writeStereo16(wav, render.left, render.right, SR, normalizePeak = 0.9f)
@@ -619,6 +661,246 @@ object FaustPolySmokeTest {
             }
         } finally {
             serial.close()
+        }
+    }
+
+    // ── does a steal click? ────────────────────────────────────────────────────────────────────
+
+    /**
+     * The classic defect of every polyphonic synth, measured rather than assumed.
+     *
+     * When a sounding voice is stolen its gate drops mid-cycle, and if the envelope collapses in one sample
+     * the waveform takes a step discontinuity — an audible click. The statistic is the maximum
+     * sample-to-sample delta, `max |x[i] - x[i-1]|`, in a window around the steal against the same statistic
+     * in a steal-free passage of the same music.
+     *
+     * The second half is the more interesting one: a stolen note must also **attack**. Writing `gate = 1`
+     * to a voice whose gate is already up is a no-op for a Faust envelope, which triggers on a rising edge —
+     * so the first version of this stole silently and correctly and produced no note. The envelope's local
+     * peak in the milliseconds after a steal is what proves it retriggered.
+     */
+    private fun checkStealing(report: Reporter, program: FaustProgram, outDir: File) {
+        // Four notes on one voice, so notes 2, 3 and 4 all steal. Long notes, so the steals land well inside
+        // a sustained tone where a discontinuity would be unmistakable.
+        val stealFrames = listOf(0L, 12_000L, 24_000L, 36_000L)
+        val frames = SR
+
+        fun renderSteals(releaseFrames: Long): FloatArray {
+            val bank = FaustVoiceBank(program, SR, voices = 1, stealReleaseFrames = releaseFrames)
+            val out = FloatArray(frames)
+            try {
+                bank.schedule(
+                    stealFrames.mapIndexed { i, at ->
+                        FaustNote(at, (0.95 * SR).roundToLong(), patMidiToHz(48.0 + i * 4), 0.25, "$i")
+                    }
+                )
+                val l = FloatArray(BLOCK)
+                val r = FloatArray(BLOCK)
+                var done = 0
+                while (done < frames) {
+                    val n = min(BLOCK, frames - done)
+                    bank.render(l, r, n)
+                    for (i in 0 until n) out[done + i] = (l[i] + r[i]) * 0.5f
+                    done += n
+                }
+                report.check(
+                    "three of the four notes were stolen (release=$releaseFrames)", bank.steals == 3L
+                ) { "${bank.steals}" }
+                report.check(
+                    "all four were played (release=$releaseFrames)", bank.notesPlayed == 4L
+                ) { "${bank.notesPlayed}" }
+                return out
+            } finally {
+                bank.close()
+            }
+        }
+
+        val stolen = renderSteals(FaustVoiceBank.RETRIGGER_FRAMES)
+        // The program's release is 0.02s; 30ms is comfortably longer, so the envelope reaches zero before the
+        // incoming note raises the gate again.
+        val gentle = renderSteals((0.03 * SR).roundToLong())
+
+        fun maxDelta(x: FloatArray, from: Int, count: Int): Float {
+            var worst = 0f
+            for (i in max(1, from) until min(x.size, from + count)) {
+                worst = max(worst, abs(x[i] - x[i - 1]))
+            }
+            return worst
+        }
+
+        fun localPeak(x: FloatArray, from: Int, count: Int): Float {
+            var p = 0f
+            for (i in max(0, from) until min(x.size, from + count)) p = max(p, abs(x[i]))
+            return p
+        }
+
+        // The control has to be like-for-like, and the first attempt was not: comparing the window at a
+        // steal against a window during the *previous* note compares different pitches at different
+        // envelope levels, and a louder, higher sawtooth has a bigger wrap discontinuity for reasons that
+        // have nothing to do with stealing. That version read 1.90x and meant nothing. So the reference is
+        // the same note, 60ms later, once its attack has settled — same pitch, same amplitude — and the
+        // statistic is the delta normalised by the local peak, which is scale-free.
+        fun worstStealRatio(x: FloatArray, label: String): Float {
+            var worst = 0f
+            for (at in stealFrames.drop(1)) {
+                val i = at.toInt()
+                val atSteal = maxDelta(x, i - 4, 64) / max(1e-9f, localPeak(x, i - 4, 64))
+                val settled = maxDelta(x, i + 3000, 1000) / max(1e-9f, localPeak(x, i + 3000, 1000))
+                worst = max(worst, atSteal / settled)
+            }
+            println("  $label: worst normalised step across a steal ${"%.2f".format(worst)}x the settled one")
+            return worst
+        }
+
+        // It does click at the default, and the number says why: a normalised step of ~1.0 means the largest
+        // single-sample jump is as big as the whole local peak, which is not a slope, it is the outgoing
+        // note's amplitude disappearing in one sample. Faust's `en.adsr` *resets to zero* on a trigger rather
+        // than continuing from the level it was at, so a one-sample gate dip followed by a rising edge drops
+        // the envelope to 0 before the attack starts. That is a genuine defect of the default and it is
+        // recorded rather than hidden.
+        val immediate = worstStealRatio(stolen, "stealReleaseFrames = 1 (default)")
+        val released = worstStealRatio(gentle, "stealReleaseFrames = ${(0.03 * SR).roundToLong()} (30ms)")
+        report.check("the default steal really does click, as documented", immediate > 2.0f) {
+            "${"%.2f".format(immediate)}x — if this stopped being true the KDoc is wrong"
+        }
+        report.check("but it is bounded by the outgoing note's own amplitude", immediate < 4.0f) {
+            "${"%.2f".format(immediate)}x"
+        }
+        // And the knob works: give the envelope its release and the step disappears entirely.
+        report.check("a steal with a real release window does not click", released < 1.3f) {
+            "${"%.2f".format(released)}x"
+        }
+        report.check(
+            "so the knob is worth having: it removes at least half the step",
+            released < immediate * 0.5f
+        ) { "${"%.2f".format(released)}x vs ${"%.2f".format(immediate)}x" }
+
+        // …and it does re-attack. The envelope is at its sustain level (0.7) before the steal and climbs to
+        // 1.0 over the 3ms attack afterwards, so the local peak has to rise. Without the one-sample gate
+        // dip this ratio was 1.00 and the "note" was a pitch glide.
+        var worstRise = Float.MAX_VALUE
+        for (at in stealFrames.drop(1)) {
+            val before = localPeak(stolen, at.toInt() - 1200, 1000)
+            val after = localPeak(stolen, at.toInt() + 100, 1000)
+            println(
+                "  steal at $at: envelope ${"%.4f".format(before)} -> ${"%.4f".format(after)} " +
+                    "(${"%.2f".format(after / before)}x)"
+            )
+            worstRise = min(worstRise, after / before)
+        }
+        report.check("a stolen voice really re-attacks", worstRise > 1.15f) { "${"%.2f".format(worstRise)}x" }
+
+        WavFloatArrayWriter.writeStereo16(
+            File(outDir, "faust-poly-steal.wav"), stolen, stolen, SR, normalizePeak = 0.9f
+        )
+        writeWaveformPng(File(outDir, "faust-poly-steal.png"), stolen, stealFrames.map { it.toInt() }, listOf())
+    }
+
+    // ── is render allocation-free? ─────────────────────────────────────────────────────────────
+
+    /**
+     * Bytes allocated per [FaustVoiceBank.render] call, which is the property that matters on the audio
+     * thread and that no µs-per-block average can see.
+     *
+     * A per-block allocation is not a performance nit in an audio callback: it is a GC pause in the audio
+     * path, i.e. a dropout, and an average hides exactly that. `getCurrentThreadAllocatedBytes` is the
+     * cheapest honest instrument for it.
+     *
+     * What this found, and what was fixed for it: `nextEventFrame` returned a `Long?` (boxed, once per
+     * chunk) and read its two queue heads by building a `Pair`; `render`'s `finally` used `runCatching`,
+     * which builds a `Result`. All three are gone. What is left, if anything, is the polyglot boundary —
+     * `Value.execute(vararg Object)` builds an array and boxes its arguments — which is inherent to the
+     * API rather than to this class, and which only happens on a frame where a note starts.
+     */
+    private fun checkAudioThreadAllocation(report: Reporter, program: FaustProgram) {
+        val bean = java.lang.management.ManagementFactory.getThreadMXBean() as? com.sun.management.ThreadMXBean
+        if (bean == null || !bean.isThreadAllocatedMemorySupported) {
+            report.check("thread allocation accounting is available", false) { "not supported on this JVM" }
+            return
+        }
+        bean.isThreadAllocatedMemoryEnabled = true
+
+        val bank = FaustVoiceBank(program, SR, voices = 8)
+        try {
+            val l = FloatArray(BLOCK)
+            val r = FloatArray(BLOCK)
+            // Every voice sounding for the whole measurement, and no events inside it — the steady state an
+            // audio callback spends almost all of its time in.
+            bank.schedule(
+                (0 until 8).map { FaustNote(0, Long.MAX_VALUE / 4, patMidiToHz(48.0 + it), 0.1, "$it") }
+            )
+            repeat(2000) { bank.render(l, r, BLOCK) }
+            check(bank.activeVoices() == 8) { "only ${bank.activeVoices()} voices sounding" }
+
+            val blocks = 4000
+            val before = bean.currentThreadAllocatedBytes
+            repeat(blocks) { bank.render(l, r, BLOCK) }
+            val perBlock = (bean.currentThreadAllocatedBytes - before).toDouble() / blocks
+            val perVoice = perBlock / 8.0
+            println(
+                "  steady state, 8 voices: ${"%.0f".format(perBlock)} bytes per $BLOCK-frame block " +
+                    "(${"%.0f".format(perVoice)} per voice)"
+            )
+
+            // The number that decides whether this is *ours*. FaustDsp — the shipped single-voice audio path,
+            // merged yesterday — crosses the same boundary the same way: one `Value.readBuffer` per channel
+            // per block. If it allocates the same amount per voice, the allocation is the polyglot buffer
+            // read rather than anything in FaustVoiceBank, and fixing it means changing how the samples come
+            // out of WebAssembly for both paths.
+            val gate = program.ui.writable.first { it.label == "gate" }
+            val dsp = FaustDsp(program, SR)
+            val dspPerBlock: Double
+            try {
+                dsp.setParam(gate, 1.0)
+                repeat(2000) { dsp.render(l, r, BLOCK) }
+                val beforeDsp = bean.currentThreadAllocatedBytes
+                repeat(blocks) { dsp.render(l, r, BLOCK) }
+                dspPerBlock = (bean.currentThreadAllocatedBytes - beforeDsp).toDouble() / blocks
+            } finally {
+                dsp.close()
+            }
+            println(
+                "  the same for one FaustDsp (the shipped single-voice path): " +
+                    "${"%.0f".format(dspPerBlock)} bytes per block"
+            )
+            println(
+                "  => ${"%.2f".format(perVoice / dspPerBlock)}x per voice, so this is the polyglot " +
+                    "Value.readBuffer at the JVM/WebAssembly boundary and NOT this class"
+            )
+            report.check(
+                "the per-voice allocation is the shipped single-voice path's, not something new",
+                perVoice < dspPerBlock * 1.6
+            ) { "${"%.0f".format(perVoice)} vs ${"%.0f".format(dspPerBlock)} bytes/block" }
+            // Ratchets on the measured figures — 7415 bytes/block at 8 voices, 927 per voice, 745 for one
+            // FaustDsp. Set near the measurement so a regression that doubles it fails, and honestly
+            // reported rather than asserted away: this is a real GC pressure on the audio thread and
+            // `public/docs/faust.md` says so.
+            report.check("8 voices stay under 1.2KB a block per voice", perVoice < 1_200.0) {
+                "${"%.0f".format(perVoice)} bytes/block/voice"
+            }
+
+            // And with a note starting inside every block, where this class's own `execute` calls happen.
+            var at = bank.frame
+            val notes = ArrayList<FaustNote>(blocks)
+            repeat(blocks) {
+                at += BLOCK.toLong()
+                notes += FaustNote(at - 40L, at + 200L, patMidiToHz(48.0 + it % 12), 0.1, "$it")
+            }
+            bank.schedule(notes)
+            val beforeNotes = bean.currentThreadAllocatedBytes
+            repeat(blocks) { bank.render(l, r, BLOCK) }
+            val perNoteBlock = (bean.currentThreadAllocatedBytes - beforeNotes).toDouble() / blocks
+            println(
+                "  with a note starting in every block: ${"%.0f".format(perNoteBlock)} bytes/block, " +
+                    "i.e. ${"%.0f".format(perNoteBlock - perBlock)} more than the steady state — the extra " +
+                    "chunk's worth of compute/readBuffer plus three Value.execute varargs for the note-on"
+            )
+            report.check(
+                "a note-on costs a chunk split, not an unbounded amount",
+                perNoteBlock < perBlock * 4.0
+            ) { "${"%.0f".format(perNoteBlock)} vs ${"%.0f".format(perBlock)} bytes/block" }
+        } finally {
+            bank.close()
         }
     }
 
