@@ -134,13 +134,48 @@ Say this out loud, because the stub being green is not the service being green.
   so it plausibly does *not* notice a departed client until its next `send`, and a job that never
   publishes again would leave that task alive. That is a service-side observation from reading
   `api.py`, unverified against a running service, and it is not Field's bug — but do not read a
-  green socket-lifetime test here as proof that the service reaps its end.
+  green socket-lifetime test here as proof that the service reaps its end. This is the one assumption
+  load-bearing enough to have its own section; see "The socket-lifetime assumption" below.
 - **No JSON round trip through Pydantic.** The stub encodes with `FieldAudioClient.json`, so it
   cannot detect a wrong `SerialName` on its own. That gap is closed separately by
   `protocol names match the service's Pydantic models`, which decodes bodies transcribed by hand
   from `protocol/models.py`. Keep that test honest when the contract moves.
 - **`recordSonicPiWav` is not covered at all.** It needs a running Sonic Pi and a real-time
   capture. Only the header reader it now shares with `RenderedAudioFile.existing` is tested.
+
+## The socket-lifetime assumption
+
+`openEventSockets` is the observable behind the leak fix, so it is worth being exact about what a
+green reading does and does not establish. Stated so that it is cheap to revisit the day someone has
+the service installed.
+
+**The assumption.** When Field calls `WebSocket.abort()`, the *server* notices and drops its
+subscription. The stub guarantees this by draining `incoming` in a child coroutine whose `finally`
+closes the event queue. The real service does not obviously do the same: `api.py`'s handler awaits
+`queue.get()` and never reads from the socket, so it may well not learn that the client has gone
+until its next `send` — and for a job that never publishes again, that is never.
+
+**Which way that cuts.** It makes two tests *stricter* than reality, not laxer:
+`a failing leg releases its siblings' polls and sockets` and `cancelling the returned future releases
+every leg` both wait for `openEventSockets == 0`, which is a joint claim — Field let go **and** the
+server noticed. Against a server that does not read its socket, those assertions would fail even
+though Field behaved correctly. So the risk is a future false *red*, not a false green, and the
+independent half of each test (`jobPolls` stopping) depends only on Field.
+
+**What cannot rescue a green.** The stub never closes a subscription on its own initiative: the only
+paths out of its handler are a terminal progress event, a closed queue, or a dead socket. There is no
+idle timer and no sweep. So a green socket test here cannot be explained by the stub tidying up
+behind a client that failed to.
+
+**What is genuinely uncovered.** On the *success* path Field deliberately does **not** close its
+sockets — it leaves them to the service, because closing them would race the last `onProgress` — and
+**no test asserts that they ever close.** `a full three-leg analysis round trips` checks that three
+were opened and that events arrived, and nothing checks that three were closed. Against the stub they
+do close, promptly, because the stub closes after the terminal event exactly as `api.py` says it
+does. If that reading of `api.py` is wrong, a long Field session would accumulate one socket per
+completed analysis leg and nothing in this suite would notice. That is the first thing to measure
+against a real service, and the cheapest way to measure it is
+`GET /v1/jobs` plus a `lsof` on the service process after a few dozen analyses.
 
 ## What it found
 
