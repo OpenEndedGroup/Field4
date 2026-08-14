@@ -16,6 +16,7 @@ import kotlin.test.assertFails
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * The rendered-audio analysis seam, driven end to end against [FieldAudioServiceStub].
@@ -289,6 +290,37 @@ class RenderedAudioSeamTest {
         }
     }
 
+    // ---- the client's own polling contract ---------------------------------------------------
+
+    /**
+     * `FieldAudioClient.await` re-armed its poll from inside `whenComplete` without ever asking
+     * whether anyone was still listening, so a cancelled `await` future kept issuing
+     * `GET /v1/jobs/{id}` every 200 ms for the lifetime of the JVM. Observed red before the fix as
+     * `a cancelled await is still polling expected:<10> but was:<17>` — seven more polls in the
+     * 1.5 s after the future had been cancelled.
+     */
+    @Test
+    fun `a cancelled await stops polling`() {
+        FieldAudioServiceStub().use { stub ->
+            stub.defaultScript =
+                FieldAudioServiceStub.ScriptedJob(neverFinishes = true, stepDelayMillis = 5)
+            val client = FieldAudioClient(stub.baseUrl)
+            val render = tone(temp("awaitcancel"))
+            val asset = client.importWav(render.path).get(30, TimeUnit.SECONDS)
+            val region = AssetRegion(asset.id, 0.0, assertNotNull(asset.durationSeconds))
+            val accepted = client.submit(multiScaleBeatAnalysis(region)).get(30, TimeUnit.SECONDS)
+
+            val polling = client.await(accepted.jobId)
+            awaitOrFail(5_000) { stub.jobPolls(accepted.jobId) >= 3 }
+            polling.cancel(false)
+
+            Thread.sleep(1_000)
+            val settled = stub.jobPolls(accepted.jobId)
+            Thread.sleep(1_500)
+            assertEquals(settled, stub.jobPolls(accepted.jobId), "a cancelled await is still polling")
+        }
+    }
+
     // ---- the shape of the wire ---------------------------------------------------------------
 
     /**
@@ -366,4 +398,15 @@ class RenderedAudioSeamTest {
         assertTrue("null" !in sent, "the client must not send explicit nulls: $sent")
     }
 
+
+    // ---- helpers ------------------------------------------------------------------------------
+
+    private fun awaitOrFail(millis: Long, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + millis * 1_000_000L
+        while (System.nanoTime() < deadline) {
+            if (condition()) return
+            Thread.sleep(25)
+        }
+        fail("condition was still false after $millis ms")
+    }
 }

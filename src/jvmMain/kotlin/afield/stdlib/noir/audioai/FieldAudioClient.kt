@@ -19,6 +19,7 @@ import java.net.http.WebSocket
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Executor
@@ -349,12 +350,20 @@ class FieldAudioClient(
             }, callbackExecutor)
     }
 
-    /** Poll durable job state without occupying Field's runloop. */
+    /**
+     * Poll durable job state without occupying Field's runloop.
+     *
+     * Cancelling the returned future stops the polling. That is the only way to stop it — a job
+     * whose worker has wedged never reaches a terminal state, and this loop is otherwise happy to
+     * ask about it every [pollEvery] for the lifetime of the JVM.
+     */
     fun await(jobId: String, pollEvery: Duration = Duration.ofMillis(200)): CompletableFuture<JobRecord> {
         val result = CompletableFuture<JobRecord>()
         fun poll() {
+            if (result.isDone) return
             inspect(jobId).whenComplete { job, error ->
                 when {
+                    result.isDone -> Unit
                     error != null -> result.completeExceptionally(error)
                     job.state.terminal -> result.complete(job)
                     else -> CompletableFuture.delayedExecutor(
@@ -374,14 +383,8 @@ class FieldAudioClient(
      * if the job ends as anything but `COMPLETE`.
      */
     fun awaitCandidates(accepted: JobAccepted): CompletableFuture<CandidateSet> =
-        await(accepted.jobId).thenCompose { job ->
-            if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
-            } else {
-                candidateSet(requireNotNull(job.candidateSetId) { "completed job has no candidate set" })
-            }
+        awaitResult(accepted) { job ->
+            candidateSet(requireNotNull(job.candidateSetId) { "completed job has no candidate set" })
         }
 
     /**
@@ -390,14 +393,8 @@ class FieldAudioClient(
      * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
      */
     fun awaitCodec(accepted: JobAccepted): CompletableFuture<CodecReconstructionResult> =
-        await(accepted.jobId).thenCompose { job ->
-            if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
-            } else {
-                codecResult(requireNotNull(job.codecResultId) { "completed codec job has no result" })
-            }
+        awaitResult(accepted) { job ->
+            codecResult(requireNotNull(job.codecResultId) { "completed codec job has no result" })
         }
 
     /**
@@ -406,17 +403,34 @@ class FieldAudioClient(
      * Fails with [FieldAudioJobException] if the job ends as anything but `COMPLETE`.
      */
     fun awaitAnalysis(accepted: JobAccepted): CompletableFuture<AnalysisResult> =
-        await(accepted.jobId).thenCompose { job ->
+        awaitResult(accepted) { job ->
+            analysisResult(requireNotNull(job.analysisResultId) {
+                "completed analysis job has no result"
+            })
+        }
+
+    /**
+     * Await one job and fetch whatever it stored, or fail with [FieldAudioJobException].
+     *
+     * Cancellation has to be forwarded by hand: cancelling a `thenCompose` stage says nothing about
+     * the stage it was composed onto, so without this the poll loop would outlive the future that
+     * is the caller's only handle on it.
+     */
+    private fun <T> awaitResult(
+        accepted: JobAccepted,
+        fetch: (JobRecord) -> CompletableFuture<T>,
+    ): CompletableFuture<T> {
+        val polling = await(accepted.jobId)
+        val result = polling.thenCompose { job ->
             if (job.state != JobState.COMPLETE) {
-                CompletableFuture.failedFuture(
-                    FieldAudioJobException(job.id, job.state, job.error)
-                )
+                CompletableFuture.failedFuture(FieldAudioJobException(job.id, job.state, job.error))
             } else {
-                analysisResult(requireNotNull(job.analysisResultId) {
-                    "completed analysis job has no result"
-                })
+                fetch(job)
             }
         }
+        result.whenComplete { _, error -> if (error is CancellationException) polling.cancel(false) }
+        return result
+    }
 
     /**
      * Subscribe to progress history plus live events. The server closes the socket
