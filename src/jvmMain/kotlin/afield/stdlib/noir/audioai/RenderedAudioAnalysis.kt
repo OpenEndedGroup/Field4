@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.sound.sampled.AudioSystem
 import kotlin.math.roundToInt
 
 /**
@@ -59,14 +60,56 @@ data class RenderedAudioFile(
     }
 
     companion object {
-        /** Wrap a WAV another Field facility has already rendered. */
+        /**
+         * Wrap a WAV another Field facility has already rendered, reading its header for the rest.
+         *
+         * [sampleRate], [channels] and [durationSeconds] are taken from the file itself rather than
+         * left null: the header is sitting on disk, and a `RenderedAudioFile` that claims to know
+         * nothing about a WAV it is holding is no use to a box drawing a provenance line. They stay
+         * null only when the header will not parse.
+         */
         fun existing(
             path: Path,
             generator: String,
             provenance: Map<String, String> = emptyMap(),
-        ): RenderedAudioFile = RenderedAudioFile(path.toAbsolutePath(), generator, provenance = provenance)
+        ): RenderedAudioFile {
+            val absolute = path.toAbsolutePath()
+            val header = wavHeaderFacts(absolute)
+            return RenderedAudioFile(
+                absolute, generator,
+                sampleRate = header?.sampleRate,
+                channels = header?.channels,
+                durationSeconds = header?.durationSeconds,
+                provenance = provenance,
+            )
+        }
     }
 }
+
+/** What one WAV's own header says about itself. */
+internal data class WavHeaderFacts(
+    val sampleRate: Int,
+    val channels: Int,
+    val durationSeconds: Double,
+)
+
+/**
+ * Read a WAV's header, and nothing else.
+ *
+ * `javax.sound.sampled` parses the header without decoding a sample, which is the point: an
+ * hour-long capture should not have to be loaded into the JVM to find out how long it is. Null for
+ * anything that will not parse, and for anything whose header declines to say — `frameLength` and
+ * `sampleRate` are both allowed to be `AudioSystem.NOT_SPECIFIED`, and a guessed duration is worse
+ * than an absent one.
+ */
+internal fun wavHeaderFacts(path: Path): WavHeaderFacts? = runCatching {
+    val format = AudioSystem.getAudioFileFormat(path.toFile())
+    val rate = format.format.sampleRate
+    val frames = format.frameLength.toLong()
+    val channels = format.format.channels
+    if (rate <= 0f || frames <= 0L || channels <= 0) null
+    else WavHeaderFacts(rate.roundToInt(), channels, frames / rate.toDouble())
+}.getOrNull()
 
 /** One named analysis request, retained beside its accepted job and final result. */
 data class NamedAudioAnalysis(val label: String, val operation: ModelOperation) {
@@ -493,10 +536,22 @@ fun recordSonicPiWav(
                 "Sonic Pi did not save a stable WAV to $path after stop-recording settled for " +
                     "$stopSettleMillis ms" + if (recentErrors.isBlank()) "" else "; recent errors: $recentErrors"
             }
+            // The recorder's own header is the truth about what was captured. The arithmetic below
+            // is only an estimate of it — settle plus sleep plus tail, which is what the *plan* was
+            // — and the two differ by however long Sonic Pi actually took to start and stop. Say
+            // which one this is, so a box that draws the provenance line is not quietly guessing.
+            val header = wavHeaderFacts(path.toAbsolutePath())
             RenderedAudioFile(
                 path.toAbsolutePath(), "Sonic Pi",
-                durationSeconds = seconds + (startSettleMillis + tailMillis) / 1000.0,
-                provenance = mapOf("workspace" to workspace, "capture_seconds" to seconds.toString()) + provenance,
+                sampleRate = header?.sampleRate,
+                channels = header?.channels,
+                durationSeconds = header?.durationSeconds
+                    ?: (seconds + (startSettleMillis + tailMillis) / 1000.0),
+                provenance = mapOf(
+                    "workspace" to workspace,
+                    "capture_seconds" to seconds.toString(),
+                    "duration_from" to if (header != null) "wav header" else "capture arithmetic",
+                ) + provenance,
             )
         } finally {
             runCatching { sonicPi.stopAll() }

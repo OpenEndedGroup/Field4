@@ -2,6 +2,7 @@ package afield.stdlib.noir.audioai
 
 import afield.four.synth.Param
 import afield.four.synth.SineOsc
+import afield.four.synth.pat
 import afield.userFacingThrowable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -456,6 +457,86 @@ class RenderedAudioSeamTest {
             Thread.sleep(1_500)
             assertEquals(settled, stub.jobPolls(accepted.jobId), "a cancelled await is still polling")
         }
+    }
+
+    // ---- what the render says about itself ---------------------------------------------------
+
+    /**
+     * `RenderedAudioFile.existing` used to return null `sampleRate`, `channels` and
+     * `durationSeconds` for a WAV whose header was sitting on disk in front of it, so a box that
+     * wrapped a file another facility had rendered got a provenance line that knew nothing.
+     *
+     * The header is cross-checked three ways: against the renderer's own claim, and against
+     * [wavHeader], which is the stub's independent hand-rolled RIFF parse rather than the production
+     * one, so agreement here is evidence and not a tautology.
+     */
+    @Test
+    fun `an existing WAV reports what its own header says`() {
+        val directory = temp("existing")
+        val mono = tone(directory, seconds = 0.25)
+        val stereo = renderPatWav(directory.resolve("pat.wav"), pat("60 64 67"), cycles = 1, cps = 2.0)
+
+        val wrappedMono = RenderedAudioFile.existing(mono.path, "Test")
+        assertEquals(48_000, wrappedMono.sampleRate)
+        assertEquals(1, wrappedMono.channels)
+        assertEquals(assertNotNull(mono.durationSeconds), assertNotNull(wrappedMono.durationSeconds), 1e-9)
+
+        val wrappedStereo = RenderedAudioFile.existing(stereo.path, "Test")
+        assertEquals(2, wrappedStereo.channels)
+        assertEquals(assertNotNull(stereo.sampleRate), wrappedStereo.sampleRate)
+        assertEquals(assertNotNull(stereo.durationSeconds), assertNotNull(wrappedStereo.durationSeconds), 1e-9)
+
+        for ((rendered, wrapped) in listOf(mono to wrappedMono, stereo to wrappedStereo)) {
+            val independent = assertNotNull(wavHeader(Files.readAllBytes(rendered.path)))
+            assertEquals(independent.sampleRate, wrapped.sampleRate)
+            assertEquals(independent.channels, wrapped.channels)
+            assertEquals(
+                independent.frames.toDouble() / independent.sampleRate,
+                assertNotNull(wrapped.durationSeconds),
+                1e-12,
+            )
+        }
+    }
+
+    @Test
+    fun `a file that is not really a WAV leaves the metadata unclaimed rather than wrong`() {
+        val path = temp("garbage").resolve("garbage.wav")
+        Files.write(path, ByteArray(512) { 0x7 })
+
+        val wrapped = RenderedAudioFile.existing(path, "Test")
+        assertEquals(null, wrapped.sampleRate)
+        assertEquals(null, wrapped.channels)
+        assertEquals(null, wrapped.durationSeconds)
+    }
+
+    /** And the wrapped file still analyses: the header read has to be on the production path. */
+    @Test
+    fun `an existing WAV analyses over the window its header declares`() {
+        FieldAudioServiceStub().use { stub ->
+            val client = FieldAudioClient(stub.baseUrl)
+            val rendered = tone(temp("existinganalysis"), seconds = 0.75)
+            val wrapped = RenderedAudioFile.existing(rendered.path, "Elsewhere")
+
+            val bundle = client.analyzeRenderedAudio(wrapped).get(60, TimeUnit.SECONDS)
+            assertEquals(assertNotNull(wrapped.durationSeconds), bundle.region.durationSeconds, 1e-9)
+            assertEquals("Elsewhere", bundle.render.generator)
+        }
+    }
+
+    /**
+     * `JobMonitor.kt` says of its iframe: "Same-origin through the `/field-audio` prefix, so nothing
+     * here reaches across origins." True of the default, and only of the default — the parameter will
+     * build a cross-origin iframe if you hand it an absolute URL. Both halves asserted, so the claim
+     * has a stated scope rather than being taken on trust.
+     */
+    @Test
+    fun `the job monitor is same-origin by default and not by construction`() {
+        val relative = fieldAudioJobMonitor()
+        assertContains(relative, """src="/field-audio/monitor"""")
+        assertTrue("http://" !in relative && "https://" !in relative, relative)
+
+        val absolute = fieldAudioJobMonitor("http://127.0.0.1:8765")
+        assertContains(absolute, """src="http://127.0.0.1:8765/monitor"""")
     }
 
     // ---- the shape of the wire ---------------------------------------------------------------
