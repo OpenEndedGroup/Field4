@@ -433,6 +433,22 @@ class RenderedAudioSeamTest {
         }
     }
 
+    /** The same legibility, on a later endpoint: the decode guard is in `send`, not in `importWav`. */
+    @Test
+    fun `a malformed analysis result names its own endpoint`() {
+        FieldAudioServiceStub().use { stub ->
+            stub.analysisResponseOverride = "not json at all"
+            val client = FieldAudioClient(stub.baseUrl)
+            val render = tone(temp("malformedresult"))
+
+            val failure = assertFails { client.analyzeRenderedAudio(render).get(60, TimeUnit.SECONDS) }
+            val visible = userFacingThrowable(failure)
+            assertIs<FieldAudioTransportException>(visible, "what a box would see: $visible")
+            assertContains(visible.requestPath, "/v1/analysis-results/")
+            assertContains(visible.message.orEmpty(), "not json at all")
+        }
+    }
+
     // ---- the client's own polling contract ---------------------------------------------------
 
     /**

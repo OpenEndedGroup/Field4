@@ -35,6 +35,7 @@ notes. The entries below point to the canonical note for each maintained subsyst
 - [`DOCS_RUNNER_GPU_CAPTURES.md`](./DOCS_RUNNER_GPU_CAPTURES.md) — authoring `diffstatic_runner` fences for GPU/compute/probe captures, and the compute+draw-in-one-box limitation
 - [`box_shared_state_races.md`](./box_shared_state_races.md) — current concurrency ownership for box/session collections, remaining ownership gaps, and deterministic regression requirements
 - [`DOCS_IMPROVEMENT_AGENT.md`](./DOCS_IMPROVEMENT_AGENT.md) — the documentation annotation panel and the `codex exec` run behind it: the threat model (Field binds `0.0.0.0` on purpose, so a route that must not be reachable from the network guards itself), the enable/token/working-directory contract, and what is deliberately left unsolved
+- [`field_audio_seam_stub.md`](./field_audio_seam_stub.md) — how the `afield.stdlib.noir.audioai` seam is tested when the Python service it talks to is not installed: the in-process Ktor stub, the protocol facts it takes from the service rather than from the Kotlin, the explicit list of what it deliberately does *not* model, and the defects it found — each quoted with the failure it was seen to produce
 
 ## Feature Notes (post-consolidation survivors)
 

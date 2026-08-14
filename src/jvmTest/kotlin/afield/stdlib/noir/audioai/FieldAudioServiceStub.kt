@@ -70,7 +70,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * revision, so a hash from here will never match a hash from the real service. Unknown-job event
  * subscriptions are refused with an HTTP **404 handshake failure** rather than the service's
  * accept-then-`close(4404)`; the client observes a failed `buildAsync` either way, but the close
- * code differs. See `dev_docs/field_audio_service_stub.md`.
+ * code differs. And this stub *notices* a departed client, because it drains `incoming`, where the
+ * real handler is parked on `await queue.get()` and reads nothing — so a green socket-lifetime test
+ * here says Field let go of its end, not that the service reaped its own.
+ *
+ * The full list, and the defects this found, are in `dev_docs/field_audio_seam_stub.md`.
  */
 class FieldAudioServiceStub : AutoCloseable {
 
@@ -111,7 +115,6 @@ class FieldAudioServiceStub : AutoCloseable {
     // ---- observation -------------------------------------------------------------------------
 
     private val liveSockets = AtomicInteger()
-    private val peakSockets = AtomicInteger()
     private val acceptedSockets = AtomicInteger()
     private val inspects = ConcurrentHashMap<String, AtomicInteger>()
     private val submitted = Collections.synchronizedList(mutableListOf<ModelOperation>())
@@ -121,9 +124,6 @@ class FieldAudioServiceStub : AutoCloseable {
 
     /** Events sockets open right now. A leak shows up here as a number that never falls to zero. */
     val openEventSockets: Int get() = liveSockets.get()
-
-    /** The most sockets ever open at once — one per analysis leg, if the client opens one per leg. */
-    val peakEventSockets: Int get() = peakSockets.get()
 
     /** Events sockets accepted since the stub started, closed or not. One per `watch` call. */
     val eventSocketsOpened: Int get() = acceptedSockets.get()
@@ -259,9 +259,7 @@ class FieldAudioServiceStub : AutoCloseable {
             webSocket("/v1/events/{jobId}") {
                 val jobId = call.parameters["jobId"].orEmpty()
                 acceptedSockets.incrementAndGet()
-                liveSockets.incrementAndGet().let { open ->
-                    peakSockets.updateAndGet { peak -> maxOf(peak, open) }
-                }
+                liveSockets.incrementAndGet()
                 val queue = Channel<ProgressEvent>(Channel.UNLIMITED)
                 val replay: List<ProgressEvent>
                 synchronized(this@FieldAudioServiceStub) {

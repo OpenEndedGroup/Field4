@@ -1,0 +1,84 @@
+name: field_audio_absent_service
+description: >
+  What a box sees when the Field Audio service is not running — which, on a fresh checkout, is
+  always: `services/field-audio-ai` is a submodule with its own worker virtual environments and
+  nothing installs them for you.
+
+  One box renders a real one-second WAV with Dough, then hands it to the real
+  `FieldAudioClient.analyzeRenderedAudio` pointed at the default `http://127.0.0.1:8765`. Before
+  2026-08-14 the box displayed an **empty** string: `HttpClient.sendAsync` fails with a
+  `java.net.ConnectException` that carries no message at all, and `userFacingThrowable` correctly
+  unwrapped down to it. Now it displays a `FieldAudioTransportException` that names the address, the
+  request path, the underlying reason and where to start the service. Run it and read the
+  "what a box sees" output; the "how it reads" output is the same information off the typed fields.
+
+  If you *do* have the service running, change the base URL to a port nothing is listening on and
+  you will see the same thing. The seam itself is covered without any service at all by
+  `RenderedAudioSeamTest` against `FieldAudioServiceStub` — see dev_docs/field_audio_seam_stub.md.
+
+  This lives under transcripts/docs_capture/ rather than beside the corpus because
+  AgentTranscriptMaterializer scans transcripts/ itself and would then demand a committed
+  starting-point bundle for it — and that bundle is what the completion-corpus fixtures are
+  harvested from, so a new top-level transcript drifts two committed artifacts. A demonstration of
+  an error message is not a starting point anyone should be offered on the welcome page.
+operations:
+  - create:
+      box: audio_absent_service
+      name: Field Audio is not running
+      frame: { x: 80.0, y: 80.0, w: 380.0, h: 50.0 }
+      properties:
+        code: |
+          import afield.four.synth.Param
+          import afield.four.synth.SineOsc
+          import afield.stdlib.noir.audioai.FieldAudioClient
+          import afield.stdlib.noir.audioai.FieldAudioTransportException
+          import afield.stdlib.noir.audioai.analyzeRenderedAudio
+          import afield.stdlib.noir.audioai.renderDoughWav
+          import java.nio.file.Path
+          import java.util.concurrent.CompletionException
+
+          // A real render: Dough writes real RIFF bytes, faster than real time, and the file's own
+          // header is what reports the sample rate, channels and duration below.
+          val render = renderDoughWav(
+              Path.of(System.getProperty("java.io.tmpdir"), "field-audio-demo", "tone.wav"),
+              SineOsc(Param(220f)), seconds = 1.0,
+              provenance = mapOf("field_box" to "audio_absent_service"),
+          )
+          display(
+              "render",
+              "rendered ${render.path} · ${render.channels}ch @ ${render.sampleRate} Hz · " +
+                  "${"%.3f".format(render.durationSeconds)} s",
+          )
+
+          // The default address. Nothing is listening on it unless you started the Python service.
+          val client = FieldAudioClient()
+          display("service", "asking ${client.baseUri}")
+
+          client.analyzeRenderedAudio(render)
+              .thenAccept { completed ->
+                  display(
+                      "what a box sees",
+                      "the service answered: ${completed.analyses.size} analyses over " +
+                          "${"%.3f".format(completed.region.durationSeconds)} s",
+                  )
+              }
+              .exceptionally { raised ->
+                  val visible = generateSequence(raised) { (it as? CompletionException)?.cause }.last()
+                  display("what a box sees", visible.message ?: "<no message at all>")
+                  display(
+                      "how it reads",
+                      when (visible) {
+                          is FieldAudioTransportException ->
+                              "FieldAudioTransportException · baseUri=${visible.baseUri} · " +
+                                  "requestPath=${visible.requestPath} · cause=${visible.cause}"
+                          else -> "${visible::class.qualifiedName} · message=${visible.message}"
+                      },
+                  )
+                  null
+              }
+
+  - execute: { box: audio_absent_service }
+  # The refusal lands on the client's own executor a few milliseconds after the fragment returns,
+  # so give the `exceptionally` branch time to display before anything asks for the output.
+  - wait: { millis: 1500 }
+  - await: { wait: pending }
