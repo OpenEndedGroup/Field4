@@ -24,7 +24,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 39 | 79% |
 | [DirtSamples.kt](../src/jvmMain/kotlin/afield/four/synth/DirtSamples.kt) | Audio | boolean_network_music_examples | 8 | 42 | 5% |
 | [ParamQuery.kt](../src/jvmMain/kotlin/afield/four/synth/ParamQuery.kt) | Synthesis | graph_query | 4 | 47 | 7% |
-| [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Uncategorised | audio_ai_gesture_board | 4 | 5 | 25% |
+| [GestureBoard.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt) | Audio AI | audio_ai_gesture_board | 4 | 5 | 25% |
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 83% |
@@ -103,7 +103,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [tuio.kt](../src/jvmMain/kotlin/afield/stdlib/tuio.kt) | Data | — | 1 | 7 | 20% |
 | [FaustEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEditorExtension.kt) | Synthesis | — | 1 | 3 | 20% |
 | [SonicPiEditorExtension.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiEditorExtension.kt) | Audio | — | 1 | 3 | 20% |
-| [GestureBoardVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt) | Uncategorised | — | 1 | 1 | 33% |
+| [GestureBoardVisualization.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt) | Audio AI | — | 1 | 1 | 33% |
 | [AudioReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/AudioReturnValue.kt) | Synthesis | — | 1 | 0 | 0% |
 | [PatPatternReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/PatPatternReturnValue.kt) | Patterns | — | 1 | 0 | 0% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Solvers | — | 0 | 241 | 29% |
@@ -201,9 +201,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `RelaxToMidpointProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1434` |
 | `JitterProcess` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1495` |
 | `DynamicProcessPipeline` | class | `src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt:1518` |
-| `GestureBoardDsl` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:10` |
-| `GestureCurveBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:13` |
-| `GestureBoardBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:28` |
+| `GestureBoardDsl` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:12` |
+| `GestureCurveBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:15` |
+| `GestureBoardBuilder` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt:30` |
 | `GestureCurveKind` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:224` |
 | `GesturePoint` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:232` |
 | `GestureCurve` | class | `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt:238` |

@@ -187,6 +187,21 @@ object StdlibReferenceGenerator {
         }
     }
 
+    /**
+     * The last-resort bucket for a file carrying no `@file:CompletionCategory`, and a *failure* —
+     * never a page. It has no [CATEGORY_BLURBS] entry, so a file landing here is published under a
+     * heading called "Uncategorised" with no description, which is worse than not publishing it.
+     *
+     * Enforcing that here rather than in the drift guard is deliberate. The drift guard compares the
+     * committed pages against what the source produces, so it certifies *faithfulness*, not
+     * correctness: once someone regenerates and commits an `uncategorised.md`, source and artifact
+     * agree and every guard goes green while the docs ship an instrument on a page named after the
+     * fact that nobody categorised it. That is exactly what happened between 2026-08-08 and
+     * 2026-08-14 with the gesture board. This check cannot be silenced by regenerating, because it
+     * fails on the source condition.
+     */
+    private const val UNCATEGORISED = "Uncategorised"
+
     /** Page order, and the prose that introduces each category page. */
     private val CATEGORY_BLURBS: Map<String, String> = linkedMapOf(
         "Math" to "Numerics: signal processing in both domains, estimation and fitting, " +
@@ -366,6 +381,10 @@ object StdlibReferenceGenerator {
 
         val failures = mutableListOf<String>()
         if (symbolCount < 500) failures += "only $symbolCount symbols emitted — the parse looks broken"
+        documents.filter { it.category == UNCATEGORISED }.forEach {
+            failures += "${it.relativePath}: no @file:CompletionCategory, so it would be published " +
+                "on a page called \"$UNCATEGORISED\" — add the annotation its package siblings carry"
+        }
         pages.forEach { (name, text) ->
             if (text.length < 200) failures += "$name is suspiciously short (${text.length} chars)"
         }
@@ -592,7 +611,7 @@ object StdlibReferenceGenerator {
 
     /** Last-resort bucket for a file that carries no `@file:CompletionCategory`. */
     private fun inferredCategory(relativePath: String): String =
-        if ("/visualization/" in relativePath) "Visualization" else "Uncategorised"
+        if ("/visualization/" in relativePath) "Visualization" else UNCATEGORISED
 
     /**
      * The file's own opening KDoc, plus the line of the declaration it would otherwise have been

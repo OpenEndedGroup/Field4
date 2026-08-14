@@ -4,7 +4,7 @@
 
 The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. Nothing here loads a model or does inference in the JVM — a box builds a `ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can poll or watch; the results are immutable server-side *assets* referenced by id, which is why the protocol types carry representation ids rather than samples. Every call is asynchronous and completes off Field's runloop and off the audio callback, so nothing here may be `.get()`-ed from a box's frame. The rest of the category is what you do with a result inside a box: the candidate browser, the EnCodec reconstruction microscope, the beat/pitch analysis viewer and the job monitor, each of them one function returning a self-contained HTML fragment for `display(…)`. Start from `Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; [Field Audio service reference](../field_audio_service_reference.md) is the service-side contract the types mirror.
 
-11 source file(s), 336 public symbol(s), 272 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+13 source file(s), 351 public symbol(s), 276 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -74,6 +74,14 @@ user is looking at.
 | <code class="highlight"><span class="k">fun</span> <span class="nc">AssetRepresentation</span><span class="p">.</span><span class="nf">audioVisualizerHtml</span><span class="p">(</span><span class="n">serviceBaseUrl</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;/field-audio&quot;</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="n">role</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">AudioVisualizerOptions</span> <span class="o">=</span> <span class="nc">AudioVisualizerOptions</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> | Render any Field Audio WAV representation with range-aware server-side waveform summaries. |
 
 ## CandidateBoard.kt { #candidateboard-kt }
+
+The candidate board: the instrument for choosing between the alternatives a generation produced.
+
+One function, one HTML fragment, three things a listener actually needs — a player per candidate,
+the source-into-candidate splice preview beside it so a take can be judged *in place* rather than
+in isolation, and a rating, selection flag and note that are written straight back to the service.
+The provenance line under each player states the sample rates and the conversion, because whether
+you are hearing the model or a resampler is not a detail.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/CandidateBoard.kt`
 
@@ -241,6 +249,64 @@ Persist only protocol data and asset IDs; Python remains a worker, never project
 | <code class="highlight"><span class="k">fun</span> <span class="nf">install</span><span class="p">(</span><span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> | Register `property` as persistent and JSON-sidecar-separated on this document. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">load</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span></code> | Read the saved state out of `box`, or an empty [`FieldAudioProjectState`](audio-ai.md#protocol-kt-fieldaudioprojectstate) if there is none yet. |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">save</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nc">FieldAudioProjectState</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PROPERTY</span><span class="p">)</span></code> | Write `state` into `box` as pretty-printed JSON, replacing whatever was there. |
+
+## GestureBoard.kt { #gestureboard-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoard.kt`
+
+**Used in:** [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md)
+
+### Top-level functions { #gestureboard-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">gestureBoard</span><span class="p">(</span><span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GestureBoardBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">GestureBoard</span></code> | A live-codeable temporal sketch for source-conditioned generation. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">validateGestureBoard</span><span class="p">(</span><span class="n">board</span><span class="p">:</span> <span class="nc">GestureBoard</span><span class="p">)</span><span class="p">:</span> <span class="nc">GestureBoard</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">compileGestureBoard</span><span class="p">(</span><span class="n">board</span><span class="p">:</span> <span class="nc">GestureBoard</span><span class="p">,</span> <span class="n">operation</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;generate.style&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="p">:</span> <span class="nc">JsonObject</span> <span class="o">=</span> <span class="nc">JsonObject</span><span class="p">(</span><span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">GestureCompilation</span></code> | Immediate local preview of the service's version-1 compilation contract. |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">gestureCandidates</span><span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">AssetRegion</span><span class="p">,</span> <span class="n">board</span><span class="p">:</span> <span class="nc">GestureBoard</span><span class="p">,</span> <span class="n">seeds</span><span class="p">:</span> <span class="nc">LongRange</span> <span class="o">=</span> <span class="mi">0L</span> <span class="n">until</span> <span class="mi">8L</span><span class="p">,</span> <span class="n">backend</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">requestedBy</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">controls</span><span class="p">:</span> <span class="nc">MusicGenStyleControls</span> <span class="o">=</span> <span class="nc">MusicGenStyleControls</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">forceRegenerate</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">ModelOperation</span></code> | Source-style generation plus an inspectable gesture sketch and candidate scoring. |
+
+### GestureBoardDsl { #gestureboard-kt-gestureboarddsl }
+
+<code class="highlight"><span class="k">annotation</span> <span class="k">class</span> <span class="nc">GestureBoardDsl</span></code>
+
+### GestureCurveBuilder { #gestureboard-kt-gesturecurvebuilder }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">GestureCurveBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">GestureCurveKind</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Number</span><span class="p">)</span></code> |  |
+
+### GestureBoardBuilder { #gestureboard-kt-gestureboardbuilder }
+
+<code class="highlight"><span class="k">class</span> <span class="nc">GestureBoardBuilder</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">private</span> <span class="k">val</span> <span class="n">basePrompt</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">var</span> <span class="n">metadata</span><span class="p">:</span> <span class="nc">JsonObject</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">prompt</span><span class="p">(</span><span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">durationSeconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">event</span><span class="p">(</span><span class="n">timeSeconds</span><span class="p">:</span> <span class="nc">Number</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">strength</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span></code> |  |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">curve</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">GestureCurveKind</span><span class="p">,</span> <span class="n">weight</span><span class="p">:</span> <span class="nc">Number</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">block</span><span class="p">:</span> <span class="nc">GestureCurveBuilder</span><span class="p">.</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code> |  |
+
+## GestureBoardVisualization.kt { #gestureboardvisualization-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/noir/audioai/GestureBoardVisualization.kt`
+
+### Top-level functions { #gestureboardvisualization-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">gestureBoardHtml</span><span class="p">(</span><span class="n">board</span><span class="p">:</span> <span class="nc">GestureBoard</span><span class="p">,</span> <span class="n">compilation</span><span class="p">:</span> <span class="nc">GestureCompilation</span> <span class="o">=</span> <span class="nf">compileGestureBoard</span><span class="p">(</span><span class="n">board</span><span class="p">)</span><span class="p">,</span> <span class="n">candidates</span><span class="p">:</span> <span class="nc">CandidateSet</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1080</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### GestureBoardVisualization { #gestureboardvisualization-kt-gestureboardvisualization }
+
+<code class="highlight"><span class="k">object</span> <span class="nc">GestureBoardVisualization</span></code>
+
+Interactive, dependency-free timeline renderer for a [`GestureBoard`](audio-ai.md#protocol-kt-gestureboard).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">fun</span> <span class="nf">renderHtml</span><span class="p">(</span><span class="n">board</span><span class="p">:</span> <span class="nc">GestureBoard</span><span class="p">,</span> <span class="n">compilation</span><span class="p">:</span> <span class="nc">GestureCompilation</span> <span class="o">=</span> <span class="nf">compileGestureBoard</span><span class="p">(</span><span class="n">board</span><span class="p">)</span><span class="p">,</span> <span class="n">candidates</span><span class="p">:</span> <span class="nc">CandidateSet</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1080</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 
 ## JobMonitor.kt { #jobmonitor-kt }
 
