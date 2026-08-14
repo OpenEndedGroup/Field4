@@ -8,6 +8,7 @@ import afield.stopTrackedJobs
 import com.illposed.osc.ByteArrayListBytesReceiver
 import com.illposed.osc.OSCMessage
 import com.illposed.osc.OSCSerializerAndParserBuilder
+import java.nio.file.Files
 import java.nio.ByteBuffer
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -56,6 +57,9 @@ object SonicPiProtocolSmokeTest {
         println("activity decorations")
         checkActivityDecorations(failures)
 
+        println("Linux AppImage install layout")
+        checkAppImageInstallLayout(failures)
+
         return if (failures.isEmpty()) {
             println("SonicPi protocol smoke tests passed")
             true
@@ -63,6 +67,42 @@ object SonicPiProtocolSmokeTest {
             println("SonicPi protocol smoke tests FAILED:")
             failures.forEach { println("  - $it") }
             false
+        }
+    }
+
+    private fun checkAppImageInstallLayout(failures: MutableList<String>) {
+        val appDir = Files.createTempDirectory("field4-sonicpi-appdir-").toFile()
+        try {
+            val home = appDir.resolve("usr/share/sonic-pi")
+            val daemon = home.resolve("app/server/ruby/bin/daemon.rb").apply {
+                parentFile.mkdirs()
+                writeText("")
+            }
+            val ruby = appDir.resolve("usr/ruby/bin/ruby").apply {
+                parentFile.mkdirs()
+                writeText("")
+                setExecutable(true)
+            }
+            appDir.resolve("usr/lib").mkdirs()
+            appDir.resolve("usr/ruby/lib").mkdirs()
+
+            val install = SonicPiInstall.of(appDir)
+            if (install == null) {
+                failures += "an extracted Linux AppImage layout was not discovered"
+                return
+            }
+            if (install.home != home.canonicalFile) failures += "AppImage home: ${install.home} != $home"
+            if (install.daemon != daemon.canonicalFile) failures += "AppImage daemon: ${install.daemon} != $daemon"
+            if (install.ruby != ruby.canonicalFile) failures += "AppImage Ruby: ${install.ruby} != $ruby"
+            val libraries = install.environment["LD_LIBRARY_PATH"].orEmpty()
+            if (!libraries.contains(appDir.resolve("usr/lib").absolutePath)) {
+                failures += "AppImage environment omitted usr/lib: $libraries"
+            }
+            if (!libraries.contains(appDir.resolve("usr/ruby/lib").absolutePath)) {
+                failures += "AppImage environment omitted usr/ruby/lib: $libraries"
+            }
+        } finally {
+            appDir.deleteRecursively()
         }
     }
 
@@ -253,6 +293,12 @@ object SonicPiProtocolSmokeTest {
         if (syn.sourceLine != "play 60 do") failures += "syntax error source line: '${syn.sourceLine}'"
         if (syn.firstColumn != 3) failures += "syntax error firstColumn: ${syn.firstColumn} != 3"
         if (!syn.toString().contains("syntax error")) failures += "syntax errors should say so: ${syn}"
+        if (sonicPiErrorBoxLine(6, 2) != 8) {
+            failures += "Sonic Pi line 6 at box offset 2 should target Field line 8"
+        }
+        if (sonicPiErrorBoxLine(-1, 2) != -1) {
+            failures += "an unknown Sonic Pi error line should remain untargeted"
+        }
     }
 }
 
@@ -448,11 +494,9 @@ object SonicPiLiveSmokeTest {
 
         val box = Box("sonic-pi-routing-test")
         val marks = CopyOnWriteArrayList<Triple<String, String, Int>>()
-        val printed = CopyOnWriteArrayList<String>()
         box.output.errorProxy = { content, property, line ->
             marks += Triple(content?.toString() ?: "", property, line)
         }
-        box.output.proxy = { content, _, _ -> printed += content?.toString() ?: "" }
 
         val workspace = "field4-routing-${sp.ports.guiSendToSpider}"
         sp.reportTo(workspace, box)
@@ -473,10 +517,10 @@ object SonicPiLiveSmokeTest {
         println("  ${mark.first.lineSequence().first()}")
         if (!mark.first.contains("final_no")) failures += "the mark did not name the bad call: ${mark.first}"
         if (mark.second != "code") failures += "the mark landed on property '${mark.second}', not 'code'"
-        // The offending line is the 4th of the snippet; the marker convention is 0-based, so 3.
-        if (mark.third != 3) failures += "the mark landed on line ${mark.third}, expected 3"
-        if (printed.none { it.contains("final_no") }) {
-            failures += "the error text never reached the box's output pane"
+        // Sonic Pi and Field's output protocol are both 1-based: line 4 remains line 4 here.
+        if (mark.third != 4) failures += "the mark landed on line ${mark.third}, expected 4"
+        if (!mark.first.contains("final_no te")) {
+            failures += "the error-kind output omitted the offending source line: ${mark.first}"
         }
 
         // Re-running has to clear the stale marker, or a fixed typo stays underlined forever.

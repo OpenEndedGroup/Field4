@@ -172,9 +172,10 @@ class SonicPi private constructor(
         require(install.ruby.canExecute()) { "Sonic Pi's bundled ruby is not executable: ${install.ruby}" }
         require(install.daemon.isFile) { "Sonic Pi's daemon.rb is missing: ${install.daemon}" }
 
-        process = ProcessBuilder(install.ruby.absolutePath, install.daemon.absolutePath)
+        val processBuilder = ProcessBuilder(install.ruby.absolutePath, install.daemon.absolutePath)
             .directory(install.daemon.parentFile)
-            .start()
+        processBuilder.environment().putAll(install.environment)
+        process = processBuilder.start()
 
         // The daemon prints one line — six whitespace-separated integers — then keeps the pipe open
         // for its own logging. Both streams need draining forever regardless, or a full pipe buffer
@@ -383,9 +384,10 @@ class SonicPi private constructor(
      * from and never appears in the box. Errors raised inside a `live_loop` can arrive minutes
      * later, which makes this the normal case rather than an edge one.
      *
-     * `lineOffset` is the box line on which the Ruby source begins, following the same convention as
-     * the other language interfaces (`execute.line + reportedLine - 1`). The default of 0 is right
-     * for the usual shape, where the opening `sonicPi("""` and the first line of Ruby share a line.
+     * `lineOffset` is the number of box lines before the Ruby source. Both Sonic Pi and Field's
+     * editor/output protocol use 1-based lines, so a reported line maps to `reportedLine +
+     * lineOffset`. The default of 0 is right for the usual shape, where the opening `sonicPi("""`
+     * and the first line of Ruby share a line.
      */
     fun reportTo(workspace: String, box: Box, lineOffset: Int = 0): SonicPi = apply {
         val target = ReportTarget(box, lineOffset)
@@ -560,13 +562,13 @@ class SonicPi private constructor(
         trim(errorBuffer)
         val target = targetFor(error.jobId)
         if (target != null) {
-            // Both channels on purpose: `error` puts a marker on the line, `println` makes the text
-            // readable. Sonic Pi's own message already names the line and thread, which matters for
-            // a live_loop, where the failing thread is not the one you ran.
+            // One error-kind output on purpose. A following normal println would make Field's
+            // normal-output handler clear this error immediately, leaving grey text and no marker.
+            // toString includes the source line as well as the diagnostic, so the red output remains
+            // readable without a second channel. Sonic Pi and Field both count lines from one.
             inMain {
                 runCatching {
-                    target.box.error(error.message.trim(), "code", error.line - 1 + target.lineOffset)
-                    target.box.println(error.toString())
+                    target.box.error(error.toString(), "code", sonicPiErrorBoxLine(error.line, target.lineOffset))
                 }
             }
         } else if (reportErrors) {
@@ -762,19 +764,35 @@ data class SonicPiPorts(
     )
 }
 
-/** Where Sonic Pi is installed, and the two files inside it that owned mode needs. */
-data class SonicPiInstall(val home: File, val ruby: File, val daemon: File) {
+/** Where Sonic Pi is installed, and the files/environment that owned mode needs. */
+data class SonicPiInstall(
+    val home: File,
+    val ruby: File,
+    val daemon: File,
+    /** AppImages need the same library and executable search paths that their `AppRun` sets. */
+    val environment: Map<String, String> = emptyMap()
+) {
     companion object {
         /**
          * Find a Sonic Pi install.
          *
-         * `-Dsonicpi.home=` or `SONIC_PI_HOME` wins, and should point at the `Contents/Resources`
-         * directory on macOS (or the equivalent root elsewhere).
+         * `-Dsonicpi.home=` or `SONIC_PI_HOME` wins, and may point at the `Contents/Resources`
+         * directory on macOS, an extracted Linux AppDir, or the AppImage itself. A Linux AppImage
+         * in `~/Downloads` is also found automatically and extracted once into Field's cache.
          */
         fun discover(): SonicPiInstall {
             val explicit = System.getProperty("sonicpi.home") ?: System.getenv("SONIC_PI_HOME")
+            val explicitAppImage =
+                System.getProperty("sonicpi.appimage") ?: System.getenv("FIELD_SONIC_PI_APPIMAGE")
+
+            sequenceOf(explicitAppImage, explicit)
+                .filterNotNull()
+                .map(::File)
+                .filter { it.isFile && it.name.endsWith(".AppImage", ignoreCase = true) }
+                .forEach { return fromAppImage(it) }
+
             val roots = buildList {
-                explicit?.let { add(File(it)) }
+                explicit?.let { File(it).takeIf(File::isDirectory)?.let(::add) }
                 add(File("/Applications/Sonic Pi.app/Contents/Resources"))
                 add(File(System.getProperty("user.home"), "Applications/Sonic Pi.app/Contents/Resources"))
                 add(File("/opt/sonic-pi"))
@@ -782,26 +800,112 @@ data class SonicPiInstall(val home: File, val ruby: File, val daemon: File) {
             }
             for (root in roots) {
                 of(root)?.let { return it }
-                // tolerate being handed the .app itself, or the app/ directory inside it
-                of(File(root, "Contents/Resources"))?.let { return it }
             }
+
+            appImageCandidates().forEach { return fromAppImage(it) }
+
             error(
                 "Could not find a Sonic Pi install. Looked in:\n" +
                     roots.joinToString("\n") { "  $it" } +
-                    "\nSet -Dsonicpi.home=… or SONIC_PI_HOME to the Contents/Resources directory."
+                    "\nAlso looked for Sonic Pi AppImages in ~/Downloads. " +
+                    "Set -Dsonicpi.home=…, SONIC_PI_HOME, or FIELD_SONIC_PI_APPIMAGE."
             )
         }
 
-        /** Build an install from a candidate root, or null if the pieces are not there. */
+        /** Build an install from a candidate app root/AppDir, or null if the pieces are not there. */
         fun of(root: File): SonicPiInstall? {
-            val daemon = File(root, "app/server/ruby/bin/daemon.rb")
+            val homes = listOf(
+                root,
+                File(root, "Contents/Resources"),
+                File(root, "usr/share/sonic-pi"),
+                File(root, "share/sonic-pi")
+            ).map { runCatching { it.canonicalFile }.getOrDefault(it.absoluteFile) }.distinct()
+            return homes.firstNotNullOfOrNull(::ofHome)
+        }
+
+        private fun ofHome(root: File): SonicPiInstall? {
+            val daemon = File(root, "app/server/ruby/bin/daemon.rb").canonicalFile
             if (!daemon.isFile) return null
+
+            // Linux AppImages put Ruby beside share/, not below Sonic Pi's app/server/native/.
+            val appImageRuby = File(root, "../../ruby/bin/ruby").canonicalFile
             val ruby = sequenceOf(
                 File(root, "app/server/native/ruby/bin/ruby"),
                 File(root, "server/native/ruby/bin/ruby"),
+                appImageRuby,
                 File("/usr/bin/ruby")
-            ).firstOrNull { it.canExecute() } ?: return null
-            return SonicPiInstall(root, ruby, daemon)
+            ).map { runCatching { it.canonicalFile }.getOrDefault(it.absoluteFile) }
+                .firstOrNull { it.canExecute() } ?: return null
+
+            val environment = if (ruby == appImageRuby) appImageEnvironment(root) else emptyMap()
+            return SonicPiInstall(root.canonicalFile, ruby, daemon, environment)
+        }
+
+        private fun appImageEnvironment(home: File): Map<String, String> {
+            val usr = File(home, "../..").canonicalFile
+            val rubyBin = File(usr, "ruby/bin").absolutePath
+            val libraryPath = listOf(File(usr, "lib"), File(usr, "ruby/lib"))
+                .joinToString(File.pathSeparator) { it.absolutePath }
+            val currentPath = System.getenv("PATH").orEmpty()
+            val currentLibraries = System.getenv("LD_LIBRARY_PATH").orEmpty()
+            return mapOf(
+                "PATH" to listOf(rubyBin, currentPath).filter(String::isNotBlank).joinToString(File.pathSeparator),
+                "LD_LIBRARY_PATH" to listOf(libraryPath, currentLibraries)
+                    .filter(String::isNotBlank)
+                    .joinToString(File.pathSeparator)
+            )
+        }
+
+        private fun appImageCandidates(): List<File> {
+            val home = File(System.getProperty("user.home"))
+            return listOf(File(home, "Downloads"), File(home, "downloads"))
+                .flatMap { directory ->
+                    directory.listFiles { file ->
+                        file.isFile && file.name.contains("sonic", ignoreCase = true) &&
+                            file.name.contains("pi", ignoreCase = true) &&
+                            file.name.endsWith(".AppImage", ignoreCase = true)
+                    }?.toList().orEmpty()
+                }
+                .distinctBy { it.absolutePath }
+                .sortedByDescending { it.lastModified() }
+        }
+
+        @Synchronized
+        private fun fromAppImage(appImage: File): SonicPiInstall {
+            require(appImage.canExecute()) { "Sonic Pi AppImage is not executable: $appImage" }
+
+            val cacheBase = System.getenv("XDG_CACHE_HOME")
+                ?.takeIf(String::isNotBlank)
+                ?.let(::File)
+                ?: File(System.getProperty("user.home"), ".cache")
+            val cacheKey = buildString {
+                append(appImage.nameWithoutExtension.replace(Regex("[^A-Za-z0-9._-]"), "_"))
+                append('-').append(appImage.length())
+                append('-').append(appImage.lastModified())
+            }
+            val cache = File(cacheBase, "field4/sonic-pi/appimages/$cacheKey")
+            val extracted = File(cache, "squashfs-root")
+            val complete = File(cache, ".field4-extraction-complete")
+
+            if (complete.isFile) {
+                of(extracted)?.let { return it }
+            }
+
+            check(cache.mkdirs() || cache.isDirectory) { "Could not create Sonic Pi cache: $cache" }
+            val extractionLog = File(cache, "extract.log")
+            val process = ProcessBuilder(appImage.absolutePath, "--appimage-extract", "usr")
+                .directory(cache)
+                .redirectOutput(extractionLog)
+                .redirectErrorStream(true)
+                .start()
+            val exit = process.waitFor()
+            check(exit == 0) {
+                "Could not extract Sonic Pi AppImage (exit $exit). See $extractionLog"
+            }
+            val install = of(extracted)
+                ?: error("Sonic Pi AppImage extracted, but its server/Ruby layout was not recognised: $extracted")
+            complete.writeText("${appImage.absolutePath}\n${appImage.length()}\n${appImage.lastModified()}\n")
+            return install
         }
 
         fun isInstalled(): Boolean = runCatching { discover() }.isSuccess
@@ -848,6 +952,10 @@ data class SonicPiError(
         }
     }
 }
+
+/** Translate a 1-based Sonic Pi source line into Field's 1-based output protocol. */
+internal fun sonicPiErrorBoxLine(sonicPiLine: Int, lineOffset: Int): Int =
+    if (sonicPiLine < 1) -1 else sonicPiLine + lineOffset
 
 data class SonicPiVersion(
     val version: String,

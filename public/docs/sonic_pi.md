@@ -6,6 +6,24 @@ Field starts the Sonic Pi server itself and becomes the client it expects, so th
 window — a Field box is the buffer, and Sonic Pi's log, errors and per-line activity come back into
 that box.
 
+## Linux AppImage setup
+
+Field can use the Sonic Pi v5 AppImage directly. Leave the AppImage executable in `~/Downloads`;
+the first call to `sonicPi(...)` finds the newest matching image and extracts its `usr` tree into
+`~/.cache/field4/sonic-pi/appimages/`. Later boots reuse that cache. To keep the image elsewhere,
+set `FIELD_SONIC_PI_APPIMAGE=/absolute/path/to/Sonic-Pi.AppImage` before starting Field.
+
+The v5.0.0 Linux image's bundled Ruby extension for YAML links to `libyaml-0.so.2`. On Arch Linux
+and CachyOS, install that small runtime dependency once:
+
+```bash
+sudo pacman -S --needed libyaml
+```
+
+Do not start the Sonic Pi GUI when using it from Field. Field starts and owns the daemon itself;
+that is how it receives v5's one-time control token, routes errors back to the right box, and stops
+the audio job when you stop the box.
+
 Owned mode is not a preference. Every interesting message in Sonic Pi's control API is authenticated
 with a token the server mints at boot, and v5 prints that token exactly once, to the daemon's stdout.
 The long-standing trick of scraping it out of `daemon.log` no longer works: in v5 the boot-time token
