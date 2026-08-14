@@ -2,10 +2,12 @@
 
 `afield.stdlib.noir.audioai` talks to a *separate process*: the Python service in
 `services/field-audio-ai`, a git submodule with its own worker virtual environments, reached over
-HTTP and one WebSocket at `http://127.0.0.1:8765` by default. On a fresh checkout that service is
-not installed — no `.venv` at the submodule root, none under `worker-environments/{analysis,audiocraft}` —
-and installing it means downloading models. So for most of the life of this codebase, on most
-machines, **every code path past the WAV renderers has been unrunnable and untested.**
+HTTP and one WebSocket at `http://127.0.0.1:8765` by default. On this machine, checked rather than
+assumed: there is no `.venv` at the submodule root, and `worker-environments/analysis` and
+`worker-environments/audiocraft` each contain only `README.md`, `adapter.py`,
+`model-revisions.json`, `pyproject.toml` and `uv.lock` — no environment. Installing one means
+downloading models. So for most of the life of this codebase, on most machines, **every code path
+past the WAV renderers has been unrunnable and untested.**
 
 `src/jvmTest/kotlin/afield/stdlib/noir/audioai/FieldAudioServiceStub.kt` is the answer:
 a Ktor/Netty server on an ephemeral loopback port that speaks enough of the protocol to drive the
@@ -27,7 +29,7 @@ Concretely, running against a socket is what keeps in scope: the client's own
 `java.net.http.HttpClient` and its connect timeout; `HttpRequest.BodyPublishers.ofFile` streaming
 the WAV; `Json { ignoreUnknownKeys = true; explicitNulls = false }` against real bytes;
 `CompletableFuture` composition and cancellation across a real thread boundary; and the lifetime of
-the events WebSocket, which is where two of the four defects below lived.
+the events WebSocket, without which the leak below could not have been seen at all.
 
 ## It is modelled on the service, not on the client
 
@@ -170,6 +172,8 @@ has never been seen to fail proves something about itself and nothing about the 
    What a box actually shows, captured from a live Field:
 
    ```
+   render          :: rendered …/T/field-audio-demo/tone.wav · 1ch @ 48000 Hz · 1.000 s
+   service         :: asking http://127.0.0.1:8765
    what a box sees :: Field Audio is not answering at http://127.0.0.1:8765/v1/assets/import:
                       ConnectException: nothing accepted the connection. The service is a separate
                       process — start it from services/field-audio-ai — or construct
@@ -180,6 +184,9 @@ has never been seen to fail proves something about itself and nothing about the 
 
    Reproduce it with `dev_docs/agents/transcripts/docs_capture/field_audio_absent_service.yaml`,
    whose own description explains why it lives under `docs_capture/` rather than beside the corpus.
+   The `render` line is the header fix in the same box: the demo re-wraps its own render through
+   `RenderedAudioFile.existing`, so `1ch @ 48000 Hz · 1.000 s` is read back out of the file rather
+   than restated by the renderer. Before this branch that line read `nullch @ null Hz · null s`.
 
 ### The 1e-6 slack: verified fine, not a bug
 

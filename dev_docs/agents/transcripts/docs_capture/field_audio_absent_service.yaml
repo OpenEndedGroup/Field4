@@ -4,13 +4,18 @@ description: >
   always: `services/field-audio-ai` is a submodule with its own worker virtual environments and
   nothing installs them for you.
 
-  One box renders a real one-second WAV with Dough, then hands it to the real
-  `FieldAudioClient.analyzeRenderedAudio` pointed at the default `http://127.0.0.1:8765`. Before
-  2026-08-14 the box displayed an **empty** string: `HttpClient.sendAsync` fails with a
+  One box renders a real one-second WAV with Dough, re-wraps it through
+  `RenderedAudioFile.existing` so that its reported rate, channels and duration are read back out of
+  the file's own header, then hands it to the real `FieldAudioClient.analyzeRenderedAudio` pointed at
+  the default `http://127.0.0.1:8765`.
+
+  Before 2026-08-14 the box displayed an **empty** string: `HttpClient.sendAsync` fails with a
   `java.net.ConnectException` that carries no message at all, and `userFacingThrowable` correctly
   unwrapped down to it. Now it displays a `FieldAudioTransportException` that names the address, the
   request path, the underlying reason and where to start the service. Run it and read the
   "what a box sees" output; the "how it reads" output is the same information off the typed fields.
+  The "render" output is the other half of the same night's work — before it, `existing` reported
+  null for all three fields.
 
   If you *do* have the service running, change the base URL to a port nothing is listening on and
   you will see the same thing. The seam itself is covered without any service at all by
@@ -32,16 +37,22 @@ operations:
           import afield.four.synth.SineOsc
           import afield.stdlib.noir.audioai.FieldAudioClient
           import afield.stdlib.noir.audioai.FieldAudioTransportException
+          import afield.stdlib.noir.audioai.RenderedAudioFile
           import afield.stdlib.noir.audioai.analyzeRenderedAudio
           import afield.stdlib.noir.audioai.renderDoughWav
           import java.nio.file.Path
           import java.util.concurrent.CompletionException
 
-          // A real render: Dough writes real RIFF bytes, faster than real time, and the file's own
-          // header is what reports the sample rate, channels and duration below.
-          val render = renderDoughWav(
+          // A real render: Dough writes real RIFF bytes, faster than real time.
+          val rendered = renderDoughWav(
               Path.of(System.getProperty("java.io.tmpdir"), "field-audio-demo", "tone.wav"),
               SineOsc(Param(220f)), seconds = 1.0,
+          )
+          // Re-wrapped through `existing`, so the sample rate, channels and duration printed below
+          // are read back out of the file's own header rather than restated by the renderer that
+          // already knew them. Before 2026-08-14 all three of them came back null here.
+          val render = RenderedAudioFile.existing(
+              rendered.path, "Dough",
               provenance = mapOf("field_box" to "audio_absent_service"),
           )
           display(
