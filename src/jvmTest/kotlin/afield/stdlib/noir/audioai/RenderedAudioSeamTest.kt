@@ -408,6 +408,11 @@ class RenderedAudioSeamTest {
         assertContains(visible.message.orEmpty(), "127.0.0.1:$port", false, unhelpful)
         assertContains(visible.message.orEmpty(), "services/field-audio-ai", false, unhelpful)
         assertEquals("/v1/assets/import", visible.requestPath)
+        // A refused loopback connection carries no text at all — not on the ConnectException and
+        // not on any cause of it, measured — so the sentence has to be supplied. Observed in a live
+        // Field on port 9492 as the difference between "…: ConnectException." and
+        // "…: ConnectException: nothing accepted the connection."
+        assertContains(visible.message.orEmpty(), "nothing accepted the connection", false, unhelpful)
     }
 
     @Test

@@ -11,9 +11,11 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.net.ConnectException
 import java.net.URI
 import java.net.URLEncoder
 import java.net.http.HttpClient
+import java.net.http.HttpConnectTimeoutException
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.http.WebSocket
@@ -560,9 +562,22 @@ class FieldAudioClient(
      * loopback connection is a `ConnectException` with a null message.
      */
     private fun unreachable(path: String, cause: Throwable): FieldAudioTransportException {
-        val reason = cause.message?.takeIf { it.isNotBlank() }
-            ?: cause::class.simpleName
-            ?: cause::class.java.name
+        // Two different silences to fill. A refused loopback connection is a `ConnectException`
+        // whose message is null *and* whose whole cause chain is empty — measured against a closed
+        // port, so there is no "Connection refused" text anywhere to quote — which is why it gets a
+        // clause of its own. Other transport faults (TLS, DNS) normally do carry a message, though
+        // sometimes only on a cause, so take the first one the chain offers.
+        val kind = cause::class.simpleName ?: cause::class.java.name
+        val detail = generateSequence(cause) { it.cause }
+            .take(8)
+            .mapNotNull { it.message?.takeIf(String::isNotBlank) }
+            .firstOrNull()
+            ?: when (cause) {
+                is ConnectException -> "nothing accepted the connection"
+                is HttpConnectTimeoutException -> "the connection timed out"
+                else -> null
+            }
+        val reason = if (detail == null || detail == kind) kind else "$kind: $detail"
         return FieldAudioTransportException(
             baseUri, path,
             "Field Audio is not answering at $baseUri$path: $reason. The service is a separate " +
