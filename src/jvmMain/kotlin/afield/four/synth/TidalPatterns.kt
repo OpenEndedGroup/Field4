@@ -188,6 +188,21 @@ import kotlin.math.min
 import kotlin.script.experimental.api.ResultValue
 import kotlinx.coroutines.runBlocking
 
+/**
+ * An **exact** rational number of cycles. The reason a third of a bar survives being sped up, reversed
+ * and slowed down again and still lands where it started.
+ *
+ * `BigInteger` over `BigInteger`, so there is no precision to lose and no bound on how finely a cycle
+ * can be subdivided. Every value is normalized on construction through [of] and again by every
+ * operator — the sign is carried on the numerator, then both terms are divided through by their gcd —
+ * so equal fractions really are `==`, and a `PatQ` is safe as a map key. A zero denominator is
+ * rejected rather than quietly becoming an infinity.
+ *
+ * Seconds appear only at the boundary where something has to be scheduled or heard; everything inside
+ * the pattern algebra is in cycles and stays exact. [fromDouble] is the deliberate exception and is
+ * lossy on purpose — it rounds onto a fixed denominator — so it is for reading a slider, not for
+ * arithmetic whose result you intend to compare.
+ */
 data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
     init { require(d != BigInteger.ZERO) { "Denominator cannot be 0" } }
 
@@ -229,6 +244,19 @@ data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
     override fun toString(): String = if (d == BigInteger.ONE) n.toString() else "$n/$d"
 }
 
+/**
+ * A **half-open** span of cycles, `[start, end)`, and the only thing you may ask a [PatPattern] about.
+ *
+ * Half-open is load-bearing rather than a convention: [contains] is `t >= start && t < end`, so
+ * consecutive arcs tile time without an event at a bar line belonging to both bars. That is what lets
+ * a scheduler walk cycle by cycle — the only thing it can do, since it cannot ask for all of time —
+ * without striking a note twice.
+ *
+ * Both ends are exact ([PatQ]), and the transforms are the ones the time algebra needs: [shift] and
+ * [scale] for translation and tempo, [dur] for the length, and [map] to move both ends through one
+ * function — which is what [PatEvent.mapTime] is built on, so an event's [PatEvent.whole] travels with
+ * its arc instead of being rebuilt by hand. An empty or reversed arc is rejected on construction.
+ */
 data class PatArc(val start: PatQ, val end: PatQ) {
     init { require(end > start) { "Arc end must be > start" } }
 
@@ -431,6 +459,25 @@ data class PatScheduledEvent<A>(
     }
 }
 
+/**
+ * Musical structure as a **function of time**: ask a `PatPattern<A>` for a [PatArc] and it answers with
+ * the events inside it.
+ *
+ * It is not a list, and that is the whole design. There is nothing stored to run off the end of, so a
+ * pattern that never repeats costs no more to hold than one that repeats every bar; `fast`, `rev`,
+ * `every` and the rest are cheap because they compose the query rather than rebuild any events; and
+ * asking about cycle 10,000 costs the same as asking about cycle 0. Time stays exact ([PatQ]) through
+ * every transform, so a third of a cycle is still a third after a round trip.
+ *
+ * `A` is deliberately unconstrained. An atom is whatever you want it to mean — a drum name for
+ * [playDirt], a note number for [Sequencing], a [PatFunctionAtom] for the `Fn` algebra, a parameter
+ * value, or a lambda's argument for an arbitrary side effect. Nothing in this type knows about sound.
+ *
+ * Two ways out. [events] is the raw query, in cycles, for anything building a transform. [eventSequence]
+ * is what a scheduler wants: playing order, one cycle at a time, each event yielded exactly once at its
+ * own onset and widened back to its real length — see its own KDoc for why the naive version strikes
+ * some notes twice.
+ */
 class PatPattern<A>(private val renderAbs: (PatArc) -> List<PatEvent<A>>) {
 
     fun events(absArc: PatArc): List<PatEvent<A>> = renderAbs(absArc)

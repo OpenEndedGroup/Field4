@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it — so it is not a list, it is queried, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-13 source file(s), 537 public symbol(s), 226 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+13 source file(s), 537 public symbol(s), 229 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -710,6 +710,8 @@ A tiny deterministic synth voice: one oscillator, one exponential-decay envelope
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatQ</span><span class="p">(</span><span class="k">val</span> <span class="n">n</span><span class="p">:</span> <span class="nc">BigInteger</span><span class="p">,</span> <span class="k">val</span> <span class="n">d</span><span class="p">:</span> <span class="nc">BigInteger</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Comparable</span><span class="p">&lt;</span><span class="nc">PatQ</span><span class="p">&gt;</span></code>
 
+An **exact** rational number of cycles. The reason a third of a bar survives being sped up, reversed and slowed down again and still lands where it started.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">other</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">)</span></code> |  |
@@ -724,6 +726,8 @@ A tiny deterministic synth voice: one oscillator, one exponential-decay envelope
 ### PatArc { #tidalpatterns-kt-patarc }
 
 <code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatArc</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">PatQ</span><span class="p">)</span></code>
+
+A **half-open** span of cycles, `[start, end)`, and the only thing you may ask a [`PatPattern`](patterns.md#tidalpatterns-kt-patpattern) about.
 
 | Declaration | Summary |
 | --- | --- |
@@ -822,6 +826,8 @@ One event: a value sounding over `arc`.
 ### PatPattern { #tidalpatterns-kt-patpattern }
 
 <code class="highlight"><span class="k">class</span> <span class="nc">PatPattern</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">renderAbs</span><span class="p">:</span> <span class="p">(</span><span class="nc">PatArc</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PatEvent</span><span class="p">&lt;</span><span class="nc">A</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>
+
+Musical structure as a **function of time**: ask a `PatPattern<A>` for a [`PatArc`](patterns.md#tidalpatterns-kt-patarc) and it answers with the events inside it.
 
 | Declaration | Summary |
 | --- | --- |

@@ -4,7 +4,7 @@
 
 Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. One value type carries the whole thing: `Signal` is a block-rendered mono source, `SignalProcessor` is a `Signal` that reads another one, and `/` chains the two, so `saw / OnePole(800.p)` is a filtered sawtooth and nothing else had to be declared. Control values are `Param`, which a plain number becomes with `.p`, and which can itself be driven by a signal. `audio { … }` closes a mono or stereo graph into an `AudioPatchSpec`; return one as a box's last expression and the box stays lit for as long as it is making sound. Underneath is a shared OpenAL engine, one process-wide, with warm-up passes available so the first buffer is not also the JIT's first look at your graph. On top of the oscillator / filter / effect / envelope families sit three larger things that are not Field's own DSP: **Faust**, whose compiler is embedded as WebAssembly and turns a `#faust` box into a running node in the same graph; the **dough** ports, hand-rolled float math kept deliberately inaccurate because the inaccuracy is the character; and the **spectral** and **granular** layers, which are Field's own. `Visualizers.kt` is how you look at any of it — every function there is an extension on a type declared in this category. Start from `synth.kt`, which is the terse surface a box actually imports; [Sound: from a pattern to something you can hear](../sound.md) is the prose, [Faust](../faust.md) is the embedded compiler with worked examples, and [DoughDSP: hear the primitives](../dough_dsp_sound.md) plays the ports.
 
-23 source file(s), 948 public symbol(s), 303 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+23 source file(s), 948 public symbol(s), 306 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1515,6 +1515,8 @@ Constants: `FORWARD`, `REVERSE`, `BIDIRECTIONAL`.
 
 <code class="highlight"><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Signal</span></code>
 
+One mono audio source, rendered a block at a time — the atom the whole synthesis category is built from.
+
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">numFrames</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="nc">SynthContext</span><span class="p">)</span></code> | Evaluate (or replay cache) into `output`. Call this from consuming nodes – *never* call `generate` directly. |
@@ -1535,6 +1537,8 @@ Constants: `FORWARD`, `REVERSE`, `BIDIRECTIONAL`.
 ### Param { #signal-kt-param }
 
 <code class="highlight"><span class="k">open</span> <span class="k">class</span> <span class="nf">Param</span><span class="p">(</span><span class="n">base</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Signal</span><span class="p">(</span><span class="p">)</span></code>
+
+A control value that is also a [`Signal`](synthesis.md#signal-kt-signal), so anything a graph can take can be modulated.
 
 | Declaration | Summary |
 | --- | --- |
@@ -1601,6 +1605,8 @@ Constants: `FORWARD`, `REVERSE`, `BIDIRECTIONAL`.
 ### StereoRenderable { #signal-kt-stereorenderable }
 
 <code class="highlight"><span class="k">interface</span> <span class="nc">StereoRenderable</span></code>
+
+Anything that can fill a left and a right buffer for one block — the stereo counterpart of [`Signal`](synthesis.md#signal-kt-signal), and the currency of the stereo half of the graph: it is what `AudioPatchSpec.from` accepts, what a `Pan` or a Faust node is, and what the offline renderers take.
 
 | Declaration | Summary |
 | --- | --- |

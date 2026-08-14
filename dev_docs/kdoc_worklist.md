@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5041 of 8360 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5047 of 8360 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**472 undocumented entry points** (types, top-level functions and values) and 2617 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**466 undocumented entry points** (types, top-level functions and values) and 2617 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -13,11 +13,11 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | File | Category | Used by examples | Undocumented entry points | Undocumented members | Coverage |
 | --- | --- | --- | --- | --- | --- |
 | [synth.kt](../src/jvmMain/kotlin/afield/four/synth/synth.kt) | Synthesis | sound_paths | 53 | 0 | 24% |
-| [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 47 | 78 | 18% |
+| [TidalPatterns.kt](../src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt) | Patterns | pattern_language, petri_nets, sonic_pi | 44 | 78 | 20% |
 | [Visualizers.kt](../src/jvmMain/kotlin/afield/four/synth/Visualizers.kt) | Synthesis | visualizers | 40 | 11 | 0% |
-| [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, visualizers | 22 | 53 | 15% |
 | [dynamic_graph_systems.kt](../src/jvmMain/kotlin/afield/stdlib/dynamic_graph_systems.kt) | Data | dynamic_graph_systems_examples | 20 | 120 | 10% |
 | [wfc.kt](../src/jvmMain/kotlin/afield/stdlib/wfc.kt) | Data | wfc_examples | 20 | 59 | 30% |
+| [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, visualizers | 19 | 53 | 18% |
 | [Effects.kt](../src/jvmMain/kotlin/afield/four/synth/Effects.kt) | Synthesis | visualizers | 14 | 29 | 43% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 13 | 38 | 0% |
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 13 | 19 | 2% |
@@ -161,29 +161,23 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `NoteSequenceScope` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:113` |
 | `NoteProcess` | class | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:178` |
 | `SynthContext` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:20` |
-| `Signal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:112` |
-| `Param` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:189` |
-| `ParamScope` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:402` |
-| `SignalProcessor` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:557` |
-| `Const` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:567` |
-| `Mix` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:629` |
-| `StereoRenderable` | interface | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:649` |
-| `StereoHold` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:685` |
-| `StereoSignal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:699` |
-| `Pan` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:716` |
+| `ParamScope` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:436` |
+| `SignalProcessor` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:591` |
+| `Const` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:601` |
+| `Mix` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:663` |
+| `StereoHold` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:729` |
+| `StereoSignal` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:743` |
+| `Pan` | class | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:760` |
 | `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:918` |
 | `SonicPiError` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:932` |
 | `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:960` |
-| `PatQ` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:191` |
-| `PatArc` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:232` |
-| `PatParseFrame` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:267` |
-| `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:280` |
-| `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:292` |
-| `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:399` |
-| `PatPattern` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:434` |
-| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:943` |
-| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1765` |
-| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1790` |
+| `PatParseFrame` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:295` |
+| `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:308` |
+| `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:320` |
+| `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:427` |
+| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:990` |
+| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1812` |
+| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1837` |
 | `AudioSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:123` |
 | `Scope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:215` |
 | `StereoScope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:228` |
@@ -221,7 +215,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
 | `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:862` |
-| `MiniPat` | object | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1072` |
+| `MiniPat` | object | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1119` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |
@@ -244,8 +238,14 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `NoteWindowSnapshot.pianoRollSvg` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:485` |
 | `NoteProcess.pianoRollHtml` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:660` |
 | `Marker.pianoRoll` | fun | `src/jvmMain/kotlin/afield/four/synth/Sequencing.kt:679` |
-| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:174` |
-| `Float.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:175` |
-| `Float.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:176` |
+| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:193` |
+| `Float.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:194` |
+| `Float.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:195` |
+| `Float.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:197` |
+| `Double.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:198` |
+| `Double.times` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:199` |
+| `Double.minus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:200` |
+| `Double.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:201` |
+| `Int.plus` | fun | `src/jvmMain/kotlin/afield/four/synth/Signal.kt:202` |
 
-…and **352 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **346 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
