@@ -106,8 +106,9 @@ object StdlibReferenceGenerator {
      * that was concrete: `import afield.four.synth.*` is in the default box preamble (`intro`, in
      * `Boxes.kt`), so every name in that package is already in scope in every box, and none of them
      * appeared here. Adding the root is one line; what it needed was the [CATEGORY_BLURBS] work
-     * beside it, because exactly one of those 57 files carried a `@file:CompletionCategory` and the
-     * other 56 would have landed in `uncategorised.md` — a worse reference than none.
+     * beside it, because exactly one file in that package carried a `@file:CompletionCategory` and
+     * every other one would have landed in `uncategorised.md` — a worse reference than none. (The
+     * file count is deliberately not written here: nothing guards it, and the package is growing.)
      */
     private val SOURCE_ROOTS = listOf(
         "src/jvmMain/kotlin/afield/stdlib",
