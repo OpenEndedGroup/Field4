@@ -44,7 +44,7 @@ stop.
 
 The multi-file split follows the `imaging*.kt` / `mesh*.kt` convention for a large family. All seven
 carry `@file:afield.CompletionCategory("ALife")`. Without it the generator falls back to the category
-`Uncategorised` (`StdlibReferenceGenerator.kt:456#"/visualization/" in relativePath`) and **creates** a `public/docs/reference/uncategorised.md`
+`Uncategorised` (`StdlibReferenceGenerator.kt:595#"/visualization/" in relativePath`) and **creates** a `public/docs/reference/uncategorised.md`
 that is not committed — which is how `alife_field.kt` first failed the reference drift guard. There is
 no such page today; commit `99a1a3f69` removed the last one by supplying the eleven annotations it was
 holding, so if you see it appear, a new file is missing its `CompletionCategory`.

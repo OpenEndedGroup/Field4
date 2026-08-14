@@ -83,8 +83,8 @@ classes on its classpath (`AaCompletionClient.kt:19#thin HTTP bridge`).
 ### 2.1 Editor → server
 
 The browser editor issues a `complete` RPC. `Server.kt` registers the handler
-(`Server.kt:2188#handlers["complete"]`) and decodes the payload into a `CompletionRequest`
-(`Server.kt:2190#decodeFromJsonElement<CompletionRequest>`) carrying the full code buffer, caret `position`, box uid, and the `property` being
+(`Server.kt:2191#handlers["complete"]`) and decodes the payload into a `CompletionRequest`
+(`Server.kt:2193#decodeFromJsonElement<CompletionRequest>`) carrying the full code buffer, caret `position`, box uid, and the `property` being
 edited (`code`, a shader stage, `metadata`, …).
 
 ### 2.2 Server dispatch (`execution.kt`)
