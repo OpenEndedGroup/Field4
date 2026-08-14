@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
-import org.jetbrains.kotlin.analysis.api.KaK1Unsupported
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.api.symbols.findTopLevelCallables
@@ -111,7 +110,7 @@ object CompletionSpike {
             .filterIsInstance<KtFile>().first()
 
         // De-risk: can findTopLevelCallables resolve a binary-library top-level function by exact name?
-        @OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)
+        @OptIn(KaExperimentalApi::class, KaIdeApi::class)
         analyze(contextFile) {
             for (probe in listOf("kotlin.collections" to "map", "afield.stdlib" to "toggleNetwork")) {
                 val n = findTopLevelCallables(FqName(probe.first), Name.identifier(probe.second)).count()

@@ -5,7 +5,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaIdeApi
-import org.jetbrains.kotlin.analysis.api.KaK1Unsupported
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.analysis.api.components.KaDiagnosticCheckerFilter
@@ -1124,7 +1123,7 @@ class AaCompleter(
         return imports to stubs
     }
 
-    @OptIn(KaExperimentalApi::class, KaIdeApi::class, KaK1Unsupported::class)
+    @OptIn(KaExperimentalApi::class, KaIdeApi::class)
     private fun completeAt(
         file: KtFile, offset: Int, isDot: Boolean, prefix: String, jsTarget: Boolean,
         /** [AaCompleter.index] widened with any package this request's imports added. */
