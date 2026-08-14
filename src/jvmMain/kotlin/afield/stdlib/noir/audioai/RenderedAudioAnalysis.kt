@@ -24,7 +24,6 @@ import java.net.http.WebSocket
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -161,9 +160,6 @@ fun standardAudioAnalyses(
     ))
 }
 
-/** The exception a box needs to read, not the `CompletableFuture` bookkeeping around it. */
-private fun Throwable.unwrapped(): Throwable = (this as? CompletionException)?.cause ?: this
-
 /**
  * One leg of a rendered-audio fan-out, held on to only so that it can be let go of.
  *
@@ -296,14 +292,14 @@ fun FieldAudioClient.analyzeRenderedAudio(
         // siblings too, and a sibling whose worker wedged never finishes — a box would then get
         // neither a result nor an error, just a future that stays pending for as long as Field runs.
         futures.forEach { leg ->
-            leg.whenComplete { _, error -> error?.let { outcome.completeExceptionally(it.unwrapped()) } }
+            leg.whenComplete { _, error -> error?.let { outcome.completeExceptionally(it.unwrapCompletion()) } }
         }
         CompletableFuture.allOf(*futures.toTypedArray()).thenApply {
             RenderedAudioAnalysis(render, asset, source, region, futures.map { it.join() })
         }
     }.whenComplete { bundle, error ->
         if (error != null) {
-            outcome.completeExceptionally(error.unwrapped())
+            outcome.completeExceptionally(error.unwrapCompletion())
         } else {
             outcome.complete(bundle)
         }

@@ -5,6 +5,7 @@ import afield.four.synth.SineOsc
 import afield.userFacingThrowable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.net.ServerSocket
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Collections
@@ -380,6 +381,49 @@ class RenderedAudioSeamTest {
                 userFacingThrowable(failure).message.orEmpty(),
                 "has no WAV representation",
             )
+        }
+    }
+
+    /**
+     * What a box sees when the service is simply not running.
+     *
+     * This is the common case on a fresh machine — the service is a separate Python submodule with
+     * its own virtual environments, and neither is installed here — so the answer has to be legible.
+     * Observed red before the fix as, verbatim, `what a box would see:
+     * java.net.ConnectException: java.net.ConnectException` against `CharSequence <>`: the message
+     * was **empty**. Not the address, not the port, not the word audio.
+     */
+    @Test
+    fun `an absent service is reported legibly, with the address that refused`() {
+        val port = ServerSocket(0).use { it.localPort }
+        val client = FieldAudioClient("http://127.0.0.1:$port")
+        val render = tone(temp("absent"))
+
+        val failure = assertFails { client.analyzeRenderedAudio(render).get(60, TimeUnit.SECONDS) }
+        val visible = userFacingThrowable(failure)
+        val unhelpful = "what a box would see: ${visible::class.qualifiedName}: $visible"
+        assertIs<FieldAudioTransportException>(visible, unhelpful)
+        assertContains(visible.message.orEmpty(), "Field Audio", false, unhelpful)
+        assertContains(visible.message.orEmpty(), "127.0.0.1:$port", false, unhelpful)
+        assertContains(visible.message.orEmpty(), "services/field-audio-ai", false, unhelpful)
+        assertEquals("/v1/assets/import", visible.requestPath)
+    }
+
+    @Test
+    fun `a malformed service reply names the request that could not be read`() {
+        FieldAudioServiceStub().use { stub ->
+            stub.importResponseOverride = """{"id":"sha256:not-an-asset""""
+            val client = FieldAudioClient(stub.baseUrl)
+            val render = tone(temp("malformed"))
+
+            val failure = assertFails { client.analyzeRenderedAudio(render).get(60, TimeUnit.SECONDS) }
+            val visible = userFacingThrowable(failure)
+            // Before the fix this was a bare kotlinx `SerializationException` whose whole message was
+            // `Expected end of the object '}', but had 'EOF' instead at path: $` — true, and useless.
+            assertIs<FieldAudioTransportException>(visible, "what a box would see: $visible")
+            assertContains(visible.message.orEmpty(), "Field Audio")
+            assertContains(visible.message.orEmpty(), "/v1/assets/import")
+            assertContains(visible.message.orEmpty(), "sha256:not-an-asset")
         }
     }
 
