@@ -1708,7 +1708,7 @@ extension that fills the gap left by `kotlin.random.Random`, which has no Gaussi
 
 `src/jvmMain/kotlin/afield/stdlib/randoms.kt`
 
-**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md), [State estimation: tracking what you cannot measure](../state_estimation_examples.md)
+**Used in:** [State estimation: tracking what you cannot measure](../state_estimation_examples.md)
 
 ### Top-level functions { #randoms-kt-functions }
 

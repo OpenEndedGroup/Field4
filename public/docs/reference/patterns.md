@@ -110,7 +110,7 @@ Mutates the Boolean state that will be emitted for a scheduled step before the n
 
 `src/jvmMain/kotlin/afield/four/synth/PatAlgebra.kt`
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md)
+**Used in:** [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Sonic Pi](../sonic_pi.md)
 
 ### Top-level functions { #patalgebra-kt-functions }
 
@@ -229,7 +229,7 @@ A named parameter pattern waiting to be attached to some atoms.
 
 `src/jvmMain/kotlin/afield/four/synth/PatComposition.kt`
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Querying object graphs](../graph_query.md)
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #patcomposition-kt-functions }
 
@@ -449,7 +449,7 @@ Headless **piano-roll gallery** for the pattern language: `TidalPatterns.kt` plu
 
 `src/jvmMain/kotlin/afield/four/synth/PatSignals.kt`
 
-**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md), [Functions to FLine examples (Field graphics)](../functions_examples.md)
+**Used in:** [Patterns: writing rhythm as a function of time](../pattern_language.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md)
 
 ### Top-level functions { #patsignals-kt-functions }
 

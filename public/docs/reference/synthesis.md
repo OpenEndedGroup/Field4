@@ -1830,7 +1830,7 @@ In-place radix-2 FFT and IFFT on interleaved complex buffers.
 
 `src/jvmMain/kotlin/afield/four/synth/synth.kt`
 
-**Used in:** [DoughDSP: hear the primitives](../dough_dsp_sound.md), [Polytopes: topology first, coordinates later](../polytope_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md)
+**Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
 
 ### Top-level functions { #synth-kt-functions }
 

@@ -413,20 +413,25 @@ object StdlibReferenceGenerator {
          * name like `transform`, `origin` or `previous` is an ordinary English word that turns up in
          * unrelated example code; a top-level call `stft(` or a type `Spectrogram` does not.
          *
-         * [GENERIC_CALL_NAMES] is excluded on top of that, because "exactly one file defines it" is
-         * not the same as "seeing it means that file".
+         * [GENERIC_NAMES] is excluded on top of that, because "exactly one file defines it" is
+         * not the same as "seeing it means that file". It applies to **values as well as calls**:
+         * `synth.kt`'s whole design is that a bare lowercase `val` is a fresh unit generator, so it
+         * declares top-level `square`, `pulse`, `white`, `brown` and `impulse`, and `square` was
+         * already in the set — as a call name only, which is not where it was doing any harm.
          */
         fun evidenceTokens(): Set<Pair<String, String>> = buildSet {
             topLevelFunctions.forEach {
-                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_CALL_NAMES) add("call" to it.simpleName)
+                if (it.simpleName.length >= 3 && it.simpleName !in GENERIC_NAMES) add("call" to it.simpleName)
             }
             types.forEach { if (it.symbol.simpleName.length >= 4) add("type" to it.symbol.simpleName) }
-            topLevelValues.forEach { if (it.simpleName.length >= 5) add("name" to it.simpleName) }
+            topLevelValues.forEach {
+                if (it.simpleName.length >= 5 && it.simpleName !in GENERIC_NAMES) add("name" to it.simpleName)
+            }
         }
     }
 
     /**
-     * Call names that are never evidence of anything, however uniquely a file owns them.
+     * Names that are never evidence of anything, however uniquely a file owns them.
      *
      * The evidence index counts a name only when exactly one documented file declares it — which
      * looked like enough until `CeresExpression.kt` was published. That file declares top-level
@@ -436,16 +441,42 @@ object StdlibReferenceGenerator {
      * more, and `functions_examples.md` — which has nothing whatsoever to do with the Ceres
      * expression VM — was published as a worked example of it.
      *
-     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain verbs
-     * that happen to be short stay in (`kis`, `dual`, `stft`): seeing one really does mean the page
-     * is about that file.
+     * `afield.four.synth` is the second instance of the same class, and a broader one, because a
+     * live-coding audio API is *deliberately* written in one-word English. Measured (see
+     * `AFIELD_EVIDENCE_DEBUG` in [buildEvidenceIndex]) on the day the package was added:
+     * `synth.kt` was published as a worked example of `polytope_examples.md` on the strength of
+     * `plate(`, `square` and `white` — a panel, a face and a colour — and of `functions_examples.md`
+     * on `square` and `pulse`. `PatSignals.kt` matched `petri_nets.md` on `run(` and `range(`;
+     * `PatAlgebra.kt` matched three unrelated pages on `with(`, which is a Kotlin scope function.
+     *
+     * Uniqueness is a claim about the corpus; this set is a claim about the *reader*. Domain words
+     * that happen to be short or ordinary-looking stay in (`kis`, `dual`, `stft`, `zaw`, `pulze`,
+     * `dirt`, `plateReverb`): seeing one really does mean the page is about that file. Removing a
+     * word degrades gracefully rather than deleting a link — a page that genuinely uses a file
+     * matches several *specific* names as well, and [MIN_EVIDENCE_HITS] is only two, so the true
+     * relationships in this corpus survive losing `off` and `scale` while the false ones do not.
      */
-    private val GENERIC_CALL_NAMES = setOf(
+    private val GENERIC_NAMES = setOf(
         "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "exp", "floor", "hypot",
         "ln", "log", "log10", "log2", "max", "min", "pow", "round", "sign", "sin", "sinh", "sqrt",
         "tan", "tanh",
         // Not kotlin.math, but words an unrelated code fence uses about anything.
         "constant", "square", "reciprocal",
+        // Kotlin scope functions and ordinary member names that a top-level declaration shadows.
+        // Every one of these was verified to be matching something else: `with(` is Kotlin's,
+        // `net.run(` is a Petri net, `event.num(` is a member of `PatScheduledEvent`, and
+        // `rig.params(…).scale(` and `fn.scale(` are two other `scale`s entirely.
+        "with", "run", "num", "scale",
+        // `synth.kt`'s one-word unit-generator vals, which on a geometry, function or imaging page
+        // mean a panel, a beat, a filter response and two colours.
+        "plate", "pulse", "impulse", "white", "brown",
+        // The archetypal member names, which `stdlib.kt` happens to also declare at top level. Once
+        // the `\b` anchor stopped `set(` matching `offset(`, these alone were enough to publish
+        // `afield_four_graphics.md` and `ar_reference.md` as worked examples of `stdlib.kt` on the
+        // strength of `mesh.set(`, `list.add(` and `map.get(`. What is left for `stdlib.kt` is
+        // `Delegation` / `Inheritance` / `InheritanceFromContext` in `box_code_pipeline.md`, which
+        // is the one page that really is about it.
+        "set", "add", "get", "end", "start", "invoke", "begin",
     )
 
     private data class TypeEntry(
@@ -975,15 +1006,35 @@ object StdlibReferenceGenerator {
             doc.evidenceTokens().forEach { tokenOwners.getOrPut(it) { mutableSetOf() } += doc.relativePath }
         }
 
+        // Set `AFIELD_EVIDENCE_DEBUG` to a path suffix (`synth/synth.kt`, or `.kt` for everything) to
+        // print which tokens each page matched. "Used in" is a published factual claim about a page,
+        // and this is how you check one without re-deriving the rule by hand — which is how
+        // `synth.kt` was found being published as a worked example of `polytope_examples.md`.
+        val debugFor = System.getenv("AFIELD_EVIDENCE_DEBUG")?.trim()?.ifBlank { null }
         return documents.associate { doc ->
-            val patterns = doc.evidenceTokens()
-                .filter { tokenOwners[it]?.size == 1 }
-                .map { (kind, name) ->
-                    val escaped = Regex.escape(name)
-                    if (kind == "call") Regex("$escaped\\s*\\(") else Regex("\\b$escaped\\b")
+            val kept = doc.evidenceTokens().filter { tokenOwners[it]?.size == 1 }
+            val patterns = kept.associateWith { (kind, name) ->
+                val escaped = Regex.escape(name)
+                // Two tightenings, each fixing a measured false claim:
+                //  - `\b` on the call form. Unanchored, `ply(` matched `apply(`, `run(` matched
+                //    `rerun(`, `range(` matched `arrange(`, `cosine(` matched `cosineInterp(` and
+                //    `hslSet(` matched `okhslSet(` — where the last one let a single call in
+                //    `spatial_geometry_examples.md` count as two hits and clear the threshold alone.
+                //  - no whitespace before the `(`. A fenced block's *comments and string literals*
+                //    are code text as far as this index is concerned, and English prose inside them
+                //    ("seed cosine (grey) → target sine", "full range (chebyshev clamps)") was
+                //    matching. Kotlin allows `f (x)`; this corpus never writes it.
+                if (kind == "call") Regex("\\b$escaped\\(") else Regex("\\b$escaped\\b")
+            }
+            if (debugFor != null && doc.relativePath.endsWith(debugFor)) {
+                println("EVIDENCE-DEBUG ${doc.relativePath} unique tokens: $kept")
+                pages.forEach { (pageName, code) ->
+                    val matched = kept.filter { patterns.getValue(it).containsMatchIn(code) }
+                    if (matched.isNotEmpty()) println("EVIDENCE-DEBUG   $pageName <- $matched")
                 }
+            }
             val hits = pages.mapNotNull { (name, code) ->
-                val count = patterns.count { it.containsMatchIn(code) }
+                val count = patterns.values.count { it.containsMatchIn(code) }
                 if (count >= MIN_EVIDENCE_HITS) name to count else null
             }.sortedWith(compareByDescending<Pair<String, Int>> { it.second }.thenBy { it.first })
                 .take(MAX_EVIDENCE_LINKS)
