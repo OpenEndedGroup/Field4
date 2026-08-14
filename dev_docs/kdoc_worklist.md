@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5047 of 8360 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 5136 of 8576 public symbols in `afield.stdlib`, `afield.visualization` and `afield.four.synth` carry a KDoc summary, and this is what is missing, most valuable first.
 
-**466 undocumented entry points** (types, top-level functions and values) and 2617 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**466 undocumented entry points** (types, top-level functions and values) and 2743 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -107,6 +107,9 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [AudioReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/AudioReturnValue.kt) | Synthesis | — | 1 | 0 | 0% |
 | [PatPatternReturnValue.kt](../src/jvmMain/kotlin/afield/four/synth/PatPatternReturnValue.kt) | Patterns | — | 1 | 0 | 0% |
 | [CeresGeometry.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/CeresGeometry.kt) | Solvers | — | 0 | 241 | 29% |
+| [PatTranscriptionCorpus.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionCorpus.kt) | Patterns | — | 0 | 50 | 35% |
+| [PatTranscription.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscription.kt) | Patterns | — | 0 | 49 | 33% |
+| [PatPitchDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatPitchDetection.kt) | Patterns | — | 0 | 23 | 51% |
 | [osc.kt](../src/jvmMain/kotlin/afield/stdlib/osc.kt) | Audio | — | 0 | 18 | 33% |
 | [Colormaps.kt](../src/jvmMain/kotlin/afield/visualization/Colormaps.kt) | Visualization | — | 0 | 17 | 19% |
 | [InteractiveSolving.kt](../src/jvmMain/kotlin/afield/stdlib/ceres/InteractiveSolving.kt) | Solvers | — | 0 | 15 | 65% |
@@ -116,6 +119,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
+| [PatTranscriptionGallery.kt](../src/jvmMain/kotlin/afield/four/synth/PatTranscriptionGallery.kt) | Patterns | — | 0 | 4 | 66% |
 | [SonicPiLaunch.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPiLaunch.kt) | Audio | — | 0 | 4 | 58% |
 | [numpy.kt](../src/jvmMain/kotlin/afield/stdlib/numpy.kt) | Data | — | 0 | 4 | 86% |
 | [PatPianoRollGallery.kt](../src/jvmMain/kotlin/afield/four/synth/PatPianoRollGallery.kt) | Patterns | — | 0 | 3 | 76% |
@@ -171,13 +175,13 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `SonicPiLogMessage` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:918` |
 | `SonicPiError` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:932` |
 | `SonicPiVersion` | class | `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt:960` |
-| `PatParseFrame` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:295` |
-| `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:308` |
-| `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:320` |
-| `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:427` |
-| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:990` |
-| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1812` |
-| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1837` |
+| `PatParseFrame` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:297` |
+| `PatParseContext` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:310` |
+| `PatSourceSpan` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:322` |
+| `PatScheduledEvent` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:429` |
+| `ArpMode` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:992` |
+| `PatResponseScope` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1814` |
+| `PatResponseSpec` | class | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1839` |
 | `AudioSnapshot` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:123` |
 | `Scope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:215` |
 | `StereoScope` | class | `src/jvmMain/kotlin/afield/four/synth/Visualizers.kt:228` |
@@ -215,7 +219,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `WfcStatus` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:858` |
 | `WfcObservation` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:860` |
 | `WfcSolver` | class | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:862` |
-| `MiniPat` | object | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1119` |
+| `MiniPat` | object | `src/jvmMain/kotlin/afield/four/synth/TidalPatterns.kt:1121` |
 | `Functions` | object | `src/jvmMain/kotlin/afield/stdlib/Functions.kt:204` |
 | `Matrix` | typealias | `src/jvmMain/kotlin/afield/stdlib/pf.kt:26` |
 | `WfcNeighbourhood` | typealias | `src/jvmMain/kotlin/afield/stdlib/wfc.kt:152` |

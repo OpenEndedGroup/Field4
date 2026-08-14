@@ -27,7 +27,7 @@
  [PatTranscription.warnings]. The emitted notation is what the detector will stand behind; the
  warnings are what it heard and would not sign.
  */
-@file:afield.CompletionCategory("Audio")
+@file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth
 
@@ -341,6 +341,40 @@ fun patTranscribe(
             warnings += "$held of ${notes.size} named note(s) span more than one step in a grid whose " +
                 "other ${single} notes span exactly one. A held note in an even grid is where two " +
                 "notes are heard as one, so those names are the least trustworthy in the notation"
+        }
+    }
+
+    // The virtual-root check, on the path a first-time caller actually takes.
+    //
+    // [patTranscribeAuto] refuses this material outright; `patTranscribe` is the shorter name with the
+    // unqualified summary, and left at the wide default it will confidently name a chord as five notes
+    // around a fundamental nobody played — a 4:5:6 triad is *genuinely* periodic two octaves down
+    // (261/4 ≈ 329/5 ≈ 392/6 ≈ 65 Hz), so no amount of harmonic-residual checking catches it. This
+    // cannot refuse without changing the contract of a function that promises to write down what it
+    // heard, so it warns instead: the caller keeps their notes and is told not to trust them.
+    if (minHz == PAT_PITCH_MIN_HZ && notes.isNotEmpty()) {
+        val loudest = frames.filter { it.voiced }.maxByOrNull { it.rms }
+        if (loudest != null) {
+            // Same window as [patTranscribeAuto]: twelve periods of the *reported* pitch, which is long
+            // enough to resolve it and short enough to stay inside one note.
+            val energy = patEnergyAtF0(
+                samples,
+                start = loudest.startSample,
+                length = min(
+                    samples.size - loudest.startSample,
+                    max(2048, (12.0 * sampleRate / loudest.hz.coerceAtLeast(20.0)).toInt())
+                ),
+                sampleRate = sampleRate,
+                f0 = loudest.hz
+            )
+            if (energy < 0.05) {
+                warnings += "no register was declared, and the loudest voiced frame reports " +
+                    "${"%.0f".format(loudest.hz)} Hz carrying only ${"%.1f".format(energy * 100)}% of " +
+                    "the loudest peak's magnitude, so it is a fundamental this material implies rather " +
+                    "than one it plays — the signature of a chord heard as its own virtual root. Pass " +
+                    "minHz/maxHz explicitly if you know this is one line, or call patTranscribeAuto, " +
+                    "which refuses this material instead of naming it"
+            }
         }
     }
 

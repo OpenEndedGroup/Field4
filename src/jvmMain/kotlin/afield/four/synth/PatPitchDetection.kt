@@ -42,7 +42,7 @@
  single note of any timbre and large for a chord. A monophonic detector that reports it cannot name
  a chord is telling the truth; one that picks the loudest note is not.
  */
-@file:afield.CompletionCategory("Audio")
+@file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth
 

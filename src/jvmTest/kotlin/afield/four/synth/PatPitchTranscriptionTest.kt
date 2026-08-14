@@ -3,6 +3,7 @@ package afield.four.synth
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
@@ -536,6 +537,36 @@ class PatPitchTranscriptionTest {
         // bass-register plays its fundamental; the corpus's triad only implies one.
         val played = energyAtReported(bass)
         assertTrue(played > 0.30, "a played 65 Hz fundamental should show up strongly, got $played")
+
+        // The other half of the margin, which is the half the 0.05 threshold actually rests on. The
+        // corpus runs chord-triad with a declared register, so its own frames report a real note; the
+        // virtual root only appears when nobody declares one. So hear it the way a first-time caller
+        // does — `patTranscribe` at the wide default — and measure there.
+        val heardWide = patTranscribe(chord.samples, chord.sampleRate)
+        val loudestWide = heardWide.frames.filter { it.voiced }.maxByOrNull { it.rms }
+        assertNotNull(loudestWide, "the triad should be voiced at the wide default")
+        val implied = patEnergyAtF0(
+            chord.samples, loudestWide.startSample,
+            (12.0 * chord.sampleRate / loudestWide.hz).toInt(), chord.sampleRate, loudestWide.hz
+        )
+        assertTrue(
+            implied < 0.05,
+            "the triad's implied root should carry almost none of the peak magnitude, got $implied " +
+                "at ${loudestWide.hz} Hz"
+        )
+        // Stated as a ratio so the threshold is visibly in the gap rather than near either side.
+        assertTrue(
+            played > implied * 6.0,
+            "played $played should dwarf implied $implied; the 0.05 threshold sits between them"
+        )
+
+        // And the path that produced `implied` must say so rather than name notes silently — the
+        // warning added alongside this test, checked here because this is where the margin lives.
+        assertTrue(
+            heardWide.warnings.any { "virtual root" in it },
+            "patTranscribe at the wide default must warn about the virtual root; got " +
+                heardWide.warnings
+        )
     }
 
     @Test

@@ -4,7 +4,7 @@
 
 The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. Nothing here loads a model or does inference in the JVM — a box builds a `ModelOperation`, submits it through `FieldAudioClient`, and gets back a job it can poll or watch; the results are immutable server-side *assets* referenced by id, which is why the protocol types carry representation ids rather than samples. Every call is asynchronous and completes off Field's runloop and off the audio callback, so nothing here may be `.get()`-ed from a box's frame. The rest of the category is what you do with a result inside a box: the candidate browser, the EnCodec reconstruction microscope, the beat/pitch analysis viewer and the job monitor, each of them one function returning a self-contained HTML fragment for `display(…)`. Start from `Protocol.kt` for the vocabulary and `FieldAudioClient.kt` for the verbs; [Field Audio service reference](../field_audio_service_reference.md) is the service-side contract the types mirror.
 
-11 source file(s), 333 public symbol(s), 269 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+11 source file(s), 336 public symbol(s), 272 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -183,6 +183,17 @@ A job was accepted and then did not finish successfully.
 | <code class="highlight"><span class="k">val</span> <span class="n">jobId</span><span class="p">:</span> <span class="nc">String</span></code> | The job that ended badly; still fetchable with `FieldAudioClient.inspect`. |
 | <code class="highlight"><span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">JobState</span></code> | The terminal state it ended in — anything but `COMPLETE`. |
 | <code class="highlight"><span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">StructuredError</span><span class="o">?</span></code> | Why, when the job recorded a structured error. Null for a plain cancellation. |
+
+### FieldAudioTransportException { #fieldaudioclient-kt-fieldaudiotransportexception }
+
+<code class="highlight"><span class="k">class</span> <span class="nf">FieldAudioTransportException</span><span class="p">(</span><span class="k">val</span> <span class="n">baseUri</span><span class="p">:</span> <span class="nc">URI</span><span class="p">,</span> <span class="k">val</span> <span class="n">requestPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">message</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">cause</span><span class="p">:</span> <span class="nc">Throwable</span><span class="o">?</span><span class="p">)</span> <span class="p">:</span> <span class="nc">RuntimeException</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">cause</span><span class="p">)</span></code>
+
+There was no conversation: the service could not be reached, or did not answer in the protocol.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">baseUri</span><span class="p">:</span> <span class="nc">URI</span></code> | The client's base address — the thing to check is running, or to point somewhere else. |
+| <code class="highlight"><span class="k">val</span> <span class="n">requestPath</span><span class="p">:</span> <span class="nc">String</span></code> | Path of the request that failed, e.g. `/v1/assets/import`. |
 
 ### FieldAudioClient { #fieldaudioclient-kt-fieldaudioclient }
 

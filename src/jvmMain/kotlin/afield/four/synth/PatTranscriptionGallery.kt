@@ -16,7 +16,7 @@
  between two outlines is a straddling window, and a trace that vanishes is the voicing gate closing.
  Neither is visible in a score table.
  */
-@file:afield.CompletionCategory("Audio")
+@file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth
 

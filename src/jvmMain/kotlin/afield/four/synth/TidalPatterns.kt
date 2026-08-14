@@ -193,15 +193,17 @@ import kotlinx.coroutines.runBlocking
  * and slowed down again and still lands where it started.
  *
  * `BigInteger` over `BigInteger`, so there is no precision to lose and no bound on how finely a cycle
- * can be subdivided. Every value is normalized on construction through [of] and again by every
- * operator — the sign is carried on the numerator, then both terms are divided through by their gcd —
- * so equal fractions really are `==`, and a `PatQ` is safe as a map key. A zero denominator is
- * rejected rather than quietly becoming an infinity.
+ * can be subdivided. [of] and every operator normalize their result — the sign is carried on the
+ * numerator, then both terms are divided through by their gcd — so fractions built that way compare
+ * `==` when they are equal. **The primary constructor does not normalize**: it only rejects a zero
+ * denominator, so `PatQ(2.toBigInteger(), 4.toBigInteger())` is a legal unnormalized value that
+ * [compareTo] calls equal to `of(1, 2)` while `equals` does not. Prefer [of], and do not use a
+ * hand-constructed `PatQ` as a map key.
  *
  * Seconds appear only at the boundary where something has to be scheduled or heard; everything inside
  * the pattern algebra is in cycles and stays exact. [fromDouble] is the deliberate exception and is
- * lossy on purpose — it rounds onto a fixed denominator — so it is for reading a slider, not for
- * arithmetic whose result you intend to compare.
+ * lossy on purpose — it **truncates** onto a fixed denominator — so it is for reading a slider, not
+ * for arithmetic whose result you intend to compare.
  */
 data class PatQ(val n: BigInteger, val d: BigInteger) : Comparable<PatQ> {
     init { require(d != BigInteger.ZERO) { "Denominator cannot be 0" } }

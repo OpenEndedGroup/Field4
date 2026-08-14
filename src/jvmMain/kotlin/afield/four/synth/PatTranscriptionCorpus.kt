@@ -27,7 +27,7 @@
  `minGapSeconds` — is worth more than any threshold. The pair differs in nothing but whether
  `minHz`/`maxHz` come from the notation or from the wide default.
  */
-@file:afield.CompletionCategory("Audio")
+@file:afield.CompletionCategory("Patterns")
 
 package afield.four.synth
 
