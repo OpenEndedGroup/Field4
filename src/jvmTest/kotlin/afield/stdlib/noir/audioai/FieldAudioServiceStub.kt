@@ -270,6 +270,20 @@ class FieldAudioServiceStub : AutoCloseable {
                         Collections.synchronizedSet(mutableSetOf())
                     } += queue
                 }
+                // Nothing on this protocol is client-to-server, but the frames still have to be
+                // drained: a handler parked on `queue.receive()` alone never learns that the client
+                // went away, so this is what makes a client-side `WebSocket.abort()` observable as
+                // `openEventSockets` falling. Draining `incoming` is also what makes the real
+                // service's `except WebSocketDisconnect` reachable.
+                val drain = launch {
+                    try {
+                        while (true) incoming.receive()
+                    } catch (ignored: Exception) {
+                        // A client that aborts rather than closing lands here.
+                    } finally {
+                        queue.close()
+                    }
+                }
                 try {
                     for (event in replay) {
                         send(Frame.Text(wire.encodeToString(ProgressEvent.serializer(), event)))
@@ -286,7 +300,10 @@ class FieldAudioServiceStub : AutoCloseable {
                             return@webSocket
                         }
                     }
+                } catch (ignored: Exception) {
+                    // A closed queue or a dead socket both mean this subscription is over.
                 } finally {
+                    drain.cancel()
                     subscribers[jobId]?.remove(queue)
                     queue.close()
                     liveSockets.decrementAndGet()

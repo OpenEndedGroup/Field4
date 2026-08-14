@@ -248,6 +248,99 @@ class RenderedAudioSeamTest {
         }
     }
 
+    /**
+     * A leg that fails must be reported at once, and must take its siblings down with it.
+     *
+     * The fan-out used to be a bare `CompletableFuture.allOf`, and `allOf` does not short-circuit:
+     * `BiRelay.tryFire` needs both of its sources done, so it goes on waiting for every future after
+     * one has failed. With one leg failed and two wedged, the future a box holds therefore never
+     * completed at all — neither a result nor an error. This test first ran for 65.5 s, and the only
+     * reason it looked like a socket-leak failure is that `assertFails` had happily swallowed the
+     * `TimeoutException` from `get(60, SECONDS)`. Hence the elapsed-time floor and the explicit
+     * exception type below: a timeout must never again read as a pass.
+     *
+     * The leak was real too, underneath. `analyzeRenderedAudio` discarded the
+     * `CompletableFuture<WebSocket>` that `watch` returns, so nothing would ever have closed the two
+     * abandoned sockets, and their `await` loops would have polled `GET /v1/jobs/{id}` every 200 ms
+     * for as long as Field ran. Both are asserted at the service, the only place they are visible.
+     */
+    @Test
+    fun `a failing leg releases its siblings' polls and sockets`() {
+        FieldAudioServiceStub().use { stub ->
+            stub.script(
+                "analysis.beats",
+                FieldAudioServiceStub.ScriptedJob(neverFinishes = true, stepDelayMillis = 5),
+            )
+            stub.script(
+                "analysis.pitch_mono",
+                FieldAudioServiceStub.ScriptedJob(neverFinishes = true, stepDelayMillis = 5),
+            )
+            stub.script(
+                "analysis.pitch_poly",
+                FieldAudioServiceStub.ScriptedJob(
+                    outcome = JobState.FAILED,
+                    failure = StructuredError("ANALYSIS_FAILED", "worker died"),
+                    stepDelayMillis = 5,
+                ),
+            )
+            val client = FieldAudioClient(stub.baseUrl)
+            val render = tone(temp("release"))
+
+            val started = System.nanoTime()
+            val failure = assertFails { client.analyzeRenderedAudio(render).get(60, TimeUnit.SECONDS) }
+            val elapsedMillis = (System.nanoTime() - started) / 1_000_000L
+            val visible = userFacingThrowable(failure)
+            assertIs<FieldAudioJobException>(visible, "expected the failed leg, got $failure")
+            assertEquals("ANALYSIS_FAILED", visible.error?.code)
+            // Measured at about 60 ms with these 5 ms steps; the floor is loose enough for a busy
+            // machine and tight enough that waiting on the two wedged siblings cannot pass.
+            assertTrue(elapsedMillis < 5_000, "the failure took ${elapsedMillis}ms to surface")
+            assertEquals(3, stub.eventSocketsOpened)
+
+            awaitOrFail(
+                5_000,
+                { "openEventSockets=${stub.openEventSockets} of ${stub.eventSocketsOpened} opened" },
+            ) { stub.openEventSockets == 0 }
+            val abandoned = assertNotNull(stub.jobIdFor("analysis.beats"))
+            Thread.sleep(1_000)
+            val settled = stub.jobPolls(abandoned)
+            Thread.sleep(1_500)
+            assertEquals(
+                settled,
+                stub.jobPolls(abandoned),
+                "the abandoned sibling is still being polled",
+            )
+        }
+    }
+
+    /**
+     * The only lever a box has over an analysis whose jobs will never finish. Observed red before
+     * the fix the same way: the sockets stayed open, and cancelling the returned future could not
+     * reach the legs because it was `importWav(...).thenCompose { … }` and cancelling a composed
+     * stage says nothing about what it was composed onto.
+     */
+    @Test
+    fun `cancelling the returned future releases every leg`() {
+        FieldAudioServiceStub().use { stub ->
+            stub.defaultScript =
+                FieldAudioServiceStub.ScriptedJob(neverFinishes = true, stepDelayMillis = 5)
+            val client = FieldAudioClient(stub.baseUrl)
+            val render = tone(temp("cancel"))
+
+            val pending = client.analyzeRenderedAudio(render)
+            awaitOrFail(10_000) { stub.eventSocketsOpened == 3 }
+            pending.cancel(false)
+
+            awaitOrFail(5_000) { stub.openEventSockets == 0 }
+            val legs = stub.submittedOperations.mapNotNull { stub.jobIdFor(it.operation) }
+            assertEquals(3, legs.size)
+            Thread.sleep(1_000)
+            val settled = legs.map { stub.jobPolls(it) }
+            Thread.sleep(1_500)
+            assertEquals(settled, legs.map { stub.jobPolls(it) }, "a cancelled analysis is still polling")
+        }
+    }
+
     @Test
     fun `a completed job with no analysis result is not silently accepted`() {
         FieldAudioServiceStub().use { stub ->
@@ -401,12 +494,16 @@ class RenderedAudioSeamTest {
 
     // ---- helpers ------------------------------------------------------------------------------
 
-    private fun awaitOrFail(millis: Long, condition: () -> Boolean) {
+    private fun awaitOrFail(
+        millis: Long,
+        describe: () -> String = { "" },
+        condition: () -> Boolean,
+    ) {
         val deadline = System.nanoTime() + millis * 1_000_000L
         while (System.nanoTime() < deadline) {
             if (condition()) return
             Thread.sleep(25)
         }
-        fail("condition was still false after $millis ms")
+        fail("condition was still false after $millis ms: ${describe()}")
     }
 }
