@@ -8,6 +8,7 @@ import afield.four.texture.HasImageView
 import afield.four.texture.HasImageViewArray
 import afield.four.texture.Image
 import afield.four.texture.ImageView
+import afield.four.texture.vkFormatBytesPerPixel
 import afield.logger.lprint
 import afield.logger.lprintln
 import afield.server.Browsable
@@ -410,13 +411,7 @@ private class VideoPlaneTexture(
     private var currentLayout = VK10.VK_IMAGE_LAYOUT_UNDEFINED
 
     init {
-        // Calculate bytes per pixel based on format
-        val bytesPerPixel = when (format) {
-            VK10.VK_FORMAT_R16_UNORM -> 2  // 16-bit single channel
-            VK10.VK_FORMAT_R16G16_UNORM -> 4  // 16-bit dual channel
-            else -> 4
-        }
-
+        val bytesPerPixel = vkFormatBytesPerPixel(format, "$name plane")
         val imageSize = width * height * bytesPerPixel
 
         // Create staging buffer for uploads

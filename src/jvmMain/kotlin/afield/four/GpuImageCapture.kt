@@ -1,5 +1,6 @@
 package afield.four
 
+import afield.four.texture.vkFormatBytesPerPixel
 import org.lwjgl.stb.STBImageWrite.stbi_write_jpg
 import org.lwjgl.vulkan.VK10.*
 import java.nio.ByteBuffer
@@ -8,17 +9,14 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 internal object GpuImageCapture {
-    fun bytesPerPixel(format: Int): Int = when (format) {
-        VK_FORMAT_R8G8B8_UNORM,
-        VK_FORMAT_B8G8R8_UNORM -> 3
-        VK_FORMAT_R8G8B8A8_UNORM,
-        VK_FORMAT_R8G8B8A8_SRGB,
-        VK_FORMAT_B8G8R8A8_UNORM,
-        VK_FORMAT_B8G8R8A8_SRGB -> 4
-        VK_FORMAT_R16G16B16A16_SFLOAT -> 8
-        VK_FORMAT_R32G32B32A32_SFLOAT -> 16
-        else -> 4
-    }
+    /**
+     * Size of the staging buffer one pixel of [format] needs, from the shared table in
+     * afield.four.texture. Throws for formats the table does not know — an under-sized staging
+     * buffer would let `vkCmdCopyImageToBuffer` run off the end of the allocation, which is far
+     * harder to trace back than a named format in an exception.
+     */
+    fun bytesPerPixel(format: Int, sourceName: String): Int =
+        vkFormatBytesPerPixel(format, "$sourceName capture")
 
     fun readRgba(staging: ByteBuffer, format: Int, width: Int, height: Int, sourceName: String): ByteArray {
         val rgba = ByteArray(width * height * 4)
@@ -84,6 +82,67 @@ internal object GpuImageCapture {
                 )
             }
 
+            // One- and two-channel targets carry no colour of their own — an ONNX depth map is the
+            // motivating case. Replicate a lone channel to grey, and pad a missing one with zero,
+            // so the capture shows the data instead of refusing it. SFLOAT channels are linear
+            // light and get the same sRGB encode as the RGBA float branches above; UNORM/SNORM are
+            // already encoded, so they pass through the way the 8-bit branches do.
+            VK_FORMAT_R16_SFLOAT -> repeat(pixelCount) {
+                val v = linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort()))
+                put(v, v, v, 255.toByte())
+            }
+
+            VK_FORMAT_R32_SFLOAT -> repeat(pixelCount) {
+                val v = linearFloatChannelToSrgbByte(staging.getFloat())
+                put(v, v, v, 255.toByte())
+            }
+
+            VK_FORMAT_R16_UNORM -> repeat(pixelCount) {
+                val v = unormShortToByte(staging.getShort())
+                put(v, v, v, 255.toByte())
+            }
+
+            VK_FORMAT_R16_SNORM -> repeat(pixelCount) {
+                val v = snormShortToByte(staging.getShort())
+                put(v, v, v, 255.toByte())
+            }
+
+            VK_FORMAT_R16G16_SFLOAT -> repeat(pixelCount) {
+                put(
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    0,
+                    255.toByte()
+                )
+            }
+
+            VK_FORMAT_R32G32_SFLOAT -> repeat(pixelCount) {
+                put(
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    0,
+                    255.toByte()
+                )
+            }
+
+            VK_FORMAT_R16G16B16_SFLOAT -> repeat(pixelCount) {
+                put(
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    linearFloatChannelToSrgbByte(halfFloatToFloat(staging.getShort())),
+                    255.toByte()
+                )
+            }
+
+            VK_FORMAT_R32G32B32_SFLOAT -> repeat(pixelCount) {
+                put(
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    linearFloatChannelToSrgbByte(staging.getFloat()),
+                    255.toByte()
+                )
+            }
+
             else -> throw IllegalStateException("Unsupported $sourceName capture format $format")
         }
         return rgba
@@ -142,6 +201,11 @@ internal object GpuImageCapture {
         }
         return Float.fromBits(bits)
     }
+
+    private fun unormShortToByte(raw: Short): Byte = ((raw.toInt() and 0xffff) ushr 8).toByte()
+
+    private fun snormShortToByte(raw: Short): Byte =
+        floatChannelToByte(raw.toInt().coerceAtLeast(-32767) / 32767f)
 
     private fun floatChannelToByte(value: Float): Byte {
         if (!value.isFinite() || value <= 0f) return 0

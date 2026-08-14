@@ -908,7 +908,16 @@ class Renderer(
         }
 
         val format = ctx.swapChain.surfaceFormat.imageFormat
-        val bytesPerPixel = GpuImageCapture.bytesPerPixel(format)
+        val bytesPerPixel = try {
+            GpuImageCapture.bytesPerPixel(format, "window")
+        } catch (t: Throwable) {
+            // Unknown swapchain format. Fail the requests the way the invalid-size guard above
+            // does — throwing out of here would take the frame with it.
+            requests.forEach { request ->
+                request.completion.completeExceptionally(t)
+            }
+            return emptyList()
+        }
         val byteCount = width.toLong() * height.toLong() * bytesPerPixel.toLong()
         val captures = requests.map { request ->
             RecordedWindowCapture(

@@ -346,21 +346,61 @@ class Image(private val device: Device, val imageData: ImageData) {
         }
 
         val bytesPerPixel: Int
-            get() = when (format) {
-                VK10.VK_FORMAT_R8_UNORM -> 1
-                VK10.VK_FORMAT_R8G8_UNORM -> 2
-                VK10.VK_FORMAT_R8G8B8_UNORM,
-                VK10.VK_FORMAT_B8G8R8_UNORM -> 3
-                VK10.VK_FORMAT_R8G8B8A8_UNORM,
-                VK10.VK_FORMAT_R8G8B8A8_SRGB,
-                VK10.VK_FORMAT_B8G8R8A8_UNORM,
-                VK10.VK_FORMAT_B8G8R8A8_SRGB -> 4
-                VK10.VK_FORMAT_R16G16B16A16_SFLOAT -> 8
-                VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> 16
-                else -> 4 // sensible default for common color formats
-            }
+            get() = vkFormatBytesPerPixel(format, debugName.ifEmpty { "ImageData" })
     }
 }
+
+
+// --- format size ---
+
+/**
+ * Bytes occupied by one pixel of [format], or null if this table does not know the format.
+ *
+ * Null means "no answer", not "zero": block-compressed formats (BC/ETC/ASTC) have no per-pixel
+ * size at all, and depth/stencil formats are not addressable by the flat `width * height *
+ * bytesPerPixel` arithmetic every caller here performs. Both must fall through rather than be
+ * given a plausible-looking number.
+ *
+ * This is the single source of truth. [Image.ImageData.bytesPerPixel], `GpuImageCapture` and
+ * VideoTexture's plane staging each carried their own copy of this table, and they had already
+ * drifted apart once — the capture copy was missing every one- and two-channel float format,
+ * VideoTexture's was the only one that knew R16G16_UNORM.
+ */
+fun vkFormatBytesPerPixelOrNull(format: Int): Int? = when (format) {
+    VK10.VK_FORMAT_R8_UNORM -> 1
+    VK10.VK_FORMAT_R8G8_UNORM -> 2
+    VK10.VK_FORMAT_R16_SFLOAT,
+    VK10.VK_FORMAT_R16_UNORM,
+    VK10.VK_FORMAT_R16_SNORM -> 2
+    VK10.VK_FORMAT_R8G8B8_UNORM,
+    VK10.VK_FORMAT_B8G8R8_UNORM -> 3
+    VK10.VK_FORMAT_R8G8B8A8_UNORM,
+    VK10.VK_FORMAT_R8G8B8A8_SRGB,
+    VK10.VK_FORMAT_B8G8R8A8_UNORM,
+    VK10.VK_FORMAT_B8G8R8A8_SRGB -> 4
+    VK10.VK_FORMAT_R16G16_SFLOAT,
+    VK10.VK_FORMAT_R16G16_UNORM,
+    VK10.VK_FORMAT_R16G16_SNORM,
+    VK10.VK_FORMAT_R32_SFLOAT -> 4
+    VK10.VK_FORMAT_R16G16B16_SFLOAT -> 6
+    VK10.VK_FORMAT_R16G16B16A16_SFLOAT,
+    VK10.VK_FORMAT_R32G32_SFLOAT -> 8
+    VK10.VK_FORMAT_R32G32B32_SFLOAT -> 12
+    VK10.VK_FORMAT_R32G32B32A32_SFLOAT -> 16
+    else -> null
+}
+
+/**
+ * [vkFormatBytesPerPixelOrNull], throwing for formats it does not know. [usage] names the caller
+ * so the message says which capture or upload failed.
+ *
+ * Callers all size a staging buffer or validate a source buffer against the result, so a default
+ * is worse than a failure: too small a guess lets `vkCmdCopyImageToBuffer` write past the end of
+ * the allocation, and the corruption surfaces somewhere unrelated to the format that caused it.
+ */
+fun vkFormatBytesPerPixel(format: Int, usage: String): Int =
+    vkFormatBytesPerPixelOrNull(format)
+        ?: throw IllegalArgumentException("$usage: no bytes-per-pixel known for VkFormat $format")
 
 
 // --- barrier util (now sync2) ---

@@ -295,7 +295,7 @@ open class RenderToTexture(
                     }
 
                     val format = colorFormats[request.attachment]
-                    val bytesPerPixel = GpuImageCapture.bytesPerPixel(format)
+                    val bytesPerPixel = GpuImageCapture.bytesPerPixel(format, "RenderToTexture")
                     val staging = VulkanBuffer(
                         renderer = renderer,
                         requestedSize = width.toLong() * height.toLong() * bytesPerPixel.toLong(),
