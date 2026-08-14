@@ -117,14 +117,48 @@ object StdlibReferenceGenerator {
     )
 
     /**
-     * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS].
+     * Paths (repo-relative prefixes) skipped inside [SOURCE_ROOTS]. A whole file path is a valid
+     * prefix, and that is how single files are named here.
      *
      * `afield/stdlib/linalg` is machine-generated from the typed algebra model and already has its
      * own, better reference at `linear_algebra_api.md`; duplicating ~1500 generated swizzle members
      * here would drown every hand-written symbol in the section.
+     *
+     * The rest are the harnesses inside `afield.four.synth` — smoke tests, docs figure galleries,
+     * the provenance audit, the compile-only cookbook, and two files with no public API at all.
+     * They are not reference material, and this is a purely reference-side statement of that.
+     *
+     * **Not [EXCLUDE_CATEGORIES], which was the first attempt and was wrong for a measured reason.**
+     * One `@file:CompletionCategory("Internal")` per file would have done both jobs, except that the
+     * label is read by [afield.KotlinCompletionSupport.isHiddenCompletionCategory], on the strength
+     * of which `execution.kt` **drops the candidate from the completion popup**. And the label is
+     * not scoped to the declaration you meant: [KotlinSourceIndex] records every declaration in a
+     * file together with that file's category and applies **no visibility filter at all**, while
+     * [KotlinSourceIndex.getCompletionCategoryForSymbol] ends in a name-only
+     * `categories.firstOrNull()`. Measured on these eleven files: 574 declaration names between
+     * them, 235 of which are also declared elsewhere in the tree *and* appear in real box code.
+     * `SoundRenderPathDocs.kt` by itself contributes members named `audio`, `cps`, `cycles`,
+     * `pattern`, `voice` and `to` — so calling it `Internal` would put `audio`, the primary
+     * box-facing entry point of the entire Synthesis category, one first-wins lookup away from
+     * vanishing from the popup, and `to` with it. A documentation change must not be able to do that.
+     *
+     * Excluding by path costs nothing in exchange: these files carry no `@file:CompletionCategory`,
+     * exactly as they did before this package was published, so their completion behaviour is
+     * unchanged rather than merely believed to be unchanged.
      */
     private val EXCLUDE_PREFIXES = listOf(
         "src/jvmMain/kotlin/afield/stdlib/linalg/",
+        "src/jvmMain/kotlin/afield/four/synth/AbletonSetSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DocsAudioProvenance.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DoughDspPlotGallery.kt",
+        "src/jvmMain/kotlin/afield/four/synth/DoughDspSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/FaustSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/PrettyPrint.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiActivity.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiPatternsSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SonicPiSmokeTest.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt",
+        "src/jvmMain/kotlin/afield/four/synth/SynthCookbookCompileDemo.kt",
     )
 
     /**
@@ -132,10 +166,9 @@ object StdlibReferenceGenerator {
      * label the source uses for plumbing that completion should de-rank, so it has no place in a
      * "what can I call?" reference.
      *
-     * This is also how the harnesses inside a documented root are kept out — a smoke test, a docs
-     * figure gallery or a compile-only cookbook is build plumbing, and labelling it `Internal`
-     * states that once, in the file, for both readers of this reference and the completion popup.
-     * See [SOURCE_ROOTS] for why `afield.four.synth` made that necessary.
+     * Nothing in `afield.four.synth` uses it. See [EXCLUDE_PREFIXES] for why keeping a harness out
+     * of this reference is not the same statement as calling it internal, and what the difference
+     * was measured to cost.
      */
     private val EXCLUDE_CATEGORIES = setOf("Internal")
 
@@ -1244,9 +1277,13 @@ object StdlibReferenceGenerator {
         )
         appendLine(
             "- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are " +
-                "plumbing, and are excluded on purpose. Inside `afield.four.synth` that label also " +
-                "carries the harnesses — the smoke tests, the docs figure galleries and the " +
-                "compile-only cookbook — which are build machinery rather than API."
+                "plumbing, and are excluded on purpose."
+        )
+        appendLine(
+            "- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit " +
+                "and the compile-only synth cookbook — are build machinery rather than API, and are " +
+                "excluded by path. They are still real, still run in `check`, and still worth " +
+                "reading; they are just not the answer to \"what can I call?\"."
         )
         appendLine(
             "- **Graphics, rendering and the small languages beyond their host side** live in " +

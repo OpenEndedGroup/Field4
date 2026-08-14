@@ -212,7 +212,8 @@ The "documented" column is the honest one: it is a coverage report on Field's ow
 ## What is not here
 
 - **The generated vector algebra** (`afield.stdlib.linalg`) has its own, better page: [Generated vector API reference](../linear_algebra_api.md), with [Linear algebra in Field](../linear_algebra.md) for the intuition.
-- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded on purpose. Inside `afield.four.synth` that label also carries the harnesses — the smoke tests, the docs figure galleries and the compile-only cookbook — which are build machinery rather than API.
+- **Declarations marked `Internal`** by their own `@file:CompletionCategory` are plumbing, and are excluded on purpose.
+- **The harnesses** — smoke tests, docs figure galleries, the audio-provenance audit and the compile-only synth cookbook — are build machinery rather than API, and are excluded by path. They are still real, still run in `check`, and still worth reading; they are just not the answer to "what can I call?".
 - **Graphics, rendering and the small languages beyond their host side** live in `afield.four`, `afield.rectsl` and `afield.stacksl`; start from [afield.four Graphics](../afield_four_graphics.md), the [RectSL cheatsheet](../rectsl_cheatsheet.md) and the [StackSL cheatsheet](../stacksl_cheatsheet.md). `afield.four.synth` **is** here — it is the audio half of `afield.four`, and [Sound: from a pattern to something you can hear](../sound.md) is the prose it belongs to.
 
 ## How to read a symbol you find here
