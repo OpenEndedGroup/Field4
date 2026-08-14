@@ -10,16 +10,20 @@ correctness while writing no committed assets.
 | --- | --- | --- |
 | `afield.four.synth.PatPianoRollGallery` | `synth.pat.gallery` | 9 piano rolls, **SVG** |
 | `afield.four.synth.PatSoundDocs` | `synth.pat.sound` | 8 stereo **`.wav`**s |
+| `afield.four.synth.PatTranscriptionGallery` | `synth.pat.transcription` | 3 notated-vs-recovered overlays, **SVG** |
 
 ```
 # official pass/fail (starts a Field server, applies the JVM args):
-python3 tools/run_field_tests.py --id synth.pat.gallery --id synth.pat.sound --port 9631
+python3 tools/run_field_tests.py --id synth.pat.gallery --id synth.pat.sound \
+  --id synth.pat.transcription --port 9631
 
 # regenerate the committed captures:
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
   afield.four.synth.PatPianoRollGallery --arg "$PWD/dev_docs/assets/pat_gallery"
 python3 tools/field_backdoor.py --port 9631 run-jvm-main \
   afield.four.synth.PatSoundDocs --arg "$PWD/dev_docs/assets/pat_sound"
+python3 tools/field_backdoor.py --port 9631 run-jvm-main \
+  afield.four.synth.PatTranscriptionGallery --arg "$PWD/dev_docs/assets/pat_transcription"
 ```
 (`PAT_ROLL_DIR` / `PAT_SOUND_DIR` do the same thing, but the backdoor's JVM does not inherit your
 shell environment, so pass `--arg`.)
@@ -230,3 +234,24 @@ dot-grouping scenes). Open them; that is the point.
 | `pat-degrade-shuffle.wav` | `hh*16?0.35` over shuffled quarters — deterministic, but no two cycles alike |
 | `pat-swing-before-after.wav` | eight hats a cycle: two cycles dead straight, then two swung |
 | `pat-dot-grouping.wav` | five notes a cycle: two cycles of even fifths, then the same five grouped by a `.` |
+
+---
+
+## The third harness runs the analysis backwards
+
+`PatPianoRollGallery` draws what a pattern *is*; `PatSoundDocs` renders what it *sounds like*.
+`PatTranscriptionGallery` draws what Field **heard back** from that render, overlaid on the notation
+that caused it — hollow outline for the notation, solid bar for the recovery, one shared MIDI axis.
+It is in this file rather than a new one because it obeys the same contract: pure CPU, no browser, no
+GPU, no Vulkan, no Field window, deterministic, and a `FIELD_TEST` that renders to a temp dir and
+writes no committed assets.
+
+It differs from its two siblings in one way worth knowing. The other harnesses verify *structure* — the
+piano roll asserts one rectangle per scheduled event, so the figure cannot contain a rectangle no
+event produced. This one does that too, and additionally re-checks **every caption's number in the
+same run that draws the figure**, because its captions quote measurements rather than describing
+shapes. A caption claiming "recall 0.91 vs 0.03" fails the harness if the corpus stops producing those
+numbers, which is the only way a figure's prose can be kept honest without a human re-reading it.
+
+Mechanism, measurements and the four things this got wrong first are in
+[pitch_transcription_roundtrip.md](pitch_transcription_roundtrip.md).
